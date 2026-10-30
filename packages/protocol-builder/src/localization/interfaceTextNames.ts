@@ -1,5 +1,5 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
-import type { IntlShape } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 
 // Kept apart from `localizedTextNames.ts`, which imports every editor's
 // messages: a stage editor that names the interview's shared words (see
@@ -21,6 +21,130 @@ const messages = defineMessages({
   },
 });
 
+/**
+ * The hint under each of the interview's shared words that a stage editor's
+ * built-in wording shows: where the participant sees it and what it is for.
+ */
+const hints = defineMessages({
+  zoomOutDescription: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.zoomOutDescription',
+    defaultMessage: 'Tooltip text for the zoom out button on the family tree.',
+    description:
+      'Hint under the setting holding the zoom out explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  zoomInDescription: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.zoomInDescription',
+    defaultMessage: 'Tooltip text for the zoom in button on the family tree.',
+    description:
+      'Hint under the setting holding the zoom in explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  showWholeFamily: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.showWholeFamily',
+    defaultMessage:
+      'Name of the toolbar button that fits the whole family tree on the screen. Shown in its tooltip.',
+    description:
+      'Hint under the setting holding the whole family button, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  showWholeFamilyDescription: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.showWholeFamilyDescription',
+    defaultMessage:
+      'Tooltip text for the button that fits the whole family tree on the screen.',
+    description:
+      'Hint under the setting holding the whole family explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  pointerToolDescription: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.pointerToolDescription',
+    defaultMessage:
+      'Tooltip text for the pointer tool in the family tree toolbar.',
+    description:
+      'Hint under the setting holding the select tool explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  connectToolDescription: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.connectToolDescription',
+    defaultMessage:
+      'Tooltip text for the connect tool in the family tree toolbar.',
+    description:
+      'Hint under the setting holding the connect tool explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  disconnectToolDescription: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.disconnectToolDescription',
+    defaultMessage:
+      'Tooltip text for the disconnect tool in the family tree toolbar.',
+    description:
+      'Hint under the setting holding the disconnect tool explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  framingControlDescription: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.framingControlDescription',
+    defaultMessage:
+      'Tooltip text for the control that changes the words used for family members. Only used when participants choose the words.',
+    description:
+      'Hint under the setting holding the relationship words explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  undoDescription: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.undoDescription',
+    defaultMessage:
+      'Tooltip text for the undo button in the family tree toolbar.',
+    description:
+      'Hint under the setting holding the undo explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  redoDescription: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.redoDescription',
+    defaultMessage:
+      'Tooltip text for the redo button in the family tree toolbar.',
+    description:
+      'Hint under the setting holding the redo explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  trackerAllDetails: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.trackerAllDetails',
+    defaultMessage:
+      'Last item in the completeness checklist, asking for the required details of every family member.',
+    description:
+      'Hint under the setting holding the all details checklist item, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  placeHere: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.placeHere',
+    defaultMessage:
+      'Button on each bin that places the selected node in it, when the participant taps a node and then a bin.',
+    description:
+      'Hint under the setting holding the place here label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  unnamedNumbered: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.unnamedNumbered',
+    defaultMessage:
+      'Label for a roster item that has no name. The number tells unnamed items apart.',
+    description:
+      'Hint under the setting holding the numbered unnamed label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  dropToRemove: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.dropToRemove',
+    defaultMessage:
+      'Shown over the roster list while the participant drags an added node back to remove it.',
+    description:
+      'Hint under the setting holding the drop to remove message, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  connection: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.connection',
+    defaultMessage:
+      'Title shown when the participant selects an edge of a type this stage does not draw, such as one from an earlier stage.',
+    description:
+      'Hint under the setting holding the connection label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  scrollForQuestions: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.scrollForQuestions',
+    defaultMessage:
+      'Read by screen readers on the arrow that shows there are more questions below.',
+    description:
+      'Hint under the setting holding the more questions hint, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+  addNamePlaceholder: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextHint.addNamePlaceholder',
+    defaultMessage:
+      'Placeholder in the quick-add box where the participant types a name, shown until they start typing.',
+    description:
+      'Hint under the setting holding the name box placeholder, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
+  },
+});
+
 /** What the translation table calls a group of the interview's shared words. */
 export const nameInterfaceTextGroup = (intl: IntlShape, group: string) =>
   intl.formatMessage(messages.interfaceTextGroup, { group });
@@ -28,3 +152,17 @@ export const nameInterfaceTextGroup = (intl: IntlShape, group: string) =>
 /** What the translation table calls one of the interview's shared words. */
 export const nameInterfaceText = (intl: IntlShape, key: string) =>
   intl.formatMessage(messages.interfaceTextName, { key });
+
+/**
+ * The hint under one of the interview's shared words in a stage's built-in
+ * wording, or undefined for one no stage's wording shows.
+ */
+export const hintInterfaceText = (
+  intl: IntlShape,
+  key: string,
+): string | undefined => {
+  const hint = new Map<string, MessageDescriptor>(Object.entries(hints)).get(
+    key,
+  );
+  return hint === undefined ? undefined : intl.formatMessage(hint);
+};

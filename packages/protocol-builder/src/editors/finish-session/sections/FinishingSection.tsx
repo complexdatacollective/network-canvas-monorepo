@@ -68,6 +68,7 @@ export default function FinishingSection() {
         name={FINISH_LABEL_FIELD}
         component={LocalizedInputField}
         label={intl.formatMessage(finishSessionMessages.finishLabelLabel)}
+        hint={intl.formatMessage(finishSessionMessages.finishLabelHint)}
         required={REQUIRED}
       />
       {asksToConfirm && (
@@ -77,6 +78,9 @@ export default function FinishingSection() {
           label={intl.formatMessage(
             finishSessionMessages.finishConfirmationLabel,
           )}
+          hint={intl.formatMessage(
+            finishSessionMessages.finishConfirmationHint,
+          )}
           wraps
           required={REQUIRED}
         />
@@ -85,6 +89,7 @@ export default function FinishingSection() {
         name={FINISH_FAILED_FIELD}
         component={LocalizedInputField}
         label={intl.formatMessage(finishSessionMessages.finishFailedLabel)}
+        hint={intl.formatMessage(finishSessionMessages.finishFailedHint)}
         wraps
         required={REQUIRED}
       />

@@ -1,27 +1,8 @@
-import {
-  createElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import {
-  Accordion,
-  AccordionHeader,
-  AccordionItem,
-  AccordionPanel,
-  AccordionTrigger,
-} from '@codaco/fresco-ui/Accordion';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
-import {
-  EnclosingHeadingLevel,
-  headingTagBelow,
-  useEnclosingHeadingLevel,
-} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import {
   type LocalizedString,
   type MessageArguments,
@@ -57,39 +38,22 @@ import {
 
 const COMPLETENESS_FIELDS = [COMPLETENESS_PATH];
 
-/** Whether a refusal at `issuePath` is about the setting at `path`. */
-const refusesSetting = (issuePath: readonly PropertyKey[], path: string) =>
-  path.split('.').every((segment, index) => issuePath[index] === segment);
-
-const groupValue = (group: WordingGroup) => group.id;
-
-const NO_GROUPS: readonly string[] = Object.freeze([]);
-
 /**
  * Every setting the participant sees on this stage, in the words the
  * Family Pedigree's own interface uses, with the wording Network Canvas
- * supplies for each in the protocol's languages.
+ * supplies for each in the protocol's languages, in the order a participant
+ * meets them, each with a hint saying where it is shown.
  *
- * Each group of settings starts closed and has its fields on screen only
- * while it is open: there are dozens, many of them rich-text editors, and
- * mounting them all at once made the editor slow to open. A closed group's
- * settings are still the stage's — the form holds the whole document, and a
- * field that was never mounted leaves its value as the stage holds it — and
- * a setting the stage gains while its group is closed (choosing the framing,
- * asking gender identity, or switching on the completeness requirement) is
- * written with Network Canvas's wording when the
- * stage is saved (see `stageDocument`). An open group's fields start as the
- * stage holds them, or as Network Canvas supplies them, so the section waits
- * for the protocol's languages.
- *
- * A problem never hides in a closed group. A group whose fields are refused
- * stays open until they are put right, and a group holding a setting the
- * protocol refused when the stage was saved opens, so the field that answers
- * for it is on screen beside the refusal.
+ * A setting the stage gains while the section's part for it is closed
+ * (choosing the framing, asking gender identity, or switching on the
+ * completeness requirement) is written with Network Canvas's wording when the
+ * stage is saved (see `stageDocument`). The fields start as the stage holds
+ * them, or as Network Canvas supplies them, so the section waits for the
+ * protocol's languages.
  */
 export default function ParticipantWordingSection() {
   const intl = useAppIntl();
-  const { committedFields, storeApi, outline } = useStageEditorForm();
+  const { committedFields } = useStageEditorForm();
   const supplied = useSuppliedStageWording('FamilyPedigree');
   const framing = useStageValue('framing');
   const genderIdentity = useStageValue(NODE_CONFIGURATION_PATHS.genderIdentity);
@@ -114,79 +78,10 @@ export default function ParticipantWordingSection() {
     [intl],
   );
 
-  const [openGroups, setOpenGroups] = useState<readonly string[]>(NO_GROUPS);
-
-  // A group the schema refused a setting of opens, so the field that answers
-  // for the refusal mounts and says it beside itself.
-  const issues = useSyncExternalStore(
-    outline.subscribe,
-    outline.getValidationIssues,
-    outline.getValidationIssues,
-  );
-  useEffect(() => {
-    const refused = PARTICIPANT_WORDING_GROUPS.filter((group) =>
-      issues.some((issue) =>
-        group.settings.some((setting) =>
-          refusesSetting(issue.path, settingPath(group, setting)),
-        ),
-      ),
-    ).map(groupValue);
-    if (refused.length === 0) return;
-    setOpenGroups((current) =>
-      refused.every((group) => current.includes(group))
-        ? current
-        : [...new Set([...current, ...refused])],
-    );
-  }, [issues]);
-
-  /**
-   * Opens at once; closes once the group's fields are known to be right,
-   * and not while one is refused. A closed group's fields are not on screen,
-   * so a field it closed over while refused — emptied, or written in some
-   * versions and not others — could not be pointed to when the stage is
-   * saved. The group stays open meanwhile, so asking again only asks again.
-   */
-  const requestOpenGroups = useCallback(
-    (next: readonly string[]) => {
-      const opened = next.filter((group) => !openGroups.includes(group));
-      const closing = openGroups.filter((group) => !next.includes(group));
-      if (opened.length > 0) {
-        setOpenGroups((current) => [...new Set([...current, ...opened])]);
-      }
-      for (const group of closing) {
-        const closed = PARTICIPANT_WORDING_GROUPS.find(
-          (candidate) => groupValue(candidate) === group,
-        );
-        const names =
-          closed === undefined
-            ? []
-            : closed.settings
-                .map((setting) => settingPath(closed, setting))
-                .filter(
-                  (name) =>
-                    storeApi.getState().getFieldState(name) !== undefined,
-                );
-        void Promise.all(
-          names.map((name) => storeApi.getState().validateField(name)),
-        ).then(() => {
-          const refused = names.some(
-            (name) =>
-              (storeApi.getState().getFieldErrors(name)?.length ?? 0) > 0,
-          );
-          if (refused) return undefined;
-          setOpenGroups((current) =>
-            current.filter((candidate) => candidate !== group),
-          );
-          return undefined;
-        });
-      }
-    },
-    [openGroups, storeApi],
-  );
-
-  const paths = PARTICIPANT_WORDING_GROUPS.filter(
+  const groups = PARTICIPANT_WORDING_GROUPS.filter(
     (group) => group.gate === undefined || shown[group.gate],
-  ).flatMap((group) =>
+  );
+  const paths = groups.flatMap((group) =>
     group.settings
       .filter((setting) => setting.gate === undefined || shown[setting.gate])
       .map((setting) => settingPath(group, setting)),
@@ -194,16 +89,17 @@ export default function ParticipantWordingSection() {
 
   return (
     <StageWordingSection stageType="FamilyPedigree" paths={paths}>
-      {supplied !== undefined && (
-        <WordingGroups
-          openGroups={openGroups}
-          onOpenGroupsChange={requestOpenGroups}
-          shown={shown}
-          committedFields={committedFields}
-          supplied={supplied}
-          validations={validations}
-        />
-      )}
+      {supplied !== undefined &&
+        groups.map((group) => (
+          <WordingGroupFields
+            key={group.id}
+            group={group}
+            shown={shown}
+            committedFields={committedFields}
+            supplied={supplied}
+            validations={validations}
+          />
+        ))}
     </StageWordingSection>
   );
 }
@@ -215,54 +111,7 @@ type GroupFieldsProps = Readonly<{
   validations: ReadonlyMap<MessageArguments, CustomFieldValidation>;
 }>;
 
-/**
- * The groups, each a heading that opens and closes it. Rendered inside the
- * section, so its headings count from the section's own.
- */
-function WordingGroups({
-  openGroups,
-  onOpenGroupsChange,
-  ...fields
-}: GroupFieldsProps &
-  Readonly<{
-    openGroups: readonly string[];
-    onOpenGroupsChange: (next: readonly string[]) => void;
-  }>) {
-  const intl = useAppIntl();
-  const headingTag = headingTagBelow(useEnclosingHeadingLevel() ?? 'h3');
-  return (
-    <Accordion<string>
-      multiple
-      value={[...openGroups]}
-      onValueChange={onOpenGroupsChange}
-      className="gap-6"
-    >
-      {PARTICIPANT_WORDING_GROUPS.filter(
-        (group) => group.gate === undefined || fields.shown[group.gate],
-      ).map((group) => {
-        const value = groupValue(group);
-        return (
-          <AccordionItem key={value} value={value}>
-            <AccordionHeader render={createElement(headingTag)}>
-              <AccordionTrigger>
-                {intl.formatMessage(group.title)}
-              </AccordionTrigger>
-            </AccordionHeader>
-            <AccordionPanel className="mt-4">
-              {openGroups.includes(value) && (
-                <EnclosingHeadingLevel level={headingTag}>
-                  <WordingGroupFields group={group} {...fields} />
-                </EnclosingHeadingLevel>
-              )}
-            </AccordionPanel>
-          </AccordionItem>
-        );
-      })}
-    </Accordion>
-  );
-}
-
-/** The fields of one open group: each of its settings the stage shows. */
+/** The fields of one group: each of its settings the stage shows. */
 function WordingGroupFields({
   group,
   shown,

@@ -55,6 +55,10 @@ Spanish no longer gets a Spanish protocol inside French buttons.
   leave each field, because it changes every stage of that type, and switching
   the section off resets it too. The Ego Form and Categorical Bin editors gain
   the section for their shared wording.
+- Every field in the section has a hint saying where the participant sees that
+  text and what it is for.
+- The Family Pedigree editor lists all of its wording under "Specific to this
+  stage", without the headings that used to split it into groups.
 - The translation table lists the new Interviewer controls group and a group
   for each stage type's shared wording.
 

@@ -17,10 +17,12 @@ const WORDS: readonly WordingSetting[] = [
   {
     path: 'addNamePlaceholder',
     label: messages.addNamePlaceholderLabel,
+    hint: messages.addNamePlaceholderHint,
   },
   {
     path: 'overtakenEditNotice',
     label: messages.overtakenEditNoticeLabel,
+    hint: messages.overtakenEditNoticeHint,
     wraps: true,
   },
   {
@@ -31,10 +33,12 @@ const WORDS: readonly WordingSetting[] = [
   {
     path: 'tooltips.addPerson',
     label: messages.addNodeTooltipLabel,
+    hint: messages.addNodeTooltipHint,
   },
   {
     path: 'tooltips.automaticLayout',
     label: messages.automaticLayoutTooltipLabel,
+    hint: messages.automaticLayoutTooltipHint,
   },
   {
     path: 'tooltips.drawConnection',

@@ -39,27 +39,27 @@ const DRAWING_TOOLTIPS: readonly WordingSetting[] = [
   {
     path: 'tooltips.enableDrawing',
     label: messages.enableDrawingTooltipLabel,
-    hint: messages.drawingTooltipHint,
+    hint: messages.enableDrawingTooltipHint,
   },
   {
     path: 'tooltips.disableDrawing',
     label: messages.disableDrawingTooltipLabel,
-    hint: messages.drawingTooltipHint,
+    hint: messages.disableDrawingTooltipHint,
   },
   {
     path: 'tooltips.freezeAnnotations',
     label: messages.freezeAnnotationsTooltipLabel,
-    hint: messages.drawingTooltipHint,
+    hint: messages.freezeAnnotationsTooltipHint,
   },
   {
     path: 'tooltips.unfreezeAnnotations',
     label: messages.unfreezeAnnotationsTooltipLabel,
-    hint: messages.drawingTooltipHint,
+    hint: messages.unfreezeAnnotationsTooltipHint,
   },
   {
     path: 'tooltips.resetAnnotations',
     label: messages.resetAnnotationsTooltipLabel,
-    hint: messages.drawingTooltipHint,
+    hint: messages.resetAnnotationsTooltipHint,
   },
 ];
 

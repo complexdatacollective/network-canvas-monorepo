@@ -17,6 +17,7 @@ import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
+  hintInterfaceText,
   nameInterfaceText,
   nameInterfaceTextGroup,
 } from '../../localization/interfaceTextNames.ts';
@@ -192,6 +193,7 @@ function SharedWordingGroupFields({
         const common = {
           name: `interfaceText.${group}.${key}`,
           label: nameInterfaceText(intl, key),
+          hint: hintInterfaceText(intl, key),
           value,
           onChange,
           readOnly,
