@@ -1103,11 +1103,22 @@ try {
   await expect(page.getByText('© Mapbox').first()).toBeVisible({
     timeout: 30_000,
   });
+  // A visible canvas can still be blank: data-map-idle is the stage's own
+  // readiness flag (style loaded, map idle, GeoJSON layer rendered).
+  const mapReady = await page
+    .locator('[data-testid="map-container"][data-map-idle="true"]')
+    .waitFor({ timeout: 60_000 })
+    .then(
+      () => true,
+      () => false,
+    );
   await shot('needs-internet-reconnected');
   record(
     'needs-internet-reconnect',
-    (await page.getByTestId('map-error-overlay').count()) === 0,
-    'back online, the map stage dropped its offline notice and loaded its map (Mapbox canvas and attribution shown, no error overlay)',
+    mapReady && (await page.getByTestId('map-error-overlay').count()) === 0,
+    mapReady
+      ? 'back online, the map stage dropped its offline notice and loaded its map (style, tiles and regions layer ready, no error overlay)'
+      : 'back online, the map stage never reported ready (data-map-idle stayed false for 60 s)',
   );
 
   await page.goto(url);
