@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
-import { Route, Switch } from 'wouter';
+import { Redirect, Route, Switch } from 'wouter';
 
 import Home from '~/components/Home/Home';
 import ProtocolLoadingOverlay from '~/components/Home/ProtocolLoadingOverlay';
@@ -54,6 +54,9 @@ const Routes = () => {
             <ProtocolRoutes />
           </Route>
           <Route path="/import-from-sketch" component={SketchImport} />
+          {/* Any other address (a removed page, an old bookmark, a restored
+              tab) matches nothing above and would leave a blank page. */}
+          <Redirect to="/" replace />
         </Switch>
       </ProtocolRouteGuard>
     </ActionToolbarProvider>

@@ -8,6 +8,7 @@ import Routes from '../Routes';
 vi.mock('wouter', () => ({
   Route: ({ path, children }: { path: string; children?: ReactNode }) =>
     path === '/protocol/*?' ? <>{children}</> : null,
+  Redirect: () => null,
   Switch: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
