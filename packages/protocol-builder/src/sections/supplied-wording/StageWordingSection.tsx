@@ -296,9 +296,14 @@ function WordingParts({
             <AccordionTrigger>{intl.formatMessage(title)}</AccordionTrigger>
           </AccordionHeader>
           <AccordionPanel className="mt-4">
-            <EnclosingHeadingLevel level={headingTag}>
-              {body}
-            </EnclosingHeadingLevel>
+            {/* Mounted only while open: a closed part is hidden from
+                assistive technology, so it must hold nothing focusable. A
+                stage field it closes over is parked with its value. */}
+            {open.includes(value) && (
+              <EnclosingHeadingLevel level={headingTag}>
+                {body}
+              </EnclosingHeadingLevel>
+            )}
           </AccordionPanel>
         </AccordionItem>
       ))}
