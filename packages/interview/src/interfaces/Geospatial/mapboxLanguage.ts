@@ -126,18 +126,13 @@ export function getMapLanguage(locale: string): string | undefined {
 }
 
 /**
- * The language to ask place search for. The protocol language the participant
- * is reading, when Search Box has it; otherwise the interview's interface
- * language, when Search Box has that; otherwise English, Search Box's own
+ * The language to ask place search for: the protocol language the participant
+ * is reading, when Search Box has it; otherwise English, Search Box's own
  * default.
  */
-export function getSearchLanguage(
-  protocolLocale: string,
-  interfaceLocale: string,
-): string {
-  for (const locale of [protocolLocale, interfaceLocale]) {
-    const code = toMapboxCode(locale);
-    if (code !== undefined && SEARCH_LANGUAGES.has(code)) return code;
-  }
-  return SEARCH_FALLBACK_LANGUAGE;
+export function getSearchLanguage(protocolLocale: string): string {
+  const code = toMapboxCode(protocolLocale);
+  return code !== undefined && SEARCH_LANGUAGES.has(code)
+    ? code
+    : SEARCH_FALLBACK_LANGUAGE;
 }

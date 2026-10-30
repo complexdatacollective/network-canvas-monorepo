@@ -1,13 +1,12 @@
 import { render } from '@testing-library/react';
 import type { ComponentProps, ReactNode } from 'react';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   getLocaleMetadata,
   suppliedStageText,
 } from '@codaco/protocol-validation';
 
-import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import {
   localizedMessageParts,
@@ -60,21 +59,15 @@ function StringProbe({
   return null;
 }
 
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so renders in Spanish are synchronous.
-beforeAll(() => interviewCatalogSource.load('es'));
-
 function Harness({
   props,
-  interfaceLocales = ['en'],
   children,
 }: {
   props: ProviderProps;
-  interfaceLocales?: readonly string[];
   children: ReactNode;
 }) {
   return (
-    <InterviewI18nProvider requestedLocale={interfaceLocales}>
+    <InterviewI18nProvider>
       <ProtocolLocalizationProvider {...props}>
         {children}
       </ProtocolLocalizationProvider>
@@ -82,14 +75,11 @@ function Harness({
   );
 }
 
-function renderLocale(
-  props: ProviderProps,
-  interfaceLocales?: readonly string[],
-) {
+function renderLocale(props: ProviderProps) {
   const rendered: ProtocolLocale[] = [];
   const onRender = (value: ProtocolLocale) => rendered.push(value);
   const view = render(
-    <Harness props={props} interfaceLocales={interfaceLocales}>
+    <Harness props={props}>
       <LocaleProbe onRender={onRender} />
     </Harness>,
   );
@@ -101,7 +91,7 @@ function renderLocale(
     },
     rerender: (next: ProviderProps) =>
       view.rerender(
-        <Harness props={next} interfaceLocales={interfaceLocales}>
+        <Harness props={next}>
           <LocaleProbe onRender={onRender} />
         </Harness>,
       ),
@@ -190,8 +180,8 @@ describe('ProtocolLocalizationProvider', () => {
     ]);
   });
 
-  it('collates the language names for the interface language', () => {
-    const names = (interfaceLocales: readonly string[]) =>
+  it('collates the language names for the language the interview shows', () => {
+    const names = (localePreference: string) =>
       renderLocale(
         makeProps({
           localization: { defaultLocale: 'en', locales: ['en', 'es'] },
@@ -199,15 +189,15 @@ describe('ProtocolLocalizationProvider', () => {
             { locale: 'en', label: 'ña', direction: 'ltr' },
             { locale: 'es', label: 'nb', direction: 'ltr' },
           ],
+          localePreference,
         }),
-        interfaceLocales,
       )
         .latest()
         .options.map(({ label }) => label);
 
     // Spanish sorts ñ as a letter of its own, after n; English sorts it as n.
-    expect(names(['en'])).toEqual(['ña', 'nb']);
-    expect(names(['es'])).toEqual(['nb', 'ña']);
+    expect(names('en')).toEqual(['ña', 'nb']);
+    expect(names('es')).toEqual(['nb', 'ña']);
   });
 
   it('only accepts a declared locale as a stated preference', () => {

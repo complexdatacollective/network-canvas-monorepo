@@ -4,7 +4,6 @@ import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -12,8 +11,8 @@ import {
   type FinishHandler,
   type InterviewPayload,
   Shell,
+  useContentLocale,
 } from '@codaco/interview';
-import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import {
   type AssetUrlOwner,
   createAssetUrlOwner,
@@ -83,9 +82,10 @@ async function fetchProtocolBytes(path: string): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-// Rendered inside the Shell, whose interface language is the interview's own
-// and can change while it runs (a language chooser, the visitor's choice). The
-// interview's English is US English, the site's default.
+// Rendered inside the Shell, in the language the interview shows, which it
+// negotiates from the protocol's languages and which can change while it runs
+// (a language chooser, the visitor's choice). The interview's English is US
+// English, the site's default.
 function InterviewLanguageLabel({
   labels,
   name,
@@ -93,7 +93,7 @@ function InterviewLanguageLabel({
   labels: CompletionLabels;
   name: keyof CompletionLabels[Locale];
 }) {
-  const { locale } = useAppIntl();
+  const locale = useContentLocale();
   return labels[isLocale(locale) ? locale : defaultLocale][name];
 }
 
@@ -137,13 +137,6 @@ export function ProtocolPreview({
     return () => {
       owner.release();
     };
-  }, []);
-
-  // The interview's messages load while the protocol downloads and installs,
-  // rather than once the Shell mounts, for the browser's languages the Shell
-  // is later given. A failure here is retried by the Shell itself.
-  useEffect(() => {
-    loadInterviewCatalog(navigator.languages).catch(() => undefined);
   }, []);
 
   useEffect(() => {

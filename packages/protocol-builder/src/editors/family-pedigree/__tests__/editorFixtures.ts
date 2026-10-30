@@ -45,6 +45,14 @@ export async function openWordingGroup(
     | (typeof PARTICIPANT_WORDING_GROUP_TITLES)[number]
     | typeof CHECKLIST_WORDING_GROUP_TITLE = 'Drawing the family',
 ): Promise<void> {
+  // The section starts switched off over a single language's supplied
+  // wording; its groups are on screen once it is on.
+  const section = await screen.findByRole('switch', {
+    name: 'Participant wording',
+  });
+  if (section.getAttribute('aria-checked') !== 'true') {
+    await harness.user.click(section);
+  }
   const trigger = await screen.findByRole('button', { name });
   await harness.user.click(trigger);
   await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));

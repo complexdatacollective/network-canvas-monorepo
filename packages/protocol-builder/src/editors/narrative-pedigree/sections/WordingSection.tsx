@@ -17,7 +17,7 @@ import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { WordingRow, type WordingSetting } from '../../../form/WordingRow.tsx';
-import BuilderSection from '../../../sections/BuilderSection.tsx';
+import StageWordingSection from '../../../sections/supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -107,16 +107,20 @@ export default function WordingSection() {
     [intl],
   );
 
+  const shown = TEXT.filter((setting) =>
+    suppliedStageSettingApplies(stage, setting.path.split('.')),
+  );
+
   return (
-    <BuilderSection
+    <StageWordingSection
+      stageType={STAGE_TYPE}
       title={intl.formatMessage(messages.wordingTitle)}
       description={intl.formatMessage(messages.wordingDescription)}
+      paths={[...shown, ...SNAPSHOT_TITLES].map((setting) => setting.path)}
     >
       {supplied !== undefined && (
         <>
-          {TEXT.filter((setting) =>
-            suppliedStageSettingApplies(stage, setting.path.split('.')),
-          ).map((setting) => (
+          {shown.map((setting) => (
             <WordingRow
               key={setting.path}
               setting={setting}
@@ -146,6 +150,6 @@ export default function WordingSection() {
           ))}
         </>
       )}
-    </BuilderSection>
+    </StageWordingSection>
   );
 }

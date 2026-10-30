@@ -16,7 +16,6 @@ import {
   AppI18nProvider,
   AppMessage,
   useAppIntl,
-  useAppLocale,
   useLocaleCatalog,
 } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
@@ -35,8 +34,8 @@ import {
   type StepChangeHandler,
   type SyncHandler,
   getLastAvailableAuthoredStageIndex,
+  useContentLocale,
 } from '@codaco/interview';
-import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   getLocaleMetadata,
@@ -470,16 +469,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     captureException(cause, { feature: 'interview-load' });
   });
 
-  // The interview's messages load while the session below is unlocked and
-  // decrypted, rather than once the Shell mounts, and with them Interviewer's
-  // own messages in that language for the finish dialog's description. A
-  // failure here is retried by the Shell itself.
-  useEffect(() => {
-    loadInterviewCatalog(requestedLocales)
-      .then(({ locale }) => interviewerCatalogSource.load(locale))
-      .catch(() => undefined);
-  }, [requestedLocales]);
-
   // Gated exit shared by the Shell exit button and the completed state's Exit.
   const handleExit = useCallback(async () => {
     const settings = await getSettings();
@@ -868,12 +857,11 @@ function LoadFailure({
 }
 
 // Host messages that render inside the Shell (the finish dialog's explanation,
-// the completed state's Exit) take the interview's interface language from the
-// Shell's provider; the interview never uses Interviewer's own language.
-// Interviewer's catalog for that language is loaded when the interview is (see
-// the route), so this normally renders at once; the boundary keeps a late
-// catalog from suspending the whole interview behind the Shell's loading
-// screen.
+// the completed state's Exit) take the language the interview shows, which it
+// negotiates from the protocol's languages; the interview never uses
+// Interviewer's own language. Interviewer's catalog for that language loads
+// here when it is not Interviewer's own; the boundary keeps a late catalog
+// from suspending the whole interview behind the Shell's loading screen.
 function InterviewLanguageMessage({ message }: { message: MessageDescriptor }) {
   return (
     <Suspense fallback={null}>
@@ -887,7 +875,7 @@ function InterviewLanguageMessageText({
 }: {
   message: MessageDescriptor;
 }) {
-  const { locale } = useAppLocale();
+  const locale = useContentLocale();
   const catalog = useLocaleCatalog(interviewerCatalogSource, locale);
   const direction =
     interviewerLocales.find((entry) => entry.locale === catalog.locale)

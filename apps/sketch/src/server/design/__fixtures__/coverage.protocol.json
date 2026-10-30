@@ -1745,6 +1745,38 @@
       },
       "continue": {
         "en": "Continue"
+      },
+      "exitFailed": {
+        "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en": "Show screen"
       }
     },
     "buttons": {
@@ -1763,11 +1795,20 @@
       "no": {
         "en": "No"
       },
+      "save": {
+        "en": "Save"
+      },
       "pauseLayout": {
         "en": "Pause automatic layout"
       },
       "resumeLayout": {
         "en": "Resume automatic layout"
+      },
+      "copy": {
+        "en": "Copy"
+      },
+      "copied": {
+        "en": "Copied"
       }
     },
     "messages": {
@@ -1782,6 +1823,12 @@
       },
       "externalDataError": {
         "en": "External data could not be loaded."
+      },
+      "loading": {
+        "en": "Loading…"
+      },
+      "unnamed": {
+        "en": "Unnamed"
       }
     },
     "search": {
@@ -1815,6 +1862,29 @@
       },
       "unique": {
         "en": "Must be unique."
+      }
+    },
+    "categoricalBin": {
+      "placeHere": {
+        "en": "Place here"
+      }
+    },
+    "roster": {
+      "unnamedNumbered": {
+        "en": "Unnamed {count}"
+      },
+      "dropToRemove": {
+        "en": "Drop here to remove"
+      }
+    },
+    "networkComposer": {
+      "connection": {
+        "en": "Connection"
+      }
+    },
+    "egoForm": {
+      "scrollForQuestions": {
+        "en": "Scroll to see more questions"
       }
     }
   }

@@ -14,7 +14,7 @@ import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
-import BuilderSection from '../BuilderSection.tsx';
+import StageWordingSection from '../supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -124,10 +124,19 @@ function NameGeneratorWordingSection({
   const hasMinimum = typeof minNodes === 'number' && minNodes > 0;
   const hasMaximum = typeof maxNodes === 'number';
 
+  const paths = [
+    ...(hasMinimum ? ['minNodesNotice'] : []),
+    ...(hasMaximum ? ['maxNodesNotice'] : []),
+    ...(stageType === 'NameGeneratorQuickAdd' ? ['quickAddHint'] : []),
+    ...(stageType === 'NameGeneratorRoster' ? ['allAddedNotice'] : []),
+  ];
+
   return (
-    <BuilderSection
+    <StageWordingSection
+      stageType={stageType}
       title={intl.formatMessage(nameGeneratorWordingMessages.title)}
       description={intl.formatMessage(nameGeneratorWordingMessages.description)}
+      paths={paths}
     >
       {supplied !== undefined && (
         <>
@@ -210,6 +219,6 @@ function NameGeneratorWordingSection({
           )}
         </>
       )}
-    </BuilderSection>
+    </StageWordingSection>
   );
 }

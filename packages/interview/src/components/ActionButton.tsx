@@ -77,7 +77,7 @@ const ActionButton = forwardRef<HTMLButtonElement, ActionButtonProps>(
         className={cx(actionButtonVariants({ disabled }), className)}
       >
         <div className={mainIconVariants({ disabled })}>
-          <Icon name={iconName} className={actionIconClass} />
+          <Icon name={iconName} className={actionIconClass} aria-hidden />
         </div>
         <div className={plusContainerVariants()}>
           <div>

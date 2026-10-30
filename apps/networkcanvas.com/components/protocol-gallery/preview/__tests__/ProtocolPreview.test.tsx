@@ -3,7 +3,7 @@ import { type ComponentProps, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { defineAppLocales } from '@codaco/app-i18n/locales';
-import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import type { InterviewPayload } from '@codaco/interview';
 import { locales } from '~/lib/i18n/locales';
 import { loadLocaleMessages } from '~/lib/i18n/messages';
@@ -20,8 +20,7 @@ const lastShellProps = () => {
   return props;
 };
 
-// The interview's interface languages, as the Shell declares them: its English
-// is plain `en`.
+// The protocol's languages the interview can show: its English is plain `en`.
 const interviewLocales = defineAppLocales([
   { locale: 'en', label: 'English', direction: 'ltr' },
   { locale: 'de', label: 'Deutsch', direction: 'ltr' },
@@ -29,8 +28,8 @@ const interviewLocales = defineAppLocales([
 ]);
 let initialInterviewLocale = 'en';
 
-// Like the Shell, chooses its own interface language, apart from the page's,
-// and can change it while it runs.
+// Like the Shell, chooses the language the interview shows, apart from the
+// page's, and can change it while it runs.
 function MockShell(props: ShellProps) {
   shellProps.push(props);
   const [locale, setLocale] = useState(initialInterviewLocale);
@@ -75,7 +74,10 @@ function MockShell(props: ShellProps) {
 // the host's actions) is covered by the interview package. Here it stands in
 // for the real one, so the test can see whether the gallery keeps it mounted
 // and what it offers there.
-vi.mock('@codaco/interview', () => ({ Shell: MockShell }));
+vi.mock('@codaco/interview', () => ({
+  Shell: MockShell,
+  useContentLocale: () => useAppIntl().locale,
+}));
 
 vi.mock('@codaco/interview/contract', () => ({
   createAssetUrlOwner: () => ({

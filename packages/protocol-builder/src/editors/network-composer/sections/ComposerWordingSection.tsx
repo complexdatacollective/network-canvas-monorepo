@@ -4,7 +4,7 @@ import { suppliedStageSettingApplies } from '@codaco/protocol-validation';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { WordingRow, type WordingSetting } from '../../../form/WordingRow.tsx';
-import BuilderSection from '../../../sections/BuilderSection.tsx';
+import StageWordingSection from '../../../sections/supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -62,15 +62,19 @@ export default function ComposerWordingSection() {
     edges: useStageValue('edges'),
   };
 
+  const shown = WORDS.filter((setting) =>
+    suppliedStageSettingApplies(stage, setting.path.split('.')),
+  );
+
   return (
-    <BuilderSection
+    <StageWordingSection
+      stageType={STAGE_TYPE}
       title={intl.formatMessage(messages.wordingTitle)}
       description={intl.formatMessage(messages.wordingDescription)}
+      paths={shown.map((setting) => setting.path)}
     >
       {supplied !== undefined &&
-        WORDS.filter((setting) =>
-          suppliedStageSettingApplies(stage, setting.path.split('.')),
-        ).map((setting) => (
+        shown.map((setting) => (
           <WordingRow
             key={setting.path}
             setting={setting}
@@ -81,6 +85,6 @@ export default function ComposerWordingSection() {
             )}
           />
         ))}
-    </BuilderSection>
+    </StageWordingSection>
   );
 }

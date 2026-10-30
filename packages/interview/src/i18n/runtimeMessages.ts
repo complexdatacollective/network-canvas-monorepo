@@ -106,9 +106,9 @@ export const runtimeMessages = defineMessages({
   },
   unnamedNumbered: {
     id: 'interview.runtime.unnamedNumbered',
-    defaultMessage: 'Unnamed {number}',
+    defaultMessage: 'Unnamed {count}',
     description:
-      'Title of an entry in a list of people or other items to choose from when the entry has no name or other details to show. number tells the entries apart: 1, 2, 3 and so on.',
+      'Title of an entry in a list of people or other items to choose from when the entry has no name or other details to show. count tells the entries apart: 1, 2, 3 and so on.',
   },
   answerUnavailable: {
     id: 'interview.runtime.answerUnavailable',

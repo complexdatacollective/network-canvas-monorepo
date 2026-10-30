@@ -1,14 +1,6 @@
 import { act, render } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // --- Module mocks (must appear before imports that use them) ---
 
@@ -131,7 +123,6 @@ vi.mock('react-redux', () => ({
   useSelector: (selector: (state: unknown) => unknown) => selector({}),
 }));
 
-import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 // The hook under test (imported after mocks are declared)
@@ -281,14 +272,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so renders in these languages are synchronous.
-beforeAll(async () => {
-  await Promise.all(
-    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
-  );
-});
-
 describe('useMapbox resize handling', () => {
   it('observes the map container once the map is initialised', () => {
     render(withProtocolLocale('en', ENGLISH_ONLY));
@@ -346,29 +329,20 @@ describe('useMapbox resize handling', () => {
   });
 });
 
-describe('useMapbox built-in locale changes', () => {
-  it('updates the existing map canvas when the Shell language changes without recreating or removing the map', () => {
-    const tree = (locale: string) => (
-      <InterviewI18nProvider requestedLocale={locale}>
-        <TestProtocolLocalization localization={ENGLISH_ONLY}>
+// The map's own control names are read by screen readers only, so they are
+// English whatever language the protocol is read in.
+describe('useMapbox control names', () => {
+  it('names the map in English when the protocol is read in another language', () => {
+    render(
+      <InterviewI18nProvider>
+        <TestProtocolLocalization
+          localization={{ defaultLocale: 'es', locales: ['es'] }}
+        >
           <TestHarness mapOptions={baseMapOptions} />
         </TestProtocolLocalization>
-      </InterviewI18nProvider>
+      </InterviewI18nProvider>,
     );
-    const { rerender } = render(tree('en'));
-    const canvas = mapInstance.getCanvas();
-    expect(canvas).toHaveAccessibleName('Map');
-    expect(MapConstructor).toHaveBeenCalledTimes(1);
-
-    rerender(tree('es'));
-    expect(mapInstance.getCanvas()).toBe(canvas);
-    expect(canvas).toHaveAccessibleName('Mapa');
-    expect(MapConstructor).toHaveBeenCalledTimes(1);
-    expect(mapInstance.remove).not.toHaveBeenCalled();
-
-    rerender(tree('en-GB'));
-    expect(canvas).toHaveAccessibleName('Map');
-    expect(MapConstructor).toHaveBeenCalledTimes(1);
+    expect(mapInstance.getCanvas()).toHaveAccessibleName('Map');
   });
 });
 
@@ -523,11 +497,9 @@ describe('useMapbox protocol language', () => {
     expect(constructedWith()).not.toHaveProperty('language');
   });
 
-  it('follows the protocol language, not the interface language', () => {
+  it('follows the protocol language', () => {
     render(
-      <InterviewI18nProvider requestedLocale="es">
-        {withProtocolLocale('hu')}
-      </InterviewI18nProvider>,
+      <InterviewI18nProvider>{withProtocolLocale('hu')}</InterviewI18nProvider>,
     );
 
     expect(constructedWith().language).toBe('hu');

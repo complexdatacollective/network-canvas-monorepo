@@ -107,6 +107,20 @@ export type BuilderSectionProps = Readonly<{
    * which is the outcome this prop exists to prevent.
    */
   resetOn?: string;
+  /**
+   * A section the researcher may switch off without the stage losing
+   * anything, unlike a capability: switching it off puts back what the stage
+   * holds when the section is not used, such as Network Canvas's own wording
+   * (see `StageWordingSection`). `startOn` is read once, when the section
+   * mounts. `switchOff` does the putting back, asking first if it would lose
+   * the researcher's work, and answers whether it did. `owns` names the
+   * fields the section shows when it is on (see below).
+   */
+  optional?: Readonly<{
+    startOn: boolean;
+    switchOff: () => boolean | Promise<boolean>;
+    owns: readonly string[];
+  }>;
   children: ReactNode;
 }>;
 
@@ -131,6 +145,7 @@ export default function BuilderSection({
   capability,
   startOn = false,
   resetOn,
+  optional,
   children,
 }: BuilderSectionProps) {
   const { readOnly } = useStageEditorForm();
@@ -138,7 +153,9 @@ export default function BuilderSection({
   const { confirm } = useDialog();
   const discardStageValues = useDiscardStageValues();
   const configured = useStageHasAnyValue(capability?.fields ?? NO_FIELDS);
-  const [switchedOn, setSwitchedOn] = useState(configured || startOn);
+  const [switchedOn, setSwitchedOn] = useState(
+    configured || startOn || optional?.startOn === true,
+  );
   // Holding a value is itself proof the capability is on, which is what keeps
   // this mirror of Fresco's Section in step with it rather than drifting.
   const enabled = switchedOn || configured;
@@ -155,7 +172,7 @@ export default function BuilderSection({
     // differently depending only on whether the section already held content.
     disabled
       ? 'unavailable'
-      : capability !== undefined && !enabled
+      : (capability !== undefined || optional !== undefined) && !enabled
         ? 'switchedOff'
         : 'available',
   );
@@ -164,6 +181,12 @@ export default function BuilderSection({
     async (open: boolean) => {
       if (open) {
         setSwitchedOn(true);
+        return true;
+      }
+
+      if (optional !== undefined) {
+        if (!(await optional.switchOff())) return false;
+        setSwitchedOn(false);
         return true;
       }
 
@@ -211,7 +234,7 @@ export default function BuilderSection({
       setSwitchedOn(false);
       return true;
     },
-    [capability, configured, confirm, discardStageValues, intl],
+    [capability, configured, confirm, discardStageValues, intl, optional],
   );
 
   // Only on the RESEARCHER changing it — `useOnResearcherChange` is what tells
@@ -242,7 +265,7 @@ export default function BuilderSection({
 
   const body = children;
 
-  if (capability === undefined) {
+  if (capability === undefined && optional === undefined) {
     return (
       <Section
         id={sectionId}
@@ -256,25 +279,37 @@ export default function BuilderSection({
   }
 
   return (
-    <Section
-      key={resetGeneration}
-      id={sectionId}
-      title={title}
-      description={description}
-      disabled={isDisabled}
-      toggleable
-      /**
-       * `Section` reads this when it mounts, and again whenever the form is
-       * restored from an authoritative draft. Both times the question is the
-       * same one the outline answers — is this capability on — so it is
-       * answered with the same value. Reading `configured` alone would close a
-       * capability the researcher had switched on and not yet filled in,
-       * every time anything else in the stage moved.
-       */
-      defaultOpen={enabled}
-      onOpenChange={requestOpenChange}
-    >
-      {body}
-    </Section>
+    <>
+      {/*
+        A switched-off optional section still owns its fields, which hold
+        Network Canvas's wording and appear when it is switched on. Named here,
+        inertly, because its closed body mounts none of them.
+      */}
+      {optional !== undefined &&
+        !enabled &&
+        optional.owns.map((path) => (
+          <template key={path} data-owned-field-path={path} />
+        ))}
+      <Section
+        key={resetGeneration}
+        id={sectionId}
+        title={title}
+        description={description}
+        disabled={isDisabled}
+        toggleable
+        /**
+         * `Section` reads this when it mounts, and again whenever the form is
+         * restored from an authoritative draft. Both times the question is the
+         * same one the outline answers — is this capability on — so it is
+         * answered with the same value. Reading `configured` alone would close a
+         * capability the researcher had switched on and not yet filled in,
+         * every time anything else in the stage moved.
+         */
+        defaultOpen={enabled}
+        onOpenChange={requestOpenChange}
+      >
+        {body}
+      </Section>
+    </>
   );
 }

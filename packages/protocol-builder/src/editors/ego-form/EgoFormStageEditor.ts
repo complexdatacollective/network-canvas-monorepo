@@ -2,6 +2,7 @@ import { formFields } from '../../sections/form-fields/formFields.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { introduction } from '../../sections/introduction/introduction.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
+import { sharedWording } from '../../sections/supplied-wording/sharedWording.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 
 /**
@@ -19,6 +20,7 @@ import { defineStageEditor } from '../defineStageEditor.tsx';
 export const egoFormStageEditor = defineStageEditor('EgoForm', [
   introduction(),
   formFields({ subject: 'ego' }),
+  sharedWording('EgoForm'),
   skipLogic(),
   interviewerGuidance(),
 ]);

@@ -193,9 +193,9 @@ export const useMapbox = ({
   useEffect(() => {
     intlRef.current = intl;
   }, [intl]);
-  // Map labels follow the protocol language the participant is reading, which
-  // is not the interface language. Read through a ref by the construction
-  // effect so a language change updates the live map instead of rebuilding it.
+  // Map labels follow the protocol language the participant is reading. Read
+  // through a ref by the construction effect so a language change updates the
+  // live map instead of rebuilding it.
   const { locale: protocolLocale } = useProtocolLocale();
   const mapLanguage = getMapLanguage(protocolLocale);
   const mapLanguageRef = useRef(mapLanguage);

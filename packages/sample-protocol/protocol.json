@@ -4,7 +4,10 @@
   "experiments": {},
   "lastModified": "2022-11-22T18:28:58.258Z",
   "schemaVersion": 9,
-  "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US"]
+  },
   "codebook": {
     "node": {
       "3d5c30be-e733-490e-868d-fcc0dc3d5a4d": {
@@ -31,23 +34,33 @@
             "type": "ordinal",
             "options": [
               {
-                "label": { "en-US": "Last 24 hours" },
+                "label": {
+                  "en-US": "Last 24 hours"
+                },
                 "value": 5
               },
               {
-                "label": { "en-US": "Last week" },
+                "label": {
+                  "en-US": "Last week"
+                },
                 "value": 4
               },
               {
-                "label": { "en-US": "Last six months" },
+                "label": {
+                  "en-US": "Last six months"
+                },
                 "value": 3
               },
               {
-                "label": { "en-US": "Last two years" },
+                "label": {
+                  "en-US": "Last two years"
+                },
                 "value": 2
               },
               {
-                "label": { "en-US": "Over two years ago" },
+                "label": {
+                  "en-US": "Over two years ago"
+                },
                 "value": -1
               }
             ]
@@ -65,19 +78,27 @@
             "type": "categorical",
             "options": [
               {
-                "label": { "en-US": "Family Member" },
+                "label": {
+                  "en-US": "Family Member"
+                },
                 "value": "family"
               },
               {
-                "label": { "en-US": "Friends" },
+                "label": {
+                  "en-US": "Friends"
+                },
                 "value": "friends"
               },
               {
-                "label": { "en-US": "Work Colleague" },
+                "label": {
+                  "en-US": "Work Colleague"
+                },
                 "value": "colleague"
               },
               {
-                "label": { "en-US": "School" },
+                "label": {
+                  "en-US": "School"
+                },
                 "value": "school"
               }
             ]
@@ -98,19 +119,27 @@
             "type": "categorical",
             "options": [
               {
-                "label": { "en-US": "Work Colleague" },
+                "label": {
+                  "en-US": "Work Colleague"
+                },
                 "value": "Work_Colleague"
               },
               {
-                "label": { "en-US": "Classmate" },
+                "label": {
+                  "en-US": "Classmate"
+                },
                 "value": "Classmate"
               },
               {
-                "label": { "en-US": "Co-author" },
+                "label": {
+                  "en-US": "Co-author"
+                },
                 "value": "Co-author"
               },
               {
-                "label": { "en-US": "Supervisor" },
+                "label": {
+                  "en-US": "Supervisor"
+                },
                 "value": "Supervisor"
               }
             ]
@@ -170,23 +199,33 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": { "en-US": "Excellent" },
+                "label": {
+                  "en-US": "Excellent"
+                },
                 "value": 5
               },
               {
-                "label": { "en-US": "Above Average" },
+                "label": {
+                  "en-US": "Above Average"
+                },
                 "value": 4
               },
               {
-                "label": { "en-US": "Average" },
+                "label": {
+                  "en-US": "Average"
+                },
                 "value": 3
               },
               {
-                "label": { "en-US": "Below Average" },
+                "label": {
+                  "en-US": "Below Average"
+                },
                 "value": 2
               },
               {
-                "label": { "en-US": "Poor" },
+                "label": {
+                  "en-US": "Poor"
+                },
                 "value": 1
               }
             ]
@@ -197,11 +236,15 @@
             "component": "Boolean",
             "options": [
               {
-                "label": { "en-US": "Visited\n" },
+                "label": {
+                  "en-US": "Visited\n"
+                },
                 "value": true
               },
               {
-                "label": { "en-US": "Studied\n" },
+                "label": {
+                  "en-US": "Studied\n"
+                },
                 "value": false,
                 "negative": false
               }
@@ -264,35 +307,51 @@
           "component": "ToggleButtonGroup",
           "options": [
             {
-              "label": { "en-US": "English" },
+              "label": {
+                "en-US": "English"
+              },
               "value": "english"
             },
             {
-              "label": { "en-US": "Mandarin Chinese" },
+              "label": {
+                "en-US": "Mandarin Chinese"
+              },
               "value": "mandarin-chinese"
             },
             {
-              "label": { "en-US": "Hindi" },
+              "label": {
+                "en-US": "Hindi"
+              },
               "value": "hindi"
             },
             {
-              "label": { "en-US": "Spanish" },
+              "label": {
+                "en-US": "Spanish"
+              },
               "value": "spanish"
             },
             {
-              "label": { "en-US": "French" },
+              "label": {
+                "en-US": "French"
+              },
               "value": "french"
             },
             {
-              "label": { "en-US": "Arabic" },
+              "label": {
+                "en-US": "Arabic"
+              },
               "value": "arabic"
             },
             {
-              "label": { "en-US": "Bengali" },
+              "label": {
+                "en-US": "Bengali"
+              },
               "value": "bengali"
             },
             {
-              "label": { "en-US": "Russian" },
+              "label": {
+                "en-US": "Russian"
+              },
               "value": "russian"
             }
           ]
@@ -303,23 +362,33 @@
           "component": "RadioGroup",
           "options": [
             {
-              "label": { "en-US": "Very Satisfied" },
+              "label": {
+                "en-US": "Very Satisfied"
+              },
               "value": 5
             },
             {
-              "label": { "en-US": "Somewhat Satisfied" },
+              "label": {
+                "en-US": "Somewhat Satisfied"
+              },
               "value": 4
             },
             {
-              "label": { "en-US": "Neither Satisfied or Dissatisfied" },
+              "label": {
+                "en-US": "Neither Satisfied or Dissatisfied"
+              },
               "value": 3
             },
             {
-              "label": { "en-US": "Somewhat Dissatisfied" },
+              "label": {
+                "en-US": "Somewhat Dissatisfied"
+              },
               "value": 2
             },
             {
-              "label": { "en-US": "Very Dissatisfied" },
+              "label": {
+                "en-US": "Very Dissatisfied"
+              },
               "value": 1
             }
           ]
@@ -330,23 +399,33 @@
           "component": "LikertScale",
           "options": [
             {
-              "label": { "en-US": "Very Satisfied" },
+              "label": {
+                "en-US": "Very Satisfied"
+              },
               "value": 2
             },
             {
-              "label": { "en-US": "Somewhat Satisfied" },
+              "label": {
+                "en-US": "Somewhat Satisfied"
+              },
               "value": 1
             },
             {
-              "label": { "en-US": "Neither Satisfied or Dissatisfied" },
+              "label": {
+                "en-US": "Neither Satisfied or Dissatisfied"
+              },
               "value": 0
             },
             {
-              "label": { "en-US": "Somewhat Dissatisfied" },
+              "label": {
+                "en-US": "Somewhat Dissatisfied"
+              },
               "value": -1
             },
             {
-              "label": { "en-US": "Very Dissatisfied" },
+              "label": {
+                "en-US": "Very Dissatisfied"
+              },
               "value": -2
             }
           ]
@@ -356,8 +435,12 @@
           "type": "scalar",
           "component": "VisualAnalogScale",
           "parameters": {
-            "minLabel": { "en-US": "No pain" },
-            "maxLabel": { "en-US": "Unbearable pain" }
+            "minLabel": {
+              "en-US": "No pain"
+            },
+            "maxLabel": {
+              "en-US": "Unbearable pain"
+            }
           }
         },
         "5a77b483-8120-4a64-aff1-c8c5d4ac33d1": {
@@ -371,19 +454,27 @@
           "component": "CheckboxGroup",
           "options": [
             {
-              "label": { "en-US": "Email" },
+              "label": {
+                "en-US": "Email"
+              },
               "value": "email"
             },
             {
-              "label": { "en-US": "Post" },
+              "label": {
+                "en-US": "Post"
+              },
               "value": "post"
             },
             {
-              "label": { "en-US": "SMS" },
+              "label": {
+                "en-US": "SMS"
+              },
               "value": "sms"
             },
             {
-              "label": { "en-US": "Phonecall" },
+              "label": {
+                "en-US": "Phonecall"
+              },
               "value": "phone"
             }
           ]
@@ -480,9 +571,13 @@
   "stages": [
     {
       "id": "3a352ae0-32e3-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "Welcome" },
+      "label": {
+        "en-US": "Welcome"
+      },
       "type": "Information",
-      "title": { "en-US": "Welcome to the Sample Protocol" },
+      "title": {
+        "en-US": "Welcome to the Sample Protocol"
+      },
       "items": [
         {
           "id": "f12c365f-237b-49da-99d2-2eeacc817997",
@@ -508,9 +603,13 @@
     },
     {
       "id": "426884b0-3594-11eb-8030-7590bae3c8d1",
-      "label": { "en-US": "Information Interface" },
+      "label": {
+        "en-US": "Information Interface"
+      },
       "type": "Information",
-      "title": { "en-US": "Information Interface" },
+      "title": {
+        "en-US": "Information Interface"
+      },
       "items": [
         {
           "id": "176d0f5a-132c-45b9-b542-8f7b7a83e71b",
@@ -529,9 +628,13 @@
     },
     {
       "id": "3bc23580-acdf-11eb-a565-f3cb02ccfc34",
-      "label": { "en-US": "Ego Form Introduction" },
+      "label": {
+        "en-US": "Ego Form Introduction"
+      },
       "type": "Information",
-      "title": { "en-US": "Introducing the Ego Form" },
+      "title": {
+        "en-US": "Introducing the Ego Form"
+      },
       "items": [
         {
           "id": "8d5c5245-78d9-4fe5-86fb-bbc0f4063f8e",
@@ -544,7 +647,9 @@
     },
     {
       "id": "400b9810-9dc2-11eb-8192-d9f6b822b280",
-      "label": { "en-US": "Consent Form" },
+      "label": {
+        "en-US": "Consent Form"
+      },
       "type": "EgoForm",
       "introductionPanel": {
         "title": {
@@ -567,7 +672,9 @@
     },
     {
       "id": "e922f680-32ee-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "Ego Form" },
+      "label": {
+        "en-US": "Ego Form"
+      },
       "type": "EgoForm",
       "skipLogic": {
         "action": "SKIP",
@@ -584,7 +691,10 @@
             }
           ]
         },
-        "destination": { "type": "stage", "stageId": "finish-declined" }
+        "destination": {
+          "type": "stage",
+          "stageId": "finish-declined"
+        }
       },
       "introductionPanel": {
         "title": {
@@ -598,15 +708,21 @@
         "fields": [
           {
             "variable": "4ab18994-a252-47cb-ba19-20b6ffc0e927",
-            "prompt": { "en-US": "What is your first name?" }
+            "prompt": {
+              "en-US": "What is your first name?"
+            }
           },
           {
             "variable": "3b5197a9-d024-421c-8663-1e06e0587999",
-            "prompt": { "en-US": "What is your last name?" }
+            "prompt": {
+              "en-US": "What is your last name?"
+            }
           },
           {
             "variable": "198bdb95-9556-4775-9c82-22531a382aa5",
-            "prompt": { "en-US": "What is your date of birth?" }
+            "prompt": {
+              "en-US": "What is your date of birth?"
+            }
           },
           {
             "variable": "92326a8e-f5a1-4918-8717-a4d6917a9264",
@@ -649,9 +765,13 @@
     },
     {
       "id": "33a5faa0-32e4-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "Generating Nodes" },
+      "label": {
+        "en-US": "Generating Nodes"
+      },
       "type": "Information",
-      "title": { "en-US": "Generating Nodes" },
+      "title": {
+        "en-US": "Generating Nodes"
+      },
       "items": [
         {
           "id": "45ca0997-c8cf-4d94-bc71-f2dccff41442",
@@ -673,7 +793,9 @@
       "quickAddHint": {
         "en-US": "Press Enter when you are finished."
       },
-      "label": { "en-US": "Quick Add Name Generator" },
+      "label": {
+        "en-US": "Quick Add Name Generator"
+      },
       "type": "NameGeneratorQuickAdd",
       "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
       "subject": {
@@ -691,9 +813,13 @@
     },
     {
       "id": "73f13080-32e8-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "Name Generation Using a Side Panel" },
+      "label": {
+        "en-US": "Name Generation Using a Side Panel"
+      },
       "type": "Information",
-      "title": { "en-US": "Name Generation Using a Side Panel" },
+      "title": {
+        "en-US": "Name Generation Using a Side Panel"
+      },
       "items": [
         {
           "id": "8ad0af99-37cb-40c0-b2f1-8c482aab16d7",
@@ -715,7 +841,9 @@
       "quickAddHint": {
         "en-US": "Press Enter when you are finished."
       },
-      "label": { "en-US": "Quick Add with Sidepanel" },
+      "label": {
+        "en-US": "Quick Add with Sidepanel"
+      },
       "type": "NameGeneratorQuickAdd",
       "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
       "subject": {
@@ -725,7 +853,9 @@
       "panels": [
         {
           "id": "a4666c9c-d2a6-4730-abf7-8d15e39378e9",
-          "title": { "en-US": "People you have already mentioned" },
+          "title": {
+            "en-US": "People you have already mentioned"
+          },
           "dataSource": "existing"
         }
       ],
@@ -746,9 +876,13 @@
     },
     {
       "id": "501a9420-32e9-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "Name Generator using Forms" },
+      "label": {
+        "en-US": "Name Generator using Forms"
+      },
       "type": "Information",
-      "title": { "en-US": "Name Generation using Forms" },
+      "title": {
+        "en-US": "Name Generation using Forms"
+      },
       "items": [
         {
           "id": "bf1390c3-a703-4bae-831d-9ab78e4f0ad5",
@@ -767,10 +901,14 @@
     },
     {
       "id": "1aa15990-32ea-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "Clinic or Health Care Provider Name Generator" },
+      "label": {
+        "en-US": "Clinic or Health Care Provider Name Generator"
+      },
       "type": "NameGenerator",
       "form": {
-        "title": { "en-US": "Add a Clinic or Health Care Provider" },
+        "title": {
+          "en-US": "Add a Clinic or Health Care Provider"
+        },
         "fields": [
           {
             "variable": "45a62b9c-42ec-4735-bf1a-4074a2001d2c",
@@ -780,7 +918,9 @@
           },
           {
             "variable": "1d1460f2-8c11-4f66-8647-83801116aebf",
-            "prompt": { "en-US": "When was your visit?" }
+            "prompt": {
+              "en-US": "When was your visit?"
+            }
           },
           {
             "variable": "37fb19da-3ec0-4427-bb4b-3b59003a7e60",
@@ -805,9 +945,13 @@
     },
     {
       "id": "ae3f75f0-32eb-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "Name Generator with Roster Info" },
+      "label": {
+        "en-US": "Name Generator with Roster Info"
+      },
       "type": "Information",
-      "title": { "en-US": "Name Generation Using Roster Data" },
+      "title": {
+        "en-US": "Name Generation Using Roster Data"
+      },
       "items": [
         {
           "id": "e2937966-8e0f-4a48-b090-84fc078e1852",
@@ -823,22 +967,30 @@
       "allAddedNotice": {
         "en-US": "There is nothing left to add from this list."
       },
-      "label": { "en-US": "Small Roster - Classroom" },
+      "label": {
+        "en-US": "Small Roster - Classroom"
+      },
       "type": "NameGeneratorRoster",
       "subject": {
         "entity": "node",
         "type": "83c596f7-2244-425c-b2ed-4186dbf4c815"
       },
       "dataSource": "86b7feeb-b71a-4c15-8eb4-25a75491d512",
-      "panelTitle": { "en-US": "Available to add" },
+      "panelTitle": {
+        "en-US": "Available to add"
+      },
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": { "en-US": "First Name" },
+            "label": {
+              "en-US": "First Name"
+            },
             "variable": "first_name"
           },
           {
-            "label": { "en-US": "Last Name" },
+            "label": {
+              "en-US": "Last Name"
+            },
             "variable": "last_name"
           }
         ]
@@ -852,11 +1004,15 @@
         ],
         "sortableProperties": [
           {
-            "label": { "en-US": "First Name" },
+            "label": {
+              "en-US": "First Name"
+            },
             "variable": "first_name"
           },
           {
-            "label": { "en-US": "Last Name" },
+            "label": {
+              "en-US": "Last Name"
+            },
             "variable": "last_name"
           }
         ]
@@ -875,22 +1031,30 @@
       "allAddedNotice": {
         "en-US": "There is nothing left to add from this list."
       },
-      "label": { "en-US": "University Roster" },
+      "label": {
+        "en-US": "University Roster"
+      },
       "type": "NameGeneratorRoster",
       "subject": {
         "entity": "node",
         "type": "a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"
       },
       "dataSource": "d94b5dae-4ed5-42bf-9d1c-b6585fbe078d",
-      "panelTitle": { "en-US": "Available to add" },
+      "panelTitle": {
+        "en-US": "Available to add"
+      },
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": { "en-US": "Website" },
+            "label": {
+              "en-US": "Website"
+            },
             "variable": "website"
           },
           {
-            "label": { "en-US": "Country Code" },
+            "label": {
+              "en-US": "Country Code"
+            },
             "variable": "country"
           }
         ]
@@ -929,13 +1093,19 @@
     },
     {
       "id": "3ca90480-32f8-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "University Per Alter Form" },
+      "label": {
+        "en-US": "University Per Alter Form"
+      },
       "type": "AlterForm",
       "subject": {
         "entity": "node",
         "type": "a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"
       },
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "form": {
         "fields": [
           {
@@ -955,9 +1125,13 @@
     },
     {
       "id": "36e08b20-3b06-11eb-9e09-d7e61d6a0624",
-      "label": { "en-US": "Sociogram Information" },
+      "label": {
+        "en-US": "Sociogram Information"
+      },
       "type": "Information",
-      "title": { "en-US": "Using the Sociogram" },
+      "title": {
+        "en-US": "Using the Sociogram"
+      },
       "items": [
         {
           "id": "dab3ed09-8b8b-4bd0-a9aa-550e29fac2c4",
@@ -976,7 +1150,9 @@
     },
     {
       "id": "73ac2120-32fc-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "Person Sociogram" },
+      "label": {
+        "en-US": "Person Sociogram"
+      },
       "type": "Sociogram",
       "subject": {
         "entity": "node",
@@ -1003,7 +1179,9 @@
     },
     {
       "id": "8dcc71c0-32fe-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "Person Sociogram with Background Image" },
+      "label": {
+        "en-US": "Person Sociogram with Background Image"
+      },
       "type": "Sociogram",
       "subject": {
         "entity": "node",
@@ -1029,9 +1207,13 @@
     },
     {
       "id": "0f0dbd20-32ff-11eb-8982-61526ca14943",
-      "label": { "en-US": "Information about Edge Creation Between Alters" },
+      "label": {
+        "en-US": "Information about Edge Creation Between Alters"
+      },
       "type": "Information",
-      "title": { "en-US": "Creating Edges on the Sociogram" },
+      "title": {
+        "en-US": "Creating Edges on the Sociogram"
+      },
       "items": [
         {
           "id": "56717145-8fcc-44f7-913f-359a591b6766",
@@ -1050,7 +1232,9 @@
     },
     {
       "id": "692ce010-32ff-11eb-8982-61526ca14943",
-      "label": { "en-US": "Sociogram Edge Creation" },
+      "label": {
+        "en-US": "Sociogram Edge Creation"
+      },
       "type": "Sociogram",
       "subject": {
         "entity": "node",
@@ -1131,7 +1315,9 @@
     },
     {
       "id": "b267f9e0-32ff-11eb-8982-61526ca14943",
-      "label": { "en-US": "Classmates Dyad Census" },
+      "label": {
+        "en-US": "Classmates Dyad Census"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -1153,8 +1339,12 @@
         "type": "83c596f7-2244-425c-b2ed-4186dbf4c815"
       },
       "dynamicValues": {
-        "firstLabel": { "path": "dyad.source.$label" },
-        "secondLabel": { "path": "dyad.target.$label" }
+        "firstLabel": {
+          "path": "dyad.source.$label"
+        },
+        "secondLabel": {
+          "path": "dyad.target.$label"
+        }
       },
       "prompts": [
         {
@@ -1168,7 +1358,9 @@
     },
     {
       "id": "5d1c3b80-3300-11eb-8982-61526ca14943",
-      "label": { "en-US": "Dyad Census Skipped" },
+      "label": {
+        "en-US": "Dyad Census Skipped"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -1185,7 +1377,9 @@
         }
       },
       "type": "Information",
-      "title": { "en-US": "Please create some \"classmate\" nodes" },
+      "title": {
+        "en-US": "Please create some \"classmate\" nodes"
+      },
       "items": [
         {
           "id": "85353555-72d0-49ef-aba9-75023648ead1",
@@ -1198,9 +1392,13 @@
     },
     {
       "id": "82824a20-3302-11eb-8982-61526ca14943",
-      "label": { "en-US": "Name Interpreter Introduction" },
+      "label": {
+        "en-US": "Name Interpreter Introduction"
+      },
       "type": "Information",
-      "title": { "en-US": "Name Interpreter Techniques" },
+      "title": {
+        "en-US": "Name Interpreter Techniques"
+      },
       "items": [
         {
           "id": "8b518105-17f1-4f95-91b4-f0d00a7bf5e5",
@@ -1219,7 +1417,9 @@
     },
     {
       "id": "0f43c470-3303-11eb-8982-61526ca14943",
-      "label": { "en-US": "Sociogram Attribute Nomination" },
+      "label": {
+        "en-US": "Sociogram Attribute Nomination"
+      },
       "type": "Sociogram",
       "subject": {
         "entity": "node",
@@ -1272,7 +1472,9 @@
     },
     {
       "id": "3b85fcc0-3302-11eb-8982-61526ca14943",
-      "label": { "en-US": "Contact Frequency" },
+      "label": {
+        "en-US": "Contact Frequency"
+      },
       "type": "OrdinalBin",
       "subject": {
         "entity": "node",
@@ -1291,7 +1493,9 @@
     },
     {
       "id": "44cbe790-330c-11eb-8982-61526ca14943",
-      "label": { "en-US": "Categorical Group Membership" },
+      "label": {
+        "en-US": "Categorical Group Membership"
+      },
       "type": "CategoricalBin",
       "subject": {
         "entity": "node",
@@ -1308,15 +1512,21 @@
           "otherVariablePrompt": {
             "en-US": "Which context best describes how you know this person?"
           },
-          "otherOptionLabel": { "en-US": "Other" }
+          "otherOptionLabel": {
+            "en-US": "Other"
+          }
         }
       ]
     },
     {
       "id": "cd76d7f0-32fb-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "Skip Logic and Filtering Info" },
+      "label": {
+        "en-US": "Skip Logic and Filtering Info"
+      },
       "type": "Information",
-      "title": { "en-US": "Skip Logic and Network Filtering" },
+      "title": {
+        "en-US": "Skip Logic and Network Filtering"
+      },
       "items": [
         {
           "id": "7043ca48-87e6-4517-a461-13957c71aa4c",
@@ -1342,7 +1552,9 @@
     },
     {
       "id": "8acc7f90-32fb-11eb-8503-3b4fa95b8bc6",
-      "label": { "en-US": "Relationship Type" },
+      "label": {
+        "en-US": "Relationship Type"
+      },
       "skipLogic": {
         "action": "SHOW",
         "filter": {
@@ -1399,15 +1611,21 @@
           "otherVariablePrompt": {
             "en-US": "What is your relationship with this person?"
           },
-          "otherOptionLabel": { "en-US": "Other" }
+          "otherOptionLabel": {
+            "en-US": "Other"
+          }
         }
       ]
     },
     {
       "id": "8f07cf90-330c-11eb-8982-61526ca14943",
-      "label": { "en-US": "Narrative Introduction" },
+      "label": {
+        "en-US": "Narrative Introduction"
+      },
       "type": "Information",
-      "title": { "en-US": "Narrative Interface" },
+      "title": {
+        "en-US": "Narrative Interface"
+      },
       "items": [
         {
           "id": "80806937-1630-4600-8212-4cf21de990dd",
@@ -1446,7 +1664,9 @@
           "en-US": "Reset annotations"
         }
       },
-      "label": { "en-US": "Narrative Interface" },
+      "label": {
+        "en-US": "Narrative Interface"
+      },
       "type": "Narrative",
       "subject": {
         "entity": "node",
@@ -1455,7 +1675,9 @@
       "presets": [
         {
           "id": "b6241839-24df-4e50-bcb5-bdf7f3337ada",
-          "label": { "en-US": "Sample Preset" },
+          "label": {
+            "en-US": "Sample Preset"
+          },
           "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe",
           "groupVariable": "132ad372-2ef2-4eec-820e-9eae91829e53",
           "edges": {
@@ -1477,11 +1699,15 @@
           "highlight": [
             {
               "variable": "7e84034b-9aa5-4996-a1c4-2deb3e38c645",
-              "label": { "en-US": "provides_advice" }
+              "label": {
+                "en-US": "provides_advice"
+              }
             },
             {
               "variable": "20cf8ab4-9356-4568-81e2-8460258e1b45",
-              "label": { "en-US": "provides_material_support" }
+              "label": {
+                "en-US": "provides_material_support"
+              }
             }
           ]
         }
@@ -1496,7 +1722,9 @@
     },
     {
       "id": "finish",
-      "finishLabel": { "en-US": "Finish" },
+      "finishLabel": {
+        "en-US": "Finish"
+      },
       "finishConfirmation": {
         "en-US": "Are you sure you want to finish the interview?"
       },
@@ -1505,7 +1733,9 @@
       },
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": { "en-US": "Finish Interview" },
+      "label": {
+        "en-US": "Finish Interview"
+      },
       "content": {
         "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
@@ -1552,6 +1782,38 @@
       },
       "continue": {
         "en-US": "Continue"
+      },
+      "exitFailed": {
+        "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en-US": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en-US": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en-US": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en-US": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en-US": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en-US": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en-US": "Show screen"
       }
     },
     "buttons": {
@@ -1569,6 +1831,15 @@
       },
       "no": {
         "en-US": "No"
+      },
+      "save": {
+        "en-US": "Save"
+      },
+      "copy": {
+        "en-US": "Copy"
+      },
+      "copied": {
+        "en-US": "Copied"
       }
     },
     "messages": {
@@ -1583,6 +1854,12 @@
       },
       "externalDataError": {
         "en-US": "External data could not be loaded."
+      },
+      "loading": {
+        "en-US": "Loading…"
+      },
+      "unnamed": {
+        "en-US": "Unnamed"
       }
     },
     "search": {
@@ -1607,6 +1884,24 @@
       },
       "minDate": {
         "en-US": "Must be on or after {min}."
+      }
+    },
+    "categoricalBin": {
+      "placeHere": {
+        "en-US": "Place here"
+      }
+    },
+    "roster": {
+      "unnamedNumbered": {
+        "en-US": "Unnamed {count}"
+      },
+      "dropToRemove": {
+        "en-US": "Drop here to remove"
+      }
+    },
+    "egoForm": {
+      "scrollForQuestions": {
+        "en-US": "Scroll to see more questions"
       }
     }
   }

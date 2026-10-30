@@ -1679,6 +1679,38 @@
       },
       "continue": {
         "en-US": "Continue"
+      },
+      "exitFailed": {
+        "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en-US": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en-US": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en-US": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en-US": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en-US": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en-US": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en-US": "Show screen"
       }
     },
     "buttons": {
@@ -1708,6 +1740,27 @@
       },
       "resumeLayout": {
         "en-US": "Resume automatic layout"
+      },
+      "copy": {
+        "en-US": "Copy"
+      },
+      "copied": {
+        "en-US": "Copied"
+      },
+      "zoomOut": {
+        "en-US": "Zoom out"
+      },
+      "zoomIn": {
+        "en-US": "Zoom in"
+      },
+      "undo": {
+        "en-US": "Undo"
+      },
+      "redo": {
+        "en-US": "Redo"
+      },
+      "skip": {
+        "en-US": "Skip"
       }
     },
     "messages": {
@@ -1719,6 +1772,20 @@
       },
       "error": {
         "en-US": "An error occurred."
+      },
+      "loading": {
+        "en-US": "Loading…"
+      },
+      "unnamed": {
+        "en-US": "Unnamed"
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en-US": "Search"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term."
       }
     },
     "forms": {
@@ -1735,6 +1802,53 @@
       },
       "unique": {
         "en-US": "Must be unique."
+      }
+    },
+    "familyTreeView": {
+      "zoomOutDescription": {
+        "en-US": "Make your family tree smaller, to see more of it at once."
+      },
+      "zoomInDescription": {
+        "en-US": "Make your family tree bigger, to see part of it more closely."
+      },
+      "showWholeFamily": {
+        "en-US": "Show the whole family"
+      },
+      "showWholeFamilyDescription": {
+        "en-US": "Fit your whole family tree on the screen."
+      }
+    },
+    "familyPedigree": {
+      "pointerToolDescription": {
+        "en-US": "Select a family member to edit their details or add their relatives."
+      },
+      "connectToolDescription": {
+        "en-US": "Select two family members to connect them and say how they are related."
+      },
+      "disconnectToolDescription": {
+        "en-US": "Select two connected family members to remove the connection between them."
+      },
+      "framingControlDescription": {
+        "en-US": "Choose the relationship words your family tree uses for your relatives."
+      },
+      "undoDescription": {
+        "en-US": "Undo your last change to your family tree."
+      },
+      "redoDescription": {
+        "en-US": "Bring back the change you undid."
+      },
+      "trackerAllDetails": {
+        "en-US": "Add required details for all family members"
+      }
+    },
+    "categoricalBin": {
+      "placeHere": {
+        "en-US": "Place here"
+      }
+    },
+    "egoForm": {
+      "scrollForQuestions": {
+        "en-US": "Scroll to see more questions"
       }
     }
   }

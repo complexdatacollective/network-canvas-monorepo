@@ -1023,6 +1023,48 @@
       "continue": {
         "en": "Continue",
         "es": "Continuar"
+      },
+      "exitFailed": {
+        "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.",
+        "es": "No se pudieron guardar tus respuestas, así que la entrevista no se ha cerrado. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en": "Exit review",
+        "es": "Salir de la revisión"
+      },
+      "exitReviewTitle": {
+        "en": "Exit this review?",
+        "es": "¿Salir de esta revisión?"
+      },
+      "exitReviewDescription": {
+        "en": "Changes made during this review will not be saved.",
+        "es": "Los cambios realizados durante esta revisión no se guardarán."
+      },
+      "hiddenScreen": {
+        "en": "Hidden by answers",
+        "es": "Oculta por las respuestas"
+      },
+      "outsidePath": {
+        "en": "Outside current path",
+        "es": "Fuera del recorrido actual"
+      },
+      "showScreenTitle": {
+        "en": "Show this screen?",
+        "es": "¿Mostrar esta pantalla?"
+      },
+      "hiddenScreenDescription": {
+        "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?",
+        "es": "Esta pantalla está oculta según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?"
+      },
+      "outsidePathDescription": {
+        "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?",
+        "es": "Esta pantalla queda fuera del recorrido actual de la entrevista según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?"
+      },
+      "showScreen": {
+        "en": "Show screen",
+        "es": "Mostrar pantalla"
       }
     },
     "buttons": {
@@ -1053,6 +1095,34 @@
       "dontKnow": {
         "en": "Don’t know",
         "es": "No lo sé"
+      },
+      "copy": {
+        "en": "Copy",
+        "es": "Copiar"
+      },
+      "copied": {
+        "en": "Copied",
+        "es": "Copiado"
+      },
+      "zoomOut": {
+        "en": "Zoom out",
+        "es": "Alejar"
+      },
+      "zoomIn": {
+        "en": "Zoom in",
+        "es": "Acercar"
+      },
+      "undo": {
+        "en": "Undo",
+        "es": "Deshacer"
+      },
+      "redo": {
+        "en": "Redo",
+        "es": "Rehacer"
+      },
+      "skip": {
+        "en": "Skip",
+        "es": "Omitir"
       }
     },
     "messages": {
@@ -1067,6 +1137,24 @@
       "error": {
         "en": "An error occurred.",
         "es": "Se ha producido un error."
+      },
+      "loading": {
+        "en": "Loading…",
+        "es": "Cargando…"
+      },
+      "unnamed": {
+        "en": "Unnamed",
+        "es": "Sin nombre"
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en": "Search",
+        "es": "Buscar"
+      },
+      "searchNoMatch": {
+        "en": "Nothing matched your search term.",
+        "es": "No hay resultados que coincidan con tu búsqueda."
       }
     },
     "passphrase": {
@@ -1109,6 +1197,14 @@
       "passphraseAccepted": {
         "en": "Passphrase accepted! Click \"Next\" to continue.",
         "es": "¡Frase de contraseña aceptada! Pulsa la flecha de avance para continuar."
+      },
+      "checkingPassphrase": {
+        "en": "Checking your passphrase…",
+        "es": "Comprobando tu frase de contraseña…"
+      },
+      "passwordPlaceholder": {
+        "en": "Enter password",
+        "es": "Introduce la contraseña"
       }
     },
     "forms": {
@@ -1133,6 +1229,66 @@
       "sameAs": {
         "en": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}",
         "es": "{hasLabel, select, true {Tu respuesta debe ser igual a tu respuesta a {label}.} other {Tu respuesta debe ser igual a la anterior.}}"
+      }
+    },
+    "familyTreeView": {
+      "zoomOutDescription": {
+        "en": "Make your family tree smaller, to see more of it at once.",
+        "es": "Aleja la vista para ver más de tu árbol familiar a la vez."
+      },
+      "zoomInDescription": {
+        "en": "Make your family tree bigger, to see part of it more closely.",
+        "es": "Acerca la vista para ver una parte de tu árbol familiar con más detalle."
+      },
+      "showWholeFamily": {
+        "en": "Show the whole family",
+        "es": "Mostrar toda la familia"
+      },
+      "showWholeFamilyDescription": {
+        "en": "Fit your whole family tree on the screen.",
+        "es": "Ajusta la vista para que todo tu árbol familiar quepa en la pantalla."
+      }
+    },
+    "familyPedigree": {
+      "pointerToolDescription": {
+        "en": "Select a family member to edit their details or add their relatives.",
+        "es": "Selecciona a un familiar para editar sus datos o añadirle familiares."
+      },
+      "connectToolDescription": {
+        "en": "Select two family members to connect them and say how they are related.",
+        "es": "Selecciona a dos familiares para conectarlos e indicar qué relación hay entre ellos."
+      },
+      "disconnectToolDescription": {
+        "en": "Select two connected family members to remove the connection between them.",
+        "es": "Selecciona a dos familiares conectados para eliminar la conexión entre ellos."
+      },
+      "framingControlDescription": {
+        "en": "Choose the relationship words your family tree uses for your relatives.",
+        "es": "Elige qué términos de parentesco usa tu árbol familiar para nombrar a tus familiares."
+      },
+      "undoDescription": {
+        "en": "Undo your last change to your family tree.",
+        "es": "Deshaz el último cambio que hiciste en tu árbol familiar."
+      },
+      "redoDescription": {
+        "en": "Bring back the change you undid.",
+        "es": "Vuelve a hacer el cambio que deshiciste."
+      },
+      "trackerAllDetails": {
+        "en": "Add required details for all family members",
+        "es": "Añade los datos obligatorios de todos los miembros de la familia"
+      }
+    },
+    "categoricalBin": {
+      "placeHere": {
+        "en": "Place here",
+        "es": "Colocar aquí"
+      }
+    },
+    "egoForm": {
+      "scrollForQuestions": {
+        "en": "Scroll to see more questions",
+        "es": "Desplázate para ver más preguntas"
       }
     }
   },

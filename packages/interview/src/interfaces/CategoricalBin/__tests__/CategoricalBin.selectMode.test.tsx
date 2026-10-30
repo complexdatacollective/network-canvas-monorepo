@@ -222,7 +222,7 @@ function renderStage(mode: Mode, nodes: NcNode[] = defaultNodes()) {
   let dndStore: StoreApi<DndStore> | null = null;
 
   const view = render(
-    <InterviewI18nProvider requestedLocale="en">
+    <InterviewI18nProvider>
       <TestProtocolLocalization>
         <Provider store={store}>
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>

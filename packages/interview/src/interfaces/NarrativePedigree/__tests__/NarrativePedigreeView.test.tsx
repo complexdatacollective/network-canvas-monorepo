@@ -334,7 +334,6 @@ function makeStore({
         encryptionKeyId: null,
         showPassphrasePrompter: false,
         localePreference: null,
-        restoredLocalePreference: null,
       },
     },
     middleware: (g) => g({ serializableCheck: false }),
@@ -361,7 +360,7 @@ function renderView(options: StoreOptions = {}, locale = 'en') {
           localization={ENGLISH_AND_SPANISH}
           locale={requestedLocale}
         >
-          <InterviewI18nProvider requestedLocale={requestedLocale}>
+          <InterviewI18nProvider>
             <NarrativePedigreeView stage={stage} />
           </InterviewI18nProvider>
         </TestProtocolLocalization>
@@ -561,6 +560,8 @@ describe('NarrativePedigreeView — encrypted names', () => {
 });
 
 describe('NarrativePedigreeView — node mode selection', () => {
+  // The stage's own words follow the language; what only screen readers read,
+  // such as the people's names and status summaries, stays in English.
   it('reformats selected condition, status, focus and snapshot in place while preserving authored copy and network data', async () => {
     const stage = makeNarrativeStage();
     stage.label = { en: 'Árbol **del estudio**' };
@@ -579,11 +580,11 @@ describe('NarrativePedigreeView — node mode selection', () => {
 
     rendered.changeLocale('es');
     expect(
-      await screen.findByRole('button', { name: 'Centrar en Tú' }),
+      await screen.findByRole('button', { name: 'Focus on Tú' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Centrar en Mother' }),
-    ).toHaveAccessibleDescription('Condition <b>A</b>: Afectado/a');
+      screen.getByRole('button', { name: 'Focus on Mother' }),
+    ).toHaveAccessibleDescription('Condition <b>A</b>: Affected');
     expect(
       screen.getByTestId('narrative-pedigree-condition'),
     ).toHaveTextContent('Condition <b>A</b>');
@@ -603,7 +604,7 @@ describe('NarrativePedigreeView — node mode selection', () => {
     );
     expect(snapshot?.querySelector('h3')).toHaveTextContent('Leyenda');
 
-    rendered.changeLocale('en-GB');
+    rendered.changeLocale('en');
     expect(
       await screen.findByRole('button', { name: 'Focus on You' }),
     ).toBeInTheDocument();

@@ -31,7 +31,6 @@ import {
 
 import type { InterviewPayload, SyncHandler } from '../contract/types';
 import useStageValidation from '../hooks/useStageValidation';
-import { interviewCatalogSource } from '../i18n/catalog';
 import Shell from '../Shell';
 import {
   InterviewToastProvider,
@@ -249,14 +248,6 @@ function ScopedToast({
   );
 }
 
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so renders in these languages are synchronous.
-beforeAll(async () => {
-  await Promise.all(
-    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
-  );
-});
-
 describe('Shell toast ownership', () => {
   it('keeps actual validation and queued language changes inside one Shell without writing answers', async () => {
     const firstPayload = makePayload('first');
@@ -295,7 +286,9 @@ describe('Shell toast ownership', () => {
       { wrapper: WithoutMotion },
     );
     const second = screen.getByTestId('second-shell');
-    await within(second).findByRole('button', { name: 'Siguiente paso' });
+    // The protocol is in English only, so a browser asking for Spanish gets
+    // English, built-in text included.
+    await within(second).findByRole('button', { name: 'Next Step' });
     const secondStore = currentStore();
     expect(firstStore).not.toBe(secondStore);
     expect(
@@ -303,7 +296,7 @@ describe('Shell toast ownership', () => {
     ).toHaveLength(1);
     expect(
       within(second).getAllByRole('region', {
-        name: 'Notificaciones de la entrevista',
+        name: 'Interview notifications',
       }),
     ).toHaveLength(1);
 
@@ -348,16 +341,15 @@ describe('Shell toast ownership', () => {
 
     firstView.rerender(firstContent('es-MX'));
     expect(within(first).getByRole('dialog')).toBe(notification);
-    // The notice is the stage's own text, which the protocol holds in English
-    // only, so it does not follow the browser's Spanish; the region keeps the
-    // English-only protocol's language.
+    // The protocol is in English only, so nothing follows the browser's
+    // Spanish: not the stage's own notice, and not the built-in text.
     expect(notification).toHaveTextContent(
       'You must create at least 1 item before you can continue.',
     );
     expect(notification.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(
       within(first).getAllByRole('region', {
-        name: 'Notificaciones de la entrevista',
+        name: 'Interview notifications',
       }),
     ).toHaveLength(1);
     expect(within(second).queryByRole('dialog')).not.toBeInTheDocument();
@@ -372,7 +364,7 @@ describe('Shell toast ownership', () => {
     // Move through a control inside the actual toast before reopening Quick
     // Add, so the toast's focus/blur close path is positively exercised.
     const closeButton = within(notification).getByRole('button', {
-      name: 'Cerrar',
+      name: 'Close',
     });
     act(() => closeButton.focus());
     expect(closeButton).toHaveFocus();
@@ -567,9 +559,11 @@ describe('Shell stage portal ownership', () => {
     const secondStore = currentStore();
     expect(firstStore).not.toBe(secondStore);
     expect(within(first).getAllByLabelText('Delete bin')).toHaveLength(1);
-    expect(within(second).getAllByLabelText('Papelera')).toHaveLength(1);
+    // The protocol is in English only, so a browser asking for Spanish gets
+    // English; the bin's name is screen reader text, which is English anyway.
+    expect(within(second).getAllByLabelText('Delete bin')).toHaveLength(1);
     const firstBin = within(first).getByLabelText('Delete bin');
-    const secondBin = within(second).getByLabelText('Papelera');
+    const secondBin = within(second).getByLabelText('Delete bin');
     expect(first).toContainElement(firstBin);
     expect(first).not.toContainElement(secondBin);
     expect(second).toContainElement(secondBin);

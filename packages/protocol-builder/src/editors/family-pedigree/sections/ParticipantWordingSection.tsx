@@ -39,7 +39,7 @@ import {
   useStageHasAnyValue,
   useStageValue,
 } from '../../../form/stageFormHooks.ts';
-import BuilderSection from '../../../sections/BuilderSection.tsx';
+import StageWordingSection from '../../../sections/supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -185,10 +185,20 @@ export default function ParticipantWordingSection() {
     [openGroups, storeApi],
   );
 
+  const paths = PARTICIPANT_WORDING_GROUPS.filter(
+    (group) => group.gate === undefined || shown[group.gate],
+  ).flatMap((group) =>
+    group.settings
+      .filter((setting) => setting.gate === undefined || shown[setting.gate])
+      .map((setting) => settingPath(group, setting)),
+  );
+
   return (
-    <BuilderSection
+    <StageWordingSection
+      stageType="FamilyPedigree"
       title={intl.formatMessage(messages.wordingTitle)}
       description={intl.formatMessage(messages.wordingDescription)}
+      paths={paths}
     >
       {supplied !== undefined && (
         <WordingGroups
@@ -200,7 +210,7 @@ export default function ParticipantWordingSection() {
           validations={validations}
         />
       )}
-    </BuilderSection>
+    </StageWordingSection>
   );
 }
 

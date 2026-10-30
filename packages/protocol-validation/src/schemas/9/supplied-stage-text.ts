@@ -2,15 +2,7 @@ import type {
   LocaleTag,
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
-import {
-  BUTTONS_INTERFACE_TEXT,
-  FORMS_INTERFACE_TEXT,
-  MESSAGES_INTERFACE_TEXT,
-  NAVIGATION_INTERFACE_TEXT,
-  PASSPHRASE_INTERFACE_TEXT,
-  SEARCH_INTERFACE_TEXT,
-  VALIDATION_INTERFACE_TEXT,
-} from './interface-text-wording.ts';
+import { INTERFACE_TEXT_WORDING } from './interface-text.ts';
 import type { LocalizedString } from './localized-string.ts';
 import { BIN_SUPPLIED_TEXT } from './stage-wording/bins.ts';
 import { FAMILY_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/family-pedigree.ts';
@@ -248,15 +240,7 @@ export const isSuppliedEnglishMessage = (message: string): boolean => {
   suppliedEnglish ??= new Set(
     [
       ...Object.values(SUPPLIED_STAGE_TEXT).flat(),
-      ...[
-        NAVIGATION_INTERFACE_TEXT,
-        BUTTONS_INTERFACE_TEXT,
-        MESSAGES_INTERFACE_TEXT,
-        SEARCH_INTERFACE_TEXT,
-        PASSPHRASE_INTERFACE_TEXT,
-        FORMS_INTERFACE_TEXT,
-        VALIDATION_INTERFACE_TEXT,
-      ].flatMap((entries) => Object.values(entries)),
+      ...INTERFACE_TEXT_WORDING,
     ].flatMap(({ message: wording }) =>
       wording.en === undefined ? [] : [wording.en],
     ),

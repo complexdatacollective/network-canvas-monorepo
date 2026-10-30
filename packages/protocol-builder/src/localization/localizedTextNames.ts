@@ -33,6 +33,10 @@ import { pageContentMessages } from '../sections/page-content/PageContentSection
 import { nodePanelsMessages } from '../sections/panels/NodePanelsSection.tsx';
 import { promptsSectionMessages } from '../sections/PromptsSection.tsx';
 import { isStageType } from '../stage-types.ts';
+import {
+  nameInterfaceText,
+  nameInterfaceTextGroup,
+} from './interfaceTextNames.ts';
 
 const messages = defineMessages({
   promptPosition: {
@@ -64,20 +68,6 @@ const messages = defineMessages({
     defaultMessage: 'Preset {position, number}',
     description:
       'Names one visualization preset of a narrative stage where a text is listed without its translation. position is the preset’s place in the stage’s list of presets, counting from one.',
-  },
-  interfaceTextGroup: {
-    id: 'protocolBuilder.localizedTextNames.interfaceTextGroup',
-    defaultMessage:
-      '{group, select, navigation {Interview navigation} buttons {Buttons} messages {Messages} search {Search} passphrase {Passphrase} forms {Forms} validation {Validation messages} other {{group}}}',
-    description:
-      'Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those for moving through the interview and leaving it, the labels of its buttons, its error messages, those of a search box, those shown when answers are protected by a passphrase, those shown with forms, or the messages that say an answer breaks one of its rules.',
-  },
-  interfaceTextName: {
-    id: 'protocolBuilder.localizedTextNames.interfaceTextName',
-    defaultMessage:
-      '{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} yes {Yes answer} no {No answer} save {Save button} dontKnow {Don’t know answer} pauseLayout {Pause layout button} resumeLayout {Resume layout button} error {Error message} externalDataError {External data error message} searchLabel {Search field} searchNoMatch {No results message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} other {{key}}}',
-    description:
-      'Names one of the words the interview itself shows, where it is listed for translation: a button, a field label or a message, by what it is for. key says which.',
   },
   diseasePosition: {
     id: 'protocolBuilder.localizedTextNames.diseasePosition',
@@ -1353,18 +1343,8 @@ type Located = Readonly<{
 const INTERFACE_TEXT_RULES: readonly Rule[] = [
   rule(
     '*.*',
-    [
-      1,
-      ({ intl, at }) =>
-        intl.formatMessage(messages.interfaceTextGroup, {
-          group: keyOf(at[0]),
-        }),
-    ],
-    [
-      2,
-      ({ intl, at }) =>
-        intl.formatMessage(messages.interfaceTextName, { key: keyOf(at[1]) }),
-    ],
+    [1, ({ intl, at }) => nameInterfaceTextGroup(intl, keyOf(at[0]))],
+    [2, ({ intl, at }) => nameInterfaceText(intl, keyOf(at[1]))],
   ),
 ];
 

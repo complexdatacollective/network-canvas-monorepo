@@ -1307,6 +1307,48 @@
         "en-US": "Continue",
         "es": "Continuar",
         "hu": "Tovább"
+      },
+      "exitFailed": {
+        "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.",
+        "es": "No se pudieron guardar tus respuestas, así que la entrevista no se ha cerrado. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en-US": "Exit review",
+        "es": "Salir de la revisión"
+      },
+      "exitReviewTitle": {
+        "en-US": "Exit this review?",
+        "es": "¿Salir de esta revisión?"
+      },
+      "exitReviewDescription": {
+        "en-US": "Changes made during this review will not be saved.",
+        "es": "Los cambios realizados durante esta revisión no se guardarán."
+      },
+      "hiddenScreen": {
+        "en-US": "Hidden by answers",
+        "es": "Oculta por las respuestas"
+      },
+      "outsidePath": {
+        "en-US": "Outside current path",
+        "es": "Fuera del recorrido actual"
+      },
+      "showScreenTitle": {
+        "en-US": "Show this screen?",
+        "es": "¿Mostrar esta pantalla?"
+      },
+      "hiddenScreenDescription": {
+        "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?",
+        "es": "Esta pantalla está oculta según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?"
+      },
+      "outsidePathDescription": {
+        "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?",
+        "es": "Esta pantalla queda fuera del recorrido actual de la entrevista según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?"
+      },
+      "showScreen": {
+        "en-US": "Show screen",
+        "es": "Mostrar pantalla"
       }
     },
     "buttons": {
@@ -1344,6 +1386,14 @@
         "en-US": "Resume automatic layout",
         "es": "Reanudar la disposición automática",
         "hu": "Automatikus elrendezés folytatása"
+      },
+      "copy": {
+        "en-US": "Copy",
+        "es": "Copiar"
+      },
+      "copied": {
+        "en-US": "Copied",
+        "es": "Copiado"
       }
     },
     "messages": {
@@ -1361,6 +1411,24 @@
         "en-US": "An error occurred.",
         "es": "Se ha producido un error.",
         "hu": "Hiba történt."
+      },
+      "loading": {
+        "en-US": "Loading…",
+        "es": "Cargando…"
+      },
+      "unnamed": {
+        "en-US": "Unnamed",
+        "es": "Sin nombre"
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en-US": "Search",
+        "es": "Buscar"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term.",
+        "es": "No hay resultados que coincidan con tu búsqueda."
       }
     },
     "forms": {
@@ -1410,6 +1478,18 @@
         "en-US": "Must be unique.",
         "es": "Debe ser una respuesta única.",
         "hu": "Egyedinek kell lennie."
+      }
+    },
+    "categoricalBin": {
+      "placeHere": {
+        "en-US": "Place here",
+        "es": "Colocar aquí"
+      }
+    },
+    "egoForm": {
+      "scrollForQuestions": {
+        "en-US": "Scroll to see more questions",
+        "es": "Desplázate para ver más preguntas"
       }
     }
   }

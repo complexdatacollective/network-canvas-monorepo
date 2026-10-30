@@ -35,7 +35,13 @@ describe('the interface text a protocol holds', () => {
   it('always holds the interview’s own words, in each language Network Canvas supplies them in', () => {
     const text = interfaceTextFor(protocolWith());
 
-    expect(Object.keys(text)).toEqual(['navigation', 'buttons', 'messages']);
+    expect(Object.keys(text)).toEqual([
+      'navigation',
+      'interviewer',
+      'buttons',
+      'messages',
+      'search',
+    ]);
     expect(text.navigation?.exitInterview).toEqual({
       en: 'Exit interview',
       fr: expect.any(String),
@@ -44,7 +50,13 @@ describe('the interface text a protocol holds', () => {
       'stageError',
       'itemUnavailable',
       'error',
+      'loading',
+      'unnamed',
     ]);
+    expect(text.interviewer?.exitReview).toEqual({
+      en: 'Exit review',
+      fr: 'Quitter la consultation',
+    });
     expect(text.messages?.error).toEqual({
       en: 'An error occurred.',
       fr: 'Une erreur s’est produite.',
@@ -82,8 +94,10 @@ describe('the interface text a protocol holds', () => {
     });
     expect(Object.keys(interfaceTextFor(decrypted))).toEqual([
       'navigation',
+      'interviewer',
       'buttons',
       'messages',
+      'search',
     ]);
   });
 
@@ -93,9 +107,13 @@ describe('the interface text a protocol holds', () => {
     );
     expect(Object.keys(text)).toEqual([
       'navigation',
+      'interviewer',
       'buttons',
       'messages',
+      'search',
       'forms',
+      // What every Ego Form shows alike.
+      'egoForm',
     ]);
     expect(Object.keys(text.buttons ?? {})).toEqual([
       'cancel',
@@ -103,11 +121,73 @@ describe('the interface text a protocol holds', () => {
       'delete',
       'yes',
       'no',
+      'copy',
+      'copied',
     ]);
     expect(Object.keys(text.forms ?? {})).toEqual([
       'discardChangesTitle',
       'discardChangesDescription',
     ]);
+  });
+
+  // The text every stage of one kind shows alike, held while the protocol
+  // has such a stage.
+  it.each([
+    ['FamilyPedigree', ['familyTreeView', 'familyPedigree']],
+    ['NarrativePedigree', ['familyTreeView']],
+    ['CategoricalBin', ['categoricalBin']],
+    ['NameGeneratorRoster', ['roster']],
+    ['NetworkComposer', ['networkComposer']],
+    ['EgoForm', ['egoForm']],
+    ['Sociogram', []],
+  ])('holds the text every %s stage shows alike', (type, groups) => {
+    const stageTypeGroups = [
+      'familyTreeView',
+      'familyPedigree',
+      'categoricalBin',
+      'roster',
+      'networkComposer',
+      'egoForm',
+    ];
+    const text = interfaceTextFor(protocolWith({ stages: [{ type }] }));
+    expect(
+      Object.keys(text).filter((group) => stageTypeGroups.includes(group)),
+    ).toEqual(groups);
+    expect(
+      Object.keys(interfaceTextFor(protocolWith({ stages: [] }))).filter(
+        (group) => stageTypeGroups.includes(group),
+      ),
+    ).toEqual([]);
+  });
+
+  it('holds a Family Pedigree’s shared text in every language Network Canvas supplies', () => {
+    const text = interfaceTextFor(
+      protocolWith({
+        localization: { defaultLocale: 'en', locales: ['en', 'es'] },
+        stages: [{ type: 'FamilyPedigree' }],
+      }),
+    );
+    expect(text.familyPedigree?.undoDescription?.es).toBe(
+      'Deshaz el último cambio que hiciste en tu árbol familiar.',
+    );
+    expect(text.familyTreeView?.showWholeFamily?.en).toBe(
+      'Show the whole family',
+    );
+  });
+
+  it('words a button any stage may show once, among the buttons', () => {
+    const buttons = (type: string) =>
+      Object.keys(
+        interfaceTextFor(protocolWith({ stages: [{ type }] })).buttons ?? {},
+      );
+    expect(buttons('FamilyPedigree')).toEqual(
+      expect.arrayContaining(['undo', 'redo', 'skip', 'zoomIn', 'zoomOut']),
+    );
+    expect(buttons('NarrativePedigree')).toEqual(
+      expect.arrayContaining(['zoomIn', 'zoomOut']),
+    );
+    expect(buttons('NarrativePedigree')).not.toContain('undo');
+    expect(buttons('Information')).not.toContain('zoomIn');
   });
 
   it('holds the form text for the forms a stage always shows, and the passphrase’s', () => {
@@ -196,7 +276,7 @@ describe('the interface text a protocol holds', () => {
     ).toBe(true);
   });
 
-  it('holds Save and Don’t know while the protocol has a Family Pedigree', () => {
+  it('holds Save and Don’t know while the protocol has a Family Pedigree, and Save for a Categorical Bin’s dialog', () => {
     const buttonsOf = (stages: readonly unknown[]) =>
       Object.keys(interfaceTextFor(protocolWith({ stages })).buttons ?? {});
 
@@ -205,6 +285,15 @@ describe('the interface text a protocol holds', () => {
     );
     expect(buttonsOf([{ type: 'EgoForm' }])).not.toContain('save');
     expect(buttonsOf([{ type: 'EgoForm' }])).not.toContain('dontKnow');
+    const binAskingForOther = {
+      type: 'CategoricalBin',
+      prompts: [{ otherVariable: 'other' }],
+    };
+    expect(buttonsOf([binAskingForOther])).toContain('save');
+    expect(buttonsOf([binAskingForOther])).not.toContain('dontKnow');
+    expect(
+      buttonsOf([{ type: 'CategoricalBin', prompts: [{}] }]),
+    ).not.toContain('save');
     expect(
       interfaceTextFor(protocolWith({ stages: [{ type: 'FamilyPedigree' }] }))
         .buttons?.dontKnow,
@@ -255,26 +344,16 @@ describe('the interface text a protocol holds', () => {
     expect(holdsError({ type: 'Sociogram' })).toBe(false);
   });
 
-  it('holds the search text while a roster or a map has a search', () => {
-    const searchOf = (stage: Readonly<Record<string, unknown>>) =>
-      interfaceTextFor(protocolWith({ stages: [stage] })).search;
-
-    expect(
-      searchOf({ type: 'NameGeneratorRoster', searchOptions: {} }),
-    ).toEqual({
-      searchLabel: { en: 'Search', fr: 'Rechercher' },
-      searchNoMatch: {
-        en: 'Nothing matched your search term.',
-        fr: 'Aucun résultat ne correspond à votre recherche.',
-      },
-    });
-    expect(
-      searchOf({ type: 'Geospatial', mapOptions: { allowSearch: true } }),
-    ).toBeDefined();
-    expect(searchOf({ type: 'NameGeneratorRoster' })).toBeUndefined();
-    expect(
-      searchOf({ type: 'Geospatial', mapOptions: { allowSearch: false } }),
-    ).toBeUndefined();
+  it('always holds the search text, which the list of screens uses', () => {
+    for (const stages of [[], [{ type: 'Geospatial' }]]) {
+      expect(interfaceTextFor(protocolWith({ stages })).search).toEqual({
+        searchLabel: { en: 'Search', fr: 'Rechercher' },
+        searchNoMatch: {
+          en: 'Nothing matched your search term.',
+          fr: 'Aucun résultat ne correspond à votre recherche.',
+        },
+      });
+    }
   });
 
   it('holds the error message whatever the protocol shows', () => {
@@ -449,6 +528,8 @@ describe('the interface text a protocol holds', () => {
       'cancel',
       'done',
       'delete',
+      'copy',
+      'copied',
     ]);
     expect(InterfaceTextSchema.safeParse(noForms).success).toBe(true);
     expect(
@@ -498,6 +579,12 @@ describe('the interface text a protocol holds', () => {
     expect(idsOf('messages', 'error')).toEqual([
       'common.genericError',
       'frescoUi.form.submitFailed',
+    ]);
+    // Every search box and filter reads as the one search label.
+    expect(idsOf('search', 'searchLabel')).toEqual([
+      'common.search',
+      'interview.runtime.filter',
+      'frescoUi.collectionFilterInput.searchPlaceholder',
     ]);
     const ids = INTERFACE_TEXT_MESSAGES.map(({ id }) => id);
     expect(new Set(ids).size).toBe(ids.length);

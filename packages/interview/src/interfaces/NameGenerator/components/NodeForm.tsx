@@ -256,7 +256,7 @@ const NodeForm = (props: NodeFormProps) => {
             >
               <motion.div className="flex h-full items-center justify-center">
                 {isInterviewerIconName(icon) && (
-                  <Icon name={icon} className={actionIconClass} />
+                  <Icon name={icon} className={actionIconClass} aria-hidden />
                 )}
               </motion.div>
             </motion.div>

@@ -30,7 +30,11 @@ export {
   default as ProtocolField,
   type ProtocolFieldDefinition,
 } from './forms/ProtocolField';
-export { ProtocolLocalizationProvider } from './localization/ProtocolLocalizationProvider';
+export { InterfaceTextOverlay } from './localization/InterfaceTextOverlay';
+export {
+  ProtocolLocalizationProvider,
+  useContentLocale,
+} from './localization/ProtocolLocalizationProvider';
 
 export { createDebouncedSyncHandler } from './contract/debouncedSync';
 export { createInitialNetwork } from './contract/network';

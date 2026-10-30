@@ -458,6 +458,7 @@ const CASES: readonly EditorCase[] = [
       'Stage filter',
       'Prompt collection',
       'Placing nodes',
+      'Participant wording',
       'Skip logic',
       'Interviewer guidance',
     ],

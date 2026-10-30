@@ -132,6 +132,10 @@ describe('the editor for the stage where a participant chooses a language', () =
   it('saves the heading the researcher writes', async () => {
     const harness = renderStageEditor(openStage());
     const user = userEvent.setup();
+    // Off over the supplied wording of a single language.
+    await user.click(
+      await screen.findByRole('switch', { name: 'Participant wording' }),
+    );
     // Editable once the editing language is known.
     await waitFor(() =>
       expect(

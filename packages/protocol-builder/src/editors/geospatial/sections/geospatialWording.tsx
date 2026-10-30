@@ -6,7 +6,7 @@ import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
-import BuilderSection from '../../../sections/BuilderSection.tsx';
+import StageWordingSection from '../../../sections/supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -81,6 +81,9 @@ export const geospatialWordingMessages = defineMessages({
   },
 });
 
+/** The settings the section shows whatever the map's configuration. */
+const ALWAYS_SHOWN = ['offlineNotice', 'mapUnavailable', 'outsideAreasLabel'];
+
 /** Whether the map has a search box, which its search messages are for. */
 const ALLOW_SEARCH = 'mapOptions.allowSearch';
 
@@ -100,9 +103,11 @@ function GeospatialWordingSection() {
   const allowSearch = useStageValue(ALLOW_SEARCH) === true;
 
   return (
-    <BuilderSection
+    <StageWordingSection
+      stageType="Geospatial"
       title={intl.formatMessage(geospatialWordingMessages.title)}
       description={intl.formatMessage(geospatialWordingMessages.description)}
+      paths={allowSearch ? [...ALWAYS_SHOWN, 'searchFailed'] : ALWAYS_SHOWN}
     >
       {supplied !== undefined && (
         <>
@@ -171,6 +176,6 @@ function GeospatialWordingSection() {
           )}
         </>
       )}
-    </BuilderSection>
+    </StageWordingSection>
   );
 }

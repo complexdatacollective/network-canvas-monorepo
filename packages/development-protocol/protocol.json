@@ -2262,7 +2262,10 @@
     },
     {
       "id": "finish",
-      "finishLabel": { "en-US": "Finish", "es": "Finalizar" },
+      "finishLabel": {
+        "en-US": "Finish",
+        "es": "Finalizar"
+      },
       "finishConfirmation": {
         "en-US": "Are you sure you want to finish the interview?",
         "es": "¿Seguro que quieres finalizar la entrevista?"
@@ -2273,7 +2276,10 @@
       },
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": { "en-US": "Finish Interview", "es": "Finalizar entrevista" },
+      "label": {
+        "en-US": "Finish Interview",
+        "es": "Finalizar entrevista"
+      },
       "content": {
         "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.",
         "es": "# Finalizar entrevista\n\nHas llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora."
@@ -3838,6 +3844,48 @@
       "continue": {
         "en-US": "Continue",
         "es": "Continuar"
+      },
+      "exitFailed": {
+        "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.",
+        "es": "No se pudieron guardar tus respuestas, así que la entrevista no se ha cerrado. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en-US": "Exit review",
+        "es": "Salir de la revisión"
+      },
+      "exitReviewTitle": {
+        "en-US": "Exit this review?",
+        "es": "¿Salir de esta revisión?"
+      },
+      "exitReviewDescription": {
+        "en-US": "Changes made during this review will not be saved.",
+        "es": "Los cambios realizados durante esta revisión no se guardarán."
+      },
+      "hiddenScreen": {
+        "en-US": "Hidden by answers",
+        "es": "Oculta por las respuestas"
+      },
+      "outsidePath": {
+        "en-US": "Outside current path",
+        "es": "Fuera del recorrido actual"
+      },
+      "showScreenTitle": {
+        "en-US": "Show this screen?",
+        "es": "¿Mostrar esta pantalla?"
+      },
+      "hiddenScreenDescription": {
+        "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?",
+        "es": "Esta pantalla está oculta según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?"
+      },
+      "outsidePathDescription": {
+        "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?",
+        "es": "Esta pantalla queda fuera del recorrido actual de la entrevista según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?"
+      },
+      "showScreen": {
+        "en-US": "Show screen",
+        "es": "Mostrar pantalla"
       }
     },
     "buttons": {
@@ -3876,6 +3924,34 @@
       "resumeLayout": {
         "en-US": "Resume automatic layout",
         "es": "Reanudar la disposición automática"
+      },
+      "copy": {
+        "en-US": "Copy",
+        "es": "Copiar"
+      },
+      "copied": {
+        "en-US": "Copied",
+        "es": "Copiado"
+      },
+      "zoomOut": {
+        "en-US": "Zoom out",
+        "es": "Alejar"
+      },
+      "zoomIn": {
+        "en-US": "Zoom in",
+        "es": "Acercar"
+      },
+      "undo": {
+        "en-US": "Undo",
+        "es": "Deshacer"
+      },
+      "redo": {
+        "en-US": "Redo",
+        "es": "Rehacer"
+      },
+      "skip": {
+        "en-US": "Skip",
+        "es": "Omitir"
       }
     },
     "messages": {
@@ -3894,6 +3970,14 @@
       "externalDataError": {
         "en-US": "External data could not be loaded.",
         "es": "No se pudieron cargar los datos externos."
+      },
+      "loading": {
+        "en-US": "Loading…",
+        "es": "Cargando…"
+      },
+      "unnamed": {
+        "en-US": "Unnamed",
+        "es": "Sin nombre"
       }
     },
     "search": {
@@ -3946,6 +4030,14 @@
       "passphraseAccepted": {
         "en-US": "Passphrase accepted! Click \"Next\" to continue.",
         "es": "¡Frase de contraseña aceptada! Pulsa la flecha de avance para continuar."
+      },
+      "checkingPassphrase": {
+        "en-US": "Checking your passphrase…",
+        "es": "Comprobando tu frase de contraseña…"
+      },
+      "passwordPlaceholder": {
+        "en-US": "Enter password",
+        "es": "Introduce la contraseña"
       }
     },
     "forms": {
@@ -4010,6 +4102,82 @@
       "greaterThan": {
         "en-US": "{hasLabel, select, true {Your answer must be greater than your answer to ''{label}''.} other {Your answer must be greater than your earlier answer.}}",
         "es": "{hasLabel, select, true {Tu respuesta debe ser mayor que tu respuesta a {label}.} other {Tu respuesta debe ser mayor que la anterior.}}"
+      }
+    },
+    "familyTreeView": {
+      "zoomOutDescription": {
+        "en-US": "Make your family tree smaller, to see more of it at once.",
+        "es": "Aleja la vista para ver más de tu árbol familiar a la vez."
+      },
+      "zoomInDescription": {
+        "en-US": "Make your family tree bigger, to see part of it more closely.",
+        "es": "Acerca la vista para ver una parte de tu árbol familiar con más detalle."
+      },
+      "showWholeFamily": {
+        "en-US": "Show the whole family",
+        "es": "Mostrar toda la familia"
+      },
+      "showWholeFamilyDescription": {
+        "en-US": "Fit your whole family tree on the screen.",
+        "es": "Ajusta la vista para que todo tu árbol familiar quepa en la pantalla."
+      }
+    },
+    "familyPedigree": {
+      "pointerToolDescription": {
+        "en-US": "Select a family member to edit their details or add their relatives.",
+        "es": "Selecciona a un familiar para editar sus datos o añadirle familiares."
+      },
+      "connectToolDescription": {
+        "en-US": "Select two family members to connect them and say how they are related.",
+        "es": "Selecciona a dos familiares para conectarlos e indicar qué relación hay entre ellos."
+      },
+      "disconnectToolDescription": {
+        "en-US": "Select two connected family members to remove the connection between them.",
+        "es": "Selecciona a dos familiares conectados para eliminar la conexión entre ellos."
+      },
+      "framingControlDescription": {
+        "en-US": "Choose the relationship words your family tree uses for your relatives.",
+        "es": "Elige qué términos de parentesco usa tu árbol familiar para nombrar a tus familiares."
+      },
+      "undoDescription": {
+        "en-US": "Undo your last change to your family tree.",
+        "es": "Deshaz el último cambio que hiciste en tu árbol familiar."
+      },
+      "redoDescription": {
+        "en-US": "Bring back the change you undid.",
+        "es": "Vuelve a hacer el cambio que deshiciste."
+      },
+      "trackerAllDetails": {
+        "en-US": "Add required details for all family members",
+        "es": "Añade los datos obligatorios de todos los miembros de la familia"
+      }
+    },
+    "categoricalBin": {
+      "placeHere": {
+        "en-US": "Place here",
+        "es": "Colocar aquí"
+      }
+    },
+    "roster": {
+      "unnamedNumbered": {
+        "en-US": "Unnamed {count}",
+        "es": "Sin nombre {count}"
+      },
+      "dropToRemove": {
+        "en-US": "Drop here to remove",
+        "es": "Suelta aquí para quitar"
+      }
+    },
+    "networkComposer": {
+      "connection": {
+        "en-US": "Connection",
+        "es": "Conexión"
+      }
+    },
+    "egoForm": {
+      "scrollForQuestions": {
+        "en-US": "Scroll to see more questions",
+        "es": "Desplázate para ver más preguntas"
       }
     }
   }

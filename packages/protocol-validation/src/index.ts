@@ -269,7 +269,9 @@ export {
   INTERFACE_TEXT_MESSAGES,
   type InterfaceText,
   interfaceTextAfterLanguageChange,
+  interfaceTextArguments,
   type InterfaceTextUpdate,
+  STAGE_TYPE_INTERFACE_TEXT,
   withInterfaceText,
 } from './schemas/9/interface-text.ts';
 // The finish stage text Network Canvas supplies, written into a protocol by

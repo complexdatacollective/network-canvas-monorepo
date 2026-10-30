@@ -7,7 +7,7 @@ import {
   WordingRow,
   type WordingSetting,
 } from '../../../../form/WordingRow.tsx';
-import BuilderSection from '../../../../sections/BuilderSection.tsx';
+import StageWordingSection from '../../../../sections/supplied-wording/StageWordingSection.tsx';
 import {
   startingWording,
   useSuppliedStageWording,
@@ -81,27 +81,29 @@ export default function NarrativeWordingSection() {
     behaviours: useStageValue('behaviours'),
   };
 
+  const shown = [...HEADINGS, ...DRAWING_TOOLTIPS].filter((setting) =>
+    suppliedStageSettingApplies(stage, setting.path.split('.')),
+  );
+
   return (
-    <BuilderSection
+    <StageWordingSection
+      stageType={STAGE_TYPE}
       title={intl.formatMessage(messages.wordingTitle)}
       description={intl.formatMessage(messages.wordingDescription)}
+      paths={shown.map((setting) => setting.path)}
     >
       {supplied !== undefined &&
-        [...HEADINGS, ...DRAWING_TOOLTIPS]
-          .filter((setting) =>
-            suppliedStageSettingApplies(stage, setting.path.split('.')),
-          )
-          .map((setting) => (
-            <WordingRow
-              key={setting.path}
-              setting={setting}
-              initialValue={startingWording(
-                committedFields,
-                setting.path,
-                supplied,
-              )}
-            />
-          ))}
-    </BuilderSection>
+        shown.map((setting) => (
+          <WordingRow
+            key={setting.path}
+            setting={setting}
+            initialValue={startingWording(
+              committedFields,
+              setting.path,
+              supplied,
+            )}
+          />
+        ))}
+    </StageWordingSection>
   );
 }
