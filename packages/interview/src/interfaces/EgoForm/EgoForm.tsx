@@ -269,7 +269,7 @@ const EgoFormInner = (props: EgoFormProps) => {
         onPointerDownCapture={noteInteraction}
         onKeyDownCapture={noteInteraction}
       >
-        <div className="interface mx-auto max-w-[80ch] flex-col">
+        <div className="interface mx-auto max-w-[80ch]">
           <Surface spacing="lg" shadow="lg">
             {withFormValues(
               <>

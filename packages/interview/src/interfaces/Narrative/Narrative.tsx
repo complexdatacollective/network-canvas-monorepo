@@ -303,7 +303,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
 
   return (
     <div
-      className={`interface relative h-full overflow-hidden${
+      className={`interface h-full overflow-hidden${
         stageBackground.image === undefined ? '' : ' p-0'
       }`}
       ref={interfaceRef}
