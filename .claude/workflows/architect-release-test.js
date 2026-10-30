@@ -76,14 +76,20 @@ if (
 }
 
 // Where the deployment's own pages live, for checks that navigate to them.
-const startUrl = new URL('/', target).href;
-const previewUrl = new URL('/preview/', target).href;
+// The workflow runtime has no URL global, so the origin is read with a
+// pattern and every path joined to it is absolute.
+const targetOrigin = (/^https?:\/\/[^/?#]+/i.exec(target) || [
+  target,
+])[0].toLowerCase();
+const pageUrl = (path) => `${targetOrigin}/${path.replace(/^\/+/, '')}`;
+const startUrl = pageUrl('/');
+const previewUrl = pageUrl('/preview/');
 
 // The Interviewer "Send to Interviewer" opens, by the rule in
 // @codaco/shared-consts' interviewerOriginFor: production Architect sends to
 // production Interviewer, every other built deployment to the developer site.
 const interviewerOrigin =
-  new URL(target).origin === 'https://architect.networkcanvas.com'
+  targetOrigin === 'https://architect.networkcanvas.com'
     ? 'https://interviewer.networkcanvas.com'
     : 'https://interviewer.networkcanvas.dev';
 
@@ -1386,7 +1392,7 @@ Write nothing else in the repository. Return only the structured data.`;
 
 const legacyChecklist = (editor, appSchemaVersion) => {
   const n = editor.schema;
-  const editorUrl = new URL(editor.path, target).href;
+  const editorUrl = pageUrl(editor.path);
   return `
 A protocol made for schema ${n} can be kept as it is and edited in the
 Architect of schema ${n}, which this deployment serves at ${editorUrl}. The
