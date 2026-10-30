@@ -11,7 +11,7 @@ The multi-agent workflow at `.claude/workflows/interviewer-release-test.js`
 (workflow name `interviewer-release-test-workflow`) drives the deployed
 Interviewer dev site — `https://interviewer.networkcanvas.dev`, which tracks
 `main` and is **not** production — through every core user journey with
-headless Playwright: a preflight gate, eight journeys in isolated browser
+headless Playwright: a preflight gate, ten journeys in isolated browser
 profiles, independent verification of every reported failure, and a
 deterministic verdict. This skill is the procedure for one run: launch, wait,
 report, follow up. It deliberately covers what the Playwright E2E suite does
@@ -22,7 +22,12 @@ tap-to-place, empty-stage skipping, encrypted attributes, a family pedigree,
 and a second finish stage reached by skip logic and recorded with the
 session — the schema 8 path, where a schema 8 protocol is conducted online
 and offline in the real Interviewer 8 bundled at `/v8/` rather than the e2e
-suite's stub page, the export format matrix, the security wizard). (Codex: the run needs Claude Code's Workflow tool — run
+suite's stub page, language negotiation — the browser's best language for
+the app and for each interview until a language is chosen — full offline
+readiness — the app-wide "Ready for offline" status held to its word, with
+schema 9 and schema 8 protocols imported from files while offline and
+conducted, reviewed and exported offline, and a protocol that needs the
+internet — the export format matrix, the security wizard). (Codex: the run needs Claude Code's Workflow tool — run
 this command from Claude Code.)
 
 ## Launch (Claude Code)
@@ -41,7 +46,8 @@ this command from Claude Code.)
      (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs`).
    - `journeys` — a subset of: `protocol-management`, `conduct-offline`,
      `session-management`, `data-export`, `security-vault`,
-     `schema8-interviewer8`, `pwa-offline`, `settings-and-chrome`. A subset run
+     `schema8-interviewer8`, `pwa-offline`, `settings-and-chrome`,
+     `language-negotiation`, `offline-readiness`. A subset run
      returns `coverage: "partial"` and **never certifies a release** — use
      it for diagnosis and iteration, then run the full suite to certify.
    - `model` — `haiku` | `sonnet` | `opus` | `fable` for preflight and the
