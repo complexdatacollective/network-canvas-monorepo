@@ -75,6 +75,7 @@ import {
 import TipBox, { type TipBoxProps } from '~/components/customComponents/TipBox';
 import type { AppAxis } from '~/components/customComponents/useSelectedApp';
 import VideoIFrame from '~/components/customComponents/VideoIFrame';
+import Walkthrough from '~/components/customComponents/Walkthrough';
 import WorkflowsOverview from '~/components/customComponents/WorkflowsOverview';
 import DownloadLink from '~/components/DownloadLink';
 import Link from '~/components/Link';
@@ -335,6 +336,9 @@ const createMarkdownComponents = (docSlug?: string) => ({
   ),
   goodpractice: (props: { children: ReactNode }) => <GoodPractice {...props} />,
   badpractice: (props: { children: ReactNode }) => <BadPractice {...props} />,
+  walkthrough: (props: { id: string; chapter?: string }) => (
+    <Walkthrough {...props} />
+  ),
   videoiframe: (props: { src: string; title: string }) => (
     <VideoIFrame {...props} />
   ),

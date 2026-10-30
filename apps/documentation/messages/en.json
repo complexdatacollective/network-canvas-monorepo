@@ -105,5 +105,21 @@
   },
   "DocPage": {
     "docAvailableTxt": "This document is also available in"
+  },
+  "Walkthrough": {
+    "start": "Start the step-by-step walkthrough",
+    "resume": "Continue the walkthrough where you left off",
+    "walkStep": "Walk through this step",
+    "chapters": "Chapters",
+    "chapterDone": "done",
+    "stepOf": "{chapter} · Step {current} of {total}",
+    "continue": "Continue",
+    "back": "Back",
+    "close": "Close",
+    "startOver": "Start over",
+    "readGuide": "Read this step in the guide",
+    "replay": "Replay",
+    "pause": "Pause",
+    "play": "Play"
   }
 }

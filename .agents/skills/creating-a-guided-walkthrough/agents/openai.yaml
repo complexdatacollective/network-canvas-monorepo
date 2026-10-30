@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Creating a Guided Walkthrough'
+  short_description: 'Storyboard, build, and review interactive docs walkthroughs'
+  default_prompt: 'Use $creating-a-guided-walkthrough to storyboard and build a guided walkthrough for a documentation article.'
