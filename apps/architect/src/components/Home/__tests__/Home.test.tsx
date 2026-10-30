@@ -136,29 +136,17 @@ describe('<Home />', () => {
       name: 'Open existing protocol',
     });
 
-    // Medium buttons whose height floor is the medium control height, so the
-    // pair can grow together around the open button's drop hint.
-    expect(createButton).toHaveClass('min-h-12', 'text-base');
+    expect(createButton).toHaveClass('h-12', 'text-base');
     expect(createButton).toHaveClass(
       '[--component-bg:var(--primary-contrast)]',
       '[--component-text:var(--primary)]',
       'focus:outline-primary',
     );
-    expect(openButton).toHaveClass('min-h-12', 'text-base');
+    expect(openButton).toHaveClass('h-12', 'text-base');
     expect(openButton).toHaveClass(
       'control-glass',
       '[--component-bg:var(--neutral-contrast)]',
       '[--component-text:var(--neutral-contrast)]',
-    );
-  });
-
-  it('describes the open button with the drop hint instead of naming it', () => {
-    render(<Home />);
-
-    expect(
-      screen.getByRole('button', { name: 'Open existing protocol' }),
-    ).toHaveAccessibleDescription(
-      'Or drop a .netcanvas file anywhere on this page',
     );
   });
 

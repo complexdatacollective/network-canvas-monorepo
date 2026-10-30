@@ -1233,7 +1233,7 @@
   },
   "architect.home.home.orDropANetcanvasFileAnywhere": {
     "defaultMessage": "Or drop a <code>.netcanvas</code> file anywhere on this page",
-    "description": "Second, smaller line inside the \"Open existing protocol\" button on the Architect start screen, telling researchers they can also drag a protocol file onto the page. <code> wraps the file extension, which stays untranslated."
+    "description": "Visible text in components / Home / Home."
   },
   "architect.home.home.protocolImportError": {
     "defaultMessage": "Protocol Import Error",

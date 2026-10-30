@@ -1,5 +1,12 @@
-import { BookOpen, CodeXml, FilePlus, FolderOpen, Users } from 'lucide-react';
-import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
+import {
+  BookOpen,
+  CodeXml,
+  FilePlus,
+  FolderOpen,
+  Upload,
+  Users,
+} from 'lucide-react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -112,8 +119,7 @@ const messages = defineMessages({
     id: 'architect.home.home.orDropANetcanvasFileAnywhere',
     defaultMessage:
       'Or drop a <code>.netcanvas</code> file anywhere on this page',
-    description:
-      'Second, smaller line inside the "Open existing protocol" button on the Architect start screen, telling researchers they can also drag a protocol file onto the page. <code> wraps the file extension, which stays untranslated.',
+    description: 'Visible text in components / Home / Home.',
   },
 });
 
@@ -140,7 +146,6 @@ const Home = () => {
   const { openDialog } = useDialog();
   const [isLoading, setIsLoading] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const dropHintId = useId();
   const [pendingTemplate, setPendingTemplate] = useState<{
     protocol: CurrentProtocol;
     defaultName: string;
@@ -429,54 +434,32 @@ const Home = () => {
                   </Paragraph>
                 </div>
 
-                {/* Two equal columns spanning the library panel's width, which
-                    stack when either would be too narrow. The row stretches both
-                    buttons to the height of the open button and its drop hint;
-                    labels wrap rather than truncate in longer languages. Each
-                    icon sits inline at the start of its label, so it stays
-                    beside the first word when the label wraps. */}
-                <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-3">
+                <div className="flex w-full flex-col items-start gap-3 @min-md:flex-row @min-md:flex-nowrap">
                   <Button
                     color="primary"
                     onClick={() => setShowNewDialog(true)}
-                    className="h-auto min-h-12 py-3 @min-xl:min-h-16 @min-xl:text-lg"
+                    className="@min-xl:h-16 @min-xl:px-8 @min-xl:text-lg"
                   >
-                    <span className="text-balance whitespace-normal">
-                      <FilePlus
-                        strokeWidth={2.5}
-                        className="me-3 inline h-[1em] w-auto align-[-0.125em]"
-                      />
-                      {intl.formatMessage(messages.createANewProtocol)}
-                    </span>
+                    <FilePlus />
+                    {intl.formatMessage(messages.createANewProtocol)}
                   </Button>
-                  {/* The drop hint describes the button rather than naming it,
-                      so it is hidden from the name and read as the description. */}
                   <Button
                     color="default"
                     variant="glass"
                     onClick={openFileDialog}
-                    aria-describedby={dropHintId}
-                    className="h-auto min-h-12 flex-col gap-1 border-transparent py-3 @min-xl:min-h-16 @min-xl:text-lg"
+                    className="@min-xl:h-16 @min-xl:px-8 @min-xl:text-lg"
                   >
-                    <span className="text-balance whitespace-normal">
-                      <FolderOpen
-                        strokeWidth={2.5}
-                        className="me-3 inline h-[1em] w-auto align-[-0.125em]"
-                      />
-                      {intl.formatMessage(messages.openExistingProtocol)}
-                    </span>
-                    <span
-                      id={dropHintId}
-                      aria-hidden
-                      className="font-body text-xs leading-snug font-normal tracking-normal text-balance whitespace-normal opacity-75"
-                    >
-                      {intl.formatMessage(
-                        messages.orDropANetcanvasFileAnywhere,
-                        { code: renderCode },
-                      )}
-                    </span>
+                    <FolderOpen />
+                    {intl.formatMessage(messages.openExistingProtocol)}
                   </Button>
                 </div>
+
+                <Paragraph className="hint my-0 hidden items-center gap-1.5 [@container_(height>760px)]:flex">
+                  <Upload className="h-3.5 w-3.5" />
+                  {intl.formatMessage(messages.orDropANetcanvasFileAnywhere, {
+                    code: renderCode,
+                  })}
+                </Paragraph>
               </div>
 
               <LibraryPanel
