@@ -1160,6 +1160,16 @@ ${sampleSourceNote}
    which codebook entries
    already exist from earlier stages and which this stage introduces. Do not
    describe internal ids or JSON keys; describe what a person sets.
+   A setting the file leaves out takes the interview's default, which is
+   not always off, and a new stage's editor may start that control at a
+   different value. So for each omitted setting that a stage's editor
+   offers a control for, find what the interview does without it (in
+   packages/interview/src at ${sampleRef}) and tell the builders to set the
+   control to that value explicitly. For example, a concentric-circles
+   background without a skew setting is skewed, but a new Sociogram or
+   Narrative stage starts with "Skew circle sizes" off. Likewise, a stage
+   without an automatic layout setting keeps its nodes where they are
+   placed, but a new Narrative stage starts with "Automatic layout" on.
    weight: 1 for an Information stage, 2 for a stage that reuses existing
    codebook entries, 3 for one that introduces new codebook entries or has
    several prompts.
@@ -1258,6 +1268,15 @@ Run directory: ${analysis.workDir} (write your files under it)
    stage order, types and labels; every stage setting; codebook entries and
    variable types, options and validation; asset names, types and file
    contents (hash them). The protocol's name differs by design.
+   Compare what each setting means, not how it is stored: a setting one
+   file leaves out means the app's default, and that default is not always
+   off. A concentric-circles background without skewedTowardCenter is drawn
+   skewed (the interview's ConcentricCircles defaults skewed to true), so
+   skewedTowardCenter false against an absent one is a real difference,
+   even where the rings happen to look alike. When unsure what an absent
+   setting means, find its default in packages/interview/src or
+   packages/protocol-validation/src/schemas at ${sampleRef} rather than
+   assuming off.
    canonicalStageCount and builtStageCount are your own counts.
 4. The comparison ignores generated fields by construction, so check them on
    their own: run
@@ -1278,8 +1297,8 @@ Run directory: ${analysis.workDir} (write your files under it)
    attribution in reasoning. Report every canonical stage exactly once, by
    its canonical index, and nothing else, listing all of its discrepancies:
    fidelity "match" when every discrepancy it has (if any) is
-   "non-user-facing", such as a setting stored as false in one file and left
-   out of the other; "divergent" when at least one is not; "missing" when the
+   "non-user-facing", such as a setting stored with its default value in
+   one file and left out of the other; "divergent" when at least one is not; "missing" when the
    built protocol lacks it. A built stage with no
    canonical counterpart is a protocol discrepancy, not a stage entry.
 Builders' log:
