@@ -1309,8 +1309,8 @@ ${reportingDiscipline}`;
 const LEGACY_KEY = 'legacy-editors';
 const OLDEST_KEPT_SCHEMA = 8;
 const LEGACY_CHECKS = ['keep', 'editor', 'library', 'reopen'];
-// The checklist of each editor's checks, by check name, for verifiers.
-const legacyChecklists = new Map();
+// Each editor's plan, by check name, so a verifier can repeat its checks.
+const legacyEditors = new Map();
 
 const LEGACY_PLAN_SCHEMA = {
   type: 'object',
@@ -1425,6 +1425,22 @@ badge.
    "Keep editing as schema ${n}", and confirm the editor under ${editorUrl}
    opens "${editor.protocolName}" with its ${editor.stageCount} stages. Then
    navigate back to ${startUrl}.`;
+};
+
+// A verifier may touch only protocols named after itself, so it repeats an
+// older-schema check with its own copy of the fixture, renamed to match.
+const legacyVerifierChecklist = ({ editor, appSchemaVersion }, verifyName) => {
+  const dir = editor.fixturePath.slice(0, editor.fixturePath.lastIndexOf('/'));
+  const protocolName = `${verifyName} schema ${editor.schema}`;
+  const fixturePath = `${dir}/${protocolName}.netcanvas`;
+  const copyDir = `${dir}/${verifyName.replaceAll(' ', '-')}`;
+  return `
+First make your own copy of the protocol file, from the repository root:
+unzip -q '${editor.fixturePath}' -d '${copyDir}', set "name" in
+'${copyDir}/protocol.json' to "${protocolName}" with node or python3, and from
+'${copyDir}' zip protocol.json and assets into '${fixturePath}' (zip -q -r -X,
+or python3 -m zipfile -c). Use that file and that name below.
+${legacyChecklist({ ...editor, protocolName, fixturePath }, appSchemaVersion)}`;
 };
 
 const sampleSourceNote = `The specification is the sample protocol at git ref "${sampleRef}"
@@ -2244,7 +2260,12 @@ const runLegacyEditors = async () => {
       continue;
     }
     const checklist = legacyChecklist(editor, plan.appSchemaVersion);
-    for (const name of expected) legacyChecklists.set(name, checklist);
+    for (const name of expected) {
+      legacyEditors.set(name, {
+        editor,
+        appSchemaVersion: plan.appSchemaVersion,
+      });
+    }
     log(`Running slice: ${LEGACY_KEY} (schema ${editor.schema})`);
     const result = await agent(
       `${pwSliceOps('legacy', namePrefix)}\n## Your checklist${checklist}`,
@@ -2266,9 +2287,56 @@ const playwrightSlices = selected.filter((s) => s.browser === 'playwright');
 // The Playwright browser's work runs alongside the pane slices, one agent at a
 // time: the Playwright slices and the older-schema editors first, then the
 // sample build, by far the longest.
+// The Playwright profile can hold a service worker serving an older build,
+// and reachability and the final recheck read the pane's profile, not this
+// one. So the lane first purges that worker and proves which build it serves.
+const playwrightBuildPrompt = `${pwSliceOps('refresh')}
+## Your checklist
+Create no protocol in this slice.
+1. "playwright-build": Navigate to the target. This profile may hold a
+   service worker from an earlier visit that serves an older build, so
+   evaluate (await navigator.serviceWorker.getRegistration())?.unregister()
+   (the one change to app state this check allows), reload, and wait for the
+   start screen. Then evaluate
+   fetch('/build-info.json', { cache: 'no-store' }).then((r) => r.json())
+   and put its commit in details AND in the top-level "commit" output field.
+   ${
+     expectCommit
+       ? `Fail this check if the commit is missing or does not equal "${expectCommit}" exactly.`
+       : 'No commit was pinned: pass, reporting the observed commit.'
+   }`;
+const runsInPlaywright = playwrightSlices.length > 0 || runLegacy || runSample;
+
 const playwrightPending = siteUp
   ? (async () => {
       const lane = [];
+      if (runsInPlaywright) {
+        const refresh = await agent(playwrightBuildPrompt, {
+          label: 'playwright:refresh',
+          schema: CHECKS_SCHEMA,
+          model: 'sonnet',
+          effort: 'low',
+        }).catch(() => null);
+        const commit =
+          refresh && typeof refresh.commit === 'string'
+            ? refresh.commit.trim()
+            : '';
+        if (refresh && expectCommit && commit !== expectCommit) {
+          refresh.checks = [
+            ...refresh.checks.filter((c) => c.name !== 'playwright-build'),
+            {
+              name: 'playwright-build',
+              status: 'fail',
+              details: `The Playwright browser was served build "${commit}", not the pinned "${expectCommit}".`,
+            },
+          ];
+        }
+        lane.push({
+          slice: 'reachability',
+          expected: ['playwright-build'],
+          result: refresh,
+        });
+      }
       for (const slice of playwrightSlices) lane.push(await runSlice(slice));
       if (runLegacy) {
         lane.push(
@@ -2439,6 +2507,7 @@ for (const [i, f] of failed.slice(0, 6).entries()) {
   const verifyBrowser =
     f.slice === SAMPLE_KEY ||
     f.slice === LEGACY_KEY ||
+    f.name === 'playwright-build' ||
     failedSlice?.browser === 'playwright'
       ? 'playwright'
       : 'pane';
@@ -2457,8 +2526,11 @@ node .agents/skills/architect-release-test/scripts/check-built-protocol.mjs <tha
   // The checklist the failure came from, so the verifier repeats the flow as
   // it was specified — some checks hand the app something the report alone
   // cannot reconstruct, such as the upgrade check's schema 8 file.
+  const legacy = legacyEditors.get(f.name);
   const sliceChecklist = !failedSlice
-    ? (legacyChecklists.get(f.name) ?? '')
+    ? legacy
+      ? legacyVerifierChecklist(legacy, verifyName)
+      : ''
     : typeof failedSlice.checklist === 'function'
       ? failedSlice.checklist(verifyName)
       : failedSlice.checklist;
@@ -2495,13 +2567,16 @@ Describe exactly what you did in evidence either way.`,
       effort: 'high',
     },
   ).catch(() => null);
-  await cleanUp(
-    verifyName,
-    verifyBrowser,
-    false,
-    `cleanup:verify ${i + 1}`,
-    failedSlice?.cleanupNote ? failedSlice.cleanupNote(verifyName) : '',
-  );
+  // An older-schema protocol cannot be deleted (see legacyChecklist).
+  if (f.slice !== LEGACY_KEY) {
+    await cleanUp(
+      verifyName,
+      verifyBrowser,
+      false,
+      `cleanup:verify ${i + 1}`,
+      failedSlice?.cleanupNote ? failedSlice.cleanupNote(verifyName) : '',
+    );
+  }
   if (!verdict) {
     unverified.push({
       ...f,
