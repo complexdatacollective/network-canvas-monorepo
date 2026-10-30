@@ -265,7 +265,7 @@ describe('useComposerActions', () => {
     expect(store.getState().session.network.edges).toHaveLength(0);
 
     await act(async () => {
-      undoStore.getState().undo();
+      await undoStore.getState().undo();
     });
 
     const nodes = store.getState().session.network.nodes;
@@ -374,7 +374,7 @@ describe('useComposerActions', () => {
     ).toEqual(newPos);
 
     await act(async () => {
-      undoStore.getState().undo();
+      await undoStore.getState().undo();
     });
 
     expect(
@@ -384,7 +384,7 @@ describe('useComposerActions', () => {
     ).toEqual(prevPos);
 
     await act(async () => {
-      undoStore.getState().redo();
+      await undoStore.getState().redo();
     });
 
     expect(

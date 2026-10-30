@@ -90,13 +90,15 @@ export const createComposerStore = () => {
         // decides nothing, even once another wait has begun.
         const wait = { change };
         waiting = wait;
-        void allowed
-          .then((ok) => {
+        const settle = async () => {
+          try {
+            const ok = await allowed;
             if (ok && waiting === wait) set(wait.change);
-          })
-          .finally(() => {
+          } finally {
             if (waiting === wait) waiting = null;
-          });
+          }
+        };
+        void settle();
       };
 
       return {

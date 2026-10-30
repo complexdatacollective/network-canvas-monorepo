@@ -123,3 +123,11 @@ export const describeCall = (input: unknown, init?: RequestInit) => ({
     typeof input === 'string' ? input : input instanceof URL ? input.href : '',
   method: init?.method ?? 'GET',
 });
+
+// The text of a request body a test double was handed.
+export const requestBodyText = (init: RequestInit | undefined): string => {
+  const body = init?.body;
+  if (typeof body === 'string') return body;
+  if (ArrayBuffer.isView(body)) return new TextDecoder().decode(body);
+  return '';
+};

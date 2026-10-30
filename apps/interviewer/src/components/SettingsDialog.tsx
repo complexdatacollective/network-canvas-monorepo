@@ -267,7 +267,7 @@ const messages = defineMessages({
     description:
       'Action that opens security setup for a device currently used without a lock.',
   },
-  useTheLockButtonInTheTop: {
+  lockButtonHint: {
     id: 'interviewer.settingsDialog.useTheLockButtonInTheTop',
     defaultMessage: 'Use the lock button in the top bar to lock immediately.',
     description: 'Visible copy in Interviewer Settings Dialog.',
@@ -734,6 +734,7 @@ export function SettingsDialog({
     simulateDropOut,
     respectSkipLogicAndFiltering,
     toast,
+    // oxlint-disable-next-line react/memo-dependencies -- every listed value is read; the rule cannot follow a try/finally and reports each dependency of one as unused
     reloadSyntheticWithFeedback,
     onDataChange,
     analytics,
@@ -783,6 +784,7 @@ export function SettingsDialog({
     });
   }, [
     confirm,
+    // oxlint-disable-next-line react/memo-dependencies -- every listed value is read; the rule cannot follow a try/finally and reports each dependency of one as unused
     onDataChange,
     reloadSyntheticWithFeedback,
     syntheticCount,
@@ -1167,7 +1169,7 @@ export function SettingsDialog({
                 {auth.kind === 'unlocked' && auth.mode !== 'none' ? (
                   <>
                     <Alert variant="info">
-                      {intl.formatMessage(messages.useTheLockButtonInTheTop)}
+                      {intl.formatMessage(messages.lockButtonHint)}
                     </Alert>
                     <SecurityBehaviorControls
                       value={behavior}

@@ -169,7 +169,7 @@ export type ValidationPropsForValue<V> = CommonValidationProps &
 export type CreateFormFieldProps<
   V extends FieldValue,
   TElement extends keyof React.JSX.IntrinsicElements,
-  TCustom = Record<never, never>,
+  TCustom = unknown,
 > = FieldValueProps<V> &
   InjectedFieldProps &
   Omit<

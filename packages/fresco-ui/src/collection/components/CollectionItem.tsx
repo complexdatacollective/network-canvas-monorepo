@@ -36,9 +36,12 @@ function CollectionItemComponent<T>({
     ref: localRef,
   });
 
-  // Get item-level drag props if hooks provided
+  // Get item-level drag props if hooks provided. Whether the hook is provided
+  // never changes while this is mounted: Collection keys its content on it
+  // (see `dragAndDropHooksInUse`).
   const dndDragPropsRaw = dragAndDropHooks?.useDraggableItemProps
-    ? dragAndDropHooks.useDraggableItemProps(node.key)
+    ? // oxlint-disable-next-line react/hooks -- called on every render or on none: Collection remounts its content when the hook comes or goes
+      dragAndDropHooks.useDraggableItemProps(node.key)
     : {};
 
   // Extract DnD props, excluding ones that would override Collection's accessibility semantics:

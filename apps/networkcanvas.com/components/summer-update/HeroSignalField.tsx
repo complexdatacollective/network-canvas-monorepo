@@ -428,6 +428,7 @@ export function HeroSignalField() {
       new Float32Array([-1, -1, 3, -1, -1, 3]),
       context.STATIC_DRAW,
     );
+    // oxlint-disable-next-line react/hooks -- WebGL's `useProgram`, not a React Hook
     context.useProgram(program);
     context.enableVertexAttribArray(positionLocation);
     context.vertexAttribPointer(

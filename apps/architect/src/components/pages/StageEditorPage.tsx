@@ -265,6 +265,7 @@ const StageEditorPage = () => {
     } finally {
       guardState.prompting = false;
     }
+    // oxlint-disable-next-line react/memo-dependencies -- every listed value is read; the rule cannot follow a try/finally and reports each dependency of one as unused
   }, [openDialog, reduxStore, setLocation]);
 
   // A browser-level exit (refresh, tab close, window close) is the one way out

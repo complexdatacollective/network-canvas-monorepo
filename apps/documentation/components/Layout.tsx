@@ -2,7 +2,7 @@
 
 import { useLocale } from 'next-intl';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { PageBackgroundProvider } from '@codaco/art';
 import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
@@ -23,31 +23,31 @@ const DOCUMENTATION_WEAVE_COLORS = [
 export function LayoutComponent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const locale = useLocale();
-  const workflowNavSentinelRef = useRef<HTMLDivElement>(null);
   const [isWorkflowNavStuck, setIsWorkflowNavStuck] = useState(false);
 
   const isHomePage = pathname === `/${locale}`;
 
-  useEffect(() => {
-    const sentinel = workflowNavSentinelRef.current;
-    if (!sentinel) {
-      setIsWorkflowNavStuck(false);
-      return undefined;
-    }
+  // The sentinel is only drawn off the home page; a ref callback follows it
+  // as it comes and goes, and reads where it is the moment it is drawn.
+  const workflowNavSentinelRef = useCallback(
+    (sentinel: HTMLDivElement | null) => {
+      if (!sentinel) return undefined;
 
-    const updateStickyState = () => {
-      setIsWorkflowNavStuck(sentinel.getBoundingClientRect().top <= 0);
-    };
+      const updateStickyState = () => {
+        setIsWorkflowNavStuck(sentinel.getBoundingClientRect().top <= 0);
+      };
 
-    updateStickyState();
-    window.addEventListener('scroll', updateStickyState, { passive: true });
-    window.addEventListener('resize', updateStickyState);
+      updateStickyState();
+      window.addEventListener('scroll', updateStickyState, { passive: true });
+      window.addEventListener('resize', updateStickyState);
 
-    return () => {
-      window.removeEventListener('scroll', updateStickyState);
-      window.removeEventListener('resize', updateStickyState);
-    };
-  }, [isHomePage]);
+      return () => {
+        window.removeEventListener('scroll', updateStickyState);
+        window.removeEventListener('resize', updateStickyState);
+      };
+    },
+    [],
+  );
 
   return (
     <div className="bg-background text-text publish-colors relative isolate flex min-h-dvh w-full flex-auto flex-col">

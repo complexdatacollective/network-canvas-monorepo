@@ -7,12 +7,12 @@
   "jsPlugins": ["eslint-plugin-formatjs"],
   "categories": {
     "correctness": "error",
-    "suspicious": "warn"
+    "suspicious": "error"
   },
   "options": { "typeAware": true },
   "env": { "browser": true, "node": true, "es2024": true },
   "rules": {
-    "no-console": "warn",
+    "no-console": "error",
     "no-process-env": "error",
     "no-unreachable": "error",
     "no-shadow": "error",
@@ -22,7 +22,7 @@
     // `typeof import('x')` stays allowed: it is how vitest types a mock's
     // `importOriginal`, and a separate `import type * as` buys nothing there.
     "typescript/consistent-type-imports": [
-      "warn",
+      "error",
       {
         "prefer": "type-imports",
         "fixStyle": "inline-type-imports",
@@ -50,35 +50,48 @@
       }
     ],
     "typescript/consistent-return": "error",
-    "typescript/no-explicit-any": "warn",
+    "typescript/no-explicit-any": "error",
     "typescript/no-non-null-assertion": "off",
     "typescript/no-unnecessary-type-assertion": "off",
     "typescript/no-unsafe-type-assertion": "error",
     "typescript/no-useless-empty-export": "off",
-    "typescript/switch-exhaustiveness-check": "warn",
+    "typescript/switch-exhaustiveness-check": "error",
     "typescript/no-misused-promises": ["error", { "checksVoidReturn": false }],
     "typescript/no-inferrable-types": "error",
     "typescript/no-unnecessary-type-conversion": "error",
-    "typescript/no-floating-promises": "warn",
-    "typescript/no-redundant-type-constituents": "warn",
-    "typescript/await-thenable": "warn",
-    "typescript/unbound-method": "warn",
-    "typescript/no-useless-default-assignment": "warn",
-    "typescript/no-misused-spread": "warn",
-    "typescript/restrict-template-expressions": "warn",
-    "typescript/no-implied-eval": "warn",
-    "typescript/no-base-to-string": "warn",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-redundant-type-constituents": "error",
+    "typescript/await-thenable": "error",
+    "typescript/unbound-method": "error",
+    "typescript/no-useless-default-assignment": "error",
+    "typescript/no-misused-spread": "error",
+    "typescript/restrict-template-expressions": "error",
+    "typescript/no-implied-eval": "error",
+    "typescript/no-base-to-string": "error",
+    "typescript/no-generated-empty-object-type": "error",
+    "typescript/no-unnecessary-type-parameters": "error",
+    "typescript/no-unsafe-enum-comparison": "error",
     "unicorn/consistent-function-scoping": "error",
-    "unicorn/no-thenable": "warn",
+    "unicorn/no-thenable": "error",
+    "unicorn/prefer-add-event-listener": "error",
+    "unicorn/no-array-fill-with-reference-type": "error",
     "unicorn/require-post-message-target-origin": "off",
+    "no-unmodified-loop-condition": "error",
+    "no-extend-native": "error",
+    "no-new": "error",
+    "no-unexpected-multiline": "error",
+    "oxc/no-async-endpoint-handlers": "error",
 
-    "import/no-cycle": "warn",
-    "import/no-duplicates": "warn",
+    "import/no-cycle": "error",
+    "import/no-named-as-default": "error",
+    "import/no-duplicates": "error",
     "import/no-anonymous-default-export": "off",
     "import/no-unassigned-import": "off",
     "import/default": "off",
 
-    "promise/no-callback-in-promise": "warn",
+    "promise/no-callback-in-promise": "error",
+    "promise/always-return": "error",
+    "promise/no-promise-in-callback": "error",
 
     // Reduced motion is decided once, by AnimationProvider (fresco-ui), which
     // follows the operating system unless a host overrides it. Motion's own

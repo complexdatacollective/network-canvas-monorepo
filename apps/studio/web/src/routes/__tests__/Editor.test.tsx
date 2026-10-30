@@ -51,7 +51,11 @@ import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
 import { HostClient } from '../../runtime/hostClient.ts';
 import { hostRuntime } from '../../runtime/hostSession.ts';
-import { installFetchStub, requestUrl } from '../../test/fetchStub.ts';
+import {
+  installFetchStub,
+  requestBodyText,
+  requestUrl,
+} from '../../test/fetchStub.ts';
 import {
   FakeWebSocket,
   installInProcessHost,
@@ -94,7 +98,7 @@ const lockLogsSent = () =>
         new URL(requestUrl(input), window.location.href).pathname ===
         BROWSER_LOG_PATHS.researcher,
     )
-    .flatMap(([, init]) => browserLogRecords(decodeLogs(String(init?.body))))
+    .flatMap(([, init]) => browserLogRecords(decodeLogs(requestBodyText(init))))
     .filter((record) => record.body.stringValue === 'Editing lock refused')
     .map((record) =>
       record.attributes.find(

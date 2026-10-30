@@ -80,6 +80,7 @@ export function useProtocolLibrary(): {
       },
     });
     return () => subscription.unsubscribe();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `legacySubscription` counts the times Architect 8's library has appeared since the last read; each one subscribes afresh, so the query reads its tables
   }, [legacySubscription]);
 
   useEffect(() => {
@@ -89,6 +90,7 @@ export function useProtocolLibrary(): {
       if (document.visibilityState === 'hidden') return;
       void legacyLibraryExists().then((exists) => {
         if (exists && active) setLegacySubscription((count) => count + 1);
+        return undefined;
       });
     };
     window.addEventListener('focus', recheck);

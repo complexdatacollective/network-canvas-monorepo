@@ -149,6 +149,7 @@ const NestedDraftReclaimDialog = () => {
       // stale explanation on screen.
       if (id) void latest.current.closeDialog(id, null);
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new `choiceRequest` (ProtocolLockBanner asking to see this again) is the trigger to close and re-ask; its value is not needed
   }, [pending, choiceRequest]);
 
   return null;

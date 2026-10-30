@@ -26,6 +26,7 @@ import {
   printMessageStructure,
 } from '@codaco/protocol-validation';
 
+import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
 import { asLocalizedString } from '../localization/localizedText.ts';
 import {
   countTokenId,
@@ -45,7 +46,6 @@ import {
   pluralCategories,
   UnreadableMessage,
 } from './DynamicTextField.tsx';
-import { LocalizedStringField } from './LocalizedStringField.tsx';
 import {
   type MessageArgumentLabels,
   messageArgumentLabels,

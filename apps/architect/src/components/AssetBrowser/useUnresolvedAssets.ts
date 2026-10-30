@@ -38,22 +38,24 @@ export const useUnresolvedAssetIds = (): ReadonlySet<string> => {
   useEffect(() => {
     let cancelled = false;
 
-    void getUnresolvedAssetIds(assetManifest, protocolId ?? undefined).then(
-      (ids) => {
-        if (cancelled) return;
-        // A new empty Set every time would re-render every card on every
-        // manifest edit, for the common case of nothing being missing.
-        setUnresolved((current) =>
-          ids.length === 0 && current.size === 0 ? current : new Set(ids),
-        );
-      },
-    );
+    const load = async () => {
+      const ids = await getUnresolvedAssetIds(
+        assetManifest,
+        protocolId ?? undefined,
+      );
+      if (cancelled) return;
+      // A new empty Set every time would re-render every card on every
+      // manifest edit, for the common case of nothing being missing.
+      setUnresolved((current) =>
+        ids.length === 0 && current.size === 0 ? current : new Set(ids),
+      );
+    };
+    void load();
 
     return () => {
       cancelled = true;
     };
-    // `storeVersion` is a dependency, not a value this reads: a write to the
-    // store can change the answer without changing the manifest.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `storeVersion` is a dependency, not a value this reads: a write to the store can change the answer without changing the manifest
   }, [assetManifest, protocolId, storeVersion]);
 
   return unresolved;

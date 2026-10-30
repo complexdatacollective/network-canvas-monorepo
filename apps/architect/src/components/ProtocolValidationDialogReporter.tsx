@@ -83,7 +83,7 @@ const ProtocolValidationDialogReporter = () => {
 
     consumeEvents();
     return subscribeProtocolValidationDialogEvents(consumeEvents);
-  }, []);
+  }, [closeSession, openSession]);
 
   if (!currentEvent) return null;
 

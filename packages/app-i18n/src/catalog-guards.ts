@@ -106,7 +106,8 @@ const argumentNames = (
       case TYPE.tag:
         argumentNames(element.children, into);
         break;
-      default:
+      case TYPE.literal:
+      case TYPE.pound:
         break;
     }
   }
@@ -347,7 +348,8 @@ const collectTokens = (
         into.add(`<${element.value}>`);
         collectTokens(element.children, into);
         break;
-      default:
+      case TYPE.literal:
+      case TYPE.pound:
         break;
     }
   }

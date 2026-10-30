@@ -90,9 +90,11 @@ export default function EncryptedStoryInterviewShell({
 
   useEffect(() => {
     let current = true;
-    void encryptedRawPayload(build(), passphrase, currentStep).then((raw) => {
+    const load = async () => {
+      const raw = await encryptedRawPayload(build(), passphrase, currentStep);
       if (current) setRawPayload(raw);
-    });
+    };
+    void load();
     return () => {
       current = false;
     };

@@ -98,6 +98,7 @@ export const App = () => {
             ? { ...current, provider: fallback.provider }
             : current;
         });
+        return undefined;
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -110,6 +111,7 @@ export const App = () => {
         });
       });
     return () => controller.abort();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `configAttempt` is bumped by Retry to ask for the configuration again; its value is not needed
   }, [configAttempt]);
 
   const providers: ProviderConfig[] =

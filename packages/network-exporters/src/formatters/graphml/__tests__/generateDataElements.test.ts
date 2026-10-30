@@ -45,7 +45,7 @@ const getNodeLabel = async (
     codebook,
     exportOptions,
   )({ ego: [], node: [node], edge: [] });
-  const fragment = await getDataElementGenerator(
+  const fragment = getDataElementGenerator(
     codebook,
     exportOptions,
     keyIds,

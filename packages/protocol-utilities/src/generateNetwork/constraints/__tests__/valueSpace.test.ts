@@ -4,6 +4,7 @@ import type { VariableValue } from '@codaco/shared-consts';
 
 import { ValueGenerator } from '../../../ValueGenerator.ts';
 import { buildVariableConstraints } from '../buildConstraints.ts';
+import { describeValue } from '../describeValue.ts';
 import type { ConstrainedVariable } from '../types.ts';
 import { valueKey } from '../uniqueRegistry.ts';
 import {
@@ -565,7 +566,7 @@ describe('valueSpaceSize', () => {
       const drawn = new Set<string>();
       for (let seq = 0; seq < size; seq++) {
         drawn.add(
-          String(
+          describeValue(
             generator.generateConstrained(variable, 0, { distinctSeq: seq }),
           ),
         );
@@ -575,7 +576,7 @@ describe('valueSpaceSize', () => {
       // One past the count wraps, so the space holds no further value.
       expect(
         drawn.has(
-          String(
+          describeValue(
             generator.generateConstrained(variable, 0, { distinctSeq: size }),
           ),
         ),
@@ -664,7 +665,7 @@ describe('valueSpaceSize', () => {
     const drawn = new Set<string>();
     for (let seq = 0; seq < 1462; seq++) {
       drawn.add(
-        String(
+        describeValue(
           generator.generateConstrained(variable, 0, { distinctSeq: seq }),
         ),
       );
@@ -739,7 +740,7 @@ describe('valueSpaceSize', () => {
 
       for (const seq of [0, 1, 41]) {
         expect(
-          String(
+          describeValue(
             generator.generateConstrained(overCap, 0, { distinctSeq: seq }),
           ).length,
         ).toBe(textDrawLength(overCap.constraints));
@@ -748,7 +749,7 @@ describe('valueSpaceSize', () => {
       // The free draw is bounded by the same rules from the other side: a name
       // padded to no floor stays short of the ceiling either way.
       expect(
-        String(generator.generateConstrained(overCap, 0)).length,
+        describeValue(generator.generateConstrained(overCap, 0)).length,
       ).toBeLessThanOrEqual(MAX_TEXT_DRAW_LENGTH);
     });
 
@@ -764,7 +765,7 @@ describe('valueSpaceSize', () => {
       const drawn = new Set<string>();
       for (let seq = 0; seq < 40; seq++) {
         drawn.add(
-          String(
+          describeValue(
             generator.generateConstrained(overCap, 0, { distinctSeq: seq }),
           ),
         );

@@ -6,13 +6,24 @@
     "react/jsx-no-target-blank": "off",
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "error",
-    "react/no-unsafe": "warn",
-    "react/no-find-dom-node": "warn",
+    // The React Compiler's dependency and component checks (#2388). Where a
+    // dependency is deliberately a re-run trigger, or the rule cannot follow
+    // the code (a `try/finally`), the site carries a disable comment saying so.
+    "react/exhaustive-effect-dependencies": "error",
+    "react/memo-dependencies": "error",
+    "react/no-unstable-nested-components": "error",
+    "react/hooks": "error",
+    "react/capitalized-calls": "error",
+    "react/no-unsafe": "error",
+    "react/no-find-dom-node": "error",
+    "react/iframe-missing-sandbox": "error",
 
-    "jsx-a11y/alt-text": ["warn", { "elements": ["img"], "img": ["Image"] }],
-    "jsx-a11y/aria-props": "warn",
+    // The jsx-a11y rules still at "warn" have sites that the accessibility
+    // audit (#1318) fixes. Raise each one to "error" once it has none left.
+    "jsx-a11y/alt-text": ["error", { "elements": ["img"], "img": ["Image"] }],
+    "jsx-a11y/aria-props": "error",
     "jsx-a11y/aria-proptypes": "warn",
-    "jsx-a11y/aria-unsupported-elements": "warn",
+    "jsx-a11y/aria-unsupported-elements": "error",
     "jsx-a11y/role-has-required-aria-props": "warn",
     "jsx-a11y/role-supports-aria-props": "warn",
     "jsx-a11y/click-events-have-key-events": "warn",
@@ -21,10 +32,10 @@
     "jsx-a11y/no-autofocus": "off",
     "jsx-a11y/prefer-tag-over-role": "warn",
     "jsx-a11y/media-has-caption": "warn",
-    "jsx-a11y/label-has-associated-control": "warn",
+    "jsx-a11y/label-has-associated-control": "error",
     "jsx-a11y/no-noninteractive-tabindex": "warn",
     "jsx-a11y/interactive-supports-focus": "warn",
-    "jsx-a11y/anchor-is-valid": "warn"
+    "jsx-a11y/anchor-is-valid": "error"
   },
   "overrides": [
     {

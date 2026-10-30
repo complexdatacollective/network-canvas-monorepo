@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { isBlankMessage } from '../../localization/blankText.ts';
 import {
@@ -42,31 +42,20 @@ export * from './stages/index.ts';
 export * from './variables/index.ts';
 
 // Import what we need for the ProtocolSchema
-import { assetSchema } from './assets/index.ts';
-import {
-  type Codebook,
-  CodebookSchema,
-  type NodeDefinition,
-} from './codebook/index.ts';
-import {
-  ExperimentsSchema,
-  type FormField,
-  type StageSubject,
-} from './common/index.ts';
+import type { Codebook, NodeDefinition } from './codebook/index.ts';
+import type { FormField, StageSubject } from './common/index.ts';
 import { isSuppliedOptionLabelSet } from './family-pedigree-option-labels.ts';
 import type { FilterRule } from './filters/index.ts';
 import {
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
 } from './interface-owned-options.ts';
-import { InterfaceTextSchema } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
+import { ProtocolStructureSchema } from './protocol-structure.ts';
 import { CATEGORICAL_BIN_MAX_BINS } from './stages/categorical-bin.ts';
-import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
+import type { Prompt, Stage } from './stages/index.ts';
 import { findDuplicateDiseaseLabels } from './stages/narrative-pedigree.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
-import { missingRequiredStageSettings } from './supplied-stage-text.ts';
-import { findTimelineStructureProblems } from './timeline-structure.ts';
 import {
   ComponentTypes,
   NON_RENDERABLE_VARIABLE_TYPES,
@@ -653,850 +642,634 @@ const unknownRenderingFor = (
   return new Set([...bucket].filter((id) => !written.has(id)));
 };
 
-const ProtocolSchema = z
-  .strictObject({
-    name: z.string().min(1),
-    description: z.string().optional(),
-    localization: ProtocolLocalizationSchema,
-    experiments: ExperimentsSchema.optional(),
-    lastModified: z.string().datetime().optional(),
-    codebook: CodebookSchema,
-    // The interview's words that belong to no one stage (see
-    // `interface-text.ts`). Architect keeps it holding what the protocol
-    // uses; the interview shows its own words for anything it lacks.
-    interfaceText: InterfaceTextSchema.optional(),
-    assetManifest: z.record(z.string(), assetSchema).optional(),
-    stages: z.array(stageSchema).superRefine((stages, ctx) => {
-      // Check for duplicate stage IDs
-      const duplicateStageId = findDuplicateId(stages);
-      if (duplicateStageId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Stages contain duplicate ID "${duplicateStageId}"`,
-          path: [],
-        });
-      }
+const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
+  // Walk the protocol's structure to validate all entity-attribute
+  // references.
+  const hits = collectEntityAttributeReferencesFromSchema(
+    ProtocolStructureSchema,
+    protocol,
+  );
+  for (const issue of validateReferences(protocol.codebook, hits)) {
+    ctx.addIssue(issue);
+  }
 
-      // A setting the interview shows on a stage is written there. The stage
-      // must hold it wherever its configuration shows it (see
-      // `missingRequiredStageSettings`).
-      stages.forEach((stage, index) => {
-        for (const path of missingRequiredStageSettings(stage)) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `The interview shows this stage's "${path.join('.')}" setting, so the stage must hold it.`,
-            path: [index, ...path],
-          });
-        }
-      });
+  // Translations are checked against the declared languages only once that
+  // declaration is itself valid; otherwise every key would be reported as
+  // undeclared on top of the declaration's own issue.
+  const localization = ProtocolLocalizationSchema.safeParse(
+    protocol.localization,
+  ).success
+    ? protocol.localization
+    : undefined;
 
-      // Every route ends at a finish stage, and every stage is on a route.
-      for (const problem of findTimelineStructureProblems(stages)) {
-        switch (problem.kind) {
-          case 'empty':
-            ctx.addIssue({
-              code: 'custom' as const,
-              message:
-                'A protocol must have at least one stage: a finish stage to end the interview.',
-              path: [],
-            });
-            break;
-          case 'no-finish':
-            ctx.addIssue({
-              code: 'custom' as const,
-              message:
-                'The interview must end with a finish stage, but it ends after this stage.',
-              path: [problem.stageIndex],
-            });
-            break;
-          case 'unreachable':
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `This stage comes after the finish stage at position ${problem.finishStageIndex + 1}, so no participant can reach it.`,
-              path: [problem.stageIndex],
-            });
-            break;
-        }
-      }
-    }),
-    schemaVersion: z.literal(9),
-  })
-  .superRefine((protocol, ctx) => {
-    // Use ProtocolSchema (captured by closure) to walk the schema tree and
-    // validate all entity-attribute references. It is guaranteed to be
-    // assigned by the time this callback runs (safeParse is called after
-    // module initialization completes).
-    const hits = collectEntityAttributeReferencesFromSchema(
-      ProtocolSchema,
-      protocol,
-    );
-    for (const issue of validateReferences(protocol.codebook, hits)) {
-      ctx.addIssue(issue);
-    }
+  const localizedStrings = collectLocalizedStringsFromSchema(
+    ProtocolStructureSchema,
+    protocol,
+  );
 
-    // Translations are checked against the declared languages only once that
-    // declaration is itself valid; otherwise every key would be reported as
-    // undeclared on top of the declaration's own issue.
-    const localization = ProtocolLocalizationSchema.safeParse(
-      protocol.localization,
-    ).success
-      ? protocol.localization
-      : undefined;
-
-    const localizedStrings = collectLocalizedStringsFromSchema(
-      ProtocolSchema,
-      protocol,
-    );
-
-    if (localization) {
-      for (const hit of localizedStrings) {
-        for (const locale of Object.keys(hit.value)) {
-          // A malformed or undetermined tag is already reported by the
-          // field's own schema.
-          if (
-            !isCanonicalLocale(locale) ||
-            isUndeterminedLocale(locale) ||
-            localization.locales.includes(locale)
-          ) {
-            continue;
-          }
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Text has a translation for "${locale}", which is not one of the protocol's languages.`,
-            path: [...hit.path, locale],
-          });
-        }
-      }
-    }
-
-    // The values each stage's text shows: bound, available where shown,
-    // guarded where they can be missing, and shown by every translation
-    // wherever the default-language text shows them.
-    for (const problem of findDynamicValueProblems(
-      {
-        codebook: protocol.codebook,
-        stages: protocol.stages,
-        defaultLocale: localization?.defaultLocale,
-      },
-      localizedStrings,
-    )) {
-      ctx.addIssue({ code: 'custom' as const, ...problem });
-    }
-
-    // Interface-owned structural slots: an interface that DERIVES an
-    // attribute's values from the structure a participant builds cannot share
-    // that attribute with anything else, or the two writers overwrite each
-    // other. Declared on the schema reference (`exclusive`) and derived here,
-    // so a newly-tagged slot is enforced without a new hand-written check.
-    for (const conflict of findExclusiveVariableConflicts(protocol, hits)) {
-      ctx.addIssue({
-        code: 'custom' as const,
-        message: `Attribute "${conflict.variableName}" is set by ${conflict.owner.owner}, so nothing else in this protocol may set it.`,
-        path: conflict.path,
-      });
-    }
-
-    // Interface-owned value sets: the interview and the genetics engine branch
-    // on these exact values, so a variable bound to such a slot must still
-    // carry its canonical options. Only fires for a categorical or ordinal
-    // variable that exists and whose options have drifted, so a
-    // legitimately-authored protocol always passes.
-    for (const binding of findInterfaceOwnedOptionBindings(protocol, hits)) {
-      const { entity, type } = binding.subject;
-      // A node/edge reference with no resolvable type names no codebook at
-      // all; the reference validator above already reports that.
-      if (entity !== 'ego' && type === undefined) continue;
-      const subject: StageSubject =
-        entity === 'ego' ? { entity } : { entity, type: type ?? '' };
-      const variable = getVariablesForSubject(protocol.codebook, subject)[
-        binding.variableId
-      ];
-      if (
-        !variable ||
-        (variable.type !== 'categorical' && variable.type !== 'ordinal')
-      ) {
-        continue;
-      }
-      const optionSet = INTERFACE_OWNED_OPTION_SETS[binding.optionSet];
-      const owningStageIndex = binding.path[1];
-      const owningStage =
-        typeof owningStageIndex === 'number'
-          ? protocol.stages[owningStageIndex]
-          : undefined;
-      if (optionsMatchInterfaceOwnedSet(variable.options, optionSet.options)) {
-        // The interview shows these labels as the answers themselves, with no
-        // wording of its own to fall back on, so none may be blank.
-        if (isSuppliedOptionLabelSet(binding.optionSet)) {
-          variable.options.forEach((option, index) => {
-            for (const [locale, label] of Object.entries(option.label)) {
-              if (!isBlankMessage(label)) continue;
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `Every option of the ${optionSet.label} attribute "${variableNameFor(protocol, subject, binding.variableId)}" used by ${stageNameFor(owningStage?.type)} needs a label, because participants choose from them.`,
-                path: [
-                  'codebook',
-                  ...(entity === 'ego' ? ['ego'] : [entity, type ?? '']),
-                  'variables',
-                  binding.variableId,
-                  'options',
-                  index,
-                  'label',
-                  locale,
-                ],
-              });
-            }
-          });
-        }
-        continue;
-      }
-      ctx.addIssue({
-        code: 'custom' as const,
-        message: `The ${optionSet.label} attribute "${variableNameFor(protocol, subject, binding.variableId)}" used by ${stageNameFor(owningStage?.type)} must keep its fixed options.`,
-        path: binding.path,
-      });
-    }
-
-    // Stage-managed option lists: the stage that manages a variable's options
-    // keeps what each option means beside them (the Family Pedigree's kinship
-    // words), in its own section. A second managing stage would hold its own
-    // copy of that meaning, which an options edit made from the first could
-    // not rewrite, so the two would silently disagree. One stage manages a
-    // variable's options: every stage that shares one is refused, naming the
-    // others, as Architect refuses it in each of them.
-    const managedBindings = findStageManagedOptionBindings(protocol, hits);
-    const managedKey = (binding: (typeof managedBindings)[number]) =>
-      JSON.stringify([
-        binding.subject.entity,
-        binding.subject.type ?? null,
-        binding.variableId,
-      ]);
-    for (const binding of managedBindings) {
-      const { entity, type } = binding.subject;
-      if (entity !== 'ego' && type === undefined) continue;
-      const key = managedKey(binding);
-      const others = [
-        ...new Set(
-          managedBindings
-            .filter(
-              (other) =>
-                other.stageId !== binding.stageId && managedKey(other) === key,
-            )
-            .map((other) => `"${other.stageLabel}"`),
-        ),
-      ];
-      if (others.length === 0) continue;
-      const subject: StageSubject =
-        entity === 'ego' ? { entity } : { entity, type: type ?? '' };
-      ctx.addIssue({
-        code: 'custom' as const,
-        message: `The options of attribute "${variableNameFor(protocol, subject, binding.variableId)}" are also managed by ${others.length === 1 ? 'the stage' : 'the stages'} ${others.join(', ')}, but only one stage may manage them, because each decides ${binding.descriptor.owner}. Choose another attribute.`,
-        path: binding.path,
-      });
-    }
-
-    // A Family Pedigree stage's gender identity terms map the options of its
-    // gender identity attribute to kinship words, and no option may be mapped
-    // twice. A term for a value the attribute does not have is NOT an error:
-    // the attribute's options are edited in the codebook before the stage that
-    // owns the words is saved, so the two are briefly out of step while a
-    // researcher works, and the interview ignores such a term. A missing or
-    // retyped attribute is reported by the reference validator above.
-    protocol.stages.forEach((stage, stageIndex) => {
-      if (stage.type !== 'FamilyPedigree') return;
-      const genderIdentity = stage.nodeConfiguration.genderIdentity;
-      if (!genderIdentity) return;
-      const seen = new Set<string | number>();
-      genderIdentity.terms.forEach((term, termIndex) => {
-        if (seen.has(term.value)) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Family Pedigree gender identity words are given more than once for "${term.value}". Each option takes one set of words.`,
-            path: [
-              'stages',
-              stageIndex,
-              'nodeConfiguration',
-              'genderIdentity',
-              'terms',
-              termIndex,
-              'value',
-            ],
-          });
-        }
-        seen.add(term.value);
-      });
-    });
-
-    // A Family Pedigree stage records each of its own answers about a person
-    // in an attribute of its own: the name, gender identity, sex assigned at
-    // birth and each nomination prompt's selection. Two of them sharing an
-    // attribute would overwrite each other, and the stage's additional person
-    // fields may collect none of them, as the stage already asks or sets them
-    // itself. (The participant marker, the relationship to the participant
-    // and the relatives-not-recorded attribute are exclusive slots, which the
-    // exclusivity check above already keeps from every other writer.)
-    protocol.stages.forEach((stage, stageIndex) => {
-      if (stage.type !== 'FamilyPedigree') return;
-      const { nodeConfiguration } = stage;
-      const stagePath = ['stages', stageIndex] as const;
-      const bindings: {
-        variable: string;
-        role: string;
-        path: (string | number)[];
-      }[] = [
-        {
-          variable: nodeConfiguration.nameAttribute,
-          role: 'name',
-          path: [...stagePath, 'nodeConfiguration', 'nameAttribute'],
-        },
-        ...(nodeConfiguration.genderIdentity
-          ? [
-              {
-                variable: nodeConfiguration.genderIdentity.attribute,
-                role: 'gender identity',
-                path: [
-                  ...stagePath,
-                  'nodeConfiguration',
-                  'genderIdentity',
-                  'attribute',
-                ],
-              },
-            ]
-          : []),
-        {
-          variable: nodeConfiguration.sexAssignedAtBirthAttribute,
-          role: 'sex assigned at birth',
-          path: [
-            ...stagePath,
-            'nodeConfiguration',
-            'sexAssignedAtBirthAttribute',
-          ],
-        },
-        ...(stage.nominationPrompts ?? []).map((prompt, promptIndex) => ({
-          variable: prompt.attribute,
-          role: 'nomination prompt',
-          path: [...stagePath, 'nominationPrompts', promptIndex, 'attribute'],
-        })),
-      ];
-      const roleOf = new Map<string, string>();
-      for (const binding of bindings) {
-        const earlier = roleOf.get(binding.variable);
-        if (earlier !== undefined) {
-          const name = variableNameFor(
-            protocol,
-            stage.subject,
-            binding.variable,
-          );
-          ctx.addIssue({
-            code: 'custom' as const,
-            message:
-              earlier === binding.role
-                ? `Attribute "${name}" is already the attribute of another ${earlier} of this Family Pedigree stage. Each ${earlier} needs an attribute of its own.`
-                : `Attribute "${name}" is already the ${earlier} attribute of this Family Pedigree stage, so it cannot also hold its ${binding.role} answer. Each needs an attribute of its own.`,
-            path: binding.path,
-          });
-        } else {
-          roleOf.set(binding.variable, binding.role);
-        }
-      }
-      stage.form?.fields.forEach((field, fieldIndex) => {
-        const role = roleOf.get(field.variable);
-        if (role === undefined) return;
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Attribute "${variableNameFor(protocol, stage.subject, field.variable)}" is the ${role} attribute of this Family Pedigree stage, which the stage records itself, so its additional person fields cannot collect it as well.`,
-          path: [...stagePath, 'form', 'fields', fieldIndex, 'variable'],
-        });
-      });
-    });
-
-    const composerFieldOverrides = collectComposerFieldOverrides(
-      protocol.stages,
-    );
-
-    // 1. Stage validation
-    protocol.stages.forEach((stage, stageIndex) => {
-      const skipDestination = stage.skipLogic?.destination;
-      if (skipDestination?.type === 'stage') {
-        const destinationIndex = protocol.stages.findIndex(
-          (candidate) => candidate.id === skipDestination.stageId,
-        );
-
-        if (destinationIndex === -1) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Skip destination stage "${skipDestination.stageId}" does not exist.`,
-            path: ['stages', stageIndex, 'skipLogic', 'destination', 'stageId'],
-          });
-        } else if (destinationIndex <= stageIndex) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Skip destination stage "${skipDestination.stageId}" must come after the stage that references it.`,
-            path: ['stages', stageIndex, 'skipLogic', 'destination', 'stageId'],
-          });
-        }
-      }
-
-      // Schema 9 alone refuses an Anonymisation stage whose minimum
-      // passphrase length is above its maximum, since no participant could
-      // choose a passphrase. Schema 8 still accepts one, so the 8 to 9
-      // migration can remove the pair rather than refuse the protocol.
-      if (stage.type === 'Anonymisation') {
-        const minLength = stage.validation?.minLength;
-        const maxLength = stage.validation?.maxLength;
+  if (localization) {
+    for (const hit of localizedStrings) {
+      for (const locale of Object.keys(hit.value)) {
+        // A malformed or undetermined tag is already reported by the
+        // field's own schema.
         if (
-          minLength !== undefined &&
-          maxLength !== undefined &&
-          minLength > maxLength
+          !isCanonicalLocale(locale) ||
+          isUndeterminedLocale(locale) ||
+          localization.locales.includes(locale)
         ) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `The minimum passphrase length (${minLength}) is longer than the maximum (${maxLength}), so no participant could choose a passphrase.`,
-            path: ['stages', stageIndex, 'validation', 'minLength'],
-          });
+          continue;
         }
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Text has a translation for "${locale}", which is not one of the protocol's languages.`,
+          path: [...hit.path, locale],
+        });
       }
+    }
+  }
 
-      // Check stage subject exists in codebook
-      if ('subject' in stage && stage.subject) {
-        if (!entityExists(protocol.codebook, stage.subject)) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: 'Stage subject is not defined in the codebook',
-            path: ['stages', stageIndex, 'subject'],
-          });
-        }
-      }
+  // The values each stage's text shows: bound, available where shown,
+  // guarded where they can be missing, and shown by every translation
+  // wherever the default-language text shows them.
+  for (const problem of findDynamicValueProblems(
+    {
+      codebook: protocol.codebook,
+      stages: protocol.stages,
+      defaultLocale: localization?.defaultLocale,
+    },
+    localizedStrings,
+  )) {
+    ctx.addIssue({ code: 'custom' as const, ...problem });
+  }
 
-      // Canvas image backgrounds must resolve to image assets. The stage-level
-      // schema enforces the background shape; this protocol-level check binds
-      // the referenced id to the manifest.
-      if (
-        'background' in stage &&
-        stage.background &&
-        'image' in stage.background &&
-        typeof stage.background.image === 'string'
-      ) {
-        const imageAssetId = stage.background.image;
-        const asset = protocol.assetManifest?.[imageAssetId];
-        if (!asset) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Canvas background image "${imageAssetId}" does not reference an asset in the manifest.`,
-            path: ['stages', stageIndex, 'background', 'image'],
-          });
-        } else if (asset.type !== 'image') {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Canvas background image "${imageAssetId}" must reference an 'image' asset, but is of type "${asset.type}".`,
-            path: ['stages', stageIndex, 'background', 'image'],
-          });
-        }
-      }
+  // Interface-owned structural slots: an interface that DERIVES an
+  // attribute's values from the structure a participant builds cannot share
+  // that attribute with anything else, or the two writers overwrite each
+  // other. Declared on the schema reference (`exclusive`) and derived here,
+  // so a newly-tagged slot is enforced without a new hand-written check.
+  for (const conflict of findExclusiveVariableConflicts(protocol, hits)) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: `Attribute "${conflict.variableName}" is set by ${conflict.owner.owner}, so nothing else in this protocol may set it.`,
+      path: conflict.path,
+    });
+  }
 
-      // Form field type validation: existence is covered by the
-      // entity-attribute reference validator above; here we additionally reject
-      // variables whose type cannot be rendered as a form field (layout/location).
-      if ('form' in stage && stage.form?.fields) {
-        let subject: StageSubject | undefined;
-        if (stage.type === 'EgoForm') {
-          subject = { entity: 'ego' };
-        } else if ('subject' in stage && stage.subject) {
-          subject = stage.subject;
-        }
-
-        stage.form.fields.forEach((field: FormField, fieldIndex: number) => {
-          if (subject) {
-            validateFormFieldVariable(
-              protocol.codebook,
-              field.variable,
-              subject,
-              ['stages', stageIndex, 'form', 'fields', fieldIndex, 'variable'],
-              (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-            );
+  // Interface-owned value sets: the interview and the genetics engine branch
+  // on these exact values, so a variable bound to such a slot must still
+  // carry its canonical options. Only fires for a categorical or ordinal
+  // variable that exists and whose options have drifted, so a
+  // legitimately-authored protocol always passes.
+  for (const binding of findInterfaceOwnedOptionBindings(protocol, hits)) {
+    const { entity, type } = binding.subject;
+    // A node/edge reference with no resolvable type names no codebook at
+    // all; the reference validator above already reports that.
+    if (entity !== 'ego' && type === undefined) continue;
+    const subject: StageSubject =
+      entity === 'ego' ? { entity } : { entity, type: type ?? '' };
+    const variable = getVariablesForSubject(protocol.codebook, subject)[
+      binding.variableId
+    ];
+    if (
+      !variable ||
+      (variable.type !== 'categorical' && variable.type !== 'ordinal')
+    ) {
+      continue;
+    }
+    const optionSet = INTERFACE_OWNED_OPTION_SETS[binding.optionSet];
+    const owningStageIndex = binding.path[1];
+    const owningStage =
+      typeof owningStageIndex === 'number'
+        ? protocol.stages[owningStageIndex]
+        : undefined;
+    if (optionsMatchInterfaceOwnedSet(variable.options, optionSet.options)) {
+      // The interview shows these labels as the answers themselves, with no
+      // wording of its own to fall back on, so none may be blank.
+      if (isSuppliedOptionLabelSet(binding.optionSet)) {
+        variable.options.forEach((option, index) => {
+          for (const [locale, label] of Object.entries(option.label)) {
+            if (!isBlankMessage(label)) continue;
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `Every option of the ${optionSet.label} attribute "${variableNameFor(protocol, subject, binding.variableId)}" used by ${stageNameFor(owningStage?.type)} needs a label, because participants choose from them.`,
+              path: [
+                'codebook',
+                ...(entity === 'ego' ? ['ego'] : [entity, type ?? '']),
+                'variables',
+                binding.variableId,
+                'options',
+                index,
+                'label',
+                locale,
+              ],
+            });
           }
         });
+      }
+      continue;
+    }
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: `The ${optionSet.label} attribute "${variableNameFor(protocol, subject, binding.variableId)}" used by ${stageNameFor(owningStage?.type)} must keep its fixed options.`,
+      path: binding.path,
+    });
+  }
+
+  // Stage-managed option lists: the stage that manages a variable's options
+  // keeps what each option means beside them (the Family Pedigree's kinship
+  // words), in its own section. A second managing stage would hold its own
+  // copy of that meaning, which an options edit made from the first could
+  // not rewrite, so the two would silently disagree. One stage manages a
+  // variable's options: every stage that shares one is refused, naming the
+  // others, as Architect refuses it in each of them.
+  const managedBindings = findStageManagedOptionBindings(protocol, hits);
+  const managedKey = (binding: (typeof managedBindings)[number]) =>
+    JSON.stringify([
+      binding.subject.entity,
+      binding.subject.type ?? null,
+      binding.variableId,
+    ]);
+  for (const binding of managedBindings) {
+    const { entity, type } = binding.subject;
+    if (entity !== 'ego' && type === undefined) continue;
+    const key = managedKey(binding);
+    const others = [
+      ...new Set(
+        managedBindings
+          .filter(
+            (other) =>
+              other.stageId !== binding.stageId && managedKey(other) === key,
+          )
+          .map((other) => `"${other.stageLabel}"`),
+      ),
+    ];
+    if (others.length === 0) continue;
+    const subject: StageSubject =
+      entity === 'ego' ? { entity } : { entity, type: type ?? '' };
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: `The options of attribute "${variableNameFor(protocol, subject, binding.variableId)}" are also managed by ${others.length === 1 ? 'the stage' : 'the stages'} ${others.join(', ')}, but only one stage may manage them, because each decides ${binding.descriptor.owner}. Choose another attribute.`,
+      path: binding.path,
+    });
+  }
+
+  // A Family Pedigree stage's gender identity terms map the options of its
+  // gender identity attribute to kinship words, and no option may be mapped
+  // twice. A term for a value the attribute does not have is NOT an error:
+  // the attribute's options are edited in the codebook before the stage that
+  // owns the words is saved, so the two are briefly out of step while a
+  // researcher works, and the interview ignores such a term. A missing or
+  // retyped attribute is reported by the reference validator above.
+  protocol.stages.forEach((stage, stageIndex) => {
+    if (stage.type !== 'FamilyPedigree') return;
+    const genderIdentity = stage.nodeConfiguration.genderIdentity;
+    if (!genderIdentity) return;
+    const seen = new Set<string | number>();
+    genderIdentity.terms.forEach((term, termIndex) => {
+      if (seen.has(term.value)) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Family Pedigree gender identity words are given more than once for "${term.value}". Each option takes one set of words.`,
+          path: [
+            'stages',
+            stageIndex,
+            'nodeConfiguration',
+            'genderIdentity',
+            'terms',
+            termIndex,
+            'value',
+          ],
+        });
+      }
+      seen.add(term.value);
+    });
+  });
+
+  // A Family Pedigree stage records each of its own answers about a person
+  // in an attribute of its own: the name, gender identity, sex assigned at
+  // birth and each nomination prompt's selection. Two of them sharing an
+  // attribute would overwrite each other, and the stage's additional person
+  // fields may collect none of them, as the stage already asks or sets them
+  // itself. (The participant marker, the relationship to the participant
+  // and the relatives-not-recorded attribute are exclusive slots, which the
+  // exclusivity check above already keeps from every other writer.)
+  protocol.stages.forEach((stage, stageIndex) => {
+    if (stage.type !== 'FamilyPedigree') return;
+    const { nodeConfiguration } = stage;
+    const stagePath = ['stages', stageIndex] as const;
+    const bindings: {
+      variable: string;
+      role: string;
+      path: (string | number)[];
+    }[] = [
+      {
+        variable: nodeConfiguration.nameAttribute,
+        role: 'name',
+        path: [...stagePath, 'nodeConfiguration', 'nameAttribute'],
+      },
+      ...(nodeConfiguration.genderIdentity
+        ? [
+            {
+              variable: nodeConfiguration.genderIdentity.attribute,
+              role: 'gender identity',
+              path: [
+                ...stagePath,
+                'nodeConfiguration',
+                'genderIdentity',
+                'attribute',
+              ],
+            },
+          ]
+        : []),
+      {
+        variable: nodeConfiguration.sexAssignedAtBirthAttribute,
+        role: 'sex assigned at birth',
+        path: [
+          ...stagePath,
+          'nodeConfiguration',
+          'sexAssignedAtBirthAttribute',
+        ],
+      },
+      ...(stage.nominationPrompts ?? []).map((prompt, promptIndex) => ({
+        variable: prompt.attribute,
+        role: 'nomination prompt',
+        path: [...stagePath, 'nominationPrompts', promptIndex, 'attribute'],
+      })),
+    ];
+    const roleOf = new Map<string, string>();
+    for (const binding of bindings) {
+      const earlier = roleOf.get(binding.variable);
+      if (earlier !== undefined) {
+        const name = variableNameFor(protocol, stage.subject, binding.variable);
+        ctx.addIssue({
+          code: 'custom' as const,
+          message:
+            earlier === binding.role
+              ? `Attribute "${name}" is already the attribute of another ${earlier} of this Family Pedigree stage. Each ${earlier} needs an attribute of its own.`
+              : `Attribute "${name}" is already the ${earlier} attribute of this Family Pedigree stage, so it cannot also hold its ${binding.role} answer. Each needs an attribute of its own.`,
+          path: binding.path,
+        });
+      } else {
+        roleOf.set(binding.variable, binding.role);
+      }
+    }
+    stage.form?.fields.forEach((field, fieldIndex) => {
+      const role = roleOf.get(field.variable);
+      if (role === undefined) return;
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Attribute "${variableNameFor(protocol, stage.subject, field.variable)}" is the ${role} attribute of this Family Pedigree stage, which the stage records itself, so its additional person fields cannot collect it as well.`,
+        path: [...stagePath, 'form', 'fields', fieldIndex, 'variable'],
+      });
+    });
+  });
+
+  const composerFieldOverrides = collectComposerFieldOverrides(protocol.stages);
+
+  // 1. Stage validation
+  protocol.stages.forEach((stage, stageIndex) => {
+    const skipDestination = stage.skipLogic?.destination;
+    if (skipDestination?.type === 'stage') {
+      const destinationIndex = protocol.stages.findIndex(
+        (candidate) => candidate.id === skipDestination.stageId,
+      );
+
+      if (destinationIndex === -1) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Skip destination stage "${skipDestination.stageId}" does not exist.`,
+          path: ['stages', stageIndex, 'skipLogic', 'destination', 'stageId'],
+        });
+      } else if (destinationIndex <= stageIndex) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Skip destination stage "${skipDestination.stageId}" must come after the stage that references it.`,
+          path: ['stages', stageIndex, 'skipLogic', 'destination', 'stageId'],
+        });
+      }
+    }
+
+    // Schema 9 alone refuses an Anonymisation stage whose minimum
+    // passphrase length is above its maximum, since no participant could
+    // choose a passphrase. Schema 8 still accepts one, so the 8 to 9
+    // migration can remove the pair rather than refuse the protocol.
+    if (stage.type === 'Anonymisation') {
+      const minLength = stage.validation?.minLength;
+      const maxLength = stage.validation?.maxLength;
+      if (
+        minLength !== undefined &&
+        maxLength !== undefined &&
+        minLength > maxLength
+      ) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `The minimum passphrase length (${minLength}) is longer than the maximum (${maxLength}), so no participant could choose a passphrase.`,
+          path: ['stages', stageIndex, 'validation', 'minLength'],
+        });
+      }
+    }
+
+    // Check stage subject exists in codebook
+    if ('subject' in stage && stage.subject) {
+      if (!entityExists(protocol.codebook, stage.subject)) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: 'Stage subject is not defined in the codebook',
+          path: ['stages', stageIndex, 'subject'],
+        });
+      }
+    }
+
+    // Canvas image backgrounds must resolve to image assets. The stage-level
+    // schema enforces the background shape; this protocol-level check binds
+    // the referenced id to the manifest.
+    if (
+      'background' in stage &&
+      stage.background &&
+      'image' in stage.background &&
+      typeof stage.background.image === 'string'
+    ) {
+      const imageAssetId = stage.background.image;
+      const asset = protocol.assetManifest?.[imageAssetId];
+      if (!asset) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Canvas background image "${imageAssetId}" does not reference an asset in the manifest.`,
+          path: ['stages', stageIndex, 'background', 'image'],
+        });
+      } else if (asset.type !== 'image') {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Canvas background image "${imageAssetId}" must reference an 'image' asset, but is of type "${asset.type}".`,
+          path: ['stages', stageIndex, 'background', 'image'],
+        });
+      }
+    }
+
+    // Form field type validation: existence is covered by the
+    // entity-attribute reference validator above; here we additionally reject
+    // variables whose type cannot be rendered as a form field (layout/location).
+    if ('form' in stage && stage.form?.fields) {
+      let subject: StageSubject | undefined;
+      if (stage.type === 'EgoForm') {
+        subject = { entity: 'ego' };
+      } else if ('subject' in stage && stage.subject) {
+        subject = stage.subject;
+      }
+
+      stage.form.fields.forEach((field: FormField, fieldIndex: number) => {
         if (subject) {
-          validateSharedFormContradictions(
-            getVariablesForSubject(protocol.codebook, subject),
-            stage.form.fields,
-            ['stages', stageIndex, 'form', 'fields'],
-            unknownRenderingFor(
-              composerFieldOverrides,
-              subject,
-              stage.form.fields,
-            ),
+          validateFormFieldVariable(
+            protocol.codebook,
+            field.variable,
+            subject,
+            ['stages', stageIndex, 'form', 'fields', fieldIndex, 'variable'],
             (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
           );
         }
-      }
-
-      // 3b.ii. NetworkComposer: a stage field's own component/parameters
-      // overlay must not introduce a validation contradiction the codebook
-      // alone does not have (seventh-wave Finding 2, widened by tenth-wave
-      // Finding 1) — the editor's sibling-overlay guard only runs in
-      // Architect, so an imported protocol can otherwise ship a stage that
-      // breaks at interview time. nodeForm and each edge type's form are
-      // checked independently: validation references are scoped to a single
-      // subject (R2/owningVariable), so they can never share a group.
-      if (stage.type === 'NetworkComposer') {
-        const nodeVariables = getVariablesForSubject(
-          protocol.codebook,
-          stage.subject,
-        );
-        const nodeFormPath = ['stages', stageIndex, 'nodeForm', 'fields'];
-        validateComposerFieldComponents(
-          nodeVariables,
-          stage.nodeForm?.fields,
-          nodeFormPath,
-          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-        );
-        validateComposerFieldContradictions(
-          nodeVariables,
-          stage.nodeForm?.fields,
-          nodeFormPath,
+      });
+      if (subject) {
+        validateSharedFormContradictions(
+          getVariablesForSubject(protocol.codebook, subject),
+          stage.form.fields,
+          ['stages', stageIndex, 'form', 'fields'],
           unknownRenderingFor(
             composerFieldOverrides,
-            stage.subject,
-            stage.nodeForm?.fields,
+            subject,
+            stage.form.fields,
           ),
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
         );
-        stage.edges?.forEach((edge, edgeIndex) => {
-          const edgeVariables = getVariablesForSubject(
-            protocol.codebook,
-            edge.subject,
-          );
-          const edgeFormPath = [
-            'stages',
-            stageIndex,
-            'edges',
-            edgeIndex,
-            'form',
-            'fields',
-          ];
-          validateComposerFieldComponents(
-            edgeVariables,
-            edge.form?.fields,
-            edgeFormPath,
-            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-          );
-          validateComposerFieldContradictions(
-            edgeVariables,
-            edge.form?.fields,
-            edgeFormPath,
-            unknownRenderingFor(
-              composerFieldOverrides,
-              edge.subject,
-              edge.form?.fields,
-            ),
-            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-          );
-        });
       }
+    }
 
-      // 3c. Comprehensive prompt validation (duplicate ID validation moved to individual stage schemas)
-      if ('prompts' in stage && stage.prompts) {
-        stage.prompts.forEach((prompt: Prompt, promptIndex: number) => {
-          // createEdge references validation (entity-type reference, not attribute)
-          if ('createEdge' in prompt && prompt.createEdge) {
-            if (
-              !(
-                protocol.codebook.edge &&
-                Object.keys(protocol.codebook.edge).includes(prompt.createEdge)
-              )
-            ) {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `"${prompt.createEdge}" definition for createEdge not found in codebook["edge"]`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'prompts',
-                  promptIndex,
-                  'createEdge',
-                ],
-              });
-            }
-          }
-
-          // layoutVariable type check (existence is covered by the
-          // entity-attribute reference validator). A sociogram layout variable
-          // must be of type "layout".
-          if (
-            'layout' in prompt &&
-            prompt.layout &&
-            'layoutVariable' in prompt.layout &&
-            prompt.layout.layoutVariable &&
-            typeof prompt.layout.layoutVariable === 'string' &&
-            'subject' in stage &&
-            stage.subject
-          ) {
-            const layoutVariable = prompt.layout.layoutVariable;
-            const variable = getVariablesForSubject(
-              protocol.codebook,
-              stage.subject,
-            )[layoutVariable];
-            if (variable && variable.type !== 'layout') {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `Layout attribute "${layoutVariable}" must be of type "layout", but is "${variable.type}".`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'prompts',
-                  promptIndex,
-                  'layout',
-                  'layoutVariable',
-                ],
-              });
-            }
-          }
-
-          // highlight.variable type check (existence covered by the
-          // entity-attribute reference validator): must reference a boolean.
-          if (
-            'highlight' in prompt &&
-            prompt.highlight &&
-            'variable' in prompt.highlight &&
-            prompt.highlight.variable &&
-            'subject' in stage &&
-            stage.subject
-          ) {
-            const highlightVariable = prompt.highlight.variable;
-            const variable = getVariablesForSubject(
-              protocol.codebook,
-              stage.subject,
-            )[highlightVariable];
-            if (variable && variable.type !== 'boolean') {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `Highlight attribute "${highlightVariable}" must be of type "boolean", but is "${variable.type}".`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'prompts',
-                  promptIndex,
-                  'highlight',
-                  'variable',
-                ],
-              });
-            }
-          }
-        });
-      }
-
-      // 3e. NameGeneratorQuickAdd: quickAdd must reference an existing text
-      // variable on the subject node type.
-      if (
-        stage.type === 'NameGeneratorQuickAdd' &&
-        'quickAdd' in stage &&
-        stage.quickAdd &&
-        'subject' in stage &&
-        stage.subject
-      ) {
-        const variable = getVariablesForSubject(
-          protocol.codebook,
+    // 3b.ii. NetworkComposer: a stage field's own component/parameters
+    // overlay must not introduce a validation contradiction the codebook
+    // alone does not have (seventh-wave Finding 2, widened by tenth-wave
+    // Finding 1) — the editor's sibling-overlay guard only runs in
+    // Architect, so an imported protocol can otherwise ship a stage that
+    // breaks at interview time. nodeForm and each edge type's form are
+    // checked independently: validation references are scoped to a single
+    // subject (R2/owningVariable), so they can never share a group.
+    if (stage.type === 'NetworkComposer') {
+      const nodeVariables = getVariablesForSubject(
+        protocol.codebook,
+        stage.subject,
+      );
+      const nodeFormPath = ['stages', stageIndex, 'nodeForm', 'fields'];
+      validateComposerFieldComponents(
+        nodeVariables,
+        stage.nodeForm?.fields,
+        nodeFormPath,
+        (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+      );
+      validateComposerFieldContradictions(
+        nodeVariables,
+        stage.nodeForm?.fields,
+        nodeFormPath,
+        unknownRenderingFor(
+          composerFieldOverrides,
           stage.subject,
-        )[stage.quickAdd];
-        if (variable && variable.type !== 'text') {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `quickAdd attribute "${stage.quickAdd}" must be of type "text", but is "${variable.type}".`,
-            path: ['stages', stageIndex, 'quickAdd'],
-          });
-        }
-      }
-
-      // 3e.ii. NameGeneratorRoster: dataSource must reference a manifest entry
-      // of type 'network' (reject 'existing', missing ids, non-network types).
-      if (stage.type === 'NameGeneratorRoster' && 'dataSource' in stage) {
-        const asset = protocol.assetManifest?.[stage.dataSource];
-        if (!asset) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Roster dataSource "${stage.dataSource}" does not reference an asset in the manifest.`,
-            path: ['stages', stageIndex, 'dataSource'],
-          });
-        } else if (asset.type !== 'network') {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Roster dataSource "${stage.dataSource}" must reference a 'network' asset, but is of type "${asset.type}".`,
-            path: ['stages', stageIndex, 'dataSource'],
-          });
-        }
-      }
-
-      // 3e.iii. Geospatial: token/dataSource map assets must resolve to manifest
-      // entries of the correct type, and the prompt variable must be 'location'.
-      if (stage.type === 'Geospatial' && 'mapOptions' in stage) {
-        const checkMapAsset = (
-          assetId: string,
-          allowedTypes: string[],
-          field: 'tokenAssetId' | 'dataSourceAssetId',
-        ) => {
-          const asset = protocol.assetManifest?.[assetId];
-          if (!asset) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `Geospatial ${field} "${assetId}" does not reference an asset in the manifest.`,
-              path: ['stages', stageIndex, 'mapOptions', field],
-            });
-          } else if (!allowedTypes.includes(asset.type)) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `Geospatial ${field} "${assetId}" must reference an asset of type ${allowedTypes.map((t) => `'${t}'`).join(' or ')}, but is of type "${asset.type}".`,
-              path: ['stages', stageIndex, 'mapOptions', field],
-            });
-          }
-        };
-
-        checkMapAsset(
-          stage.mapOptions.tokenAssetId,
-          ['apikey'],
-          'tokenAssetId',
+          stage.nodeForm?.fields,
+        ),
+        (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+      );
+      stage.edges?.forEach((edge, edgeIndex) => {
+        const edgeVariables = getVariablesForSubject(
+          protocol.codebook,
+          edge.subject,
         );
-        checkMapAsset(
-          stage.mapOptions.dataSourceAssetId,
-          ['geojson', 'network'],
-          'dataSourceAssetId',
+        const edgeFormPath = [
+          'stages',
+          stageIndex,
+          'edges',
+          edgeIndex,
+          'form',
+          'fields',
+        ];
+        validateComposerFieldComponents(
+          edgeVariables,
+          edge.form?.fields,
+          edgeFormPath,
+          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
         );
+        validateComposerFieldContradictions(
+          edgeVariables,
+          edge.form?.fields,
+          edgeFormPath,
+          unknownRenderingFor(
+            composerFieldOverrides,
+            edge.subject,
+            edge.form?.fields,
+          ),
+          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+        );
+      });
+    }
 
-        if ('subject' in stage && stage.subject) {
-          stage.prompts.forEach((prompt, promptIndex) => {
-            if (
-              'variable' in prompt &&
-              prompt.variable &&
-              variableExists(protocol.codebook, stage.subject, prompt.variable)
-            ) {
-              const variable = getVariablesForSubject(
-                protocol.codebook,
-                stage.subject,
-              )[prompt.variable];
-              if (variable && variable.type !== 'location') {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message: `Geospatial prompt attribute "${prompt.variable}" must be of type "location", but is "${variable.type}".`,
-                  path: [
-                    'stages',
-                    stageIndex,
-                    'prompts',
-                    promptIndex,
-                    'variable',
-                  ],
-                });
-              }
-            }
-          });
-        }
-      }
-
-      // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree
-      // stage; disease attributes must resolve on the source node type; disease
-      // labels must differ in every language a participant can see them in.
-      if (stage.type === 'NarrativePedigree') {
-        if (localization) {
-          for (const duplicate of findDuplicateDiseaseLabels(
-            stage.diseases,
-            localization,
-          )) {
-            const language =
-              localization.locales.length > 1 ? ` (${duplicate.locale})` : '';
+    // 3c. Comprehensive prompt validation (duplicate ID validation moved to individual stage schemas)
+    if ('prompts' in stage && stage.prompts) {
+      stage.prompts.forEach((prompt: Prompt, promptIndex: number) => {
+        // createEdge references validation (entity-type reference, not attribute)
+        if ('createEdge' in prompt && prompt.createEdge) {
+          if (
+            !(
+              protocol.codebook.edge &&
+              Object.keys(protocol.codebook.edge).includes(prompt.createEdge)
+            )
+          ) {
             ctx.addIssue({
               code: 'custom' as const,
-              message: `Diseases contain duplicate label "${duplicate.text}"${language}`,
+              message: `"${prompt.createEdge}" definition for createEdge not found in codebook["edge"]`,
               path: [
                 'stages',
                 stageIndex,
-                'diseases',
-                duplicate.index,
-                'label',
+                'prompts',
+                promptIndex,
+                'createEdge',
               ],
             });
           }
         }
 
-        const sourceStageIndex = protocol.stages.findIndex(
-          (s) => s.id === stage.sourceStageId,
-        );
-        const sourceStage = protocol.stages[sourceStageIndex];
-
-        if (!sourceStage) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `NarrativePedigree sourceStageId "${stage.sourceStageId}" does not reference an existing stage.`,
-            path: ['stages', stageIndex, 'sourceStageId'],
-          });
-        } else if (sourceStage.type !== 'FamilyPedigree') {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `NarrativePedigree sourceStageId "${stage.sourceStageId}" must reference a FamilyPedigree stage, but references a "${sourceStage.type}" stage.`,
-            path: ['stages', stageIndex, 'sourceStageId'],
-          });
-        } else {
-          // The narrative shows the family the participant drew, so a source
-          // that runs later has drawn nothing yet when the narrative opens.
-          if (sourceStageIndex > stageIndex) {
+        // layoutVariable type check (existence is covered by the
+        // entity-attribute reference validator). A sociogram layout variable
+        // must be of type "layout".
+        if (
+          'layout' in prompt &&
+          prompt.layout &&
+          'layoutVariable' in prompt.layout &&
+          prompt.layout.layoutVariable &&
+          typeof prompt.layout.layoutVariable === 'string' &&
+          'subject' in stage &&
+          stage.subject
+        ) {
+          const layoutVariable = prompt.layout.layoutVariable;
+          const variable = getVariablesForSubject(
+            protocol.codebook,
+            stage.subject,
+          )[layoutVariable];
+          if (variable && variable.type !== 'layout') {
             ctx.addIssue({
               code: 'custom' as const,
-              message: `NarrativePedigree sourceStageId "${stage.sourceStageId}" must reference a FamilyPedigree stage that comes before it.`,
-              path: ['stages', stageIndex, 'sourceStageId'],
+              message: `Layout attribute "${layoutVariable}" must be of type "layout", but is "${variable.type}".`,
+              path: [
+                'stages',
+                stageIndex,
+                'prompts',
+                promptIndex,
+                'layout',
+                'layoutVariable',
+              ],
             });
           }
-          // sourceStage is confirmed FamilyPedigree — resolve each disease
-          // attribute on its people, the stage's subject node type. These are
-          // typically the boolean attributes its nomination prompts set.
-          const sourceNodeType = sourceStage.subject.type;
-          const sourceSubject = {
-            entity: 'node' as const,
-            type: sourceNodeType,
-          };
-          const sourceVariables = getVariablesForSubject(
-            protocol.codebook,
-            sourceSubject,
-          );
+        }
 
-          stage.diseases.forEach((disease, diseaseIndex) => {
-            const sourceVariable = sourceVariables[disease.attribute];
-            if (!sourceVariable) {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `NarrativePedigree disease attribute "${disease.attribute}" does not exist on source node type "${sourceNodeType}".`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'diseases',
-                  diseaseIndex,
-                  'attribute',
-                ],
-              });
-            } else if (sourceVariable.type !== 'boolean') {
-              // The genetics engine's affection predicate is a strict boolean
-              // `=== true`; a non-boolean attribute would silently yield an empty
-              // affected set (a clinically blank pedigree).
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `NarrativePedigree disease attribute "${disease.attribute}" must be a boolean attribute (affected/not affected), but is "${sourceVariable.type}".`,
-                path: [
-                  'stages',
-                  stageIndex,
-                  'diseases',
-                  diseaseIndex,
-                  'attribute',
-                ],
-              });
-            }
+        // highlight.variable type check (existence covered by the
+        // entity-attribute reference validator): must reference a boolean.
+        if (
+          'highlight' in prompt &&
+          prompt.highlight &&
+          'variable' in prompt.highlight &&
+          prompt.highlight.variable &&
+          'subject' in stage &&
+          stage.subject
+        ) {
+          const highlightVariable = prompt.highlight.variable;
+          const variable = getVariablesForSubject(
+            protocol.codebook,
+            stage.subject,
+          )[highlightVariable];
+          if (variable && variable.type !== 'boolean') {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `Highlight attribute "${highlightVariable}" must be of type "boolean", but is "${variable.type}".`,
+              path: [
+                'stages',
+                stageIndex,
+                'prompts',
+                promptIndex,
+                'highlight',
+                'variable',
+              ],
+            });
+          }
+        }
+      });
+    }
+
+    // 3e. NameGeneratorQuickAdd: quickAdd must reference an existing text
+    // variable on the subject node type.
+    if (
+      stage.type === 'NameGeneratorQuickAdd' &&
+      'quickAdd' in stage &&
+      stage.quickAdd &&
+      'subject' in stage &&
+      stage.subject
+    ) {
+      const variable = getVariablesForSubject(protocol.codebook, stage.subject)[
+        stage.quickAdd
+      ];
+      if (variable && variable.type !== 'text') {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `quickAdd attribute "${stage.quickAdd}" must be of type "text", but is "${variable.type}".`,
+          path: ['stages', stageIndex, 'quickAdd'],
+        });
+      }
+    }
+
+    // 3e.ii. NameGeneratorRoster: dataSource must reference a manifest entry
+    // of type 'network' (reject 'existing', missing ids, non-network types).
+    if (stage.type === 'NameGeneratorRoster' && 'dataSource' in stage) {
+      const asset = protocol.assetManifest?.[stage.dataSource];
+      if (!asset) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Roster dataSource "${stage.dataSource}" does not reference an asset in the manifest.`,
+          path: ['stages', stageIndex, 'dataSource'],
+        });
+      } else if (asset.type !== 'network') {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Roster dataSource "${stage.dataSource}" must reference a 'network' asset, but is of type "${asset.type}".`,
+          path: ['stages', stageIndex, 'dataSource'],
+        });
+      }
+    }
+
+    // 3e.iii. Geospatial: token/dataSource map assets must resolve to manifest
+    // entries of the correct type, and the prompt variable must be 'location'.
+    if (stage.type === 'Geospatial' && 'mapOptions' in stage) {
+      const checkMapAsset = (
+        assetId: string,
+        allowedTypes: string[],
+        field: 'tokenAssetId' | 'dataSourceAssetId',
+      ) => {
+        const asset = protocol.assetManifest?.[assetId];
+        if (!asset) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Geospatial ${field} "${assetId}" does not reference an asset in the manifest.`,
+            path: ['stages', stageIndex, 'mapOptions', field],
+          });
+        } else if (!allowedTypes.includes(asset.type)) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Geospatial ${field} "${assetId}" must reference an asset of type ${allowedTypes.map((t) => `'${t}'`).join(' or ')}, but is of type "${asset.type}".`,
+            path: ['stages', stageIndex, 'mapOptions', field],
           });
         }
-      }
+      };
 
-      // 3e.iv. Bin stages: the prompt variable must match the bin type.
-      if (
-        (stage.type === 'OrdinalBin' || stage.type === 'CategoricalBin') &&
-        'subject' in stage &&
-        stage.subject
-      ) {
-        const expectedType =
-          stage.type === 'OrdinalBin' ? 'ordinal' : 'categorical';
+      checkMapAsset(stage.mapOptions.tokenAssetId, ['apikey'], 'tokenAssetId');
+      checkMapAsset(
+        stage.mapOptions.dataSourceAssetId,
+        ['geojson', 'network'],
+        'dataSourceAssetId',
+      );
+
+      if ('subject' in stage && stage.subject) {
         stage.prompts.forEach((prompt, promptIndex) => {
           if (
             'variable' in prompt &&
@@ -1507,10 +1280,10 @@ const ProtocolSchema = z
               protocol.codebook,
               stage.subject,
             )[prompt.variable];
-            if (variable && variable.type !== expectedType) {
+            if (variable && variable.type !== 'location') {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `${stage.type} prompt attribute "${prompt.variable}" must be of type "${expectedType}", but is "${variable.type}".`,
+                message: `Geospatial prompt attribute "${prompt.variable}" must be of type "location", but is "${variable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -1519,162 +1292,285 @@ const ProtocolSchema = z
                   'variable',
                 ],
               });
-            } else if (
-              stage.type === 'CategoricalBin' &&
-              variable &&
-              'options' in variable
-            ) {
-              const binCount =
-                (variable.options?.length ?? 0) +
-                ('otherVariable' in prompt && prompt.otherVariable ? 1 : 0);
-              if (binCount > CATEGORICAL_BIN_MAX_BINS) {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message: `CategoricalBin prompt draws ${binCount} bins, but the interface supports at most ${CATEGORICAL_BIN_MAX_BINS}. The "other" bin counts towards the limit when otherVariable is set.`,
-                  path: [
-                    'stages',
-                    stageIndex,
-                    'prompts',
-                    promptIndex,
-                    'variable',
-                  ],
-                });
-              }
             }
           }
         });
       }
+    }
 
-      // Note: external-data panel edge rules and panels duplicate ID
-      // validation moved to the stage schemas (`common/panels.ts`)
-
-      // Note: Items duplicate ID validation moved to individual stage schemas
-
-      // Filter rules validation (comprehensive)
-      if ('filter' in stage && stage.filter?.rules) {
-        const duplicateRuleId = findDuplicateId(stage.filter.rules);
-        if (duplicateRuleId) {
+    // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree
+    // stage; disease attributes must resolve on the source node type; disease
+    // labels must differ in every language a participant can see them in.
+    if (stage.type === 'NarrativePedigree') {
+      if (localization) {
+        for (const duplicate of findDuplicateDiseaseLabels(
+          stage.diseases,
+          localization,
+        )) {
+          const language =
+            localization.locales.length > 1 ? ` (${duplicate.locale})` : '';
           ctx.addIssue({
             code: 'custom' as const,
-            message: `Rules contain duplicate ID "${duplicateRuleId}"`,
-            path: ['stages', stageIndex, 'filter', 'rules'],
+            message: `Diseases contain duplicate label "${duplicate.text}"${language}`,
+            path: ['stages', stageIndex, 'diseases', duplicate.index, 'label'],
           });
         }
-
-        // A stage NODE/EDGE filter cannot use ego rules (degenerate at
-        // runtime); ego rules remain valid in skipLogic/panel/query filters.
-        validateFilterRules(
-          stage.filter.rules,
-          protocol.codebook,
-          ['stages', stageIndex, 'filter', 'rules'],
-          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-          { allowEgoRules: false, readsInterview: true },
-        );
       }
 
-      // 3g.ii. skipLogic.filter rules — operator/value and ego-attribute
-      // validation (ego rules allowed here, unlike a stage node/edge filter).
-      if (stage.skipLogic?.filter?.rules) {
-        validateFilterRules(
-          stage.skipLogic.filter.rules,
-          protocol.codebook,
-          ['stages', stageIndex, 'skipLogic', 'filter', 'rules'],
-          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-          { allowEgoRules: true, readsInterview: true },
-        );
-      }
+      const sourceStageIndex = protocol.stages.findIndex(
+        (s) => s.id === stage.sourceStageId,
+      );
+      const sourceStage = protocol.stages[sourceStageIndex];
 
-      // 3g.iii. panels[].filter rules — same validation per panel.
-      if ('panels' in stage && stage.panels) {
-        stage.panels.forEach((panel, panelIndex) => {
-          if (panel.filter?.rules) {
-            validateFilterRules(
-              panel.filter.rules,
-              protocol.codebook,
-              ['stages', stageIndex, 'panels', panelIndex, 'filter', 'rules'],
-              (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-              {
-                allowEgoRules: true,
-                readsInterview: panel.dataSource === 'existing',
-              },
-            );
+      if (!sourceStage) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `NarrativePedigree sourceStageId "${stage.sourceStageId}" does not reference an existing stage.`,
+          path: ['stages', stageIndex, 'sourceStageId'],
+        });
+      } else if (sourceStage.type !== 'FamilyPedigree') {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `NarrativePedigree sourceStageId "${stage.sourceStageId}" must reference a FamilyPedigree stage, but references a "${sourceStage.type}" stage.`,
+          path: ['stages', stageIndex, 'sourceStageId'],
+        });
+      } else {
+        // The narrative shows the family the participant drew, so a source
+        // that runs later has drawn nothing yet when the narrative opens.
+        if (sourceStageIndex > stageIndex) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `NarrativePedigree sourceStageId "${stage.sourceStageId}" must reference a FamilyPedigree stage that comes before it.`,
+            path: ['stages', stageIndex, 'sourceStageId'],
+          });
+        }
+        // sourceStage is confirmed FamilyPedigree — resolve each disease
+        // attribute on its people, the stage's subject node type. These are
+        // typically the boolean attributes its nomination prompts set.
+        const sourceNodeType = sourceStage.subject.type;
+        const sourceSubject = {
+          entity: 'node' as const,
+          type: sourceNodeType,
+        };
+        const sourceVariables = getVariablesForSubject(
+          protocol.codebook,
+          sourceSubject,
+        );
+
+        stage.diseases.forEach((disease, diseaseIndex) => {
+          const sourceVariable = sourceVariables[disease.attribute];
+          if (!sourceVariable) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `NarrativePedigree disease attribute "${disease.attribute}" does not exist on source node type "${sourceNodeType}".`,
+              path: [
+                'stages',
+                stageIndex,
+                'diseases',
+                diseaseIndex,
+                'attribute',
+              ],
+            });
+          } else if (sourceVariable.type !== 'boolean') {
+            // The genetics engine's affection predicate is a strict boolean
+            // `=== true`; a non-boolean attribute would silently yield an empty
+            // affected set (a clinically blank pedigree).
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `NarrativePedigree disease attribute "${disease.attribute}" must be a boolean attribute (affected/not affected), but is "${sourceVariable.type}".`,
+              path: [
+                'stages',
+                stageIndex,
+                'diseases',
+                diseaseIndex,
+                'attribute',
+              ],
+            });
           }
         });
       }
+    }
 
-      // 3h. Check any nested filter rules recursively for duplicate IDs (for
-      // skipLogic, panels, etc.)
-      const validateNestedFilters = (
-        obj: unknown,
-        basePath: (string | number)[],
-      ) => {
-        if (typeof obj === 'object' && obj !== null) {
-          if ('rules' in obj && Array.isArray(obj.rules)) {
-            const rules = obj.rules as unknown[];
-            const duplicateNestedRuleId = findDuplicateId(
-              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every `rules` array reached here is a filter rule list, which the filter schema requires to carry string ids
-              rules as { id: string }[],
-            );
-            if (duplicateNestedRuleId) {
+    // 3e.iv. Bin stages: the prompt variable must match the bin type.
+    if (
+      (stage.type === 'OrdinalBin' || stage.type === 'CategoricalBin') &&
+      'subject' in stage &&
+      stage.subject
+    ) {
+      const expectedType =
+        stage.type === 'OrdinalBin' ? 'ordinal' : 'categorical';
+      stage.prompts.forEach((prompt, promptIndex) => {
+        if (
+          'variable' in prompt &&
+          prompt.variable &&
+          variableExists(protocol.codebook, stage.subject, prompt.variable)
+        ) {
+          const variable = getVariablesForSubject(
+            protocol.codebook,
+            stage.subject,
+          )[prompt.variable];
+          if (variable && variable.type !== expectedType) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `${stage.type} prompt attribute "${prompt.variable}" must be of type "${expectedType}", but is "${variable.type}".`,
+              path: ['stages', stageIndex, 'prompts', promptIndex, 'variable'],
+            });
+          } else if (
+            stage.type === 'CategoricalBin' &&
+            variable &&
+            'options' in variable
+          ) {
+            const binCount =
+              (variable.options?.length ?? 0) +
+              ('otherVariable' in prompt && prompt.otherVariable ? 1 : 0);
+            if (binCount > CATEGORICAL_BIN_MAX_BINS) {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `Rules contain duplicate ID "${duplicateNestedRuleId}"`,
-                path: [...basePath, 'rules'],
+                message: `CategoricalBin prompt draws ${binCount} bins, but the interface supports at most ${CATEGORICAL_BIN_MAX_BINS}. The "other" bin counts towards the limit when otherVariable is set.`,
+                path: [
+                  'stages',
+                  stageIndex,
+                  'prompts',
+                  promptIndex,
+                  'variable',
+                ],
               });
             }
-          }
-          // Recursively check nested objects
-          for (const [key, value] of Object.entries(obj)) {
-            validateNestedFilters(value, [...basePath, key]);
           }
         }
-      };
-      validateNestedFilters(stage, ['stages', stageIndex]);
-    });
+      });
+    }
 
-    // Validate node shape mappings
-    if (protocol.codebook.node) {
-      const discreteEligibleTypes = new Set([
-        'categorical',
-        'ordinal',
-        'boolean',
-      ]);
-      const breakpointEligibleTypes = new Set(['number', 'scalar']);
+    // Note: external-data panel edge rules and panels duplicate ID
+    // validation moved to the stage schemas (`common/panels.ts`)
 
-      for (const [nodeType, nodeDef] of Object.entries(
-        protocol.codebook.node,
-      ) as [string, NodeDefinition][]) {
-        if (nodeDef.shape?.dynamic) {
-          const { dynamic } = nodeDef.shape;
-          const basePath = ['codebook', 'node', nodeType, 'shape', 'dynamic'];
+    // Note: Items duplicate ID validation moved to individual stage schemas
 
-          const variable = nodeDef.variables?.[dynamic.variable];
-          if (variable) {
-            if (
-              dynamic.type === 'discrete' &&
-              !discreteEligibleTypes.has(variable.type)
-            ) {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `Discrete shape mapping requires a categorical, ordinal, or boolean attribute, but "${dynamic.variable}" is of type "${variable.type}"`,
-                path: [...basePath, 'type'],
-              });
-            }
-            if (
-              dynamic.type === 'breakpoints' &&
-              !breakpointEligibleTypes.has(variable.type)
-            ) {
-              ctx.addIssue({
-                code: 'custom' as const,
-                message: `Breakpoint shape mapping requires a number or scalar attribute, but "${dynamic.variable}" is of type "${variable.type}"`,
-                path: [...basePath, 'type'],
-              });
-            }
+    // Filter rules validation (comprehensive)
+    if ('filter' in stage && stage.filter?.rules) {
+      const duplicateRuleId = findDuplicateId(stage.filter.rules);
+      if (duplicateRuleId) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Rules contain duplicate ID "${duplicateRuleId}"`,
+          path: ['stages', stageIndex, 'filter', 'rules'],
+        });
+      }
+
+      // A stage NODE/EDGE filter cannot use ego rules (degenerate at
+      // runtime); ego rules remain valid in skipLogic/panel/query filters.
+      validateFilterRules(
+        stage.filter.rules,
+        protocol.codebook,
+        ['stages', stageIndex, 'filter', 'rules'],
+        (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+        { allowEgoRules: false, readsInterview: true },
+      );
+    }
+
+    // 3g.ii. skipLogic.filter rules — operator/value and ego-attribute
+    // validation (ego rules allowed here, unlike a stage node/edge filter).
+    if (stage.skipLogic?.filter?.rules) {
+      validateFilterRules(
+        stage.skipLogic.filter.rules,
+        protocol.codebook,
+        ['stages', stageIndex, 'skipLogic', 'filter', 'rules'],
+        (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+        { allowEgoRules: true, readsInterview: true },
+      );
+    }
+
+    // 3g.iii. panels[].filter rules — same validation per panel.
+    if ('panels' in stage && stage.panels) {
+      stage.panels.forEach((panel, panelIndex) => {
+        if (panel.filter?.rules) {
+          validateFilterRules(
+            panel.filter.rules,
+            protocol.codebook,
+            ['stages', stageIndex, 'panels', panelIndex, 'filter', 'rules'],
+            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+            {
+              allowEgoRules: true,
+              readsInterview: panel.dataSource === 'existing',
+            },
+          );
+        }
+      });
+    }
+
+    // 3h. Check any nested filter rules recursively for duplicate IDs (for
+    // skipLogic, panels, etc.)
+    const validateNestedFilters = (
+      obj: unknown,
+      basePath: (string | number)[],
+    ) => {
+      if (typeof obj === 'object' && obj !== null) {
+        if ('rules' in obj && Array.isArray(obj.rules)) {
+          const rules = obj.rules as unknown[];
+          const duplicateNestedRuleId = findDuplicateId(
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every `rules` array reached here is a filter rule list, which the filter schema requires to carry string ids
+            rules as { id: string }[],
+          );
+          if (duplicateNestedRuleId) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `Rules contain duplicate ID "${duplicateNestedRuleId}"`,
+              path: [...basePath, 'rules'],
+            });
+          }
+        }
+        // Recursively check nested objects
+        for (const [key, value] of Object.entries(obj)) {
+          validateNestedFilters(value, [...basePath, key]);
+        }
+      }
+    };
+    validateNestedFilters(stage, ['stages', stageIndex]);
+  });
+
+  // Validate node shape mappings
+  if (protocol.codebook.node) {
+    const discreteEligibleTypes = new Set([
+      'categorical',
+      'ordinal',
+      'boolean',
+    ]);
+    const breakpointEligibleTypes = new Set(['number', 'scalar']);
+
+    for (const [nodeType, nodeDef] of Object.entries(
+      protocol.codebook.node,
+    ) as [string, NodeDefinition][]) {
+      if (nodeDef.shape?.dynamic) {
+        const { dynamic } = nodeDef.shape;
+        const basePath = ['codebook', 'node', nodeType, 'shape', 'dynamic'];
+
+        const variable = nodeDef.variables?.[dynamic.variable];
+        if (variable) {
+          if (
+            dynamic.type === 'discrete' &&
+            !discreteEligibleTypes.has(variable.type)
+          ) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `Discrete shape mapping requires a categorical, ordinal, or boolean attribute, but "${dynamic.variable}" is of type "${variable.type}"`,
+              path: [...basePath, 'type'],
+            });
+          }
+          if (
+            dynamic.type === 'breakpoints' &&
+            !breakpointEligibleTypes.has(variable.type)
+          ) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `Breakpoint shape mapping requires a number or scalar attribute, but "${dynamic.variable}" is of type "${variable.type}"`,
+              path: [...basePath, 'type'],
+            });
           }
         }
       }
     }
-  });
+  }
+});
 
 export const ProtocolSchemaV9 = ProtocolSchema;
 export type ProtocolSchemaV9 = z.infer<typeof ProtocolSchema>;

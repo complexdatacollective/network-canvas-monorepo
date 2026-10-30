@@ -79,6 +79,7 @@ export function useBinSelection({
   // shown again.
   useEffect(() => {
     if (focalNodeId) track('focal_node', { node_id: focalNodeId });
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `promptIndex` is a re-run trigger, as above: a new prompt records its focal person again
   }, [focalNodeId, promptIndex, track]);
 
   /** Makes a person focal, or lets go of them if they already are. */

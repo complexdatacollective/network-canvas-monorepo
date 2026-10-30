@@ -120,11 +120,13 @@ async function serverWith(
   const server = await startStudioServer(env, createStudio(env, deps));
   return {
     env,
-    request: (address: string, path: string, init: RequestInit = {}) =>
-      fetch(`${server.origin}${path}`, {
-        ...init,
-        headers: { ...peer(address), ...init.headers },
-      }),
+    request: (address: string, path: string, init: RequestInit = {}) => {
+      const headers = new Headers(peer(address));
+      new Headers(init.headers).forEach((value, name) => {
+        headers.set(name, value);
+      });
+      return fetch(`${server.origin}${path}`, { ...init, headers });
+    },
     raw: (address: string, path: string, method = 'GET') =>
       rawRequest(server.origin, path, { method, headers: peer(address) }),
     dispose: server.dispose,

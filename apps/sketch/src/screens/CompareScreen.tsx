@@ -334,20 +334,16 @@ export const CompareScreen = ({
   // restores a finished side instead of paying for it again.
   const jobOf = (provider: Provider, live: JobRun) =>
     seed && seeded === provider ? seed.job.id : live.jobId;
-  const reportUnfinished = useEffectEvent(() => {
+  const reportUnfinished = useEffectEvent((eitherRunning: boolean) => {
     const jobIds: UnfinishedComparison['jobIds'] = {};
     const anthropicJob = jobOf('anthropic', anthropicLive);
     const openaiJob = jobOf('openai', openaiLive);
     if (anthropicJob) jobIds.anthropic = anthropicJob;
     if (openaiJob) jobIds.openai = openaiJob;
-    onUnfinished(
-      runningAnthropic || runningOpenai
-        ? { description, comparisonId, jobIds }
-        : null,
-    );
+    onUnfinished(eitherRunning ? { description, comparisonId, jobIds } : null);
   });
   useEffect(() => {
-    reportUnfinished();
+    reportUnfinished(runningAnthropic !== null || runningOpenai !== null);
   }, [runningAnthropic, runningOpenai]);
   const seedRun = (provider: Provider, live: JobRun): JobRun =>
     seed && seeded === provider

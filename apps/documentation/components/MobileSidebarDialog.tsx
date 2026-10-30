@@ -28,6 +28,7 @@ export default function MobileSidebarDialog({
 
   useEffect(() => {
     setOpen(false);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a navigation closes the drawer, so `pathname` is a trigger whose value is not needed
   }, [pathname, setOpen]);
 
   // The drawer can remain open for one render while a client navigation moves

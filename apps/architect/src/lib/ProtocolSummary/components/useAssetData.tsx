@@ -36,7 +36,8 @@ const useAssetData = (id: string) => {
       return;
     }
 
-    void getNetworkAssetVariables(id).then((v) => {
+    const loadVariables = async () => {
+      const v = await getNetworkAssetVariables(id);
       if (!v) {
         return;
       }
@@ -45,8 +46,9 @@ const useAssetData = (id: string) => {
           typeof variable === 'string' ? variable : variable.label,
         ),
       );
-    });
-  }, [data, data?.type, getNetworkAssetVariables, id]);
+    };
+    void loadVariables();
+  }, [data, getNetworkAssetVariables, id]);
 
   useEffect(() => {
     let isMounted = true;

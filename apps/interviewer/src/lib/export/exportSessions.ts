@@ -103,33 +103,36 @@ function runOnWorker({
       signal?.removeEventListener('abort', onAbort);
       worker.terminate();
     };
-    worker.onmessage = (message: MessageEvent<ExportWorkerMessage>) => {
-      const payload = message.data;
-      if (payload.type === 'event') {
-        onEvent?.(payload.event);
-        return;
-      }
-      settle();
-      if (payload.type === 'done') {
-        resolve({
-          result: payload.result,
-          blob: payload.blob,
-          fileName: payload.fileName,
-        });
-        return;
-      }
-      const error = new Error(payload.message);
-      error.stack = payload.stack;
-      reject(error);
-    };
-    worker.onerror = (event) => {
+    worker.addEventListener(
+      'message',
+      (message: MessageEvent<ExportWorkerMessage>) => {
+        const payload = message.data;
+        if (payload.type === 'event') {
+          onEvent?.(payload.event);
+          return;
+        }
+        settle();
+        if (payload.type === 'done') {
+          resolve({
+            result: payload.result,
+            blob: payload.blob,
+            fileName: payload.fileName,
+          });
+          return;
+        }
+        const error = new Error(payload.message);
+        error.stack = payload.stack;
+        reject(error);
+      },
+    );
+    worker.addEventListener('error', (event) => {
       settle();
       reject(
         new Error(
           event.message.length > 0 ? event.message : 'Export worker failed',
         ),
       );
-    };
+    });
     const start: ExportWorkerStart = { type: 'start', data, options };
     worker.postMessage(start);
   });

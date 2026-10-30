@@ -93,7 +93,8 @@ function PerceivedFamilyStory({ step }: { step: number }) {
   const [error, setError] = useState<string>();
   useEffect(() => {
     let active = true;
-    void CurrentProtocolSchema.safeParseAsync(prototype).then((result) => {
+    const prepare = async () => {
+      const result = await CurrentProtocolSchema.safeParseAsync(prototype);
       if (!active) return;
       if (!result.success) {
         setError('The demonstration protocol could not be validated.');
@@ -134,7 +135,8 @@ function PerceivedFamilyStory({ step }: { step: number }) {
           },
         }),
       );
-    });
+    };
+    void prepare();
     return () => {
       active = false;
     };

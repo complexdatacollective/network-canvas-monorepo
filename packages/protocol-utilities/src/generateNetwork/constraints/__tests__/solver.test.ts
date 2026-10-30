@@ -168,10 +168,10 @@ describe('solvableComponents', () => {
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: '2020-01-01', max: '2020-01-03' },
-        validation: { differentFrom: ref('then') },
+        validation: { differentFrom: ref('later') },
       },
-      then: {
-        name: 'Then',
+      later: {
+        name: 'Later',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: '2020-01-01', max: '2020-01-03' },

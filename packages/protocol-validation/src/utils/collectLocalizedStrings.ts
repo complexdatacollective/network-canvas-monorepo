@@ -8,9 +8,8 @@ import {
   type LocalizedStringFormat,
 } from '../schemas/9/localized-string.ts';
 // Imported from its own module for the reason given in
-// `collectEntityAttributeReferences.ts`: the schema module calls back into
-// this one, and `../schemas/index.ts` would read the schema before it exists.
-import { ProtocolSchemaV9 } from '../schemas/9/schema.ts';
+// `collectEntityAttributeReferences.ts`.
+import { ProtocolStructureSchema } from '../schemas/9/protocol-structure.ts';
 
 export type LocalizedStringHit = Readonly<{
   path: (string | number)[];
@@ -289,4 +288,4 @@ export const collectLocalizedStringsFromSchema = (
 export const collectLocalizedStrings = (
   protocol: unknown,
 ): LocalizedStringHit[] =>
-  collectLocalizedStringsFromSchema(ProtocolSchemaV9, protocol);
+  collectLocalizedStringsFromSchema(ProtocolStructureSchema, protocol);

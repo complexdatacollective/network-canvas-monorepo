@@ -221,7 +221,7 @@ type PanelState = {
   /** Opened from the list of what is still needed to add the person's
    * siblings or children: answering that they have some goes on to adding
    * one. */
-  then?: 'sibling' | 'child';
+  addAfterwards?: 'sibling' | 'child';
 } | null;
 
 /** How long the mouse rests on someone before their add menu opens. */
@@ -1604,7 +1604,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
   };
 
-  const openEdit = async (personId: string, then?: 'sibling' | 'child') => {
+  const openEdit = async (
+    personId: string,
+    addAfterwards?: 'sibling' | 'child',
+  ) => {
     if (detailsLocked) {
       askForPassphrase();
       return;
@@ -1626,6 +1629,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           node,
           formFields.map((field) => field.variable),
           personVariables,
+          // oxlint-disable-next-line typescript/unbound-method -- the scope registry is keyed by this exact function, so it cannot be wrapped; Redux's getState does not read `this`
           getDecryptionScope(store.getState),
         )
       : undefined;
@@ -1652,7 +1656,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         person,
         unavailable,
       },
-      ...(then ? { then } : {}),
+      ...(addAfterwards ? { addAfterwards } : {}),
     });
   };
 
@@ -2341,13 +2345,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       // Said to have the siblings or children the list asked for, the
       // participant goes on to adding one, to the person as the family now
       // stores them, with the answers just saved.
-      const then = panel.then;
+      const addAfterwards = panel.addAfterwards;
       if (
-        then &&
-        answers[then === 'sibling' ? 'siblings' : 'children'] === 'yes'
+        addAfterwards &&
+        answers[addAfterwards === 'sibling' ? 'siblings' : 'children'] === 'yes'
       ) {
         const person = latestFamily().byId.get(mode.person.id);
-        if (person) openAddPanel(then, person);
+        if (person) openAddPanel(addAfterwards, person);
       }
       return { success: true };
     }

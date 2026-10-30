@@ -42,30 +42,21 @@ const Asset = ({ id, size = null }: AssetProps) => {
     unitDisplay: 'narrow',
     maximumFractionDigits: 2,
   });
-  const metaDataListener = useRef((event: Event) => {
-    const target = event.target;
-    if (
-      target instanceof HTMLMediaElement &&
-      Number.isFinite(target.duration)
-    ) {
-      setDuration(target.duration);
-    }
-  });
-
   useEffect(() => {
     const videoElement = videoRef.current;
     const audioElement = audioRef.current;
     const element =
       type === 'video' ? videoElement : type === 'audio' ? audioElement : null;
+    if (!element) return undefined;
 
-    if (element) {
-      element.addEventListener('loadedmetadata', metaDataListener.current);
-    }
-
-    return () => {
-      if (element) {
-        element.removeEventListener('loadedmetadata', metaDataListener.current);
+    const metaDataListener = () => {
+      if (Number.isFinite(element.duration)) {
+        setDuration(element.duration);
       }
+    };
+    element.addEventListener('loadedmetadata', metaDataListener);
+    return () => {
+      element.removeEventListener('loadedmetadata', metaDataListener);
     };
   }, [type]);
 

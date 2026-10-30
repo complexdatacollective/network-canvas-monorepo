@@ -257,7 +257,9 @@ export function useFilterState<T extends Record<string, unknown>>(
     [storeApi, isControlled, isFilteringEnabled, callTargets],
   );
 
-  // Trigger search when controlled query changes
+  // Trigger search when controlled query changes, or when the index is
+  // rebuilt (a new `search`) so the query is answered from the new items. The
+  // search itself is reached through `callTargets`.
   useEffect(() => {
     if (!isFilteringEnabled) return;
     if (isControlled && isReady) {
@@ -268,6 +270,7 @@ export function useFilterState<T extends Record<string, unknown>>(
     controlledFilterQuery,
     isReady,
     isFilteringEnabled,
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a re-run trigger: a rebuilt index must answer the current query again
     search,
     callTargets,
   ]);
@@ -288,6 +291,7 @@ export function useFilterState<T extends Record<string, unknown>>(
     storeApi,
     isFilteringEnabled,
     isControlled,
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a re-run trigger: a rebuilt index must answer the current query again
     search,
     callTargets,
   ]);

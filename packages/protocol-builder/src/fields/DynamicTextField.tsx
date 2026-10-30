@@ -44,6 +44,7 @@ import {
   type DynamicValueChoice,
   dynamicValueChoices,
 } from '../localization/dynamicValueCatalog.ts';
+import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
 import { resolveTranslation } from '../localization/localizedText.ts';
 import {
   countTokenId,
@@ -59,7 +60,6 @@ import {
   useDynamicValueSite,
 } from '../localization/useDynamicValueSite.ts';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
-import { LocalizedStringField } from './LocalizedStringField.tsx';
 import { participantVersionMessages } from './messageArgumentLabels.ts';
 
 const messages = defineMessages({

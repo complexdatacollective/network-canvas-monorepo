@@ -26,7 +26,7 @@ import {
   resolveInterviewIds,
 } from '~/actions/interviews';
 import { ActionsDropdown } from '~/app/dashboard/_components/InterviewsTable/ActionsDropdown';
-import { InterviewColumns } from '~/app/dashboard/_components/InterviewsTable/Columns';
+import { getInterviewColumns } from '~/app/dashboard/_components/InterviewsTable/Columns';
 import { DeleteInterviewsDialog } from '~/app/dashboard/interviews/_components/DeleteInterviewsDialog';
 import { ExportInterviewsDialog } from '~/app/dashboard/interviews/_components/ExportInterviewsDialog';
 import { GenerateInterviewURLs } from '~/app/dashboard/interviews/_components/GenerateInterviewURLs';
@@ -153,7 +153,7 @@ const InterviewsTableInner = ({
   );
 
   const columns = useMemo<DataTableColumnDef<InterviewRow>[]>(
-    () => [...InterviewColumns(intl, filterOptions), actionsColumn],
+    () => [...getInterviewColumns(intl, filterOptions), actionsColumn],
     [intl, filterOptions],
   );
 

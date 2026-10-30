@@ -254,6 +254,7 @@ export const useGeospatialSearch = ({
   // is in place (the old one is cancelled by that effect's cleanup).
   useLayoutEffect(() => {
     retireSearch();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new node or language is the event that retires the search in flight; their values are not needed
   }, [resetKey, language, retireSearch]);
 
   // Ask again, in the new language, for the query already typed. The first

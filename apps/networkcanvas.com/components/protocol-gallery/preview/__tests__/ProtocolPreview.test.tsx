@@ -263,7 +263,7 @@ describe('<ProtocolPreview />', () => {
 
   it('goes back to the protocol', async () => {
     const assign = vi.fn();
-    vi.stubGlobal('location', { ...window.location, assign });
+    vi.stubGlobal('location', { assign });
     await renderPreview();
 
     fireEvent.click(
