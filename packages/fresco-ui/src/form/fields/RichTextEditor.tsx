@@ -1257,13 +1257,15 @@ export default function RichTextEditorField({
     anchor: { left: number; top: number; height: number };
   } | null>(null);
   const [isInsertMenuOpen, setIsInsertMenuOpen] = useState(false);
-  // The editor an item from the insert menu was just put into. Closing the
-  // menu hands it the caret, so the next key, Undo included, acts on the
-  // text the item went into rather than on the button that opened the menu.
-  // Forgotten whenever the menu is asked to open, however it was opened —
-  // including an open that lands in the same render as the pick's close, and
-  // so never shows the menu as closed.
-  const [pickedInto, setPickedInto] = useState<Editor | null>(null);
+  // The editor closing the insert menu hands the caret back to: the one an
+  // item from it was just put into, so the next key, Undo included, acts on
+  // the text the item went into rather than on the button that opened the
+  // menu, or else the one it was opened by typing in. Null when it was
+  // opened from the toolbar and nothing has been picked. Set afresh whenever
+  // the menu is asked to open, however it was opened — including an open
+  // that lands in the same render as a pick's close, and so never shows the
+  // menu as closed.
+  const [caretReturnsTo, setCaretReturnsTo] = useState<Editor | null>(null);
   const onTrigger = useCallback(
     (typedIn: Editor, position: number) => {
       const coords = typedIn.view.coordsAtPos(position);
@@ -1276,10 +1278,10 @@ export default function RichTextEditorField({
           height: coords.bottom - coords.top,
         },
       });
-      setPickedInto(null);
+      setCaretReturnsTo(typedIn);
       setIsInsertMenuOpen(true);
     },
-    [setTriggered, setIsInsertMenuOpen, setPickedInto],
+    [setTriggered, setIsInsertMenuOpen, setCaretReturnsTo],
   );
   // The version being written, when the caret is in one: the toolbar acts on
   // it rather than on the line around it.
@@ -1884,13 +1886,13 @@ export default function RichTextEditorField({
         )
         .run();
       selectInsertedVersions(into, position, sizeBefore, typed ? 1 : 0);
-      setPickedInto(into);
+      setCaretReturnsTo(into);
     } else {
       const { from, to } = actOn.state.selection;
       const sizeBefore = actOn.state.doc.content.size;
       actOn.chain().focus().insertContent(content).run();
       selectInsertedVersions(actOn, from, sizeBefore, to - from);
-      setPickedInto(actOn);
+      setCaretReturnsTo(actOn);
     }
     setTriggered(null);
     setIsInsertMenuOpen(false);
@@ -2331,7 +2333,7 @@ export default function RichTextEditorField({
                     open={isInsertMenuOpen && !isDisabled}
                     onOpenChange={(open) => {
                       setIsInsertMenuOpen(open);
-                      if (open) setPickedInto(null);
+                      if (open) setCaretReturnsTo(null);
                       if (!open) setTriggered(null);
                     }}
                   >
@@ -2379,12 +2381,20 @@ export default function RichTextEditorField({
                         ) {
                           return false;
                         }
-                        if (pickedInto !== null && !pickedInto.isDestroyed) {
-                          return pickedInto.view.dom;
-                        }
-                        return triggered === null
-                          ? true
-                          : triggered.editor.view.dom;
+                        const into = caretReturnsTo;
+                        if (into === null || into.isDestroyed) return true;
+                        // Through the editor, rather than by naming its
+                        // element for Base UI to focus: focused that way, the
+                        // browser puts the caret at the start of the text, and
+                        // ProseMirror moves it back only if it notices within
+                        // 200 ms and the text was not clicked just before, so
+                        // what was typed next could go in at the start. The
+                        // editor puts its own caret back as it takes focus. A
+                        // microtask later, as Base UI would have moved focus.
+                        queueMicrotask(() => {
+                          if (!into.isDestroyed) into.view.focus();
+                        });
+                        return false;
                       }}
                     >
                       <InsertMenuList menu={insertMenu} onPick={insertItem} />
