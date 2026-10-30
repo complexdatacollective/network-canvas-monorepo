@@ -1,10 +1,15 @@
 {
   "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
   "plugins": ["nextjs"],
-  "jsPlugins": ["oxlint-tailwindcss", "eslint-plugin-formatjs"],
+  "jsPlugins": [
+    "../../tooling/oxlint/tailwindcss.mjs",
+    "eslint-plugin-formatjs"
+  ],
   "settings": {
     "tailwindcss": {
-      "entryPoint": "apps/fresco/styles/globals.css"
+      "entryPoint": "apps/fresco/styles/globals.css",
+      "variablePatterns": ["[a-z](?:Class|ClassNames?|Classes)$"],
+      "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
     }
   },
   "rules": {

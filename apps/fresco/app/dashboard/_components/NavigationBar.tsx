@@ -79,7 +79,7 @@ const itemVariants: Variants = {
 };
 
 const navItemClassName =
-  'focusable relative rounded-full font-semibold whitespace-nowrap outline-offset-10!';
+  'focusable relative rounded-full font-semibold whitespace-nowrap focus-visible:outline-offset-10';
 
 const NavButton = ({
   label,

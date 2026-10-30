@@ -1,9 +1,14 @@
 {
   "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
-  "jsPlugins": ["oxlint-tailwindcss", "eslint-plugin-formatjs"],
+  "jsPlugins": [
+    "../../tooling/oxlint/tailwindcss.mjs",
+    "eslint-plugin-formatjs"
+  ],
   "settings": {
     "tailwindcss": {
-      "entryPoint": "apps/architect/src/styles/tailwind.css"
+      "entryPoint": "apps/architect/src/styles/tailwind.css",
+      "variablePatterns": ["[a-z](?:Class|ClassNames?|Classes)$"],
+      "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
     }
   },
   "rules": {
