@@ -34,7 +34,7 @@ import {
   type StepChangeHandler,
   type SyncHandler,
   getLastAvailableAuthoredStageIndex,
-  useContentLocale,
+  useContentLocaleIn,
 } from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
@@ -43,7 +43,7 @@ import {
 } from '@codaco/protocol-validation';
 import { Interviewer8Frame } from '~/components/Interviewer8Frame';
 import { offlineMessages } from '~/components/offlineMessages';
-import { interviewerLocales } from '~/i18n/locales';
+import { interviewerDefaultLocale, interviewerLocales } from '~/i18n/locales';
 import { browserLanguages } from '~/i18n/preference';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { POSTHOG_APP_KEY, POSTHOG_APP_NAME } from '~/lib/analytics/config';
@@ -875,7 +875,10 @@ function InterviewLanguageMessageText({
 }: {
   message: MessageDescriptor;
 }) {
-  const locale = useContentLocale();
+  const locale = useContentLocaleIn(
+    interviewerLocales.map((entry) => entry.locale),
+    interviewerDefaultLocale,
+  );
   const catalog = useLocaleCatalog(interviewerCatalogSource, locale);
   const direction =
     interviewerLocales.find((entry) => entry.locale === catalog.locale)

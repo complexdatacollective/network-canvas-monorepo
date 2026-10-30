@@ -6,7 +6,7 @@ import type {
 type Stage = Readonly<Record<string, unknown>>;
 
 /** The name field that adds a person, before anything is typed in it. */
-const ADD_NAME_PLACEHOLDER = {
+export const ADD_NAME_PLACEHOLDER = {
   'en': 'Type a name, then press Enter',
   'de': 'Namen eingeben und mit Enter bestätigen',
   'es': 'Escribe un nombre y pulsa Intro',

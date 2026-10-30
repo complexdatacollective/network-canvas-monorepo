@@ -11,6 +11,7 @@ import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import {
   localizedMessageParts,
   ProtocolLocalizationProvider,
+  useContentLocaleIn,
   useLocalizedString,
   useProtocolLocale,
 } from '../ProtocolLocalizationProvider';
@@ -349,5 +350,40 @@ describe('localizedMessageParts', () => {
         ),
       ),
     ).toBe('1 items');
+  });
+});
+
+describe('useContentLocaleIn', () => {
+  function HostLocaleProbe({
+    onRender,
+  }: {
+    onRender: (locale: string) => void;
+  }) {
+    onRender(useContentLocaleIn(['en', 'es', 'fr'], 'en'));
+    return null;
+  }
+
+  const hostLocaleFor = (locales: string[], requestedLocales: string[]) => {
+    const rendered: string[] = [];
+    render(
+      <Harness
+        props={makeProps({
+          localization: { defaultLocale: locales[0]!, locales },
+          localeOptions: locales.map((locale) => getLocaleMetadata(locale)),
+          requestedLocales,
+        })}
+      >
+        <HostLocaleProbe onRender={(locale) => rendered.push(locale)} />
+      </Harness>,
+    );
+    return rendered.at(-1);
+  };
+
+  it('fits a regional protocol language to the host language it falls under', () => {
+    expect(hostLocaleFor(['en', 'es-MX'], ['es-MX'])).toBe('es');
+  });
+
+  it('falls back when the host has no fitting language', () => {
+    expect(hostLocaleFor(['en', 'hu'], ['hu'])).toBe('en');
   });
 });

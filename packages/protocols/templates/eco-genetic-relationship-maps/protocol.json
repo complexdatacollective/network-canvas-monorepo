@@ -1846,6 +1846,11 @@
         "en-US": "Place here"
       }
     },
+    "quickAdd": {
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      }
+    },
     "egoForm": {
       "scrollForQuestions": {
         "en-US": "Scroll to see more questions"

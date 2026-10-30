@@ -1507,6 +1507,11 @@
         "en-US": "Place here"
       }
     },
+    "quickAdd": {
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      }
+    },
     "roster": {
       "unnamedNumbered": {
         "en-US": "Unnamed {count}"

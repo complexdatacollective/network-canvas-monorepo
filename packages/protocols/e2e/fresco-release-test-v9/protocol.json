@@ -1285,6 +1285,12 @@
         "es": "Colocar aquí"
       }
     },
+    "quickAdd": {
+      "addNamePlaceholder": {
+        "en": "Type a name, then press Enter",
+        "es": "Escribe un nombre y pulsa Intro"
+      }
+    },
     "egoForm": {
       "scrollForQuestions": {
         "en": "Scroll to see more questions",

@@ -11,13 +11,13 @@ import {
   type FinishHandler,
   type InterviewPayload,
   Shell,
-  useContentLocale,
+  useContentLocaleIn,
 } from '@codaco/interview';
 import {
   type AssetUrlOwner,
   createAssetUrlOwner,
 } from '@codaco/interview/contract';
-import { defaultLocale, isLocale, type Locale } from '~/lib/i18n/locales';
+import { defaultLocale, type Locale, locales } from '~/lib/i18n/locales';
 import {
   createPreviewPayload,
   installPreviewProtocol,
@@ -84,7 +84,8 @@ async function fetchProtocolBytes(path: string): Promise<Uint8Array> {
 
 // Rendered inside the Shell, in the language the interview shows, which it
 // negotiates from the protocol's languages and which can change while it runs
-// (a language chooser, the visitor's choice). The interview's English is US
+// (a language chooser, the visitor's choice), best fitted to the site's
+// languages: es for a protocol in es-MX. The interview's English is US
 // English, the site's default.
 function InterviewLanguageLabel({
   labels,
@@ -93,8 +94,7 @@ function InterviewLanguageLabel({
   labels: CompletionLabels;
   name: keyof CompletionLabels[Locale];
 }) {
-  const locale = useContentLocale();
-  return labels[isLocale(locale) ? locale : defaultLocale][name];
+  return labels[useContentLocaleIn(locales, defaultLocale)][name];
 }
 
 export function ProtocolPreview({

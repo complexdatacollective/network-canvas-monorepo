@@ -251,6 +251,11 @@
         "en-US": "You must answer this question before continuing."
       }
     },
+    "quickAdd": {
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      }
+    },
     "egoForm": {
       "scrollForQuestions": {
         "en-US": "Scroll to see more questions"

@@ -221,6 +221,22 @@ export function useContentLocale(): string {
 }
 
 /**
+ * The language the interview shows, best fitted to the languages a host
+ * translates its own text into, for host text shown inside the Shell: a
+ * protocol in es-MX gets a host's es. `fallback` when none fits.
+ */
+export function useContentLocaleIn<const T extends string>(
+  supported: readonly T[],
+  fallback: T,
+): T {
+  const fitted = selectProtocolLocale([useContentLocale()], {
+    locales: supported,
+    defaultLocale: fallback,
+  });
+  return supported.find((locale) => locale === fitted) ?? fallback;
+}
+
+/**
  * Protocol-authored text as the interview shows it. Where the text shows
  * dynamic values, `text` is the natural sentence with each value written in,
  * and `parts` says where each value sits, for a renderer that marks them out.

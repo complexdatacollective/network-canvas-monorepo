@@ -28,7 +28,8 @@ Spanish no longer gets a Spanish protocol inside French buttons.
   debug information, loading, unnamed nodes, and a failed exit.
 - Words that every stage of one type shows alike are held once in interface
   text, in a group named for that stage type: `familyPedigree`,
-  `categoricalBin`, `roster`, `networkComposer` and `egoForm`, plus
+  `categoricalBin`, `quickAdd` (the quick-add name box's placeholder),
+  `roster`, `networkComposer` and `egoForm`, plus
   `familyTreeView` for the controls both pedigree stages share. Each group is
   held only while the protocol has a stage that shows it.
 - Buttons that any stage might show are worded once, among `buttons`: `undo`,
@@ -53,4 +54,6 @@ Spanish no longer gets a Spanish protocol inside French buttons.
 entry points are gone, and the interview no longer loads a message catalog of
 its own: everything it shows comes from the protocol. A host component rendered
 inside the Shell that should match the interview's language reads it with
-`useContentLocale()`.
+`useContentLocale()`, or with `useContentLocaleIn(locales, fallback)` to get
+the nearest of the languages the host translates its own text into (es for a
+protocol in es-MX).

@@ -4158,6 +4158,12 @@
         "es": "Colocar aquí"
       }
     },
+    "quickAdd": {
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter",
+        "es": "Escribe un nombre y pulsa Intro"
+      }
+    },
     "roster": {
       "unnamedNumbered": {
         "en-US": "Unnamed {count}",

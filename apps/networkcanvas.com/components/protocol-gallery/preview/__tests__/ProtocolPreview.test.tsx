@@ -70,13 +70,21 @@ function MockShell(props: ShellProps) {
   );
 }
 
+function useMockContentLocaleIn<T extends string>(
+  supported: readonly T[],
+  fallback: T,
+): T {
+  const { locale } = useAppIntl();
+  return supported.find((entry) => entry === locale) ?? fallback;
+}
+
 // The Shell's own completed state (the finish stage's text, the notice, and
 // the host's actions) is covered by the interview package. Here it stands in
 // for the real one, so the test can see whether the gallery keeps it mounted
 // and what it offers there.
 vi.mock('@codaco/interview', () => ({
   Shell: MockShell,
-  useContentLocale: () => useAppIntl().locale,
+  useContentLocaleIn: useMockContentLocaleIn,
 }));
 
 vi.mock('@codaco/interview/contract', () => ({

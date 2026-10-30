@@ -1,5 +1,6 @@
 import type { MessageArguments } from '../../localization/messageArguments.ts';
 import type { LocalizedStringFormat } from './localized-string.ts';
+import { ADD_NAME_PLACEHOLDER } from './stage-wording/network-composer.ts';
 import type { SuppliedWording } from './supplied-stage-setting.ts';
 
 // The wording Network Canvas supplies for the interface text a protocol holds
@@ -1313,6 +1314,18 @@ export const ROSTER_INTERFACE_TEXT = {
       'zh-Hans': '放置到此处以移除',
       'zh-Hant': '放到這裡即可移除',
     },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/**
+ * Every quick-add Name Generator stage's own words. The name field is worded
+ * as a Network Composer's is by default (`stage-wording/network-composer.ts`),
+ * where each stage holds its own.
+ */
+export const QUICK_ADD_INTERFACE_TEXT = {
+  addNamePlaceholder: {
+    ids: ['interview.interfaces.addNamePlaceholder'],
+    message: ADD_NAME_PLACEHOLDER,
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
