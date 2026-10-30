@@ -22,6 +22,7 @@ import {
   useParticipantLogs,
   useStatusParticipantLogs,
 } from '../../participant/participantLogs.ts';
+import { requestBodyText } from '../../test/fetchStub.ts';
 import { installRpcHarness } from '../../test/rpcHarness.ts';
 import {
   createBrowserLogHandle,
@@ -70,7 +71,7 @@ const decodeBody = Schema.decodeUnknownSync(
 
 const recordsSent = (path: string) =>
   logCalls(path).flatMap(([, init]) =>
-    browserLogRecords(decodeBody(String(init?.body))),
+    browserLogRecords(decodeBody(requestBodyText(init))),
   );
 
 const EXPORT_WAIT_MS = 1600;

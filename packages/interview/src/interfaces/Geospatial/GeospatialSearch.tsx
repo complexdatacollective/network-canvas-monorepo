@@ -245,7 +245,8 @@ export default function GeospatialSearch({
   const handleSuggestionClick = useCallback(
     (suggestion: SuggestionItem) => () => {
       const generation = (selectionGenerationRef.current += 1);
-      void handleSelect(suggestion).then((outcome) => {
+      const announce = async () => {
+        const outcome = await handleSelect(suggestion);
         // A newer selection, or a move to another node, has taken over since
         // this one was made. Saying anything now would describe a map the
         // participant is no longer looking at.
@@ -258,7 +259,8 @@ export default function GeospatialSearch({
               }
             : { text: failedText },
         );
-      });
+      };
+      void announce();
       closeSearch();
     },
     [handleSelect, closeSearch, failedText],

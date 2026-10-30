@@ -174,6 +174,9 @@ const getGraphMLTypeForVariable = (
       return 'double';
     case 'scalar':
       return 'float';
+    case 'text':
+    case 'datetime':
+    case 'location':
     default:
       return 'string';
   }

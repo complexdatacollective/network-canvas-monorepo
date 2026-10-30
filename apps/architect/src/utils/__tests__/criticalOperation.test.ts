@@ -102,9 +102,11 @@ describe('whenCriticalOperationsSettle', () => {
     const finishCommit = beginProtocolCommit();
     const finishExport = beginExport();
     let settled = false;
-    const waiting = whenCriticalOperationsSettle().then(() => {
+    const wait = async () => {
+      await whenCriticalOperationsSettle();
       settled = true;
-    });
+    };
+    const waiting = wait();
 
     finishCommit();
     await Promise.resolve();

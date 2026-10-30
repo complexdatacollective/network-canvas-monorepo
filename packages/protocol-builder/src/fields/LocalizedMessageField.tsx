@@ -45,7 +45,7 @@ import {
   pluralCategories,
   UnreadableMessage,
 } from './DynamicTextField.tsx';
-import { LocalizedStringField } from './LocalizedStringField.tsx';
+import { LocalizedStringField } from './LocalizedStringControl.tsx';
 import {
   type MessageArgumentLabels,
   messageArgumentLabels,

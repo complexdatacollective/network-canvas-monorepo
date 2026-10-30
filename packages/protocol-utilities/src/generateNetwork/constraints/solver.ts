@@ -240,6 +240,9 @@ function domainSize(
       return { count, elements };
     }
 
+    case 'layout':
+    case 'location':
+    case 'text':
     default:
       return undefined;
   }

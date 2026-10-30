@@ -703,6 +703,7 @@ function Editor({ id }: Readonly<{ id: ProtocolSectionId }>) {
           void submit({ ...document, label: { 'en-US': 'Saved' } }).then(
             (result) => {
               setSaved(result.status);
+              return undefined;
             },
           );
         }}
@@ -735,7 +736,7 @@ function PromotingEditor({
             (result) => {
               if (result.status !== 'written') {
                 setPromoted(result.status);
-                return;
+                return undefined;
               }
               setPromoted(
                 (result.promoted ?? [])
@@ -745,6 +746,7 @@ function PromotingEditor({
                   )
                   .join(', '),
               );
+              return undefined;
             },
             // A save the host never answered, which is what an editor has to
             // report rather than leave the researcher's click looking ignored.

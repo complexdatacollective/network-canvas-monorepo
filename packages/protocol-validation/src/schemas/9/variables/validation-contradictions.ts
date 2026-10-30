@@ -6,8 +6,8 @@ import {
   RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
 } from '@codaco/shared-consts';
 
+import { isIsoDate, isValidDateAtResolution } from './date-resolution.ts';
 import type { ValidationName } from './validation.ts';
-import { isIsoDate, isValidDateAtResolution } from './variable.ts';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -1593,6 +1593,7 @@ const intervalOf = (variable: unknown): Interval | undefined => {
     // the chain pass — see `SCALAR_CHAIN_QUANTUM`.
     case 'scalar':
       return { min: 0, max: 1, origin: 'fixed' };
+    case undefined:
     default:
       return undefined;
   }
@@ -1922,6 +1923,7 @@ const pinnedValue = (
       // arm shares the exact encoding rather than re-deriving it.
       return categoricalSetPinKey(values);
     }
+    case undefined:
     default:
       return undefined;
   }

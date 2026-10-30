@@ -1,4 +1,11 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import {
+  type BoundFunctions,
+  type queries,
+  act,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { Effect } from 'effect';
 import { useEffect, useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -71,7 +78,7 @@ const en = (text: string) => ({ 'en-US': text });
  * reached through the shared picker helpers, which find it by the mark the
  * spotlight puts on its own popup.
  */
-type RowDialog = ReturnType<typeof within> & { element: HTMLElement };
+type RowDialog = BoundFunctions<typeof queries> & { element: HTMLElement };
 
 const rowDialog = (element: HTMLElement): RowDialog =>
   Object.assign(within(element), { element });

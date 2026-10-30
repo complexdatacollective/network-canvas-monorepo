@@ -191,6 +191,7 @@ const OtlpHeaders = Schema.String.check(
         return false;
       }
       const decoded = headerPairs(value);
+      // oxlint-disable-next-line no-new -- the constructor throws on an invalid header name or value, which is the check
       new Headers(decoded.map(([name, header]) => [name, header]));
       return decoded.every(([name]) => name.length > 0);
     } catch {

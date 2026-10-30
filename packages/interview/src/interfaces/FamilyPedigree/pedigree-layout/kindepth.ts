@@ -88,9 +88,9 @@ export function kindepth(
   // another's lines of descent. Each parent joins its group only if the
   // groups kept so far can still all be aligned; the parents are tried from
   // the shallowest, so an ancestor is kept ahead of a descendant.
-  const { constrain } = layerConstraints(n);
+  const layering = layerConstraints(n);
   for (let i = 0; i < n; i++) {
-    for (const p of parents[i]!) constrain([[p.parentIndex, i]], 1);
+    for (const p of parents[i]!) layering.constrain([[p.parentIndex, i]], 1);
   }
   const groupSet = new Set<string>();
   const groups: number[][] = [];
@@ -104,7 +104,7 @@ export function kindepth(
     const memberIndices = [
       anchor!,
       ...rest.filter((m) =>
-        constrain(
+        layering.constrain(
           [
             [anchor!, m],
             [m, anchor!],

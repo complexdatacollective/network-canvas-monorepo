@@ -174,10 +174,11 @@ export default function ParticipantWordingSection() {
             (name) =>
               (storeApi.getState().getFieldErrors(name)?.length ?? 0) > 0,
           );
-          if (refused) return;
+          if (refused) return undefined;
           setOpenGroups((current) =>
             current.filter((candidate) => candidate !== group),
           );
+          return undefined;
         });
       }
     },

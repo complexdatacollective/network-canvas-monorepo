@@ -174,10 +174,16 @@ export async function POST(request: Request) {
       Effect.promise(async () => {
         const message =
           error instanceof Error ? error.message : 'Export failed';
-        await writer
-          .write(encodeExportEvent({ type: 'error', message }))
-          .catch(() => undefined);
-        await writer.close().catch(() => undefined);
+        try {
+          await writer.write(encodeExportEvent({ type: 'error', message }));
+        } catch {
+          // The client has gone, so there is nobody left to tell.
+        }
+        try {
+          await writer.close();
+        } catch {
+          // Already closed by the abort handler.
+        }
         await captureException(error);
         await flushPostHog();
       }),

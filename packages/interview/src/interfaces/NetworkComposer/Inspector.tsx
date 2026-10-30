@@ -402,7 +402,7 @@ function AttributeFormInner({
         () => undefined,
       );
       savesUnderWay.current = settled;
-      void settled.then(() => {
+      void settled.finally(() => {
         if (savesUnderWay.current === settled) savesUnderWay.current = null;
       });
       return call;

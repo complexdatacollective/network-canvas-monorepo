@@ -98,6 +98,7 @@ export const App = () => {
             ? { ...current, provider: fallback.provider }
             : current;
         });
+        return undefined;
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;

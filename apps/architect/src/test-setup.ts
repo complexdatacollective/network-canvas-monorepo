@@ -156,8 +156,12 @@ globalThis.Worker ??= WorkerStub;
 // fresco-ui's default onSubmitInvalid (focusFirstError) reaches for when a
 // submit is blocked; `scrollIntoView` is for everything else that scrolls a
 // selection into view (VariableSpotlight, the new-stage screens, useWizardState).
-Element.prototype.scrollTo ??= () => undefined;
-Element.prototype.scrollIntoView ??= () => undefined;
+if (!Reflect.has(Element.prototype, 'scrollTo')) {
+  Element.prototype.scrollTo = () => undefined;
+}
+if (!Reflect.has(Element.prototype, 'scrollIntoView')) {
+  Element.prototype.scrollIntoView = () => undefined;
+}
 
 /**
  * Where a range is on screen, which jsdom does not answer for a `Range` at
@@ -175,10 +179,16 @@ Element.prototype.scrollIntoView ??= () => undefined;
  * numbers; what matters is that asking succeeds. The same shims, for the same
  * reason, as `@codaco/protocol-builder`'s own test setup.
  */
-Range.prototype.getClientRects ??= () => document.body.getClientRects();
-Range.prototype.getBoundingClientRect ??= () =>
-  document.body.getBoundingClientRect();
-document.elementFromPoint ??= () => null;
+if (!Reflect.has(Range.prototype, 'getClientRects')) {
+  Range.prototype.getClientRects = () => document.body.getClientRects();
+}
+if (!Reflect.has(Range.prototype, 'getBoundingClientRect')) {
+  Range.prototype.getBoundingClientRect = () =>
+    document.body.getBoundingClientRect();
+}
+if (!Reflect.has(document, 'elementFromPoint')) {
+  document.elementFromPoint = () => null;
+}
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
   default: () => dialogMocks,

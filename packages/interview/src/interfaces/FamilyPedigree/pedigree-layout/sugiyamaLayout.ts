@@ -217,16 +217,16 @@ function buildPedigreeGraph(
   // and one that would need a person above their own descendant is dropped:
   // its people then sit on different layers, and the child goes down a row
   // below them all.
-  const { constrain, settle } = layerConstraints(n);
+  const layering = layerConstraints(n);
   for (let i = 0; i < n; i++) {
     for (const p of placed[i]!) {
-      constrain([[p.parentIndex, i]], 1);
+      layering.constrain([[p.parentIndex, i]], 1);
     }
   }
   for (const group of partnerGroups) {
     const [first, ...rest] = group.members;
     for (const m of rest) {
-      constrain(
+      layering.constrain(
         [
           [first!, m],
           [m, first!],
@@ -238,7 +238,7 @@ function buildPedigreeGraph(
   for (let i = 0; i < n; i++) {
     for (const other of alignedParents[i]!) {
       for (const owner of descentParentsOf(i)) {
-        constrain(
+        layering.constrain(
           [
             [owner, other.parentIndex],
             [other.parentIndex, owner],
@@ -248,7 +248,7 @@ function buildPedigreeGraph(
       }
     }
   }
-  settle(layers);
+  layering.settle(layers);
 
   // 4. Family units: one per sibship (see `lineOwnersOf`), with the group
   // of the owner of its line of descent (a couple, a pair, or one parent).

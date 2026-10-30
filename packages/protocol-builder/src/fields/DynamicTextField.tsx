@@ -59,7 +59,7 @@ import {
   useDynamicValueSite,
 } from '../localization/useDynamicValueSite.ts';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
-import { LocalizedStringField } from './LocalizedStringField.tsx';
+import { LocalizedStringField } from './LocalizedStringControl.tsx';
 import { participantVersionMessages } from './messageArgumentLabels.ts';
 
 const messages = defineMessages({

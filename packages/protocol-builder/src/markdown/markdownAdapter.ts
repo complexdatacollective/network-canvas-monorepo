@@ -469,6 +469,7 @@ const getInlineContent = (node: RichTextContent): RichTextContent[] => {
     case 'heading':
       return node.content ?? [];
 
+    case undefined:
     default:
       return flattenInlineContent(node.content);
   }

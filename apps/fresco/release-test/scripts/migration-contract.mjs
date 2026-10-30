@@ -182,7 +182,8 @@ function networkChanges(before, after, { entitiesOnly = false } = {}) {
     for (const entity of now)
       counts.set(entity._uid, (counts.get(entity._uid) ?? 0) + 1);
     for (const [id, count] of counts)
-      if (count > 1) changes.push(`${noun} ${id} is stored ${count} times`);
+      if (count > 1)
+        changes.push(`${noun} ${String(id)} is stored ${String(count)} times`);
     const nowById = new Map(now.map((entity) => [entity._uid, entity]));
     const wasIds = new Set();
     for (const was of entitiesOf(before, key)) {

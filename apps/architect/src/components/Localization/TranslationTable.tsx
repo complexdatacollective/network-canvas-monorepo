@@ -533,7 +533,7 @@ const TranslationTable = ({
       const result = saveTranslations({
         values,
         getFieldState: (name) => formStore.getState().getFieldState(name),
-        getState: store.getState,
+        getState: () => store.getState(),
         dispatch,
         intl,
       });

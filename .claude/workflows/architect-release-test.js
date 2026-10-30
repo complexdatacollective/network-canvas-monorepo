@@ -79,7 +79,7 @@ if (
 const isQuotablePath = (path) =>
   typeof path === 'string' &&
   path.startsWith('/') &&
-  ![...path].some((ch) => {
+  !Array.from(path).some((ch) => {
     const code = ch.charCodeAt(0);
     return ch === "'" || code < 0x20 || code === 0x7f;
   }) &&
@@ -1601,7 +1601,9 @@ const runSampleBuild = async () => {
       if (comparison) audits.push({ round: 2, comparison });
     }
   } catch (error) {
-    notes.push(`sample build crashed: ${error}`);
+    notes.push(
+      `sample build crashed: ${error instanceof Error ? error.message : String(error)}`,
+    );
   } finally {
     cleanup = await agent(
       cleanupPrompt(protocolName, { browser: 'playwright', mustExist: true }),

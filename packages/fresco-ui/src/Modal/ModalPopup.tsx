@@ -50,7 +50,7 @@ type BaseModalPopupProps = Omit<
   ComponentProps<typeof motion.div>,
   'initial' | 'animate' | 'exit' | 'layoutId'
 > &
-  Omit<Dialog.Popup.Props, 'render'>;
+  Omit<Dialog.Popup.Props, 'render' | 'style'>;
 
 /**
  * Props for ModalPopup.

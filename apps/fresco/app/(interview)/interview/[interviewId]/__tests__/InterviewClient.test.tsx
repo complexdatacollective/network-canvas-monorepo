@@ -164,7 +164,9 @@ describe('InterviewClient', () => {
     rerender(clientFor('active'));
     await writeThrough(handlers);
 
-    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+    const rawBody = fetchMock.mock.calls[0]?.[1]?.body;
+    if (typeof rawBody !== 'string') throw new Error('Expected a JSON body');
+    const body = JSON.parse(rawBody) as {
       currentStep: number;
     };
     expect(body.currentStep).toBe(5);

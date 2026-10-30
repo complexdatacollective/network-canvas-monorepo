@@ -193,7 +193,7 @@ const Sociogram = (stageProps: SociogramProps) => {
           track(currentValue ? 'node_deselected' : 'node_selected', {
             node_id: nodeId,
           });
-          dispatch(
+          void dispatch(
             toggleNodeAttributes({
               nodeId,
               attributePatch: {

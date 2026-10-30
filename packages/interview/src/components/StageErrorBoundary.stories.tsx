@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, spyOn, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fn, spyOn, userEvent, waitFor, within } from 'storybook/test';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 
@@ -25,10 +25,12 @@ const meta: Meta<typeof StageErrorBoundary> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const writeText = fn(async (_text: string) => undefined);
+
 /** The screen a participant sees when a task crashes. */
 export const Default: Story = {
   beforeEach() {
-    spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+    spyOn(navigator.clipboard, 'writeText').mockImplementation(writeText);
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -41,7 +43,7 @@ export const Default: Story = {
 
     await waitFor(() => expect(button).toHaveTextContent('Copied'));
     await expect(canvas.getByRole('status')).toHaveTextContent('Copied');
-    await expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+    await expect(writeText).toHaveBeenCalledWith(
       expect.stringContaining('Failed to initialize WebGL'),
     );
   },

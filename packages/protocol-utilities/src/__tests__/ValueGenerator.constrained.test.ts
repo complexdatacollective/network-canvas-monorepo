@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildVariableConstraints } from '../generateNetwork/constraints/buildConstraints.ts';
+import { describeValue } from '../generateNetwork/constraints/describeValue.ts';
 import type { ConstrainedVariable } from '../generateNetwork/constraints/types.ts';
 import { valueKey } from '../generateNetwork/constraints/uniqueRegistry.ts';
 import {
@@ -114,7 +115,9 @@ describe('generateConstrained', () => {
     });
 
     for (let index = 0; index < 25; index++) {
-      expect(String(gen.generateConstrained(variable, index))).toHaveLength(24);
+      expect(
+        describeValue(gen.generateConstrained(variable, index)),
+      ).toHaveLength(24);
     }
   });
 
@@ -128,9 +131,11 @@ describe('generateConstrained', () => {
       validation: { minLength: length, maxLength: length },
     });
 
-    expect(String(gen.generateConstrained(variable, 0))).toHaveLength(length);
+    expect(describeValue(gen.generateConstrained(variable, 0))).toHaveLength(
+      length,
+    );
     expect(
-      String(gen.generateConstrained(variable, 0, { distinctSeq: 3 })),
+      describeValue(gen.generateConstrained(variable, 0, { distinctSeq: 3 })),
     ).toHaveLength(length);
   });
 
@@ -166,14 +171,14 @@ describe('generateConstrained', () => {
 
     for (let index = 0; index < 25; index++) {
       expect(
-        String(gen.generateConstrained(variable, index)).length,
+        describeValue(gen.generateConstrained(variable, index)).length,
       ).toBeLessThanOrEqual(3);
     }
   });
 
   it('prefers the fullest realistic composition constraints allow', () => {
     const seed = 17;
-    const fullName = String(
+    const fullName = describeValue(
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'Name', type: 'text' }),
         0,
@@ -197,7 +202,7 @@ describe('generateConstrained', () => {
     ).toBe(firstName);
 
     // A floor above the full name lengthens it with a middle name.
-    const withMiddle = String(
+    const withMiddle = describeValue(
       new ValueGenerator(seed).generateConstrained(
         make({
           id: 'name',
@@ -235,13 +240,13 @@ describe('generateConstrained', () => {
 
   it('uses the text sequence when no realistic name composition meets the minimum', () => {
     const seed = 17;
-    const fullName = String(
+    const fullName = describeValue(
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'name', type: 'text' }),
         0,
       ),
     );
-    const withMiddle = String(
+    const withMiddle = describeValue(
       new ValueGenerator(seed).generateConstrained(
         make({
           id: 'name',
@@ -269,7 +274,7 @@ describe('generateConstrained', () => {
 
   it('uses the text sequence when even a first name exceeds the maximum', () => {
     const seed = 17;
-    const fullName = String(
+    const fullName = describeValue(
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'name', type: 'text' }),
         0,
@@ -349,7 +354,7 @@ describe('generateConstrained', () => {
 
     const values = new Set<string>();
     for (let seq = 0; seq < 200; seq++) {
-      const value = String(
+      const value = describeValue(
         gen.generateConstrained(variable, 0, { distinctSeq: seq }),
       );
       expect(value).toHaveLength(24);
@@ -369,7 +374,7 @@ describe('generateConstrained', () => {
 
     const values = new Set<string>();
     for (let seq = 0; seq < 40; seq++) {
-      const value = String(
+      const value = describeValue(
         gen.generateConstrained(variable, 0, { distinctSeq: seq }),
       );
       expect(value.length).toBeGreaterThanOrEqual(1);
@@ -787,7 +792,7 @@ describe('generateConstrained', () => {
     });
 
     for (let index = 0; index < 25; index++) {
-      const value = String(gen.generateConstrained(variable, index));
+      const value = describeValue(gen.generateConstrained(variable, index));
       expect(value).toMatch(/^\d{4}-\d{2}$/);
       expect(value >= '2020-01').toBe(true);
       expect(value <= '2020-06').toBe(true);
@@ -805,7 +810,7 @@ describe('generateConstrained', () => {
     });
 
     for (let index = 0; index < 25; index++) {
-      const value = String(gen.generateConstrained(variable, index));
+      const value = describeValue(gen.generateConstrained(variable, index));
       expect(value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(value >= '2026-06-27').toBe(true);
       expect(value <= TODAY).toBe(true);
@@ -854,7 +859,7 @@ describe('generateConstrained', () => {
       });
 
       for (let seq = 0; seq < 50; seq++) {
-        const value = String(
+        const value = describeValue(
           gen.generateConstrained(variable, 0, { distinctSeq: seq }),
         );
         expect(value >= '1000').toBe(true);
@@ -880,7 +885,7 @@ describe('generateConstrained', () => {
       });
 
       for (let seq = 0; seq < 60; seq++) {
-        const value = String(
+        const value = describeValue(
           gen.generateConstrained(variable, 0, { distinctSeq: seq }),
         );
         expect(value >= '1920').toBe(true);
@@ -904,7 +909,7 @@ describe('generateConstrained', () => {
 
     const drawn = new Set<string>();
     for (let seq = 0; seq < 51; seq++) {
-      const value = String(
+      const value = describeValue(
         gen.generateConstrained(variable, 0, { distinctSeq: seq }),
       );
       expect(value >= '1850').toBe(true);

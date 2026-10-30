@@ -84,7 +84,9 @@ describe('NewsTicker', () => {
       'Second fixture research story',
     );
 
-    act(() => vi.advanceTimersByTime(16000));
+    act(() => {
+      vi.advanceTimersByTime(16000);
+    });
     expect(desktopTicker).toHaveTextContent('Fixture-only research news');
     expect(desktopTicker).not.toHaveTextContent(
       'Second fixture research story',

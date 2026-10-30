@@ -15,6 +15,7 @@ import {
   describeCall,
   jobStatus,
   jsonResponse,
+  requestBodyText,
   sampleResult,
   succeededJob,
 } from './fixtures.ts';
@@ -52,7 +53,7 @@ describe('CompareScreen', () => {
         const { url, method } = describeCall(input, init);
         if (method === 'POST') {
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
-          const body = JSON.parse(String(init?.body)) as CreateJobRequest;
+          const body = JSON.parse(requestBodyText(init)) as CreateJobRequest;
           posts.push(body.jobId);
           return jsonResponse({ jobId: body.jobId ?? 'job-new' });
         }
@@ -98,7 +99,7 @@ describe('CompareScreen', () => {
         const { url, method } = describeCall(input, init);
         if (url === '/api/jobs' && method === 'POST') {
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
-          const body = JSON.parse(String(init?.body)) as CreateJobRequest;
+          const body = JSON.parse(requestBodyText(init)) as CreateJobRequest;
           return jsonResponse({ jobId: `job-${body.provider}` });
         }
         if (url === '/api/jobs/job-anthropic')
@@ -142,7 +143,7 @@ describe('CompareScreen', () => {
         const { url, method } = describeCall(input, init);
         if (url === '/api/jobs' && method === 'POST') {
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
-          const body = JSON.parse(String(init?.body)) as CreateJobRequest;
+          const body = JSON.parse(requestBodyText(init)) as CreateJobRequest;
           created.push(body);
           return jsonResponse({ jobId: `job-${body.provider}` });
         }
@@ -168,7 +169,7 @@ describe('CompareScreen', () => {
           );
         }
         if (url === '/api/preference' && method === 'POST') {
-          preferences.push(JSON.parse(String(init?.body)));
+          preferences.push(JSON.parse(requestBodyText(init)));
           return jsonResponse({ ok: true });
         }
         return jsonResponse({ error: 'unexpected' }, 500);
@@ -232,7 +233,7 @@ describe('CompareScreen', () => {
         const { url, method } = describeCall(input, init);
         if (url === '/api/jobs' && method === 'POST') {
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
-          const body = JSON.parse(String(init?.body)) as CreateJobRequest;
+          const body = JSON.parse(requestBodyText(init)) as CreateJobRequest;
           if (body.provider === 'anthropic')
             return jsonResponse({ jobId: 'job-anthropic' });
           openaiPosts += 1;
@@ -280,7 +281,7 @@ describe('CompareScreen', () => {
         const { url, method } = describeCall(input, init);
         if (url === '/api/jobs' && method === 'POST') {
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
-          const body = JSON.parse(String(init?.body)) as CreateJobRequest;
+          const body = JSON.parse(requestBodyText(init)) as CreateJobRequest;
           if (body.provider === 'anthropic')
             return jsonResponse({ jobId: 'job-anthropic' });
           // like the server: a create sent again with a known id is that job

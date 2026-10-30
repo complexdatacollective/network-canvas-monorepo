@@ -2148,9 +2148,9 @@ if (fixtures?.ok !== true)
 
 // A lane that never came up is not evidence about the build — the same reading
 // the upgrade lane's baseline gets — but the pending image failing to start is.
-for (const [name, lane] of [
-  ['analytics lane', analyticsLane],
-  ['two-factor lane', twoFactorLane],
+for (const { name, lane } of [
+  { name: 'analytics lane', lane: analyticsLane },
+  { name: 'two-factor lane', lane: twoFactorLane },
 ]) {
   if (!lane) {
     unaccounted.push(`${name}: it never ran`);

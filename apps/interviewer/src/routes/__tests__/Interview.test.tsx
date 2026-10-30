@@ -132,7 +132,7 @@ vi.mock('~/components/Interviewer8Frame', () => ({
     onUnavailable: () => void;
   }) => {
     frameMock(props);
-    return <iframe title="Interview" src={props.src} />;
+    return <iframe title="Interview" src={props.src} sandbox="" />;
   },
 }));
 

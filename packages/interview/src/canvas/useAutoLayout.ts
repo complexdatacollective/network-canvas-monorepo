@@ -254,7 +254,7 @@ export function useAutoLayout({
       : createAutoLayoutWorker();
     workerRef.current = worker;
 
-    worker.onmessage = (event: MessageEvent) => {
+    worker.addEventListener('message', (event: MessageEvent) => {
       const message: unknown = event.data;
       if (
         typeof message !== 'object' ||
@@ -285,7 +285,7 @@ export function useAutoLayout({
             persistArgs.currentStep,
           );
       }
-    };
+    });
 
     // Seed from the positions the store already holds, converting each
     // normalized position to sim space and attaching group membership so the

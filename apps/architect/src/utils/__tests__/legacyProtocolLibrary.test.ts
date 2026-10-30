@@ -29,7 +29,7 @@ const makeBlob = (text: string) => new NodeBlob([text]) as unknown as Blob;
 const request = <T>(req: IDBRequest<T>) =>
   new Promise<T>((resolve, reject) => {
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.addEventListener('error', () => reject(req.error));
   });
 
 const databaseNames = async () =>
@@ -76,7 +76,7 @@ const seedArchitect8Library = async (
     for (const row of rows) transaction.objectStore('protocols').put(row);
     for (const asset of assets) transaction.objectStore('assets').put(asset);
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
+    transaction.addEventListener('error', () => reject(transaction.error));
   });
   db.close();
 };
@@ -216,7 +216,7 @@ describe('legacy protocol reader', () => {
         'a1',
         'a2',
       ]);
-      expect(await assets?.[0]?.data).toBeTruthy();
+      expect(assets?.[0]?.data).toBeTruthy();
       await expect(reader.countLegacyAssets('newer')).resolves.toBe(2);
       await expect(reader.countLegacyAssets('schema-7')).resolves.toBe(0);
     });

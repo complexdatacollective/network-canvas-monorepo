@@ -92,7 +92,7 @@ async function storedResearch(page: Page) {
       new Promise<{ protocols: unknown[]; sessions: unknown[] }>(
         (resolve, reject) => {
           const request = indexedDB.open(dbName);
-          request.onerror = () => reject(request.error);
+          request.addEventListener('error', () => reject(request.error));
           request.onsuccess = () => {
             const database = request.result;
             const transaction = database.transaction(
@@ -101,10 +101,10 @@ async function storedResearch(page: Page) {
             );
             const protocols = transaction.objectStore('protocols').getAll();
             const sessions = transaction.objectStore('sessions').getAll();
-            transaction.onerror = () => {
+            transaction.addEventListener('error', () => {
               database.close();
               reject(transaction.error);
-            };
+            });
             transaction.oncomplete = () => {
               database.close();
               resolve({

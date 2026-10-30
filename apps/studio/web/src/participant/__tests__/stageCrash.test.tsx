@@ -10,7 +10,11 @@ import { StudyId } from '@codaco/studio-contract/schema/ids';
 
 import { studioRootOptions } from '../../rootOptions.ts';
 import { createAppRouter } from '../../router.tsx';
-import { installFetchStub, requestUrl } from '../../test/fetchStub.ts';
+import {
+  installFetchStub,
+  requestBodyText,
+  requestUrl,
+} from '../../test/fetchStub.ts';
 import { installParticipantHarness } from '../../test/participantHarness.ts';
 import {
   isStageErrorBoundary,
@@ -116,7 +120,7 @@ const logPosts = () =>
 
 const stageCrashEntries = () =>
   logPosts().flatMap(([, init]) =>
-    String(init?.body).split('Stage failed to render').slice(1),
+    requestBodyText(init).split('Stage failed to render').slice(1),
   );
 
 const renderSession = () => {
@@ -171,7 +175,7 @@ describe('a stage that fails to render in a participant session', () => {
     await exportWindow();
 
     expect(stageCrashEntries()).toHaveLength(1);
-    expect(String(logPosts()[0]?.[1]?.body)).toContain(
+    expect(requestBodyText(logPosts()[0]?.[1])).toContain(
       '"stringValue":"Information"',
     );
   });

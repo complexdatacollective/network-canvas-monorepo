@@ -54,7 +54,15 @@ export function textFilterFn<
   if (query.length === 0) return true;
   const cell = row.getValue(columnId);
   if (cell == null) return false;
-  return String(cell).toLowerCase().includes(query);
+  const text =
+    typeof cell === 'string' ||
+    typeof cell === 'number' ||
+    typeof cell === 'boolean' ||
+    typeof cell === 'bigint' ||
+    cell instanceof Date
+      ? String(cell)
+      : JSON.stringify(cell);
+  return text.toLowerCase().includes(query);
 }
 
 export function facetedFilterFn<

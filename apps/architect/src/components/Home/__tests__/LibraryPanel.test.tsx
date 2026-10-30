@@ -667,9 +667,11 @@ describe('<LibraryPanel /> Architect 8 protocols', () => {
     );
 
     let left = false;
-    const leaving = whenCriticalOperationsSettle().then(() => {
+    const leave = async () => {
+      await whenCriticalOperationsSettle();
       left = true;
-    });
+    };
+    const leaving = leave();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(left).toBe(false);
 

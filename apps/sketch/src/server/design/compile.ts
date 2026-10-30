@@ -649,8 +649,16 @@ export const compile = (
       designId: s.id,
       kind: s.kind,
     };
-    const base = (id: string, type: string, lbl: string): Json => {
-      const st: Json = { id: sid(id), type, label: localized(lbl) };
+    const base = (
+      id: string,
+      type: string,
+      lbl: string,
+    ): Json & { id: string } => {
+      const st: Json & { id: string } = {
+        id: sid(id),
+        type,
+        label: localized(lbl),
+      };
       if (s.interviewerNote) st.interviewScript = s.interviewerNote;
       const sk = skipFor(s);
       if (sk) st.skipLogic = sk;

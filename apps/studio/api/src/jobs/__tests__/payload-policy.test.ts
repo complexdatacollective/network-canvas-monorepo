@@ -148,16 +148,14 @@ const FREE_TEXT = [
 ];
 
 const leavesOf = (ast: SchemaAST.AST): SchemaAST.AST[] => {
-  switch (ast._tag) {
-    case 'Objects':
-      return ast.propertySignatures.flatMap(({ type }) => leavesOf(type));
-    case 'Arrays':
-      return [...ast.elements, ...ast.rest].flatMap(leavesOf);
-    case 'Union':
-      return ast.types.flatMap(leavesOf);
-    default:
-      return [ast];
+  if (ast._tag === 'Objects') {
+    return ast.propertySignatures.flatMap(({ type }) => leavesOf(type));
   }
+  if (ast._tag === 'Arrays') {
+    return [...ast.elements, ...ast.rest].flatMap(leavesOf);
+  }
+  if (ast._tag === 'Union') return ast.types.flatMap(leavesOf);
+  return [ast];
 };
 
 describe('the usage event queue', () => {

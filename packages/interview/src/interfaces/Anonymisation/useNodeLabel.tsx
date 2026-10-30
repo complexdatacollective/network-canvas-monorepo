@@ -85,10 +85,12 @@ export function useNodeLabel(node: NcNode | undefined) {
     }
 
     let current = true;
-    void decryptInScope(scope, encrypted).then((result) => {
+    const settle = async () => {
+      const result = await decryptInScope(scope, encrypted);
       if (!result.readable) reportUnreadable('decryption-failed');
       if (current) rerender();
-    });
+    };
+    void settle();
     return () => {
       current = false;
     };

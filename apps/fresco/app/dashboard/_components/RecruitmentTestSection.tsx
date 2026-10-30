@@ -144,21 +144,23 @@ export default function RecruitmentTestSection({
         </Button>
         <Button
           disabled={buttonDisabled}
-          onClick={async () =>
-            await fetch(window.location.origin + getInterviewURL(), {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
+          onClick={async () => {
+            const response = await fetch(
+              window.location.origin + getInterviewURL(),
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  participantIdentifier: selectedParticipant?.identifier,
+                }),
               },
-              body: JSON.stringify({
-                participantIdentifier: selectedParticipant?.identifier,
-              }),
-            }).then((response) => {
-              if (response.redirected) {
-                window.location.href = response.url;
-              }
-            })
-          }
+            );
+            if (response.redirected) {
+              window.location.href = response.url;
+            }
+          }}
         >
           {intl.formatMessage(messages.startInterviewWithPOST)}
         </Button>
