@@ -2,9 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { paletteColorStyles } from '../styles/palette';
 import { StageBar } from './StageBar';
-import { STAGE_TYPE_COLORS } from './stageTypes';
 
 const stages = [
   { type: 'Information' },
@@ -20,11 +18,10 @@ describe('StageBar', () => {
     const segments = [...container.querySelectorAll('span')];
     expect(segments).toHaveLength(stages.length);
     expect(segments[1]).toHaveStyle({
-      backgroundColor:
-        paletteColorStyles[STAGE_TYPE_COLORS.NameGenerator].color,
+      backgroundColor: 'var(--interface-name-generator)',
     });
     expect(segments[2]).toHaveStyle({
-      backgroundColor: paletteColorStyles[STAGE_TYPE_COLORS.Sociogram].color,
+      backgroundColor: 'var(--interface-sociogram)',
     });
   });
 

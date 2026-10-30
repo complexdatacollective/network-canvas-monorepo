@@ -1,3 +1,5 @@
+import { createElement } from 'react';
+
 import { ghostButton } from '../components/buttonStyles.ts';
 import { HandoffActions } from '../components/HandoffActions.tsx';
 import { PlusIcon } from '../components/Icons.tsx';
@@ -186,24 +188,31 @@ export const ReadyScreen = ({
                   aria-hidden="true"
                   className="bg-neon-coral absolute top-1.5 bottom-1.5 left-[9px] w-1 rounded-sm"
                 />
-                {preview.map((stage, index) => (
-                  <div
-                    key={`${index}-${stage.label}`}
-                    className="relative flex items-center gap-3 rounded-[14px] bg-white px-3 py-2.5 shadow-[0_1px_0_oklch(0.88_0.015_281)]"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="border-neon-coral absolute -left-[25px] size-3.5 rounded-full border-[3px] bg-white"
-                    />
-                    <span
-                      aria-hidden="true"
-                      className={`size-[30px] flex-none rounded-[10px] ${stageTypeStyle(stage.type).swatch}`}
-                    />
-                    <span className="min-w-0 truncate text-sm font-bold">
-                      {stage.label}
-                    </span>
-                  </div>
-                ))}
+                {preview.map((stage, index) => {
+                  const style = stageTypeStyle(stage.type);
+                  return (
+                    <div
+                      key={`${index}-${stage.label}`}
+                      className="relative flex items-center gap-3 rounded-[14px] bg-white px-3 py-2.5 shadow-[0_1px_0_oklch(0.88_0.015_281)]"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="border-neon-coral absolute -left-[25px] size-3.5 rounded-full border-[3px] bg-white"
+                      />
+                      <span
+                        aria-hidden="true"
+                        className="grid size-[30px] flex-none place-items-center rounded-[10px]"
+                        style={style.swatch}
+                      >
+                        {style.icon &&
+                          createElement(style.icon, { className: 'size-4' })}
+                      </span>
+                      <span className="min-w-0 truncate text-sm font-bold">
+                        {stage.label}
+                      </span>
+                    </div>
+                  );
+                })}
                 {more > 0 && (
                   <span className="text-ink-muted pl-1 text-[0.8125rem]">
                     and {plural(more, 'more stage', 'more stages')}

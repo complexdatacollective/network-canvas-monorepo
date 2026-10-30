@@ -6,3 +6,6 @@
 @source '../../node_modules/@codaco/fresco-ui/src/Accordion.tsx';
 @source '../../node_modules/@codaco/fresco-ui/src/typography/Heading.tsx';
 @import './sketch-theme.css';
+/* The shared stage-type colours, which resolve against the brand channels. */
+@import '@codaco/tailwind-config/colors.css';
+@import '@codaco/tailwind-config/interfaces.css';

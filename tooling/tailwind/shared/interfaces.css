@@ -1,0 +1,206 @@
+/*
+ * @codaco/tailwind-config/interfaces — stage-type (interface) colours
+ *
+ * One background and one foreground per interview stage type.
+ * `@codaco/fresco-ui/stages/stageTypes` maps each stage type to its token here
+ * and to its icon, and its tests fail if a stage type has no token.
+ *
+ * Each group of stage types takes one base hue from the brand palette. Its
+ * first stage type is the brightest colour a white icon allows; each one after
+ * it is a step darker and turns a few degrees round the hue. Screens collect no
+ * network data, so they are greys. Every background reaches WCAG 4.5:1 with its
+ * foreground and 3:1 against Architect's platinum page, on sRGB and P3
+ * displays. The darker members fall below 3:1 on dark pages, so a stage colour
+ * drawn on a dark page needs a light ring to stay visible.
+ *
+ * Values resolve against the channel triplets in `colors.css`, which an app
+ * must load first. The values are the same in every theme, so they live on
+ * `:root` alone. Read the bare `--interface-*` variables in inline styles;
+ * the `--color-interface-*` aliases below exist for Tailwind utilities
+ * (`bg-interface-sociogram`, `text-interface-sociogram-contrast`).
+ */
+
+@layer theme {
+  :root {
+    /* Naming: neon coral, turning toward crimson */
+    --interface-name-generator: oklch(
+      from oklch(var(--neon-coral)) calc(l - 0.01) c h
+    );
+    --interface-name-generator-contrast: oklch(var(--white));
+    --interface-name-generator-quick-add: oklch(
+      from oklch(var(--neon-coral)) calc(l - 0.06) calc(c - 0.02) calc(h - 3)
+    );
+    --interface-name-generator-quick-add-contrast: oklch(var(--white));
+    --interface-name-generator-roster: oklch(
+      from oklch(var(--neon-coral)) calc(l - 0.11) calc(c - 0.04) calc(h - 6)
+    );
+    --interface-name-generator-roster-contrast: oklch(var(--white));
+    --interface-network-composer: oklch(
+      from oklch(var(--neon-coral)) calc(l - 0.16) calc(c - 0.06) calc(h - 9)
+    );
+    --interface-network-composer-contrast: oklch(var(--white));
+    --interface-family-pedigree: oklch(
+      from oklch(var(--neon-coral)) calc(l - 0.21) calc(c - 0.08) calc(h - 12)
+    );
+    --interface-family-pedigree-contrast: oklch(var(--white));
+
+    /* Describing: cerulean blue */
+    --interface-ego-form: oklch(
+      from oklch(var(--cerulean-blue)) calc(l - 0.01) calc(c + 0.01) h
+    );
+    --interface-ego-form-contrast: oklch(var(--white));
+    --interface-alter-form: oklch(
+      from oklch(var(--cerulean-blue)) calc(l - 0.08) calc(c + 0.01) calc(h + 3)
+    );
+    --interface-alter-form-contrast: oklch(var(--white));
+    --interface-alter-edge-form: oklch(
+      from oklch(var(--cerulean-blue)) calc(l - 0.15) calc(c + 0.01) calc(h + 6)
+    );
+    --interface-alter-edge-form-contrast: oklch(var(--white));
+
+    /* Grouping: neon carrot − 7° */
+    --interface-categorical-bin: oklch(
+      from oklch(var(--neon-carrot)) calc(l - 0.17) calc(c + 0.03) calc(h - 7)
+    );
+    --interface-categorical-bin-contrast: oklch(var(--white));
+    --interface-ordinal-bin: oklch(
+      from oklch(var(--neon-carrot)) calc(l - 0.23) calc(c + 0.02) calc(h - 10)
+    );
+    --interface-ordinal-bin-contrast: oklch(var(--white));
+
+    /* Mapping: sea serpent − 25° */
+    --interface-geospatial: oklch(
+      from oklch(var(--sea-serpent)) calc(l - 0.2) calc(c - 0.02) calc(h - 25)
+    );
+    --interface-geospatial-contrast: oklch(var(--white));
+
+    /* Connecting: purple pizazz */
+    --interface-sociogram: oklch(
+      from oklch(var(--purple-pizazz)) calc(l - 0.04) calc(c + 0.01) h
+    );
+    --interface-sociogram-contrast: oklch(var(--white));
+    --interface-dyad-census: oklch(
+      from oklch(var(--purple-pizazz)) calc(l - 0.1) calc(c - 0.02) calc(h - 3)
+    );
+    --interface-dyad-census-contrast: oklch(var(--white));
+    --interface-one-to-many-dyad-census: oklch(
+      from oklch(var(--purple-pizazz)) calc(l - 0.16) calc(c - 0.04) calc(h - 6)
+    );
+    --interface-one-to-many-dyad-census-contrast: oklch(var(--white));
+    --interface-tie-strength-census: oklch(
+      from oklch(var(--purple-pizazz)) calc(l - 0.22) calc(c - 0.07) calc(h - 9)
+    );
+    --interface-tie-strength-census-contrast: oklch(var(--white));
+
+    /* Reflecting: sea green, turning toward teal */
+    --interface-narrative: oklch(
+      from oklch(var(--sea-green)) calc(l - 0.17) calc(c - 0.07) h
+    );
+    --interface-narrative-contrast: oklch(var(--white));
+    --interface-narrative-pedigree: oklch(
+      from oklch(var(--sea-green)) calc(l - 0.25) calc(c - 0.09) calc(h + 3)
+    );
+    --interface-narrative-pedigree-contrast: oklch(var(--white));
+
+    /* Screens: cyber grape greys */
+    --interface-information: oklch(
+      from oklch(var(--cyber-grape)) calc(l + 0.26) calc(c - 0.06) h
+    );
+    --interface-information-contrast: oklch(var(--white));
+    --interface-language-chooser: oklch(
+      from oklch(var(--cyber-grape)) calc(l + 0.2) calc(c - 0.06) calc(h - 12)
+    );
+    --interface-language-chooser-contrast: oklch(var(--white));
+    --interface-anonymisation: oklch(
+      from oklch(var(--cyber-grape)) calc(l + 0.14) calc(c - 0.06) calc(h - 24)
+    );
+    --interface-anonymisation-contrast: oklch(var(--white));
+    --interface-finish-session: oklch(
+      from oklch(var(--cyber-grape)) calc(l + 0.08) calc(c - 0.06) calc(h - 36)
+    );
+    --interface-finish-session-contrast: oklch(var(--white));
+  }
+}
+
+@theme inline {
+  --color-interface-name-generator: var(--interface-name-generator);
+  --color-interface-name-generator-contrast: var(
+    --interface-name-generator-contrast
+  );
+  --color-interface-name-generator-quick-add: var(
+    --interface-name-generator-quick-add
+  );
+  --color-interface-name-generator-quick-add-contrast: var(
+    --interface-name-generator-quick-add-contrast
+  );
+  --color-interface-name-generator-roster: var(
+    --interface-name-generator-roster
+  );
+  --color-interface-name-generator-roster-contrast: var(
+    --interface-name-generator-roster-contrast
+  );
+  --color-interface-network-composer: var(--interface-network-composer);
+  --color-interface-network-composer-contrast: var(
+    --interface-network-composer-contrast
+  );
+  --color-interface-family-pedigree: var(--interface-family-pedigree);
+  --color-interface-family-pedigree-contrast: var(
+    --interface-family-pedigree-contrast
+  );
+
+  --color-interface-ego-form: var(--interface-ego-form);
+  --color-interface-ego-form-contrast: var(--interface-ego-form-contrast);
+  --color-interface-alter-form: var(--interface-alter-form);
+  --color-interface-alter-form-contrast: var(--interface-alter-form-contrast);
+  --color-interface-alter-edge-form: var(--interface-alter-edge-form);
+  --color-interface-alter-edge-form-contrast: var(
+    --interface-alter-edge-form-contrast
+  );
+
+  --color-interface-categorical-bin: var(--interface-categorical-bin);
+  --color-interface-categorical-bin-contrast: var(
+    --interface-categorical-bin-contrast
+  );
+  --color-interface-ordinal-bin: var(--interface-ordinal-bin);
+  --color-interface-ordinal-bin-contrast: var(--interface-ordinal-bin-contrast);
+
+  --color-interface-geospatial: var(--interface-geospatial);
+  --color-interface-geospatial-contrast: var(--interface-geospatial-contrast);
+
+  --color-interface-sociogram: var(--interface-sociogram);
+  --color-interface-sociogram-contrast: var(--interface-sociogram-contrast);
+  --color-interface-dyad-census: var(--interface-dyad-census);
+  --color-interface-dyad-census-contrast: var(--interface-dyad-census-contrast);
+  --color-interface-one-to-many-dyad-census: var(
+    --interface-one-to-many-dyad-census
+  );
+  --color-interface-one-to-many-dyad-census-contrast: var(
+    --interface-one-to-many-dyad-census-contrast
+  );
+  --color-interface-tie-strength-census: var(--interface-tie-strength-census);
+  --color-interface-tie-strength-census-contrast: var(
+    --interface-tie-strength-census-contrast
+  );
+
+  --color-interface-narrative: var(--interface-narrative);
+  --color-interface-narrative-contrast: var(--interface-narrative-contrast);
+  --color-interface-narrative-pedigree: var(--interface-narrative-pedigree);
+  --color-interface-narrative-pedigree-contrast: var(
+    --interface-narrative-pedigree-contrast
+  );
+
+  --color-interface-information: var(--interface-information);
+  --color-interface-information-contrast: var(--interface-information-contrast);
+  --color-interface-language-chooser: var(--interface-language-chooser);
+  --color-interface-language-chooser-contrast: var(
+    --interface-language-chooser-contrast
+  );
+  --color-interface-anonymisation: var(--interface-anonymisation);
+  --color-interface-anonymisation-contrast: var(
+    --interface-anonymisation-contrast
+  );
+  --color-interface-finish-session: var(--interface-finish-session);
+  --color-interface-finish-session-contrast: var(
+    --interface-finish-session-contrast
+  );
+}
