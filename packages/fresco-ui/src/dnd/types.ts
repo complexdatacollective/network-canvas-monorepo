@@ -22,7 +22,6 @@ export type DropTarget = {
 export type UseDropTargetReturn = {
   dropProps: {
     'ref': (element: HTMLElement | null) => void;
-    'aria-dropeffect'?: 'none' | 'copy' | 'execute' | 'link' | 'move' | 'popup';
     'aria-label'?: string;
     'data-zone-id'?: string;
     'style'?: React.CSSProperties;
