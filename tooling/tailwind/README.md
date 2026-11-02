@@ -49,3 +49,7 @@ One rule governs every theme file: a `var()` inside a custom property resolves a
 | `@codaco/tailwind-config/globals.css` | Network Canvas palette as HSL `H S% L%` triplets, plus dark-variant calc fallbacks. Pair with the v3 presets.          |
 
 Used by `packages/ui`, `packages/art`, and `apps/documentation`. New consumers should prefer the v4 surface unless they are explicitly maintaining a v3 codebase.
+
+### Contrast tests
+
+`tests/theme-contrast.test.ts` resolves every colour token in `fresco/themes/*.css` for each theme and mode, then checks every fill / `-contrast` pair against WCAG 2.2 AA (4.5:1). It also checks that each ratio quoted in a theme comment still matches the colours it was measured on (`tests/recorded-ratios.ts` pairs each quote with its colours). Run it with `pnpm --filter @codaco/tailwind-config test`. Pairs that fall short today are listed, with reasons, in `KNOWN_FAILURES`; the test fails when one is added or starts passing.
