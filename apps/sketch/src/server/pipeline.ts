@@ -320,8 +320,25 @@ const reviewNotesFor = (critique: Critique, skipped: string[]): string[] => [
     : []),
 ];
 
-const degradedCount = (b: BuildResult) =>
-  b.issues.filter((i) => i.severity === 'degraded').length;
+const issueKey = (i: BuildResult['issues'][number]) =>
+  `${i.code}\n${i.message}`;
+/**
+ * Whether build has a degraded issue that baseline does not. Issues are
+ * matched by code and message, which name stages and attributes by id, so a
+ * removed stage that shifts the others does not make their issues new.
+ */
+export const addsDegradation = (build: BuildResult, baseline: BuildResult) => {
+  const remaining = new Map<string, number>();
+  for (const i of baseline.issues)
+    if (i.severity === 'degraded')
+      remaining.set(issueKey(i), (remaining.get(issueKey(i)) ?? 0) + 1);
+  return build.issues.some((i) => {
+    if (i.severity !== 'degraded') return false;
+    const left = remaining.get(issueKey(i)) ?? 0;
+    remaining.set(issueKey(i), left - 1);
+    return left <= 0;
+  });
+};
 
 const issueMessages = (b: BuildResult) => [
   ...b.issues.filter((i) => i.severity === 'degraded').map((i) => i.message),
@@ -798,7 +815,7 @@ export const runPipeline = async (
           return (
             !build.fatal &&
             build.validation.success &&
-            degradedCount(build) <= degradedCount(baseline)
+            !addsDegradation(build, baseline)
           );
         };
         const outcome = await applyCritique(
