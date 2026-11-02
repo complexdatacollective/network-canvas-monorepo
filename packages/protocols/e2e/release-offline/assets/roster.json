@@ -1,0 +1,7 @@
+{
+  "nodes": [
+    { "attributes": { "name": "Amara", "age": 29 } },
+    { "attributes": { "name": "Beto", "age": 34 } },
+    { "attributes": { "name": "Chidi", "age": 41 } }
+  ]
+}

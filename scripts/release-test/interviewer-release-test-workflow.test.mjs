@@ -91,6 +91,8 @@ const EXPECTED_CHECKS = {
   'schema8-interviewer8': 7,
   'pwa-offline': 10,
   'settings-and-chrome': 9,
+  'language-negotiation': 5,
+  'offline-readiness': 9,
 };
 
 const mkChecks = (n, { failAt = [], skipAt = [], skipCodes = {} } = {}) =>
@@ -1735,6 +1737,65 @@ test('schema8-interviewer8 maps every step the walker records onto a check', () 
   assert.deepEqual(unmapped, []);
 });
 
+const expected = (key) => EXPECTED_CHECKS[key];
+for (const [key, walkerName, nextKey] of [
+  [
+    'language-negotiation',
+    'interviewer-language-walker.mjs',
+    'offline-readiness',
+  ],
+  ['offline-readiness', 'interviewer-offline-readiness-walker.mjs', null],
+]) {
+  test(`${key} maps every step the walker records onto a check`, () => {
+    // As for conduct-offline: a step the walker records but the prompt never
+    // names is a result the journey cannot report against any check.
+    const walker = readFileSync(
+      path.join(repoRoot, 'scripts', 'release-test', walkerName),
+      'utf8',
+    );
+    const recorded = new Set(
+      [...walker.matchAll(/record\(\s*'([a-z0-9-]+)'/g)].map((m) => m[1]),
+    );
+    // interviewCase records its steps through a parameter.
+    for (const m of walker.matchAll(/interviewCase\(\s*'([a-z0-9-]+)'/g))
+      recorded.add(m[1]);
+    for (const harness of ['setup', 'watchdog', 'walk'])
+      assert.ok(
+        recorded.delete(harness),
+        `walker no longer records ${harness}`,
+      );
+    assert.ok(recorded.size >= 12, `found only ${recorded.size} walker steps`);
+    const start = source.indexOf(`key: '${key}'`);
+    const end = nextKey
+      ? source.indexOf(`key: '${nextKey}'`)
+      : source.indexOf('\n];\n', start);
+    assert.ok(start !== -1 && end > start, `${key} prompt not found`);
+    const prompt = source.slice(start, end);
+    const unmapped = [...recorded].filter(
+      (step) => !prompt.includes(`"${step}"`),
+    );
+    assert.deepEqual(unmapped, []);
+    // Every evidence copy names a capture the walker takes: a literal name,
+    // a templated one by its literal head, or an interviewCase step (which
+    // captures under its step name).
+    const shots = [...walker.matchAll(/shot\(\s*([`'])([a-z0-9-]+)(\$\{)?/g)];
+    const exact = new Set([
+      ...shots.filter((m) => !m[3]).map((m) => m[2]),
+      ...[...walker.matchAll(/interviewCase\(\s*'([a-z0-9-]+)'/g)].map(
+        (m) => m[1],
+      ),
+    ]);
+    const heads = shots.filter((m) => m[3]).map((m) => m[2]);
+    const copies = [...prompt.matchAll(/cp \?\?-([a-z0-9-]+)\.png/g)];
+    assert.ok(copies.length >= expected(key), `${key} copies too few captures`);
+    for (const [, name] of copies)
+      assert.ok(
+        exact.has(name) || heads.some((head) => name.startsWith(head)),
+        `${key} copies ${name}.png, which the walker never captures`,
+      );
+  });
+}
+
 test("the walkers read the app's own database and never create one", async () => {
   // Interviewer keeps its data, and Interviewer 8's at /v8/, in one IndexedDB
   // database. A walker that reads a literal name drifts onto the wrong
@@ -1748,6 +1809,8 @@ test("the walkers read the app's own database and never create one", async () =>
     'interviewer-release-smoke-walker.mjs',
     'interviewer-security-vault-walker.mjs',
     'interviewer-schema8-walker.mjs',
+    'interviewer-language-walker.mjs',
+    'interviewer-offline-readiness-walker.mjs',
   ]) {
     const walker = readFileSync(
       path.join(repoRoot, 'scripts', 'release-test', name),
