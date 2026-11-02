@@ -91,6 +91,7 @@ export const FullDate: Story = {
     return (
       <div className="w-full max-w-md space-y-2">
         <DatePickerField
+          aria-label="Full date"
           type="full"
           value={value}
           onChange={(v) => setValue(v ?? '')}
@@ -120,6 +121,7 @@ export const MonthYear: Story = {
     return (
       <div className="w-full max-w-md space-y-2">
         <DatePickerField
+          aria-label="Month year"
           type="month"
           value={value}
           onChange={(v) => setValue(v ?? '')}
@@ -149,6 +151,7 @@ export const YearOnly: Story = {
     return (
       <div className="w-full max-w-md space-y-2">
         <DatePickerField
+          aria-label="Year only"
           type="year"
           value={value}
           onChange={(v) => setValue(v ?? '')}
@@ -184,6 +187,7 @@ export const AllTypes: Story = {
             Full Date
           </Heading>
           <DatePickerField
+            aria-label="Full comparison"
             type="full"
             value={fullDate}
             onChange={(v) => setFullDate(v ?? '')}
@@ -201,6 +205,7 @@ export const AllTypes: Story = {
             Month/Year
           </Heading>
           <DatePickerField
+            aria-label="Month comparison"
             type="month"
             value={monthYear}
             onChange={(v) => setMonthYear(v ?? '')}
@@ -218,6 +223,7 @@ export const AllTypes: Story = {
             Year Only
           </Heading>
           <DatePickerField
+            aria-label="Year comparison"
             type="year"
             value={year}
             onChange={(v) => setYear(v ?? '')}
@@ -256,6 +262,7 @@ export const WithConstraints: Story = {
             Full Date (2024 only)
           </Heading>
           <DatePickerField
+            aria-label="Constrained full"
             type="full"
             min="2024-01-01"
             max="2024-12-31"
@@ -275,6 +282,7 @@ export const WithConstraints: Story = {
             Month/Year (2022-2023)
           </Heading>
           <DatePickerField
+            aria-label="Constrained month"
             type="month"
             min="2022-01-01"
             max="2023-12-31"
@@ -294,6 +302,7 @@ export const WithConstraints: Story = {
             Year (1990-2000)
           </Heading>
           <DatePickerField
+            aria-label="Constrained year"
             type="year"
             min="1990-01-01"
             max="2000-12-31"
@@ -334,6 +343,7 @@ export const OutOfDefaultWindowBound: Story = {
             Year (max=&quot;1800&quot;, no min)
           </Heading>
           <DatePickerField
+            aria-label="Below default year"
             type="year"
             max="1800"
             value={belowDefault}
@@ -356,6 +366,7 @@ export const OutOfDefaultWindowBound: Story = {
             Year (min=&quot;3000&quot;, no max)
           </Heading>
           <DatePickerField
+            aria-label="Above today year"
             type="year"
             min="3000"
             value={aboveToday}
@@ -401,6 +412,7 @@ export const AllStates: Story = {
               Normal
             </Paragraph>
             <DatePickerField
+              aria-label="Normal full"
               type="full"
               value="2024-06-15"
               onChange={() => {
@@ -417,6 +429,7 @@ export const AllStates: Story = {
               Disabled
             </Paragraph>
             <DatePickerField
+              aria-label="Disabled full"
               type="full"
               disabled
               value="2024-06-15"
@@ -434,6 +447,7 @@ export const AllStates: Story = {
               Read-Only
             </Paragraph>
             <DatePickerField
+              aria-label="Readonly full"
               type="full"
               readOnly
               value="2024-06-15"
@@ -451,6 +465,7 @@ export const AllStates: Story = {
               Invalid
             </Paragraph>
             <DatePickerField
+              aria-label="Invalid full"
               type="full"
               aria-invalid
               value="2024-06-15"
@@ -476,6 +491,7 @@ export const AllStates: Story = {
               Normal
             </Paragraph>
             <DatePickerField
+              aria-label="Normal month"
               type="month"
               value="2024-06"
               onChange={() => {
@@ -492,6 +508,7 @@ export const AllStates: Story = {
               Disabled
             </Paragraph>
             <DatePickerField
+              aria-label="Disabled month"
               type="month"
               disabled
               value="2024-06"
@@ -509,6 +526,7 @@ export const AllStates: Story = {
               Read-Only
             </Paragraph>
             <DatePickerField
+              aria-label="Readonly month"
               type="month"
               readOnly
               value="2024-06"
@@ -526,6 +544,7 @@ export const AllStates: Story = {
               Invalid
             </Paragraph>
             <DatePickerField
+              aria-label="Invalid month"
               type="month"
               aria-invalid
               value="2024-06"
@@ -551,6 +570,7 @@ export const AllStates: Story = {
               Normal
             </Paragraph>
             <DatePickerField
+              aria-label="Normal year"
               type="year"
               value="2024"
               onChange={() => {
@@ -567,6 +587,7 @@ export const AllStates: Story = {
               Disabled
             </Paragraph>
             <DatePickerField
+              aria-label="Disabled year"
               type="year"
               disabled
               value="2024"
@@ -584,6 +605,7 @@ export const AllStates: Story = {
               Read-Only
             </Paragraph>
             <DatePickerField
+              aria-label="Readonly year"
               type="year"
               readOnly
               value="2024"
@@ -601,6 +623,7 @@ export const AllStates: Story = {
               Invalid
             </Paragraph>
             <DatePickerField
+              aria-label="Invalid year"
               type="year"
               aria-invalid
               value="2024"
@@ -644,6 +667,7 @@ export const BirthDateExample: Story = {
             Date of Birth
           </label>
           <DatePickerField
+            aria-label="Birth date"
             id="birth-date-input"
             type="full"
             value={birthDate}
@@ -679,7 +703,8 @@ export const BirthDateExample: Story = {
 
 export const Playground: Story = {
   args: {
-    type: 'full',
+    'type': 'full',
+    'aria-label': 'Date',
   },
   parameters: {
     docs: {
