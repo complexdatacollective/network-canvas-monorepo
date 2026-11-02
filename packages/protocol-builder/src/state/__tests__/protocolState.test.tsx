@@ -1,7 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Effect, Redacted, Schema, Stream } from 'effect';
-import { Component, StrictMode, useState, type ReactNode } from 'react';
+import {
+  Component,
+  StrictMode,
+  useLayoutEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { ProtocolEventSchema } from '@codaco/protocol-builder-core/contract/schemas';
@@ -57,6 +63,10 @@ function newHost() {
 
 type Counts = { information: number; egoForm: number };
 
+function tally(counts: Counts, field: keyof Counts) {
+  counts[field] += 1;
+}
+
 function Label({
   name,
   id,
@@ -69,7 +79,10 @@ function Label({
   field: keyof Counts;
 }>) {
   const label = useSection(id, (section) => englishLabel(section.document));
-  counts[field] += 1;
+  // Counted per commit, after the render it belongs to.
+  useLayoutEffect(() => {
+    tally(counts, field);
+  });
   return <output aria-label={name}>{label ?? 'loading'}</output>;
 }
 
