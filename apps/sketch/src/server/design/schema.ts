@@ -283,7 +283,7 @@ const NameGeneratorStage = z
         }),
       )
       .describe(
-        '1-4 prompts on ONE theme. Use another nameGenerator stage for another theme.',
+        'Prompts on ONE theme. Use another nameGenerator stage for another theme.',
       ),
     minNodes: z
       .number()
@@ -293,7 +293,7 @@ const NameGeneratorStage = z
     maxNodes: z
       .number()
       .describe(
-        'Most nodes allowed on this stage; 0 for no limit. Cap at 10-20 when relationship stages follow.',
+        'Most nodes allowed on this stage; 0 for no limit. No more than the research question and the stages that follow need.',
       ),
   })
   .describe(
@@ -393,7 +393,7 @@ const RelationshipCensusStage = z
     method: z
       .enum(['every_pair', 'one_at_a_time', 'with_strength'])
       .describe(
-        "one_at_a_time = usually preferred: one node at a time, tap everyone tied to it from the rest (up to ~25 nodes). every_pair = a yes/no screen for every pair (under ~8 nodes), when each pair needs an explicit answer. with_strength = every pair on an ordered strength scale, when the study needs the participant's perception of tie strength between alters.",
+        "one_at_a_time = the usual choice and least burdensome: one node at a time, tap everyone tied to it from the rest. every_pair = a yes/no screen for every pair, only when every pair must be explicitly confirmed or rejected. with_strength = every pair on an ordered strength scale, only when that is needed and the study needs the participant's perception of tie strength between alters.",
       ),
     prompts: z
       .array(
@@ -697,7 +697,7 @@ export const StudyDesignSchema = z
     includeConsent: z
       .boolean()
       .describe(
-        'true adds a standard consent question after the welcome screen; the interview ends if the participant declines.',
+        'true adds a standard consent question after the welcome screen; the interview ends if the participant declines. Always true when self_administered; when face_to_face, only if consent is taken in the interview itself.',
       ),
     consentText: Text(
       'includeConsent true: one paragraph on what taking part involves. Otherwise "".',
