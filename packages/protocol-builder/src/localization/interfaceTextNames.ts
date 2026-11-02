@@ -125,7 +125,7 @@ const hints = defineMessages({
   connection: {
     id: 'protocolBuilder.localizedTextNames.interfaceTextHint.connection',
     defaultMessage:
-      'Title shown when the participant selects an edge of a type this stage does not draw, such as one from an earlier stage.',
+      'Title shown when the interviewer selects an edge of a type this stage does not draw, such as one from an earlier stage.',
     description:
       'Hint under the setting holding the connection label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for.',
   },

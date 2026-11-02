@@ -3120,7 +3120,7 @@
     "description": "Hint under the setting holding the connect tool explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.connection": {
-    "defaultMessage": "Title shown when the participant selects an edge of a type this stage does not draw, such as one from an earlier stage.",
+    "defaultMessage": "Title shown when the interviewer selects an edge of a type this stage does not draw, such as one from an earlier stage.",
     "description": "Hint under the setting holding the connection label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.disconnectToolDescription": {
@@ -3796,8 +3796,8 @@
     "description": "Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.networkCanvas.composerAddNamePlaceholderHint": {
-    "defaultMessage": "Placeholder in the box for adding a node by name, shown until the participant starts typing.",
-    "description": "Hint under the setting holding the placeholder of the box for adding a node, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
+    "defaultMessage": "Placeholder in the box for adding a node by name.",
+    "description": "Hint under the setting holding the placeholder of the box for adding a node, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
   },
   "protocolBuilder.networkCanvas.composerAddNamePlaceholderLabel": {
     "defaultMessage": "Name box placeholder",
@@ -3805,7 +3805,7 @@
   },
   "protocolBuilder.networkCanvas.composerAddNodeTooltipHint": {
     "defaultMessage": "Tooltip for the tool that adds a node to the canvas.",
-    "description": "Hint under the setting holding the add node tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
+    "description": "Hint under the setting holding the add node tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
   },
   "protocolBuilder.networkCanvas.composerAddNodeTooltipLabel": {
     "defaultMessage": "Add node tooltip",
@@ -3813,7 +3813,7 @@
   },
   "protocolBuilder.networkCanvas.composerAutomaticLayoutTooltipHint": {
     "defaultMessage": "Tooltip for the automatic layout tool.",
-    "description": "Hint under the setting holding the automatic layout tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
+    "description": "Hint under the setting holding the automatic layout tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
   },
   "protocolBuilder.networkCanvas.composerAutomaticLayoutTooltipLabel": {
     "defaultMessage": "Automatic layout tooltip",
@@ -3825,7 +3825,7 @@
   },
   "protocolBuilder.networkCanvas.composerDrawConnectionTooltipHint": {
     "defaultMessage": "Tooltip for the tool that draws an edge between two nodes. Only used when the canvas has edge types.",
-    "description": "Hint under the setting holding the draw connection tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
+    "description": "Hint under the setting holding the draw connection tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
   },
   "protocolBuilder.networkCanvas.composerDrawConnectionTooltipLabel": {
     "defaultMessage": "Draw connection tooltip",
@@ -3897,7 +3897,7 @@
   },
   "protocolBuilder.networkCanvas.composerGroupsHeadingHint": {
     "defaultMessage": "Name of the groups tool, and heading of the groups in the key. Only used when the canvas groups nodes.",
-    "description": "Hint under the setting holding the groups heading, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
+    "description": "Hint under the setting holding the groups heading, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
   },
   "protocolBuilder.networkCanvas.composerGroupsHeadingLabel": {
     "defaultMessage": "Groups heading",
@@ -3924,8 +3924,8 @@
     "description": "Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview."
   },
   "protocolBuilder.networkCanvas.composerOvertakenEditNoticeHint": {
-    "defaultMessage": "Warning shown when an undo or redo changes an answer the participant is editing, so their edit is not saved.",
-    "description": "Hint under the setting holding the warning about an overtaken edit, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for."
+    "defaultMessage": "Warning shown when an undo or redo changes an answer the interviewer is editing, so their edit is not saved.",
+    "description": "Hint under the setting holding the warning about an overtaken edit, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
   },
   "protocolBuilder.networkCanvas.composerOvertakenEditNoticeLabel": {
     "defaultMessage": "Warning about an overtaken edit",

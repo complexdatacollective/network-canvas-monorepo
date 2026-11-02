@@ -12,7 +12,7 @@ import { composerMessages as messages } from './composerMessages.ts';
 
 const STAGE_TYPE = 'NetworkComposer';
 
-/** The words a participant reads while building the network on the canvas. */
+/** The words the interviewer reads while building the network on the canvas. */
 const WORDS: readonly WordingSetting[] = [
   {
     path: 'addNamePlaceholder',
@@ -48,7 +48,7 @@ const WORDS: readonly WordingSetting[] = [
 ];
 
 /**
- * The words a participant reads while building the network: the name box, the
+ * The words the interviewer reads while building the network: the name box, the
  * warning about an edit an undo or redo overtook, and the labels of the canvas
  * tools. Each starts with Network Canvas's wording. The groups heading is
  * asked only while the canvas groups members, and the connection tooltip only

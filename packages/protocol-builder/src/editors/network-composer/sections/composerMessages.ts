@@ -373,7 +373,7 @@ export const composerMessages = defineMessages({
     defaultMessage:
       'Name of the groups tool, and heading of the groups in the key. Only used when the canvas groups nodes.',
     description:
-      'Hint under the setting holding the groups heading, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for.',
+      'Hint under the setting holding the groups heading, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage.',
   },
   addNodeTooltipLabel: {
     id: 'protocolBuilder.networkCanvas.composerAddNodeTooltipLabel',
@@ -398,32 +398,31 @@ export const composerMessages = defineMessages({
     defaultMessage:
       'Tooltip for the tool that draws an edge between two nodes. Only used when the canvas has edge types.',
     description:
-      'Hint under the setting holding the draw connection tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for.',
+      'Hint under the setting holding the draw connection tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage.',
   },
   addNamePlaceholderHint: {
     id: 'protocolBuilder.networkCanvas.composerAddNamePlaceholderHint',
-    defaultMessage:
-      'Placeholder in the box for adding a node by name, shown until the participant starts typing.',
+    defaultMessage: 'Placeholder in the box for adding a node by name.',
     description:
-      'Hint under the setting holding the placeholder of the box for adding a node, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for.',
+      'Hint under the setting holding the placeholder of the box for adding a node, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage.',
   },
   overtakenEditNoticeHint: {
     id: 'protocolBuilder.networkCanvas.composerOvertakenEditNoticeHint',
     defaultMessage:
-      'Warning shown when an undo or redo changes an answer the participant is editing, so their edit is not saved.',
+      'Warning shown when an undo or redo changes an answer the interviewer is editing, so their edit is not saved.',
     description:
-      'Hint under the setting holding the warning about an overtaken edit, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for.',
+      'Hint under the setting holding the warning about an overtaken edit, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage.',
   },
   addNodeTooltipHint: {
     id: 'protocolBuilder.networkCanvas.composerAddNodeTooltipHint',
     defaultMessage: 'Tooltip for the tool that adds a node to the canvas.',
     description:
-      'Hint under the setting holding the add node tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for.',
+      'Hint under the setting holding the add node tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage.',
   },
   automaticLayoutTooltipHint: {
     id: 'protocolBuilder.networkCanvas.composerAutomaticLayoutTooltipHint',
     defaultMessage: 'Tooltip for the automatic layout tool.',
     description:
-      'Hint under the setting holding the automatic layout tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the participant sees this text and what it is for.',
+      'Hint under the setting holding the automatic layout tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage.',
   },
 });
