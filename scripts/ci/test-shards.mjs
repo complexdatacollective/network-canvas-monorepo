@@ -117,7 +117,7 @@ const NOT_SHARDED = {
 };
 
 /**
- * @typedef {{ shard: number, parts?: number, postgres?: true, browsers?: string, packages: { name: string, seconds: number }[] }} Bucket
+ * @typedef {{ shard: number, parts?: number, postgres?: true, browsers?: string, releaseBrowsers?: string, packages: { name: string, seconds: number }[] }} Bucket
  */
 
 /**
@@ -191,15 +191,17 @@ export const TEST_SHARDS = [
  * The `test-storybook` job's legs: each runs its bucket's `test:storybook`
  * suites one at a time on a whole runner, because browsers starve each other
  * on four cores. Weights are each suite's wall time in the full run
- * 41074704120 (30 Oct 2026), which took 541s serially. `browsers` is what the
- * leg installs; fresco-ui is the one suite that also runs its stories in
- * Firefox.
+ * 41074704120 (30 Oct 2026), which took 541s serially, fresco-ui with its
+ * Firefox pass. `browsers` is what the leg installs; `releaseBrowsers` is
+ * what it adds on a generated release PR, the only place fresco-ui's stories
+ * also run in Firefox (see its vitest.config.ts).
  * @type {Bucket[]}
  */
 export const STORYBOOK_SHARDS = [
   {
     shard: 1,
-    browsers: 'chromium firefox',
+    browsers: 'chromium',
+    releaseBrowsers: 'firefox',
     packages: [{ name: '@codaco/fresco-ui', seconds: 201 }],
   },
   {

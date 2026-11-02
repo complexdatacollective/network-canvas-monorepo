@@ -1164,9 +1164,22 @@ test('the storybook matrix runs exactly the legs scripts/ci/test-shards.mjs defi
   const storybook = parsedWorkflow.jobs['test-storybook'];
   const legs = storybook.strategy.matrix.include;
   assert.deepEqual(
-    legs.map((leg) => [leg.shard, leg.browsers]),
-    STORYBOOK_SHARDS.map((s) => [s.shard, s.browsers]),
+    legs.map((leg) => [leg.shard, leg.browsers, leg.releaseBrowsers]),
+    STORYBOOK_SHARDS.map((s) => [s.shard, s.browsers, s.releaseBrowsers]),
     'every storybook bucket has a leg installing the browsers it declares',
+  );
+  // fresco-ui's Firefox pass runs on generated release PRs only, and the leg
+  // installs Firefox exactly when it does.
+  assert.equal(
+    storybook.env.STORYBOOK_FIREFOX,
+    "${{ startsWith(github.head_ref, 'changeset-release/') }}",
+  );
+  const install = storybook.steps.find(
+    (step) => step.uses === './.github/actions/playwright-browsers',
+  );
+  assert.match(
+    install.with.browsers,
+    /env\.STORYBOOK_FIREFOX == 'true'\s+&& matrix\.releaseBrowsers/,
   );
   assert.equal(storybook.strategy['fail-fast'], false);
 

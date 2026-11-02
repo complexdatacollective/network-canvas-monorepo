@@ -39,7 +39,9 @@ play function and assertions in a real browser. Six workspaces define it:
 `@codaco/architect`, `@codaco/fresco-ui`, `@codaco/interview`,
 `@codaco/interviewer`, `@codaco/protocol-builder`, and `fresco`. The
 `test-storybook` CI job runs them through Turbo in three legs (fresco-ui;
-interview; the other four) and the `quality` gate requires it. Chromatic does
+interview; the other four) and the `quality` gate requires it. fresco-ui's
+stories also run in Firefox, but in CI only on generated release PRs
+(`STORYBOOK_FIREFOX`, read by its `vitest.config.ts`). Chromatic does
 not replace this: it has no project for Architect, Fresco or Protocol Builder,
 and TurboSnap only re-captures the stories a pull request changed.
 

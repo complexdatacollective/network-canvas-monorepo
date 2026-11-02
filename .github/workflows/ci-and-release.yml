@@ -1786,14 +1786,24 @@ jobs:
       && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # fresco-ui's stories run a second time in Firefox on generated release
+      # PRs only. Every other PR gets Chromium: the Firefox pass doubled that
+      # suite, and of the defects on record it caught only one (the Likert
+      # slider, June 2026) failed in Firefox alone. A release PR bumps the
+      # version of every package it releases, which makes that package's
+      # suite and its dependents' affected, so a fresco-ui change still runs
+      # in Firefox before it ships.
+      STORYBOOK_FIREFOX: ${{ startsWith(github.head_ref, 'changeset-release/') }}
     strategy:
       # Every leg's verdict is wanted; see the same setting on `test`.
       fail-fast: false
       matrix:
         include:
-          # fresco-ui, the one suite that also runs its stories in Firefox.
+          # fresco-ui, which adds Firefox on release PRs (STORYBOOK_FIREFOX).
           - shard: 1
-            browsers: chromium firefox
+            browsers: chromium
+            releaseBrowsers: firefox
           - shard: 2
             browsers: chromium
           # Holds `fresco`, whose stories need its Prisma client and Next
@@ -1811,7 +1821,10 @@ jobs:
       - uses: ./.github/actions/turbo-ci-setup
       - uses: ./.github/actions/playwright-browsers
         with:
-          browsers: ${{ matrix.browsers }}
+          browsers: >-
+            ${{ matrix.browsers }}${{ env.STORYBOOK_FIREFOX == 'true'
+            && matrix.releaseBrowsers
+            && format(' {0}', matrix.releaseBrowsers) || '' }}
           package: '@codaco/interviewer'
       - name: Generate Fresco's Prisma client and Next types
         if: matrix.frescoCodegen
