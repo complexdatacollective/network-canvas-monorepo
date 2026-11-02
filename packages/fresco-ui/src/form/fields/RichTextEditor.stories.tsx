@@ -920,36 +920,99 @@ export const WithVersionsAndInsertMenu: Story = {
   },
 };
 
+const typeIntoTheInsertMenu = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  const body = within(canvasElement.ownerDocument.body);
+  const editor = await canvas.findByRole('textbox', { name: 'Question' });
+  await userEvent.click(editor);
+
+  await userEvent.keyboard('Aged {{');
+  await body.findByRole('combobox', { name: 'Search' });
+  await userEvent.keyboard('age{Enter}');
+  await waitFor(() =>
+    expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
+  );
+  await expect(editor).toHaveTextContent(/^Aged Age$/);
+
+  // Typed where the pick left the caret: after the item.
+  await userEvent.keyboard(' {{');
+  await body.findByRole('combobox', { name: 'Search' });
+  await userEvent.keyboard('{Escape}');
+  await waitFor(() => expect(editor).toHaveTextContent(/^Aged Age \{$/));
+
+  // Pasted where Escape left the caret: after the brace.
+  await userEvent.paste(' and {age}');
+  await waitFor(() =>
+    expect(editor.querySelectorAll('[data-token="age"]')).toHaveLength(2),
+  );
+  await expect(editor).toHaveTextContent(/^Aged Age \{ and Age$/);
+};
+
 /**
  * Typing `{` opens the menu at the caret. Choosing an item replaces the brace;
- * Escape closes the menu and keeps it as text. Pasting a placeholder written
- * as text, such as `{age}`, makes the placeholder.
+ * Escape closes the menu and keeps it as text. Either way the caret comes back
+ * where it was. Pasting a placeholder written as text, such as `{age}`, makes
+ * the placeholder.
  */
 export const InsertMenuFromTheKeyboard: Story = {
   render: () => <EditorWithValue initial={undefined} />,
+  play: ({ canvasElement }) => typeIntoTheInsertMenu(canvasElement),
+};
+
+/**
+ * Has `win` run as a slow device does, until the returned function puts it
+ * back. Animation frames come after the tasks already waiting, and every time
+ * an editor takes focus a long task follows, longer than the 200 ms within
+ * which ProseMirror takes back a caret the browser moved to the start of the
+ * text as it focused the editor.
+ */
+const runAsASlowDevice = (win: Window) => {
+  const requestFrame = win.requestAnimationFrame.bind(win);
+  const cancelFrame = win.cancelAnimationFrame.bind(win);
+  const cancelled = new Set<number>();
+  win.requestAnimationFrame = (callback) => {
+    const id = requestFrame((time) => {
+      win.setTimeout(() => {
+        if (!cancelled.delete(id)) callback(time);
+      });
+    });
+    return id;
+  };
+  win.cancelAnimationFrame = (id) => {
+    cancelled.add(id);
+    cancelFrame(id);
+  };
+  const longTaskOnFocus = ({ target }: FocusEvent) => {
+    if (!(target instanceof HTMLElement) || !target.isContentEditable) return;
+    const until = win.performance.now() + 250;
+    while (win.performance.now() < until) {
+      // The device is busy.
+    }
+  };
+  win.document.addEventListener('focusin', longTaskOnFocus);
+  return () => {
+    win.document.removeEventListener('focusin', longTaskOnFocus);
+    win.requestAnimationFrame = requestFrame;
+    win.cancelAnimationFrame = cancelFrame;
+  };
+};
+
+/**
+ * The same on a slow device: the caret still comes back where it was, rather
+ * than at the start of the text where the browser puts it as the editor takes
+ * focus.
+ */
+export const InsertMenuFromTheKeyboardOnASlowDevice: Story = {
+  render: () => <EditorWithValue initial={undefined} />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const body = within(canvasElement.ownerDocument.body);
-    const editor = await canvas.findByRole('textbox', { name: 'Question' });
-    await userEvent.click(editor);
-
-    await userEvent.keyboard('Aged {{');
-    await body.findByRole('combobox', { name: 'Search' });
-    await userEvent.keyboard('age{Enter}');
-    await waitFor(() =>
-      expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
+    const restore = runAsASlowDevice(
+      canvasElement.ownerDocument.defaultView ?? window,
     );
-    await expect(editor).toHaveTextContent(/^Aged Age$/);
-
-    await userEvent.keyboard(' {{');
-    await body.findByRole('combobox', { name: 'Search' });
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(editor).toHaveTextContent(/Age \{$/));
-
-    await userEvent.paste(' and {age}');
-    await waitFor(() =>
-      expect(editor.querySelectorAll('[data-token="age"]')).toHaveLength(2),
-    );
+    try {
+      await typeIntoTheInsertMenu(canvasElement);
+    } finally {
+      restore();
+    }
   },
 };
 
