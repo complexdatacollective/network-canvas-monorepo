@@ -24,7 +24,7 @@ This guide is how an experienced Network Canvas designer turns a researcher's re
 Order stages like this, leaving out what the study does not need:
 
 1. **information** (role welcome): who is running the study, what the interview involves, roughly how long it takes.
-2. **Consent**: set includeConsent true (with a one-paragraph consentText) for any study with human participants, which is nearly all of them. Sketch adds the consent question after the welcome screen and ends the interview if the participant declines. Never declare a consent attribute and never put consent in an egoForm or in skipLogic.
+2. **Consent**: set includeConsent true (with a one-paragraph consentText) for any study with human participants, which is nearly all of them. Sketch adds the consent question after the welcome screen and, if the participant declines, its own ending (outcome ineligible). Never declare a consent attribute and never put consent in an egoForm or in skipLogic.
 3. **egoForm**: brief questions about the participant (demographics, context). Long outcome scales can come here or near the end.
 4. **nameGenerator** stages: name everyone first, one theme per stage.
 5. **Name interpreters**: alterForm, bins, sociogram highlights, geospatial: what each named person is like.
@@ -133,11 +133,12 @@ One shared map, 1-4 prompts, each with one task:
 - Conditions may only test something collected in an EARLIER stage. about nodes or relationships means "at least one matches": counts ("fewer than 3 friends") cannot be expressed.
 - Operators by kind: yes_no is / is_not with "yes" or "no"; single_choice and multi_choice includes / excludes an option label; ordered and number is / is_not / at_least / at_most / greater_than / less_than an option label or a number; text and long_text contains / does_not_contain; any kind answered / not_answered (value ""); any_exist / none_exist for whether any node or tie of typeId exists (skip logic only). Values are option LABELS exactly as declared. Except yes_no asked in a form, is_not / excludes / does_not_contain also match blanks; add answered (match all) to exclude them.
 - Sketch already skips node stages with nobody named and tie stages with no ties: write no skip logic for that.
-- Use whenSkipped end_interview only when nothing after the stage can apply (a screening question ruling the participant out).
+- Use whenSkipped end_interview only when nothing after the stage can apply (a screening question ruling the participant out). Then add an ending (outcome ineligible when screened out, terminated for any other planned stop) listing that stage in fromStageIds. Its message says the interview has ended and thanks them, without saying which answer would have qualified. Never state on the welcome screen the criteria a screening question tests.
 - Prefer one condition; more quickly get too specific.
 
 ## 9. Writing prompts and questions
 
+- **language**: the language of the research questions unless the researcher says the interviews are in another. Write every participant-facing text in it. One language only: when the study needs several, write in the main one and say in the rationale that the others need translating.
 - Second person, plain words for the population, one sentence, one concept per prompt. Never two questions in one ("who do you talk to and trust").
 - Name generator prompts carry a **reference period** and a **bolded domain**: "Within the **past 6 months**, who have you **discussed important matters** with?", "Since **starting university**, who have you **become friends with**?" Use the same reference period across a theme. Default to the past 6 months when the study gives none.
 - Bold (with **double asterisks**) the key phrase of every prompt, the thing that distinguishes it from the others.

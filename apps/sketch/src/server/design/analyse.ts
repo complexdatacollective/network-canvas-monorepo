@@ -9,6 +9,8 @@
 // Repairs never re-bind a reference to a different entity, never move a stage
 // and never insert a stage the model did not write (consent excepted, which
 // the compiler owns). Unknown references are dropped.
+import { canonicalizeLocale } from '@codaco/protocol-validation';
+
 import {
   type ConditionTarget,
   type DesignIssue,
@@ -2095,6 +2097,79 @@ export const analyse = (
       return false;
     }
     return true;
+  });
+
+  // ---- language and endings ----------------------------------------------------------
+  const language = canonicalizeLocale(d.language || 'en');
+  if (!language) {
+    add(
+      'adjusted',
+      'BAD_LANGUAGE',
+      'language',
+      `"${d.language}" is not a language tag; the interview is declared as English.`,
+    );
+  }
+  d.language = language ?? 'en';
+
+  const endingIds = new Set<string>();
+  const routed = new Set<string>();
+  const endsInterview = new Set(
+    d.stages
+      .filter(
+        (s) =>
+          s.skipLogic.mode !== 'always_show' &&
+          s.skipLogic.whenSkipped === 'end_interview',
+      )
+      .map((s) => s.id),
+  );
+  d.endings = d.endings.flatMap((e, i) => {
+    const path = `endings[${i}]`;
+    let id = fixId(e.id, `ending_${i + 1}`, `${path}.id`);
+    for (let n = 2; endingIds.has(id); n++) id = `${slug(e.id)}_${n}`;
+    endingIds.add(id);
+    const fromStageIds = e.fromStageIds
+      .map((x) => slug(x))
+      .filter((x) => {
+        if (!endsInterview.has(x)) {
+          add(
+            'adjusted',
+            'ENDING_NOT_ROUTED',
+            `${path}.fromStageIds`,
+            `Stage "${x}" does not end the interview, so it cannot lead to ending "${id}".`,
+          );
+          return false;
+        }
+        if (routed.has(x)) {
+          add(
+            'adjusted',
+            'ENDING_ROUTED_TWICE',
+            `${path}.fromStageIds`,
+            `Stage "${x}" already leads to another ending.`,
+          );
+          return false;
+        }
+        routed.add(x);
+        return true;
+      });
+    if (!fromStageIds.length) {
+      add(
+        'degraded',
+        'ENDING_UNUSED',
+        path,
+        `No stage leads to ending "${id}", so it was removed. List the stages whose skip logic ends the interview there in fromStageIds.`,
+      );
+      return [];
+    }
+    return [
+      {
+        ...e,
+        id,
+        fromStageIds,
+        message:
+          e.message ||
+          '# Thank you\n\nThank you for your time. The interview has ended.',
+      },
+    ];
   });
 
   // ---- framing notes ----------------------------------------------------------------

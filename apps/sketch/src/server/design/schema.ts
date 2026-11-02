@@ -196,7 +196,7 @@ export const SkipLogicSchema = z
     whenSkipped: z
       .enum(['next_stage', 'end_interview'])
       .describe(
-        'Where the interview goes when this stage is not shown. next_stage unless nothing after it can apply.',
+        'Where the interview goes when this stage is not shown. next_stage unless nothing after it can apply. end_interview goes to the ending that lists this stage in fromStageIds, or to the normal end when none does.',
       ),
     match: z
       .enum(['all', 'any'])
@@ -536,7 +536,24 @@ export const DESIGN_STAGE_KINDS = [
 // Entities and root
 // ---------------------------------------------------------------------------
 
-const NodeTypeSchema = z.object({
+export const EndingSchema = z.object({
+  id: Id('ending'),
+  outcome: z
+    .enum(['ineligible', 'terminated'])
+    .describe(
+      'What the ending records: ineligible = the participant does not qualify (screened out); terminated = any other planned early stop.',
+    ),
+  fromStageIds: z
+    .array(z.string())
+    .describe(
+      'Ids of the stages whose skip logic (whenSkipped end_interview) sends the participant to this ending.',
+    ),
+  message: Text(
+    'What the participant reads when the interview stops here (Markdown): a "# " heading, then why it ended, in neutral words that do not say which answer would have qualified, and thanks. Add support resources on sensitive topics.',
+  ),
+});
+
+export const NodeTypeSchema = z.object({
   id: Id('node type'),
   singular: Text(
     'Capitalised singular display name, e.g. "Person". Distinct from every other node type and relationship name.',
@@ -555,7 +572,7 @@ const NodeTypeSchema = z.object({
     ),
 });
 
-const RelationshipSchema = z.object({
+export const RelationshipSchema = z.object({
   id: Id('relationship'),
   name: Text(
     'Display name of this tie between two nodes, e.g. "Know each other". Distinct from every node type name.',
@@ -581,6 +598,9 @@ export const StudyDesignSchema = z
       .describe(
         'face_to_face = an interviewer sits with the participant (clinic, field or lab interviews); self_administered = the participant completes it alone (online, on a kiosk or tablet). self_administered unless the description says interviewers run the interviews.',
       ),
+    language: Text(
+      'BCP 47 tag of the language every participant-facing text is written in: the language of the research questions unless the researcher says the interview is in another one, e.g. "en", "es", "pt-BR". Write in one language only; Sketch does not translate.',
+    ),
     qualitative: z
       .boolean()
       .describe(
@@ -594,6 +614,11 @@ export const StudyDesignSchema = z
     consentText: Text(
       'includeConsent true: one paragraph on what taking part involves. Otherwise "".',
     ),
+    endings: z
+      .array(EndingSchema)
+      .describe(
+        'Early endings, for participants whose interview stops before the normal end. [] when everyone reaches the normal end. Sketch adds the normal ending (outcome completed) and the ending for declined consent itself.',
+      ),
     egoAttributes: z
       .array(AttributeSchema)
       .describe(
@@ -640,6 +665,7 @@ export type DesignStage = z.infer<typeof StageSchema>;
 export type DesignAttribute = z.infer<typeof AttributeSchema>;
 export type DesignSkipLogic = z.infer<typeof SkipLogicSchema>;
 export type DesignNodeFilter = z.infer<typeof NodeFilterSchema>;
+export type DesignEnding = z.infer<typeof EndingSchema>;
 
 // ---------------------------------------------------------------------------
 // Step 1: Screening (Haiku 5.5)

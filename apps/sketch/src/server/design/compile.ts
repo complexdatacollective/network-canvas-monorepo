@@ -7,6 +7,7 @@ import type { z } from 'zod';
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocolSchema,
+  DEFAULT_FINISH_SESSION_TEXT,
   missingSuppliedStageText,
   withInterfaceText,
 } from '@codaco/protocol-validation';
@@ -75,6 +76,8 @@ export type CompileOptions = {
   now?: Date;
   /** issues from analyse(), listed on the researcher-notes screen */
   issues?: DesignIssue[];
+  /** the design review's findings, listed on the researcher-notes screen */
+  reviewNotes?: string[];
 };
 
 export const MAPBOX_ASSET_ID = 'mapbox-testing-token';
@@ -122,9 +125,36 @@ const nameAttribute = (question: string): NAttribute => ({
   required: true,
   builtin: 'name',
 });
-/** The English of a localized string Sketch wrote. */
+/** The text of a localized string Sketch wrote, in its one language. */
 const textOf = (text: unknown): string =>
-  String(isObject(text) ? text[SKETCH_LOCALE] : undefined);
+  String(
+    isObject(text)
+      ? (text[SKETCH_LOCALE] ?? Object.values(text)[0])
+      : undefined,
+  );
+
+/**
+ * Every localized string Sketch wrote under `from`, moved to `to`: Sketch
+ * drafts in one language and labels it once the protocol is assembled.
+ */
+const relabel = (node: unknown, from: string, to: string): unknown => {
+  if (Array.isArray(node)) return node.map((x) => relabel(x, from, to));
+  if (!isObject(node)) return node;
+  const keys = Object.keys(node);
+  if (keys.length === 1 && keys[0] === from && typeof node[from] === 'string')
+    return { [to]: node[from] };
+  return Object.fromEntries(
+    Object.entries(node).map(([k, v]) => [k, relabel(v, from, to)]),
+  );
+};
+
+/** Whether Network Canvas supplies its own interface text in this language. */
+const suppliesLanguage = (lang: string) =>
+  lang in DEFAULT_FINISH_SESSION_TEXT ||
+  (lang.split('-')[0] ?? '') in DEFAULT_FINISH_SESSION_TEXT;
+
+const DECLINED_TEXT =
+  '# Thank you\n\nYou chose not to take part, so the interview has ended. Nothing more will be asked.';
 
 /** Sets `value` at `path` in `target`, creating the records on the way. */
 const setAt = (target: Json, path: readonly string[], value: unknown) => {
@@ -423,9 +453,14 @@ export const compile = (
       })
       .filter((r): r is ResolvedRule => typeof r !== 'string')
       .map(toRule);
+    const ending = endingStageId.get(s.id);
     const destination =
       sk.whenSkipped === 'end_interview'
-        ? { destination: { type: 'finish' } }
+        ? {
+            destination: ending
+              ? { type: 'stage', stageId: ending }
+              : { type: 'finish' },
+          }
         : {};
     // auto-skip: nothing to show when no node of the type (or no tie) exists
     const nodeType =
@@ -500,6 +535,14 @@ export const compile = (
     stageIds.add(x);
     return x;
   };
+  // Endings are reserved first: skip logic and the consent gate point at them.
+  const endingStageId = new Map<string, string>();
+  const earlyEndings = d.endings.map((e) => {
+    const stageId = sid(`ending_${e.id}`);
+    for (const from of e.fromStageIds) endingStageId.set(from, stageId);
+    return { ...e, stageId };
+  });
+  const declinedStageId = d.includeConsent ? sid('consent_declined') : '';
   const label = (designId: string, fallback: string) =>
     graphemes(pick(W.stage.get(designId)?.label, fallback) || 'Stage', 50);
   // Only an Ego Form has an introduction panel in schema 9.
@@ -592,7 +635,7 @@ export const compile = (
             }),
           ],
         },
-        destination: { type: 'finish' },
+        destination: { type: 'stage', stageId: declinedStageId },
       };
       if (stage.skipLogic) {
         // a stage holds one skipLogic: carry the gate on a short screen
@@ -1170,8 +1213,12 @@ export const compile = (
     instrumentList.length &&
       `**Validated instruments.** Check the wording and scoring of ${instrumentList.join(', ')} against the published instrument; Sketch reproduces them from memory.`,
     ...placeholderNotes,
+    !suppliesLanguage(d.language || SKETCH_LOCALE) &&
+      `**Language.** The interview is in ${d.language}. Network Canvas does not supply its own interface text (buttons, notices, the closing screen) in this language, so that text is still in English. Translate it in Architect before fielding.`,
     changed.length &&
       `**Changes Sketch made.**\n${changed.map((i) => `- ${i.message}`).join('\n')}`,
+    opts.reviewNotes?.length &&
+      `**Design review.** A second reviewer checked the design. What it found:\n${opts.reviewNotes.map((n) => `- ${n}`).join('\n')}`,
   ].filter(Boolean) as string[];
   stages.unshift({
     id: sid('researcher_notes'),
@@ -1184,23 +1231,59 @@ export const compile = (
   });
   stageMap.unshift({ added: 'researcher notes' });
 
-  // Schema 9 ends every interview at a finish stage, with the closing text
-  // Network Canvas supplies.
+  // Schema 9 ends every route at a finish stage. The normal ending comes
+  // first, with the closing text Network Canvas supplies; early endings
+  // follow it, and finish without asking.
+  const lang = d.language || SKETCH_LOCALE;
+  const supplied = suppliesLanguage(lang);
+  const L = supplied
+    ? { defaultLocale: lang, locales: [lang] }
+    : SKETCH_LOCALIZATION;
   stages.push(
-    createDefaultFinishSessionStage({
-      id: sid('finish'),
-      localization: SKETCH_LOCALIZATION,
-    }),
+    createDefaultFinishSessionStage({ id: sid('finish'), localization: L }),
   );
   stageMap.push({ added: 'finish' });
+  const earlyFinish = (
+    id: string,
+    outcome: 'ineligible' | 'terminated',
+    lbl: string,
+    message: string,
+  ) => {
+    stages.push({
+      ...createDefaultFinishSessionStage({
+        id,
+        localization: L,
+        mode: 'automatic',
+        outcome,
+      }),
+      label: localized(lbl),
+      finishedContent: localized(message),
+    });
+    stageMap.push({ added: 'finish' });
+  };
+  if (declinedStageId)
+    earlyFinish(
+      declinedStageId,
+      'ineligible',
+      'Consent declined',
+      DECLINED_TEXT,
+    );
+  for (const e of earlyEndings)
+    earlyFinish(e.stageId, e.outcome, graphemes(humanise(e.id), 50), e.message);
+  // Sketch's own text moves to the interview's language before the text
+  // Network Canvas supplies is added in it.
+  if (supplied && lang !== SKETCH_LOCALE) {
+    stages.forEach((stage, i) => {
+      const moved = relabel(stage, SKETCH_LOCALE, lang);
+      if (isObject(moved) && !Array.isArray(moved)) stages[i] = moved;
+    });
+    Object.assign(codebook, relabel(codebook, SKETCH_LOCALE, lang));
+  }
 
   // The wording Network Canvas supplies for each stage's own controls and
   // notices, as Architect writes it into a new stage.
   for (const stage of stages.filter(hasStageType))
-    for (const { path, value } of missingSuppliedStageText(
-      stage,
-      SKETCH_LOCALIZATION,
-    ))
+    for (const { path, value } of missingSuppliedStageText(stage, L))
       setAt(stage, path, value);
 
   const protocol: Json = {
@@ -1216,7 +1299,7 @@ export const compile = (
     description: pick(wording?.protocolDescription, d.summary),
     schemaVersion: 9,
     lastModified: (opts.now ?? new Date()).toISOString(),
-    localization: SKETCH_LOCALIZATION,
+    localization: L,
     codebook,
     ...(Object.keys(assetManifest).length ? { assetManifest } : {}),
     stages,
@@ -1232,10 +1315,20 @@ export const compile = (
     edgeTypes: d.relationships.map((r) => r.name),
     rosterCount: assets.filter((a) => a.mimeType === 'text/csv').length,
   };
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see SketchProtocol
+  let finished: Json = withInterfaceText(protocol as SketchProtocol);
+  // Network Canvas has no interface text in this language: the protocol is
+  // declared in it, and the text Network Canvas supplied stays in English
+  // for the researcher to translate (the researcher notes say so).
+  if (!supplied) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- relabel keeps the shape
+    finished = relabel(finished, SKETCH_LOCALE, lang) as Json;
+    finished.localization = { defaultLocale: lang, locales: [lang] };
+  }
   return {
     // The interview's shared words for what the protocol uses.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see SketchProtocol
-    protocol: withInterfaceText(protocol as SketchProtocol),
+    protocol: finished as SketchProtocol,
     assets,
     summary,
     stageMap,

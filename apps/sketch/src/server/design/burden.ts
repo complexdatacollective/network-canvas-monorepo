@@ -18,7 +18,7 @@ type Fields = { fields?: unknown[] };
 type ProtocolStage = {
   type: string;
   /** Localized, in Sketch's one language. */
-  label?: Partial<Record<typeof SKETCH_LOCALE, string>>;
+  label?: Partial<Record<string, string>>;
   filter?: unknown;
   form?: Fields;
   nodeForm?: Fields;
@@ -159,7 +159,8 @@ export const stageCosts = (
     if (!isProtocolStage(s))
       throw new Error(`stages[${i}] is not a stage with a string type.`);
     return {
-      label: s.label?.[SKETCH_LOCALE] ?? s.type,
+      label:
+        s.label?.[SKETCH_LOCALE] ?? Object.values(s.label ?? {})[0] ?? s.type,
       ...costOf(s, n),
     };
   });

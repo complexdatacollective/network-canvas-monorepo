@@ -26,18 +26,29 @@ steps. They are the five rows the generating screen shows
    prompt (`src/server/prompts/`). A deterministic preflight normalises and
    checks it (`analyse.ts`), compiles it and validates the result. A design
    with problems gets **one** retry, with the problems spelled out as feedback.
+   A critic (the design model, with its own prompt in
+   `src/server/prompts/critic.ts`) then reviews the chosen design and returns
+   its findings and edits to the design (`src/server/design/critique.ts`).
+   Code applies the edits, keeping each one only if the design still builds
+   as cleanly, and lists the findings on the researcher-notes screen.
+   `SKETCH_DESIGN_REVIEW=off` skips the review.
 3. **Wording.** A cheap model polishes titles, prompts and screen text. A
    wording failure is not fatal: the design's draft wording is kept.
 4. **Compile.** `compile.ts` turns the design plus wording into a schema 9
    protocol: codebook, stages, skip logic, filters and assets (placeholder
    roster CSVs, the world-countries GeoJSON for geospatial stages). The
-   protocol is in English, its one language, so every participant-facing text
-   is a localized string with an `en` translation. Only Ego Forms have an
+   protocol has one language, the design's `language`, so every
+   participant-facing text is a localized string with one translation. When
+   Network Canvas supplies no interface text in that language, its English
+   interface text is kept under the declared language and the researcher
+   notes say it needs translating. Only Ego Forms have an
    introduction panel, as schema 9 requires. Instead, the compiler puts an
    Information screen explaining the task before the first stage of each
    new kind of task (`intros.ts`), shown exactly when that stage is, unless
    the design already has an instructions screen there. It ends the interview
-   with a finish stage, and fills in the wording Network Canvas supplies for
+   with a finish stage (outcome completed), followed by one for declined
+   consent and one for each early ending in the design (outcome ineligible
+   or terminated), which the consent gate and skip logic route to. It fills in the wording Network Canvas supplies for
    each stage and for the interview itself, as Architect does for a new
    stage.
 5. **Validate.** `@codaco/protocol-validation` validates the protocol. Only a

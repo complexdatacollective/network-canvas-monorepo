@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildReviewMessage } from '../../prompts/design';
+import { buildCritiqueMessages } from '../../prompts/critic';
+import { friendshipDesign } from '../__fixtures__/example';
 import { estimateBurden, stageCosts } from '../burden';
 
 describe('estimateBurden', () => {
@@ -142,17 +143,19 @@ describe('estimateBurden', () => {
       filtered: false,
       answers: 66,
     });
-    const message = buildReviewMessage(
-      estimateBurden(protocol, 12),
-      { screens: 0, itemsPerPerson: 0 },
-      costs,
-    );
+    const message =
+      buildCritiqueMessages(
+        'A study',
+        friendshipDesign,
+        estimateBurden(protocol, 12),
+        costs,
+      )[0]?.content ?? '';
     expect(message).toContain(
       '- Who knows whom (DyadCensus): about 66 screens and 66 answers, asked about everyone',
     );
     expect(message.indexOf('Who knows whom')).toBeLessThan(
       message.indexOf('About them'),
     );
-    expect(message).toMatch(/1\. Who each question is about/);
+    expect(message).toContain('<design>');
   });
 });
