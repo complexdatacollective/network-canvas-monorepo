@@ -2,8 +2,6 @@
 import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { StageEditorAccess } from '@codaco/protocol-builder/stage-editor-contract';
-
 import LockAnnouncer from '../LockAnnouncer.tsx';
 
 const spoken = (container: HTMLElement) =>
@@ -11,7 +9,7 @@ const spoken = (container: HTMLElement) =>
 
 const settle = () => act(() => vi.advanceTimersByTimeAsync(1000));
 
-function announcer(access: StageEditorAccess | undefined) {
+function announcer(access: 'pending' | 'editing' | 'readOnly' | undefined) {
   return <LockAnnouncer name="Welcome" access={access} />;
 }
 

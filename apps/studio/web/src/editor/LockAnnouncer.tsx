@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import type { StageEditorAccess } from '@codaco/protocol-builder/stage-editor-contract';
 
 import { useSettledValue } from './useSettledValue.ts';
 
@@ -51,7 +50,7 @@ export default function LockAnnouncer({
   /** What the open screen is called on screen. */
   name: string;
   /** `undefined` while the screen's editor has not reported yet. */
-  access: StageEditorAccess | undefined;
+  access: 'pending' | 'editing' | 'readOnly' | undefined;
 }) {
   const intl = useAppIntl();
   const settled = useSettledValue(access);
