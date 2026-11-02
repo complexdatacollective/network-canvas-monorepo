@@ -650,7 +650,8 @@ const freeDrawAnnotate: ScenarioDefinition = {
     const before = await page.evaluate(() => window.__test.getNetworkState());
     // Each tool carries the protocol's own words, never the words Network
     // Canvas supplies; a toggle says whether it is on by being pressed.
-    const tool = (name: string) => page.getByRole('button', { name });
+    const tool = (name: string) =>
+      page.getByRole('button', { name, exact: true });
     const suppliedTools = page.getByRole('button', {
       name: /Toggle drawing|Toggle freezing annotations|Reset annotations/,
     });
