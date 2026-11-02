@@ -112,7 +112,7 @@ export default definePreview({
       // 'todo' - show a11y violations in the test UI only
       // 'error' - fail CI on a11y violations
       // 'off' - skip a11y checks entirely
-      test: 'todo',
+      test: 'error',
       /**
        * base-ui dialog adds focus guards which are picked up by a11y tests
        * but are necessary for proper focus management within the dialog,
@@ -125,6 +125,16 @@ export default definePreview({
             selector: '[data-base-ui-focus-guard]',
             enabled: false,
           },
+          /**
+           * Contrast is reported, never failed. The theme's colour pairs
+           * that miss WCAG AA are a known, accepted set (see
+           * tooling/tailwind/tests/theme-contrast.test.ts, which lists them
+           * as warnings), and the decision was to keep flagging them rather
+           * than retune the palette. `reviewOnFail` moves a failed contrast
+           * check into axe's "needs review" results: the a11y panel still
+           * shows every one, and only violations fail a story.
+           */
+          { id: 'color-contrast', reviewOnFail: true },
         ],
       },
     },

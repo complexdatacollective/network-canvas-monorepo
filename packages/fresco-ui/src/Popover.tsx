@@ -239,6 +239,19 @@ function PopoverContent({
   );
 }
 
+/**
+ * The popup's heading. Base UI points the popup's `aria-labelledby` at it, so
+ * placing one inside `PopoverContent` is what gives the popup (a
+ * `role="dialog"`) its accessible name.
+ *
+ * Every `PopoverContent` needs a name from one of three places: a
+ * `PopoverTitle`, an `aria-label`, or an `aria-labelledby` passed to
+ * `PopoverContent` itself. Use `render` to draw the title as a `Heading`.
+ */
+function PopoverTitle(props: ComponentProps<typeof BasePopover.Title>) {
+  return <BasePopover.Title {...props} />;
+}
+
 export function ArrowSvg(props: ComponentProps<'svg'>) {
   return (
     // Proportional to the viewBox: a mismatch letterboxes the drawing and
@@ -266,4 +279,4 @@ export function ArrowSvg(props: ComponentProps<'svg'>) {
   );
 }
 
-export { Popover, PopoverContent, PopoverTrigger };
+export { Popover, PopoverContent, PopoverTitle, PopoverTrigger };
