@@ -535,7 +535,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     // one inside the status element.
     const spoken = async () =>
       (await announcement('Ann')).find((element) =>
-        element.closest('[role="status"]'),
+        element.closest('[aria-live]'),
       );
 
     const { rerender } = render(focus('first'));

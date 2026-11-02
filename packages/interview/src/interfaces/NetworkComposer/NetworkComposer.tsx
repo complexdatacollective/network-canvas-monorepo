@@ -707,6 +707,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   return (
     // tabIndex makes the div focusable so keydown events reach it.
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- shortcut catcher: undo/redo and the editor keys bubble here from the controls inside (which keep their own semantics) or arrive while the root holds programmatic focus.
     <div
       ref={rootRef}
       className={`interface h-full overflow-hidden${

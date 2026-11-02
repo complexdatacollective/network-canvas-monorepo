@@ -214,7 +214,12 @@ export async function completeSetup(
       [page.getByRole('textbox', { name: 'Password', exact: true }), password],
       [page.getByRole('textbox', { name: 'Confirm password' }), password],
     ]);
-    await page.getByRole('button', { name: 'Create account' }).click();
+    // Scoped to the form: the setup sidebar's current step is a button
+    // named "Create Account" too.
+    await page
+      .locator('form')
+      .getByRole('button', { name: 'Create account' })
+      .click();
   });
 
   // Storage: the bundled-Garage configuration this lane's compose file gives

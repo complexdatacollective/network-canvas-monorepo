@@ -782,6 +782,7 @@ export default function NarrativePedigreeView({
           highlightedEdgeKeys={highlightedEdgeKeys}
         />
       </PedigreeViewport>
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegated: + and − zoom while focus is on any of the toolbar's own buttons. */}
       <div
         ref={toolbarRef}
         className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center px-4"

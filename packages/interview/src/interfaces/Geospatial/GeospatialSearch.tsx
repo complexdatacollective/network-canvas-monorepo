@@ -305,6 +305,7 @@ export default function GeospatialSearch({
     (item: SuggestionItem, itemProps: ItemProps) => (
       <div
         {...itemProps}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA combobox popup: a native <option> cannot hold the two-line suggestion layout.
         role="option"
         aria-selected={false}
         tabIndex={0}
@@ -440,6 +441,7 @@ export default function GeospatialSearch({
                 onKeyDown={handleInputKeyDown}
                 data-testid="geospatial-search-input"
                 // ARIA combobox attributes
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- InputField renders an <input>; the role makes it the ARIA combobox for the suggestion popup.
                 role="combobox"
                 aria-expanded={showSuggestions}
                 aria-controls={listboxId}
@@ -505,6 +507,7 @@ export default function GeospatialSearch({
                     */
                     <div
                       id={listboxId}
+                      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA combobox popup (empty or loading state); <select> and <datalist> cannot be styled or announce loading.
                       role="listbox"
                       aria-label={intl.formatMessage(
                         interfaceMessages.searchSuggestions,
