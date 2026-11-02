@@ -175,6 +175,7 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
     ref,
   ) => {
     const intl = useAppIntl();
+    const segmentId = React.useId();
     const popoverContentProps = getPopoverContentProps(popover);
     const {
       'aria-label': segmentAriaLabel,
@@ -216,6 +217,7 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
 
     const popoverSegmentButton = (
       <Button
+        id={segmentId}
         aria-label={segmentLabel}
         color={color}
         disabled={segmentDisabled}
@@ -269,6 +271,14 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
         </div>
         <PopoverContent
           {...popoverContentProps}
+          // The popup is a dialog, and a dialog needs a name: unless the
+          // caller gives one, it is named by the segment that opens it.
+          aria-labelledby={
+            popoverContentProps['aria-labelledby'] ??
+            (popoverContentProps['aria-label'] === undefined
+              ? segmentId
+              : undefined)
+          }
           align={
             popoverContentProps.align ??
             (segmentPosition === 'left' ? 'start' : 'end')
