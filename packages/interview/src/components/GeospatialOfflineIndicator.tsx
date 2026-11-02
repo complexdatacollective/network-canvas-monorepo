@@ -29,14 +29,13 @@ export function GeospatialOfflineIndicator({
       {show && (
         <Badge
           render={
-            <motion.div
+            <motion.output
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
             />
           }
-          role="status"
           aria-live="polite"
           size="lg"
           icon={<WifiOff className="size-4 shrink-0" aria-hidden />}

@@ -25,6 +25,10 @@ export default defineConfig({
       'scripts/*/**/*.test.mjs',
       '.agents/skills/**/scripts/*.test.mjs',
     ],
+    // The repository-wide source invariants have their own config and their
+    // own turbo task (`//#test:invariants`) with inputs that cover every
+    // package and app, which this suite's inputs deliberately do not.
+    exclude: ['**/node_modules/**', 'scripts/invariants/**'],
     // These suites spawn processes, servers and browsers rather than
     // exercising functions in-process: the dead-link checker drives a real
     // Chrome, the release guards shell out to git. Vitest's 5s default is for

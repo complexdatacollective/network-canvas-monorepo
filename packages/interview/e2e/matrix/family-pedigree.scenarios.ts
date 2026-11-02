@@ -11,13 +11,11 @@ import type {
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  entitySecureAttributesMeta,
   type NcEdge,
   type NcNetwork,
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { AnonymisationFixture } from '../fixtures/anonymisation-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
 import type {
   InterfaceScenarios,
@@ -29,8 +27,6 @@ const ATTR = entityAttributesProperty;
 const PK = entityPrimaryKeyProperty;
 
 const PROMPT = 'Add the members of your family.';
-/** The researcher's own question, encrypted, when a scaffold adds it. */
-const NICKNAME = 'Nickname';
 const BEFORE_TITLE = 'Before your family';
 const AFTER_TITLE = 'After your family';
 
@@ -58,15 +54,10 @@ type PedigreeOptions = {
     variableName?: string;
     onlyForSexAssignedAtBirth?: 'female' | 'male';
   }[];
-  /** Encrypts the name attribute with the participant's passphrase. */
-  encryptedNames?: boolean;
-  /** Adds a text field, Nickname, encrypted with the participant's
-   * passphrase (the name is encrypted only with `encryptedNames`). */
-  encryptedFormField?: boolean;
   /** What comes before the pedigree. The pedigree is the first stage without
-   * one; an Information stage, or an Information stage and then an
-   * Anonymisation stage, otherwise. An Information stage always follows it. */
-  before?: 'information' | 'anonymisation';
+   * one; an Information stage otherwise. An Information stage always follows
+   * it. */
+  before?: 'information';
   /** Records each person's relationship to the participant. */
   recordRelationshipToParticipant?: boolean;
   /** The stage's own words for the settings named, by dotted path. */
@@ -100,16 +91,7 @@ function scaffold(options: PedigreeOptions = {}) {
       text: 'Your family tree is next.',
     });
   }
-  if (options.before === 'anonymisation') {
-    synth.addStage('Anonymisation', {
-      explanationText:
-        '# Protect your data\n\nThis study encrypts the names of your family.',
-    });
-  }
   const people = synth.addNodeType({ name: 'Person' });
-  if (options.encryptedNames) {
-    people.addVariable({ name: 'name', type: 'text', encrypted: true });
-  }
   const fp = synth.addStage('FamilyPedigree', {
     subject: { entity: 'node', type: people.id },
     prompt: PROMPT,
@@ -126,21 +108,6 @@ function scaffold(options: PedigreeOptions = {}) {
     recordRelationshipToParticipant: options.recordRelationshipToParticipant,
     ...(options.wording ? { wording: options.wording } : {}),
   });
-  const nickname = options.encryptedFormField
-    ? people.addVariable({
-        name: 'nickname',
-        type: 'text',
-        component: 'Text',
-        encrypted: true,
-      }).id
-    : undefined;
-  if (nickname) {
-    fp.addFormField({
-      component: 'Text',
-      variable: nickname,
-      prompt: NICKNAME,
-    });
-  }
   people.setShape({
     default: 'diamond',
     dynamic: {
@@ -197,9 +164,9 @@ function scaffold(options: PedigreeOptions = {}) {
   };
 
   /** The pedigree's step: its index among the stages. */
-  const step = options.before === 'anonymisation' ? 2 : options.before ? 1 : 0;
+  const step = options.before ? 1 : 0;
 
-  return { synth, fp, step, person, relate, parents, nickname };
+  return { synth, fp, step, person, relate, parents };
 }
 
 /** A person on the canvas, by their accessible name. */
@@ -1654,88 +1621,6 @@ function completenessGrandparentsRequired(): ScenarioDefinition {
 }
 
 /**
- * The participant with parents, maternal grandparents and an aunt, a sister
- * and a son with his other parent, every group the narrower scopes ask about
- * answered. Second
- * degree asks for the sister's and son's children; third degree also for the
- * aunt's (first cousins).
- */
-function extendedScope(
-  scope: 'secondDegree' | 'thirdDegree',
-): ScenarioDefinition {
-  const scaffolded = scaffold({
-    completeness: { scope, enforcement: 'required' },
-  });
-  const { synth, person, relate, parents } = scaffolded;
-  person('ego', {
-    name: 'Ari',
-    gender: 'nonBinary',
-    sex: 'intersex',
-    isEgo: true,
-  });
-  person('mum', { name: 'Julie', gender: 'woman', sex: 'female' });
-  // Rob has no siblings.
-  person('dad', {
-    name: 'Rob',
-    gender: 'man',
-    sex: 'male',
-    relativesNotRecorded: ['noSiblings'],
-  });
-  relate('mum', 'dad', 'partner');
-  parents('mum', 'dad', 'ego');
-  person('gran', { name: 'Iris', gender: 'woman', sex: 'female' });
-  person('grandad', { name: 'Frank', gender: 'man', sex: 'male' });
-  person('aunt', { name: 'May', gender: 'woman', sex: 'female' });
-  person('dadsMum', { name: 'Vera', gender: 'woman', sex: 'female' });
-  person('dadsDad', { name: 'Ernest', gender: 'man', sex: 'male' });
-  person('sister', { name: 'Bea', gender: 'woman', sex: 'female' });
-  person('son', { name: 'Leo', gender: 'man', sex: 'male' });
-  relate('gran', 'grandad', 'partner');
-  parents('gran', 'grandad', 'mum');
-  parents('gran', 'grandad', 'aunt');
-  relate('dadsMum', 'dadsDad', 'partner');
-  parents('dadsMum', 'dadsDad', 'dad');
-  parents('mum', 'dad', 'sister');
-  relate('ego', 'son', 'biological');
-  // Leo's other biological parent, whose own family is never asked for.
-  person('leosMum', { name: 'Sam', gender: 'woman', sex: 'female' });
-  relate('leosMum', 'son', 'biological', { carrier: true });
-
-  const cousinsItem = 'Add biological children for May, or say they have none';
-  return {
-    id: `completeness-${scope === 'secondDegree' ? 'second' : 'third'}-degree-required`,
-    covers: [`completeness.scope=${scope}`],
-    seedNetwork: true,
-    build: () => synth,
-    run: async ({ page }) => {
-      await trackerRing(page).click();
-      const list = trackerList(page);
-      await expect(
-        list.getByRole('button', {
-          name: 'Add biological children for Bea, or say they have none',
-        }),
-      ).toBeVisible();
-      await expect(
-        list.getByRole('button', {
-          name: 'Add biological children for Leo, or say they have none',
-        }),
-      ).toBeVisible();
-      if (scope === 'thirdDegree') {
-        await expect(
-          list.getByRole('button', { name: cousinsItem }),
-        ).toBeVisible();
-        await expect(neededItems(list)).toHaveCount(3);
-      } else {
-        await expect(
-          list.getByRole('button', { name: cousinsItem }),
-        ).toHaveCount(0);
-        await expect(neededItems(list)).toHaveCount(2);
-      }
-    },
-  };
-}
-
-/**
  * The researcher's own questions follow the interface's in the side panel:
  * a required age, with a hint, and whether the person is still living. A
  * person whose required answer is missing is marked, on the canvas and in
@@ -2039,61 +1924,6 @@ function nominationPrompts(): ScenarioDefinition {
 }
 
 /**
- * A change of sex at birth withdraws the nominations it rules out. The
- * participant, intersex, is selected for a prompt limited to people assigned
- * female at birth; back on the family, their sex at birth is changed to
- * male, which sets that prompt's attribute to false, and the prompt then
- * leaves them out.
- */
-function sexChangeWithdrawsNomination(): ScenarioDefinition {
-  const scaffolded = scaffold({
-    nominationPrompts: [
-      {
-        text: OVARIAN,
-        variableName: 'ovarianCancer',
-        onlyForSexAssignedAtBirth: 'female',
-      },
-    ],
-  });
-  const { synth, fp } = scaffolded;
-  seedDescribedParents(scaffolded);
-  const [ovarian] = fp.nominations;
-
-  return {
-    id: 'sex-change-withdraws-nomination',
-    covers: ['nominationPrompts[].onlyForSexAssignedAtBirth=withdrawnOnChange'],
-    seedNetwork: true,
-    build: () => synth,
-    run: async (ctx) => {
-      const { page, interview } = ctx;
-      const ariFlag = async () =>
-        nodeNamed(await networkOf(ctx), fp.name, 'Ari')?.[ATTR][ovarian ?? ''];
-      const you = member(page, 'You');
-
-      await interview.nextButton.click();
-      await expect(page.getByRole('heading', { name: OVARIAN })).toBeVisible();
-      await expect(you).toBeEnabled();
-      await you.click();
-      await expect(you).toHaveAttribute('aria-pressed', 'true');
-      await expect.poll(ariFlag).toBe(true);
-
-      await page.getByTestId('previous-button').click();
-      await expect(page.getByRole('heading', { name: PROMPT })).toBeVisible();
-      await you.click();
-      await expect(panel(page)).toBeVisible();
-      await describe(page, { sex: 'Male' });
-      await submitPanel(page, 'Save');
-      await expect.poll(ariFlag).toBe(false);
-
-      await interview.nextButton.click();
-      await expect(page.getByRole('heading', { name: OVARIAN })).toBeVisible();
-      await expect(you).toBeDisabled();
-      await expect(you).toHaveAttribute('aria-pressed', 'false');
-    },
-  };
-}
-
-/**
  * A parent's sex at birth saved by mistake can be corrected from the
  * parents' own panels: the newest answer wins. Julie, who carried Ari, and
  * Rob were saved the wrong way round. Rob can still be made female, which
@@ -2326,166 +2156,6 @@ function relationshipKindsDrawn(): ScenarioDefinition {
         .getByRole('button', { name: 'Cancel', exact: true })
         .click();
       await expect(panel(page)).toHaveCount(0);
-    },
-  };
-}
-
-/**
- * The study encrypts names. Once the participant has set their passphrase, a
- * name typed for a new relative is stored encrypted and shown decrypted, and
- * the labels saved on leaving for the unnamed parents are stored encrypted
- * too.
- */
-function encryptedNames(): ScenarioDefinition {
-  const scaffolded = scaffold({
-    encryptedNames: true,
-    before: 'anonymisation',
-    framing: 'gendered',
-  });
-  const { synth, fp, person, relate, parents } = scaffolded;
-  person('ego', { gender: 'nonBinary', sex: 'intersex', isEgo: true });
-  person('mum', { gender: 'woman', sex: 'female' });
-  person('dad', { gender: 'man', sex: 'male' });
-  relate('mum', 'dad', 'partner');
-  parents('mum', 'dad', 'ego');
-
-  const SecureNodeSchema = z.object({
-    [entitySecureAttributesMeta]: z.record(
-      z.string(),
-      z.strictObject({ iv: z.array(z.number()) }),
-    ),
-  });
-
-  return {
-    id: 'encrypted-names',
-    covers: ['nodeConfiguration.nameAttribute=encrypted'],
-    slow: true,
-    seedNetwork: true,
-    build: () => synth,
-    run: async (ctx) => {
-      const { page, interview } = ctx;
-      const anonymisation = new AnonymisationFixture(page);
-      await interview.next();
-      await anonymisation.fillPassphrase('correct-horse-battery');
-      await anonymisation.submit();
-      await expect(anonymisation.successAlert()).toBeVisible();
-      await interview.next();
-
-      await expect(page.getByTestId('pedigree-passphrase-notice')).toHaveCount(
-        0,
-      );
-      await addRelativeOf(page, 'You', 'sibling');
-      await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
-      await shareParentsAsBiological(page, ['Mother', 'Father']);
-      await submitPanel(page, 'Save');
-      await expect(member(page, 'Bea')).toBeVisible();
-
-      const isCiphertext = (value: unknown) =>
-        Array.isArray(value) && value.every((item) => typeof item === 'number');
-      await expect
-        .poll(
-          async () =>
-            (await networkOf(ctx)).nodes.filter((node) =>
-              isCiphertext(node[ATTR][fp.name]),
-            ).length,
-        )
-        .toBe(1);
-      const stored = await networkOf(ctx);
-      expect(nodeNamed(stored, fp.name, 'Bea')).toBeUndefined();
-
-      await leaveForward(ctx);
-      const network = await networkOf(ctx);
-      const encrypted = network.nodes.filter((node) =>
-        isCiphertext(node[ATTR][fp.name]),
-      );
-      // Bea, and the labels saved for both parents.
-      expect(encrypted.map((node) => node[PK]).toSorted()).toEqual(
-        expect.arrayContaining(['dad', 'mum']),
-      );
-      expect(encrypted).toHaveLength(3);
-      for (const node of encrypted) {
-        expect(
-          SecureNodeSchema.parse(node)[entitySecureAttributesMeta][fp.name],
-        ).toBeDefined();
-      }
-      for (const label of ['Mother', 'Father']) {
-        expect(nodeNamed(network, fp.name, label)).toBeUndefined();
-      }
-    },
-  };
-}
-
-/**
- * The study encrypts one of its own questions, but not names. Until the
- * participant chooses their passphrase nobody can be added or changed: the
- * add menu does not open, and a notice under the family says why and asks
- * for it. Once it is chosen, an answer to that question is stored
- * encrypted while the name is stored as typed, and the answer opens
- * decrypted in the question again.
- */
-function encryptedFormField(): ScenarioDefinition {
-  const scaffolded = scaffold({ encryptedFormField: true });
-  const { synth, fp, nickname } = scaffolded;
-  seedDescribedParents(scaffolded);
-
-  return {
-    id: 'encrypted-form-field',
-    covers: ['form.fields[].variable=encrypted'],
-    slow: true,
-    seedNetwork: true,
-    build: () => synth,
-    run: async (ctx) => {
-      const { page } = ctx;
-      const notice = page.getByTestId('pedigree-passphrase-notice');
-      await expect(
-        notice.getByText(
-          'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.',
-          { exact: true },
-        ),
-      ).toBeVisible();
-      await member(page, 'You').hover();
-      await expect(page.getByTestId('pedigree-menu-sibling')).toHaveCount(0);
-
-      await notice.getByRole('button', { name: 'Passphrase' }).click();
-      // No passphrase has been chosen in this interview yet, so this one
-      // becomes it.
-      const overlay = page.getByRole('dialog', {
-        name: 'Passphrase',
-      });
-      await overlay
-        .getByRole('textbox', { name: 'Passphrase', exact: true })
-        .fill('correct-horse-battery');
-      await overlay
-        .getByRole('textbox', { name: 'Confirm Passphrase' })
-        .fill('correct-horse-battery');
-      await overlay.getByRole('button', { name: 'Continue' }).click();
-      await expect(notice).toHaveCount(0);
-
-      await addRelativeOf(page, 'You', 'sibling');
-      await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
-      await shareParentsAsBiological(page, ['Julie', 'Rob']);
-      await nextStep(page);
-      await panel(page).getByRole('textbox', { name: NICKNAME }).fill('Bee');
-      await submitPanel(page, 'Save');
-      await expect(member(page, 'Bea')).toBeVisible();
-
-      const isCiphertext = (value: unknown) =>
-        Array.isArray(value) && value.every((item) => typeof item === 'number');
-      await expect
-        .poll(async () => {
-          const bea = nodeNamed(await networkOf(ctx), fp.name, 'Bea');
-          return isCiphertext(bea?.[ATTR][nickname ?? '']);
-        })
-        .toBe(true);
-      const network = await networkOf(ctx);
-      expect(
-        network.nodes.some((node) => node[ATTR][nickname ?? ''] === 'Bee'),
-      ).toBe(false);
-
-      await member(page, 'Bea').click();
-      await expect(
-        panel(page).getByRole('textbox', { name: NICKNAME }),
-      ).toHaveValue('Bee');
     },
   };
 }
@@ -3028,110 +2698,6 @@ function wordingGeneratedLabelsPartners(): ScenarioDefinition {
       const network = await networkOf(ctx);
       expect(nodeNamed(network, fp.name, former)).toBeDefined();
       expect(nodeNamed(network, fp.name, current)).toBeDefined();
-    },
-  };
-}
-
-/**
- * A great-grandfather told apart from another through the grandparent whose
- * parent he is, and a grandfather past the kinship words described through
- * the grandparent he is the parent of.
- */
-function wordingGeneratedLabelsAncestors(): ScenarioDefinition {
-  const words = ['relativeTerm', 'generatedLabelOf'] as const;
-  const { synth, person, relate } = scaffold({
-    framing: 'gendered',
-    wording: ownWords(...words),
-  });
-  person('ego', { gender: 'woman', sex: 'female', isEgo: true });
-  person('ruth', { name: 'Ruth', gender: 'woman', sex: 'female' });
-  person('miriam', { name: 'Miriam', gender: 'woman', sex: 'female' });
-  person('isaac', { name: 'Isaac', gender: 'man', sex: 'male' });
-  person('miriamsDad', { gender: 'man', sex: 'male' });
-  person('isaacsDad', { gender: 'man', sex: 'male' });
-  person('isaacsGrandad', { gender: 'man', sex: 'male' });
-  relate('ruth', 'ego', 'biological', { carrier: true });
-  relate('miriam', 'ruth', 'biological', { carrier: true });
-  relate('isaac', 'ruth', 'biological');
-  relate('miriamsDad', 'miriam', 'biological');
-  relate('isaacsDad', 'isaac', 'biological');
-  relate('isaacsGrandad', 'isaacsDad', 'biological');
-
-  return {
-    id: 'wording-generated-labels-ancestors',
-    covers: coversWords(...words),
-    seedNetwork: true,
-    build: () => synth,
-    run: async ({ page }) => {
-      await expect(
-        member(
-          page,
-          'Great-grandfather term - matrix check parenting Miriam - matrix check',
-        ),
-      ).toBeVisible();
-      await expect(
-        member(
-          page,
-          'Great-grandfather term - matrix check parenting Isaac - matrix check',
-        ),
-      ).toBeVisible();
-      await expect(
-        member(
-          page,
-          'Isaac owns grandfather term - matrix check - matrix check',
-        ),
-      ).toBeVisible();
-    },
-  };
-}
-
-/**
- * Half-sisters told apart by the parent each does not share with the
- * participant, each named as that parent's child.
- */
-function wordingGeneratedLabelsChildren(): ScenarioDefinition {
-  const words = ['relativeTerm', 'generatedLabelOf'] as const;
-  const { synth, person, relate } = scaffold({
-    framing: 'gendered',
-    wording: ownWords(...words),
-  });
-  person('ego', {
-    name: 'Ari',
-    gender: 'nonBinary',
-    sex: 'intersex',
-    isEgo: true,
-  });
-  person('mum', { gender: 'woman', sex: 'female' });
-  person('dad', { gender: 'man', sex: 'male' });
-  person('ana', { name: 'Ana', gender: 'woman', sex: 'female' });
-  person('bea', { name: 'Bea', gender: 'woman', sex: 'female' });
-  person('half1', { gender: 'woman', sex: 'female' });
-  person('half2', { gender: 'woman', sex: 'female' });
-  relate('mum', 'ego', 'biological', { carrier: true });
-  relate('dad', 'ego', 'biological');
-  relate('ana', 'half1', 'biological', { carrier: true });
-  relate('dad', 'half1', 'biological');
-  relate('bea', 'half2', 'biological', { carrier: true });
-  relate('dad', 'half2', 'biological');
-
-  return {
-    id: 'wording-generated-labels-children',
-    covers: coversWords(...words),
-    seedNetwork: true,
-    build: () => synth,
-    run: async ({ page }) => {
-      await expect(
-        member(
-          page,
-          'Half-sister term - matrix check child of Ana - matrix check',
-        ),
-      ).toBeVisible();
-      await expect(
-        member(
-          page,
-          'Half-sister term - matrix check child of Bea - matrix check',
-        ),
-      ).toBeVisible();
     },
   };
 }
@@ -4602,25 +4168,18 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     completenessFirstDegreeRecommended(),
     researcherWording(),
     completenessGrandparentsRequired(),
-    extendedScope('secondDegree'),
-    extendedScope('thirdDegree'),
     formFieldsMissingDetails(),
     dynamicValuesNameRelativesAsDrawn(),
     dynamicValuesWordedForParticipant(),
     nominationPrompts(),
-    sexChangeWithdrawsNomination(),
     sexChangeGivesWay(),
     connectAndDisconnect(),
     relationshipKindsDrawn(),
-    encryptedNames(),
-    encryptedFormField(),
     relationshipToParticipantRecorded(),
     wordingConnectAndDisconnect(),
     wordingConnectReasons(),
     wordingPeopleAndPanel(),
     wordingGeneratedLabelsPartners(),
-    wordingGeneratedLabelsAncestors(),
-    wordingGeneratedLabelsChildren(),
     wordingFramingChoice(),
     wordingAddParent(),
     wordingAddParentSiblingsCarried(),

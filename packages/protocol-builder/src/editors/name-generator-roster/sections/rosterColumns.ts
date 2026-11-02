@@ -17,6 +17,7 @@ import type {
 } from '../../../form/arrayFields/MultiSelect.tsx';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { useResourceInspection } from '../../../resources/components/useResourceInspection.ts';
+import { useLatest } from '../../../state/useLatest.ts';
 
 /** Where a roster stage records the data file it draws its people from. */
 export const DATA_SOURCE = 'dataSource';
@@ -315,14 +316,22 @@ function useOrphanedColumnNames(
  * deletes the errors it is storing, and an error deleted mid-submit is a
  * refusal the researcher never sees.
  */
-function useLiveOrphans(
-  values: readonly string[],
-): Readonly<{ current: readonly string[] }> {
-  const valuesRef = useRef(values);
-  useEffect(() => {
-    valuesRef.current = values;
-  }, [values]);
-  return valuesRef;
+function useLiveOrphans(values: readonly string[]): () => readonly string[] {
+  return useLatest(values);
+}
+
+/** The rule's view of one column field, reading the orphans when it is asked. */
+function danglingCellsOf(
+  fieldName: string,
+  liveOrphans: () => readonly string[],
+): DanglingCells {
+  return {
+    fieldName,
+    get values() {
+      return liveOrphans();
+    },
+    message: MISSING_COLUMN_MESSAGE,
+  };
 }
 
 /**
@@ -366,19 +375,11 @@ export function useOrphanedColumns(
     [fieldName, rows],
   );
   const values = useOrphanedColumnNames(named, names);
-  const valuesRef = useLiveOrphans(values);
+  const liveOrphans = useLiveOrphans(values);
 
   const dangling = useMemo<readonly DanglingCells[]>(
-    () => [
-      {
-        fieldName,
-        get values() {
-          return valuesRef.current;
-        },
-        message: MISSING_COLUMN_MESSAGE,
-      },
-    ],
-    [fieldName, valuesRef],
+    () => [danglingCellsOf(fieldName, liveOrphans)],
+    [fieldName, liveOrphans],
   );
 
   const options = useMemo(
@@ -474,19 +475,18 @@ export function useOrphanedColumnChoices(
   const held = useStageValue(path);
   const named = useMemo(() => (Array.isArray(held) ? held : undefined), [held]);
   const values = useOrphanedColumnNames(named, names);
-  const valuesRef = useLiveOrphans(values);
+  const liveOrphans = useLiveOrphans(values);
   useFocusAfterVanishing(path, values);
 
   const refusal = useCallback<MessageRule>(
     (value) =>
       Array.isArray(value) &&
       value.some(
-        (entry) =>
-          typeof entry === 'string' && valuesRef.current.includes(entry),
+        (entry) => typeof entry === 'string' && liveOrphans().includes(entry),
       )
         ? MISSING_SEARCH_COLUMN_MESSAGE
         : undefined,
-    [valuesRef],
+    [liveOrphans],
   );
 
   const options = useMemo(

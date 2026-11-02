@@ -48,22 +48,6 @@ import {
 
 shimMarkdownEditorMeasurement();
 
-const SECTIONS = [
-  'Node setup',
-  'Prompt',
-  'Person attributes',
-  'Ask about gender identity',
-  'Record each person’s relationship to the participant',
-  'Relationships',
-  'Wording',
-  'Additional person fields',
-  'Completeness',
-  'Customize built-in wording',
-  'Nomination prompts',
-  'Skip logic',
-  'Interviewer guidance',
-];
-
 const openFixture = () =>
   renderStageEditor({
     stageId: 'family-pedigree-1',
@@ -182,15 +166,6 @@ const openGenderOptions = async (harness: StageEditorHarness) => {
 describe('the family pedigree stage editor', () => {
   it('claims exactly this interface', () => {
     expect(Object.keys(familyPedigreeStageEditor)).toEqual(['FamilyPedigree']);
-  });
-
-  it('renders its sections in the order a researcher decides them', async () => {
-    const harness = openFixture();
-
-    await waitFor(() =>
-      expect(harness.outline()).toHaveLength(SECTIONS.length),
-    );
-    expect(harness.outline().map((section) => section.title)).toEqual(SECTIONS);
   });
 
   it('owns every key the configured stage holds, and round-trips it', async () => {

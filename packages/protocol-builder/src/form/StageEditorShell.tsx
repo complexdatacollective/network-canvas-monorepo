@@ -3,7 +3,6 @@ import { LayoutGroup } from 'motion/react';
 import {
   type Dispatch,
   type ReactNode,
-  type RefObject,
   type SetStateAction,
   useCallback,
   useContext,
@@ -146,12 +145,11 @@ export default function StageEditorShell(props: StageEditorShellProps) {
       key={`${identity.type}:${identity.id}:${discarded}`}
       committedFields={committedFields}
     >
-      {(document, working, setDocument, saved, setSaved) => (
+      {(document, setDocument, saved, setSaved) => (
         <StageEditorFormBody
           {...props}
           identity={identity}
           document={document}
-          working={working}
           setDocument={setDocument}
           saved={saved}
           setSaved={setSaved}
@@ -202,21 +200,41 @@ function StageDocument({
   committedFields: StageFormDraft;
   children: (
     document: StageFormDraft,
-    working: RefObject<StageFormDraft>,
     setDocument: Dispatch<SetStateAction<StageFormDraft>>,
     saved: StageFormDraft,
     setSaved: Dispatch<SetStateAction<StageFormDraft>>,
   ) => ReactNode;
 }>) {
-  const working = useRef<StageFormDraft>(committedFields);
   const [document, setDocument] = useState<StageFormDraft>(committedFields);
   const [saved, setSaved] = useState<StageFormDraft>(committedFields);
 
   return (
     <FormStoreProvider initialValues={document}>
-      {children(document, working, setDocument, saved, setSaved)}
+      {children(document, setDocument, saved, setSaved)}
     </FormStoreProvider>
   );
+}
+
+/**
+ * The working document, as a cell a write can update and the next write read
+ * in the same turn. A class rather than a ref because the editor hands
+ * callbacks that read it to the context it publishes, and a ref read from
+ * those callbacks would look to the React Compiler like a ref read in render.
+ */
+class WorkingDocument {
+  #draft: StageFormDraft;
+
+  constructor(initial: StageFormDraft) {
+    this.#draft = initial;
+  }
+
+  read(): StageFormDraft {
+    return this.#draft;
+  }
+
+  write(next: StageFormDraft): void {
+    this.#draft = next;
+  }
 }
 
 function StageEditorFormBody({
@@ -226,7 +244,6 @@ function StageEditorFormBody({
   className,
   identity,
   document,
-  working,
   setDocument,
   saved,
   setSaved,
@@ -236,7 +253,6 @@ function StageEditorFormBody({
   Readonly<{
     identity: StageIdentity;
     document: StageFormDraft;
-    working: RefObject<StageFormDraft>;
     setDocument: Dispatch<SetStateAction<StageFormDraft>>;
     saved: StageFormDraft;
     setSaved: Dispatch<SetStateAction<StageFormDraft>>;
@@ -250,12 +266,20 @@ function StageEditorFormBody({
   // here: only a held stage has a holder to name, and only a stage still
   // opening is worth trying again in a moment.
   const readOnly = access !== 'editing';
+  // This body is only drawn for a stage the protocol opened, so `unavailable`
+  // (which the shell above answers by drawing something else) cannot be the
+  // access a host's slot is called with.
+  const slotAccess = access === 'unavailable' ? 'pending' : access;
   const writeRefusal =
     access === 'readOnly' ? READ_ONLY_MESSAGE : NOT_READY_MESSAGE;
   const intl = useAppIntl();
   const localization = useProtocolLocalization();
   const { codebook } = useProtocolContext();
   const storeApi = useContext(FormStoreContext);
+  // The document as the controls last left it, and what a structural write
+  // reads and writes. Held in the body that does both, and seeded from the
+  // document it mounts with; the caller's key remounts the two together.
+  const [working] = useState(() => new WorkingDocument(document));
   const formRef = useRef<HTMLFormElement>(null);
   const fieldScope = useFormFieldScope();
   const outline = useMemo(() => new SectionOutlineStore(), []);
@@ -278,9 +302,17 @@ function StageEditorFormBody({
   const clearRefusedWrite = useCallback(() => {
     setRefusedWrite(undefined);
   }, []);
-  useEffect(() => {
-    if (!readOnly) clearRefusedWrite();
-  }, [clearRefusedWrite, readOnly]);
+  // A refusal reported while the stage cannot be written goes the moment the
+  // stage can be, and only then: a list editor also reports refusals on a
+  // writable stage (a batch it chose not to issue), and those stand until the
+  // next write. Adjusted during the render that sees the access change rather
+  // than in an effect, which would draw one frame of a writable stage still
+  // carrying a refusal banner.
+  const [wasReadOnly, setWasReadOnly] = useState(readOnly);
+  if (wasReadOnly !== readOnly) {
+    setWasReadOnly(readOnly);
+    if (!readOnly) setRefusedWrite(undefined);
+  }
 
   /**
    * The one way a refused structural write is said out loud, wherever the
@@ -308,14 +340,14 @@ function StageEditorFormBody({
    * researcher's unsaved form as no change at all.
    */
   const liveDraft = useCallback((): StageFormDraft => {
-    if (storeApi === undefined) return working.current;
+    if (storeApi === undefined) return working.read();
     return documentFromSubmission({
-      currentFields: working.current,
+      currentFields: working.read(),
       submittedValues: storeApi.getState().getFormValues(),
       mountedPaths: mountedPathsOf(storeApi),
       dormantFields: dormantFieldsOf(storeApi),
     });
-  }, [storeApi]);
+  }, [storeApi, working]);
 
   /**
    * How this form writes structurally, as a list editor commits one row
@@ -335,12 +367,20 @@ function StageEditorFormBody({
         return { draft: before, refused: true };
       }
       const next = applyCommands(before, [...commands]);
-      working.current = next;
+      working.write(next);
       setDocument(next);
       clearRefusedWrite();
       return { draft: next, refused: false };
     },
-    [clearRefusedWrite, liveDraft, readOnly, reportRefusedWrite, writeRefusal],
+    [
+      clearRefusedWrite,
+      liveDraft,
+      readOnly,
+      reportRefusedWrite,
+      setDocument,
+      working,
+      writeRefusal,
+    ],
   );
 
   /**
@@ -353,11 +393,11 @@ function StageEditorFormBody({
       if (storeApi !== undefined) {
         rewriteFormStore(storeApi, liveDraft(), rewrite);
       }
-      working.current = rewrite(working.current);
+      working.write(rewrite(working.read()));
       setDocument(rewrite);
       setSaved(rewrite);
     },
-    [liveDraft, setDocument, setSaved, storeApi],
+    [liveDraft, setDocument, setSaved, storeApi, working],
   );
 
   const handleSubmit = useCallback<FormSubmitHandler>(
@@ -381,7 +421,7 @@ function StageEditorFormBody({
         savedStageFields(
           identity,
           documentFromSubmission({
-            currentFields: working.current,
+            currentFields: working.read(),
             submittedValues: values as Record<string, FieldValue>,
             mountedPaths: mountedPathsOf(storeApi),
             dormantFields: dormantFieldsOf(storeApi),
@@ -390,7 +430,7 @@ function StageEditorFormBody({
         ),
         saved,
       );
-      working.current = fields;
+      working.write(fields);
 
       // The schema's reading of the stage. Anchored problems go to the
       // outline, which files each under the section that answers for it and
@@ -458,8 +498,10 @@ function StageEditorFormBody({
       save,
       saved,
       sections,
+      setDocument,
       setSaved,
       storeApi,
+      working,
       writeRefusal,
     ],
   );
@@ -577,7 +619,13 @@ function StageEditorFormBody({
         */}
         <div className="phone-landscape:px-6 px-4">
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-            {header?.({ formId, readOnly, sections, problems })}
+            {header?.({
+              formId,
+              readOnly,
+              access: slotAccess,
+              sections,
+              problems,
+            })}
             <form
               id={formId}
               ref={formRef}
@@ -618,7 +666,13 @@ function StageEditorFormBody({
                 <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
               </LayoutGroup>
             </form>
-            {actions?.({ formId, readOnly, sections, problems })}
+            {actions?.({
+              formId,
+              readOnly,
+              access: slotAccess,
+              sections,
+              problems,
+            })}
           </div>
         </div>
       </div>

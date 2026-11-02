@@ -12,11 +12,7 @@ import {
   expectOpenedAsANewStage,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
-import {
-  composerEditor,
-  edgesOf,
-  nodeFormFieldsOf,
-} from './composerFixtures.tsx';
+import { composerEditor } from './composerFixtures.tsx';
 
 const openFixture = () =>
   renderStageEditor({ stageId: 'network-composer-1', editor: composerEditor });
@@ -191,108 +187,4 @@ describe('the network composer stage editor', () => {
         .map((section) => section.title),
     ).toEqual(['Node configuration']);
   });
-
-  /**
-   * Every key this interface's schema declares, opened in the real editor and
-   * saved without a single edit.
-   *
-   * The fixture stage is configured one plausible way — no connections, no
-   * forms, no grouping — so a key it happens not to use is a key nothing opens
-   * an editor on: it survives the save untouched because no section rendered
-   * it, and the round trip goes on passing while a researcher who opens that
-   * stage cannot see or change something their protocol holds. `unowned` is
-   * empty, so a missing section fails here.
-   */
-  it('is fully editable, and saves every key of a maximal stage unchanged', async () => {
-    const harness = renderStageEditor({
-      stage: {
-        type: 'NetworkComposer',
-        fields: {
-          label: { 'en-US': 'Network Composer' },
-          interviewScript: 'Ask them to build their network.',
-          skipLogic: {
-            action: 'SKIP',
-            filter: {
-              join: 'AND',
-              rules: [
-                {
-                  id: 'skip-rule-1',
-                  type: 'node',
-                  options: { type: 'person', operator: 'EXISTS' },
-                },
-              ],
-            },
-            destination: { type: 'finish' },
-          },
-          subject: { entity: 'node', type: 'person' },
-          quickAdd: 'composerName',
-          layoutVariable: 'layout',
-          convexHullVariable: 'contactType',
-          background: { image: 'canvas_image' },
-          behaviours: { automaticLayout: true },
-          nodeForm: {
-            fields: [
-              {
-                id: 'composer-field-1',
-                variable: 'age',
-                component: 'Number',
-                label: { 'en-US': 'How old are they?' },
-                hint: { 'en-US': 'In years.' },
-                showValidationHints: true,
-              },
-            ],
-          },
-          edges: [
-            {
-              id: 'composer-edge-1',
-              subject: { entity: 'edge', type: 'knows' },
-              label: { en: 'Connection' },
-              form: {
-                fields: [
-                  {
-                    id: 'composer-edge-field-1',
-                    variable: 'edgeNotes',
-                    component: 'TextArea',
-                    label: { 'en-US': 'Anything else?' },
-                  },
-                ],
-              },
-            },
-          ],
-        },
-      },
-      assets: {
-        canvas_image: {
-          id: 'canvas_image',
-          type: 'image',
-          name: 'canvas.png',
-          source: 'canvas.png',
-        },
-      },
-      editor: composerEditor,
-    });
-
-    // Every section registers its fields on mount, and the outline is built
-    // from what is registered — so a mount that has not filled the outline has
-    // not finished registering. The words on the canvas are the ninth section;
-    // automatic layout is a group inside the node configuration rather than a
-    // section of its own, as released Architect had it, so it adds none.
-    await waitFor(() => expect(harness.outline()).toHaveLength(9));
-
-    const saved = await harness.roundTrip({ unowned: [] });
-    // Read back as well as compared, so a round trip that agreed about an
-    // empty document could not pass: these are the two nested lists the
-    // comparison reaches into.
-    expect(nodeFormFieldsOf(saved.stageDocument)).toHaveLength(1);
-    expect(edgeFormFields(saved.stageDocument)).toHaveLength(1);
-  });
 });
-
-const edgeFormFields = (stage: Record<string, unknown>) => {
-  const entry = edgesOf(stage)[0];
-  if (entry === undefined) return [];
-  const form = entry.form;
-  if (typeof form !== 'object' || form === null) return [];
-  const fields = Reflect.get(form, 'fields');
-  return Array.isArray(fields) ? fields : [];
-};

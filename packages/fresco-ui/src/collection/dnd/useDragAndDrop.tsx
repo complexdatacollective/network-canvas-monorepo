@@ -174,7 +174,7 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
           ? renderPreview(key, metadata)
           : undefined;
 
-        const { dragProps, isDragging } = useDragSource({
+        const { dragProps } = useDragSource({
           type: dragType,
           metadata,
           preview,
@@ -185,10 +185,8 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
           disabled: isDisabled,
         });
 
-        return {
-          ...dragProps,
-          'data-dragging': isDragging || undefined,
-        };
+        // `dragProps` carries `data-dragging` while the item is being dragged.
+        return dragProps;
       },
 
       useDroppableItemProps: (key: Key, collectionId: string) => {

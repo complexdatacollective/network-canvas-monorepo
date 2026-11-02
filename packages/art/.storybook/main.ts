@@ -8,6 +8,7 @@ export default defineMain({
   addons: [
     getAbsolutePath('@storybook/addon-docs'),
     getAbsolutePath('@storybook/addon-a11y'),
+    getAbsolutePath('@storybook/addon-vitest'),
     getAbsolutePath('@storybook/addon-mcp'),
   ],
   framework: {

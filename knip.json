@@ -72,6 +72,9 @@
         // the tests are not entries, and everything reachable only from a test
         // reads as unused.
         "scripts/**/*.test.mjs",
+        // The source invariants run from their own config (see
+        // `//#test:invariants`), which knip does not detect either.
+        "scripts/invariants/vitest.config.mts",
         // Run by name from `pnpm check:mapbox-tokens`; its own test spawns it
         // as a process rather than importing it, so nothing imports it at all.
         "scripts/buildtime/check-mapbox-tokens.mjs",

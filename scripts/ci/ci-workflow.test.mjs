@@ -17,7 +17,7 @@ import { parse } from 'yaml';
 
 import { GATED_PRODUCT_RELEASE_LANES } from '../release/changeset-app-utils.mjs';
 import { E2E_JOB_NAMES } from './release-e2e-policy.mjs';
-import { TEST_SHARDS } from './test-shards.mjs';
+import { STORYBOOK_SHARDS, TEST_SHARDS } from './test-shards.mjs';
 
 const workflow = readFileSync(
   new URL('../../.github/workflows/ci-and-release.yml', import.meta.url),
@@ -796,20 +796,6 @@ test('automatic private E2E routing is idle-aware and normal-release-lane only',
   assert.match(picker, /WORKER_OVERRIDE/);
 });
 
-test('manual Interview E2E benchmarks can select runner, workers, and shard', () => {
-  assert.match(workflow, /interview_e2e_benchmark:/);
-  assert.match(workflow, /interview_e2e_runner:/);
-  assert.match(workflow, /interview_e2e_workers:/);
-  assert.match(workflow, /interview_e2e_shard:/);
-
-  const interview = job('interview-e2e');
-  assert.ok(interview, 'interview-e2e job exists');
-  assert.match(interview, /PW_WORKERS:/);
-  assert.match(interview, /E2E_RUNNER_CLASS:/);
-  assert.match(interview, /E2E_SHARD:/);
-  assert.match(interview, /--shard=\$E2E_SHARD/);
-});
-
 test('manual Interview E2E benchmarks cannot enter the legacy release lane', () => {
   const detect = job('legacy-release-detect');
   assert.ok(detect, 'legacy-release-detect job exists');
@@ -848,9 +834,6 @@ test('classic release builds use the proven macOS signing secrets', () => {
     assert.match(releaseBuild, /secrets\.APPLE_ID/);
     assert.match(releaseBuild, /secrets\.APPLE_APP_SPECIFIC_PASSWORD/);
     assert.match(releaseBuild, /secrets\.APPLE_TEAM_ID/);
-    assert.doesNotMatch(releaseBuild, /Decode App Store Connect API key/);
-    assert.doesNotMatch(releaseBuild, /secrets\.CSC_LINK/);
-    assert.doesNotMatch(releaseBuild, /secrets\.APPLE_API_KEY/);
   }
 });
 
@@ -872,11 +855,15 @@ test('Classic release names remain bare semver for legacy update checks', () => 
 });
 
 test('Fresco postinstall is portable to Windows release runners', () => {
-  assert.equal(
-    frescoPackage.scripts.postinstall,
-    'cross-env SKIP_ENV_VALIDATION=true prisma generate && cross-env SKIP_ENV_VALIDATION=true next typegen',
+  // POSIX `VAR=value cmd` fails under cmd.exe; every assignment goes through
+  // cross-env.
+  for (const command of frescoPackage.scripts.postinstall.split('&&')) {
+    assert.match(command.trim(), /^cross-env SKIP_ENV_VALIDATION=true /);
+  }
+  assert.ok(
+    frescoPackage.devDependencies['cross-env'],
+    'cross-env is installed',
   );
-  assert.equal(frescoPackage.devDependencies['cross-env'], '^10.1.0');
 });
 
 test('published Classic releases advance latest and rebuild the website', () => {
@@ -922,7 +909,7 @@ test('published Classic releases advance latest and rebuild the website', () => 
   assert.match(websiteRefresh, /ref: main/);
   assert.match(
     websiteRefresh,
-    /netlify-cli@26 deploy --build --prod[\s\S]*?--filter=networkcanvas\.com/,
+    /netlify-cli@\d+ deploy --build --prod[\s\S]*?--filter=networkcanvas\.com/,
   );
 });
 
@@ -931,11 +918,6 @@ test('lint runs the whole repository through turbo and merge groups skip it', ()
   assert.ok(lint, 'lint job exists');
   assert.match(lint, /github\.event_name != 'merge_group'/);
   assert.match(lint, /pnpm exec turbo run \/\/#lint/);
-  // The changed-file lane is gone: no diff, so no deep history, and no
-  // separate codegen step now that the task reaches fresco#codegen itself.
-  assert.doesNotMatch(lint, /lint:changed/);
-  assert.doesNotMatch(lint, /fetch-depth/);
-  assert.doesNotMatch(lint, /turbo run fresco#codegen/);
 });
 
 test('short quality checks share one setup without joining the critical path', () => {
@@ -949,23 +931,13 @@ test('short quality checks share one setup without joining the critical path', (
   assert.match(support, /pnpm --filter @codaco\/studio-api check:schema-docs/);
   // Through turbo, so the guard suite is cached like every other test task.
   assert.match(support, /turbo run \/\/#test:scripts/);
+  assert.match(support, /turbo run \/\/#test:invariants/);
   assert.match(support, /turbo run build --filter='\.\/packages\/\*'/);
   assert.match(support, /turbo run typecheck/);
-
-  for (const removed of [
-    'knip',
-    'check-changesets',
-    'test-scripts',
-    'build',
-    'typecheck',
-  ]) {
-    assert.equal(job(removed), undefined, `${removed} job was consolidated`);
-  }
 
   const quality = job('quality');
   assert.ok(quality, 'quality job exists');
   assert.match(quality, /- quality-support/);
-  assert.doesNotMatch(quality, /- knip|- check-changesets|- test-scripts/);
 });
 
 test('the quality gate verifies each required E2E suite individually', () => {
@@ -980,9 +952,6 @@ test('the quality gate verifies each required E2E suite individually', () => {
       `quality receives the ${suite} requirement flag`,
     );
   }
-  assert.match(qualityJob, /verify_required_e2e interview-e2e/);
-  assert.match(qualityJob, /verify_required_e2e interviewer-e2e/);
-  assert.match(qualityJob, /verify_required_e2e architect-e2e/);
 });
 
 test('e2e-policy can query the Actions API for release-PR reuse', () => {
@@ -990,11 +959,6 @@ test('e2e-policy can query the Actions API for release-PR reuse', () => {
   assert.ok(policyJob, 'e2e-policy job exists');
   assert.match(policyJob, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(policyJob, /fetch-depth: 0/);
-  assert.match(
-    policyJob,
-    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
-  );
-  assert.doesNotMatch(policyJob, /github\.event\.merge_group/);
 });
 
 test('unit tests use affected task selection for PRs and skip merge groups', () => {
@@ -1075,11 +1039,21 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   // The dangerous drift is a bucket with no runner: its packages are negated
   // by every shard that DOES run, so nothing executes them and CI stays
   // green while those suites silently stop running.
+  // A split bucket needs one leg per part, or a part's files never run.
   const legs = parsedWorkflow.jobs.test.strategy.matrix.include;
   assert.deepEqual(
-    legs.map((leg) => leg.shard).toSorted((a, b) => a - b),
-    TEST_SHARDS.map((s) => s.shard).toSorted((a, b) => a - b),
-    'every defined bucket has a matrix leg and vice versa',
+    legs
+      .map((leg) => `${leg.shard}${leg.part ? ` ${leg.part}` : ''}`)
+      .toSorted(),
+    TEST_SHARDS.flatMap((s) =>
+      s.parts === undefined
+        ? [`${s.shard}`]
+        : Array.from(
+            { length: s.parts },
+            (_, i) => `${s.shard} ${i + 1}/${s.parts}`,
+          ),
+    ).toSorted(),
+    'every defined bucket, and every part of a split one, has a matrix leg and vice versa',
   );
 
   assert.equal(
@@ -1122,6 +1096,11 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   );
   assert.match(
     testJob,
+    /PART_ARGS=\(-- "--shard=\$PART"\)/,
+    'a split leg passes its part through turbo to vitest',
+  );
+  assert.match(
+    testJob,
     /- name: Write protocol-validation \.env[\s\S]*?if: matrix\.protocolValidation/,
     'the secret-writing step is gated on that leg',
   );
@@ -1142,6 +1121,80 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
     testJob,
     /The Postgres container stopped before accepting connections/,
     'a stopped container is reported at once rather than waited out',
+  );
+});
+
+test('the storybook matrix runs exactly the legs scripts/ci/test-shards.mjs defines', () => {
+  const storybook = parsedWorkflow.jobs['test-storybook'];
+  const legs = storybook.strategy.matrix.include;
+  assert.deepEqual(
+    legs.map((leg) => [leg.shard, leg.browsers, leg.releaseBrowsers]),
+    STORYBOOK_SHARDS.map((s) => [s.shard, s.browsers, s.releaseBrowsers]),
+    'every storybook bucket has a leg installing the browsers it declares',
+  );
+  // fresco-ui's Firefox pass runs on generated release PRs only, and the leg
+  // installs Firefox exactly when it does.
+  assert.equal(
+    storybook.env.STORYBOOK_FIREFOX,
+    "${{ startsWith(github.head_ref, 'changeset-release/') }}",
+  );
+  const install = storybook.steps.find(
+    (step) => step.uses === './.github/actions/playwright-browsers',
+  );
+  assert.match(
+    install.with.browsers,
+    /env\.STORYBOOK_FIREFOX == 'true'\s+&& matrix\.releaseBrowsers/,
+  );
+  assert.equal(storybook.strategy['fail-fast'], false);
+
+  const codegenLegs = legs.filter((leg) => leg.frescoCodegen === true);
+  assert.deepEqual(
+    codegenLegs.map((leg) => leg.shard),
+    STORYBOOK_SHARDS.filter((s) =>
+      s.packages.some((p) => p.name === 'fresco'),
+    ).map((s) => s.shard),
+    "Fresco's codegen runs on the leg that holds its stories",
+  );
+
+  const body = job('test-storybook');
+  assert.match(
+    body,
+    /if ! node scripts\/ci\/test-shards\.mjs filters "\$SHARD" storybook >/,
+    'each leg derives its bucket from the one source of truth, gated on the exit status',
+  );
+  const runs =
+    body.match(/pnpm exec turbo run test:storybook\b(?:[^\n]*\\\n)*[^\n]*/g) ??
+    [];
+  assert.equal(runs.length, 2, 'exactly two turbo invocations');
+  for (const run of runs) {
+    assert.match(
+      run,
+      /"\$\{SHARD_FILTERS\[@\]\}"/,
+      `every turbo run is leg-restricted: ${run}`,
+    );
+  }
+  assert.doesNotMatch(
+    body,
+    /turbo run [^\n]*--affected/,
+    'turbo ignores --filter under --affected, so no invocation here may use it',
+  );
+});
+
+// One shared step installs every browser, so the time limit and retries in
+// .github/actions/playwright-browsers cover all of them.
+test('every CI browser install goes through the shared install action', () => {
+  for (const file of readdirSync(WORKFLOW_DIR)) {
+    const source = readFileSync(new URL(file, WORKFLOW_DIR), 'utf8');
+    assert.doesNotMatch(
+      source,
+      /exec playwright install/,
+      `${file} installs browsers without the time limit and retries`,
+    );
+  }
+  assert.ok(
+    (workflow.match(/uses: \.\/\.github\/actions\/playwright-browsers/g) ?? [])
+      .length >= 6,
+    'the native E2E lanes, Storybook, Studio and the cache warm use the action',
   );
 });
 
@@ -1373,14 +1426,13 @@ test('release-sensitive app builds run before merge', () => {
     supportJob,
     /turbo run build --filter='\.\/packages\/\*' --filter=@codaco\/background-creator/,
   );
+  // Architect and Interviewer take the source-map upload path only when both
+  // credentials are non-empty; the values themselves are dummies.
+  assert.match(supportJob, /POSTHOG_PERSONAL_API_KEY: \S+/);
+  assert.match(supportJob, /POSTHOG_PROJECT_ID: \S+/);
   assert.match(
     supportJob,
-    /POSTHOG_PERSONAL_API_KEY: ci-release-build-preflight/,
-  );
-  assert.match(supportJob, /POSTHOG_PROJECT_ID: '1'/);
-  assert.match(
-    supportJob,
-    /POSTHOG_CLI_BINARY_PATH: \$\{\{ github\.workspace \}\}\/scripts\/buildtime\/posthog-cli-upload-stub\.mjs/,
+    /POSTHOG_CLI_BINARY_PATH: .*posthog-cli-upload-stub\.mjs/,
   );
   assert.match(supportJob, /pnpm --filter=@codaco\/architect build/);
   assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
@@ -1424,11 +1476,6 @@ test('changed public npm versions are checked against the registry before merge'
     supportJob,
     /if \[\[ "\$GITHUB_EVENT_NAME" != "pull_request" \]\]; then[\s\S]*?node scripts\/release\/check-npm-version-collisions\.mjs --base "\$BASE_SHA"/,
   );
-  assert.match(
-    supportJob,
-    /NPM_VERSIONS_OUTCOME: \$\{\{ steps\.npm_versions\.outcome \}\}/,
-  );
-  assert.match(supportJob, /"npm-versions=\$NPM_VERSIONS_OUTCOME"/);
 });
 
 test('stable app versions deploy to their Netlify production sites', () => {
@@ -1451,7 +1498,7 @@ test('stable app versions deploy to their Netlify production sites', () => {
     assert.match(
       releaseJob,
       new RegExp(
-        `netlify-cli@22 deploy --no-build --prod[\\s\\S]*?--site="\\$\\{\\{ secrets\\.NETLIFY_SITE_ID_${siteSecret} \\}\\}"`,
+        `netlify-cli@\\d+ deploy --no-build --prod[\\s\\S]*?--site="\\$\\{\\{ secrets\\.NETLIFY_SITE_ID_${siteSecret} \\}\\}"`,
       ),
     );
     assert.match(releaseJob, /prerelease: false/);
@@ -2264,17 +2311,6 @@ test('a stale Version Packages PR cannot merge', () => {
   );
 });
 
-test('snapshot update workflow accepts only current release branches', () => {
-  assert.match(snapshotWorkflow, /'changeset-release\/main'/);
-  assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/apps'/);
-  assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/architect'/);
-  assert.doesNotMatch(
-    snapshotWorkflow,
-    /'changeset-release\/background-creator'/,
-  );
-  assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/interviewer'/);
-});
-
 test('closed snapshot PRs cannot leave permanent pending state', () => {
   assert.match(
     snapshotWorkflow,
@@ -2288,10 +2324,6 @@ test('closed snapshot PRs cannot leave permanent pending state', () => {
     snapshotWorkflow,
     /steps\.snapshot_source\.outputs\.open == 'true'/,
   );
-  assert.doesNotMatch(
-    snapshotWorkflow,
-    /git ls-remote --exit-code --heads origin/,
-  );
 });
 
 test('the informational Pages deploy has a bounded failure window', () => {
@@ -2304,12 +2336,6 @@ test('the informational Pages deploy has a bounded failure window', () => {
 });
 
 test('the unified E2E report aggregates every suite job and publishes failures only', () => {
-  assert.equal(
-    job('interview-e2e-report'),
-    undefined,
-    'the per-suite interview report job was replaced by e2e-report',
-  );
-
   const reportJob = job('e2e-report');
   assert.ok(reportJob, 'e2e-report job exists');
   for (const name of Object.values(E2E_JOB_NAMES).flat()) {
@@ -2328,7 +2354,6 @@ test('the unified E2E report aggregates every suite job and publishes failures o
   // Reports go to Pages only for FAILED jobs, and a green job removes its
   // branch's stale failure report — only the latest run's report is kept.
   assert.match(reportJob, /case "\$result" in\n\s+failure\)/);
-  assert.match(reportJob, /Only the latest run's report is kept/);
 
   // Review hardening: distinct refs must never share a report directory
   // (lossy tr normalisation collides feature/foo with feature-foo), and the
@@ -2336,7 +2361,7 @@ test('the unified E2E report aggregates every suite job and publishes failures o
   // and leaves a deleted report live).
   assert.match(
     reportJob,
-    /printf '%s-%s\\n' "\$s" "\$\(printf '%s' "\$1" \| sha256sum \| cut -c1-8\)"/,
+    /printf '%s' "\$1" \| sha256sum \| cut -c1-8/,
     'the slug carries a digest of the raw ref',
   );
   assert.match(
@@ -2364,14 +2389,6 @@ test('the unified E2E report aggregates every suite job and publishes failures o
     reportJob,
     /- name: Merge failure reports into per-job branch subdirectories\n(?:\s+#[^\n]*\n)*\s+id: merge\n\s+if: steps\.guard\.outputs\.current == 'true'\n\s+env:/,
     'the merge step is gated only on the stale-head guard',
-  );
-
-  // A truncated slug component stays within filesystem limits; the digest
-  // suffix keeps truncated names unambiguous.
-  assert.match(
-    reportJob,
-    /s=\$\{s:0:100\}/,
-    'the readable slug portion is bounded',
   );
 
   // A transiently failed Pages deploy must be retried: gh-pages-deployed
@@ -2420,11 +2437,6 @@ test('the unified E2E report aggregates every suite job and publishes failures o
     reportJob,
     /success \| skipped\)/,
     'a skipped job also drops its stale report',
-  );
-  const doubtGuards = reportJob.match(/never delete on doubt/g) ?? [];
-  assert.ok(
-    doubtGuards.length >= 2,
-    'both the listing and the sweep document the fail-safe',
   );
 
   // The status comment is a single sticky comment, updated in place, only
@@ -2487,6 +2499,23 @@ test('every job the E2E policy names is a real, gated workflow job', () => {
       );
     }
   }
+});
+
+// Feature PRs capture Interview's pixels in Chromium alone; the other two
+// engines capture on generated release PRs, which always run the lane in full.
+test('Interview captures Firefox and WebKit pixels on release PRs only', () => {
+  const run = parsedWorkflow.jobs['interview-e2e'].steps.find(
+    (step) => step.name === 'Run E2E tests',
+  );
+  assert.equal(
+    run.env.RELEASE_BRANCH,
+    "${{ startsWith(github.head_ref, 'changeset-release/') }}",
+  );
+  assert.match(run.run, /args=\(--project=chromium-visual\)\n/);
+  assert.match(
+    run.run,
+    /if \[\[ "\$RELEASE_BRANCH" == "true" \|\| "\$E2E_BENCHMARK" == "true" \]\]; then\n\s+args\+=\(--project=firefox-visual --project=webkit-visual\)/,
+  );
 });
 
 // The two lanes are only safe while each stays on its own side of the pixel

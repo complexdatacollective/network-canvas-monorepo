@@ -33,14 +33,14 @@ describe('pair accessibility language', () => {
     const before = structuredClone([first, second]);
     render(
       <InterviewI18nProvider>
-        <section role="group" aria-labelledby="pair-name">
+        <fieldset aria-labelledby="pair-name">
           <Pair
             fromNode={first}
             toNode={second}
             edgeColor="edge-color-seq-1"
             labelId="pair-name"
           />
-        </section>
+        </fieldset>
       </InterviewI18nProvider>,
     );
     expect(
@@ -52,14 +52,14 @@ describe('pair accessibility language', () => {
   it('names nodes without a name by their place in the pair', () => {
     render(
       <InterviewI18nProvider>
-        <section role="group" aria-labelledby="pair-name">
+        <fieldset aria-labelledby="pair-name">
           <Pair
             fromNode={person('a')}
             toNode={person('b')}
             edgeColor="edge-color-seq-1"
             labelId="pair-name"
           />
-        </section>
+        </fieldset>
       </InterviewI18nProvider>,
     );
     expect(

@@ -45,7 +45,7 @@ const announcementRecorder = () => {
   const collect = (records: MutationRecord[]) => {
     for (const { target } of records) {
       const element = target instanceof Element ? target : target.parentElement;
-      const text = element?.closest('[role="status"]')?.textContent?.trim();
+      const text = element?.closest('[aria-live]')?.textContent?.trim();
       if (text) announced.push(text);
     }
   };

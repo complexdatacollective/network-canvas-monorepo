@@ -34,10 +34,21 @@ export function useResourceInspection(
   const [inspection, setInspection] = useState<ResourceInspection | undefined>(
     undefined,
   );
+  // What the inspection was asked about. A different resource, a different
+  // client, or the selection passing through none and coming back, drops the
+  // inspection kept: a picker never shows the previous resource's name over a
+  // newly chosen one, and an inspection from before a selection was left does
+  // not return to be shown when the same resource is chosen again, nor outlive
+  // a request for it that fails. Adjusted during the render that sees the
+  // change, so no frame draws the stale one.
+  const [asked, setAsked] = useState({ resourceId, resources });
+  if (asked.resourceId !== resourceId || asked.resources !== resources) {
+    setAsked({ resourceId, resources });
+    setInspection(undefined);
+  }
 
   const reload = useCallback(() => {
     if (resourceId === undefined) {
-      setInspection(undefined);
       clear();
       return;
     }
@@ -45,9 +56,6 @@ export function useResourceInspection(
   }, [clear, resourceId, resources, run]);
 
   useEffect(() => {
-    // Dropped before the new one is asked for, so a picker never shows the
-    // previous resource's name over the newly chosen one.
-    setInspection(undefined);
     reload();
   }, [reload]);
 

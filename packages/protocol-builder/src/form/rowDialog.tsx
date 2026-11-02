@@ -4,9 +4,7 @@ import {
   type ComponentType,
   type ReactNode,
   useContext,
-  useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 
@@ -384,23 +382,40 @@ function useRowEditorSession(
   expand: RowListConfig['expand'],
 ): RowEditorSession | null {
   const [session, setSession] = useState<RowEditorSession | null>(null);
-  // Read through a ref rather than depended on: a section binds its expansion
-  // to whatever it reads the row against, and rebuilding the session when that
-  // moves would reopen the dialog on a fresh store over the researcher's draft.
-  const expandRef = useRef(expand);
-  expandRef.current = expand;
   const stored = useMemo(
     () => (item ? stripManagedProperties<RowValues>(item) : undefined),
     [item],
   );
-  const row = useMemo(() => {
-    if (stored === undefined) return undefined;
-    return expandRef.current ? expandRef.current(stored) : stored;
-  }, [stored]);
   const layoutId =
     typeof item?._internalId === 'string' ? item._internalId : undefined;
 
-  useEffect(() => {
+  // The session follows the list's editing state, and is adjusted during the
+  // render that sees it change rather than in an effect, so the dialog never
+  // draws a frame holding the previous session's row.
+  //
+  // `expand` is read when the session is built, not depended on: a section
+  // binds its expansion to whatever it reads the row against, and rebuilding
+  // the session when that moves would reopen the dialog on a fresh store over
+  // the researcher's draft.
+  const [seen, setSeen] = useState<
+    | Readonly<{
+        stored: RowValues | undefined;
+        index: number | null;
+        isNewItem: boolean;
+        layoutId: string | undefined;
+      }>
+    | undefined
+  >(undefined);
+  if (
+    seen === undefined ||
+    seen.stored !== stored ||
+    seen.index !== index ||
+    seen.isNewItem !== isNewItem ||
+    seen.layoutId !== layoutId
+  ) {
+    setSeen({ stored, index, isNewItem, layoutId });
+    const row =
+      stored === undefined ? undefined : expand ? expand(stored) : stored;
     setSession((previous) => {
       if (row === undefined) {
         return previous?.open ? { ...previous, open: false } : previous;
@@ -418,7 +433,7 @@ function useRowEditorSession(
         ...(isNewItem || layoutId === undefined ? {} : { layoutId }),
       };
     });
-  }, [index, isNewItem, layoutId, row, stored]);
+  }
 
   return session;
 }

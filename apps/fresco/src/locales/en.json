@@ -1,4 +1,8 @@
 {
+  "fresco.ActivityFeed.ActivityFeedRows.tableLabel": {
+    "defaultMessage": "Recent Activity",
+    "description": "Accessible name of the table listing recent activity, announced by screen readers when it is reached."
+  },
   "fresco.ActivityFeed.ActivityFeedToolbar.filterByActivityDetails": {
     "defaultMessage": "Filter by activity details...",
     "description": "Researcher-facing ActivityFeed / ActivityFeedToolbar: Filter by activity details..."
@@ -126,6 +130,10 @@
   "fresco.ApiTokenManagement.status": {
     "defaultMessage": "Status",
     "description": "Researcher-facing ApiTokenManagement: Status"
+  },
+  "fresco.ApiTokenManagement.tableLabel": {
+    "defaultMessage": "API Tokens",
+    "description": "Accessible name of the table listing API tokens, announced by screen readers when it is reached."
   },
   "fresco.ApiTokenManagement.untitled": {
     "defaultMessage": "Untitled",
@@ -351,6 +359,10 @@
     "defaultMessage": "Filter by identifier...",
     "description": "Researcher-facing InterviewsTable / InterviewsTable: Filter by identifier..."
   },
+  "fresco.InterviewsTable.InterviewsTableRows.tableLabel": {
+    "defaultMessage": "Interviews",
+    "description": "Accessible name of the table listing interviews, announced by screen readers when it is reached."
+  },
   "fresco.InterviewsTable.NetworkSummary.noNodesOrEdges": {
     "defaultMessage": "No nodes or edges",
     "description": "Researcher-facing InterviewsTable / NetworkSummary: No nodes or edges"
@@ -571,6 +583,10 @@
     "defaultMessage": "Filter by identifier...",
     "description": "Researcher-facing ParticipantsTable / ParticipantsTableClient: Filter by identifier..."
   },
+  "fresco.ParticipantsTable.ParticipantsTableRows.tableLabel": {
+    "defaultMessage": "Participants",
+    "description": "Accessible name of the table listing participants, announced by screen readers when it is reached."
+  },
   "fresco.ProtocolImport.ProtocolImportDropzone.browseFiles": {
     "defaultMessage": "Browse files",
     "description": "Researcher-facing ProtocolImport / ProtocolImportDropzone: Browse files"
@@ -670,6 +686,10 @@
   "fresco.ProtocolsTable.ProtocolsTableClient.deleteSelected": {
     "defaultMessage": "Delete Selected",
     "description": "Researcher-facing ProtocolsTable / ProtocolsTableClient: Delete Selected"
+  },
+  "fresco.ProtocolsTable.ProtocolsTableClient.tableLabel": {
+    "defaultMessage": "Protocols",
+    "description": "Accessible name of the table listing protocols, announced by screen readers when it is reached."
   },
   "fresco.RecoveryCodes.copyCopied": {
     "defaultMessage": "Copied!",

@@ -363,10 +363,11 @@ function Harness({
   const renderLink = (
     linkProps: EverythingBarLinkRenderProps,
   ): ReactElement => {
-    const { onClick, children, ...rest } = linkProps;
+    const { onClick, children, href, ...rest } = linkProps;
     return (
       <a
         {...rest}
+        href={href}
         onClick={(event) => {
           // Stands in for a router's `Link`, which is the contract the bar
           // documents: run the caller's handler first, then navigate only if
@@ -375,10 +376,7 @@ function Harness({
           onClick(event);
           if (event.defaultPrevented) return;
           event.preventDefault();
-          setNavigations((current) => [
-            ...current,
-            { via: 'link', href: rest.href },
-          ]);
+          setNavigations((current) => [...current, { via: 'link', href }]);
         }}
       >
         {children}

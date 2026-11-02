@@ -9,6 +9,8 @@ import { parseAsInteger, parseAsStringLiteral, useQueryStates } from 'nuqs';
 import { use, useMemo, type ReactNode } from 'react';
 import { SuperJSON } from 'superjson';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { dataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import { type DataTableColumnDef } from '@codaco/fresco-ui/DataTable/types';
@@ -22,6 +24,15 @@ import { ParticipantsSelectionBar } from './ParticipantsSelectionBar';
 import { searchParamsUrlKeys, sortableFields, sortOrder } from './searchParams';
 
 type ParticipantRow = GetParticipantsQuery[number];
+
+const messages = defineMessages({
+  tableLabel: {
+    id: 'fresco.ParticipantsTable.ParticipantsTableRows.tableLabel',
+    defaultMessage: 'Participants',
+    description:
+      'Accessible name of the table listing participants, announced by screen readers when it is reached.',
+  },
+});
 
 export default function ParticipantsTableRows({
   participantsPromise,
@@ -48,6 +59,7 @@ export default function ParticipantsTableRows({
 }) {
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
   'use no memo';
+  const intl = useAppIntl();
   const data = use(participantsPromise);
   const rows = useMemo(
     () => SuperJSON.parse<GetParticipantsQuery>(data.rows),
@@ -123,7 +135,11 @@ export default function ParticipantsTableRows({
 
   return (
     <>
-      <DataTable table={table} toolbar={toolbar} />
+      <DataTable
+        table={table}
+        aria-label={intl.formatMessage(messages.tableLabel)}
+        toolbar={toolbar}
+      />
       <ParticipantsSelectionBar
         selectedCount={selectedCount}
         totalCount={data.totalCount}

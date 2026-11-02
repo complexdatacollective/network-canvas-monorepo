@@ -1007,9 +1007,9 @@ const TranslationTable = ({
       </p>
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-6 py-3 text-sm text-current/70">
         {footnote && <p>{intl.formatMessage(messages.unlessBrowserLists)}</p>}
-        <p role="status" className="ms-auto whitespace-nowrap">
+        <output aria-live="polite" className="ms-auto whitespace-nowrap">
           {intl.formatMessage(messages.shownCount, { shown, total })}
-        </p>
+        </output>
       </div>
     </div>
   );

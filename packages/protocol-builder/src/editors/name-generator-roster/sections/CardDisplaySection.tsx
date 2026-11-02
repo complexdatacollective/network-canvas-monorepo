@@ -22,6 +22,11 @@ import {
   useRosterColumns,
 } from './rosterColumns.ts';
 
+/** The tag the sentence above the list uses, defined once rather than per render. */
+const EMPHASIS = Object.freeze({
+  strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
+});
+
 /** Where a roster stage records the extra facts its cards show. */
 const CARD_PROPERTIES = 'cardOptions.additionalProperties';
 
@@ -182,9 +187,7 @@ export default function CardDisplaySection() {
             a fragment of it, so a translator moves the whole clause and the
             emphasised word travels with it.
           */}
-          {intl.formatMessage(cardDisplayMessages.titledByName, {
-            strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
-          })}
+          {intl.formatMessage(cardDisplayMessages.titledByName, EMPHASIS)}
         </AlertDescription>
       </Alert>
       {/*

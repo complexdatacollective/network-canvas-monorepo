@@ -592,9 +592,9 @@ describe('Shell stage portal ownership', () => {
     const user = userEvent.setup();
     act(() => secondNode.focus());
     await user.keyboard('{Control>}d{/Control}');
-    expect(secondNode).toHaveAttribute('aria-grabbed', 'true');
-    expect(secondBin).toHaveAttribute('aria-dropeffect', 'move');
-    expect(firstBin).toHaveAttribute('aria-dropeffect', 'none');
+    expect(secondNode).toHaveAttribute('data-dragging', 'true');
+    expect(secondBin).toHaveAttribute('data-drop-target-valid', 'true');
+    expect(firstBin).not.toHaveAttribute('data-drop-target-valid');
     await user.keyboard('{ArrowRight}{Enter}');
     await waitFor(() =>
       expect(secondStore.getState().session.network.nodes).toHaveLength(0),

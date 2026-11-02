@@ -40,7 +40,7 @@ gesture as exactly one of them and renders every visual consequence itself:
 - **onLongPress**: a press held still — the filling hold indicator. Fires in
   addition to the built-in clipped-label reveal.
 - **onDragStart / onDragMove / onDragEnd**: movement past the drag threshold —
-  grab/grabbing cursor, pointer capture, \`aria-grabbed\`, touch-action none.
+  grab/grabbing cursor, pointer capture, \`data-node-dragging\`, touch-action none.
   Hosts implement the effects (where the node moves, what the payload is).
 
 A gesture is never two things at once: a drag is not also a tap, a hold is not
@@ -611,7 +611,7 @@ export const DeclaredGestures: Story = {
         </Heading>
         <Paragraph margin="none" className="mb-4 text-xs text-current/70">
           Declaring onDragStart makes the node draggable: grab cursor, pointer
-          capture, and aria-grabbed while dragging.
+          capture, and data-node-dragging while dragging.
         </Paragraph>
         <Node
           label="Draggable"
@@ -671,7 +671,7 @@ export const DeclaredGestures: Story = {
         story: `
 Declared handlers decide the visuals:
 - **onClick**: pointer cursor + press animation + tab stop
-- **onDragStart/Move/End**: grab cursor, grabbing while dragging, \`aria-grabbed\`
+- **onDragStart/Move/End**: grab cursor, grabbing while dragging, \`data-node-dragging\`
 - **Both**: the recognizer classifies each gesture as exactly one of them
 - **Neither**: default cursor, no animation, out of the tab order (display only)
 
@@ -1290,18 +1290,17 @@ export const DragStates: Story = {
     const canvas = within(canvasElement);
     const node = canvas.getByRole('button', { name: 'Drag me' });
 
-    // At rest: draggable means grab cursor and not grabbed. A pointer-only
+    // At rest: draggable means grab cursor and not dragging. A pointer-only
     // drag earns no tab stop — a keyboard user could do nothing with it; a
     // host supplying keyboard handlers (as the canvas does) earns one.
     await expect(getComputedStyle(node).cursor).toBe('grab');
     await expect(node.tabIndex).toBe(-1);
-    await expect(node).toHaveAttribute('aria-grabbed', 'false');
+    await expect(node).not.toHaveAttribute('data-node-dragging');
 
-    // Mid-drag: grabbing cursor, aria-grabbed, and the dragging data state.
+    // Mid-drag: grabbing cursor and the dragging data state.
     downOn(node, 7);
     moveTo(7, 160, 100);
     await waitFor(() => {
-      expect(node).toHaveAttribute('aria-grabbed', 'true');
       expect(node).toHaveAttribute('data-node-dragging');
       expect(getComputedStyle(node).cursor).toBe('grabbing');
     });
@@ -1309,7 +1308,6 @@ export const DragStates: Story = {
     // Released: everything returns to rest.
     upFrom(7, 160, 100);
     await waitFor(() => {
-      expect(node).toHaveAttribute('aria-grabbed', 'false');
       expect(node).not.toHaveAttribute('data-node-dragging');
       expect(getComputedStyle(node).cursor).toBe('grab');
     });
@@ -1320,7 +1318,7 @@ export const DragStates: Story = {
     docs: {
       description: {
         story:
-          'Declaring drag handlers makes the node render its own drag states: grab cursor at rest, grabbing plus `aria-grabbed` while the drag is live, and back to rest on release.',
+          'Declaring drag handlers makes the node render its own drag states: grab cursor at rest, grabbing plus `data-node-dragging` while the drag is live, and back to rest on release.',
       },
     },
   },

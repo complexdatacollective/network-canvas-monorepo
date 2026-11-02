@@ -22,11 +22,6 @@ export const sociogramSections = (
   </>
 );
 
-const PERSON_SECTION = sectionId({
-  kind: 'codebookNode',
-  typeId: 'person',
-});
-
 /** The prompt rows of a saved stage, read as tolerantly as the editor reads them. */
 export const promptsOf = (
   stage: Record<string, unknown>,
@@ -85,18 +80,6 @@ export const openPrompt = async (
 export const promptAttributeField = async (
   label: string,
 ): Promise<HTMLElement> => await waitFor(() => attributeField(label));
-
-/** Every attribute of the type this sociogram collects, as the protocol holds it. */
-export const personVariables = (
-  harness: StageEditorHarness,
-): [string, { type?: unknown }][] => {
-  const person = harness.protocolSections()[PERSON_SECTION];
-  const variables = person?.variables;
-  if (typeof variables !== 'object' || variables === null) {
-    throw new Error('the fixture person type has no attributes');
-  }
-  return Object.entries(variables) as [string, { type?: unknown }][];
-};
 
 /**
  * A form somewhere else in the protocol, started while this dialog is open.

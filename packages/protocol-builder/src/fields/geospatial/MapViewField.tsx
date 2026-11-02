@@ -177,6 +177,7 @@ export default function MapViewField({
   };
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- focus and blur bubble up from the coordinate controls inside; the fieldset only reports them to the form and is not itself operated
     <fieldset
       id={id}
       data-name={name}

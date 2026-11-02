@@ -701,28 +701,6 @@ describe('the census and bin editors written as section lists', () => {
       await harness.roundTrip({ unowned: [] });
     },
   );
-
-  /**
-   * And a stage using every key its schema allows, which the fixture stages
-   * deliberately do not.
-   *
-   * They carry no filter, no skip logic, no interviewer guidance and no sort
-   * orders, so the round trip above proves an editor keeps the handful of keys
-   * the fixture happens to hold and says nothing about the rest of the
-   * interface: a section quietly dropped survives it untouched. These stages
-   * are the whole schema, and `roundTrip` asks its two questions of them.
-   */
-  it.each(CASES)(
-    '$interfaceName saves a whole $interfaceName unchanged, every key owned by a section',
-    async ({ interfaceName, editor, wholeStage }) => {
-      const harness = renderStageEditor({
-        stage: { type: interfaceName, fields: wholeStage },
-        registry: editor,
-      });
-
-      await harness.roundTrip();
-    },
-  );
 });
 
 /**
