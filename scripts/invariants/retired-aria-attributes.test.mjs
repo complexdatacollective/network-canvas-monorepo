@@ -8,25 +8,28 @@ import { describe, expect, it } from 'vitest';
  * `aria-grabbed` and `aria-dropeffect` were removed in ARIA 1.2 and no current
  * screen reader acts on them; axe flags both. What a drag is doing reaches
  * assistive technology through the live-region announcements in
- * `dnd/useAccessibilityAnnouncements.ts`, and the state sighted users see
- * lives in `data-*` attributes (`data-dragging`, `data-node-dragging`,
- * `data-drop-target-valid`).
+ * `packages/fresco-ui/src/dnd/useAccessibilityAnnouncements.ts`, and the state
+ * sighted users see lives in `data-*` attributes (`data-dragging`,
+ * `data-node-dragging`, `data-drop-target-valid`).
  *
  * A comment asking the next author not to reintroduce them cannot make that
  * true; this can. It scans every TypeScript source file in the workspace, in
  * both spellings an attribute can take: the DOM attribute (`aria-grabbed`) and
  * the React DOM property (`ariaGrabbed`).
+ *
+ * It lives at the repository root, not in a package, so that a change to any
+ * package re-runs it: the `//#test:invariants` turbo task lists `packages/**`
+ * and `apps/**` as its inputs. Keep the two in step — a tree scanned here but
+ * missing from those inputs would replay a cached pass over a change the scan
+ * has never seen.
  */
-const REPO_ROOT = join(
-  dirname(fileURLToPath(import.meta.url)),
-  '../../../../..',
-);
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const SCANNED_ROOTS = ['packages', 'apps'];
 const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist']);
 
 const RETIRED_ARIA_ATTRIBUTE = /aria-?(?:grabbed|dropeffect)/i;
 
-const sourceFiles = (directory: string): string[] =>
+const sourceFiles = (directory) =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     // Dot directories are tool output and caches (.next, .turbo), never
     // source. `Dirent` reports a symlink as neither a file nor a directory, so
@@ -49,15 +52,17 @@ describe('retired ARIA drag attributes', () => {
   it('finds the workspace source to scan', () => {
     // Without this, a bad REPO_ROOT would make the assertion below vacuous.
     expect(files.length).toBeGreaterThan(1000);
-    expect(
-      files.map((file) => relative(REPO_ROOT, file).split('\\').join('/')),
-    ).toContain('packages/fresco-ui/src/utils/finalFocus.ts');
+    const relativePaths = files.map((file) =>
+      relative(REPO_ROOT, file).split('\\').join('/'),
+    );
+    expect(relativePaths).toContain(
+      'packages/fresco-ui/src/utils/finalFocus.ts',
+    );
+    expect(relativePaths.some((file) => file.startsWith('apps/'))).toBe(true);
   });
 
   it('appears in no source file', () => {
-    const self = fileURLToPath(import.meta.url);
     const offenders = files
-      .filter((file) => file !== self)
       .filter((file) =>
         RETIRED_ARIA_ATTRIBUTE.test(readFileSync(file, 'utf-8')),
       )

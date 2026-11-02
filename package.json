@@ -8,6 +8,7 @@
     "test": "turbo run test",
     "test:watch": "turbo watch test:watch",
     "test:scripts": "vitest run --config scripts/vitest.config.ts",
+    "test:invariants": "vitest run --config scripts/invariants/vitest.config.mts",
     "publish-packages": "pnpm exec changeset publish",
     "version-packages": "pnpm exec changeset version && pnpm install --no-frozen-lockfile && pnpm lint:fix",
     "changeset": "changeset add",
