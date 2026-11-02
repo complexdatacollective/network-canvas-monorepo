@@ -66,6 +66,8 @@ When adding a new public `@codaco/fresco-ui` component or subpath, read [the sha
 
 ## Accessibility
 
+The standard is WCAG 2.2 AA. `docs/accessibility.md` states which apps it covers, the rules every researcher-facing screen follows (keyboard parity, reorderable lists, data tables, validation problems, lock state, chart equivalents), and what the automated checks do and do not prove.
+
 Every interactive component must be fully keyboard operable and expose state changes to assistive technology.
 
 - **Use Base UI primitives.** Existing wrappers such as `Modal`, `Popover`, `Tooltip`, `DropdownMenu`, and `DatePicker` provide focus management, Escape handling, roving focus, and ARIA semantics.

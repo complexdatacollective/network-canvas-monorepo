@@ -68,16 +68,16 @@ export function zoomForKey(
 }
 
 type PedigreeViewportProps = {
-  viewportRef: RefObject<HTMLDivElement | null>;
+  viewportRef: RefObject<HTMLElement | null>;
   contentRef: RefObject<HTMLDivElement | null>;
   panZoom: PanZoom;
   /** Keys the canvas does not handle itself (it handles + and −). */
-  onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
+  onKeyDown?: (event: KeyboardEvent<HTMLElement>) => void;
   /** What + and − keep in view when focus is on `target`, inside the
    * family. Without it, the focused element itself. */
   zoomFocus?: (target: HTMLElement) => ZoomFocus | undefined;
-  onBlur?: FocusEventHandler<HTMLDivElement>;
-  onClick?: MouseEventHandler<HTMLDivElement>;
+  onBlur?: FocusEventHandler<HTMLElement>;
+  onClick?: MouseEventHandler<HTMLElement>;
   /** Drawn over the canvas, outside the panned and zoomed content. */
   overlay?: ReactNode;
   /** Drawn after the family, outside the panned and zoomed content: what
@@ -123,15 +123,15 @@ export function PedigreeViewport({
     return zoomFocus ? zoomFocus(target) : { elements: [target] };
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (zoomForKey(event, panZoom, focusOf(event.target))) return;
     onKeyDown?.(event);
   };
 
   return (
-    <div
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegated: keys and clicks reach the region from the focusable people drawn inside it; the region itself is not a control.
+    <section
       ref={viewportRef}
-      role="region"
       aria-label={intl.formatMessage(messages.canvasLabel)}
       className="relative min-h-0 w-full flex-1 cursor-grab touch-none overflow-clip select-none"
       onKeyDown={handleKeyDown}
@@ -154,7 +154,7 @@ export function PedigreeViewport({
         {children}
       </motion.div>
       {foreground}
-    </div>
+    </section>
   );
 }
 

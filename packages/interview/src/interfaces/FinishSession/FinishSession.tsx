@@ -285,11 +285,11 @@ function FinishingAnnouncement() {
     return () => cancelAnimationFrame(frame);
   }, []);
   return (
-    <div role="status" aria-live="polite" className="sr-only">
+    <output aria-live="polite" className="sr-only">
       {announced && (
         <AppMessage message={interfaceMessages.finishingInterview} />
       )}
-    </div>
+    </output>
   );
 }
 

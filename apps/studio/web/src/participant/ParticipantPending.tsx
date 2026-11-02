@@ -21,9 +21,9 @@ export default function ParticipantPending() {
       aria-busy
     >
       <Spinner />
-      <span role="status" className="sr-only">
+      <output aria-live="polite" className="sr-only">
         {intl.formatMessage(messages.opening)}
-      </span>
+      </output>
     </main>
   );
 }

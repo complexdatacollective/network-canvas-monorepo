@@ -305,6 +305,21 @@
       ],
       "outputs": []
     },
+    // The suite parses the theme CSS under fresco/ and shared/ straight off
+    // disk and has no src/ or dependencies, so the generic `test` inputs would
+    // hash none of what it reads.
+    "@codaco/tailwind-config#test": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "fresco/**",
+        "shared/**",
+        "tests/**",
+        "vitest.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "outputs": []
+    },
     "networkcanvas.com#build": {
       "dependsOn": ["^topo"],
       "inputs": [

@@ -28,8 +28,7 @@ export default function BinSelectAnnouncer({
   const nodeId = node?.[entityPrimaryKeyProperty];
 
   return (
-    <div
-      role="status"
+    <output
       aria-live="polite"
       aria-atomic
       className="sr-only"
@@ -44,6 +43,6 @@ export default function BinSelectAnnouncer({
             : intl.formatMessage(interfaceMessages.binSelectComplete)}
         </span>
       )}
-    </div>
+    </output>
   );
 }
