@@ -4,7 +4,7 @@ This guide is how an experienced Network Canvas designer turns research question
 
 ## 0. How the interview is run
 
-- **administration**: face_to_face when the description says interviewers, researchers or clinicians sit with the participant (interviews, clinic or field visits); self_administered otherwise (online surveys, kiosks, participants on their own). When it is unclear, choose self_administered and say so in the rationale.
+- **administration**: the researcher's "Mode of administration". Without one: face_to_face when interviewers or clinicians sit with the participant, otherwise self_administered.
 - **qualitative**: true only when the research design has a qualitative or narrative element, such as an interview in which the participant talks through their network and that talk is analysed. A purely quantitative network survey is false, even when face_to_face.
 - Network Canvas runs on computers and tablets, never on phones. Never design or write for phones, and never argue from small screens.
 

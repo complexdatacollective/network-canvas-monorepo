@@ -23,6 +23,7 @@ import {
   MIN_POPULATION_LENGTH,
   MIN_QUESTION_LENGTH,
   studyIsComplete,
+  type Administration,
 } from '../lib/study.ts';
 import { type Provider, type ProviderConfig } from '../shared/api.ts';
 
@@ -30,6 +31,7 @@ export type DescribeForm = {
   questions: string[];
   population: string;
   synopsis: string;
+  administration: Administration | null;
   // The example the text came from, until the researcher edits it.
   picked: string | null;
   provider: Provider;
@@ -84,6 +86,23 @@ const synopsisLine = (length: number) =>
     ? `${length} of ${MAX_SYNOPSIS_LENGTH} characters`
     : `${length} characters`;
 
+const ADMINISTRATION_OPTIONS: {
+  value: Administration;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    value: 'self_administered',
+    label: 'Self-administered',
+    hint: 'Participants complete it on their own, on a computer or tablet.',
+  },
+  {
+    value: 'face_to_face',
+    label: 'Face-to-face',
+    hint: 'An interviewer sits with each participant.',
+  },
+];
+
 const textareaClass =
   'font-body text-ink-strong block w-full resize-y rounded-[18px] border-2 bg-white px-4 py-3 text-base leading-[1.6] placeholder:text-[oklch(0.55_0.03_281)] sm:px-5 sm:py-3.5 sm:text-[1.0625rem]';
 
@@ -124,6 +143,7 @@ export const DescribeScreen = ({
   const populationId = useId();
   const populationHintId = useId();
   const populationCountId = useId();
+  const administrationHintId = useId();
   const firstExample = useRef<HTMLButtonElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const questionInputs = useRef<(HTMLTextAreaElement | null)[]>([]);
@@ -396,6 +416,59 @@ export const DescribeScreen = ({
                 </span>
               </div>
 
+              <fieldset
+                aria-describedby={administrationHintId}
+                className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
+              >
+                <legend className="font-display mb-1 p-0 text-xl font-extrabold sm:text-[1.375rem]">
+                  How participants take part
+                </legend>
+                <span
+                  id={administrationHintId}
+                  className="-mt-1 text-sm text-[oklch(0.42_0.06_281)] sm:text-[0.9375rem]"
+                >
+                  Sketch designs the interview for this mode.
+                </span>
+                <div className="flex flex-col gap-2.5 sm:flex-row">
+                  {ADMINISTRATION_OPTIONS.map((option) => {
+                    const on = form.administration === option.value;
+                    return (
+                      <label
+                        key={option.value}
+                        className={`flex min-h-11 flex-1 cursor-pointer items-start gap-3 rounded-[18px] border-2 bg-white px-4 py-3 ${
+                          on ? 'border-night-raised' : 'border-paper-line'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="administration"
+                          value={option.value}
+                          checked={on}
+                          onChange={() =>
+                            update({
+                              administration: option.value,
+                              picked: null,
+                            })
+                          }
+                          className="accent-slate-blue mt-0.5 size-5 flex-none cursor-pointer"
+                        />
+                        <span className="text-ink-strong flex flex-col gap-0.5 font-bold">
+                          {option.label}
+                          <span className="text-sm font-normal text-[oklch(0.42_0.06_281)]">
+                            {option.hint}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {form.administration === null && (
+                  <span className="px-1 text-[0.8125rem] text-[oklch(0.45_0.05_281)]">
+                    Required.
+                  </span>
+                )}
+              </fieldset>
+
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col gap-1">
                   <label
@@ -479,6 +552,7 @@ export const DescribeScreen = ({
                             questions: example.questions,
                             population: example.population,
                             synopsis: example.synopsis,
+                            administration: example.administration,
                             picked: example.id,
                           })
                         }
