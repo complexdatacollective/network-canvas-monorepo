@@ -26,9 +26,11 @@ import {
   type Point,
 } from './parts';
 
-// A service's sign-in page: the cursor clicks the GitHub button and the page
-// turns into the reader's signed-in account. With `beside`, this walkthrough
-// sits in a window to its left, as the reader is asked to arrange them.
+// A service's sign-in page: the cursor clicks the GitHub button, or with
+// `password` the sign-in button under a username and password form, and the
+// page turns into the reader's signed-in account. With `beside`, this
+// walkthrough sits in a window to its left, as the reader is asked to arrange
+// them.
 const CLICK_AT = 1.5;
 const SWAP_AT = 1.9;
 const STAMP_AT = 2.4;
@@ -40,9 +42,10 @@ type Service = {
   icon: LucideIcon;
   fill: string;
   beside?: true;
+  password?: true;
 };
 
-function SignInScene({ name, url, icon, fill, beside }: Service) {
+function SignInScene({ name, url, icon, fill, beside, password }: Service) {
   const { ref, time } = useIllustrationClock(END, { from: 0 });
   const id = useId().replace(/[^\w-]/g, '');
   const t = time;
@@ -52,7 +55,15 @@ function SignInScene({ name, url, icon, fill, beside }: Service) {
     : { x: 330, y: 50, width: 540, height: 340 };
   const content = browserContent(frame);
   const midX = (content.x + content.right) / 2;
-  const button = { x: midX - 160, y: content.y + 170, width: 320, height: 56 };
+  const iconY = content.y + (password ? 44 : 62);
+  const titleY = content.y + (password ? 104 : 138);
+  const fieldsY = content.y + 124;
+  const button = {
+    x: midX - 160,
+    y: content.y + (password ? 206 : 170),
+    width: 320,
+    height: 56,
+  };
   const target: Point = [midX + 40, button.y + button.height / 2];
   const win = backOut(segment(t, beside ? 0.25 : 0, 0.5));
   const side = backOut(segment(t, 0, 0.5));
@@ -137,7 +148,7 @@ function SignInScene({ name, url, icon, fill, beside }: Service) {
           <g opacity={1 - swap}>
             <circle
               cx={midX}
-              cy={content.y + 62}
+              cy={iconY}
               r={34}
               className={cx(fill, outline)}
               strokeWidth={5}
@@ -145,13 +156,13 @@ function SignInScene({ name, url, icon, fill, beside }: Service) {
             <Icon
               icon={icon}
               x={midX}
-              y={content.y + 62}
+              y={iconY}
               size={34}
               className="text-white"
             />
             <text
               x={midX}
-              y={content.y + 138}
+              y={titleY}
               textAnchor="middle"
               fontSize={26}
               fontWeight={900}
@@ -159,6 +170,20 @@ function SignInScene({ name, url, icon, fill, beside }: Service) {
             >
               {`Sign in to ${name}`}
             </text>
+            {password
+              ? [0, 1].map((index) => (
+                  <rect
+                    key={index}
+                    x={button.x}
+                    y={fieldsY + index * 40}
+                    width={button.width}
+                    height={30}
+                    rx={8}
+                    className={cx('fill-white', outline)}
+                    strokeWidth={4}
+                  />
+                ))
+              : null}
             <g transform={`translate(0 ${pressed * 3})`}>
               <rect
                 {...button}
@@ -169,21 +194,23 @@ function SignInScene({ name, url, icon, fill, beside }: Service) {
                 )}
                 strokeWidth={5}
               />
-              <Icon
-                icon={Code}
-                x={button.x + 44}
-                y={button.y + button.height / 2}
-                size={26}
-              />
+              {password ? null : (
+                <Icon
+                  icon={Code}
+                  x={button.x + 44}
+                  y={button.y + button.height / 2}
+                  size={26}
+                />
+              )}
               <text
-                x={midX + 18}
+                x={password ? midX : midX + 18}
                 y={button.y + 36}
                 textAnchor="middle"
                 fontSize={20}
                 fontWeight={900}
                 className="fill-navy-taupe"
               >
-                Continue with GitHub
+                {password ? 'Sign in' : 'Continue with GitHub'}
               </text>
             </g>
           </g>
@@ -238,6 +265,7 @@ export const GitHubSignInScene = () => (
     icon={Code}
     fill="fill-purple-pizazz"
     beside
+    password
   />
 );
 

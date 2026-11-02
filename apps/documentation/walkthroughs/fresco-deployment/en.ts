@@ -390,7 +390,7 @@ const walkthrough: Walkthrough = {
         {
           id: '3.10',
           type: 'explain',
-          text: "Once it's live, you have **2 hours** to finish setting up Fresco. After that, setup expires and has to be restarted.",
+          text: 'From when the build starts, you have **2 hours** to finish setting up Fresco. After that, setup expires and has to be restarted.',
           confirm: "I'll finish within 2 hours",
           guide: '#configuration-and-setup',
           visual: { kind: 'scene', scene: 'deadline' },

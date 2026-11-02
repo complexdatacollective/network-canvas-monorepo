@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit",
     "validate-redirects": "tsx ./scripts/validate-redirects.ts",
     "test-redirects": "tsx ./scripts/test-redirects.ts",
-    "capture:fresco-deployment": "tsx ./walkthroughs/fresco-deployment/capture.ts"
+    "capture:fresco-deployment": "pnpm generateProtocols && tsx ./walkthroughs/fresco-deployment/capture.ts"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",

@@ -458,10 +458,11 @@ export default function WalkthroughPlayer({
                 className="h-1.5 max-w-40"
               />
             </div>
-            <Paragraph
+            <BaseDialog.Description
               id={textId}
-              margin="none"
-              className="text-xl text-balance"
+              render={
+                <Paragraph margin="none" className="text-xl text-balance" />
+              }
             >
               <RenderMarkdown
                 allowedElements={BEAT_TEXT_ELEMENTS}
@@ -469,7 +470,7 @@ export default function WalkthroughPlayer({
               >
                 {text}
               </RenderMarkdown>
-            </Paragraph>
+            </BaseDialog.Description>
             {links.length > 0 && (
               <div className="flex flex-wrap gap-x-4 gap-y-2">
                 {links.map((link) => (
@@ -480,6 +481,7 @@ export default function WalkthroughPlayer({
           </motion.div>
           <motion.div
             variants={CAPTION_PART}
+            ref={actions}
             className="ms-auto flex flex-wrap items-center justify-end gap-3"
           >
             {index > 0 && (
@@ -492,7 +494,6 @@ export default function WalkthroughPlayer({
               </Button>
             )}
             <div
-              ref={actions}
               role={beat.type === 'choose' ? 'group' : undefined}
               aria-labelledby={beat.type === 'choose' ? textId : undefined}
               className="flex flex-wrap items-center justify-end gap-3"
