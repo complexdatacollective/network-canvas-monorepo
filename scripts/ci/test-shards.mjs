@@ -144,6 +144,9 @@ export const TEST_SHARDS = [
       { name: '@codaco/protocol-builder-core', seconds: 4 },
       { name: '@codaco/studio-contract', seconds: 4 },
       { name: '@codaco/effect-query', seconds: 4 },
+      // Private e2e helpers; one unit-test file of pure string parsing, so the
+      // weight is a local estimate like the entries above.
+      { name: '@codaco/e2e-helpers', seconds: 4 },
       // Pure Node suite over the theme CSS (one file, well under a second).
       { name: '@codaco/tailwind-config', seconds: 2 },
     ],

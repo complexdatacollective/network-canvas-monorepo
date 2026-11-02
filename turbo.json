@@ -556,6 +556,26 @@
       "outputs": [],
       "dependsOn": ["@codaco/studio-api#test:released-migrations"]
     },
+    // Repository-wide source invariants (scripts/invariants): "this string
+    // appears nowhere under packages/ or apps/". A root task, not a package's
+    // `test`, because CI selects package tests by what the change touched
+    // (`--filter="...[base]"`) and a package's cache key covers only that
+    // package and its dependencies — so a scan that lives in one package never
+    // runs for a change confined to another, and a full run can replay a green
+    // computed before the offending file existed. These inputs are every file
+    // the scans read, so any source change anywhere re-runs them.
+    "//#test:invariants": {
+      "inputs": [
+        "scripts/invariants/**",
+        "package.json",
+        "packages/**/*.{ts,tsx}",
+        "apps/**/*.{ts,tsx}",
+        "!**/node_modules/**",
+        "!**/dist/**",
+        "!**/.*/**"
+      ],
+      "outputs": []
+    },
     // The released-migration guard (#1901 S-4) again, on its own and never
     // cached: its verdict depends on origin/main, which no input describes, so
     // a tree whose migrations match an earlier passing tree (a conflict over

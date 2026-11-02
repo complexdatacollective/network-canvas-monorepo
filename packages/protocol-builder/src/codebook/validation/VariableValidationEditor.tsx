@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -288,9 +288,9 @@ export default function VariableValidationEditor({
    * Cleared during render rather than in an effect: a frame of the old text
    * over the new value is a frame of something untrue.
    */
-  const seenValue = useRef(value);
-  if (seenValue.current !== value) {
-    seenValue.current = value;
+  const [seenValue, setSeenValue] = useState(value);
+  if (seenValue !== value) {
+    setSeenValue(value);
     setDrafts((current) => (Object.keys(current).length > 0 ? {} : current));
   }
   /**

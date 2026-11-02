@@ -382,7 +382,7 @@ describe('what a network composer lets the participant build', () => {
       'Pointing this connection at another kind removed the question it asked: it recorded an attribute the new kind does not have.',
     );
     // In a live region, so it is announced rather than only drawn.
-    expect(notice.closest('[role="status"]')).not.toBeNull();
+    expect(notice.closest('[aria-live]')).not.toBeNull();
   });
 
   /**

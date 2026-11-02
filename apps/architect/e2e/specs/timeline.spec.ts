@@ -1,12 +1,12 @@
 import { type Locator, type Page } from '@playwright/test';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-
-import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import {
   readAnnouncements,
   recordAnnouncements,
-} from '../helpers/announcements.js';
+} from '@codaco/e2e-helpers/announcements';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+
+import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { defaultLanguageText } from '../helpers/localized-text.js';
 import { readProtocolJson, settleAfterRefusal } from '../helpers/read-store.js';

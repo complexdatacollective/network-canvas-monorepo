@@ -121,7 +121,10 @@ export function renderResourceEditor(
   }
 
   function CaptureResourceClient() {
-    resources.current = useResourceClient();
+    const client = useResourceClient();
+    useEffect(() => {
+      resources.current = client;
+    }, [client]);
     return null;
   }
 

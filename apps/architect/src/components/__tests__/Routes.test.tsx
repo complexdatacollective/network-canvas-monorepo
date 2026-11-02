@@ -182,9 +182,7 @@ describe('Routes', () => {
     // a live region has to exist before its content changes to be announced at
     // all, so it is deliberately outside the guard and outside the Switch.
     expect(container.textContent).toBe('');
-    expect(
-      container.querySelector(':scope > *:not([role="status"])'),
-    ).toBeNull();
+    expect(container.querySelector(':scope > *:not([aria-live])')).toBeNull();
     expect(mockBrowserNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
 

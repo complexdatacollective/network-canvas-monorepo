@@ -1,19 +1,17 @@
 import { type Page } from '@playwright/test';
 
-const RECORDER_KEY = '__architectE2eAnnouncements';
+const RECORDER_KEY = '__e2eAnnouncements';
 
-type AnnouncementWindow = Window & {
-  [RECORDER_KEY]?: string[];
-};
+type TranscriptHolder = Record<string, string[] | undefined>;
 
 /**
  * Starts recording everything the app writes into a live region.
  *
- * The timeline announces through fresco-ui's `useAccessibilityAnnouncements`,
- * which builds its region imperatively on `document.body` and BLANKS it a
- * second later. Polling the region's text is therefore a race the test can
- * lose, and a bare `getByRole('status')` locator becomes a strict-mode
- * violation the moment a second live-region consumer mounts on the same route.
+ * Apps announce through fresco-ui's `useAccessibilityAnnouncements`, which
+ * builds its region imperatively on `document.body` and BLANKS it a second
+ * later. Polling the region's text is therefore a race the test can lose, and
+ * a bare `getByRole('status')` locator becomes a strict-mode violation the
+ * moment a second live-region consumer mounts on the same route.
  *
  * Recording every mutation up front removes both problems: the assertion runs
  * against the transcript of what was announced, not against whatever the region
@@ -22,10 +20,10 @@ type AnnouncementWindow = Window & {
  * Re-install after every navigation — the recorder lives on `window`.
  */
 export async function recordAnnouncements(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const scope = window as AnnouncementWindow;
+  await page.evaluate((key) => {
+    const scope = window as unknown as TranscriptHolder;
     const transcript: string[] = [];
-    scope.__architectE2eAnnouncements = transcript;
+    scope[key] = transcript;
 
     const collect = () => {
       for (const region of document.querySelectorAll('[aria-live], output')) {
@@ -41,11 +39,13 @@ export async function recordAnnouncements(page: Page): Promise<void> {
       childList: true,
       characterData: true,
     });
-  });
+  }, RECORDER_KEY);
 }
 
+/** Everything announced since `recordAnnouncements` last ran on this page. */
 export function readAnnouncements(page: Page): Promise<string[]> {
   return page.evaluate(
-    () => (window as AnnouncementWindow).__architectE2eAnnouncements ?? [],
+    (key) => (window as unknown as TranscriptHolder)[key] ?? [],
+    RECORDER_KEY,
   );
 }

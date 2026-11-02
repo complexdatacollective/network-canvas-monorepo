@@ -62,9 +62,13 @@ function SpotlightHost({
         <Button type="button" onClick={() => setOpen(true)}>
           Select attribute
         </Button>
-        <p role="status" aria-label="Chosen attribute">
+        <output
+          aria-live="polite"
+          aria-label="Chosen attribute"
+          className="block"
+        >
           {chosen ?? 'Nothing chosen yet.'}
-        </p>
+        </output>
         <VariableSpotlight
           open={open}
           onOpenChange={setOpen}

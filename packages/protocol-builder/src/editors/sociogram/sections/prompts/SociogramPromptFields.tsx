@@ -274,10 +274,16 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
    * box are what the rule looks like on screen.
    */
   const [drawChosenHere, setDrawChosenHere] = useState(false);
-  useEffect(() => {
-    if (createdEdge === undefined || createdEdge === committedCreate) return;
+  // Latched as soon as a connection other than the stored one is chosen, and
+  // adjusted during render rather than in an effect: the notice and the locked
+  // tick box it shows must not trail the choice by a frame.
+  if (
+    !drawChosenHere &&
+    createdEdge !== undefined &&
+    createdEdge !== committedCreate
+  ) {
     setDrawChosenHere(true);
-  }, [committedCreate, createdEdge]);
+  }
 
   /**
    * A connection the researcher has just said this prompt draws is shown too.

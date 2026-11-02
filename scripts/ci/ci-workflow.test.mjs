@@ -949,6 +949,7 @@ test('short quality checks share one setup without joining the critical path', (
   assert.match(support, /pnpm --filter @codaco\/studio-api check:schema-docs/);
   // Through turbo, so the guard suite is cached like every other test task.
   assert.match(support, /turbo run \/\/#test:scripts/);
+  assert.match(support, /turbo run \/\/#test:invariants/);
   assert.match(support, /turbo run build --filter='\.\/packages\/\*'/);
   assert.match(support, /turbo run typecheck/);
 

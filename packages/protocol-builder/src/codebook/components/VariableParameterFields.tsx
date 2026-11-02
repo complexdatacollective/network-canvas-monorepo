@@ -374,7 +374,7 @@ export default function VariableParameterFields({
           announcement this wrapper exists to avoid. The words are announced
           once, by the region that was already being watched, and the alert
           keeps the treatment a sighted reader recognises. */}
-      <div role="status" aria-live="polite">
+      <output aria-live="polite" className="block">
         {clearedBounds && (
           <Alert variant="info" role="presentation" className="my-7">
             <AlertDescription>
@@ -382,7 +382,7 @@ export default function VariableParameterFields({
             </AlertDescription>
           </Alert>
         )}
-      </div>
+      </output>
       <UnconnectedField
         name="parameter-min"
         label={intl.formatMessage(parameterFieldMessages.minLabel)}

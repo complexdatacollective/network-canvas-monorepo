@@ -175,3 +175,28 @@ describe('DataView active-locale sorting', () => {
     ).toEqual(sessions);
   });
 });
+
+describe('DataView selection announcement', () => {
+  it('announces how many sessions are selected, though the selection is not in the table state', async () => {
+    const user = userEvent.setup();
+    render(<Harness locale="en" />);
+    await waitFor(() =>
+      expect(caseCells().map((cell) => cell.textContent)).toEqual([
+        'Ñandú',
+        'Nube',
+      ]),
+    );
+    const announcement = () =>
+      screen
+        .getAllByRole('status')
+        .map((region) => region.textContent)
+        .filter(Boolean);
+    expect(announcement()).not.toContain('1 row selected');
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select Ñandú' }));
+    expect(announcement()).toContain('1 row selected');
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select Nube' }));
+    expect(announcement()).toContain('2 rows selected');
+  });
+});

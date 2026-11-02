@@ -105,6 +105,7 @@
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:",
     "@codaco/development-protocol": "workspace:^",
+    "@codaco/e2e-helpers": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/interface-images": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",

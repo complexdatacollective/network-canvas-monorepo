@@ -1,4 +1,5 @@
 import { act, render } from '@testing-library/react';
+import { useEffect } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
@@ -41,9 +42,21 @@ type OpenEdit = {
   editId: string | undefined;
 };
 
+function record(
+  into: OpenEdit,
+  client: ResourceClient,
+  editId: string | undefined,
+): void {
+  into.client = client;
+  into.editId = editId;
+}
+
 function Probe({ into }: Readonly<{ into: OpenEdit }>) {
-  into.client = useResourceClient();
-  into.editId = useStagedResources().editId;
+  const client = useResourceClient();
+  const { editId } = useStagedResources();
+  useEffect(() => {
+    record(into, client, editId);
+  }, [into, client, editId]);
   return null;
 }
 
