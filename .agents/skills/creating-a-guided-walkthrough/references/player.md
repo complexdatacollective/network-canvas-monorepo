@@ -12,7 +12,7 @@ needs, extend the player rather than special-casing one walkthrough.
 ## Where it lives
 
 A React component in `apps/documentation`, rendered directly in the docs page
-(inside a fresco-ui `Dialog` for the full-screen view). Not an iframe around a
+(inside fresco-ui's `Modal` and `DialogPopup` for the full-screen view). Not an iframe around a
 standalone HTML page: rendering in the docs app is what lets it use the real
 fresco-ui components and tokens, the docs' fonts, `next-intl` messages, and
 the dialog's own focus handling, and it removes the `postMessage` bridge the
@@ -78,7 +78,10 @@ the storyboard table columns map one-to-one onto fields.
   the focused control; arrow keys do not silently advance, because a reader
   using them to scroll a capture would skip a step. Escape closes the dialog.
 - **Live region.** When the beat changes, its on-screen text is announced, so a
-  screen-reader user hears each step without hunting for it.
+  screen-reader user hears each step without hunting for it. The step text is
+  also the dialog's description, so the first step is read when it opens.
+- **Focus follows the reader.** Advancing or going Back replaces the buttons
+  the reader just used, so focus moves to the new step's first control.
 
 ## Pacing and motion
 
