@@ -11,6 +11,8 @@ import {
   assertShardCoverage,
   shardedPackages,
   shardFilters,
+  splitSuites,
+  STORYBOOK_SHARDS,
   TEST_SHARDS,
   workspaceTestPackages,
 } from './test-shards.mjs';
@@ -163,4 +165,57 @@ test('the workspace scan reads pnpm-workspace.yaml rather than a fixed list', ()
   );
 
   assert.deepEqual(workspaceTestPackages(root), ['@x/tested']);
+});
+
+test('every storybook suite belongs to exactly one leg, and each leg negates its complement', () => {
+  assert.doesNotThrow(() => assertShardCoverage(undefined, 'storybook'));
+  const all = workspaceTestPackages(REPO_ROOT, 'test:storybook');
+  assert.deepEqual(
+    shardedPackages('storybook').toSorted(),
+    all.toSorted(),
+    'the legs cover every storybook suite',
+  );
+  for (const { shard, packages } of STORYBOOK_SHARDS) {
+    const owned = new Set(packages.map((p) => p.name));
+    assert.deepEqual(
+      shardFilters(shard, all, 'storybook'),
+      all.filter((name) => !owned.has(name)).map((name) => `--filter=!${name}`),
+      `storybook leg ${shard} negates exactly its complement`,
+    );
+  }
+});
+
+test('a storybook suite with no leg fails the coverage check', () => {
+  assert.throws(
+    () =>
+      assertShardCoverage(
+        [...workspaceTestPackages(REPO_ROOT, 'test:storybook'), '@x/stories'],
+        'storybook',
+      ),
+    /"test:storybook" script but belong to no storybook shard/,
+  );
+});
+
+test('a split bucket must own exactly one package', () => {
+  // The part argument is passed through turbo to every suite in the run, so a
+  // second package in a split bucket would be split as well, silently.
+  const split = TEST_SHARDS.find((s) => s.parts !== undefined);
+  assert.ok(split, 'one bucket is split');
+  // A package in no other bucket, so the duplicate check does not fire first.
+  split.packages.push({ name: '@codaco/studio-api', seconds: 10 });
+  try {
+    assert.throws(() => assertShardCoverage(), /must own exactly one package/);
+  } finally {
+    split.packages.pop();
+  }
+  assert.doesNotThrow(() => assertShardCoverage());
+});
+
+test('the split CLI lists each split suite with its part count', () => {
+  const out = spawnSync(process.execPath, [SCRIPT, 'split'], {
+    encoding: 'utf8',
+  });
+  assert.equal(out.status, 0, out.stderr);
+  assert.deepEqual(out.stdout.trim().split('\n'), splitSuites());
+  assert.deepEqual(splitSuites(), ['@codaco/protocol-builder 3']);
 });

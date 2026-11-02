@@ -35,20 +35,22 @@ to satisfy required contexts that only `main` has.
 #### Storybook interaction tests
 
 `test:storybook` (`vitest run --project=storybook`) executes every story's
-play function and assertions in a real browser. Six workspaces define it:
-`@codaco/architect`, `@codaco/fresco-ui`, `@codaco/interview`,
+play function and assertions in a real browser. Seven workspaces define it:
+`@codaco/architect`, `@codaco/art`, `@codaco/fresco-ui`, `@codaco/interview`,
 `@codaco/interviewer`, `@codaco/protocol-builder`, and `fresco`. The
-`test-storybook` CI job runs them through Turbo and the `quality` gate requires
-it. Chromatic does not replace this: it has no project for Architect, Fresco or
-Protocol Builder, and TurboSnap only re-captures the stories a pull request
-changed.
+`test-storybook` CI job runs them through Turbo in three legs (fresco-ui;
+interview; the other five) and the `quality` gate requires it. fresco-ui's
+stories also run in Firefox, but in CI only on generated release PRs
+(`STORYBOOK_FIREFOX`, read by its `vitest.config.ts`). Chromatic does
+not replace this: it has no project for Architect, Fresco or Protocol Builder,
+and TurboSnap only re-captures the stories a pull request changed.
 
-A workspace joins that set by declaring the script — nothing lists the projects.
-`turbo.json` defines `test:storybook` generically, and the CI job runs
-`turbo run test:storybook` with no filter, so a new workspace is selected the
-moment its `package.json` gains the script (and under `--affected`, whenever
-its own or a dependency's declared inputs change). Confirm a workspace is in by
-reading the task list rather than the workflow:
+A workspace joins that set by declaring the script and taking a leg in
+`STORYBOOK_SHARDS` (`scripts/ci/test-shards.mjs`). The guard suite fails while
+a workspace declares the script but has no leg, because every leg would negate
+it and nothing would run it. `turbo.json` defines `test:storybook`
+generically, and each leg runs the affected suites of its bucket. Confirm a
+workspace is in by reading the task list rather than the workflow:
 `pnpm exec turbo run test:storybook --dry=json` and keeping the tasks whose
 `command` is a real command — turbo lists a task for every workspace, with
 `<NONEXISTENT>` as the command where the script is absent.
@@ -154,6 +156,14 @@ regeneration workflow. Both halves are required by `quality`, and
 before a verdict can be reused. The capture helpers throw when
 `E2E_PIXEL_LANE=native` is set, so a mis-tagged visual test fails loudly
 instead of silently comparing container baselines against a runner's fonts.
+Interview's pixel lane captures only `chromium-visual` on feature PRs. The
+`firefox-visual` and `webkit-visual` captures (two thirds of the lane) run on
+generated release PRs, where the lane always runs in full, and in benchmark
+dispatches. A Firefox- or WebKit-only image change therefore surfaces on the
+release PR, whose snapshot-failure path opens the baseline-update PR described
+below. The native lane's Firefox and WebKit functional tests still run on every
+selected PR.
+
 Feature PRs never inherit an E2E verdict from an earlier commit: suite
 selection uses the cumulative merge-base-to-current-head diff, so every
 required verdict describes the exact head under review.

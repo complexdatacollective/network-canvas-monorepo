@@ -266,6 +266,10 @@ function StageEditorFormBody({
   // here: only a held stage has a holder to name, and only a stage still
   // opening is worth trying again in a moment.
   const readOnly = access !== 'editing';
+  // This body is only drawn for a stage the protocol opened, so `unavailable`
+  // (which the shell above answers by drawing something else) cannot be the
+  // access a host's slot is called with.
+  const slotAccess = access === 'unavailable' ? 'pending' : access;
   const writeRefusal =
     access === 'readOnly' ? READ_ONLY_MESSAGE : NOT_READY_MESSAGE;
   const intl = useAppIntl();
@@ -615,7 +619,13 @@ function StageEditorFormBody({
         */}
         <div className="phone-landscape:px-6 px-4">
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-            {header?.({ formId, readOnly, sections, problems })}
+            {header?.({
+              formId,
+              readOnly,
+              access: slotAccess,
+              sections,
+              problems,
+            })}
             <form
               id={formId}
               ref={formRef}
@@ -656,7 +666,13 @@ function StageEditorFormBody({
                 <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
               </LayoutGroup>
             </form>
-            {actions?.({ formId, readOnly, sections, problems })}
+            {actions?.({
+              formId,
+              readOnly,
+              access: slotAccess,
+              sections,
+              problems,
+            })}
           </div>
         </div>
       </div>

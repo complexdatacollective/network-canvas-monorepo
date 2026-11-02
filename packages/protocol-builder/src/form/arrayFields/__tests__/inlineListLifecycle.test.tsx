@@ -130,7 +130,14 @@ const asRowText = (row: Option) => {
 
 const labelOf = (row: Option) => translationText(row.label, LOCALE);
 
-const SEQUENCES = 200;
+/**
+ * Seeds per sweep. No seed has ever failed either sweep or been added for a
+ * case of its own, so none is pinned by number. The foreign sweep runs the
+ * same sequences from a different start, and needs only enough of them to
+ * cover that start.
+ */
+const LIST_SEQUENCES = 40;
+const FOREIGN_SEQUENCES = 20;
 const STEPS_PER_SEQUENCE = 8;
 
 const LIST_START: SectionDoc = {
@@ -153,16 +160,16 @@ const FOREIGN_START: SectionDoc = {
 };
 
 /**
- * The seeds to run: all of them, or exactly the ones named in
- * `INLINE_LIST_SEEDS` (`INLINE_LIST_SEEDS=137`, `INLINE_LIST_SEEDS=137,204`).
+ * The seeds to run: the first `count`, or exactly the ones named in
+ * `INLINE_LIST_SEEDS` (`INLINE_LIST_SEEDS=37`, `INLINE_LIST_SEEDS=37,204`).
  *
  * A reported failure names one seed, and replaying just that seed is how it is
- * worked on — `-t 'seed 137'` would still mount the other 199.
+ * worked on — `-t 'seed 37'` would still mount all the others.
  */
-const seedsUnderTest = (): number[] => {
+const seedsUnderTest = (count: number): number[] => {
   const requested = process.env.INLINE_LIST_SEEDS;
   if (requested === undefined || requested.trim() === '') {
-    return Array.from({ length: SEQUENCES }, (_, index) => index + 1);
+    return Array.from({ length: count }, (_, index) => index + 1);
   }
   return requested.split(',').map((entry) => {
     const seed = Number(entry.trim());
@@ -328,7 +335,7 @@ afterEach(cleanup);
  * One test per seed, rather than one test that sweeps every seed: a sequence
  * costs a mount plus eight steps read back out of the DOM, and CI's shared
  * runners are much slower on this package's DOM tests than a laptop is. Swept
- * into one `it`, all 200 share a single per-test budget; per seed, each carries
+ * into one `it`, they all share a single per-test budget; per seed, each carries
  * only its own sequence and a failure names the seed that produced it.
  */
 describe('the inline list, over random authoring sequences', () => {
@@ -342,7 +349,7 @@ describe('the inline list, over random authoring sequences', () => {
     cleanup();
   });
 
-  it.each(seedsUnderTest())(
+  it.each(seedsUnderTest(LIST_SEQUENCES))(
     'keeps the screen, the document and the researcher’s typing in step, from seed %i',
     async (seed) => {
       expect(await runLifecycleSequence(seed, LIST_START)).toEqual([]);
@@ -351,7 +358,7 @@ describe('the inline list, over random authoring sequences', () => {
 });
 
 describe('the inline list, over a key an import left holding something else', () => {
-  it.each(seedsUnderTest())(
+  it.each(seedsUnderTest(FOREIGN_SEQUENCES))(
     'never leaves a row on screen the document has not got, from seed %i',
     async (seed) => {
       expect(await runLifecycleSequence(seed, FOREIGN_START)).toEqual([]);

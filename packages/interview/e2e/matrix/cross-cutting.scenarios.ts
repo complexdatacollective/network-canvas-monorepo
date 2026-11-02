@@ -9,11 +9,11 @@ import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
 // Skip logic and stage filters are engine-level: the Shell decides whether to
 // render a stage from its `skipLogic`, and shared selectors apply a stage
 // `filter` to the network before the interface renders. These scenarios prove
-// the mechanism against Information stages (trivial to skip/show) and every
-// Filter operator, then the per-interface wiring block proves each interface
-// stage honours the same machinery — backing the `<Interface>:skipLogic` /
-// `<Interface>:filter` shared claims with real coverage rather than blanket
-// declarations.
+// the mechanism against Information stages (trivial to skip/show) and one
+// Filter operator per attribute type, then the per-interface wiring block
+// proves each interface stage honours the same machinery — backing the
+// `<Interface>:skipLogic` / `<Interface>:filter` shared claims with real
+// coverage rather than blanket declarations.
 //
 // `skipLogic` is set through `addInformationStage({ skipLogic })` and, for the
 // wiring block, through the stage handle's mutable `stageEntry.skipLogic` /
@@ -39,51 +39,28 @@ type OperatorCase = {
   filterValue?: string | number;
 };
 
-// One case per Filter operator, each chosen so the operator evaluates TRUE
-// against the seeded node — action SKIP then skips the target stage.
+// One case per attribute type — type-level (no attribute), number, categorical
+// and text — each with the operator most particular to that type, and each
+// chosen so the operator evaluates TRUE against the seeded node (action SKIP
+// then skips the target stage). They prove that a rule of each kind reaches the
+// Shell's skip decision with its seeded value. What each operator means is not
+// proved here: `isStageSkipped` hands the filter to @codaco/network-query, whose
+// predicate.test.js unit-tests every operator, and the Shell reads
+// `stage.skipLogic` without regard to the stage's type (see shared-claims.ts).
+//
+// - NOT_EXISTS: the type-level presence check, with no attribute and no node
+//   seeded (an empty network matches). Its EXISTS twin is
+//   `skip-logic-skip-when-match` below, so it is not repeated.
+// - GREATER_THAN: a numeric comparison.
+// - INCLUDES: membership in a categorical attribute's array of options.
+// - CONTAINS: a match against text.
 const OPERATOR_CASES: readonly OperatorCase[] = [
-  { op: 'EXISTS', seedNode: true },
   { op: 'NOT_EXISTS', seedNode: false },
-  {
-    op: 'EXACTLY',
-    varType: 'number',
-    seedNode: true,
-    seedValue: 5,
-    filterValue: 5,
-  },
-  {
-    op: 'NOT',
-    varType: 'number',
-    seedNode: true,
-    seedValue: 3,
-    filterValue: 5,
-  },
   {
     op: 'GREATER_THAN',
     varType: 'number',
     seedNode: true,
     seedValue: 10,
-    filterValue: 5,
-  },
-  {
-    op: 'GREATER_THAN_OR_EQUAL',
-    varType: 'number',
-    seedNode: true,
-    seedValue: 5,
-    filterValue: 5,
-  },
-  {
-    op: 'LESS_THAN',
-    varType: 'number',
-    seedNode: true,
-    seedValue: 3,
-    filterValue: 5,
-  },
-  {
-    op: 'LESS_THAN_OR_EQUAL',
-    varType: 'number',
-    seedNode: true,
-    seedValue: 5,
     filterValue: 5,
   },
   {
@@ -94,53 +71,11 @@ const OPERATOR_CASES: readonly OperatorCase[] = [
     filterValue: 'a',
   },
   {
-    op: 'EXCLUDES',
-    varType: 'categorical',
-    seedNode: true,
-    seedValue: ['a'],
-    filterValue: 'b',
-  },
-  {
-    op: 'OPTIONS_GREATER_THAN',
-    varType: 'categorical',
-    seedNode: true,
-    seedValue: ['a', 'b', 'c'],
-    filterValue: 2,
-  },
-  {
-    op: 'OPTIONS_LESS_THAN',
-    varType: 'categorical',
-    seedNode: true,
-    seedValue: ['a'],
-    filterValue: 2,
-  },
-  {
-    op: 'OPTIONS_EQUALS',
-    varType: 'categorical',
-    seedNode: true,
-    seedValue: ['a', 'b'],
-    filterValue: 2,
-  },
-  {
-    op: 'OPTIONS_NOT_EQUALS',
-    varType: 'categorical',
-    seedNode: true,
-    seedValue: ['a'],
-    filterValue: 2,
-  },
-  {
     op: 'CONTAINS',
     varType: 'text',
     seedNode: true,
     seedValue: 'hello world',
     filterValue: 'world',
-  },
-  {
-    op: 'DOES_NOT_CONTAIN',
-    varType: 'text',
-    seedNode: true,
-    seedValue: 'hello',
-    filterValue: 'xyz',
   },
 ];
 
