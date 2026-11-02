@@ -1,4 +1,11 @@
-import { type ComponentProps, type ReactNode, useMemo, useRef } from 'react';
+import {
+  type ComponentProps,
+  createContext,
+  type ReactNode,
+  useContext,
+  useMemo,
+  useRef,
+} from 'react';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -902,9 +909,9 @@ export function DynamicMessageEditor({
         className={className}
       />
       {problem !== undefined && (
-        <p className="text-destructive text-sm" role="status">
+        <output aria-live="polite" className="text-destructive block text-sm">
           {problem}
-        </p>
+        </output>
       )}
     </div>
   );
@@ -1012,6 +1019,36 @@ const LABEL_MARKDOWN: BlockMarkdown = {
 };
 
 /**
+ * How a summary draws the value its markdown marked with a character of its
+ * own, by that character's position among the message's values.
+ *
+ * Read through a context so the span component below can be defined once, at
+ * module level: a component written inline in the render is a new type each
+ * time, and React would unmount and remount every pill on every render.
+ */
+const SummaryValueContext = createContext<(index: number) => ReactNode>(
+  () => undefined,
+);
+
+/** The span markdown wraps a marked value in, drawn as its pill. */
+function SummaryValueSpan({
+  node,
+  children,
+}: Readonly<{
+  node?: { properties?: Record<string, unknown> } | undefined;
+  children?: ReactNode;
+}>) {
+  const shownValue = useContext(SummaryValueContext);
+  const index = node?.properties?.[VALUE_PROPERTY];
+  if (typeof index !== 'string') return <span>{children}</span>;
+  // A character past the values is the author's own, kept as is.
+  return (
+    shownValue(Number(index)) ??
+    String.fromCodePoint(VALUE_MARK + Number(index))
+  );
+}
+
+/**
  * A message's words, read-only, each value as the pill an editor shows and
  * each set of versions folded to the pill of the value it is on, as the
  * editor shows it folded: what it says in each case is written, and read, in
@@ -1085,24 +1122,15 @@ export function MessageNodesSummary({
     };
     if (markdown) {
       return (
-        <RenderMarkdown
-          allowedElements={allowedElements}
-          rehypePlugins={SUMMARY_REHYPE_PLUGINS}
-          components={{
-            ...elements.components,
-            span: ({ node, children }) => {
-              const index = node?.properties?.[VALUE_PROPERTY];
-              if (typeof index !== 'string') return <span>{children}</span>;
-              // A character past the values is the author's own, kept as is.
-              return (
-                shown(Number(index), 0) ??
-                String.fromCodePoint(VALUE_MARK + Number(index))
-              );
-            },
-          }}
-        >
-          {source}
-        </RenderMarkdown>
+        <SummaryValueContext value={(index) => shown(index, 0)}>
+          <RenderMarkdown
+            allowedElements={allowedElements}
+            rehypePlugins={SUMMARY_REHYPE_PLUGINS}
+            components={{ ...elements.components, span: SummaryValueSpan }}
+          >
+            {source}
+          </RenderMarkdown>
+        </SummaryValueContext>
       );
     }
     return Array.from(source).map(

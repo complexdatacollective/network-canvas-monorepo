@@ -64,14 +64,22 @@ export function useGeoJsonFeatureProperties(
 ): GeoJsonPropertiesState {
   const resources = useResourceClient();
   const { busy, failure, retry, run, clear } = useResourceAttempt();
-  const [names, setNames] = useState<readonly string[] | undefined>(undefined);
-  const [unreadable, setUnreadable] = useState(false);
+  // What was read, and which layer it was read from. A layer's properties are
+  // only ever shown against that layer, so choosing another drops the previous
+  // layer's properties at once, without a reset to wait for.
+  const [read, setRead] = useState<
+    | Readonly<{
+        resourceId: string | undefined;
+        names?: readonly string[];
+        unreadable: boolean;
+      }>
+    | undefined
+  >(undefined);
+  const current = read?.resourceId === resourceId ? read : undefined;
+  const names = current?.names;
+  const unreadable = current?.unreadable ?? false;
 
   const load = useCallback(() => {
-    // Dropped before the next layer is asked for, so a picker never offers the
-    // previous layer's properties against the newly chosen one.
-    setNames(undefined);
-    setUnreadable(false);
     if (resourceId === undefined || resourceId === '') {
       clear();
       return;
@@ -79,12 +87,12 @@ export function useGeoJsonFeatureProperties(
     run(
       () => readResourceBytes(() => resources.resolvePreview(resourceId)),
       (bytes) => {
-        const read = geoJsonFeatureProperties(bytes);
-        if (read.unreadable) {
-          setUnreadable(true);
-          return;
-        }
-        setNames(read.names);
+        const properties = geoJsonFeatureProperties(bytes);
+        setRead(
+          properties.unreadable
+            ? { resourceId, unreadable: true }
+            : { resourceId, names: properties.names, unreadable: false },
+        );
       },
     );
   }, [clear, resourceId, resources, run]);
