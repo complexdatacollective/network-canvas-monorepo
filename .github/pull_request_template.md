@@ -18,6 +18,6 @@ how to meet it. Tick each item, or delete the list and say the change is not use
 - [ ] Every action works from the keyboard alone, with visible focus that is never lost or hidden.
 - [ ] Controls, images and regions have accessible names; decorative icons are hidden.
 - [ ] Changes of state (results, progress, errors, moves) are announced to screen readers.
-- [ ] Drags have a keyboard or single-pointer alternative; targets are at least 24 by 24 CSS pixels.
+- [ ] Anything done by dragging can also be done with single clicks or taps; targets are at least 24 by 24 CSS pixels.
 - [ ] Respects reduced motion, and works at 400% zoom and in right-to-left languages.
 - [ ] Adds no lint or axe violations; any exception carries a written reason.
