@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -114,8 +115,12 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
 
   // The preference as of this render, for callbacks that must compare
   // against the current value rather than the one they closed over.
+  // Updated after commit rather than during render, and before any passive
+  // effect (such as `LocaleSync`'s) can read it.
   const preferenceRef = useRef(preference);
-  preferenceRef.current = preference;
+  useLayoutEffect(() => {
+    preferenceRef.current = preference;
+  }, [preference]);
 
   // A local choice the server has not yet reflected back through `me`. While
   // one is outstanding — in flight, or kept after a failed write — a stale
