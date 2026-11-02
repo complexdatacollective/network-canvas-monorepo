@@ -1,3 +1,4 @@
+import { Dialog } from '@base-ui/react/dialog';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
   cancelFrame,
@@ -462,12 +463,19 @@ function LayoutIdMorphExample() {
               className="mb-4 h-48 w-full rounded"
               style={{ boxShadow: '0 10px 20px rgba(0,0,0,0.2)' }}
             />
-            <motion.h2
-              layoutId={`${selectedItem.id}-title`}
-              className="mb-2 text-xl font-semibold"
+            {/* `Dialog.Title` is what names the popup; `ModalPopup` is a
+                `role="dialog"`, and one without a name is announced as
+                nothing. */}
+            <Dialog.Title
+              render={
+                <motion.h2
+                  layoutId={`${selectedItem.id}-title`}
+                  className="mb-2 text-xl font-semibold"
+                />
+              }
             >
               {selectedItem.title}
-            </motion.h2>
+            </Dialog.Title>
             <motion.p
               layoutId={`${selectedItem.id}-description`}
               className="mb-4 text-current/70"

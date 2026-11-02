@@ -177,6 +177,14 @@ export default function IconPicker({
         })
       : undefined;
 
+  // `Field` names the control through `aria-labelledby`; a caller using it
+  // standalone names it with `aria-label` instead. Both are forwarded, and the
+  // `${id}-label` guess applies only when neither was given — a labelledby
+  // pointing at nothing would otherwise beat a perfectly good `aria-label`.
+  const labelledBy =
+    ariaLabelledBy ??
+    (ariaLabel === undefined && id !== undefined ? `${id}-label` : undefined);
+
   return (
     <Combobox.Root<InterviewerIconName>
       value={selectedName}
@@ -198,18 +206,8 @@ export default function IconPicker({
         onKeyDown={onTriggerKeyDown}
         onBlur={onBlur}
         onFocus={onFocus}
-        // `Field` names the control through `aria-labelledby`; a caller using
-        // it standalone names it with `aria-label` instead. Both are
-        // forwarded, and the `${id}-label` guess applies only when neither
-        // was given — a labelledby pointing at nothing would otherwise beat a
-        // perfectly good `aria-label`.
         aria-label={ariaLabel}
-        aria-labelledby={
-          ariaLabelledBy ??
-          (ariaLabel === undefined && id !== undefined
-            ? `${id}-label`
-            : undefined)
-        }
+        aria-labelledby={labelledBy}
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid || undefined}
         aria-required={ariaRequired || required || undefined}
@@ -253,7 +251,12 @@ export default function IconPicker({
 
       <Combobox.Portal container={portalContainer ?? undefined}>
         <Combobox.Positioner align="start" sideOffset={10} className="z-3000">
+          {/* The popup is a `role="dialog"` holding the search box and list, so
+              it takes the field's name: a dialog with none is announced as
+              nothing. */}
           <Combobox.Popup
+            aria-label={ariaLabel}
+            aria-labelledby={labelledBy}
             render={
               <Surface
                 floating
