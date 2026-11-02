@@ -21,7 +21,8 @@ export const StageList = ({ stages, variant, onlyHere }: Props) => {
             >
               <span
                 aria-hidden="true"
-                className={`font-display grid size-9 flex-none place-items-center rounded-xl text-[0.9375rem] font-black ${style.swatch}`}
+                className="font-display grid size-9 flex-none place-items-center rounded-xl text-[0.9375rem] font-black"
+                style={style.swatch}
               >
                 {index + 1}
               </span>
@@ -52,7 +53,8 @@ export const StageList = ({ stages, variant, onlyHere }: Props) => {
           >
             <span
               aria-hidden="true"
-              className={`grid size-7 flex-none place-items-center rounded-[9px] text-[0.8125rem] font-extrabold ${style.swatch}`}
+              className="grid size-7 flex-none place-items-center rounded-[9px] text-[0.8125rem] font-extrabold"
+              style={style.swatch}
             >
               {index + 1}
             </span>

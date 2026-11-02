@@ -63,7 +63,7 @@ const buttonSpecificVariants = cva({
         'control-glass border-(--component-text) text-(--component-text)',
       'link': cx(
         NATIVE_LINK_ROOT_CLASS_NAME,
-        'font-body elevation-none hover:elevation-none! ui-disabled:[&>span]:bg-[length:0%_2px]! h-auto! overflow-visible p-0! tracking-normal hover:translate-none! active:translate-none!',
+        'font-body elevation-none hover:elevation-none! ui-disabled:[&>span]:bg-size-[0%_2px]! h-auto! overflow-visible p-0! tracking-normal hover:translate-none! active:translate-none!',
       ),
     },
     textStyle: {

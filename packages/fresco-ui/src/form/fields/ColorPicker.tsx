@@ -373,7 +373,7 @@ export default function ColorPickerField({
             'transition-transform duration-150 ease-out motion-reduce:transition-none',
             !disabled && !readOnly && 'hover:scale-110',
             'bg-input [--swatch-check:color-mix(in_oklab,var(--input-contrast)_60%,transparent)]',
-            '[background-image:conic-gradient(var(--swatch-check)_0_25%,transparent_0_50%,var(--swatch-check)_0_75%,transparent_0)]',
+            'bg-[conic-gradient(var(--swatch-check)_0_25%,transparent_0_50%,var(--swatch-check)_0_75%,transparent_0)]',
             'bg-size-[--spacing(3)_--spacing(3)]',
           )}
         >

@@ -3,7 +3,9 @@
   "jsPlugins": ["oxlint-tailwindcss", "eslint-plugin-formatjs"],
   "settings": {
     "tailwindcss": {
-      "entryPoint": "tooling/tailwind/fresco/fresco.css"
+      "entryPoint": "tooling/tailwind/fresco/fresco.css",
+      "variablePatterns": ["[a-z](?:Class|ClassNames?|Classes)$"],
+      "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
     }
   },
   "rules": {
@@ -24,7 +26,7 @@
       }
     ],
     "tailwindcss/no-unnecessary-whitespace": "error",
-    "tailwindcss/enforce-canonical": "warn"
+    "tailwindcss/enforce-canonical": "error"
   },
   "overrides": [
     {

@@ -98,7 +98,7 @@ const ProgressBar = ({
             'data-indeterminate:from-[color-mix(in_oklch,currentColor_15%,transparent)]',
             'data-indeterminate:via-[color-mix(in_oklch,currentColor_30%,transparent)]',
             'data-indeterminate:to-[color-mix(in_oklch,currentColor_15%,transparent)]',
-            'data-indeterminate:bg-[length:400%]',
+            'data-indeterminate:bg-size-[400%]',
           )}
           style={
             // For vertical orientation, override Base UI's width and set height instead

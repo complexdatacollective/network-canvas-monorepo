@@ -7,12 +7,12 @@
   "jsPlugins": ["eslint-plugin-formatjs"],
   "categories": {
     "correctness": "error",
-    "suspicious": "warn"
+    "suspicious": "error"
   },
   "options": { "typeAware": true },
   "env": { "browser": true, "node": true, "es2024": true },
   "rules": {
-    "no-console": "warn",
+    "no-console": "error",
     "no-process-env": "error",
     "no-unreachable": "error",
     "no-shadow": "error",
@@ -22,7 +22,7 @@
     // `typeof import('x')` stays allowed: it is how vitest types a mock's
     // `importOriginal`, and a separate `import type * as` buys nothing there.
     "typescript/consistent-type-imports": [
-      "warn",
+      "error",
       {
         "prefer": "type-imports",
         "fixStyle": "inline-type-imports",
@@ -50,7 +50,7 @@
       }
     ],
     "typescript/consistent-return": "error",
-    "typescript/no-explicit-any": "warn",
+    "typescript/no-explicit-any": "error",
     "typescript/no-non-null-assertion": "off",
     "typescript/no-unnecessary-type-assertion": "off",
     "typescript/no-unsafe-type-assertion": "error",
@@ -84,12 +84,12 @@
 
     "import/no-cycle": "error",
     "import/no-named-as-default": "error",
-    "import/no-duplicates": "warn",
+    "import/no-duplicates": "error",
     "import/no-anonymous-default-export": "off",
     "import/no-unassigned-import": "off",
     "import/default": "off",
 
-    "promise/no-callback-in-promise": "warn",
+    "promise/no-callback-in-promise": "error",
     "promise/always-return": "error",
     "promise/no-promise-in-callback": "error",
 

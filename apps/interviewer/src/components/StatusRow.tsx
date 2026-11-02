@@ -140,7 +140,11 @@ const variants = {
   },
 } as const;
 
+// `not-sr-only` resets white-space along with the rest of `sr-only`, so the
+// label that appears on a landscape tablet states `whitespace-nowrap` under the
+// same variant to keep it on one line.
 const compactLabelClassName =
+  // oxlint-disable-next-line tailwindcss/no-conflicting-classes -- tablet-landscape:whitespace-nowrap deliberately overrides the white-space that tablet-landscape:not-sr-only resets
   'tablet-landscape:not-sr-only sr-only tablet-landscape:whitespace-nowrap';
 const statusTriggerClassName =
   'focusable inline-flex cursor-help items-center gap-1.5 rounded-sm';

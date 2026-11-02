@@ -1207,50 +1207,6 @@
     "defaultMessage": "You cannot create a new attribute from here. Please create one or more attributes elsewhere in your protocol, and return here to select them.",
     "description": "Visible text in components / Form / Fields / VariablePicker / VariableSpotlight."
   },
-  "architect.home.demoSubtitle.categoricalBin": {
-    "defaultMessage": "Categorical Bin",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.connections": {
-    "defaultMessage": "Connections",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.dyadCensus": {
-    "defaultMessage": "Dyad Census",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.egoForm": {
-    "defaultMessage": "Ego Form",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.information": {
-    "defaultMessage": "Information",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.nameGenerator": {
-    "defaultMessage": "Name Generator",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.narrative": {
-    "defaultMessage": "Narrative",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.ordinalBin": {
-    "defaultMessage": "Ordinal Bin",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.quickAdd": {
-    "defaultMessage": "Quick Add",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.roster": {
-    "defaultMessage": "Roster",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.tieStrength": {
-    "defaultMessage": "Tie Strength",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
   "architect.home.home.architectIsTheProtocolDesignerFor": {
     "defaultMessage": "Architect is the protocol designer for Network Canvas. Compose name generators, capture ordinal and categorical data, map connections, and explore narratives.",
     "description": "Visible text in components / Home / Home."
@@ -1451,77 +1407,77 @@
     "defaultMessage": "Your protocols are saved only on this device. They are never uploaded to a server.",
     "description": "Visible text in components / Home / LibraryPanel."
   },
-  "architect.home.timelineScript.config.closeOut": {
-    "defaultMessage": "Close out",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.closeTies": {
-    "defaultMessage": "Close ties",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.closeness": {
-    "defaultMessage": "Closeness",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.consent": {
-    "defaultMessage": "Consent",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.contactFrequency": {
-    "defaultMessage": "Contact frequency",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
   "architect.home.timelineScript.config.debrief": {
     "defaultMessage": "Debrief",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.demographics": {
-    "defaultMessage": "Demographics",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.groupMembership": {
-    "defaultMessage": "Group membership",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.keyMoments": {
-    "defaultMessage": "Key moments",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.relationshipType": {
-    "defaultMessage": "Relationship type",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.sociogram": {
-    "defaultMessage": "Sociogram",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.storyExchange": {
-    "defaultMessage": "Story exchange",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.supportNetwork": {
-    "defaultMessage": "Support network",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.supportPaths": {
-    "defaultMessage": "Support paths",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.trustLevel": {
-    "defaultMessage": "Trust level",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.weakTies": {
-    "defaultMessage": "Weak ties",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
   },
   "architect.home.timelineScript.config.welcome": {
     "defaultMessage": "Welcome",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
   },
   "architect.home.timelineScript.config.whoKnowsWhom": {
     "defaultMessage": "Who knows whom",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.aboutYou": {
+    "defaultMessage": "About you",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.addAcquaintances": {
+    "defaultMessage": "Add acquaintances",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.agreeToTakePart": {
+    "defaultMessage": "Agree to take part",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.discussSupport": {
+    "defaultMessage": "Discuss support",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.discussYourNetwork": {
+    "defaultMessage": "Discuss your network",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.drawSupportTies": {
+    "defaultMessage": "Draw support ties",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.findClassmates": {
+    "defaultMessage": "Find classmates",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.finishTheInterview": {
+    "defaultMessage": "Finish the interview",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.mapYourNetwork": {
+    "defaultMessage": "Map your network",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.nameCloseFriends": {
+    "defaultMessage": "Name close friends",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.rateCloseness": {
+    "defaultMessage": "Rate closeness",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.rateContact": {
+    "defaultMessage": "Rate contact",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room. Here the participant rates how often they are in contact with each person."
+  },
+  "architect.home.timelineScript.title.rateTieStrength": {
+    "defaultMessage": "Rate tie strength",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.sortByGroup": {
+    "defaultMessage": "Sort by group",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.sortByRelationship": {
+    "defaultMessage": "Sort by relationship",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
   },
   "architect.home.transitMap.protocolTimeline": {
     "defaultMessage": "Protocol timeline",

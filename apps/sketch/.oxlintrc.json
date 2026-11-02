@@ -3,7 +3,9 @@
   "jsPlugins": ["oxlint-tailwindcss"],
   "settings": {
     "tailwindcss": {
-      "entryPoint": "apps/sketch/src/styles/tailwind.css"
+      "entryPoint": "apps/sketch/src/styles/tailwind.css",
+      "variablePatterns": ["[a-z](?:Class|ClassNames?|Classes)$"],
+      "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
     }
   },
   "rules": {
@@ -24,6 +26,6 @@
       }
     ],
     "tailwindcss/no-unnecessary-whitespace": "error",
-    "tailwindcss/enforce-canonical": "warn"
+    "tailwindcss/enforce-canonical": "error"
   }
 }
