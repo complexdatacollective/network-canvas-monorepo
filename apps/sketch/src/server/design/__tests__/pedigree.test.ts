@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { preflight } from '../build.ts';
 import { estimateBurden } from '../burden.ts';
-import type { StudyDesign } from '../schema.ts';
+import type { DesignStage, StudyDesign } from '../schema.ts';
 import { NOW, parseDesign } from './helpers.ts';
 
 const always = {
@@ -219,6 +219,91 @@ describe('family and narrative pedigrees', () => {
     const notes = JSON.stringify(result.protocol.stages[0]);
     expect(notes).toContain('Breast cancer (autosomal dominant)');
     expect(notes).not.toContain('Ovarian cancer (');
+  });
+
+  it('asks a family tree question once when a later form repeats it', async () => {
+    const base = design();
+    const repeat: DesignStage = {
+      kind: 'alterForm',
+      ...common('again', 'Asks again'),
+      skipLogic: { ...always, conditions: [] },
+      nodeTypeId: 'relative',
+      filter: { match: 'all', conditions: [] },
+      attributeIds: ['alive', 'contact'],
+    };
+    const result = await preflight(
+      {
+        ...base,
+        stages: [...base.stages.slice(0, -1), repeat, base.stages.at(-1)!],
+      },
+      { now: NOW },
+    );
+    expect(result.validation.success).toBe(true);
+    expect(result.issues.map((i) => i.code)).toContain('FORM_FIELD_REPEATED');
+    const protocol = result.protocol as unknown as Protocol;
+    const again = protocol.stages.filter((s) => s.type === 'AlterForm').at(-1);
+    expect(JSON.stringify(again)).not.toContain('"alive"');
+  });
+
+  it('keeps a nomination the tree shows when a later form asks it of everyone', async () => {
+    const base = design();
+    const [welcome, family, , tree, thanks] = base.stages;
+    const conditional = {
+      ...family!,
+      skipLogic: {
+        mode: 'show_only_if',
+        whenSkipped: 'next_stage',
+        match: 'all',
+        conditions: [
+          {
+            about: 'participant',
+            typeId: '',
+            attributeId: 'has_family',
+            operator: 'is',
+            value: 'yes',
+          },
+        ],
+      },
+    } as const;
+    const askAll = {
+      kind: 'alterForm',
+      ...common('cancers', 'Cancers'),
+      nodeTypeId: 'relative',
+      filter: { match: 'all', conditions: [] },
+      attributeIds: ['breast_cancer', 'contact'],
+    } as const;
+    const result = await preflight(
+      parseDesign({
+        ...base,
+        egoAttributes: [
+          yesNo('has_family', 'Has family', 'Do you know your family?'),
+        ],
+        stages: [
+          welcome!,
+          {
+            kind: 'egoForm',
+            ...common('about', 'About you'),
+            attributeIds: ['has_family'],
+          },
+          conditional,
+          tree!,
+          askAll,
+          thanks!,
+        ],
+      }),
+      { now: NOW },
+    );
+    expect(result.validation.success).toBe(true);
+    const protocol = result.protocol as unknown as Protocol;
+    const narrative = JSON.stringify(
+      protocol.stages.find((s) => s.type === 'NarrativePedigree'),
+    );
+    const pedigree = JSON.stringify(
+      protocol.stages.find((s) => s.type === 'FamilyPedigree'),
+    );
+    expect(pedigree).toContain('breast cancer');
+    expect(narrative).toBeTruthy();
+    expect(result.issues.map((i) => i.code)).not.toContain('WRITTEN_BY_FORM');
   });
 
   it('turns at-risk statuses off without a professional present', async () => {

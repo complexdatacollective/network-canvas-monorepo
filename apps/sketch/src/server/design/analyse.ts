@@ -2010,10 +2010,13 @@ export const analyse = (
         shown,
       );
     if (s.kind === 'familyPedigree')
-      s.attributeIds.forEach((x) => {
-        const k = `node:${s.nodeTypeId}/${x}`;
-        if (!formAt.has(k)) formAt.set(k, at);
-      });
+      s.attributeIds = askOnce(
+        `node:${s.nodeTypeId}`,
+        s.attributeIds,
+        at,
+        s,
+        shown,
+      );
     if (s.kind === 'networkComposer') {
       s.attributeIds.forEach((x) => {
         const k = `node:${s.nodeTypeId}/${x}`;
@@ -2117,8 +2120,8 @@ export const analyse = (
         ),
       );
   });
-  // whether a stage's filter, skip logic or narrative views read the
-  // attribute behind key
+  // whether a stage's filter, skip logic, narrative views or the conditions
+  // a narrative pedigree shows read the attribute behind key
   const testsKey = (s: NStage, key: string) => {
     const [scope, attr] = key.split('/');
     const filter = 'filter' in s ? s.filter : null;
@@ -2133,6 +2136,17 @@ export const analyse = (
       )
     )
       return true;
+    if (
+      s.kind === 'narrativePedigree' &&
+      s.conditions.some((c) => c.attributeId === attr)
+    ) {
+      const source = d.stages.find((x) => x.id === s.sourceStageId);
+      if (
+        source?.kind === 'familyPedigree' &&
+        `node:${source.nodeTypeId}` === scope
+      )
+        return true;
+    }
     if (
       filter &&
       `node:${typeId}` === scope &&
