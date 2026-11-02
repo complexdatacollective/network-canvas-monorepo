@@ -195,6 +195,14 @@
     "defaultMessage": "Save screen",
     "description": "Submit button of the interview screen's form."
   },
+  "studio.editor.screenMoveRefused": {
+    "defaultMessage": "{name} cannot move there, because the interview has to end with its finish screen.",
+    "description": "Screen-reader announcement when a requested move of an interview screen is refused because it would leave a screen after the finish screen or the interview ending somewhere else; {name} is the screen name."
+  },
+  "studio.editor.screenMoved": {
+    "defaultMessage": "Moved {name} to position {position, number} of {total, number}.",
+    "description": "Screen-reader announcement after an interview screen has been moved in the outline; {name} is the screen name, {position} its new place counting from one, and {total} how many screens the interview has."
+  },
   "studio.editor.screens": {
     "defaultMessage": "Screens",
     "description": "Section selector group holding the interview screens of the protocol."

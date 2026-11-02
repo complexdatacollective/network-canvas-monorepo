@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useBlocker } from '@tanstack/react-router';
 import { Redacted } from 'effect';
-import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -20,6 +20,7 @@ import type { RpcAdapter } from '@codaco/effect-query/types';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
@@ -57,6 +58,7 @@ import {
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import OutlineStageRow from '../editor/OutlineStageRow.tsx';
 import { createUuid } from '../lib/createUuid.ts';
 import { toStudyId } from '../lib/ids.ts';
 import { teamScope } from '../runtime/browserLogs.ts';
@@ -328,17 +330,19 @@ const messages = defineMessages({
     description:
       'Supporting line of an outline entry whose screen carries no recognisable type.',
   },
-  moveScreenUp: {
-    id: 'studio.editor.moveScreenUp',
-    defaultMessage: 'Move {name} up',
+  screenMoved: {
+    id: 'studio.editor.screenMoved',
+    defaultMessage:
+      'Moved {name} to position {position, number} of {total, number}.',
     description:
-      'Accessible name of the control that moves an interview screen one place earlier; {name} is the screen name.',
+      'Screen-reader announcement after an interview screen has been moved in the outline; {name} is the screen name, {position} its new place counting from one, and {total} how many screens the interview has.',
   },
-  moveScreenDown: {
-    id: 'studio.editor.moveScreenDown',
-    defaultMessage: 'Move {name} down',
+  screenMoveRefused: {
+    id: 'studio.editor.screenMoveRefused',
+    defaultMessage:
+      '{name} cannot move there, because the interview has to end with its finish screen.',
     description:
-      'Accessible name of the control that moves an interview screen one place later; {name} is the screen name.',
+      'Screen-reader announcement when a requested move of an interview screen is refused because it would leave a screen after the finish screen or the interview ending somewhere else; {name} is the screen name.',
   },
   codebook: {
     id: 'studio.editor.codebook',
@@ -645,6 +649,7 @@ function EditorWorkspace({
   const stages = useStageIndex();
   const revision = useProtocolRevision();
   const rereadProtocol = useRereadProtocol();
+  const { announce } = useAccessibilityAnnouncements();
   const draftValidation = useDraftValidation(reading);
   // Stable between renders, and defined outside this component: the editor
   // calls these as functions in its slots, but a function that returns
@@ -749,6 +754,8 @@ function EditorWorkspace({
       stageId: string;
       toIndex: number;
       expectedRevision: bigint;
+      /** What the move is announced as once it has landed. */
+      announcement: string;
     }) =>
       rpcCall('protocols.moveStage', {
         ...params,
@@ -756,17 +763,59 @@ function EditorWorkspace({
         toIndex: input.toIndex,
         expectedRevision: String(input.expectedRevision),
       }),
-    onSuccess: rereadProtocol,
+    onSuccess: async (_, input) => {
+      await rereadProtocol();
+      // Said once the outline shows the new order, however the move was made,
+      // and not before the server has kept it: a move the server refused must
+      // not have been announced as done.
+      announce(input.announcement);
+    },
   });
+  const moveBlocked = moveStage.isError || reconcilingMove;
+
+  // Whether a screen may be moved to `toIndex` right now, for the outline's
+  // controls. A move in flight counts as unavailable, but is not a reason to
+  // take the control out of the tab order (see `OutlineStageRow`).
+  const canMoveStage = (fromIndex: number, toIndex: number) =>
+    toIndex >= 0 &&
+    toIndex < stages.length &&
+    !moveStage.isPending &&
+    !moveBlocked &&
+    !moveAddsTimelineProblems(stages, fromIndex, toIndex);
 
   // The order this move is expressed against is the one on screen, so the
   // revision it is fenced on has to be the one that drew it — the newest the
   // channel has delivered. Quoting a revision from a reading of the draft made
   // somewhere else is how a move computed from THIS order was accepted against
   // another one.
-  const requestMoveStage = (stageId: string, toIndex: number) => {
-    if (revision === undefined) return;
-    moveStage.mutate({ stageId, toIndex, expectedRevision: revision });
+  //
+  // Returns whether the move was accepted. A move already in flight is
+  // answered `true` without being repeated: the control that asked is waiting
+  // for the list to reorder around it, and saying `false` would tell it
+  // nothing is coming.
+  const requestMoveStage = (stageId: string, toIndex: number): boolean => {
+    const fromIndex = stages.findIndex((stage) => stage.id === stageId);
+    const stage = stages[fromIndex];
+    if (revision === undefined || stage === undefined || moveBlocked) {
+      return false;
+    }
+    if (moveStage.isPending) return true;
+    const name = stageLabel(intl, stage, fromIndex);
+    if (moveAddsTimelineProblems(stages, fromIndex, toIndex)) {
+      announce(intl.formatMessage(messages.screenMoveRefused, { name }));
+      return false;
+    }
+    moveStage.mutate({
+      stageId,
+      toIndex,
+      expectedRevision: revision,
+      announcement: intl.formatMessage(messages.screenMoved, {
+        name,
+        position: toIndex + 1,
+        total: stages.length,
+      }),
+    });
+    return true;
   };
 
   // The reading is what reports a failure, so a retry that fails again has
@@ -952,91 +1001,30 @@ function EditorWorkspace({
                   )}
                   {reading.status === 'read' && stages.length > 0 && (
                     <ol className="m-0 flex list-none flex-col gap-2 p-0 ps-3">
-                      {stages.map((stage, index) => {
-                        return (
-                          <li
-                            key={stage.id}
-                            className="flex min-w-0 items-center gap-1"
-                          >
-                            <button
-                              type="button"
-                              className="focusable aria-current:bg-selected aria-current:text-selected-contrast min-w-0 flex-1 rounded px-3 py-2 text-start"
-                              aria-current={
-                                selectedStageId === stage.id
-                                  ? 'page'
-                                  : undefined
-                              }
-                              onClick={() =>
-                                void requestSelection({
-                                  kind: 'stage',
-                                  stageId: stage.id,
-                                })
-                              }
-                            >
-                              <span className="block truncate">
-                                {stageLabel(intl, stage, index)}
-                              </span>
-                              <span className="block truncate text-xs opacity-70">
-                                {stage.type === ''
-                                  ? intl.formatMessage(
-                                      messages.unknownScreenType,
-                                    )
-                                  : stage.type}
-                              </span>
-                            </button>
-                            <div className="flex shrink-0 flex-col">
-                              <button
-                                type="button"
-                                className="focusable rounded p-1 disabled:opacity-30"
-                                aria-label={intl.formatMessage(
-                                  messages.moveScreenUp,
-                                  { name: stageLabel(intl, stage, index) },
-                                )}
-                                disabled={
-                                  index === 0 ||
-                                  moveAddsTimelineProblems(
-                                    stages,
-                                    index,
-                                    index - 1,
-                                  ) ||
-                                  moveStage.isPending ||
-                                  moveStage.isError ||
-                                  reconcilingMove
-                                }
-                                onClick={() =>
-                                  requestMoveStage(stage.id, index - 1)
-                                }
-                              >
-                                <ArrowUp aria-hidden="true" size={16} />
-                              </button>
-                              <button
-                                type="button"
-                                className="focusable rounded p-1 disabled:opacity-30"
-                                aria-label={intl.formatMessage(
-                                  messages.moveScreenDown,
-                                  { name: stageLabel(intl, stage, index) },
-                                )}
-                                disabled={
-                                  index === stages.length - 1 ||
-                                  moveAddsTimelineProblems(
-                                    stages,
-                                    index,
-                                    index + 1,
-                                  ) ||
-                                  moveStage.isPending ||
-                                  moveStage.isError ||
-                                  reconcilingMove
-                                }
-                                onClick={() =>
-                                  requestMoveStage(stage.id, index + 1)
-                                }
-                              >
-                                <ArrowDown aria-hidden="true" size={16} />
-                              </button>
-                            </div>
-                          </li>
-                        );
-                      })}
+                      {stages.map((stage, index) => (
+                        <OutlineStageRow
+                          key={stage.id}
+                          stageId={stage.id}
+                          name={stageLabel(intl, stage, index)}
+                          typeLabel={
+                            stage.type === ''
+                              ? intl.formatMessage(messages.unknownScreenType)
+                              : stage.type
+                          }
+                          index={index}
+                          stageCount={stages.length}
+                          selected={selectedStageId === stage.id}
+                          canMoveUp={canMoveStage(index, index - 1)}
+                          canMoveDown={canMoveStage(index, index + 1)}
+                          onSelect={() =>
+                            void requestSelection({
+                              kind: 'stage',
+                              stageId: stage.id,
+                            })
+                          }
+                          onMove={requestMoveStage}
+                        />
+                      ))}
                     </ol>
                   )}
                 </li>

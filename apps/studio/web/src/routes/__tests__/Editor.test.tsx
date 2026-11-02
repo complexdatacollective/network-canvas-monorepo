@@ -9,7 +9,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { Effect, Layer, Predicate, Redacted, Schema } from 'effect';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
 import {
@@ -1075,11 +1075,13 @@ describe('Studio editor shell', () => {
       await screen.findByText(/could not confirm the new screen order/i),
     ).toBeInTheDocument();
     for (const button of screen.getAllByRole('button', { name: /^Move / })) {
-      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('aria-disabled', 'true');
     }
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
-    await waitFor(() => expect(moveUp).toBeEnabled());
+    await waitFor(() =>
+      expect(moveUp).toHaveAttribute('aria-disabled', 'false'),
+    );
   });
 
   it('offers no move that would put a screen after the finish stage', async () => {
@@ -1091,19 +1093,19 @@ describe('Studio editor shell', () => {
       name: 'Move Finish up',
     });
 
-    expect(finishUp).toBeDisabled();
+    expect(finishUp).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByRole('button', { name: 'Move Finish down' }),
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByRole('button', { name: 'Move Follow-up down' }),
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByRole('button', { name: 'Move Follow-up up' }),
-    ).toBeEnabled();
+    ).toHaveAttribute('aria-disabled', 'false');
     expect(
       screen.getByRole('button', { name: 'Move Welcome, from the host down' }),
-    ).toBeEnabled();
+    ).toHaveAttribute('aria-disabled', 'false');
   });
 });
 
@@ -1689,3 +1691,243 @@ async function socketNumber(count: number): Promise<FakeWebSocket> {
   if (socket === undefined) throw new Error('no socket was opened');
   return socket;
 }
+
+/**
+ * What the screen-reader live regions on the page say right now, joined.
+ *
+ * Read from the DOM rather than from the code that writes them, so a message
+ * that never reached a live region fails here however it was produced.
+ */
+function liveRegionText(): string {
+  return [...document.querySelectorAll('[role="status"], [aria-live]')]
+    .map((region) => region.textContent)
+    .join(' ')
+    .trim();
+}
+
+const THREE_SCREENS: Readonly<Record<string, SectionDoc>> = {
+  ...HOST_SECTIONS,
+  stageOrder: { stages: [STAGE_A, STAGE_B, STAGE_C] },
+  [`stage:${STAGE_C}`]: {
+    id: STAGE_C,
+    type: 'Information',
+    label: enUS('Third'),
+    title: enUS('Third'),
+    items: [],
+  },
+};
+
+/**
+ * Makes `protocols.moveStage` write the order it was asked for, but only once
+ * the test lets it: the time between the request and the answer is where the
+ * old outline disabled the focused button and dropped focus.
+ */
+function holdMoves() {
+  let order = [STAGE_A, STAGE_B, STAGE_C];
+  let gate = Promise.resolve();
+  let open = () => {};
+  moveStage.mockImplementation(({ stageId, toIndex }) =>
+    Effect.promise(() => gate).pipe(
+      Effect.map(() => {
+        order = order.filter((id) => id !== stageId);
+        order.splice(toIndex, 0, stageId);
+        commandWrote.set(STAGE_ORDER, { stages: [...order] });
+        return { sequence: '3', hash: 'r3' };
+      }),
+    ),
+  );
+  return {
+    hold() {
+      const { promise, resolve } = Promise.withResolvers<void>();
+      gate = promise;
+      open = resolve;
+    },
+    release() {
+      open();
+    },
+  };
+}
+
+const nameButton = (name: string) =>
+  screen.getByRole('button', { name: `${name}Information` });
+
+describe('reordering screens in the outline', () => {
+  // A browser blurs a focused element when its list item is repositioned in
+  // the DOM; jsdom keeps focus where it was. Without standing in for that,
+  // every "focus is still there afterwards" assertion below would hold with
+  // no refocus at all.
+  let blurMovedFocus: MutationObserver;
+  beforeEach(async () => {
+    blurMovedFocus = new MutationObserver((records) => {
+      const focused = document.activeElement;
+      if (!(focused instanceof HTMLElement)) return;
+      for (const record of records) {
+        for (const removed of record.removedNodes) {
+          if (removed.contains(focused)) focused.blur();
+        }
+      }
+    });
+    blurMovedFocus.observe(document.body, { childList: true, subtree: true });
+    await seedHost(THREE_SCREENS);
+  });
+  afterEach(() => blurMovedFocus.disconnect());
+
+  it('announces the new position, and keeps focus on the moved screen while the server answers and after the list reorders', async () => {
+    const moves = holdMoves();
+    moves.hold();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+    const welcome = nameButton('Welcome, from the host');
+    expect(welcome).toHaveAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown');
+    welcome.focus();
+
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    await waitFor(() => expect(moveStage).toHaveBeenCalledTimes(1));
+
+    // The server has not answered: the list has not moved, nothing is said,
+    // and the control the researcher is on is still the one they are on.
+    expect(welcome).toHaveFocus();
+    expect(liveRegionText()).not.toMatch(/Moved/);
+
+    // A second press while the first is in flight is not a second move.
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    expect(moveStage).toHaveBeenCalledTimes(1);
+
+    await act(async () => moves.release());
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'Welcome, from the hostInformation',
+        'ThirdInformation',
+      ]),
+    );
+    expect(
+      await screen.findByText(
+        'Moved Welcome, from the host to position 2 of 3.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(welcome).toHaveFocus());
+  });
+
+  it('keeps focus on a screen that reaches either end of the list, and ignores a press that would leave it', async () => {
+    holdMoves();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+    const followUp = nameButton('Follow-up');
+    followUp.focus();
+
+    fireEvent.keyDown(followUp, { key: 'ArrowUp' });
+    await waitFor(() =>
+      expect(outlineScreens()[0]).toBe('Follow-upInformation'),
+    );
+    await waitFor(() => expect(followUp).toHaveFocus());
+
+    // Already first: nothing is asked of the server, and focus does not move.
+    fireEvent.keyDown(followUp, { key: 'ArrowUp' });
+    expect(moveStage).toHaveBeenCalledTimes(1);
+    expect(followUp).toHaveFocus();
+
+    const third = nameButton('Third');
+    third.focus();
+    fireEvent.keyDown(third, { key: 'ArrowDown' });
+    expect(moveStage).toHaveBeenCalledTimes(1);
+    expect(third).toHaveFocus();
+
+    // And a screen moved onto the last place keeps focus there too.
+    const welcome = nameButton('Welcome, from the host');
+    welcome.focus();
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'ThirdInformation',
+        'Welcome, from the hostInformation',
+      ]),
+    );
+    expect(
+      await screen.findByText(
+        'Moved Welcome, from the host to position 3 of 3.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(welcome).toHaveFocus());
+  });
+
+  it('leaves an unavailable move button focusable, so a press at the end of the list does not lose the researcher’s place', async () => {
+    holdMoves();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+    const moveDown = screen.getByRole('button', { name: 'Move Third down' });
+
+    expect(moveDown).not.toBeDisabled();
+    expect(moveDown).toHaveAttribute('aria-disabled', 'true');
+    moveDown.focus();
+    fireEvent.click(moveDown);
+
+    expect(moveStage).not.toHaveBeenCalled();
+    expect(moveDown).toHaveFocus();
+  });
+
+  it('keeps focus on the move button that was pressed, and says where the screen went', async () => {
+    const moves = holdMoves();
+    moves.hold();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+    const moveDown = screen.getByRole('button', {
+      name: 'Move Welcome, from the host down',
+    });
+    moveDown.focus();
+
+    fireEvent.click(moveDown);
+    await waitFor(() => expect(moveStage).toHaveBeenCalledTimes(1));
+    // In flight: the button is unavailable but is still where focus is.
+    expect(moveDown).toHaveAttribute('aria-disabled', 'true');
+    expect(moveDown).toHaveFocus();
+
+    await act(async () => moves.release());
+    await waitFor(() =>
+      expect(outlineScreens()[1]).toBe('Welcome, from the hostInformation'),
+    );
+    expect(
+      await screen.findByText(
+        'Moved Welcome, from the host to position 2 of 3.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(moveDown).toHaveFocus());
+    expect(moveDown).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  it('does not announce a move the server did not keep', async () => {
+    moveStage.mockReturnValueOnce(Effect.die(new Error('response lost')));
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+    const followUp = nameButton('Follow-up');
+    followUp.focus();
+
+    fireEvent.keyDown(followUp, { key: 'ArrowUp' });
+
+    expect(
+      await screen.findByText(/could not confirm the new screen order/i),
+    ).toBeInTheDocument();
+    expect(liveRegionText()).not.toMatch(/Moved/);
+    expect(followUp).toHaveFocus();
+  });
+
+  it('says why a key press that would leave a screen after the finish screen did nothing', async () => {
+    await seedHost(ENDS_AT_FINISH);
+    renderEditor();
+    const followUp = await screen.findByRole('button', {
+      name: 'Follow-upInformation',
+    });
+    followUp.focus();
+
+    fireEvent.keyDown(followUp, { key: 'ArrowDown' });
+
+    expect(
+      await screen.findByText(
+        'Follow-up cannot move there, because the interview has to end with its finish screen.',
+      ),
+    ).toBeInTheDocument();
+    expect(moveStage).not.toHaveBeenCalled();
+    expect(followUp).toHaveFocus();
+  });
+});
