@@ -533,18 +533,18 @@ const CASES: readonly EditorCase[] = [
       'Guía para quien realiza la entrevista',
     ],
     ownedKeys: [
+      'addNamePlaceholder',
       'dynamicValues',
       'label',
       'prompts',
       'quickAdd',
-      'quickAddHint',
       'subject',
     ],
     wholeStage: {
       ...WITHOUT_FILTER,
       label: { 'en-US': 'Full quick-add name generator' },
       quickAdd: 'name',
-      quickAddHint: { 'en-US': 'Press Enter when you are finished.' },
+      addNamePlaceholder: { 'en-US': 'Type the name of a {subject}' },
       minNodesNotice: {
         'en-US':
           '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -600,6 +600,7 @@ const CASES: readonly EditorCase[] = [
       'searchOptions',
       'sortOptions',
       'subject',
+      'unnamedLabel',
     ],
     wholeStage: {
       ...WITHOUT_FILTER,
@@ -617,6 +618,7 @@ const CASES: readonly EditorCase[] = [
       allAddedNotice: {
         'en-US': 'There is nothing left to add from this list.',
       },
+      unnamedLabel: { 'en-US': '{subject} {count}' },
       minNodesNotice: {
         'en-US':
           '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',

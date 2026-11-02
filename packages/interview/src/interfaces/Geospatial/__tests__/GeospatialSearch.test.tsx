@@ -75,13 +75,6 @@ class MockWorker {
 const flyTo = vi.fn();
 const mockMap = { flyTo } as unknown as MapboxMap;
 
-/** The stage's own search wording, which the protocol holds in English only. */
-const WORDING = {
-  searchFailed: {
-    en: 'Search could not be completed. Try again in a moment.',
-  },
-};
-
 /**
  * Renders the search beside a control that follows it in the tab order, the
  * way `Geospatial.tsx` puts the zoom toolbar after the search panel.
@@ -90,7 +83,7 @@ const setup = () => {
   const user = userEvent.setup();
   const view = render(
     <TestProtocolLocalization>
-      <GeospatialSearch accessToken="test-token" map={mockMap} {...WORDING} />
+      <GeospatialSearch accessToken="test-token" map={mockMap} />
       <button type="button">Zoom In</button>
     </TestProtocolLocalization>,
   );
@@ -142,11 +135,7 @@ describe('GeospatialSearch', () => {
           locale={locale}
           interfaceText={interfaceText}
         >
-          <GeospatialSearch
-            accessToken="test-token"
-            map={mockMap}
-            {...WORDING}
-          />
+          <GeospatialSearch accessToken="test-token" map={mockMap} />
         </TestProtocolLocalization>
       </InterviewI18nProvider>
     );

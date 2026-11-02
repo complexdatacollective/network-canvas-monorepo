@@ -228,17 +228,6 @@ describe('the network composer stage editor', () => {
           quickAdd: 'composerName',
           layoutVariable: 'layout',
           convexHullVariable: 'contactType',
-          addNamePlaceholder: { 'en-US': 'Type a name, then press Enter' },
-          overtakenEditNotice: {
-            'en-US':
-              'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
-          },
-          groupsHeading: { 'en-US': 'Groups' },
-          tooltips: {
-            addPerson: { 'en-US': 'Add node' },
-            automaticLayout: { 'en-US': 'Automatic layout' },
-            drawConnection: { 'en-US': 'Draw edge' },
-          },
           background: { image: 'canvas_image' },
           behaviours: { automaticLayout: true },
           nodeForm: {

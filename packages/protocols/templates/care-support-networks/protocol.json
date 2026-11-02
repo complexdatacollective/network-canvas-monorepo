@@ -294,10 +294,7 @@
               { "label": { "en-US": "Completely" }, "value": 5 }
             ]
           },
-          "layout": {
-            "name": "layout",
-            "type": "layout"
-          }
+          "layout": { "name": "layout", "type": "layout" }
         }
       }
     }
@@ -339,9 +336,7 @@
       "label": { "en-US": "About you and your care episode" },
       "interviewScript": "Clinical safety: EPDS item 10 screens for thoughts of self-harm. Before fielding this protocol, put a safety protocol in place — interviewer training, an escalation pathway, and local crisis-line / referral details — for any participant who endorses item 10 or otherwise shows distress. The software records responses but does not act on them.",
       "introductionPanel": {
-        "title": {
-          "en-US": "About you right now"
-        },
+        "title": { "en-US": "About you right now" },
         "text": {
           "en-US": "First, a few questions about where you are in your care journey, and how you have been feeling.\n\nThe questions about your mood come from the **Edinburgh Postnatal Depression Scale (EPDS)**. There are no right or wrong answers. Please answer based on how you have felt in the **past 7 days**, not just today."
         }
@@ -504,12 +499,8 @@
     {
       "id": "alter-support-detail-introduction",
       "type": "Information",
-      "label": {
-        "en-US": "A little more about each person"
-      },
-      "title": {
-        "en-US": "A little more about each person"
-      },
+      "label": { "en-US": "A little more about each person" },
+      "title": { "en-US": "A little more about each person" },
       "items": [
         {
           "id": "introduction-text",
@@ -525,10 +516,7 @@
       "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "type": "AlterForm",
       "label": { "en-US": "About each supporter" },
-      "subject": {
-        "entity": "node",
-        "type": "supporter"
-      },
+      "subject": { "entity": "node", "type": "supporter" },
       "form": {
         "fields": [
           {
@@ -581,26 +569,7 @@
     },
     {
       "id": "narrative-support-map",
-      "groupsHeading": {
-        "en-US": "Groups"
-      },
-      "tooltips": {
-        "enableDrawing": {
-          "en-US": "Enable drawing"
-        },
-        "disableDrawing": {
-          "en-US": "Disable drawing"
-        },
-        "freezeAnnotations": {
-          "en-US": "Freeze annotations"
-        },
-        "unfreezeAnnotations": {
-          "en-US": "Unfreeze annotations"
-        },
-        "resetAnnotations": {
-          "en-US": "Reset annotations"
-        }
-      },
+      "groupsHeading": { "en-US": "Groups" },
       "type": "Narrative",
       "label": { "en-US": "Your support map" },
       "subject": { "entity": "node", "type": "supporter" },
@@ -618,10 +587,7 @@
           "highlight": []
         }
       ],
-      "background": {
-        "concentricCircles": 3,
-        "skewedTowardCenter": true
-      }
+      "background": { "concentricCircles": 3, "skewedTowardCenter": true }
     },
     {
       "id": "finish",
@@ -646,109 +612,59 @@
   ],
   "interfaceText": {
     "navigation": {
-      "exitInterview": {
-        "en-US": "Exit interview"
-      },
+      "exitInterview": { "en-US": "Exit interview" },
       "exitInterviewDescription": {
         "en-US": "Your answers so far will be saved and you can continue later."
       },
-      "back": {
-        "en-US": "Back"
-      },
-      "continue": {
-        "en-US": "Continue"
-      },
+      "back": { "en-US": "Back" },
+      "continue": { "en-US": "Continue" },
       "exitFailed": {
         "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
       }
     },
     "interviewer": {
-      "exitReview": {
-        "en-US": "Exit review"
-      },
-      "exitReviewTitle": {
-        "en-US": "Exit this review?"
-      },
+      "exitReview": { "en-US": "Exit review" },
+      "exitReviewTitle": { "en-US": "Exit this review?" },
       "exitReviewDescription": {
         "en-US": "Changes made during this review will not be saved."
       },
-      "hiddenScreen": {
-        "en-US": "Hidden by answers"
-      },
-      "outsidePath": {
-        "en-US": "Outside current path"
-      },
-      "showScreenTitle": {
-        "en-US": "Show this screen?"
-      },
+      "hiddenScreen": { "en-US": "Hidden by answers" },
+      "outsidePath": { "en-US": "Outside current path" },
+      "showScreenTitle": { "en-US": "Show this screen?" },
       "hiddenScreenDescription": {
         "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
       },
       "outsidePathDescription": {
         "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
       },
-      "showScreen": {
-        "en-US": "Show screen"
-      }
+      "showScreen": { "en-US": "Show screen" }
     },
     "buttons": {
-      "cancel": {
-        "en-US": "Cancel"
-      },
-      "done": {
-        "en-US": "Done"
-      },
-      "delete": {
-        "en-US": "Delete"
-      },
-      "yes": {
-        "en-US": "Yes"
-      },
-      "no": {
-        "en-US": "No"
-      },
-      "pauseLayout": {
-        "en-US": "Pause automatic layout"
-      },
-      "resumeLayout": {
-        "en-US": "Resume automatic layout"
-      },
-      "copy": {
-        "en-US": "Copy"
-      },
-      "copied": {
-        "en-US": "Copied"
-      }
+      "cancel": { "en-US": "Cancel" },
+      "done": { "en-US": "Done" },
+      "delete": { "en-US": "Delete" },
+      "yes": { "en-US": "Yes" },
+      "no": { "en-US": "No" },
+      "pauseLayout": { "en-US": "Pause automatic layout" },
+      "resumeLayout": { "en-US": "Resume automatic layout" },
+      "copy": { "en-US": "Copy" },
+      "copied": { "en-US": "Copied" }
     },
     "messages": {
       "stageError": {
         "en-US": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "itemUnavailable": {
-        "en-US": "This item could not be displayed."
-      },
-      "error": {
-        "en-US": "An error occurred."
-      },
-      "loading": {
-        "en-US": "Loading…"
-      },
-      "unnamed": {
-        "en-US": "Unnamed"
-      }
+      "itemUnavailable": { "en-US": "This item could not be displayed." },
+      "error": { "en-US": "An error occurred." },
+      "loading": { "en-US": "Loading…" },
+      "unnamed": { "en-US": "Unnamed" }
     },
     "search": {
-      "searchLabel": {
-        "en-US": "Search"
-      },
-      "searchNoMatch": {
-        "en-US": "Nothing matched your search term."
-      }
+      "searchLabel": { "en-US": "Search" },
+      "searchNoMatch": { "en-US": "Nothing matched your search term." }
     },
     "forms": {
-      "discardChangesTitle": {
-        "en-US": "Discard changes?"
-      },
+      "discardChangesTitle": { "en-US": "Discard changes?" },
       "discardChangesDescription": {
         "en-US": "Do you want to discard your changes?"
       }
@@ -757,31 +673,24 @@
       "required": {
         "en-US": "You must answer this question before continuing."
       },
-      "minValue": {
-        "en-US": "Enter a value greater than or equal to {min}."
-      },
-      "maxValue": {
-        "en-US": "Enter a value less than or equal to {max}."
-      },
+      "minValue": { "en-US": "Enter a value greater than or equal to {min}." },
+      "maxValue": { "en-US": "Enter a value less than or equal to {max}." },
       "minSelected": {
         "en-US": "{count, plural, one {Select at least # value.} other {Select at least # values.}}"
       },
       "maxSelected": {
         "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
       },
-      "unique": {
-        "en-US": "Must be unique."
-      }
+      "unique": { "en-US": "Must be unique." }
     },
-    "categoricalBin": {
-      "placeHere": {
-        "en-US": "Place here"
-      }
+    "categoricalBin": { "placeHere": { "en-US": "Place here" } },
+    "narrative": {
+      "toggleDrawing": { "en-US": "Toggle drawing" },
+      "toggleFreezing": { "en-US": "Toggle freezing annotations" },
+      "resetAnnotations": { "en-US": "Reset annotations" }
     },
     "egoForm": {
-      "scrollForQuestions": {
-        "en-US": "Scroll to see more questions"
-      }
+      "scrollForQuestions": { "en-US": "Scroll to see more questions" }
     }
   }
 }

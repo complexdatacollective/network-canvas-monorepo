@@ -17,11 +17,16 @@ import {
 } from '../localized-string.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
+import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
 import {
   PEDIGREE_PERSON_ARGUMENTS,
   PEDIGREE_WORDING_ARGUMENTS,
 } from '../stages/family-pedigree.ts';
-import { NODE_COUNT_ARGUMENTS } from '../stages/name-generator.ts';
+import { UNNAMED_LABEL_ARGUMENTS } from '../stages/name-generator-roster.ts';
+import {
+  MAX_NODES_ARGUMENTS,
+  MIN_NODES_ARGUMENTS,
+} from '../stages/name-generator.ts';
 import {
   SNAPSHOT_CONDITION_ARGUMENTS,
   SNAPSHOT_INHERITANCE_ARGUMENTS,
@@ -165,21 +170,22 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   site(stage(3, 'form', 'title'), 'plain'),
   site(stage(3, 'form', 'fields', 0, 'prompt'), 'markdown'),
-  messageSite(stage(3, 'minNodesNotice'), NODE_COUNT_ARGUMENTS),
-  site(stage(3, 'maxNodesNotice'), 'plain'),
+  messageSite(stage(3, 'minNodesNotice'), MIN_NODES_ARGUMENTS),
+  messageSite(stage(3, 'maxNodesNotice'), MAX_NODES_ARGUMENTS),
   site(stage(3, 'panels', 0, 'title'), 'plain'),
   site(stage(3, 'panels', 1, 'title'), 'plain'),
   site(stage(3, 'prompts', 0, 'text'), 'markdown'),
 
-  site(stage(4, 'quickAddHint'), 'plain'),
+  messageSite(stage(4, 'addNamePlaceholder'), SUBJECT_ARGUMENTS),
   site(stage(4, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(5, 'panelTitle'), 'plain'),
-  messageSite(stage(5, 'minNodesNotice'), NODE_COUNT_ARGUMENTS),
-  site(stage(5, 'maxNodesNotice'), 'plain'),
-  site(stage(5, 'allAddedNotice'), 'plain'),
+  messageSite(stage(5, 'minNodesNotice'), MIN_NODES_ARGUMENTS),
+  messageSite(stage(5, 'maxNodesNotice'), MAX_NODES_ARGUMENTS),
+  messageSite(stage(5, 'allAddedNotice'), SUBJECT_ARGUMENTS),
   site(stage(5, 'cardOptions', 'additionalProperties', 0, 'label'), 'plain'),
   site(stage(5, 'sortOptions', 'sortableProperties', 0, 'label'), 'plain'),
+  messageSite(stage(5, 'unnamedLabel'), UNNAMED_LABEL_ARGUMENTS),
   site(stage(5, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(6, 'prompts', 0, 'text'), 'markdown'),
@@ -193,13 +199,6 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(7, 'nodeForm', 'fields', 1, 'label'), 'markdown'),
   site(stage(7, 'edges', 0, 'label'), 'plain'),
   site(stage(7, 'edges', 0, 'form', 'fields', 0, 'label'), 'markdown'),
-  // The Network Composer's own words, which Network Canvas supplies.
-  site(stage(7, 'addNamePlaceholder'), 'plain'),
-  site(stage(7, 'overtakenEditNotice'), 'plain'),
-  site(stage(7, 'tooltips', 'addPerson'), 'plain'),
-  site(stage(7, 'tooltips', 'automaticLayout'), 'plain'),
-  site(stage(7, 'tooltips', 'drawConnection'), 'plain'),
-  site(stage(7, 'groupsHeading'), 'plain'),
 
   site(stage(8, 'form', 'fields', 0, 'prompt'), 'markdown'),
 
@@ -211,7 +210,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(11, 'prompts', 0, 'negativeLabel'), 'markdown'),
 
   site(stage(12, 'prompts', 0, 'text'), 'markdown'),
-  site(stage(12, 'unplacedNodesNotice'), 'plain'),
+  messageSite(stage(12, 'unplacedNodesNotice'), SUBJECT_ARGUMENTS),
 
   site(stage(13, 'prompts', 0, 'text'), 'markdown'),
   site(stage(13, 'prompts', 0, 'otherVariablePrompt'), 'markdown'),
@@ -223,21 +222,13 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(14, 'attributesHeading'), 'plain'),
   site(stage(14, 'linksHeading'), 'plain'),
   site(stage(14, 'groupsHeading'), 'plain'),
-  site(stage(14, 'tooltips', 'enableDrawing'), 'plain'),
-  site(stage(14, 'tooltips', 'disableDrawing'), 'plain'),
-  site(stage(14, 'tooltips', 'freezeAnnotations'), 'plain'),
-  site(stage(14, 'tooltips', 'unfreezeAnnotations'), 'plain'),
-  site(stage(14, 'tooltips', 'resetAnnotations'), 'plain'),
 
   site(stage(15, 'explanationText'), 'markdown'),
 
   site(stage(16, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(17, 'prompts', 0, 'text'), 'markdown'),
-  site(stage(17, 'offlineNotice'), 'plain'),
-  site(stage(17, 'mapUnavailable'), 'plain'),
   site(stage(17, 'outsideAreasLabel'), 'plain'),
-  site(stage(17, 'searchFailed'), 'plain'),
 
   site(stage(18, 'prompt'), 'markdown'),
   // The Family Pedigree's own wording, which Network Canvas supplies.
@@ -277,16 +268,8 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   site(stage(19, 'diseases', 0, 'label'), 'plain'),
   // The Narrative Pedigree's own words, which Network Canvas supplies.
-  site(stage(19, 'keyHeading'), 'plain'),
   site(stage(19, 'saveSnapshot'), 'plain'),
-  site(stage(19, 'tooltips', 'clearFocus'), 'plain'),
   site(stage(19, 'conditionText', 'selectCondition'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'affected'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'obligateAffected'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'obligateCarrier'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'atRiskAffected'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'atRiskCarrier'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'unknown'), 'plain'),
   messageSite(
     stage(19, 'conditionText', 'snapshotCondition'),
     SNAPSHOT_CONDITION_ARGUMENTS,

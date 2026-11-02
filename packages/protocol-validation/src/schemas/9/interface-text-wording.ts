@@ -1,6 +1,45 @@
 import type { MessageArguments } from '../../localization/messageArguments.ts';
 import type { LocalizedStringFormat } from './localized-string.ts';
-import { ADD_NAME_PLACEHOLDER } from './stage-wording/network-composer.ts';
+import {
+  CONNECT_HINT,
+  CONNECT_TOOL,
+  DISCONNECT_HINT,
+  DISCONNECT_TOOL,
+  FRAMING_CHOICE_DESCRIPTION,
+  FRAMING_CHOICE_TITLE,
+  FRAMING_CONTROL_LABEL,
+  POINTER_TOOL,
+} from './stage-wording/family-pedigree.ts';
+import {
+  MAP_UNAVAILABLE,
+  OFFLINE_NOTICE,
+  SEARCH_FAILED,
+} from './stage-wording/geospatial.ts';
+import { QUICK_ADD_HINT } from './stage-wording/name-generator-quick-add.ts';
+import {
+  CARRIES,
+  CLEAR_FOCUS_TOOLTIP,
+  HAS_CONDITION,
+  KEY_HEADING,
+  MAY_CARRY,
+  MAY_DEVELOP,
+  NOT_KNOWN,
+  WILL_DEVELOP,
+} from './stage-wording/narrative-pedigree.ts';
+import {
+  RESET_ANNOTATIONS_TOOLTIP,
+  TOGGLE_DRAWING_TOOLTIP,
+  TOGGLE_FREEZING_TOOLTIP,
+} from './stage-wording/narrative.ts';
+import {
+  ADD_NAME_PLACEHOLDER,
+  ADD_NODE_TOOLTIP,
+  AUTOMATIC_LAYOUT_TOOLTIP,
+  DRAW_EDGE_TOOLTIP,
+  GROUPS_HEADING,
+  OVERTAKEN_EDIT_NOTICE,
+} from './stage-wording/network-composer.ts';
+import { SUBJECT_ARGUMENTS } from './stage-wording/subject.ts';
 import type { SuppliedWording } from './supplied-stage-setting.ts';
 
 // The wording Network Canvas supplies for the interface text a protocol holds
@@ -1160,8 +1199,16 @@ export const FAMILY_TREE_VIEW_INTERFACE_TEXT = {
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
-/** Every Family Pedigree stage's own controls. */
+/**
+ * Every Family Pedigree stage's own controls. The framing question and its
+ * control are shown only by a stage whose participants choose the words
+ * (see `INTERFACE_TEXT_GROUPS`).
+ */
 export const FAMILY_PEDIGREE_INTERFACE_TEXT = {
+  pointerTool: {
+    ids: ['interview.familyPedigree.pointerTool'],
+    message: POINTER_TOOL,
+  },
   pointerToolDescription: {
     ids: ['interview.familyPedigree.pointerToolDescription'],
     message: {
@@ -1176,6 +1223,10 @@ export const FAMILY_PEDIGREE_INTERFACE_TEXT = {
       'zh-Hans': '选择一位家庭成员，以编辑其信息或添加其亲属。',
       'zh-Hant': '選擇一位家庭成員，以編輯其資料或新增其親屬。',
     },
+  },
+  connectTool: {
+    ids: ['interview.familyPedigree.connectTool'],
+    message: CONNECT_TOOL,
   },
   connectToolDescription: {
     ids: ['interview.familyPedigree.connectToolDescription'],
@@ -1192,6 +1243,14 @@ export const FAMILY_PEDIGREE_INTERFACE_TEXT = {
       'zh-Hant': '選擇兩位家庭成員，將他們連結起來，並選擇他們的親屬關係。',
     },
   },
+  connectHint: {
+    ids: ['interview.familyPedigree.connectHint'],
+    message: CONNECT_HINT,
+  },
+  disconnectTool: {
+    ids: ['interview.familyPedigree.disconnectTool'],
+    message: DISCONNECT_TOOL,
+  },
   disconnectToolDescription: {
     ids: ['interview.familyPedigree.disconnectToolDescription'],
     message: {
@@ -1207,6 +1266,14 @@ export const FAMILY_PEDIGREE_INTERFACE_TEXT = {
       'zh-Hant': '選擇兩位已連結的家庭成員，以解除他們之間的連結。',
     },
   },
+  disconnectHint: {
+    ids: ['interview.familyPedigree.disconnectHint'],
+    message: DISCONNECT_HINT,
+  },
+  framingControlLabel: {
+    ids: ['interview.familyPedigree.framingControlLabel'],
+    message: FRAMING_CONTROL_LABEL,
+  },
   framingControlDescription: {
     ids: ['interview.familyPedigree.framingControlDescription'],
     message: {
@@ -1221,6 +1288,14 @@ export const FAMILY_PEDIGREE_INTERFACE_TEXT = {
       'zh-Hans': '选择您的家谱图使用哪一套亲属称谓。',
       'zh-Hant': '選擇您的家譜圖使用哪一套親屬稱謂。',
     },
+  },
+  framingChoiceTitle: {
+    ids: ['interview.familyPedigree.framingChoiceTitle'],
+    message: FRAMING_CHOICE_TITLE,
+  },
+  framingChoiceDescription: {
+    ids: ['interview.familyPedigree.framingChoiceDescription'],
+    message: FRAMING_CHOICE_DESCRIPTION,
   },
   undoDescription: {
     ids: ['interview.familyPedigree.undoDescription'],
@@ -1284,25 +1359,14 @@ export const CATEGORICAL_BIN_INTERFACE_TEXT = {
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
-/** Every roster name generator's own words. */
+/**
+ * Every roster name generator's own words. The message over the list while
+ * an added node is dragged back may name the stage's node type.
+ */
 export const ROSTER_INTERFACE_TEXT = {
-  unnamedNumbered: {
-    ids: ['interview.runtime.unnamedNumbered'],
-    arguments: { count: { kind: 'text' } },
-    message: {
-      'en': 'Unnamed {count}',
-      'de': 'Ohne Namen {count}',
-      'es': 'Sin nombre {count}',
-      'fr': 'Sans nom {count}',
-      'it': 'Senza nome {count}',
-      'nl': 'Zonder naam {count}',
-      'pt-BR': 'Sem nome {count}',
-      'zh-Hans': '未命名 {count}',
-      'zh-Hant': '未命名 {count}',
-    },
-  },
   dropToRemove: {
     ids: ['interview.runtime.dropToRemove'],
+    arguments: SUBJECT_ARGUMENTS,
     message: {
       'en': 'Drop here to remove',
       'de': 'Zum Entfernen hier ablegen',
@@ -1317,20 +1381,44 @@ export const ROSTER_INTERFACE_TEXT = {
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
-/**
- * Every quick-add Name Generator stage's own words. The name field is worded
- * as a Network Composer's is by default (`stage-wording/network-composer.ts`),
- * where each stage holds its own.
- */
+/** Every quick-add Name Generator stage's own words. */
 export const QUICK_ADD_INTERFACE_TEXT = {
+  quickAddHint: {
+    ids: ['interview.interfaces.quickAddHint'],
+    message: QUICK_ADD_HINT,
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/**
+ * Every Network Composer stage's own words. The groups heading and the edge
+ * tool's tooltip are shown only by a stage with groups and edge types (see
+ * `INTERFACE_TEXT_GROUPS`).
+ */
+export const NETWORK_COMPOSER_INTERFACE_TEXT = {
   addNamePlaceholder: {
     ids: ['interview.interfaces.addNamePlaceholder'],
     message: ADD_NAME_PLACEHOLDER,
   },
-} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
-
-/** Every Network Composer stage's own words. */
-export const NETWORK_COMPOSER_INTERFACE_TEXT = {
+  overtakenEditNotice: {
+    ids: ['interview.interfaces.overtakenEditNotice'],
+    message: OVERTAKEN_EDIT_NOTICE,
+  },
+  groupsHeading: {
+    ids: ['interview.interfaces.composerGroups'],
+    message: GROUPS_HEADING,
+  },
+  addNodeTooltip: {
+    ids: ['interview.interfaces.composerAddNode'],
+    message: ADD_NODE_TOOLTIP,
+  },
+  automaticLayoutTooltip: {
+    ids: ['interview.interfaces.composerAutomaticLayout'],
+    message: AUTOMATIC_LAYOUT_TOOLTIP,
+  },
+  drawEdgeTooltip: {
+    ids: ['interview.interfaces.composerDrawEdge'],
+    message: DRAW_EDGE_TOOLTIP,
+  },
   connection: {
     ids: ['interview.runtime.connection'],
     message: {
@@ -1362,5 +1450,94 @@ export const EGO_FORM_INTERFACE_TEXT = {
       'zh-Hans': '向下滚动查看更多问题',
       'zh-Hant': '向下捲動以查看更多問題',
     },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/** Every Narrative stage's drawing tools, shown while its drawing is on. */
+export const NARRATIVE_INTERFACE_TEXT = {
+  toggleDrawing: {
+    ids: ['interview.interfaces.toggleDrawing'],
+    message: TOGGLE_DRAWING_TOOLTIP,
+  },
+  toggleFreezing: {
+    ids: ['interview.interfaces.toggleFreezing'],
+    message: TOGGLE_FREEZING_TOOLTIP,
+  },
+  resetAnnotations: {
+    ids: ['interview.interfaces.resetAnnotations'],
+    message: RESET_ANNOTATIONS_TOOLTIP,
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/**
+ * What a condition's name may be called in the rows of a Narrative
+ * Pedigree's key: the condition the key is showing.
+ */
+const CONDITION_ARGUMENTS = {
+  condition: { kind: 'text' },
+} as const satisfies MessageArguments;
+
+/**
+ * Every Narrative Pedigree stage's key, and the button that clears its focus.
+ * The at-risk rows are shown only by a stage that shows at-risk statuses (see
+ * `INTERFACE_TEXT_GROUPS`).
+ */
+export const NARRATIVE_PEDIGREE_INTERFACE_TEXT = {
+  keyHeading: {
+    ids: ['interview.narrativePedigree.keyHeading'],
+    message: KEY_HEADING,
+  },
+  hasCondition: {
+    ids: ['interview.narrativePedigree.keyHasCondition'],
+    arguments: CONDITION_ARGUMENTS,
+    message: HAS_CONDITION,
+  },
+  willDevelop: {
+    ids: ['interview.narrativePedigree.keyWillDevelop'],
+    arguments: CONDITION_ARGUMENTS,
+    message: WILL_DEVELOP,
+  },
+  carries: {
+    ids: ['interview.narrativePedigree.keyCarries'],
+    arguments: CONDITION_ARGUMENTS,
+    message: CARRIES,
+  },
+  mayDevelop: {
+    ids: ['interview.narrativePedigree.keyMayDevelop'],
+    arguments: CONDITION_ARGUMENTS,
+    message: MAY_DEVELOP,
+  },
+  mayCarry: {
+    ids: ['interview.narrativePedigree.keyMayCarry'],
+    arguments: CONDITION_ARGUMENTS,
+    message: MAY_CARRY,
+  },
+  notKnown: {
+    ids: ['interview.narrativePedigree.keyNotKnown'],
+    arguments: CONDITION_ARGUMENTS,
+    message: NOT_KNOWN,
+  },
+  clearFocus: {
+    ids: ['interview.narrativePedigree.clearFocus'],
+    message: CLEAR_FOCUS_TOOLTIP,
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/**
+ * Every Geospatial stage's notices about its map. The search's notice is
+ * shown only by a map with a search (see `INTERFACE_TEXT_GROUPS`).
+ */
+export const GEOSPATIAL_INTERFACE_TEXT = {
+  offlineNotice: {
+    ids: ['interview.interfaces.mapOffline'],
+    message: OFFLINE_NOTICE,
+  },
+  mapUnavailable: {
+    ids: ['interview.interfaces.mapUnavailable'],
+    message: MAP_UNAVAILABLE,
+  },
+  searchFailed: {
+    ids: ['interview.interfaces.searchFailed'],
+    message: SEARCH_FAILED,
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;

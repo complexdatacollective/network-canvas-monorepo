@@ -27,6 +27,11 @@ type WordingSetting = Readonly<{
   hint?: MessageDescriptor;
   /** Set for a setting worded as a sentence or more: its field wraps. */
   wraps?: boolean;
+  /**
+   * Set for a setting that may show the stage's dynamic values, such as the
+   * participant's name from an earlier form.
+   */
+  dynamicValues?: 'stageText';
 }>;
 
 export type WordingGroup = Readonly<{
@@ -55,52 +60,6 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
     root: 'wording',
     settings: [
       {
-        key: 'pointerTool',
-        label: messages.wordingPointerTool,
-        hint: hints.pointerTool,
-      },
-      {
-        key: 'connectTool',
-        label: messages.wordingConnectTool,
-        hint: hints.connectTool,
-      },
-      {
-        key: 'disconnectTool',
-        label: messages.wordingDisconnectTool,
-        hint: hints.disconnectTool,
-      },
-      {
-        key: 'connectHint',
-        label: messages.wordingConnectHint,
-        hint: hints.connectHint,
-        wraps: true,
-      },
-      {
-        key: 'disconnectHint',
-        label: messages.wordingDisconnectHint,
-        hint: hints.disconnectHint,
-        wraps: true,
-      },
-      {
-        key: 'framingChoiceTitle',
-        label: messages.wordingFramingChoiceTitle,
-        hint: hints.framingChoiceTitle,
-        gate: 'choosesFraming',
-      },
-      {
-        key: 'framingChoiceDescription',
-        label: messages.wordingFramingChoiceDescription,
-        hint: hints.framingChoiceDescription,
-        wraps: true,
-        gate: 'choosesFraming',
-      },
-      {
-        key: 'framingControlLabel',
-        label: messages.wordingFramingControlLabel,
-        hint: hints.framingControlLabel,
-        gate: 'choosesFraming',
-      },
-      {
         key: 'placeholderParentsNote',
         label: messages.wordingPlaceholderParentsNote,
         hint: hints.placeholderParentsNote,
@@ -118,7 +77,12 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         hint: hints.relativeTerm,
         arguments: PEDIGREE_WORDING_ARGUMENTS.relativeTerm,
       },
-      { key: 'you', label: messages.wordingYou, hint: hints.you },
+      {
+        key: 'you',
+        label: messages.wordingYou,
+        hint: hints.you,
+        dynamicValues: 'stageText',
+      },
     ],
   },
   {

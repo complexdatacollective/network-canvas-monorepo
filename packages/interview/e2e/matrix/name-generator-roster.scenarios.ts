@@ -1104,7 +1104,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
     {
       id: 'roster-label-fallback-heuristic',
-      covers: ['label-fallback-heuristic'],
+      covers: ['label-fallback-heuristic', 'unnamedLabel'],
       build: () => {
         const synth = new SyntheticInterview();
         // addNodeType seeds a "name" variable, but the roster rows below are
@@ -1123,6 +1123,12 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           label: 'Label fallback',
           subject: { entity: 'node', type: personType.id },
           dataSource: 'rosterUuidMismatch',
+          // The stage's own label for an unnamed row, naming the node type.
+          wording: {
+            unnamedLabel: {
+              'en-US': '{subject} number {count} - matrix check',
+            },
+          },
         });
         stage.addPrompt({ text: 'Please add anyone you recognise.' });
 
@@ -1147,9 +1153,9 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         const labels = await roster.sourceLabels();
         expect(labels).toContain('Alice Smith');
         expect(labels).toContain('Bob Jones');
-        // ...and the value-less row falls back to a stable placeholder rather
-        // than exposing its content-hash _uid.
-        expect(labels).toContain('Unnamed 3');
+        // ...and the value-less row falls back to the stage's label for an
+        // unnamed row, numbered, rather than exposing its content-hash _uid.
+        expect(labels).toContain('Person number 3 - matrix check');
       },
     },
   ],

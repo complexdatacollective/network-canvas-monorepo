@@ -34,41 +34,12 @@ const HEADINGS: readonly WordingSetting[] = [
   },
 ];
 
-/** The drawing tools' words, asked while drawing is on. */
-const DRAWING_TOOLTIPS: readonly WordingSetting[] = [
-  {
-    path: 'tooltips.enableDrawing',
-    label: messages.enableDrawingTooltipLabel,
-    hint: messages.enableDrawingTooltipHint,
-  },
-  {
-    path: 'tooltips.disableDrawing',
-    label: messages.disableDrawingTooltipLabel,
-    hint: messages.disableDrawingTooltipHint,
-  },
-  {
-    path: 'tooltips.freezeAnnotations',
-    label: messages.freezeAnnotationsTooltipLabel,
-    hint: messages.freezeAnnotationsTooltipHint,
-  },
-  {
-    path: 'tooltips.unfreezeAnnotations',
-    label: messages.unfreezeAnnotationsTooltipLabel,
-    hint: messages.unfreezeAnnotationsTooltipHint,
-  },
-  {
-    path: 'tooltips.resetAnnotations',
-    label: messages.resetAnnotationsTooltipLabel,
-    hint: messages.resetAnnotationsTooltipHint,
-  },
-];
-
 /**
  * The words a participant reads on the narrative canvas. Each heading is asked
- * while a preset makes the panel it names appear, and each tool's words while
- * the behaviour that tool belongs to is on. Each starts with Network Canvas's
- * wording, and the same configurations that make the protocol require it
- * decide which are asked.
+ * while a preset makes the panel it names appear, and starts with Network
+ * Canvas's wording; the same configurations that make the protocol require it
+ * decide which are asked. The drawing tools' words are the same on every
+ * Narrative stage, so the protocol holds them once (see `SharedStageWording`).
  */
 export default function NarrativeWordingSection() {
   const { committedFields } = useStageEditorForm();
@@ -76,10 +47,9 @@ export default function NarrativeWordingSection() {
   const stage = {
     type: STAGE_TYPE,
     presets: useStageValue('presets'),
-    behaviours: useStageValue('behaviours'),
   };
 
-  const shown = [...HEADINGS, ...DRAWING_TOOLTIPS].filter((setting) =>
+  const shown = HEADINGS.filter((setting) =>
     suppliedStageSettingApplies(stage, setting.path.split('.')),
   );
 

@@ -462,18 +462,6 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Body of the message refusing a confirmed change of source pedigree whose chosen stage is no longer offered. Addressed to the researcher authoring the protocol, and it says what did NOT happen: the change was not applied and the disease mappings beside it were not thrown away.',
   },
-  keyHeadingLabel: {
-    id: 'protocolBuilder.narrativePedigree.keyHeadingLabel',
-    defaultMessage: 'Key heading',
-    description:
-      'Label of the setting holding the heading of the key that explains the symbols on the pedigree.',
-  },
-  clearFocusTooltipLabel: {
-    id: 'protocolBuilder.narrativePedigree.clearFocusTooltipLabel',
-    defaultMessage: 'Clear focus tooltip',
-    description:
-      'Label of the setting holding the tooltip of the tool that clears the selected focal person.',
-  },
   saveSnapshotButtonLabel: {
     id: 'protocolBuilder.narrativePedigree.saveSnapshotButtonLabel',
     defaultMessage: 'Save snapshot button',
@@ -485,42 +473,6 @@ export const narrativePedigreeMessages = defineMessages({
     defaultMessage: '“Select a condition” option',
     description:
       "Label of the setting holding the text the participant's condition menu shows while no condition is chosen, which is also the menu's choice for showing none.",
-  },
-  affectedNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.affectedNotationLabel',
-    defaultMessage: 'Has this condition',
-    description:
-      'Label of the setting holding the key entry for a person who has the selected condition.',
-  },
-  obligateAffectedNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.obligateAffectedNotationLabel',
-    defaultMessage: 'Will develop this condition',
-    description:
-      'Label of the setting holding the key entry for a person who will develop the selected condition.',
-  },
-  obligateCarrierNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.obligateCarrierNotationLabel',
-    defaultMessage: 'Carries this condition',
-    description:
-      'Label of the setting holding the key entry for a person who carries the selected condition.',
-  },
-  atRiskAffectedNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.atRiskAffectedNotationLabel',
-    defaultMessage: 'May develop this condition',
-    description:
-      'Label of the setting holding the key entry for a person who may develop the selected condition.',
-  },
-  atRiskCarrierNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.atRiskCarrierNotationLabel',
-    defaultMessage: 'May carry this condition',
-    description:
-      'Label of the setting holding the key entry for a person who may carry the selected condition.',
-  },
-  unknownNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.unknownNotationLabel',
-    defaultMessage: 'Not known',
-    description:
-      'Label of the setting holding the key entry for a person whose status for the selected condition is not known.',
   },
   snapshotConditionLabel: {
     id: 'protocolBuilder.narrativePedigree.snapshotConditionLabel',
@@ -548,25 +500,11 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Hint under the setting holding the snapshot title for inheritance, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
   },
-  keyHeadingHint: {
-    id: 'protocolBuilder.narrativePedigree.keyHeadingHint',
-    defaultMessage:
-      'Heading of the key that explains the symbols on the pedigree.',
-    description:
-      'Hint under the setting holding the key heading, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
-  },
   saveSnapshotHint: {
     id: 'protocolBuilder.narrativePedigree.saveSnapshotHint',
     defaultMessage: 'Button below the key that saves an image of the pedigree.',
     description:
       'Hint under the setting holding the save snapshot button, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
-  },
-  clearFocusTooltipHint: {
-    id: 'protocolBuilder.narrativePedigree.clearFocusTooltipHint',
-    defaultMessage:
-      'Tooltip for the button that clears the selected family member.',
-    description:
-      'Hint under the setting holding the clear focus tooltip, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
   },
   selectConditionHint: {
     id: 'protocolBuilder.narrativePedigree.selectConditionHint',
@@ -574,47 +512,5 @@ export const narrativePedigreeMessages = defineMessages({
       'Shown in the condition menu when no condition is chosen. Also the menu option for showing no condition.',
     description:
       'Hint under the setting holding the select a condition option, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
-  },
-  affectedNotationHint: {
-    id: 'protocolBuilder.narrativePedigree.affectedNotationHint',
-    defaultMessage:
-      'Key entry for family members who have the selected condition.',
-    description:
-      'Hint under the setting holding the key entry for having the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
-  },
-  obligateAffectedNotationHint: {
-    id: 'protocolBuilder.narrativePedigree.obligateAffectedNotationHint',
-    defaultMessage:
-      'Key entry for family members who will develop the selected condition.',
-    description:
-      'Hint under the setting holding the key entry for developing the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
-  },
-  obligateCarrierNotationHint: {
-    id: 'protocolBuilder.narrativePedigree.obligateCarrierNotationHint',
-    defaultMessage:
-      'Key entry for family members who carry the selected condition.',
-    description:
-      'Hint under the setting holding the key entry for carrying the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
-  },
-  atRiskAffectedNotationHint: {
-    id: 'protocolBuilder.narrativePedigree.atRiskAffectedNotationHint',
-    defaultMessage:
-      'Key entry for family members who may develop the selected condition. Only used when the pedigree shows at-risk statuses.',
-    description:
-      'Hint under the setting holding the key entry for possibly developing the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
-  },
-  atRiskCarrierNotationHint: {
-    id: 'protocolBuilder.narrativePedigree.atRiskCarrierNotationHint',
-    defaultMessage:
-      'Key entry for family members who may carry the selected condition. Only used when the pedigree shows at-risk statuses.',
-    description:
-      'Hint under the setting holding the key entry for possibly carrying the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
-  },
-  unknownNotationHint: {
-    id: 'protocolBuilder.narrativePedigree.unknownNotationHint',
-    defaultMessage:
-      'Key entry for family members whose status for the selected condition is not known.',
-    description:
-      'Hint under the setting holding the key entry for an unknown status, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
   },
 });

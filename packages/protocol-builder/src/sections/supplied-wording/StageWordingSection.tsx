@@ -279,34 +279,46 @@ function WordingParts({
   ];
 
   return (
-    <Accordion<string>
-      multiple
-      value={[...open]}
-      // The stage's own part stays open while one of its settings is refused.
-      onValueChange={(next) =>
-        setOpen(
-          refused && !next.includes(SPECIFIC) ? [...next, SPECIFIC] : next,
-        )
-      }
-      className="gap-6"
-    >
-      {parts.map(({ value, title, body }) => (
-        <AccordionItem key={value} value={value}>
-          <AccordionHeader render={createElement(headingTag)}>
-            <AccordionTrigger>{intl.formatMessage(title)}</AccordionTrigger>
-          </AccordionHeader>
-          <AccordionPanel className="mt-4">
-            {/* Mounted only while open: a closed part is hidden from
+    <>
+      {/*
+        A closed stage part still owns its settings, which are parked with
+        their values and appear when it opens. Named here, inertly, as a
+        switched-off section names its own, because the closed part mounts
+        none of them.
+      */}
+      {!open.includes(SPECIFIC) &&
+        paths.map((path) => (
+          <template key={path} data-owned-field-path={path} />
+        ))}
+      <Accordion<string>
+        multiple
+        value={[...open]}
+        // The stage's own part stays open while one of its settings is refused.
+        onValueChange={(next) =>
+          setOpen(
+            refused && !next.includes(SPECIFIC) ? [...next, SPECIFIC] : next,
+          )
+        }
+        className="gap-6"
+      >
+        {parts.map(({ value, title, body }) => (
+          <AccordionItem key={value} value={value}>
+            <AccordionHeader render={createElement(headingTag)}>
+              <AccordionTrigger>{intl.formatMessage(title)}</AccordionTrigger>
+            </AccordionHeader>
+            <AccordionPanel className="mt-4">
+              {/* Mounted only while open: a closed part is hidden from
                 assistive technology, so it must hold nothing focusable. A
                 stage field it closes over is parked with its value. */}
-            {open.includes(value) && (
-              <EnclosingHeadingLevel level={headingTag}>
-                {body}
-              </EnclosingHeadingLevel>
-            )}
-          </AccordionPanel>
-        </AccordionItem>
-      ))}
-    </Accordion>
+              {open.includes(value) && (
+                <EnclosingHeadingLevel level={headingTag}>
+                  {body}
+                </EnclosingHeadingLevel>
+              )}
+            </AccordionPanel>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </>
   );
 }

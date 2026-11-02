@@ -607,7 +607,7 @@ describe('Forms & prompts schema conformance', () => {
     const quickAddStage = (behaviours: Record<string, number>) => ({
       id: 'ngqa1',
       type: 'NameGeneratorQuickAdd',
-      quickAddHint: localized('Press Enter when you are finished.'),
+      addNamePlaceholder: localized('Type a name, then press Enter'),
       label: localized('Quick Add'),
       minNodesNotice: localized(
         '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',

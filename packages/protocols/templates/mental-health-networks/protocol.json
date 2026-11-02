@@ -267,19 +267,11 @@
               { "label": { "en-US": "Extremely close" }, "value": 5 }
             ]
           },
-          "layout": {
-            "name": "layout",
-            "type": "layout"
-          }
+          "layout": { "name": "layout", "type": "layout" }
         }
       }
     },
-    "edge": {
-      "knows": {
-        "name": "Knows",
-        "color": "edge-color-seq-1"
-      }
-    }
+    "edge": { "knows": { "name": "Knows", "color": "edge-color-seq-1" } }
   },
   "stages": [
     {
@@ -300,13 +292,9 @@
     {
       "id": "information-intro",
       "type": "EgoForm",
-      "label": {
-        "en-US": "Welcome and consent"
-      },
+      "label": { "en-US": "Welcome and consent" },
       "introductionPanel": {
-        "title": {
-          "en-US": "About this interview"
-        },
+        "title": { "en-US": "About this interview" },
         "text": {
           "en-US": "## Thank you for taking part\n\nIn this interview we will talk about the people in your life and how they relate to your mental health and wellbeing. We will ask you to name people who **support** you, and also people who are sometimes a **source of stress, conflict, or strain**. There are no right or wrong answers — we are simply interested in your own experience.\n\n### Some of these questions are personal\n\nWe will ask about how you have been feeling recently and about who knows about your mental health. You are free to skip any question, to pause, or to stop the interview at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If reading or talking about these topics brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate local support whether or not you choose to participate.**"
         }
@@ -344,9 +332,7 @@
         "destination": { "type": "stage", "stageId": "finish-declined" }
       },
       "introductionPanel": {
-        "title": {
-          "en-US": "A few questions about you"
-        },
+        "title": { "en-US": "A few questions about you" },
         "text": {
           "en-US": "Before we talk about the people in your life, we would like to ask how you have been feeling **over the last 30 days**. Please answer as honestly as you can. Remember you can skip any question you would prefer not to answer."
         }
@@ -419,10 +405,7 @@
         }
       ],
       "interviewScript": "This generator elicits supportive ties. Encourage the participant to think broadly — these can be people they confide in, turn to for advice, or rely on for practical help. The same person may also be named later as a source of stress; that is expected.",
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "subject": { "entity": "node", "type": "person" },
       "form": {
         "title": { "en-US": "Add Person" },
         "fields": [
@@ -434,9 +417,7 @@
           }
         ]
       },
-      "behaviours": {
-        "minNodes": 0
-      },
+      "behaviours": { "minNodes": 0 },
       "prompts": [
         {
           "id": "ng-support-confide",
@@ -479,10 +460,7 @@
         }
       ],
       "interviewScript": "This generator elicits difficult or draining ties (negative and ambivalent relationships). Reassure the participant that almost everyone has people like this, and that naming someone here does not mean the relationship is all bad. If a person they already named as supportive is also a source of stress, they can add them again here — this captures ambivalent ties.",
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "subject": { "entity": "node", "type": "person" },
       "form": {
         "title": { "en-US": "Add Person" },
         "fields": [
@@ -494,9 +472,7 @@
           }
         ]
       },
-      "behaviours": {
-        "minNodes": 0
-      },
+      "behaviours": { "minNodes": 0 },
       "prompts": [
         {
           "id": "ng-difficult-demanding",
@@ -521,12 +497,8 @@
     {
       "id": "alter-form-attributes-introduction",
       "type": "Information",
-      "label": {
-        "en-US": "Tell us a little about each person"
-      },
-      "title": {
-        "en-US": "Tell us a little about each person"
-      },
+      "label": { "en-US": "Tell us a little about each person" },
+      "title": { "en-US": "Tell us a little about each person" },
       "items": [
         {
           "id": "introduction-text",
@@ -542,10 +514,7 @@
       "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "type": "AlterForm",
       "label": { "en-US": "About each person" },
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "subject": { "entity": "node", "type": "person" },
       "form": {
         "fields": [
           {
@@ -575,10 +544,7 @@
       "id": "ordinal-bin-closeness",
       "type": "OrdinalBin",
       "label": { "en-US": "How close, and how often you're in touch" },
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "subject": { "entity": "node", "type": "person" },
       "prompts": [
         {
           "id": "bin-closeness",
@@ -602,10 +568,7 @@
       "id": "categorical-bin-help-source",
       "type": "CategoricalBin",
       "label": { "en-US": "Where your help comes from" },
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "subject": { "entity": "node", "type": "person" },
       "prompts": [
         {
           "id": "bin-help-source",
@@ -621,58 +584,25 @@
       "type": "Sociogram",
       "label": { "en-US": "Arrange your network" },
       "interviewScript": "This is a reflective, manual-positioning stage (no automatic layout): invite the participant to arrange the people meaningfully — for example supportive people on one side, difficult or draining people on the other, and those they feel closest to nearer the centre of the rings — then draw lines between people who know one another. The arrangement they build becomes the network map they talk through on the final review screen, so the positions are meaningful here rather than incidental.",
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
-      "background": {
-        "concentricCircles": 3,
-        "skewedTowardCenter": true
-      },
+      "subject": { "entity": "node", "type": "person" },
+      "background": { "concentricCircles": 3, "skewedTowardCenter": true },
       "prompts": [
         {
           "id": "sociogram-position-knows",
           "text": {
             "en-US": "Here are the people you named. Take a moment to **arrange them in a way that feels right to you** — for example, placing the people who **support you** on one side and those who are **difficult or draining** on the other, and the people you feel **closest to** nearer the centre. Then draw a line between any **two people who know one another**."
           },
-          "layout": {
-            "layoutVariable": "layout"
-          },
-          "edges": {
-            "create": "knows",
-            "display": ["knows"]
-          }
+          "layout": { "layoutVariable": "layout" },
+          "edges": { "create": "knows", "display": ["knows"] }
         }
       ]
     },
     {
       "id": "narrative-support-vs-strain",
-      "attributesHeading": {
-        "en-US": "Attributes"
-      },
-      "tooltips": {
-        "enableDrawing": {
-          "en-US": "Enable drawing"
-        },
-        "disableDrawing": {
-          "en-US": "Disable drawing"
-        },
-        "freezeAnnotations": {
-          "en-US": "Freeze annotations"
-        },
-        "unfreezeAnnotations": {
-          "en-US": "Unfreeze annotations"
-        },
-        "resetAnnotations": {
-          "en-US": "Reset annotations"
-        }
-      },
+      "attributesHeading": { "en-US": "Attributes" },
       "type": "Narrative",
       "label": { "en-US": "Your network of support and strain" },
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "subject": { "entity": "node", "type": "person" },
       "behaviours": {
         "automaticLayout": true,
         "allowRepositioning": true,
@@ -710,10 +640,7 @@
           ]
         }
       ],
-      "background": {
-        "concentricCircles": 3,
-        "skewedTowardCenter": true
-      }
+      "background": { "concentricCircles": 3, "skewedTowardCenter": true }
     },
     {
       "id": "information-safety",
@@ -754,18 +681,14 @@
       "id": "finish-declined",
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": {
-        "en-US": "Not Taking Part"
-      },
+      "label": { "en-US": "Not Taking Part" },
       "content": {
         "en-US": "# You Chose Not to Take Part\n\nThank you for your time. Because you chose not to take part in this study, the interview ends here. If you chose this by mistake, go back and change your answer. Otherwise, press Finish."
       },
       "finishedContent": {
         "en-US": "# Interview Finished\n\nThank you for your time."
       },
-      "finishLabel": {
-        "en-US": "Finish"
-      },
+      "finishLabel": { "en-US": "Finish" },
       "finishConfirmation": {
         "en-US": "Are you sure you want to finish the interview?"
       },
@@ -777,109 +700,59 @@
   ],
   "interfaceText": {
     "navigation": {
-      "exitInterview": {
-        "en-US": "Exit interview"
-      },
+      "exitInterview": { "en-US": "Exit interview" },
       "exitInterviewDescription": {
         "en-US": "Your answers so far will be saved and you can continue later."
       },
-      "back": {
-        "en-US": "Back"
-      },
-      "continue": {
-        "en-US": "Continue"
-      },
+      "back": { "en-US": "Back" },
+      "continue": { "en-US": "Continue" },
       "exitFailed": {
         "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
       }
     },
     "interviewer": {
-      "exitReview": {
-        "en-US": "Exit review"
-      },
-      "exitReviewTitle": {
-        "en-US": "Exit this review?"
-      },
+      "exitReview": { "en-US": "Exit review" },
+      "exitReviewTitle": { "en-US": "Exit this review?" },
       "exitReviewDescription": {
         "en-US": "Changes made during this review will not be saved."
       },
-      "hiddenScreen": {
-        "en-US": "Hidden by answers"
-      },
-      "outsidePath": {
-        "en-US": "Outside current path"
-      },
-      "showScreenTitle": {
-        "en-US": "Show this screen?"
-      },
+      "hiddenScreen": { "en-US": "Hidden by answers" },
+      "outsidePath": { "en-US": "Outside current path" },
+      "showScreenTitle": { "en-US": "Show this screen?" },
       "hiddenScreenDescription": {
         "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
       },
       "outsidePathDescription": {
         "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
       },
-      "showScreen": {
-        "en-US": "Show screen"
-      }
+      "showScreen": { "en-US": "Show screen" }
     },
     "buttons": {
-      "cancel": {
-        "en-US": "Cancel"
-      },
-      "done": {
-        "en-US": "Done"
-      },
-      "delete": {
-        "en-US": "Delete"
-      },
-      "yes": {
-        "en-US": "Yes"
-      },
-      "no": {
-        "en-US": "No"
-      },
-      "pauseLayout": {
-        "en-US": "Pause automatic layout"
-      },
-      "resumeLayout": {
-        "en-US": "Resume automatic layout"
-      },
-      "copy": {
-        "en-US": "Copy"
-      },
-      "copied": {
-        "en-US": "Copied"
-      }
+      "cancel": { "en-US": "Cancel" },
+      "done": { "en-US": "Done" },
+      "delete": { "en-US": "Delete" },
+      "yes": { "en-US": "Yes" },
+      "no": { "en-US": "No" },
+      "pauseLayout": { "en-US": "Pause automatic layout" },
+      "resumeLayout": { "en-US": "Resume automatic layout" },
+      "copy": { "en-US": "Copy" },
+      "copied": { "en-US": "Copied" }
     },
     "messages": {
       "stageError": {
         "en-US": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "itemUnavailable": {
-        "en-US": "This item could not be displayed."
-      },
-      "error": {
-        "en-US": "An error occurred."
-      },
-      "loading": {
-        "en-US": "Loading…"
-      },
-      "unnamed": {
-        "en-US": "Unnamed"
-      }
+      "itemUnavailable": { "en-US": "This item could not be displayed." },
+      "error": { "en-US": "An error occurred." },
+      "loading": { "en-US": "Loading…" },
+      "unnamed": { "en-US": "Unnamed" }
     },
     "search": {
-      "searchLabel": {
-        "en-US": "Search"
-      },
-      "searchNoMatch": {
-        "en-US": "Nothing matched your search term."
-      }
+      "searchLabel": { "en-US": "Search" },
+      "searchNoMatch": { "en-US": "Nothing matched your search term." }
     },
     "forms": {
-      "discardChangesTitle": {
-        "en-US": "Discard changes?"
-      },
+      "discardChangesTitle": { "en-US": "Discard changes?" },
       "discardChangesDescription": {
         "en-US": "Do you want to discard your changes?"
       }
@@ -891,19 +764,16 @@
       "maxSelected": {
         "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
       },
-      "unique": {
-        "en-US": "Must be unique."
-      }
+      "unique": { "en-US": "Must be unique." }
     },
-    "categoricalBin": {
-      "placeHere": {
-        "en-US": "Place here"
-      }
+    "categoricalBin": { "placeHere": { "en-US": "Place here" } },
+    "narrative": {
+      "toggleDrawing": { "en-US": "Toggle drawing" },
+      "toggleFreezing": { "en-US": "Toggle freezing annotations" },
+      "resetAnnotations": { "en-US": "Reset annotations" }
     },
     "egoForm": {
-      "scrollForQuestions": {
-        "en-US": "Scroll to see more questions"
-      }
+      "scrollForQuestions": { "en-US": "Scroll to see more questions" }
     }
   }
 }

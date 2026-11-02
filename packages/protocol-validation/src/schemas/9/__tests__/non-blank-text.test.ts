@@ -14,10 +14,7 @@ import { narrativeStage } from '../stages/narrative.ts';
 import { networkComposerStage } from '../stages/network-composer.ts';
 import { ComponentTypes } from '../variables/types.ts';
 import { VariableSchema } from '../variables/variable.ts';
-import {
-  narrativePedigreeWords,
-  networkComposerWords,
-} from './canvas-stage-words.ts';
+import { narrativePedigreeWords } from './canvas-stage-words.ts';
 
 const issuesOf = (
   schema: { safeParse: (value: unknown) => unknown },
@@ -124,7 +121,6 @@ describe('a Network Composer field caption', () => {
       layoutVariable: 'layout',
       background: { concentricCircles: 4 },
       edges: [],
-      ...networkComposerWords(),
       nodeForm: {
         fields: [
           {
@@ -149,6 +145,7 @@ const rosterStage = {
   id: 'roster',
   type: 'NameGeneratorRoster',
   allAddedNotice: localized('There is nothing left to add from this list.'),
+  unnamedLabel: localized('Unnamed {count}'),
   label: localized('Roster'),
   subject: { entity: 'node', type: 'person' },
   dataSource: 'rosterAsset',
@@ -271,7 +268,6 @@ const composerField = (field: Record<string, unknown>) => ({
   layoutVariable: 'layout',
   background: { concentricCircles: 4 },
   edges: [],
-  ...networkComposerWords(),
   nodeForm: {
     fields: [{ variable: 'age', label: localized('Age'), ...field }],
   },

@@ -513,7 +513,10 @@
             }
           ]
         },
-        "destination": { "type": "stage", "stageId": "finish-declined" }
+        "destination": {
+          "type": "stage",
+          "stageId": "finish-declined"
+        }
       },
       "type": "Anonymisation",
       "explanationText": {
@@ -732,7 +735,11 @@
     },
     {
       "id": "alter-form-people",
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "label": {
         "en-US": "About each person"
       },
@@ -788,7 +795,11 @@
     },
     {
       "id": "alter-form-services",
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "label": {
         "en-US": "Services you contacted"
       },
@@ -846,7 +857,11 @@
     },
     {
       "id": "categorical-bin-reaction",
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "interviewScript": "Only people the participant said know about the abuse appear here. Anything typed into the 'Something else' box is saved encrypted with the participant's passphrase, because a free-text description is where identifying details tend to appear.",
       "label": {
         "en-US": "How people reacted"
@@ -959,7 +974,9 @@
     },
     {
       "id": "finish",
-      "label": { "en-US": "Finish Interview" },
+      "label": {
+        "en-US": "Finish Interview"
+      },
       "type": "FinishSession",
       "mode": "confirmation",
       "content": {
@@ -968,7 +985,9 @@
       "finishedContent": {
         "en-US": "# Interview Finished\n\nThank you for participating!"
       },
-      "finishLabel": { "en-US": "Finish" },
+      "finishLabel": {
+        "en-US": "Finish"
+      },
       "finishConfirmation": {
         "en-US": "Are you sure you want to finish the interview?"
       },

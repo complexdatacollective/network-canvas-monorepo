@@ -41,6 +41,7 @@ function RosterLabels() {
       id: 'stage',
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}', es: 'Sin nombre {count}' },
       panelTitle: { en: 'Available to add' },
       label: { en: 'Authored stage' },
       subject: { entity: 'node', type: 'person' },

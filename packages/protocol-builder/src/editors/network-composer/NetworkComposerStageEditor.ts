@@ -2,10 +2,10 @@ import { background } from '../../sections/background/background.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
+import { sharedWording } from '../../sections/supplied-wording/sharedWording.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { composerConnections } from './sections/composerConnections.tsx';
 import { composerNodes } from './sections/composerNodes.tsx';
-import { composerWording } from './sections/composerWording.tsx';
 
 /**
  * The canvas a participant BUILDS their network on.
@@ -29,7 +29,7 @@ export const networkComposerStageEditor = defineStageEditor('NetworkComposer', [
   subjectPicker({ entity: 'node' }),
   composerNodes(),
   composerConnections(),
-  composerWording(),
+  sharedWording('NetworkComposer'),
   background(),
   skipLogic(),
   interviewerGuidance(),

@@ -1,8 +1,10 @@
-import { binBehaviours } from '../../sections/bin-behaviours/binBehaviours.tsx';
+import {
+  binBehaviours,
+  binWording,
+} from '../../sections/bin-behaviours/binBehaviours.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
-import { sharedWording } from '../../sections/supplied-wording/sharedWording.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { categoricalBinPrompts } from './sections/categoricalBinPrompts.tsx';
 
@@ -12,8 +14,8 @@ import { categoricalBinPrompts } from './sections/categoricalBinPrompts.tsx';
 export const categoricalBinStageEditor = defineStageEditor('CategoricalBin', [
   subjectPicker({ entity: 'node', filter: true }),
   categoricalBinPrompts(),
-  binBehaviours('CategoricalBin'),
-  sharedWording('CategoricalBin'),
+  binBehaviours(),
+  binWording('CategoricalBin'),
   skipLogic(),
   interviewerGuidance(),
 ]);

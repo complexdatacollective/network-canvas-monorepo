@@ -27,10 +27,8 @@ const backgroundImageAsset: SyntheticAssetSpec = {
 const ATTRIBUTES_HEADING = 'Traits - matrix check';
 const LINKS_HEADING = 'Ties - matrix check';
 const GROUPS_HEADING = 'Circles - matrix check';
-const ENABLE_DRAWING = 'Start sketching - matrix check';
-const DISABLE_DRAWING = 'Stop sketching - matrix check';
-const FREEZE_ANNOTATIONS = 'Hold the sketch - matrix check';
-const UNFREEZE_ANNOTATIONS = 'Let the sketch fade - matrix check';
+const TOGGLE_DRAWING = 'Sketch - matrix check';
+const TOGGLE_FREEZING = 'Hold the sketch - matrix check';
 const RESET_ANNOTATIONS = 'Wipe the sketch - matrix check';
 const PAUSE_LAYOUT = 'Hold the layout - matrix check';
 const RESUME_LAYOUT = 'Release the layout - matrix check';
@@ -117,7 +115,7 @@ const layoutVariableNodeInclusion: ScenarioDefinition = {
     // No behaviours configured: BehavioursPanel does not render.
     await expect(
       page.getByRole('button', {
-        name: /Pause automatic layout|Enable drawing/,
+        name: /Pause automatic layout|Toggle drawing/,
       }),
     ).toHaveCount(0);
 
@@ -623,29 +621,20 @@ const automaticLayoutPauseResume: ScenarioDefinition = {
 
 const freeDrawAnnotate: ScenarioDefinition = {
   id: 'free-draw-annotate-fade-freeze-reset',
-  covers: [
-    'behaviours.freeDraw',
-    'tooltips.enableDrawing',
-    'tooltips.disableDrawing',
-    'tooltips.freezeAnnotations',
-    'tooltips.unfreezeAnnotations',
-    'tooltips.resetAnnotations',
-  ],
+  covers: ['behaviours.freeDraw', 'interfaceText.narrative'],
   seedNetwork: true,
   build: () => {
     const { synth, person, nameVar, layoutVar } = buildBaseNarrative();
     const stage = synth.addStage('Narrative', {
       subject: { entity: 'node', type: person.id },
       behaviours: { freeDraw: true },
-      wording: {
-        'tooltips.enableDrawing': ENABLE_DRAWING,
-        'tooltips.disableDrawing': DISABLE_DRAWING,
-        'tooltips.freezeAnnotations': FREEZE_ANNOTATIONS,
-        'tooltips.unfreezeAnnotations': UNFREEZE_ANNOTATIONS,
-        'tooltips.resetAnnotations': RESET_ANNOTATIONS,
-      },
     });
     stage.addPreset({ layoutVariable: layoutVar.id });
+    // Every Narrative stage's drawing tools are worded alike, so the
+    // protocol holds their words once.
+    synth.setInterfaceText('narrative', 'toggleDrawing', TOGGLE_DRAWING);
+    synth.setInterfaceText('narrative', 'toggleFreezing', TOGGLE_FREEZING);
+    synth.setInterfaceText('narrative', 'resetAnnotations', RESET_ANNOTATIONS);
     synth.addManualNode(stage.id, person.id, 'node-alice', {
       [nameVar.id]: 'Alice',
       [layoutVar.id]: { x: 0.2, y: 0.2 },
@@ -659,19 +648,19 @@ const freeDrawAnnotate: ScenarioDefinition = {
   run: async ({ page }) => {
     const narrative = new NarrativeFixture(page);
     const before = await page.evaluate(() => window.__test.getNetworkState());
-    // Each tool carries the stage's own words, never the words Network Canvas
-    // supplies.
+    // Each tool carries the protocol's own words, never the words Network
+    // Canvas supplies; a toggle says whether it is on by being pressed.
     const tool = (name: string) => page.getByRole('button', { name });
     const suppliedTools = page.getByRole('button', {
-      name: /Enable drawing|Disable drawing|Freeze annotations|Unfreeze annotations|Reset annotations/,
+      name: /Toggle drawing|Toggle freezing annotations|Reset annotations/,
     });
 
     // No annotation layer mounts until drawing is explicitly enabled.
     await expect(narrative.getAnnotationPaths()).toHaveCount(0);
-    await expect(tool(ENABLE_DRAWING)).toBeVisible();
-    await tool(ENABLE_DRAWING).click();
-    await expect(tool(DISABLE_DRAWING)).toBeVisible();
-    await expect(tool(FREEZE_ANNOTATIONS)).toBeVisible();
+    await expect(tool(TOGGLE_DRAWING)).toHaveAttribute('aria-pressed', 'false');
+    await tool(TOGGLE_DRAWING).click();
+    await expect(tool(TOGGLE_DRAWING)).toHaveAttribute('aria-pressed', 'true');
+    await expect(tool(TOGGLE_FREEZING)).toBeVisible();
     await expect(tool(RESET_ANNOTATIONS)).toBeVisible();
     await expect(suppliedTools).toHaveCount(0);
 
@@ -679,8 +668,8 @@ const freeDrawAnnotate: ScenarioDefinition = {
     // e2e MotionConfig `skipAnimations`, an UNfrozen stroke's fade completes
     // instantly and the path unmounts, so freezing is the deterministic way to
     // prove a stroke was drawn.
-    await tool(FREEZE_ANNOTATIONS).click();
-    await expect(tool(UNFREEZE_ANNOTATIONS)).toBeVisible();
+    await tool(TOGGLE_FREEZING).click();
+    await expect(tool(TOGGLE_FREEZING)).toHaveAttribute('aria-pressed', 'true');
     await narrative.drawStroke([
       { x: 0.35, y: 0.5 },
       { x: 0.5, y: 0.5 },
@@ -706,8 +695,11 @@ const freeDrawAnnotate: ScenarioDefinition = {
     // Unfreezing: a fresh stroke now fades and unmounts (opacity animates to 0
     // and the line is removed) — the contrast that proves the fade behaviour
     // without any pixel-timing assertion.
-    await tool(UNFREEZE_ANNOTATIONS).click();
-    await expect(tool(FREEZE_ANNOTATIONS)).toBeVisible();
+    await tool(TOGGLE_FREEZING).click();
+    await expect(tool(TOGGLE_FREEZING)).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
     await narrative.drawStroke([
       { x: 0.35, y: 0.55 },
       { x: 0.6, y: 0.55 },

@@ -139,10 +139,6 @@
     },
     {
       "id": "quick-add-ng-encryption",
-      "quickAddHint": {
-        "en-US": "Press Enter when you are finished.",
-        "es": "Pulsa Intro cuando hayas terminado."
-      },
       "label": {
         "en-US": "Quick Add NG with Encryption",
         "es": "GN de adición rápida con cifrado"
@@ -161,7 +157,11 @@
             "es": "Este es un generador de nombres de adición rápida con cifrado"
           }
         }
-      ]
+      ],
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter",
+        "es": "Escribe un nombre y pulsa Intro"
+      }
     },
     {
       "id": "one-to-many-dyad-census",
@@ -437,10 +437,6 @@
         "en-US": "You have completed this task. Click the next arrow to continue.",
         "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar."
       },
-      "quickAddHint": {
-        "en-US": "Press Enter when you are finished.",
-        "es": "Pulsa Intro cuando hayas terminado."
-      },
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en-US": "NG Quick add",
@@ -486,7 +482,11 @@
             "es": "Otra instrucción de lugares"
           }
         }
-      ]
+      ],
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter",
+        "es": "Escribe un nombre y pulsa Intro"
+      }
     },
     {
       "id": "dyadcensus-introduction",
@@ -728,7 +728,11 @@
             "es": "Datos CSV de lugares de VIH, sin opciones de orden ni atributos adicionales."
           }
         }
-      ]
+      ],
+      "unnamedLabel": {
+        "en-US": "Unnamed {count}",
+        "es": "Sin nombre {count}"
+      }
     },
     {
       "id": "namegenroster2",
@@ -806,7 +810,11 @@
             }
           ]
         }
-      ]
+      ],
+      "unnamedLabel": {
+        "en-US": "Unnamed {count}",
+        "es": "Sin nombre {count}"
+      }
     },
     {
       "id": "namegen4",
@@ -1107,7 +1115,11 @@
             }
           ]
         }
-      ]
+      ],
+      "unnamedLabel": {
+        "en-US": "Unnamed {count}",
+        "es": "Sin nombre {count}"
+      }
     },
     {
       "id": "namegenroster3",
@@ -1169,7 +1181,11 @@
             }
           ]
         }
-      ]
+      ],
+      "unnamedLabel": {
+        "en-US": "Unnamed {count}",
+        "es": "Sin nombre {count}"
+      }
     },
     {
       "id": "catBin1",
@@ -1490,28 +1506,6 @@
         "en-US": "Groups",
         "es": "Grupos"
       },
-      "tooltips": {
-        "enableDrawing": {
-          "en-US": "Enable drawing",
-          "es": "Activar el dibujo"
-        },
-        "disableDrawing": {
-          "en-US": "Disable drawing",
-          "es": "Desactivar el dibujo"
-        },
-        "freezeAnnotations": {
-          "en-US": "Freeze annotations",
-          "es": "Bloquear las anotaciones"
-        },
-        "unfreezeAnnotations": {
-          "en-US": "Unfreeze annotations",
-          "es": "Desbloquear las anotaciones"
-        },
-        "resetAnnotations": {
-          "en-US": "Reset annotations",
-          "es": "Restablecer las anotaciones"
-        }
-      },
       "type": "Narrative",
       "label": {
         "en-US": "Narrative",
@@ -1727,24 +1721,6 @@
     },
     {
       "id": "network-composer-dev",
-      "addNamePlaceholder": {
-        "en-US": "Type a name, then press Enter",
-        "es": "Escribe un nombre y pulsa Intro"
-      },
-      "overtakenEditNotice": {
-        "en-US": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.",
-        "es": "Deshacer o rehacer cambió una respuesta mientras la editabas, así que tu cambio no se ha guardado. Para conservarlo, vuelve a cambiar esa respuesta. Si continúas, se perderá tu cambio."
-      },
-      "tooltips": {
-        "addPerson": {
-          "en-US": "Add node",
-          "es": "Añadir un elemento"
-        },
-        "automaticLayout": {
-          "en-US": "Automatic layout",
-          "es": "Disposición automática"
-        }
-      },
       "type": "NetworkComposer",
       "label": {
         "en-US": "Network Composer",
@@ -1762,14 +1738,6 @@
     },
     {
       "id": "geospatial-dev",
-      "offlineNotice": {
-        "en-US": "You are offline — the map will not load until you reconnect.",
-        "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte."
-      },
-      "mapUnavailable": {
-        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
-        "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance."
-      },
       "outsideAreasLabel": {
         "en-US": "Outside Selectable Areas",
         "es": "Fuera de las áreas seleccionables"
@@ -1850,10 +1818,6 @@
           "en-US": "Is this child…",
           "es": "Este hijo/a es…"
         },
-        "connectHint": {
-          "en-US": "Select a person, then select another to connect them.",
-          "es": "Selecciona una persona y luego otra para conectarlas."
-        },
         "connectParent": {
           "en-US": "{parentIsYou, select, true {You are a parent of {child}} other {{childIsYou, select, true {{parent} is your parent} other {{parent} is a parent of {child}}}}}",
           "es": "{parentIsYou, select, true {Eres progenitor de {child}} other {{childIsYou, select, true {{parent} es tu progenitor} other {{parent} es progenitor de {child}}}}}"
@@ -1873,10 +1837,6 @@
         "disconnectConfirmTitle": {
           "en-US": "{firstIsYou, select, true {Remove the connection between you and {second}?} other {Remove the connection between {first} and {second}?}}",
           "es": "{firstIsYou, select, true {¿Quitar la conexión entre tú y {second}?} other {¿Quitar la conexión entre {first} y {second}?}}"
-        },
-        "disconnectHint": {
-          "en-US": "Select a person, then select someone they are connected to, to remove that connection.",
-          "es": "Selecciona una persona y luego alguien con quien esté conectada para quitar esa conexión."
         },
         "disconnectWouldCutOff": {
           "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}",
@@ -1985,18 +1945,6 @@
         "you": {
           "en-US": "You",
           "es": "Tú"
-        },
-        "connectTool": {
-          "en-US": "Connect",
-          "es": "Conectar"
-        },
-        "disconnectTool": {
-          "en-US": "Disconnect",
-          "es": "Desconectar"
-        },
-        "pointerTool": {
-          "en-US": "Add and edit",
-          "es": "Añadir y editar"
         },
         "changeWouldCutOff": {
           "en-US": "{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}",
@@ -2195,42 +2143,14 @@
     },
     {
       "id": "narrative-pedigree-dev",
-      "keyHeading": {
-        "en-US": "Key",
-        "es": "Leyenda"
-      },
       "saveSnapshot": {
         "en-US": "Save snapshot",
         "es": "Guardar imagen"
-      },
-      "tooltips": {
-        "clearFocus": {
-          "en-US": "Clear focus",
-          "es": "Quitar el foco"
-        }
       },
       "conditionText": {
         "selectCondition": {
           "en-US": "Select a condition",
           "es": "Selecciona una afección"
-        },
-        "notation": {
-          "affected": {
-            "en-US": "Has this condition",
-            "es": "Tiene esta afección"
-          },
-          "obligateAffected": {
-            "en-US": "Will develop this condition",
-            "es": "Desarrollará esta afección"
-          },
-          "obligateCarrier": {
-            "en-US": "Carries this condition",
-            "es": "Es portador/a de esta afección"
-          },
-          "unknown": {
-            "en-US": "Not known",
-            "es": "No se sabe"
-          }
         },
         "snapshotCondition": {
           "en-US": "{title}: {condition}",
@@ -4123,21 +4043,37 @@
       }
     },
     "familyPedigree": {
+      "pointerTool": {
+        "en-US": "Add and edit",
+        "es": "Añadir y editar"
+      },
       "pointerToolDescription": {
         "en-US": "Select a family member to edit their details or add their relatives.",
         "es": "Selecciona a un familiar para editar sus datos o añadirle familiares."
+      },
+      "connectTool": {
+        "en-US": "Connect",
+        "es": "Conectar"
       },
       "connectToolDescription": {
         "en-US": "Select two family members to connect them and say how they are related.",
         "es": "Selecciona a dos familiares para conectarlos e indicar qué relación hay entre ellos."
       },
+      "connectHint": {
+        "en-US": "Select a person, then select another to connect them.",
+        "es": "Selecciona una persona y luego otra para conectarlas."
+      },
+      "disconnectTool": {
+        "en-US": "Disconnect",
+        "es": "Desconectar"
+      },
       "disconnectToolDescription": {
         "en-US": "Select two connected family members to remove the connection between them.",
         "es": "Selecciona a dos familiares conectados para eliminar la conexión entre ellos."
       },
-      "framingControlDescription": {
-        "en-US": "Choose the relationship words your family tree uses for your relatives.",
-        "es": "Elige qué términos de parentesco usa tu árbol familiar para nombrar a tus familiares."
+      "disconnectHint": {
+        "en-US": "Select a person, then select someone they are connected to, to remove that connection.",
+        "es": "Selecciona una persona y luego alguien con quien esté conectada para quitar esa conexión."
       },
       "undoDescription": {
         "en-US": "Undo your last change to your family tree.",
@@ -4152,6 +4088,32 @@
         "es": "Añade los datos obligatorios de todos los miembros de la familia"
       }
     },
+    "narrativePedigree": {
+      "keyHeading": {
+        "en-US": "Key",
+        "es": "Leyenda"
+      },
+      "hasCondition": {
+        "en-US": "Has this condition",
+        "es": "Tiene esta afección"
+      },
+      "willDevelop": {
+        "en-US": "Will develop this condition",
+        "es": "Desarrollará esta afección"
+      },
+      "carries": {
+        "en-US": "Carries this condition",
+        "es": "Es portador/a de esta afección"
+      },
+      "notKnown": {
+        "en-US": "Not known",
+        "es": "No se sabe"
+      },
+      "clearFocus": {
+        "en-US": "Clear focus",
+        "es": "Quitar el foco"
+      }
+    },
     "categoricalBin": {
       "placeHere": {
         "en-US": "Place here",
@@ -4159,25 +4121,59 @@
       }
     },
     "quickAdd": {
-      "addNamePlaceholder": {
-        "en-US": "Type a name, then press Enter",
-        "es": "Escribe un nombre y pulsa Intro"
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished.",
+        "es": "Pulsa Intro cuando hayas terminado."
       }
     },
     "roster": {
-      "unnamedNumbered": {
-        "en-US": "Unnamed {count}",
-        "es": "Sin nombre {count}"
-      },
       "dropToRemove": {
         "en-US": "Drop here to remove",
         "es": "Suelta aquí para quitar"
       }
     },
     "networkComposer": {
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter",
+        "es": "Escribe un nombre y pulsa Intro"
+      },
+      "overtakenEditNotice": {
+        "en-US": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.",
+        "es": "Deshacer o rehacer cambió una respuesta mientras la editabas, así que tu cambio no se ha guardado. Para conservarlo, vuelve a cambiar esa respuesta. Si continúas, se perderá tu cambio."
+      },
+      "addNodeTooltip": {
+        "en-US": "Add node",
+        "es": "Añadir un elemento"
+      },
+      "automaticLayoutTooltip": {
+        "en-US": "Automatic layout",
+        "es": "Disposición automática"
+      },
       "connection": {
         "en-US": "Connection",
         "es": "Conexión"
+      }
+    },
+    "narrative": {
+      "toggleDrawing": {
+        "en-US": "Toggle drawing"
+      },
+      "toggleFreezing": {
+        "en-US": "Toggle freezing annotations"
+      },
+      "resetAnnotations": {
+        "en-US": "Reset annotations",
+        "es": "Restablecer las anotaciones"
+      }
+    },
+    "geospatial": {
+      "offlineNotice": {
+        "en-US": "You are offline — the map will not load until you reconnect.",
+        "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte."
+      },
+      "mapUnavailable": {
+        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
+        "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance."
       }
     },
     "egoForm": {

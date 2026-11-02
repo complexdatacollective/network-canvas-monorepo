@@ -1098,54 +1098,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth, participant marker or relationship to the participant) or as the attribute a nomination prompt sets.',
   },
-  wordingPointerTool: {
-    id: 'protocolBuilder.pedigree.wording.pointerTool',
-    defaultMessage: 'Pointer tool button',
-    description:
-      'Label of the button that selects and moves people on the family tree.',
-  },
-  wordingConnectTool: {
-    id: 'protocolBuilder.pedigree.wording.connectTool',
-    defaultMessage: 'Connect tool button',
-    description:
-      'Label of the button that connects two people on the family tree.',
-  },
-  wordingDisconnectTool: {
-    id: 'protocolBuilder.pedigree.wording.disconnectTool',
-    defaultMessage: 'Disconnect tool button',
-    description:
-      'Label of the button that removes a connection between two people on the family tree.',
-  },
-  wordingConnectHint: {
-    id: 'protocolBuilder.pedigree.wording.connectHint',
-    defaultMessage: 'Connect hint',
-    description:
-      'Label of the hint shown while the participant chooses the first person to connect.',
-  },
-  wordingDisconnectHint: {
-    id: 'protocolBuilder.pedigree.wording.disconnectHint',
-    defaultMessage: 'Disconnect hint',
-    description:
-      'Label of the hint shown while the participant chooses a connection to remove.',
-  },
-  wordingFramingChoiceTitle: {
-    id: 'protocolBuilder.pedigree.wording.framingChoiceTitle',
-    defaultMessage: 'Wording question',
-    description:
-      'Label of the question asking which words to use for family members. Shown only when participants choose the words.',
-  },
-  wordingFramingChoiceDescription: {
-    id: 'protocolBuilder.pedigree.wording.framingChoiceDescription',
-    defaultMessage: 'Wording question explanation',
-    description:
-      'Label of the explanation under the question asking which words to use for family members.',
-  },
-  wordingFramingControlLabel: {
-    id: 'protocolBuilder.pedigree.wording.framingControlLabel',
-    defaultMessage: 'Wording control label',
-    description:
-      'Label of the control that lets the participant change the words used for family members.',
-  },
   wordingPlaceholderParentsNote: {
     id: 'protocolBuilder.pedigree.wording.placeholderParentsNote',
     defaultMessage: 'Note about added parents',

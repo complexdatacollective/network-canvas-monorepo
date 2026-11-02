@@ -1189,21 +1189,9 @@ describe('v8 to v9 Narrative Pedigree migration', () => {
       showAtRiskStatuses: true,
       // The wording Network Canvas supplies, written in the protocol's only
       // language.
-      keyHeading: { en: 'Key' },
       saveSnapshot: { en: 'Save snapshot' },
-      tooltips: {
-        clearFocus: { en: 'Clear focus' },
-      },
       conditionText: {
         selectCondition: { en: 'Select a condition' },
-        notation: {
-          affected: { en: 'Has this condition' },
-          obligateAffected: { en: 'Will develop this condition' },
-          obligateCarrier: { en: 'Carries this condition' },
-          atRiskAffected: { en: 'May develop this condition' },
-          atRiskCarrier: { en: 'May carry this condition' },
-          unknown: { en: 'Not known' },
-        },
         snapshotCondition: { en: '{title}: {condition}' },
         snapshotInheritance: {
           en: '{title}: {condition} — inheritance for {name}',

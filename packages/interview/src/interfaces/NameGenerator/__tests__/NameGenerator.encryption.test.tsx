@@ -82,7 +82,7 @@ const quickAddStages: Stages = [
   {
     id: 'quick-add',
     type: 'NameGeneratorQuickAdd',
-    quickAddHint: { en: 'Press Enter when you are finished.' },
+    addNamePlaceholder: { en: 'Type a name, then press Enter' },
     label: { en: 'Quick add' },
     subject: { entity: 'node', type: NODE_TYPE },
     quickAdd: asEntityAttributeReference('name'),

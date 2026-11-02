@@ -558,13 +558,18 @@
             }
           ]
         },
-        "destination": { "type": "stage", "stageId": "finish-declined" }
+        "destination": {
+          "type": "stage",
+          "stageId": "finish-declined"
+        }
       },
       "introductionPanel": {
         "title": {
           "en-US": "A little about you"
         },
-        "text": { "en-US": "A few short questions before we start on the map." }
+        "text": {
+          "en-US": "A few short questions before we start on the map."
+        }
       },
       "form": {
         "fields": [
@@ -619,9 +624,6 @@
         "childKindLabel": {
           "en-US": "Is this child…"
         },
-        "connectHint": {
-          "en-US": "Select a person, then select another to connect them."
-        },
         "connectParent": {
           "en-US": "{parentIsYou, select, true {You are a parent of {child}} other {{childIsYou, select, true {{parent} is your parent} other {{parent} is a parent of {child}}}}}"
         },
@@ -636,9 +638,6 @@
         },
         "disconnectConfirmTitle": {
           "en-US": "{firstIsYou, select, true {Remove the connection between you and {second}?} other {Remove the connection between {first} and {second}?}}"
-        },
-        "disconnectHint": {
-          "en-US": "Select a person, then select someone they are connected to, to remove that connection."
         },
         "disconnectWouldCutOff": {
           "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}"
@@ -720,15 +719,6 @@
         },
         "you": {
           "en-US": "You"
-        },
-        "connectTool": {
-          "en-US": "Connect"
-        },
-        "disconnectTool": {
-          "en-US": "Disconnect"
-        },
-        "pointerTool": {
-          "en-US": "Add and edit"
         },
         "changeWouldCutOff": {
           "en-US": "{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}"
@@ -876,10 +866,14 @@
         "egoAttribute": "is_ego"
       },
       "dynamicValues": {
-        "nodeLabel": { "path": "node.$label" },
+        "nodeLabel": {
+          "path": "node.$label"
+        },
         "isParticipant": {
           "path": "node.$isParticipant",
-          "cases": { "participant": true }
+          "cases": {
+            "participant": true
+          }
         }
       },
       "edgeConfiguration": {
@@ -945,9 +939,6 @@
     },
     {
       "id": "ng-non-kin",
-      "quickAddHint": {
-        "en-US": "Press Enter when you are finished."
-      },
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en-US": "People in your life"
@@ -1041,11 +1032,18 @@
             }
           ]
         }
-      ]
+      ],
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      }
     },
     {
       "id": "bin-tie-type",
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "type": "CategoricalBin",
       "label": {
         "en-US": "How you know each person"
@@ -1392,23 +1390,6 @@
       "linksHeading": {
         "en-US": "Links"
       },
-      "tooltips": {
-        "enableDrawing": {
-          "en-US": "Enable drawing"
-        },
-        "disableDrawing": {
-          "en-US": "Disable drawing"
-        },
-        "freezeAnnotations": {
-          "en-US": "Freeze annotations"
-        },
-        "unfreezeAnnotations": {
-          "en-US": "Unfreeze annotations"
-        },
-        "resetAnnotations": {
-          "en-US": "Reset annotations"
-        }
-      },
       "type": "Narrative",
       "label": {
         "en-US": "The completed map"
@@ -1543,34 +1524,12 @@
     },
     {
       "id": "narrative-pedigree",
-      "keyHeading": {
-        "en-US": "Key"
-      },
       "saveSnapshot": {
         "en-US": "Save snapshot"
-      },
-      "tooltips": {
-        "clearFocus": {
-          "en-US": "Clear focus"
-        }
       },
       "conditionText": {
         "selectCondition": {
           "en-US": "Select a condition"
-        },
-        "notation": {
-          "affected": {
-            "en-US": "Has this condition"
-          },
-          "obligateAffected": {
-            "en-US": "Will develop this condition"
-          },
-          "obligateCarrier": {
-            "en-US": "Carries this condition"
-          },
-          "unknown": {
-            "en-US": "Not known"
-          }
         },
         "snapshotCondition": {
           "en-US": "{title}: {condition}"
@@ -1619,7 +1578,9 @@
     },
     {
       "id": "finish",
-      "finishLabel": { "en-US": "Finish" },
+      "finishLabel": {
+        "en-US": "Finish"
+      },
       "finishConfirmation": {
         "en-US": "Are you sure you want to finish the interview?"
       },
@@ -1628,7 +1589,9 @@
       },
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": { "en-US": "Finish Interview" },
+      "label": {
+        "en-US": "Finish Interview"
+      },
       "content": {
         "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
@@ -1819,17 +1782,29 @@
       }
     },
     "familyPedigree": {
+      "pointerTool": {
+        "en-US": "Add and edit"
+      },
       "pointerToolDescription": {
         "en-US": "Select a family member to edit their details or add their relatives."
+      },
+      "connectTool": {
+        "en-US": "Connect"
       },
       "connectToolDescription": {
         "en-US": "Select two family members to connect them and say how they are related."
       },
+      "connectHint": {
+        "en-US": "Select a person, then select another to connect them."
+      },
+      "disconnectTool": {
+        "en-US": "Disconnect"
+      },
       "disconnectToolDescription": {
         "en-US": "Select two connected family members to remove the connection between them."
       },
-      "framingControlDescription": {
-        "en-US": "Choose the relationship words your family tree uses for your relatives."
+      "disconnectHint": {
+        "en-US": "Select a person, then select someone they are connected to, to remove that connection."
       },
       "undoDescription": {
         "en-US": "Undo your last change to your family tree."
@@ -1841,14 +1816,45 @@
         "en-US": "Add required details for all family members"
       }
     },
+    "narrativePedigree": {
+      "keyHeading": {
+        "en-US": "Key"
+      },
+      "hasCondition": {
+        "en-US": "Has this condition"
+      },
+      "willDevelop": {
+        "en-US": "Will develop this condition"
+      },
+      "carries": {
+        "en-US": "Carries this condition"
+      },
+      "notKnown": {
+        "en-US": "Not known"
+      },
+      "clearFocus": {
+        "en-US": "Clear focus"
+      }
+    },
     "categoricalBin": {
       "placeHere": {
         "en-US": "Place here"
       }
     },
     "quickAdd": {
-      "addNamePlaceholder": {
-        "en-US": "Type a name, then press Enter"
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      }
+    },
+    "narrative": {
+      "toggleDrawing": {
+        "en-US": "Toggle drawing"
+      },
+      "toggleFreezing": {
+        "en-US": "Toggle freezing annotations"
+      },
+      "resetAnnotations": {
+        "en-US": "Reset annotations"
       }
     },
     "egoForm": {

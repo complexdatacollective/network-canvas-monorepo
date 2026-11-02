@@ -311,53 +311,59 @@ describe('the Family Pedigree wording Network Canvas supplies', () => {
 describe('which supplied settings apply to a stage', () => {
   it('applies a setting with no condition to every stage of its type', () => {
     expect(
-      suppliedStageSettingApplies({ type: 'NetworkComposer' }, [
+      suppliedStageSettingApplies({ type: 'NameGeneratorQuickAdd' }, [
         'addNamePlaceholder',
       ]),
     ).toBe(true);
   });
 
-  it('applies a Network Composer groups heading only once the stage has groups', () => {
+  it('applies a Narrative groups heading only once a preset has groups', () => {
     expect(
-      suppliedStageSettingApplies({ type: 'NetworkComposer' }, [
+      suppliedStageSettingApplies({ type: 'Narrative', presets: [{}] }, [
         'groupsHeading',
       ]),
     ).toBe(false);
     expect(
       suppliedStageSettingApplies(
-        { type: 'NetworkComposer', convexHullVariable: 'contactType' },
+        { type: 'Narrative', presets: [{ groupVariable: 'contactType' }] },
         ['groupsHeading'],
       ),
     ).toBe(true);
   });
 
-  it('applies a drawing tooltip only while the stage’s free drawing is on', () => {
-    const path = ['tooltips', 'enableDrawing'];
+  it('applies a maximum notice only while the stage has a maximum', () => {
+    const path = ['maxNodesNotice'];
     expect(
       suppliedStageSettingApplies(
-        { type: 'Narrative', behaviours: { freeDraw: true } },
+        { type: 'NameGenerator', behaviours: { maxNodes: 3 } },
         path,
       ),
     ).toBe(true);
     expect(
       suppliedStageSettingApplies(
-        { type: 'Narrative', behaviours: { freeDraw: false } },
+        { type: 'NameGenerator', behaviours: {} },
         path,
       ),
     ).toBe(false);
   });
 
-  it('applies an at-risk notation only when the Narrative Pedigree shows at-risk statuses', () => {
-    const path = ['conditionText', 'notation', 'atRiskAffected'];
+  it('applies the unplaced notice only while a bin stage requires every node placed', () => {
+    const path = ['unplacedNodesNotice'];
     expect(
       suppliedStageSettingApplies(
-        { type: 'NarrativePedigree', showAtRiskStatuses: false },
+        {
+          type: 'CategoricalBin',
+          behaviours: { requireCompletePlacement: false },
+        },
         path,
       ),
     ).toBe(false);
     expect(
       suppliedStageSettingApplies(
-        { type: 'NarrativePedigree', showAtRiskStatuses: true },
+        {
+          type: 'CategoricalBin',
+          behaviours: { requireCompletePlacement: true },
+        },
         path,
       ),
     ).toBe(true);
@@ -371,37 +377,31 @@ describe('which supplied settings apply to a stage', () => {
 });
 
 describe('the settings a stage holds but no longer shows', () => {
-  const tooltips = {
-    enableDrawing: { en: 'Draw' },
-    disableDrawing: { en: 'Stop drawing' },
+  const notices = {
+    minNodesNotice: { en: 'Add {count, plural, one {# more} other {# more}}' },
+    maxNodesNotice: { en: 'That is everyone' },
   };
 
   it('are the conditional ones whose configuration is off', () => {
     expect(
       inapplicableStageSettings({
-        type: 'Narrative',
-        behaviours: { freeDraw: false },
-        tooltips,
+        type: 'NameGenerator',
+        behaviours: {},
+        ...notices,
       }),
-    ).toEqual([
-      ['tooltips', 'enableDrawing'],
-      ['tooltips', 'disableDrawing'],
-    ]);
+    ).toEqual([['minNodesNotice'], ['maxNodesNotice']]);
   });
 
   it('leave out a setting whose configuration is on, or one the stage lacks', () => {
     expect(
       inapplicableStageSettings({
-        type: 'Narrative',
-        behaviours: { freeDraw: true },
-        tooltips,
+        type: 'NameGenerator',
+        behaviours: { minNodes: 1, maxNodes: 3 },
+        ...notices,
       }),
     ).toEqual([]);
     expect(
-      inapplicableStageSettings({
-        type: 'Narrative',
-        behaviours: { freeDraw: false },
-      }),
+      inapplicableStageSettings({ type: 'NameGenerator', behaviours: {} }),
     ).toEqual([]);
   });
 });

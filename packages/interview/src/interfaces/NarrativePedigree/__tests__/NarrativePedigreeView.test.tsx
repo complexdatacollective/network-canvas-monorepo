@@ -26,7 +26,10 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
-import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import {
+  suppliedInterfaceText,
+  TestProtocolLocalization,
+} from '../../__tests__/TestProtocolLocalization';
 import { encryptionFor } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { installEncryptionKey } from '../../Anonymisation/unlockEncryption';
 import { encryptedPerson } from '../../FamilyPedigree/__tests__/fixtures';
@@ -352,18 +355,22 @@ function renderView(options: StoreOptions = {}, locale = 'en') {
   const store = makeStore({ ...options, narrativeStage: stage });
 
   // The participant's stated locale reaches the protocol's localization, so
-  // the stage's own words resolve in it, as they do in the Shell.
+  // the stage's own words resolve in it, as they do in the Shell, and so do
+  // the words every Narrative Pedigree shows alike (the protocol's interface
+  // text).
+  const interfaceText = suppliedInterfaceText(ENGLISH_AND_SPANISH, [stage]);
   const view = (requestedLocale: string) => (
     <Provider store={store}>
       <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-        <TestProtocolLocalization
-          localization={ENGLISH_AND_SPANISH}
-          locale={requestedLocale}
-        >
-          <InterviewI18nProvider>
+        <InterviewI18nProvider>
+          <TestProtocolLocalization
+            localization={ENGLISH_AND_SPANISH}
+            locale={requestedLocale}
+            interfaceText={interfaceText}
+          >
             <NarrativePedigreeView stage={stage} />
-          </InterviewI18nProvider>
-        </TestProtocolLocalization>
+          </TestProtocolLocalization>
+        </InterviewI18nProvider>
       </CurrentStepProvider>
     </Provider>
   );
@@ -919,7 +926,7 @@ function renderCousinView(showAtRiskStatuses = true) {
       label: { en: 'Cousin Union Disease Pedigree' },
       sourceStageId: SOURCE_STAGE_ID,
       showAtRiskStatuses,
-      ...narrativePedigreeWords({ atRisk: showAtRiskStatuses }),
+      ...narrativePedigreeWords(),
       diseases: [
         {
           id: 'ar',

@@ -11,10 +11,7 @@
           "name": "activity_minutes_week",
           "type": "number",
           "component": "Number",
-          "validation": {
-            "minValue": 0,
-            "maxValue": 10080
-          }
+          "validation": { "minValue": 0, "maxValue": 10080 }
         },
         "smoking_status": {
           "name": "smoking_status",
@@ -40,9 +37,7 @@
               "value": "never"
             }
           ],
-          "validation": {
-            "required": true
-          }
+          "validation": { "required": true }
         },
         "vaping_status": {
           "name": "vaping_status",
@@ -57,9 +52,7 @@
             },
             { "label": { "en-US": "I have never vaped" }, "value": "never" }
           ],
-          "validation": {
-            "required": true
-          }
+          "validation": { "required": true }
         },
         "diet_quality": {
           "name": "diet_quality",
@@ -72,9 +65,7 @@
             { "label": { "en-US": "Very good" }, "value": 4 },
             { "label": { "en-US": "Excellent" }, "value": 5 }
           ],
-          "validation": {
-            "required": true
-          }
+          "validation": { "required": true }
         },
         "alcohol_frequency": {
           "name": "alcohol_frequency",
@@ -87,9 +78,7 @@
             { "label": { "en-US": "2 to 3 times a week" }, "value": 3 },
             { "label": { "en-US": "4 or more times a week" }, "value": 4 }
           ],
-          "validation": {
-            "required": true
-          }
+          "validation": { "required": true }
         }
       }
     },
@@ -104,10 +93,7 @@
             "name": "alter_name",
             "type": "text",
             "component": "Text",
-            "validation": {
-              "required": true,
-              "unique": true
-            }
+            "validation": { "required": true, "unique": true }
           },
           "relationship": {
             "name": "relationship",
@@ -200,23 +186,13 @@
                 "value": "drink"
               }
             ],
-            "validation": {
-              "minSelected": 1
-            }
+            "validation": { "minSelected": 1 }
           },
-          "layout": {
-            "name": "layout",
-            "type": "layout"
-          }
+          "layout": { "name": "layout", "type": "layout" }
         }
       }
     },
-    "edge": {
-      "knows": {
-        "name": "Knows",
-        "color": "edge-color-seq-1"
-      }
-    }
+    "edge": { "knows": { "name": "Knows", "color": "edge-color-seq-1" } }
   },
   "stages": [
     {
@@ -252,13 +228,9 @@
     {
       "id": "ego-behaviours",
       "type": "EgoForm",
-      "label": {
-        "en-US": "Your own behaviours"
-      },
+      "label": { "en-US": "Your own behaviours" },
       "introductionPanel": {
-        "title": {
-          "en-US": "About you"
-        },
+        "title": { "en-US": "About you" },
         "text": {
           "en-US": "First, a few questions about **your own** everyday behaviours. There are no right or wrong answers. Your responses give us a reference point for understanding the people you will tell us about later."
         }
@@ -306,10 +278,7 @@
       "type": "NameGenerator",
       "label": { "en-US": "People you share behaviours with" },
       "interviewScript": "Each prompt asks about a different shared activity. The same person can take part in several of these activities; when they do, add them once and then select them from the panel of people already mentioned for the other prompts, rather than typing their name again.",
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "subject": { "entity": "node", "type": "person" },
       "form": {
         "title": { "en-US": "Add Person" },
         "fields": [
@@ -358,12 +327,8 @@
     {
       "id": "alter-behaviours-introduction",
       "type": "Information",
-      "label": {
-        "en-US": "About each person"
-      },
-      "title": {
-        "en-US": "About each person"
-      },
+      "label": { "en-US": "About each person" },
+      "title": { "en-US": "About each person" },
       "items": [
         {
           "id": "introduction-text",
@@ -379,10 +344,7 @@
       "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "type": "AlterForm",
       "label": { "en-US": "Their behaviours" },
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "subject": { "entity": "node", "type": "person" },
       "form": {
         "fields": [
           {
@@ -427,10 +389,7 @@
       "id": "ordbin-closeness",
       "type": "OrdinalBin",
       "label": { "en-US": "How close you are" },
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "subject": { "entity": "node", "type": "person" },
       "prompts": [
         {
           "id": "p-closeness",
@@ -444,32 +403,10 @@
     },
     {
       "id": "narrative-clustering",
-      "groupsHeading": {
-        "en-US": "Groups"
-      },
-      "tooltips": {
-        "enableDrawing": {
-          "en-US": "Enable drawing"
-        },
-        "disableDrawing": {
-          "en-US": "Disable drawing"
-        },
-        "freezeAnnotations": {
-          "en-US": "Freeze annotations"
-        },
-        "unfreezeAnnotations": {
-          "en-US": "Unfreeze annotations"
-        },
-        "resetAnnotations": {
-          "en-US": "Reset annotations"
-        }
-      },
+      "groupsHeading": { "en-US": "Groups" },
       "type": "Narrative",
       "label": { "en-US": "Review behavioural clustering" },
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "subject": { "entity": "node", "type": "person" },
       "behaviours": {
         "automaticLayout": true,
         "allowRepositioning": true,
@@ -498,10 +435,7 @@
           "highlight": []
         }
       ],
-      "background": {
-        "concentricCircles": 3,
-        "skewedTowardCenter": true
-      }
+      "background": { "concentricCircles": 3, "skewedTowardCenter": true }
     },
     {
       "id": "finish",
@@ -526,109 +460,59 @@
   ],
   "interfaceText": {
     "navigation": {
-      "exitInterview": {
-        "en-US": "Exit interview"
-      },
+      "exitInterview": { "en-US": "Exit interview" },
       "exitInterviewDescription": {
         "en-US": "Your answers so far will be saved and you can continue later."
       },
-      "back": {
-        "en-US": "Back"
-      },
-      "continue": {
-        "en-US": "Continue"
-      },
+      "back": { "en-US": "Back" },
+      "continue": { "en-US": "Continue" },
       "exitFailed": {
         "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
       }
     },
     "interviewer": {
-      "exitReview": {
-        "en-US": "Exit review"
-      },
-      "exitReviewTitle": {
-        "en-US": "Exit this review?"
-      },
+      "exitReview": { "en-US": "Exit review" },
+      "exitReviewTitle": { "en-US": "Exit this review?" },
       "exitReviewDescription": {
         "en-US": "Changes made during this review will not be saved."
       },
-      "hiddenScreen": {
-        "en-US": "Hidden by answers"
-      },
-      "outsidePath": {
-        "en-US": "Outside current path"
-      },
-      "showScreenTitle": {
-        "en-US": "Show this screen?"
-      },
+      "hiddenScreen": { "en-US": "Hidden by answers" },
+      "outsidePath": { "en-US": "Outside current path" },
+      "showScreenTitle": { "en-US": "Show this screen?" },
       "hiddenScreenDescription": {
         "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
       },
       "outsidePathDescription": {
         "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
       },
-      "showScreen": {
-        "en-US": "Show screen"
-      }
+      "showScreen": { "en-US": "Show screen" }
     },
     "buttons": {
-      "cancel": {
-        "en-US": "Cancel"
-      },
-      "done": {
-        "en-US": "Done"
-      },
-      "delete": {
-        "en-US": "Delete"
-      },
-      "yes": {
-        "en-US": "Yes"
-      },
-      "no": {
-        "en-US": "No"
-      },
-      "pauseLayout": {
-        "en-US": "Pause automatic layout"
-      },
-      "resumeLayout": {
-        "en-US": "Resume automatic layout"
-      },
-      "copy": {
-        "en-US": "Copy"
-      },
-      "copied": {
-        "en-US": "Copied"
-      }
+      "cancel": { "en-US": "Cancel" },
+      "done": { "en-US": "Done" },
+      "delete": { "en-US": "Delete" },
+      "yes": { "en-US": "Yes" },
+      "no": { "en-US": "No" },
+      "pauseLayout": { "en-US": "Pause automatic layout" },
+      "resumeLayout": { "en-US": "Resume automatic layout" },
+      "copy": { "en-US": "Copy" },
+      "copied": { "en-US": "Copied" }
     },
     "messages": {
       "stageError": {
         "en-US": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "itemUnavailable": {
-        "en-US": "This item could not be displayed."
-      },
-      "error": {
-        "en-US": "An error occurred."
-      },
-      "loading": {
-        "en-US": "Loading…"
-      },
-      "unnamed": {
-        "en-US": "Unnamed"
-      }
+      "itemUnavailable": { "en-US": "This item could not be displayed." },
+      "error": { "en-US": "An error occurred." },
+      "loading": { "en-US": "Loading…" },
+      "unnamed": { "en-US": "Unnamed" }
     },
     "search": {
-      "searchLabel": {
-        "en-US": "Search"
-      },
-      "searchNoMatch": {
-        "en-US": "Nothing matched your search term."
-      }
+      "searchLabel": { "en-US": "Search" },
+      "searchNoMatch": { "en-US": "Nothing matched your search term." }
     },
     "forms": {
-      "discardChangesTitle": {
-        "en-US": "Discard changes?"
-      },
+      "discardChangesTitle": { "en-US": "Discard changes?" },
       "discardChangesDescription": {
         "en-US": "Do you want to discard your changes?"
       }
@@ -637,23 +521,20 @@
       "required": {
         "en-US": "You must answer this question before continuing."
       },
-      "minValue": {
-        "en-US": "Enter a value greater than or equal to {min}."
-      },
-      "maxValue": {
-        "en-US": "Enter a value less than or equal to {max}."
-      },
+      "minValue": { "en-US": "Enter a value greater than or equal to {min}." },
+      "maxValue": { "en-US": "Enter a value less than or equal to {max}." },
       "minSelected": {
         "en-US": "{count, plural, one {Select at least # value.} other {Select at least # values.}}"
       },
-      "unique": {
-        "en-US": "Must be unique."
-      }
+      "unique": { "en-US": "Must be unique." }
+    },
+    "narrative": {
+      "toggleDrawing": { "en-US": "Toggle drawing" },
+      "toggleFreezing": { "en-US": "Toggle freezing annotations" },
+      "resetAnnotations": { "en-US": "Reset annotations" }
     },
     "egoForm": {
-      "scrollForQuestions": {
-        "en-US": "Scroll to see more questions"
-      }
+      "scrollForQuestions": { "en-US": "Scroll to see more questions" }
     }
   }
 }

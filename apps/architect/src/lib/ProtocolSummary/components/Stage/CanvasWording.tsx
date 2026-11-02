@@ -2,7 +2,6 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { narrativePedigreeMessages } from '@codaco/protocol-builder/editors/narrative-pedigree/narrativePedigreeMessages';
 import { narrativeWordingMessages } from '@codaco/protocol-builder/editors/narrative/narrativeWordingMessages';
-import { composerMessages } from '@codaco/protocol-builder/editors/network-composer/composerMessages';
 import { stageWordingMessages } from '@codaco/protocol-builder/sections/supplied-wording/stageWordingMessages';
 import {
   type LocalizedString,
@@ -33,28 +32,10 @@ const wording = (
 /**
  * The stage types whose words Network Canvas supplies, with the settings the
  * editor's Customize built-in wording section offers, in the editor's order.
+ * Words every stage of a type shows alike are the protocol's interface text,
+ * which the summary shows once.
  */
 const WORDING: Partial<Record<string, WordingSpec>> = {
-  NetworkComposer: wording(stageWordingMessages.title, [
-    {
-      path: 'addNamePlaceholder',
-      label: composerMessages.addNamePlaceholderLabel,
-    },
-    {
-      path: 'overtakenEditNotice',
-      label: composerMessages.overtakenEditNoticeLabel,
-    },
-    { path: 'groupsHeading', label: composerMessages.groupsHeadingLabel },
-    { path: 'tooltips.addPerson', label: composerMessages.addNodeTooltipLabel },
-    {
-      path: 'tooltips.automaticLayout',
-      label: composerMessages.automaticLayoutTooltipLabel,
-    },
-    {
-      path: 'tooltips.drawConnection',
-      label: composerMessages.drawConnectionTooltipLabel,
-    },
-  ]),
   Narrative: wording(stageWordingMessages.title, [
     {
       path: 'attributesHeading',
@@ -65,64 +46,15 @@ const WORDING: Partial<Record<string, WordingSpec>> = {
       path: 'groupsHeading',
       label: narrativeWordingMessages.groupsHeadingLabel,
     },
-    {
-      path: 'tooltips.enableDrawing',
-      label: narrativeWordingMessages.enableDrawingTooltipLabel,
-    },
-    {
-      path: 'tooltips.disableDrawing',
-      label: narrativeWordingMessages.disableDrawingTooltipLabel,
-    },
-    {
-      path: 'tooltips.freezeAnnotations',
-      label: narrativeWordingMessages.freezeAnnotationsTooltipLabel,
-    },
-    {
-      path: 'tooltips.unfreezeAnnotations',
-      label: narrativeWordingMessages.unfreezeAnnotationsTooltipLabel,
-    },
-    {
-      path: 'tooltips.resetAnnotations',
-      label: narrativeWordingMessages.resetAnnotationsTooltipLabel,
-    },
   ]),
   NarrativePedigree: wording(stageWordingMessages.title, [
-    { path: 'keyHeading', label: narrativePedigreeMessages.keyHeadingLabel },
     {
       path: 'saveSnapshot',
       label: narrativePedigreeMessages.saveSnapshotButtonLabel,
     },
     {
-      path: 'tooltips.clearFocus',
-      label: narrativePedigreeMessages.clearFocusTooltipLabel,
-    },
-    {
       path: 'conditionText.selectCondition',
       label: narrativePedigreeMessages.selectConditionLabel,
-    },
-    {
-      path: 'conditionText.notation.affected',
-      label: narrativePedigreeMessages.affectedNotationLabel,
-    },
-    {
-      path: 'conditionText.notation.obligateAffected',
-      label: narrativePedigreeMessages.obligateAffectedNotationLabel,
-    },
-    {
-      path: 'conditionText.notation.obligateCarrier',
-      label: narrativePedigreeMessages.obligateCarrierNotationLabel,
-    },
-    {
-      path: 'conditionText.notation.atRiskAffected',
-      label: narrativePedigreeMessages.atRiskAffectedNotationLabel,
-    },
-    {
-      path: 'conditionText.notation.atRiskCarrier',
-      label: narrativePedigreeMessages.atRiskCarrierNotationLabel,
-    },
-    {
-      path: 'conditionText.notation.unknown',
-      label: narrativePedigreeMessages.unknownNotationLabel,
     },
     {
       path: 'conditionText.snapshotCondition',

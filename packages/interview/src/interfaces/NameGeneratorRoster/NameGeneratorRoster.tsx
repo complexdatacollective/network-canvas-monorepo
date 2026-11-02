@@ -44,10 +44,12 @@ import { DynamicTextParts } from '../../dynamicValues/DynamicText';
 import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { useStageSubjectName } from '../../hooks/useStageSubjectName';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import {
   useLocalizedString,
   useContentLocale,
+  useResolveLocalizedMessage,
   useResolveLocalizedString,
 } from '../../localization/ProtocolLocalizationProvider';
 import { getNodeVariables } from '../../selectors/interface';
@@ -117,7 +119,11 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     ) : (
       <DynamicTextParts parts={panelTitleParts} />
     );
-  const { text: allAddedNotice } = useLocalizedString(stage.allAddedNotice);
+  const subject = useStageSubjectName();
+  const resolveMessage = useResolveLocalizedMessage();
+  const allAddedNotice = resolveMessage(stage.allAddedNotice, {
+    subject,
+  }).text;
   // The protocol's interface text words the search (`search.searchLabel`).
   const searchLabel = intl.formatMessage(commonMessages.search);
 
@@ -527,7 +533,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                     dropTargetId={sourceDropTargetId}
                     nodeColor={dropNodeColor}
                     nodeShape={nodeTypeDefinition?.shape.default}
-                    message={intl.formatMessage(runtimeMessages.dropToRemove)}
+                    message={intl.formatMessage(runtimeMessages.dropToRemove, {
+                      subject,
+                    })}
                   />
                 )}
               </AnimatePresence>

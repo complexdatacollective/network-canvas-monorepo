@@ -33,10 +33,7 @@ import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
-import {
-  useOptionalLocalizedText,
-  useResolveLocalizedString,
-} from '../../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -111,17 +108,18 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const { currentStep } = useCurrentStep();
   const shouldReduceMotion = usePrefersReducedMotion();
   const resolve = useResolveLocalizedString();
-  const drawConnectionText = useOptionalLocalizedText(
-    stage.tooltips.drawConnection,
-  );
-  const groupsText = useOptionalLocalizedText(stage.groupsHeading);
-  // The stage's own words for its tools (`stage-wording/network-composer.ts`).
+  // The words every Network Composer shows alike, which the protocol holds
+  // as interface text (`interface-text-wording.ts`).
   const toolWords: ComposerToolWords = {
-    addNamePlaceholder: resolve(stage.addNamePlaceholder).text,
-    addPerson: resolve(stage.tooltips.addPerson).text,
-    automaticLayout: resolve(stage.tooltips.automaticLayout).text,
-    drawConnection: drawConnectionText,
-    groups: groupsText,
+    addNamePlaceholder: intl.formatMessage(
+      interfaceMessages.addNamePlaceholder,
+    ),
+    addPerson: intl.formatMessage(interfaceMessages.composerAddNode),
+    automaticLayout: intl.formatMessage(
+      interfaceMessages.composerAutomaticLayout,
+    ),
+    drawConnection: intl.formatMessage(interfaceMessages.composerDrawEdge),
+    groups: intl.formatMessage(interfaceMessages.composerGroups),
   };
 
   const layoutVariable = stage.layoutVariable;
@@ -846,7 +844,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
               composerStore.getState().deselectDeleted();
             }}
             guardDraft={composerStore.getState().guardDraft}
-            overtakenEditNotice={resolve(stage.overtakenEditNotice).text}
+            overtakenEditNotice={intl.formatMessage(
+              interfaceMessages.overtakenEditNotice,
+            )}
           />
         )}
       </ComposerDrawer>

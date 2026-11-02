@@ -180,9 +180,11 @@ export const localizedString = (
     /**
      * Let the text show the stage's dynamic values, and say where it sits,
      * which decides which ones (see `DynamicValueSite`). Only stage-owned
-     * participant text a researcher writes may: never a stage label, which
-     * shows outside the stage, codebook text reused across stages, or wording
-     * Network Canvas supplies. Each translation is checked here only for what
+     * participant text may: never a stage label, which shows outside the
+     * stage, or codebook text reused across stages. Wording Network Canvas
+     * supplies may, where a researcher may want to show a value in its place
+     * (the participant's own label on a Family Pedigree), but its supplied
+     * wording never does. Each translation is checked here only for what
      * needs no stage; which values it shows, and how, is checked against the
      * stage's bindings by the protocol (`findDynamicValueProblems`).
      */

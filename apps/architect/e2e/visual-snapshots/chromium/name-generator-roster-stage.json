@@ -22,5 +22,8 @@
     "entity": "node",
     "type": "id-3"
   },
-  "type": "NameGeneratorRoster"
+  "type": "NameGeneratorRoster",
+  "unnamedLabel": {
+    "en": "Unnamed {count}"
+  }
 }

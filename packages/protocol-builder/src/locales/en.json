@@ -2467,14 +2467,6 @@
     "defaultMessage": "Starting zoom must be between {min, number} and {max, number}.",
     "description": "Refusal shown under the starting-zoom control when it holds a zoom level Mapbox has no such thing as. min and max are the ends of Mapbox’s own zoom scale, 0 and 22. A zoom between two whole numbers is ordinary — a map panned into place hands back a fraction — so only the ends are named."
   },
-  "protocolBuilder.geospatialWording.offlineHint": {
-    "defaultMessage": "Shown while the device is offline, because the map cannot load without a connection.",
-    "description": "Guidance under the field holding the offline message of a map."
-  },
-  "protocolBuilder.geospatialWording.offlineLabel": {
-    "defaultMessage": "Offline",
-    "description": "Label of the field holding the message shown while the device is offline and the map cannot load."
-  },
   "protocolBuilder.geospatialWording.outsideAreasHint": {
     "defaultMessage": "The button that marks a place outside the areas the map allows.",
     "description": "Guidance under the field holding the outside-areas button of a map."
@@ -2482,22 +2474,6 @@
   "protocolBuilder.geospatialWording.outsideAreasLabel": {
     "defaultMessage": "Outside selectable areas",
     "description": "Label of the field holding the button that lets the participant choose a place outside the areas the map allows."
-  },
-  "protocolBuilder.geospatialWording.searchFailedHint": {
-    "defaultMessage": "Shown when a search could not run. It does not mean the place does not exist.",
-    "description": "Guidance under the field holding the message shown when a map search could not run."
-  },
-  "protocolBuilder.geospatialWording.searchFailedLabel": {
-    "defaultMessage": "Search failed",
-    "description": "Label of the field holding the message shown when a map search could not run."
-  },
-  "protocolBuilder.geospatialWording.unavailableHint": {
-    "defaultMessage": "Shown in place of the map when it cannot be drawn, and says what to try.",
-    "description": "Guidance under the field holding the message shown when a map cannot be drawn."
-  },
-  "protocolBuilder.geospatialWording.unavailableLabel": {
-    "defaultMessage": "Map unavailable",
-    "description": "Label of the field holding the message shown when the map cannot be drawn on the participant’s device."
   },
   "protocolBuilder.integerField.notAWholeNumber": {
     "defaultMessage": "This has to be a whole number of people.",
@@ -2925,7 +2901,7 @@
   },
   "protocolBuilder.localizedMessage.placeholderCondition": {
     "defaultMessage": "Condition name",
-    "description": "Name of the placeholder, inserted into a heading, that shows the name of the condition being shown."
+    "description": "Name of the placeholder, inserted into a heading or a key entry, that shows the name of the condition being shown."
   },
   "protocolBuilder.localizedMessage.placeholderCount": {
     "defaultMessage": "Number",
@@ -2982,6 +2958,10 @@
   "protocolBuilder.localizedMessage.placeholderStandIn": {
     "defaultMessage": "Stand-in parent’s label",
     "description": "Name of the placeholder, inserted into a message, that shows the label of an unnamed parent who stands in for a parent not yet added, such as “Parent of Sam”."
+  },
+  "protocolBuilder.localizedMessage.placeholderSubject": {
+    "defaultMessage": "Node type",
+    "description": "Name of the placeholder, inserted into a message, that shows the name of the kind of node the stage is about, as the codebook names it (such as Person)."
   },
   "protocolBuilder.localizedMessage.placeholderTerm": {
     "defaultMessage": "Relationship word",
@@ -3108,12 +3088,36 @@
     "description": "Names one field of a form where a text is listed without its translation, used when the field records no attribute the codebook names. position is the field’s place in the form, counting from one."
   },
   "protocolBuilder.localizedTextNames.interfaceTextGroup": {
-    "defaultMessage": "{group, select, navigation {Interview navigation} interviewer {Interviewer controls} buttons {Buttons} messages {Messages} search {Search} passphrase {Passphrase} forms {Forms} validation {Validation messages} familyTreeView {Family tree view} familyPedigree {Family Pedigree} categoricalBin {Categorical Bin} quickAdd {Name Generator (quick add)} roster {Name Generator for Roster Data} networkComposer {Network Composer} egoForm {Ego Form} other {{group}}}",
+    "defaultMessage": "{group, select, navigation {Interview navigation} interviewer {Interviewer controls} buttons {Buttons} messages {Messages} search {Search} passphrase {Passphrase} forms {Forms} validation {Validation messages} familyTreeView {Family tree view} familyPedigree {Family Pedigree} narrativePedigree {Narrative Pedigree} categoricalBin {Categorical Bin} quickAdd {Name Generator (quick add)} roster {Name Generator for Roster Data} networkComposer {Network Composer} narrative {Narrative} geospatial {Geospatial} egoForm {Ego Form} other {{group}}}",
     "description": "Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those for moving through the interview and leaving it, those only an interviewer uses (leaving a review, showing a hidden screen), the labels of its buttons, its error messages, those of a search box, those shown when answers are protected by a passphrase, those shown with forms, or the messages that say an answer breaks one of its rules. The rest are named for the kind of stage whose every stage shows them: familyTreeView is the controls for viewing a family tree, shared by the Family Pedigree and Narrative Pedigree stages; the others are the stage types Family Pedigree, Categorical Bin, Name Generator (quick add), Name Generator for Roster Data, Network Composer and Ego Form, named as the stage type menu names them."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.addNamePlaceholder": {
-    "defaultMessage": "Placeholder in the quick-add box where the participant types a name, shown until they start typing.",
-    "description": "Hint under the setting holding the name box placeholder, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+    "defaultMessage": "Placeholder in the box where the interviewer types a new node’s name, shown until they start typing.",
+    "description": "Hint under the setting holding the name box placeholder, among the words every Network Composer stage shares, in the Customize built-in wording section of its stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.addNodeTooltip": {
+    "defaultMessage": "Tooltip for the tool that adds a node to the canvas.",
+    "description": "Hint under the setting holding the add node tooltip, among the words every Network Composer stage shares, in the Customize built-in wording section of its stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.automaticLayoutTooltip": {
+    "defaultMessage": "Tooltip for the automatic layout tool.",
+    "description": "Hint under the setting holding the automatic layout tooltip, among the words every Network Composer stage shares, in the Customize built-in wording section of its stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.carries": {
+    "defaultMessage": "Key entry for family members who carry the selected condition.",
+    "description": "Hint under the setting holding the carries key entry, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.clearFocus": {
+    "defaultMessage": "Tooltip for the button that clears the selected family member.",
+    "description": "Hint under the setting holding the clear focus tooltip, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.connectHint": {
+    "defaultMessage": "Instruction shown on the family tree while the connect tool is in use.",
+    "description": "Hint under the setting holding the connect hint, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.connectTool": {
+    "defaultMessage": "Name of the toolbar tool for connecting two family members. Shown in its tooltip.",
+    "description": "Hint under the setting holding the connect tool button, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.connectToolDescription": {
     "defaultMessage": "Tooltip text for the connect tool in the family tree toolbar.",
@@ -3123,33 +3127,109 @@
     "defaultMessage": "Title shown when the interviewer selects an edge of a type this stage does not draw, such as one from an earlier stage.",
     "description": "Hint under the setting holding the connection label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.disconnectHint": {
+    "defaultMessage": "Instruction shown on the family tree while the disconnect tool is in use.",
+    "description": "Hint under the setting holding the disconnect hint, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.disconnectTool": {
+    "defaultMessage": "Name of the toolbar tool for removing a connection. Shown in its tooltip.",
+    "description": "Hint under the setting holding the disconnect tool button, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
   "protocolBuilder.localizedTextNames.interfaceTextHint.disconnectToolDescription": {
     "defaultMessage": "Tooltip text for the disconnect tool in the family tree toolbar.",
     "description": "Hint under the setting holding the disconnect tool explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.drawEdgeTooltip": {
+    "defaultMessage": "Tooltip for the tool that draws an edge between two nodes. Only used when a canvas has edge types.",
+    "description": "Hint under the setting holding the draw edge tooltip, among the words every Network Composer stage shares, in the Customize built-in wording section of its stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.dropToRemove": {
     "defaultMessage": "Shown over the roster list while the participant drags an added node back to remove it.",
     "description": "Hint under the setting holding the drop to remove message, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.framingChoiceDescription": {
+    "defaultMessage": "Explanation under the question about which words to use. Only used when participants choose the words.",
+    "description": "Hint under the setting holding the explanation under the wording question, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.framingChoiceTitle": {
+    "defaultMessage": "Question asking the participant which words to use for family members. Only used when participants choose the words.",
+    "description": "Hint under the setting holding the wording question, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
   "protocolBuilder.localizedTextNames.interfaceTextHint.framingControlDescription": {
     "defaultMessage": "Tooltip text for the control that changes the words used for family members. Only used when participants choose the words.",
     "description": "Hint under the setting holding the relationship words explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.framingControlLabel": {
+    "defaultMessage": "Label of the control for changing the words used for family members. Only used when participants choose the words.",
+    "description": "Hint under the setting holding the wording control label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.groupsHeading": {
+    "defaultMessage": "Name of the groups tool, and heading of the groups in the key. Only used when a canvas groups nodes.",
+    "description": "Hint under the setting holding the groups heading, among the words every Network Composer stage shares, in the Customize built-in wording section of its stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.hasCondition": {
+    "defaultMessage": "Key entry for family members who have the selected condition.",
+    "description": "Hint under the setting holding the has condition key entry, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.keyHeading": {
+    "defaultMessage": "Heading of the key that explains the symbols on the pedigree.",
+    "description": "Hint under the setting holding the key heading, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.mapUnavailable": {
+    "defaultMessage": "Shown in place of the map when it cannot be drawn, and says what to try.",
+    "description": "Hint under the setting holding the map unavailable message, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.mayCarry": {
+    "defaultMessage": "Key entry for family members who may carry the selected condition. Only used when a pedigree shows at-risk statuses.",
+    "description": "Hint under the setting holding the may carry key entry, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.mayDevelop": {
+    "defaultMessage": "Key entry for family members who may develop the selected condition. Only used when a pedigree shows at-risk statuses.",
+    "description": "Hint under the setting holding the may develop key entry, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.notKnown": {
+    "defaultMessage": "Key entry for family members whose status for the selected condition is not known.",
+    "description": "Hint under the setting holding the not known key entry, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.offlineNotice": {
+    "defaultMessage": "Shown while the device is offline, because the map cannot load without a connection.",
+    "description": "Hint under the setting holding the offline message, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.overtakenEditNotice": {
+    "defaultMessage": "Warning shown when an undo or redo changes an answer the interviewer is editing, so their edit is not saved.",
+    "description": "Hint under the setting holding the warning about an overtaken edit, among the words every Network Composer stage shares, in the Customize built-in wording section of its stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.placeHere": {
     "defaultMessage": "Button on each bin that places the selected node in it, when the participant taps a node and then a bin.",
     "description": "Hint under the setting holding the place here label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.pointerTool": {
+    "defaultMessage": "Name of the toolbar tool for selecting a family member to edit them or add relatives. Shown in its tooltip.",
+    "description": "Hint under the setting holding the pointer tool button, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
   "protocolBuilder.localizedTextNames.interfaceTextHint.pointerToolDescription": {
     "defaultMessage": "Tooltip text for the pointer tool in the family tree toolbar.",
     "description": "Hint under the setting holding the select tool explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.quickAddHint": {
+    "defaultMessage": "Shown beside the quick-add box, telling the participant how to finish adding a node.",
+    "description": "Hint under the setting holding the quick-add hint, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.redoDescription": {
     "defaultMessage": "Tooltip text for the redo button in the family tree toolbar.",
     "description": "Hint under the setting holding the redo explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.resetAnnotations": {
+    "defaultMessage": "Tooltip for the button that removes all drawings. Only used when a stage allows drawing.",
+    "description": "Hint under the setting holding the reset annotations tooltip, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
   "protocolBuilder.localizedTextNames.interfaceTextHint.scrollForQuestions": {
     "defaultMessage": "Read by screen readers on the arrow that shows there are more questions below.",
     "description": "Hint under the setting holding the more questions hint, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.searchFailed": {
+    "defaultMessage": "Shown when a map search could not run. It does not mean the place does not exist.",
+    "description": "Hint under the setting holding the search failed message, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.showWholeFamily": {
     "defaultMessage": "Name of the toolbar button that fits the whole family tree on the screen. Shown in its tooltip.",
@@ -3159,6 +3239,14 @@
     "defaultMessage": "Tooltip text for the button that fits the whole family tree on the screen.",
     "description": "Hint under the setting holding the whole family explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.toggleDrawing": {
+    "defaultMessage": "Tooltip for the button that turns drawing on the canvas on and off. Only used when a stage allows drawing.",
+    "description": "Hint under the setting holding the toggle drawing tooltip, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextHint.toggleFreezing": {
+    "defaultMessage": "Tooltip for the button that keeps drawings on the canvas, or lets them fade again. Only used when a stage allows drawing.",
+    "description": "Hint under the setting holding the toggle freezing annotations tooltip, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
   "protocolBuilder.localizedTextNames.interfaceTextHint.trackerAllDetails": {
     "defaultMessage": "Last item in the completeness checklist, asking for the required details of every family member.",
     "description": "Hint under the setting holding the all details checklist item, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
@@ -3167,9 +3255,9 @@
     "defaultMessage": "Tooltip text for the undo button in the family tree toolbar.",
     "description": "Hint under the setting holding the undo explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
-  "protocolBuilder.localizedTextNames.interfaceTextHint.unnamedNumbered": {
-    "defaultMessage": "Label for a roster item that has no name. The number tells unnamed items apart.",
-    "description": "Hint under the setting holding the numbered unnamed label, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
+  "protocolBuilder.localizedTextNames.interfaceTextHint.willDevelop": {
+    "defaultMessage": "Key entry for family members who will develop the selected condition.",
+    "description": "Hint under the setting holding the will develop key entry, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextHint.zoomInDescription": {
     "defaultMessage": "Tooltip text for the zoom in button on the family tree.",
@@ -3180,7 +3268,7 @@
     "description": "Hint under the setting holding the zoom out explanation, among the words every stage of one kind shares, in the Customize built-in wording section of a stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
   "protocolBuilder.localizedTextNames.interfaceTextName": {
-    "defaultMessage": "{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} yes {Yes answer} no {No answer} save {Save button} dontKnow {Don’t know answer} pauseLayout {Pause layout button} resumeLayout {Resume layout button} error {Error message} externalDataError {External data error message} searchLabel {Search field} searchNoMatch {No results message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} copy {Copy button} copied {Copied message} loading {Loading message} unnamed {Unnamed label} exitFailed {Exit failed message} exitReview {Exit review button} exitReviewTitle {Exit review question} exitReviewDescription {Exit review explanation} hiddenScreen {Hidden screen label} outsidePath {Outside path label} showScreenTitle {Show screen question} hiddenScreenDescription {Hidden screen explanation} outsidePathDescription {Outside path explanation} showScreen {Show screen button} checkingPassphrase {Checking passphrase message} passwordPlaceholder {Passphrase field hint} zoomOut {Zoom out button} zoomOutDescription {Zoom out explanation} zoomIn {Zoom in button} zoomInDescription {Zoom in explanation} showWholeFamily {Whole family button} showWholeFamilyDescription {Whole family explanation} pointerToolDescription {Select tool explanation} connectToolDescription {Connect tool explanation} disconnectToolDescription {Disconnect tool explanation} framingControlDescription {Relationship words explanation} undo {Undo button} undoDescription {Undo explanation} redo {Redo button} redoDescription {Redo explanation} skip {Skip button} trackerAllDetails {All details checklist item} placeHere {Place here label} unnamedNumbered {Numbered unnamed label} dropToRemove {Drop to remove message} connection {Connection label} scrollForQuestions {More questions hint} addNamePlaceholder {Name box placeholder} other {{key}}}",
+    "defaultMessage": "{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} yes {Yes answer} no {No answer} save {Save button} dontKnow {Don’t know answer} pauseLayout {Pause layout button} resumeLayout {Resume layout button} error {Error message} externalDataError {External data error message} searchLabel {Search field} searchNoMatch {No results message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} copy {Copy button} copied {Copied message} loading {Loading message} unnamed {Unnamed label} exitFailed {Exit failed message} exitReview {Exit review button} exitReviewTitle {Exit review question} exitReviewDescription {Exit review explanation} hiddenScreen {Hidden screen label} outsidePath {Outside path label} showScreenTitle {Show screen question} hiddenScreenDescription {Hidden screen explanation} outsidePathDescription {Outside path explanation} showScreen {Show screen button} checkingPassphrase {Checking passphrase message} passwordPlaceholder {Passphrase field hint} zoomOut {Zoom out button} zoomOutDescription {Zoom out explanation} zoomIn {Zoom in button} zoomInDescription {Zoom in explanation} showWholeFamily {Whole family button} showWholeFamilyDescription {Whole family explanation} pointerToolDescription {Select tool explanation} connectToolDescription {Connect tool explanation} disconnectToolDescription {Disconnect tool explanation} framingControlDescription {Relationship words explanation} undo {Undo button} undoDescription {Undo explanation} redo {Redo button} redoDescription {Redo explanation} skip {Skip button} trackerAllDetails {All details checklist item} placeHere {Place here label} dropToRemove {Drop to remove message} connection {Connection label} scrollForQuestions {More questions hint} addNamePlaceholder {Name box placeholder} pointerTool {Pointer tool button} connectTool {Connect tool button} connectHint {Connect hint} disconnectTool {Disconnect tool button} disconnectHint {Disconnect hint} framingControlLabel {Wording control label} framingChoiceTitle {Wording question} framingChoiceDescription {Wording question explanation} quickAddHint {Quick-add hint} overtakenEditNotice {Warning about an overtaken edit} groupsHeading {Groups heading} addNodeTooltip {Add node tooltip} automaticLayoutTooltip {Automatic layout tooltip} drawEdgeTooltip {Draw edge tooltip} toggleDrawing {Toggle drawing tooltip} toggleFreezing {Toggle freezing annotations tooltip} resetAnnotations {Reset annotations tooltip} keyHeading {Key heading} hasCondition {Has condition key entry} willDevelop {Will develop key entry} carries {Carries key entry} mayDevelop {May develop key entry} mayCarry {May carry key entry} notKnown {Not known key entry} clearFocus {Clear focus tooltip} offlineNotice {Offline message} mapUnavailable {Map unavailable message} searchFailed {Search failed message} other {{key}}}",
     "description": "Names one of the words the interview itself shows, where it is listed for translation: a button, a field label or a message, by what it is for. key says which."
   },
   "protocolBuilder.localizedTextNames.itemPosition": {
@@ -3255,6 +3343,14 @@
     "defaultMessage": "Write the question this prompt asks.",
     "description": "Refusal shown when a researcher saves a name-generator prompt with no question in it."
   },
+  "protocolBuilder.nameGeneratorWording.addNamePlaceholderHint": {
+    "defaultMessage": "Shown in the quick-add box until the participant starts typing. Describe what to type for the kind of node this stage adds.",
+    "description": "Hint under the setting holding the quick-add placeholder, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for."
+  },
+  "protocolBuilder.nameGeneratorWording.addNamePlaceholderLabel": {
+    "defaultMessage": "Quick-add placeholder",
+    "description": "Label of the field holding the placeholder of the quick-add box, shown until the participant starts typing."
+  },
   "protocolBuilder.nameGeneratorWording.allAddedHint": {
     "defaultMessage": "Shown in the roster list once everything in it has been added.",
     "description": "Hint under the setting holding the everything added message, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for."
@@ -3279,13 +3375,13 @@
     "defaultMessage": "Minimum not reached",
     "description": "Label of the field holding the message shown when the participant tries to continue having named fewer people than the stage’s minimum."
   },
-  "protocolBuilder.nameGeneratorWording.quickAddHintHint": {
-    "defaultMessage": "Shown beside the quick-add box, telling the participant how to finish adding a node.",
-    "description": "Hint under the setting holding the quick-add hint, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for."
+  "protocolBuilder.nameGeneratorWording.unnamedLabelHint": {
+    "defaultMessage": "Label for a roster entry that has no name. The number tells unnamed entries apart.",
+    "description": "Hint under the setting holding the unnamed label, in the Customize built-in wording section of a Name Generator for Roster Data stage editor. It tells the researcher where the participant sees this text and what it is for."
   },
-  "protocolBuilder.nameGeneratorWording.quickAddHintLabel": {
-    "defaultMessage": "Quick-add hint",
-    "description": "Label of the field holding the line shown beside the quick-add name field, telling the participant how to finish."
+  "protocolBuilder.nameGeneratorWording.unnamedLabelLabel": {
+    "defaultMessage": "Unnamed label",
+    "description": "Label of the field holding the label of a roster entry that has no name or other details to show."
   },
   "protocolBuilder.narrative.attributesHeadingHint": {
     "defaultMessage": "Heading of the panel that lists what the current preset highlights. Only used when a preset highlights nodes.",
@@ -3294,30 +3390,6 @@
   "protocolBuilder.narrative.attributesHeadingLabel": {
     "defaultMessage": "Attributes heading",
     "description": "Label of the setting holding the heading of the panel that lists what a preset highlights."
-  },
-  "protocolBuilder.narrative.disableDrawingTooltipHint": {
-    "defaultMessage": "Tooltip for the button that stops drawing on the canvas. Only used when the stage allows drawing.",
-    "description": "Hint under the setting holding the disable drawing tooltip, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
-  },
-  "protocolBuilder.narrative.disableDrawingTooltipLabel": {
-    "defaultMessage": "Disable drawing tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that turns drawing off."
-  },
-  "protocolBuilder.narrative.enableDrawingTooltipHint": {
-    "defaultMessage": "Tooltip for the button that lets the participant draw on the canvas. Only used when the stage allows drawing.",
-    "description": "Hint under the setting holding the enable drawing tooltip, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
-  },
-  "protocolBuilder.narrative.enableDrawingTooltipLabel": {
-    "defaultMessage": "Enable drawing tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that turns drawing on."
-  },
-  "protocolBuilder.narrative.freezeAnnotationsTooltipHint": {
-    "defaultMessage": "Tooltip for the button that keeps drawings in place. Only used when the stage allows drawing.",
-    "description": "Hint under the setting holding the freeze annotations tooltip, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
-  },
-  "protocolBuilder.narrative.freezeAnnotationsTooltipLabel": {
-    "defaultMessage": "Freeze annotations tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that freezes the drawn annotations in place."
   },
   "protocolBuilder.narrative.groupsHeadingHint": {
     "defaultMessage": "Heading of the panel that lists the groups the current preset shows. Only used when a preset groups nodes.",
@@ -3334,46 +3406,6 @@
   "protocolBuilder.narrative.linksHeadingLabel": {
     "defaultMessage": "Links heading",
     "description": "Label of the setting holding the heading of the panel that lists the connections a preset shows."
-  },
-  "protocolBuilder.narrative.resetAnnotationsTooltipHint": {
-    "defaultMessage": "Tooltip for the button that removes all drawings. Only used when the stage allows drawing.",
-    "description": "Hint under the setting holding the reset annotations tooltip, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
-  },
-  "protocolBuilder.narrative.resetAnnotationsTooltipLabel": {
-    "defaultMessage": "Reset annotations tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that removes every drawn annotation."
-  },
-  "protocolBuilder.narrative.unfreezeAnnotationsTooltipHint": {
-    "defaultMessage": "Tooltip for the button that lets drawings move again. Only used when the stage allows drawing.",
-    "description": "Hint under the setting holding the unfreeze annotations tooltip, in the Customize built-in wording section of the Narrative stage editor. It tells the researcher where the participant sees this text and what it is for. A preset is a saved view of the canvas the researcher sets up."
-  },
-  "protocolBuilder.narrative.unfreezeAnnotationsTooltipLabel": {
-    "defaultMessage": "Unfreeze annotations tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that lets the drawn annotations move again."
-  },
-  "protocolBuilder.narrativePedigree.affectedNotationHint": {
-    "defaultMessage": "Key entry for family members who have the selected condition.",
-    "description": "Hint under the setting holding the key entry for having the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
-  },
-  "protocolBuilder.narrativePedigree.affectedNotationLabel": {
-    "defaultMessage": "Has this condition",
-    "description": "Label of the setting holding the key entry for a person who has the selected condition."
-  },
-  "protocolBuilder.narrativePedigree.atRiskAffectedNotationHint": {
-    "defaultMessage": "Key entry for family members who may develop the selected condition. Only used when the pedigree shows at-risk statuses.",
-    "description": "Hint under the setting holding the key entry for possibly developing the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
-  },
-  "protocolBuilder.narrativePedigree.atRiskAffectedNotationLabel": {
-    "defaultMessage": "May develop this condition",
-    "description": "Label of the setting holding the key entry for a person who may develop the selected condition."
-  },
-  "protocolBuilder.narrativePedigree.atRiskCarrierNotationHint": {
-    "defaultMessage": "Key entry for family members who may carry the selected condition. Only used when the pedigree shows at-risk statuses.",
-    "description": "Hint under the setting holding the key entry for possibly carrying the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
-  },
-  "protocolBuilder.narrativePedigree.atRiskCarrierNotationLabel": {
-    "defaultMessage": "May carry this condition",
-    "description": "Label of the setting holding the key entry for a person who may carry the selected condition."
   },
   "protocolBuilder.narrativePedigree.atRiskFieldHint": {
     "defaultMessage": "Optionally show <strong>possible</strong> (at-risk) statuses alongside the certain ones, inferred from family structure and inheritance patterns.",
@@ -3410,14 +3442,6 @@
   "protocolBuilder.narrativePedigree.atRiskWhyOffHeading": {
     "defaultMessage": "Why this is off by default",
     "description": "Heading over the paragraph explaining why inferred risk is not shown unless a researcher asks for it."
-  },
-  "protocolBuilder.narrativePedigree.clearFocusTooltipHint": {
-    "defaultMessage": "Tooltip for the button that clears the selected family member.",
-    "description": "Hint under the setting holding the clear focus tooltip, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
-  },
-  "protocolBuilder.narrativePedigree.clearFocusTooltipLabel": {
-    "defaultMessage": "Clear focus tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that clears the selected focal person."
   },
   "protocolBuilder.narrativePedigree.diseaseColorHint": {
     "defaultMessage": "Select a color for this disease.",
@@ -3587,30 +3611,6 @@
     "defaultMessage": "Y-linked",
     "description": "One choice in the inheritance-pattern list: a condition carried on the Y chromosome. Standard clinical genetics terminology; \"Y\" is the chromosome’s letter and is not translated."
   },
-  "protocolBuilder.narrativePedigree.keyHeadingHint": {
-    "defaultMessage": "Heading of the key that explains the symbols on the pedigree.",
-    "description": "Hint under the setting holding the key heading, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
-  },
-  "protocolBuilder.narrativePedigree.keyHeadingLabel": {
-    "defaultMessage": "Key heading",
-    "description": "Label of the setting holding the heading of the key that explains the symbols on the pedigree."
-  },
-  "protocolBuilder.narrativePedigree.obligateAffectedNotationHint": {
-    "defaultMessage": "Key entry for family members who will develop the selected condition.",
-    "description": "Hint under the setting holding the key entry for developing the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
-  },
-  "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": {
-    "defaultMessage": "Will develop this condition",
-    "description": "Label of the setting holding the key entry for a person who will develop the selected condition."
-  },
-  "protocolBuilder.narrativePedigree.obligateCarrierNotationHint": {
-    "defaultMessage": "Key entry for family members who carry the selected condition.",
-    "description": "Hint under the setting holding the key entry for carrying the condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
-  },
-  "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": {
-    "defaultMessage": "Carries this condition",
-    "description": "Label of the setting holding the key entry for a person who carries the selected condition."
-  },
   "protocolBuilder.narrativePedigree.saveSnapshotButtonLabel": {
     "defaultMessage": "Save snapshot button",
     "description": "Label of the setting holding the text of the button, below the key, that saves an image of the pedigree."
@@ -3711,14 +3711,6 @@
     "defaultMessage": "{stageName} — this stage can no longer be used",
     "description": "How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier."
   },
-  "protocolBuilder.narrativePedigree.unknownNotationHint": {
-    "defaultMessage": "Key entry for family members whose status for the selected condition is not known.",
-    "description": "Hint under the setting holding the key entry for an unknown status, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it."
-  },
-  "protocolBuilder.narrativePedigree.unknownNotationLabel": {
-    "defaultMessage": "Not known",
-    "description": "Label of the setting holding the key entry for a person whose status for the selected condition is not known."
-  },
   "protocolBuilder.networkCanvas.automaticLayoutSectionDescription": {
     "defaultMessage": "When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.",
     "description": "Description of the automatic-layout sub-section of a network composer. A force-directed layout is a simulation that spreads members of the network out on the canvas."
@@ -3795,41 +3787,9 @@
     "defaultMessage": "Narrative behaviors",
     "description": "Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology."
   },
-  "protocolBuilder.networkCanvas.composerAddNamePlaceholderHint": {
-    "defaultMessage": "Placeholder in the box for adding a node by name.",
-    "description": "Hint under the setting holding the placeholder of the box for adding a node, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
-  },
-  "protocolBuilder.networkCanvas.composerAddNamePlaceholderLabel": {
-    "defaultMessage": "Name box placeholder",
-    "description": "Label of the setting holding the placeholder shown in the box for adding a member to the network, until a name is typed."
-  },
-  "protocolBuilder.networkCanvas.composerAddNodeTooltipHint": {
-    "defaultMessage": "Tooltip for the tool that adds a node to the canvas.",
-    "description": "Hint under the setting holding the add node tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
-  },
-  "protocolBuilder.networkCanvas.composerAddNodeTooltipLabel": {
-    "defaultMessage": "Add node tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that adds a member to the network."
-  },
-  "protocolBuilder.networkCanvas.composerAutomaticLayoutTooltipHint": {
-    "defaultMessage": "Tooltip for the automatic layout tool.",
-    "description": "Hint under the setting holding the automatic layout tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
-  },
-  "protocolBuilder.networkCanvas.composerAutomaticLayoutTooltipLabel": {
-    "defaultMessage": "Automatic layout tooltip",
-    "description": "Label of the setting holding the tooltip of the automatic layout tool."
-  },
   "protocolBuilder.networkCanvas.composerCreateLayoutLabel": {
     "defaultMessage": "Create a new position attribute",
     "description": "Button that creates an attribute holding a position in the codebook and uses it for this stage."
-  },
-  "protocolBuilder.networkCanvas.composerDrawConnectionTooltipHint": {
-    "defaultMessage": "Tooltip for the tool that draws an edge between two nodes. Only used when the canvas has edge types.",
-    "description": "Hint under the setting holding the draw connection tooltip, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
-  },
-  "protocolBuilder.networkCanvas.composerDrawConnectionTooltipLabel": {
-    "defaultMessage": "Draw connection tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that draws a connection between two members."
   },
   "protocolBuilder.networkCanvas.composerEdgeAddLabel": {
     "defaultMessage": "Add a connection type",
@@ -3895,14 +3855,6 @@
     "defaultMessage": "No connection type chosen",
     "description": "How a row of a network composer’s connection list reads before a kind of connection has been chosen for it."
   },
-  "protocolBuilder.networkCanvas.composerGroupsHeadingHint": {
-    "defaultMessage": "Name of the groups tool, and heading of the groups in the key. Only used when the canvas groups nodes.",
-    "description": "Hint under the setting holding the groups heading, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
-  },
-  "protocolBuilder.networkCanvas.composerGroupsHeadingLabel": {
-    "defaultMessage": "Groups heading",
-    "description": "Label of the setting holding the name of the groups tool and of the groups in the key."
-  },
   "protocolBuilder.networkCanvas.composerLayoutEmpty": {
     "defaultMessage": "This type has no position attributes yet. Create one to store where the participant puts each node.",
     "description": "Shown in place of the position-attribute list when the node type this stage builds has no attribute that can hold a position."
@@ -3922,14 +3874,6 @@
   "protocolBuilder.networkCanvas.composerNodeWaitingDescription": {
     "defaultMessage": "Choose what this stage works with before configuring how its nodes behave.",
     "description": "Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview."
-  },
-  "protocolBuilder.networkCanvas.composerOvertakenEditNoticeHint": {
-    "defaultMessage": "Warning shown when an undo or redo changes an answer the interviewer is editing, so their edit is not saved.",
-    "description": "Hint under the setting holding the warning about an overtaken edit, in the Customize built-in wording section of the Network Composer stage editor. It tells the researcher where the interviewer sees this text and what it is for. The interviewer, not the participant, uses this stage."
-  },
-  "protocolBuilder.networkCanvas.composerOvertakenEditNoticeLabel": {
-    "defaultMessage": "Warning about an overtaken edit",
-    "description": "Label of the setting holding the warning a participant sees when an undo or redo has changed an answer they were editing, so their edit has not been saved."
   },
   "protocolBuilder.networkCanvas.connectionTypesSectionDescription": {
     "defaultMessage": "Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.",
@@ -5667,10 +5611,6 @@
     "defaultMessage": "Child carried as a surrogate option",
     "description": "Label of the option for a child the person carried as a surrogate."
   },
-  "protocolBuilder.pedigree.wording.connectHint": {
-    "defaultMessage": "Connect hint",
-    "description": "Label of the hint shown while the participant chooses the first person to connect."
-  },
   "protocolBuilder.pedigree.wording.connectParent": {
     "defaultMessage": "Parent connection",
     "description": "Label of the sentence describing a parent connection."
@@ -5683,10 +5623,6 @@
     "defaultMessage": "Connect question",
     "description": "Label of the question asking how two people are related."
   },
-  "protocolBuilder.pedigree.wording.connectTool": {
-    "defaultMessage": "Connect tool button",
-    "description": "Label of the button that connects two people on the family tree."
-  },
   "protocolBuilder.pedigree.wording.disconnectConfirmDescription": {
     "defaultMessage": "Remove connection explanation",
     "description": "Label of the explanation that both people stay in the family tree when a connection is removed."
@@ -5695,33 +5631,13 @@
     "defaultMessage": "Remove connection question",
     "description": "Label of the question asking whether to remove a connection between two people."
   },
-  "protocolBuilder.pedigree.wording.disconnectHint": {
-    "defaultMessage": "Disconnect hint",
-    "description": "Label of the hint shown while the participant chooses a connection to remove."
-  },
   "protocolBuilder.pedigree.wording.disconnectStandIn": {
     "defaultMessage": "Stand-in parent connection notice",
     "description": "Label of the notice that a connection cannot be removed because an unnamed parent stands in for a parent of the child who has not been added yet."
   },
-  "protocolBuilder.pedigree.wording.disconnectTool": {
-    "defaultMessage": "Disconnect tool button",
-    "description": "Label of the button that removes a connection between two people on the family tree."
-  },
   "protocolBuilder.pedigree.wording.disconnectWouldCutOff": {
     "defaultMessage": "Connection that would leave someone out",
     "description": "Label of the warning that removing a connection would leave people outside the family tree."
-  },
-  "protocolBuilder.pedigree.wording.framingChoiceDescription": {
-    "defaultMessage": "Wording question explanation",
-    "description": "Label of the explanation under the question asking which words to use for family members."
-  },
-  "protocolBuilder.pedigree.wording.framingChoiceTitle": {
-    "defaultMessage": "Wording question",
-    "description": "Label of the question asking which words to use for family members. Shown only when participants choose the words."
-  },
-  "protocolBuilder.pedigree.wording.framingControlLabel": {
-    "defaultMessage": "Wording control label",
-    "description": "Label of the control that lets the participant change the words used for family members."
   },
   "protocolBuilder.pedigree.wording.genderIdentityLabel": {
     "defaultMessage": "Gender identity question",
@@ -5782,10 +5698,6 @@
   "protocolBuilder.pedigree.wording.placeholderParentsNote": {
     "defaultMessage": "Note about added parents",
     "description": "Label of the note explaining the placeholder parents added for a set of siblings, and which of them a new sibling shares."
-  },
-  "protocolBuilder.pedigree.wording.pointerTool": {
-    "defaultMessage": "Pointer tool button",
-    "description": "Label of the button that selects and moves people on the family tree."
   },
   "protocolBuilder.pedigree.wording.relativeTerm": {
     "defaultMessage": "Relative terms",
@@ -6003,10 +5915,6 @@
     "defaultMessage": "Question in the side panel about a family member’s biological children, asked while the checklist still needs them.",
     "description": "Hint under the setting holding the children question in the side panel, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
-  "protocolBuilder.pedigree.wordingHint.connectHint": {
-    "defaultMessage": "Instruction shown on the family tree while the connect tool is in use.",
-    "description": "Hint under the setting holding the connect hint, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
-  },
   "protocolBuilder.pedigree.wordingHint.connectParent": {
     "defaultMessage": "Sentence describing a parent connection between the two family members being connected.",
     "description": "Hint under the setting holding the parent connection sentence, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
@@ -6018,10 +5926,6 @@
   "protocolBuilder.pedigree.wordingHint.connectQuestion": {
     "defaultMessage": "Question asking how the two family members being connected are related.",
     "description": "Hint under the setting holding the connect question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
-  },
-  "protocolBuilder.pedigree.wordingHint.connectTool": {
-    "defaultMessage": "Name of the toolbar tool for connecting two family members. Shown in its tooltip.",
-    "description": "Hint under the setting holding the connect tool button, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.detailsListItem": {
     "defaultMessage": "Item in the completeness checklist saying details are still missing for a family member, such as their sex assigned at birth.",
@@ -6035,33 +5939,13 @@
     "defaultMessage": "Question asked before a connection between two family members is removed.",
     "description": "Hint under the setting holding the remove connection question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
-  "protocolBuilder.pedigree.wordingHint.disconnectHint": {
-    "defaultMessage": "Instruction shown on the family tree while the disconnect tool is in use.",
-    "description": "Hint under the setting holding the disconnect hint, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
-  },
   "protocolBuilder.pedigree.wordingHint.disconnectStandIn": {
     "defaultMessage": "Shown when a connection cannot be removed because an unnamed parent stands in for a parent who has not been added yet.",
     "description": "Hint under the setting holding the stand-in parent connection notice, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
-  "protocolBuilder.pedigree.wordingHint.disconnectTool": {
-    "defaultMessage": "Name of the toolbar tool for removing a connection. Shown in its tooltip.",
-    "description": "Hint under the setting holding the disconnect tool button, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
-  },
   "protocolBuilder.pedigree.wordingHint.disconnectWouldCutOff": {
     "defaultMessage": "Warning shown when removing a connection would leave family members outside the family tree. The connection is not removed.",
     "description": "Hint under the setting holding the warning about a connection that would leave someone out, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
-  },
-  "protocolBuilder.pedigree.wordingHint.framingChoiceDescription": {
-    "defaultMessage": "Explanation under the question about which words to use. Only used when participants choose the words.",
-    "description": "Hint under the setting holding the explanation under the wording question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
-  },
-  "protocolBuilder.pedigree.wordingHint.framingChoiceTitle": {
-    "defaultMessage": "Question asking the participant which words to use for family members. Only used when participants choose the words.",
-    "description": "Hint under the setting holding the wording question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
-  },
-  "protocolBuilder.pedigree.wordingHint.framingControlLabel": {
-    "defaultMessage": "Label of the control for changing the words used for family members. Only used when participants choose the words.",
-    "description": "Hint under the setting holding the wording control label, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.genderIdentityLabel": {
     "defaultMessage": "Label of the gender identity question in the side panel. Only used when the stage asks about gender identity.",
@@ -6126,10 +6010,6 @@
   "protocolBuilder.pedigree.wordingHint.placeholderParentsNote": {
     "defaultMessage": "Note shown when adding a sibling, explaining the unnamed parents that are added and which one the sibling shares.",
     "description": "Hint under the setting holding the note about added parents, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
-  },
-  "protocolBuilder.pedigree.wordingHint.pointerTool": {
-    "defaultMessage": "Name of the toolbar tool for selecting a family member to edit them or add relatives. Shown in its tooltip.",
-    "description": "Hint under the setting holding the pointer tool button, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.recommendedNote": {
     "defaultMessage": "Note under the checklist saying the participant can continue without finishing it. Only used when completeness is recommended, not required.",
@@ -6280,7 +6160,7 @@
     "description": "Hint under the setting holding the hint about the other genetic parent’s sex at birth, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.you": {
-    "defaultMessage": "Shown instead of a name wherever the participant appears in the family tree.",
+    "defaultMessage": "Shown instead of a name wherever the participant appears in the family tree. It can use an ego attribute, such as a name from an earlier form.",
     "description": "Hint under the setting holding the participant’s own name, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one."
   },
   "protocolBuilder.pedigree.wordingHint.zygosityFraternal": {

@@ -2,7 +2,10 @@
   "name": "Life Transitions & Turning Points",
   "description": "An example template for a narrative interview about how a personal network was reshaped by a major life change. The participant tells the story of a transition they nominate, while the interviewer builds the network alongside them on a single canvas. The finished network is then explored through a Narrative Interface.",
   "schemaVersion": 9,
-  "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US"]
+  },
   "lastModified": "2026-07-28T21:01:18.876Z",
   "codebook": {
     "ego": {
@@ -13,12 +16,16 @@
           "component": "Boolean",
           "options": [
             {
-              "label": { "en-US": "Yes. I agree to take part." },
+              "label": {
+                "en-US": "Yes. I agree to take part."
+              },
               "value": true,
               "negative": false
             },
             {
-              "label": { "en-US": "No. I do not agree to take part." },
+              "label": {
+                "en-US": "No. I do not agree to take part."
+              },
               "value": false,
               "negative": true
             }
@@ -33,51 +40,75 @@
           "component": "CheckboxGroup",
           "options": [
             {
-              "label": { "en-US": "Started or finished education" },
+              "label": {
+                "en-US": "Started or finished education"
+              },
               "value": "education"
             },
             {
-              "label": { "en-US": "A new job, or a change of career" },
+              "label": {
+                "en-US": "A new job, or a change of career"
+              },
               "value": "new_job"
             },
             {
-              "label": { "en-US": "Lost a job, or left work" },
+              "label": {
+                "en-US": "Lost a job, or left work"
+              },
               "value": "job_loss"
             },
             {
-              "label": { "en-US": "Moved to a new place" },
+              "label": {
+                "en-US": "Moved to a new place"
+              },
               "value": "moved"
             },
             {
-              "label": { "en-US": "Moved to another country" },
+              "label": {
+                "en-US": "Moved to another country"
+              },
               "value": "migrated"
             },
             {
-              "label": { "en-US": "A relationship began, or ended" },
+              "label": {
+                "en-US": "A relationship began, or ended"
+              },
               "value": "relationship"
             },
             {
-              "label": { "en-US": "Became a parent, or a carer" },
+              "label": {
+                "en-US": "Became a parent, or a carer"
+              },
               "value": "caring"
             },
             {
-              "label": { "en-US": "Someone close to me died" },
+              "label": {
+                "en-US": "Someone close to me died"
+              },
               "value": "bereavement"
             },
             {
-              "label": { "en-US": "An illness, injury, or diagnosis" },
+              "label": {
+                "en-US": "An illness, injury, or diagnosis"
+              },
               "value": "health"
             },
             {
-              "label": { "en-US": "Left care, or left home" },
+              "label": {
+                "en-US": "Left care, or left home"
+              },
               "value": "left_care"
             },
             {
-              "label": { "en-US": "Retired" },
+              "label": {
+                "en-US": "Retired"
+              },
               "value": "retirement"
             },
             {
-              "label": { "en-US": "Something else" },
+              "label": {
+                "en-US": "Something else"
+              },
               "value": "other"
             }
           ],
@@ -115,39 +146,57 @@
             "component": "CheckboxGroup",
             "options": [
               {
-                "label": { "en-US": "Family" },
+                "label": {
+                  "en-US": "Family"
+                },
                 "value": "family"
               },
               {
-                "label": { "en-US": "My partner's family" },
+                "label": {
+                  "en-US": "My partner's family"
+                },
                 "value": "partner_family"
               },
               {
-                "label": { "en-US": "Friends" },
+                "label": {
+                  "en-US": "Friends"
+                },
                 "value": "friends"
               },
               {
-                "label": { "en-US": "Work or study" },
+                "label": {
+                  "en-US": "Work or study"
+                },
                 "value": "work_study"
               },
               {
-                "label": { "en-US": "Neighborhood" },
+                "label": {
+                  "en-US": "Neighborhood"
+                },
                 "value": "neighborhood"
               },
               {
-                "label": { "en-US": "Community or faith group" },
+                "label": {
+                  "en-US": "Community or faith group"
+                },
                 "value": "community"
               },
               {
-                "label": { "en-US": "Services and professionals" },
+                "label": {
+                  "en-US": "Services and professionals"
+                },
                 "value": "professionals"
               },
               {
-                "label": { "en-US": "Online" },
+                "label": {
+                  "en-US": "Online"
+                },
                 "value": "online"
               },
               {
-                "label": { "en-US": "Somewhere else" },
+                "label": {
+                  "en-US": "Somewhere else"
+                },
                 "value": "other"
               }
             ]
@@ -158,11 +207,15 @@
             "component": "Boolean",
             "options": [
               {
-                "label": { "en-US": "Yes" },
+                "label": {
+                  "en-US": "Yes"
+                },
                 "value": true
               },
               {
-                "label": { "en-US": "No" },
+                "label": {
+                  "en-US": "No"
+                },
                 "value": false
               }
             ]
@@ -173,11 +226,15 @@
             "component": "Boolean",
             "options": [
               {
-                "label": { "en-US": "Yes" },
+                "label": {
+                  "en-US": "Yes"
+                },
                 "value": true
               },
               {
-                "label": { "en-US": "No" },
+                "label": {
+                  "en-US": "No"
+                },
                 "value": false
               }
             ]
@@ -188,11 +245,15 @@
             "component": "Boolean",
             "options": [
               {
-                "label": { "en-US": "Yes" },
+                "label": {
+                  "en-US": "Yes"
+                },
                 "value": true
               },
               {
-                "label": { "en-US": "No" },
+                "label": {
+                  "en-US": "No"
+                },
                 "value": false
               }
             ]
@@ -203,11 +264,15 @@
             "component": "Boolean",
             "options": [
               {
-                "label": { "en-US": "Yes" },
+                "label": {
+                  "en-US": "Yes"
+                },
                 "value": true
               },
               {
-                "label": { "en-US": "No" },
+                "label": {
+                  "en-US": "No"
+                },
                 "value": false
               }
             ]
@@ -218,11 +283,15 @@
             "component": "Boolean",
             "options": [
               {
-                "label": { "en-US": "Yes" },
+                "label": {
+                  "en-US": "Yes"
+                },
                 "value": true
               },
               {
-                "label": { "en-US": "No" },
+                "label": {
+                  "en-US": "No"
+                },
                 "value": false
               }
             ]
@@ -233,23 +302,33 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": { "en-US": "Not at all close" },
+                "label": {
+                  "en-US": "Not at all close"
+                },
                 "value": 1
               },
               {
-                "label": { "en-US": "A little close" },
+                "label": {
+                  "en-US": "A little close"
+                },
                 "value": 2
               },
               {
-                "label": { "en-US": "Fairly close" },
+                "label": {
+                  "en-US": "Fairly close"
+                },
                 "value": 3
               },
               {
-                "label": { "en-US": "Very close" },
+                "label": {
+                  "en-US": "Very close"
+                },
                 "value": 4
               },
               {
-                "label": { "en-US": "Extremely close" },
+                "label": {
+                  "en-US": "Extremely close"
+                },
                 "value": 5
               }
             ]
@@ -260,23 +339,33 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": { "en-US": "Not at all close" },
+                "label": {
+                  "en-US": "Not at all close"
+                },
                 "value": 1
               },
               {
-                "label": { "en-US": "A little close" },
+                "label": {
+                  "en-US": "A little close"
+                },
                 "value": 2
               },
               {
-                "label": { "en-US": "Fairly close" },
+                "label": {
+                  "en-US": "Fairly close"
+                },
                 "value": 3
               },
               {
-                "label": { "en-US": "Very close" },
+                "label": {
+                  "en-US": "Very close"
+                },
                 "value": 4
               },
               {
-                "label": { "en-US": "Extremely close" },
+                "label": {
+                  "en-US": "Extremely close"
+                },
                 "value": 5
               }
             ]
@@ -316,8 +405,12 @@
     {
       "id": "information-researcher-notes",
       "type": "Information",
-      "label": { "en-US": "Template notes (delete before fielding)" },
-      "title": { "en-US": "Template notes" },
+      "label": {
+        "en-US": "Template notes (delete before fielding)"
+      },
+      "title": {
+        "en-US": "Template notes"
+      },
       "items": [
         {
           "id": "researcher-notes",
@@ -356,7 +449,9 @@
     {
       "id": "ego-transition",
       "type": "EgoForm",
-      "label": { "en-US": "The change we'll be talking about" },
+      "label": {
+        "en-US": "The change we'll be talking about"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -372,7 +467,10 @@
             }
           ]
         },
-        "destination": { "type": "stage", "stageId": "finish-declined" }
+        "destination": {
+          "type": "stage",
+          "stageId": "finish-declined"
+        }
       },
       "interviewScript": "",
       "introductionPanel": {
@@ -387,47 +485,39 @@
         "fields": [
           {
             "variable": "transition_type",
-            "prompt": { "en-US": "What kind of change?" }
+            "prompt": {
+              "en-US": "What kind of change?"
+            }
           },
           {
             "variable": "transition_when",
-            "prompt": { "en-US": "When did it happen?" },
+            "prompt": {
+              "en-US": "When did it happen?"
+            },
             "hint": {
               "en-US": "An approximate month and year is fine. This becomes the reference point for the questions about 'before' and 'since'."
             }
           },
           {
             "variable": "transition_summary",
-            "prompt": { "en-US": "In a few sentences, what happened?" }
+            "prompt": {
+              "en-US": "In a few sentences, what happened?"
+            }
           }
         ]
       }
     },
     {
       "id": "composer-network",
-      "dynamicValues": { "transitionWhen": { "path": "ego.transition_when" } },
-      "addNamePlaceholder": {
-        "en-US": "Type a name, then press Enter"
-      },
-      "overtakenEditNotice": {
-        "en-US": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost."
-      },
-      "groupsHeading": {
-        "en-US": "Groups"
-      },
-      "tooltips": {
-        "addPerson": {
-          "en-US": "Add node"
-        },
-        "automaticLayout": {
-          "en-US": "Automatic layout"
-        },
-        "drawConnection": {
-          "en-US": "Draw edge"
+      "dynamicValues": {
+        "transitionWhen": {
+          "path": "ego.transition_when"
         }
       },
       "type": "NetworkComposer",
-      "label": { "en-US": "The people in your story" },
+      "label": {
+        "en-US": "The people in your story"
+      },
       "interviewScript": "You should operate this interface throughout, building the map while listening to the participant's narration. Add each person when they are mentioned, using the first name or nickname the participant chooses. Automatic layout is enabled at the start to keep the map legible as it grows. Leave it on while adding people, and pause it only when you need to make a deliberate adjustment. Treat automatically produced positions as a display aid, not as evidence about closeness or importance. If position, circles, or clusters are intended to represent meaning, ask the participant what the arrangement should convey, turn off automatic layout, make the placement yourself, and confirm your interpretation. Do not impose a fixed meaning unless your study's field manual defines one. Ask open questions about how people are connected and record the configured details without interrupting the story more than necessary.\n\nWhen naming slows, use the same sequence of cues with every participant. First ask whether there is anyone else they would like to add. Then prompt across contexts such as family, friends, work or study, neighborhood, community or faith groups, services and professionals, and online ties. Follow up on groups and people who know one another, while allowing uncertainty, multiple group memberships, and relationships that changed over time. Visual mapping can feel exposing, so check your entries and placements verbally, make any requested corrections yourself, avoid pressuring the participant to rank anyone precisely, and follow your study's privacy and distress procedures.",
       "subject": {
         "entity": "node",
@@ -462,12 +552,16 @@
           {
             "variable": "helped_through",
             "component": "Toggle",
-            "label": { "en-US": "Helped you through it" }
+            "label": {
+              "en-US": "Helped you through it"
+            }
           },
           {
             "variable": "made_it_harder",
             "component": "Toggle",
-            "label": { "en-US": "Made things harder" }
+            "label": {
+              "en-US": "Made things harder"
+            }
           },
           {
             "variable": "lost_touch",
@@ -486,12 +580,16 @@
           {
             "variable": "closeness_now",
             "component": "LikertScale",
-            "label": { "en-US": "How close you are now" }
+            "label": {
+              "en-US": "How close you are now"
+            }
           },
           {
             "variable": "how_we_met",
             "component": "TextArea",
-            "label": { "en-US": "How you know each other" },
+            "label": {
+              "en-US": "How you know each other"
+            },
             "hint": {
               "en-US": "A sentence in the participant's own words, if they give you one."
             }
@@ -532,25 +630,10 @@
       "groupsHeading": {
         "en-US": "Groups"
       },
-      "tooltips": {
-        "enableDrawing": {
-          "en-US": "Enable drawing"
-        },
-        "disableDrawing": {
-          "en-US": "Disable drawing"
-        },
-        "freezeAnnotations": {
-          "en-US": "Freeze annotations"
-        },
-        "unfreezeAnnotations": {
-          "en-US": "Unfreeze annotations"
-        },
-        "resetAnnotations": {
-          "en-US": "Reset annotations"
-        }
-      },
       "type": "Narrative",
-      "label": { "en-US": "Your network, before and since" },
+      "label": {
+        "en-US": "Your network, before and since"
+      },
       "interviewScript": "You should operate this interface throughout, using the completed map as a prompt for narration rather than as an objective or complete account of the participant's network. Move through the presets selectively and ask the participant what they notice. Invite them to explain what clusters, gaps, bridges, isolated people, and changes in closeness mean in their own story. Ask about ties between people and how those relationships changed across the transition. If the participant wants to explore a different arrangement or annotate the map, make those changes yourself and confirm that they reflect what the participant intended.\n\nTreat the map and the spoken account as complementary evidence. If they appear to diverge, explore the difference rather than correcting either one. Keep questions open, give the participant time to reflect, and follow their lead around sensitive relationships. Remind them that they may skip a question or ask you to change the map. Capture the conversation using your approved study procedure, because this stage does not save the discussion or free-draw annotations.",
       "subject": {
         "entity": "node",
@@ -568,43 +651,59 @@
       "presets": [
         {
           "id": "preset-circles",
-          "label": { "en-US": "The circles of your life" },
+          "label": {
+            "en-US": "The circles of your life"
+          },
           "layoutVariable": "layout",
           "groupVariable": "social_circle"
         },
         {
           "id": "preset-before-since",
-          "label": { "en-US": "Before and since" },
+          "label": {
+            "en-US": "Before and since"
+          },
           "layoutVariable": "layout",
           "highlight": [
             {
               "variable": "knew_before",
-              "label": { "en-US": "Knew them before the change" }
+              "label": {
+                "en-US": "Knew them before the change"
+              }
             },
             {
               "variable": "arrived_with_change",
-              "label": { "en-US": "New since the change" }
+              "label": {
+                "en-US": "New since the change"
+              }
             }
           ]
         },
         {
           "id": "preset-help-and-strain",
-          "label": { "en-US": "Who helped, and who didn't" },
+          "label": {
+            "en-US": "Who helped, and who didn't"
+          },
           "layoutVariable": "layout",
           "highlight": [
             {
               "variable": "helped_through",
-              "label": { "en-US": "Helped you through it" }
+              "label": {
+                "en-US": "Helped you through it"
+              }
             },
             {
               "variable": "made_it_harder",
-              "label": { "en-US": "Made things harder" }
+              "label": {
+                "en-US": "Made things harder"
+              }
             }
           ]
         },
         {
           "id": "preset-fell-away",
-          "label": { "en-US": "Who fell away" },
+          "label": {
+            "en-US": "Who fell away"
+          },
           "layoutVariable": "layout",
           "groupVariable": "social_circle",
           "edges": {
@@ -620,13 +719,17 @@
           "highlight": [
             {
               "variable": "lost_touch",
-              "label": { "en-US": "Lost touch since the change" }
+              "label": {
+                "en-US": "Lost touch since the change"
+              }
             }
           ]
         },
         {
           "id": "preset-close-to-whom",
-          "label": { "en-US": "Who is close to whom" },
+          "label": {
+            "en-US": "Who is close to whom"
+          },
           "layoutVariable": "layout",
           "edges": {
             "display": [
@@ -643,7 +746,9 @@
     },
     {
       "id": "finish",
-      "finishLabel": { "en-US": "Finish" },
+      "finishLabel": {
+        "en-US": "Finish"
+      },
       "finishConfirmation": {
         "en-US": "Are you sure you want to finish the interview?"
       },
@@ -652,7 +757,9 @@
       },
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": { "en-US": "Finish Interview" },
+      "label": {
+        "en-US": "Finish Interview"
+      },
       "content": {
         "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
@@ -798,8 +905,37 @@
       }
     },
     "networkComposer": {
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      },
+      "overtakenEditNotice": {
+        "en-US": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost."
+      },
+      "groupsHeading": {
+        "en-US": "Groups"
+      },
+      "addNodeTooltip": {
+        "en-US": "Add node"
+      },
+      "automaticLayoutTooltip": {
+        "en-US": "Automatic layout"
+      },
+      "drawEdgeTooltip": {
+        "en-US": "Draw edge"
+      },
       "connection": {
         "en-US": "Connection"
+      }
+    },
+    "narrative": {
+      "toggleDrawing": {
+        "en-US": "Toggle drawing"
+      },
+      "toggleFreezing": {
+        "en-US": "Toggle freezing annotations"
+      },
+      "resetAnnotations": {
+        "en-US": "Reset annotations"
       }
     },
     "egoForm": {

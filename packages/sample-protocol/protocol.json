@@ -790,9 +790,6 @@
     },
     {
       "id": "f6cff4b0-32e7-11eb-8503-3b4fa95b8bc6",
-      "quickAddHint": {
-        "en-US": "Press Enter when you are finished."
-      },
       "label": {
         "en-US": "Quick Add Name Generator"
       },
@@ -809,7 +806,10 @@
             "en-US": "Within the **past 6 months**, who have you felt **close to**, or discussed **important personal matters** with?"
           }
         }
-      ]
+      ],
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      }
     },
     {
       "id": "73f13080-32e8-11eb-8503-3b4fa95b8bc6",
@@ -838,9 +838,6 @@
     },
     {
       "id": "39e14c40-32e8-11eb-8503-3b4fa95b8bc6",
-      "quickAddHint": {
-        "en-US": "Press Enter when you are finished."
-      },
       "label": {
         "en-US": "Quick Add with Sidepanel"
       },
@@ -872,7 +869,10 @@
             }
           ]
         }
-      ]
+      ],
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      }
     },
     {
       "id": "501a9420-32e9-11eb-8503-3b4fa95b8bc6",
@@ -1024,7 +1024,10 @@
             "en-US": "Please select any members of your class that you spend time with **other than when studying**. Tap a card to select, and press the **down arrow** when you are finished."
           }
         }
-      ]
+      ],
+      "unnamedLabel": {
+        "en-US": "Unnamed {count}"
+      }
     },
     {
       "id": "dfde4a90-32ec-11eb-8503-3b4fa95b8bc6",
@@ -1070,7 +1073,10 @@
             "en-US": "Which universities have you either **visited** or **studied at**?"
           }
         }
-      ]
+      ],
+      "unnamedLabel": {
+        "en-US": "Unnamed {count}"
+      }
     },
     {
       "id": "3ca90480-32f8-11eb-8503-3b4fa95b8bc6-introduction",
@@ -1647,23 +1653,6 @@
       "groupsHeading": {
         "en-US": "Groups"
       },
-      "tooltips": {
-        "enableDrawing": {
-          "en-US": "Enable drawing"
-        },
-        "disableDrawing": {
-          "en-US": "Disable drawing"
-        },
-        "freezeAnnotations": {
-          "en-US": "Freeze annotations"
-        },
-        "unfreezeAnnotations": {
-          "en-US": "Unfreeze annotations"
-        },
-        "resetAnnotations": {
-          "en-US": "Reset annotations"
-        }
-      },
       "label": {
         "en-US": "Narrative Interface"
       },
@@ -1892,16 +1881,24 @@
       }
     },
     "quickAdd": {
-      "addNamePlaceholder": {
-        "en-US": "Type a name, then press Enter"
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
       }
     },
     "roster": {
-      "unnamedNumbered": {
-        "en-US": "Unnamed {count}"
-      },
       "dropToRemove": {
         "en-US": "Drop here to remove"
+      }
+    },
+    "narrative": {
+      "toggleDrawing": {
+        "en-US": "Toggle drawing"
+      },
+      "toggleFreezing": {
+        "en-US": "Toggle freezing annotations"
+      },
+      "resetAnnotations": {
+        "en-US": "Reset annotations"
       }
     },
     "egoForm": {

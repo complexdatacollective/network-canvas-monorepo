@@ -32,32 +32,19 @@ const rowFor = (label: string) => {
 };
 
 describe('Protocol Summary canvas wording', () => {
-  it('prints the words a Network Composer stage holds under its heading', () => {
-    renderWording('NetworkComposer', {
-      addNamePlaceholder: { en: 'Type a name' },
-      tooltips: { addPerson: { en: 'Add a person' } },
+  it('prints the words a Narrative stage holds under its heading', () => {
+    renderWording('Narrative', {
+      groupsHeading: { en: 'Clusters' },
+      presets: [
+        {
+          id: 'p1',
+          label: { en: 'Preset' },
+          groupVariable: 'contactType',
+        },
+      ],
     });
 
     expect(screen.getByText('Customize built-in wording')).toBeInTheDocument();
-    expect(
-      within(rowFor('Name box placeholder')).getByText('Type a name'),
-    ).toBeInTheDocument();
-    expect(
-      within(rowFor('Add node tooltip')).getByText('Add a person'),
-    ).toBeInTheDocument();
-  });
-
-  it('prints the groups heading only once the composer has groups', () => {
-    const { unmount } = renderWording('NetworkComposer', {
-      groupsHeading: { en: 'Clusters' },
-    });
-    expect(screen.queryByText('Groups heading')).not.toBeInTheDocument();
-    unmount();
-
-    renderWording('NetworkComposer', {
-      convexHullVariable: 'contactType',
-      groupsHeading: { en: 'Clusters' },
-    });
     expect(
       within(rowFor('Groups heading')).getByText('Clusters'),
     ).toBeInTheDocument();
@@ -80,53 +67,13 @@ describe('Protocol Summary canvas wording', () => {
     ).toBeInTheDocument();
   });
 
-  it('prints the drawing tooltips of a stage whose drawing is on', () => {
-    const configuration = {
-      behaviours: { freeDraw: true },
-      tooltips: { enableDrawing: { en: 'Start drawing' } },
-    };
-    const { unmount } = renderWording('Narrative', configuration);
-    expect(
-      within(rowFor('Enable drawing tooltip')).getByText('Start drawing'),
-    ).toBeInTheDocument();
-    unmount();
-
-    renderWording('Narrative', {
-      ...configuration,
-      behaviours: { freeDraw: false },
-    });
-    expect(screen.queryByText('Start drawing')).not.toBeInTheDocument();
-  });
-
-  it('prints the at-risk notation only when the pedigree shows at-risk statuses', () => {
-    const configuration = {
-      showAtRiskStatuses: false,
-      conditionText: {
-        notation: { atRiskAffected: { en: 'Possibly affected' } },
-      },
-    };
-    const { unmount } = renderWording('NarrativePedigree', configuration);
-    expect(screen.queryByText('Possibly affected')).not.toBeInTheDocument();
-    unmount();
-
+  it('prints the snapshot button of a narrative pedigree', () => {
     renderWording('NarrativePedigree', {
-      ...configuration,
-      showAtRiskStatuses: true,
-    });
-    expect(
-      within(rowFor('May develop this condition')).getByText(
-        'Possibly affected',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('prints the key heading of a narrative pedigree', () => {
-    renderWording('NarrativePedigree', {
-      keyHeading: { en: 'Symbols' },
+      saveSnapshot: { en: 'Keep a picture' },
     });
 
     expect(
-      within(rowFor('Key heading')).getByText('Symbols'),
+      within(rowFor('Save snapshot button')).getByText('Keep a picture'),
     ).toBeInTheDocument();
   });
 
@@ -150,13 +97,13 @@ describe('Protocol Summary canvas wording', () => {
   });
 
   it('prints nothing for a stage whose settings hold no words', () => {
-    const { container } = renderWording('NetworkComposer', {});
+    const { container } = renderWording('Narrative', {});
     expect(container).toBeEmptyDOMElement();
   });
 
   it('prints nothing for a stage type that has no canvas wording', () => {
-    const { container } = renderWording('FamilyPedigree', {
-      prompt: { en: 'Draw your family' },
+    const { container } = renderWording('NetworkComposer', {
+      convexHullVariable: 'contactType',
     });
     expect(container).toBeEmptyDOMElement();
   });

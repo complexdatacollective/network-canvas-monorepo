@@ -3015,7 +3015,7 @@ export class SyntheticInterview {
     }
 
     // The researcher's own wording, before Network Canvas's fills what is
-    // left. A dotted name (`tooltips.addPerson`) is a setting inside a group,
+    // left. A dotted name (`conditionText.selectCondition`) is a setting inside a group,
     // and a name the stage keeps in its `wording` group (as the Family
     // Pedigree keeps `wording.panelTitle`) may leave the group out.
     const supplied = new Set(

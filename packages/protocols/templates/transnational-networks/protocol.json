@@ -1024,16 +1024,6 @@
           "path": "node.$label"
         }
       },
-      "offlineNotice": {
-        "en-US": "You are offline — the map will not load until you reconnect.",
-        "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte.",
-        "hu": "Nincs internetkapcsolat. A térkép csak újracsatlakozás után töltődik be."
-      },
-      "mapUnavailable": {
-        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
-        "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance.",
-        "hu": "Ez akkor fordulhat elő, ha a böngésző vagy az eszköz nem támogatja a térkép által igényelt funkciókat (például a WebGL-t). Próbáljon meg másik böngészőt vagy eszközt, vagy forduljon a vizsgálat szervezőjéhez. Az interjút a következő nyílra kattintva is folytathatja."
-      },
       "outsideAreasLabel": {
         "en-US": "Outside Selectable Areas",
         "es": "Fuera de las áreas seleccionables",
@@ -1158,33 +1148,6 @@
         "en-US": "Groups",
         "es": "Grupos",
         "hu": "Csoportok"
-      },
-      "tooltips": {
-        "enableDrawing": {
-          "en-US": "Enable drawing",
-          "es": "Activar el dibujo",
-          "hu": "Rajzolás bekapcsolása"
-        },
-        "disableDrawing": {
-          "en-US": "Disable drawing",
-          "es": "Desactivar el dibujo",
-          "hu": "Rajzolás kikapcsolása"
-        },
-        "freezeAnnotations": {
-          "en-US": "Freeze annotations",
-          "es": "Bloquear las anotaciones",
-          "hu": "Jegyzetek rögzítése"
-        },
-        "unfreezeAnnotations": {
-          "en-US": "Unfreeze annotations",
-          "es": "Desbloquear las anotaciones",
-          "hu": "Jegyzetek feloldása"
-        },
-        "resetAnnotations": {
-          "en-US": "Reset annotations",
-          "es": "Restablecer las anotaciones",
-          "hu": "Jegyzetek visszaállítása"
-        }
       },
       "type": "Narrative",
       "label": {
@@ -1550,6 +1513,31 @@
         "en-US": "Place here",
         "es": "Colocar aquí",
         "hu": "Helyezze ide"
+      }
+    },
+    "narrative": {
+      "toggleDrawing": {
+        "en-US": "Toggle drawing"
+      },
+      "toggleFreezing": {
+        "en-US": "Toggle freezing annotations"
+      },
+      "resetAnnotations": {
+        "en-US": "Reset annotations",
+        "es": "Restablecer las anotaciones",
+        "hu": "Jegyzetek visszaállítása"
+      }
+    },
+    "geospatial": {
+      "offlineNotice": {
+        "en-US": "You are offline — the map will not load until you reconnect.",
+        "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte.",
+        "hu": "Nincs internetkapcsolat. A térkép csak újracsatlakozás után töltődik be."
+      },
+      "mapUnavailable": {
+        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
+        "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance.",
+        "hu": "Ez akkor fordulhat elő, ha a böngésző vagy az eszköz nem támogatja a térkép által igényelt funkciókat (például a WebGL-t). Próbáljon meg másik böngészőt vagy eszközt, vagy forduljon a vizsgálat szervezőjéhez. Az interjút a következő nyílra kattintva is folytathatja."
       }
     },
     "egoForm": {

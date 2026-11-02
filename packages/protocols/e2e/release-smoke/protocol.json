@@ -462,10 +462,6 @@
         "en-US": "You have completed this task. Click the next arrow to continue.",
         "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar."
       },
-      "quickAddHint": {
-        "en-US": "Press Enter when you are finished.",
-        "es": "Pulsa Intro cuando hayas terminado."
-      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -488,7 +484,11 @@
             "es": "{egoName, select, missing {¿Quiénes son las personas que conoces?} other {¿Quiénes son las personas que conoces, {egoName}?}}"
           }
         }
-      ]
+      ],
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter",
+        "es": "Escribe un nombre y pulsa Intro"
+      }
     },
     {
       "id": "stage-socio",
@@ -718,10 +718,6 @@
           "en-US": "Is this child…",
           "es": "Este hijo/a es…"
         },
-        "connectHint": {
-          "en-US": "Select a person, then select another to connect them.",
-          "es": "Selecciona una persona y luego otra para conectarlas."
-        },
         "connectParent": {
           "en-US": "{parentIsYou, select, true {You are a parent of {child}} other {{childIsYou, select, true {{parent} is your parent} other {{parent} is a parent of {child}}}}}",
           "es": "{parentIsYou, select, true {Eres progenitor de {child}} other {{childIsYou, select, true {{parent} es tu progenitor} other {{parent} es progenitor de {child}}}}}"
@@ -741,10 +737,6 @@
         "disconnectConfirmTitle": {
           "en-US": "{firstIsYou, select, true {Remove the connection between you and {second}?} other {Remove the connection between {first} and {second}?}}",
           "es": "{firstIsYou, select, true {¿Quitar la conexión entre tú y {second}?} other {¿Quitar la conexión entre {first} y {second}?}}"
-        },
-        "disconnectHint": {
-          "en-US": "Select a person, then select someone they are connected to, to remove that connection.",
-          "es": "Selecciona una persona y luego alguien con quien esté conectada para quitar esa conexión."
         },
         "disconnectWouldCutOff": {
           "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}",
@@ -853,18 +845,6 @@
         "you": {
           "en-US": "You",
           "es": "Tú"
-        },
-        "connectTool": {
-          "en-US": "Connect",
-          "es": "Conectar"
-        },
-        "disconnectTool": {
-          "en-US": "Disconnect",
-          "es": "Desconectar"
-        },
-        "pointerTool": {
-          "en-US": "Add and edit",
-          "es": "Añadir y editar"
         },
         "changeWouldCutOff": {
           "en-US": "{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}",
@@ -1364,21 +1344,37 @@
       }
     },
     "familyPedigree": {
+      "pointerTool": {
+        "en-US": "Add and edit",
+        "es": "Añadir y editar"
+      },
       "pointerToolDescription": {
         "en-US": "Select a family member to edit their details or add their relatives.",
         "es": "Selecciona a un familiar para editar sus datos o añadirle familiares."
+      },
+      "connectTool": {
+        "en-US": "Connect",
+        "es": "Conectar"
       },
       "connectToolDescription": {
         "en-US": "Select two family members to connect them and say how they are related.",
         "es": "Selecciona a dos familiares para conectarlos e indicar qué relación hay entre ellos."
       },
+      "connectHint": {
+        "en-US": "Select a person, then select another to connect them.",
+        "es": "Selecciona una persona y luego otra para conectarlas."
+      },
+      "disconnectTool": {
+        "en-US": "Disconnect",
+        "es": "Desconectar"
+      },
       "disconnectToolDescription": {
         "en-US": "Select two connected family members to remove the connection between them.",
         "es": "Selecciona a dos familiares conectados para eliminar la conexión entre ellos."
       },
-      "framingControlDescription": {
-        "en-US": "Choose the relationship words your family tree uses for your relatives.",
-        "es": "Elige qué términos de parentesco usa tu árbol familiar para nombrar a tus familiares."
+      "disconnectHint": {
+        "en-US": "Select a person, then select someone they are connected to, to remove that connection.",
+        "es": "Selecciona una persona y luego alguien con quien esté conectada para quitar esa conexión."
       },
       "undoDescription": {
         "en-US": "Undo your last change to your family tree.",
@@ -1400,9 +1396,9 @@
       }
     },
     "quickAdd": {
-      "addNamePlaceholder": {
-        "en-US": "Type a name, then press Enter",
-        "es": "Escribe un nombre y pulsa Intro"
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished.",
+        "es": "Pulsa Intro cuando hayas terminado."
       }
     },
     "egoForm": {

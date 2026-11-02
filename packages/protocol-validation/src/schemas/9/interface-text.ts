@@ -12,9 +12,12 @@ import {
   FAMILY_PEDIGREE_INTERFACE_TEXT,
   FAMILY_TREE_VIEW_INTERFACE_TEXT,
   FORMS_INTERFACE_TEXT,
+  GEOSPATIAL_INTERFACE_TEXT,
   type InterfaceTextEntry,
   INTERVIEWER_INTERFACE_TEXT,
   MESSAGES_INTERFACE_TEXT,
+  NARRATIVE_INTERFACE_TEXT,
+  NARRATIVE_PEDIGREE_INTERFACE_TEXT,
   NAVIGATION_INTERFACE_TEXT,
   NETWORK_COMPOSER_INTERFACE_TEXT,
   PASSPHRASE_INTERFACE_TEXT,
@@ -29,8 +32,11 @@ import {
   localizedString,
   nonBlankText,
 } from './localized-string.ts';
-import { hasExternalPanels } from './stage-wording/conditions.ts';
+import { hasExternalPanels, hasMapSearch } from './stage-wording/conditions.ts';
 import { behaviourIsOn } from './stage-wording/configuration.ts';
+import { choosesFraming } from './stage-wording/family-pedigree.ts';
+import { showsAtRiskStatuses } from './stage-wording/narrative-pedigree.ts';
+import { hasEdgeTypes, hasGroups } from './stage-wording/network-composer.ts';
 import { requireSuppliedPlacements } from './supplied-stage-setting.ts';
 import {
   type LanguageChange,
@@ -59,7 +65,9 @@ import {
  * `interviewer` and `search` groups always, the `buttons` and `messages`
  * groups always but for the entries only some stages show (Yes and No with
  * forms, Don't know on a Family Pedigree), each other group only while the
- * protocol uses what it is for, and of the validation group only the
+ * protocol uses what it is for, of a stage type's group only the entries a
+ * stage of that type is configured to show (a Network Composer's groups
+ * heading only while one has groups), and of the validation group only the
  * messages of the rules it uses (see `INTERFACE_TEXT_GROUPS`). Architect
  * writes and removes the groups as the protocol changes, with the wording
  * Network Canvas supplies, and the researcher may change and translate them
@@ -294,6 +302,37 @@ const ofType =
   (stage: Readonly<Record<string, unknown>>) =>
     typeof stage.type === 'string' && types.includes(stage.type);
 
+/**
+ * A group every stage of one type shows, held while the protocol has such a
+ * stage. An entry named in `shownWhen` is shown only by a stage configured a
+ * certain way, and is held only while one is.
+ */
+const stageTypeGroup = (
+  stageType: string,
+  entries: Readonly<Record<string, InterfaceTextEntry>>,
+  shownWhen: Readonly<
+    Record<string, (stage: Readonly<Record<string, unknown>>) => boolean>
+  > = {},
+  shows: (stage: Readonly<Record<string, unknown>>) => boolean = () => true,
+): InterfaceTextGroup => {
+  const showsGroup = (stage: Readonly<Record<string, unknown>>) =>
+    ofType(stageType)(stage) && shows(stage);
+  return {
+    entries,
+    usedBy: (protocol) => hasStage(protocol, showsGroup),
+    entriesUsedBy: (protocol) =>
+      new Set(
+        Object.keys(entries).filter((key) => {
+          const when = shownWhen[key];
+          return (
+            when === undefined ||
+            hasStage(protocol, (stage) => showsGroup(stage) && when(stage))
+          );
+        }),
+      ),
+  };
+};
+
 /** A Sociogram or Narrative shows the layout toggle while its layout is on. */
 const showsLayoutToggle = (stage: Readonly<Record<string, unknown>>) =>
   ofType('Sociogram', 'Narrative')(stage) &&
@@ -388,30 +427,43 @@ const INTERFACE_TEXT_GROUPS = {
     usedBy: (protocol) =>
       hasStage(protocol, ofType('FamilyPedigree', 'NarrativePedigree')),
   },
-  familyPedigree: {
-    entries: FAMILY_PEDIGREE_INTERFACE_TEXT,
-    usedBy: (protocol) => hasStage(protocol, ofType('FamilyPedigree')),
-  },
-  categoricalBin: {
-    entries: CATEGORICAL_BIN_INTERFACE_TEXT,
-    usedBy: (protocol) => hasStage(protocol, ofType('CategoricalBin')),
-  },
-  quickAdd: {
-    entries: QUICK_ADD_INTERFACE_TEXT,
-    usedBy: (protocol) => hasStage(protocol, ofType('NameGeneratorQuickAdd')),
-  },
-  roster: {
-    entries: ROSTER_INTERFACE_TEXT,
-    usedBy: (protocol) => hasStage(protocol, ofType('NameGeneratorRoster')),
-  },
-  networkComposer: {
-    entries: NETWORK_COMPOSER_INTERFACE_TEXT,
-    usedBy: (protocol) => hasStage(protocol, ofType('NetworkComposer')),
-  },
-  egoForm: {
-    entries: EGO_FORM_INTERFACE_TEXT,
-    usedBy: (protocol) => hasStage(protocol, ofType('EgoForm')),
-  },
+  familyPedigree: stageTypeGroup(
+    'FamilyPedigree',
+    FAMILY_PEDIGREE_INTERFACE_TEXT,
+    {
+      framingControlLabel: choosesFraming,
+      framingControlDescription: choosesFraming,
+      framingChoiceTitle: choosesFraming,
+      framingChoiceDescription: choosesFraming,
+    },
+  ),
+  narrativePedigree: stageTypeGroup(
+    'NarrativePedigree',
+    NARRATIVE_PEDIGREE_INTERFACE_TEXT,
+    { mayDevelop: showsAtRiskStatuses, mayCarry: showsAtRiskStatuses },
+  ),
+  categoricalBin: stageTypeGroup(
+    'CategoricalBin',
+    CATEGORICAL_BIN_INTERFACE_TEXT,
+  ),
+  quickAdd: stageTypeGroup('NameGeneratorQuickAdd', QUICK_ADD_INTERFACE_TEXT),
+  roster: stageTypeGroup('NameGeneratorRoster', ROSTER_INTERFACE_TEXT),
+  networkComposer: stageTypeGroup(
+    'NetworkComposer',
+    NETWORK_COMPOSER_INTERFACE_TEXT,
+    { groupsHeading: hasGroups, drawEdgeTooltip: hasEdgeTypes },
+  ),
+  // Only a Narrative whose drawing is on shows its drawing tools.
+  narrative: stageTypeGroup(
+    'Narrative',
+    NARRATIVE_INTERFACE_TEXT,
+    {},
+    (stage) => behaviourIsOn(stage, 'freeDraw'),
+  ),
+  geospatial: stageTypeGroup('Geospatial', GEOSPATIAL_INTERFACE_TEXT, {
+    searchFailed: hasMapSearch,
+  }),
+  egoForm: stageTypeGroup('EgoForm', EGO_FORM_INTERFACE_TEXT),
 } as const satisfies Readonly<Record<string, InterfaceTextGroup>>;
 
 /**
@@ -423,11 +475,13 @@ export const STAGE_TYPE_INTERFACE_TEXT: Readonly<
   Record<string, readonly GroupName[]>
 > = {
   FamilyPedigree: ['familyPedigree', 'familyTreeView'],
-  NarrativePedigree: ['familyTreeView'],
+  NarrativePedigree: ['narrativePedigree', 'familyTreeView'],
   CategoricalBin: ['categoricalBin'],
   NameGeneratorQuickAdd: ['quickAdd'],
   NameGeneratorRoster: ['roster'],
   NetworkComposer: ['networkComposer'],
+  Narrative: ['narrative'],
+  Geospatial: ['geospatial'],
   EgoForm: ['egoForm'],
 };
 
@@ -473,17 +527,25 @@ export const InterfaceTextSchema = z.strictObject({
   forms: groupSchema(FORMS_INTERFACE_TEXT).optional(),
   validation: partialGroupSchema(VALIDATION_INTERFACE_TEXT).optional(),
   familyTreeView: groupSchema(FAMILY_TREE_VIEW_INTERFACE_TEXT).optional(),
-  familyPedigree: groupSchema(FAMILY_PEDIGREE_INTERFACE_TEXT).optional(),
+  familyPedigree: partialGroupSchema(FAMILY_PEDIGREE_INTERFACE_TEXT).optional(),
+  narrativePedigree: partialGroupSchema(
+    NARRATIVE_PEDIGREE_INTERFACE_TEXT,
+  ).optional(),
   categoricalBin: groupSchema(CATEGORICAL_BIN_INTERFACE_TEXT).optional(),
   quickAdd: groupSchema(QUICK_ADD_INTERFACE_TEXT).optional(),
   roster: groupSchema(ROSTER_INTERFACE_TEXT).optional(),
-  networkComposer: groupSchema(NETWORK_COMPOSER_INTERFACE_TEXT).optional(),
+  networkComposer: partialGroupSchema(
+    NETWORK_COMPOSER_INTERFACE_TEXT,
+  ).optional(),
+  narrative: groupSchema(NARRATIVE_INTERFACE_TEXT).optional(),
+  geospatial: partialGroupSchema(GEOSPATIAL_INTERFACE_TEXT).optional(),
   egoForm: groupSchema(EGO_FORM_INTERFACE_TEXT).optional(),
 });
 
 /**
  * The interface text a protocol holds, by group and name. An entry of a group
- * held only in part (`buttons`, `messages`, `validation`) may be absent.
+ * held only in part (`buttons`, `messages`, `validation`, and a stage type's
+ * entries shown only in some configurations) may be absent.
  */
 export type InterfaceText = Readonly<
   Partial<

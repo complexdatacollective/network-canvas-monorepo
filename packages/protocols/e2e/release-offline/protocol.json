@@ -136,6 +136,9 @@
       "behaviours": {
         "minNodes": 1,
         "maxNodes": 3
+      },
+      "unnamedLabel": {
+        "en-US": "Unnamed {count}"
       }
     },
     {
@@ -181,6 +184,35 @@
         "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
       }
     },
+    "interviewer": {
+      "exitReview": {
+        "en-US": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en-US": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en-US": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en-US": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en-US": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en-US": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en-US": "Show screen"
+      }
+    },
     "buttons": {
       "cancel": {
         "en-US": "Cancel"
@@ -197,11 +229,11 @@
       "no": {
         "en-US": "No"
       },
-      "save": {
-        "en-US": "Save"
+      "copy": {
+        "en-US": "Copy"
       },
-      "dontKnow": {
-        "en-US": "Don’t know"
+      "copied": {
+        "en-US": "Copied"
       }
     },
     "messages": {
@@ -213,44 +245,23 @@
       },
       "error": {
         "en-US": "An error occurred."
+      },
+      "externalDataError": {
+        "en-US": "External data could not be loaded."
+      },
+      "loading": {
+        "en-US": "Loading…"
+      },
+      "unnamed": {
+        "en-US": "Unnamed"
       }
     },
-    "passphrase": {
-      "passphrase": {
-        "en-US": "Passphrase"
+    "search": {
+      "searchLabel": {
+        "en-US": "Search"
       },
-      "choosePassphraseHelp": {
-        "en-US": "Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten."
-      },
-      "passphraseIncorrect": {
-        "en-US": "This passphrase does not match the one used earlier in this interview. Check it and try again."
-      },
-      "protectedAnswersLocked": {
-        "en-US": "Some answers here are protected by your passphrase. Enter your passphrase to see and change them."
-      },
-      "protectedAnswersNotSaved": {
-        "en-US": "Your answers have not been saved. Enter your passphrase, then try again."
-      },
-      "protectedAnswersUnavailable": {
-        "en-US": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know."
-      },
-      "answerUnavailable": {
-        "en-US": "Answer unavailable"
-      },
-      "answerUnavailableKept": {
-        "en-US": "This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer."
-      },
-      "confirmPassphrase": {
-        "en-US": "Confirm Passphrase"
-      },
-      "passphraseAccepted": {
-        "en-US": "Passphrase accepted! Click \"Next\" to continue."
-      },
-      "checkingPassphrase": {
-        "en-US": "Checking your passphrase…"
-      },
-      "passwordPlaceholder": {
-        "en-US": "Enter password"
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term."
       }
     },
     "forms": {
@@ -261,45 +272,9 @@
         "en-US": "Do you want to discard your changes?"
       }
     },
-    "validation": {
-      "required": {
-        "en-US": "You must answer this question before continuing."
-      },
-      "minLength": {
-        "en-US": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}"
-      },
-      "maxLength": {
-        "en-US": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}"
-      },
-      "minValue": {
-        "en-US": "Enter a value greater than or equal to {min}."
-      },
-      "maxValue": {
-        "en-US": "Enter a value less than or equal to {max}."
-      },
-      "minDate": {
-        "en-US": "Must be on or after {min}."
-      },
-      "maxDate": {
-        "en-US": "Must be on or before {max}."
-      },
-      "minSelected": {
-        "en-US": "{count, plural, one {Select at least # value.} other {Select at least # values.}}"
-      },
-      "maxSelected": {
-        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
-      },
-      "unique": {
-        "en-US": "Must be unique."
-      },
-      "differentFrom": {
-        "en-US": "{hasLabel, select, true {Your answer must be different from your answer to ''{label}''.} other {Your answer must be different from your earlier answer.}}"
-      },
-      "sameAs": {
-        "en-US": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}"
-      },
-      "greaterThan": {
-        "en-US": "{hasLabel, select, true {Your answer must be greater than your answer to ''{label}''.} other {Your answer must be greater than your earlier answer.}}"
+    "roster": {
+      "dropToRemove": {
+        "en-US": "Drop here to remove"
       }
     }
   }

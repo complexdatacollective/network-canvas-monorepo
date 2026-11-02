@@ -856,8 +856,8 @@
       "maxNodesNotice": {
         "en": "You have completed this task. Click the next arrow to continue."
       },
-      "quickAddHint": {
-        "en": "Press Enter when you are finished."
+      "addNamePlaceholder": {
+        "en": "Type a name, then press Enter"
       }
     },
     {
@@ -1484,23 +1484,6 @@
       },
       "groupsHeading": {
         "en": "Groups"
-      },
-      "tooltips": {
-        "enableDrawing": {
-          "en": "Enable drawing"
-        },
-        "disableDrawing": {
-          "en": "Disable drawing"
-        },
-        "freezeAnnotations": {
-          "en": "Freeze annotations"
-        },
-        "unfreezeAnnotations": {
-          "en": "Unfreeze annotations"
-        },
-        "resetAnnotations": {
-          "en": "Reset annotations"
-        }
       }
     },
     {
@@ -1676,8 +1659,19 @@
       }
     },
     "quickAdd": {
-      "addNamePlaceholder": {
-        "en": "Type a name, then press Enter"
+      "quickAddHint": {
+        "en": "Press Enter when you are finished."
+      }
+    },
+    "narrative": {
+      "toggleDrawing": {
+        "en": "Toggle drawing"
+      },
+      "toggleFreezing": {
+        "en": "Toggle freezing annotations"
+      },
+      "resetAnnotations": {
+        "en": "Reset annotations"
       }
     },
     "egoForm": {

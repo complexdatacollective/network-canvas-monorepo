@@ -435,39 +435,6 @@ const settingRule = (
     [segmentsOf(pattern).length, words(label)],
   );
 
-const COMPOSER_WORDING = [
-  settingRule(
-    'addNamePlaceholder',
-    stageWordingMessages.title,
-    composerMessages.addNamePlaceholderLabel,
-  ),
-  settingRule(
-    'overtakenEditNotice',
-    stageWordingMessages.title,
-    composerMessages.overtakenEditNoticeLabel,
-  ),
-  settingRule(
-    'groupsHeading',
-    stageWordingMessages.title,
-    composerMessages.groupsHeadingLabel,
-  ),
-  settingRule(
-    'tooltips.addPerson',
-    stageWordingMessages.title,
-    composerMessages.addNodeTooltipLabel,
-  ),
-  settingRule(
-    'tooltips.automaticLayout',
-    stageWordingMessages.title,
-    composerMessages.automaticLayoutTooltipLabel,
-  ),
-  settingRule(
-    'tooltips.drawConnection',
-    stageWordingMessages.title,
-    composerMessages.drawConnectionTooltipLabel,
-  ),
-];
-
 const NARRATIVE_WORDING = [
   settingRule(
     'attributesHeading',
@@ -484,83 +451,18 @@ const NARRATIVE_WORDING = [
     stageWordingMessages.title,
     narrativeWordingMessages.groupsHeadingLabel,
   ),
-  settingRule(
-    'tooltips.enableDrawing',
-    stageWordingMessages.title,
-    narrativeWordingMessages.enableDrawingTooltipLabel,
-  ),
-  settingRule(
-    'tooltips.disableDrawing',
-    stageWordingMessages.title,
-    narrativeWordingMessages.disableDrawingTooltipLabel,
-  ),
-  settingRule(
-    'tooltips.freezeAnnotations',
-    stageWordingMessages.title,
-    narrativeWordingMessages.freezeAnnotationsTooltipLabel,
-  ),
-  settingRule(
-    'tooltips.unfreezeAnnotations',
-    stageWordingMessages.title,
-    narrativeWordingMessages.unfreezeAnnotationsTooltipLabel,
-  ),
-  settingRule(
-    'tooltips.resetAnnotations',
-    stageWordingMessages.title,
-    narrativeWordingMessages.resetAnnotationsTooltipLabel,
-  ),
 ];
 
 const NARRATIVE_PEDIGREE_WORDING = [
-  settingRule(
-    'keyHeading',
-    stageWordingMessages.title,
-    narrativePedigreeMessages.keyHeadingLabel,
-  ),
   settingRule(
     'saveSnapshot',
     stageWordingMessages.title,
     narrativePedigreeMessages.saveSnapshotButtonLabel,
   ),
   settingRule(
-    'tooltips.clearFocus',
-    stageWordingMessages.title,
-    narrativePedigreeMessages.clearFocusTooltipLabel,
-  ),
-  settingRule(
     'conditionText.selectCondition',
     stageWordingMessages.title,
     narrativePedigreeMessages.selectConditionLabel,
-  ),
-  settingRule(
-    'conditionText.notation.affected',
-    stageWordingMessages.title,
-    narrativePedigreeMessages.affectedNotationLabel,
-  ),
-  settingRule(
-    'conditionText.notation.obligateAffected',
-    stageWordingMessages.title,
-    narrativePedigreeMessages.obligateAffectedNotationLabel,
-  ),
-  settingRule(
-    'conditionText.notation.obligateCarrier',
-    stageWordingMessages.title,
-    narrativePedigreeMessages.obligateCarrierNotationLabel,
-  ),
-  settingRule(
-    'conditionText.notation.atRiskAffected',
-    stageWordingMessages.title,
-    narrativePedigreeMessages.atRiskAffectedNotationLabel,
-  ),
-  settingRule(
-    'conditionText.notation.atRiskCarrier',
-    stageWordingMessages.title,
-    narrativePedigreeMessages.atRiskCarrierNotationLabel,
-  ),
-  settingRule(
-    'conditionText.notation.unknown',
-    stageWordingMessages.title,
-    narrativePedigreeMessages.unknownNotationLabel,
   ),
   settingRule(
     'conditionText.snapshotCondition',
@@ -576,7 +478,7 @@ const NARRATIVE_PEDIGREE_WORDING = [
 
 const UNPLACED_NODES_NOTICE = settingRule(
   'unplacedNodesNotice',
-  binBehavioursMessages.title,
+  stageWordingMessages.title,
   binBehavioursMessages.unplacedNoticeLabel,
 );
 
@@ -658,38 +560,6 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     rule('completeness.recommendedNote', PEDIGREE_WORDING, [
       2,
       words(familyPedigreeMessages.trackerRecommendedNoteLabel),
-    ]),
-    rule('wording.pointerTool', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingPointerTool),
-    ]),
-    rule('wording.connectTool', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingConnectTool),
-    ]),
-    rule('wording.disconnectTool', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingDisconnectTool),
-    ]),
-    rule('wording.connectHint', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingConnectHint),
-    ]),
-    rule('wording.disconnectHint', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingDisconnectHint),
-    ]),
-    rule('wording.framingChoiceTitle', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingFramingChoiceTitle),
-    ]),
-    rule('wording.framingChoiceDescription', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingFramingChoiceDescription),
-    ]),
-    rule('wording.framingControlLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingFramingControlLabel),
     ]),
     rule('wording.placeholderParentsNote', PEDIGREE_WORDING, [
       2,
@@ -986,21 +856,9 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
   ],
   Geospatial: [
     promptText(geospatialMessages.promptTextLabel),
-    rule('offlineNotice', GEOSPATIAL_WORDING, [
-      1,
-      words(geospatialWordingMessages.offlineLabel),
-    ]),
-    rule('mapUnavailable', GEOSPATIAL_WORDING, [
-      1,
-      words(geospatialWordingMessages.unavailableLabel),
-    ]),
     rule('outsideAreasLabel', GEOSPATIAL_WORDING, [
       1,
       words(geospatialWordingMessages.outsideAreasLabel),
-    ]),
-    rule('searchFailed', GEOSPATIAL_WORDING, [
-      1,
-      words(geospatialWordingMessages.searchFailedLabel),
     ]),
   ],
   Information: [
@@ -1046,9 +904,9 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     NAME_GENERATOR_PROMPT,
     ...PANEL_RULES,
     ...NAME_GENERATOR_LIMIT_RULES,
-    rule('quickAddHint', NAME_GENERATOR_WORDING, [
+    rule('addNamePlaceholder', NAME_GENERATOR_WORDING, [
       1,
-      words(nameGeneratorWordingMessages.quickAddHintLabel),
+      words(nameGeneratorWordingMessages.addNamePlaceholderLabel),
     ]),
   ],
   NameGeneratorRoster: [
@@ -1058,6 +916,10 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     rule('allAddedNotice', NAME_GENERATOR_WORDING, [
       1,
       words(nameGeneratorWordingMessages.allAddedLabel),
+    ]),
+    rule('unnamedLabel', NAME_GENERATOR_WORDING, [
+      1,
+      words(nameGeneratorWordingMessages.unnamedLabelLabel),
     ]),
     rule(
       'cardOptions.additionalProperties.#.label',
@@ -1099,7 +961,6 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     ),
   ],
   NetworkComposer: [
-    ...COMPOSER_WORDING,
     rule(
       'edges.#.label',
       [1, words(composerMessages.connectionsTitle)],

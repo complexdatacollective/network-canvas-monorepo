@@ -5,62 +5,6 @@ import { defineMessages } from '@codaco/app-i18n/messages';
  * where the participant sees the text and what it is for.
  */
 export const pedigreeWordingHints = defineMessages({
-  pointerTool: {
-    id: 'protocolBuilder.pedigree.wordingHint.pointerTool',
-    defaultMessage:
-      'Name of the toolbar tool for selecting a family member to edit them or add relatives. Shown in its tooltip.',
-    description:
-      'Hint under the setting holding the pointer tool button, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
-  },
-  connectTool: {
-    id: 'protocolBuilder.pedigree.wordingHint.connectTool',
-    defaultMessage:
-      'Name of the toolbar tool for connecting two family members. Shown in its tooltip.',
-    description:
-      'Hint under the setting holding the connect tool button, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
-  },
-  disconnectTool: {
-    id: 'protocolBuilder.pedigree.wordingHint.disconnectTool',
-    defaultMessage:
-      'Name of the toolbar tool for removing a connection. Shown in its tooltip.',
-    description:
-      'Hint under the setting holding the disconnect tool button, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
-  },
-  connectHint: {
-    id: 'protocolBuilder.pedigree.wordingHint.connectHint',
-    defaultMessage:
-      'Instruction shown on the family tree while the connect tool is in use.',
-    description:
-      'Hint under the setting holding the connect hint, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
-  },
-  disconnectHint: {
-    id: 'protocolBuilder.pedigree.wordingHint.disconnectHint',
-    defaultMessage:
-      'Instruction shown on the family tree while the disconnect tool is in use.',
-    description:
-      'Hint under the setting holding the disconnect hint, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
-  },
-  framingChoiceTitle: {
-    id: 'protocolBuilder.pedigree.wordingHint.framingChoiceTitle',
-    defaultMessage:
-      'Question asking the participant which words to use for family members. Only used when participants choose the words.',
-    description:
-      'Hint under the setting holding the wording question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
-  },
-  framingChoiceDescription: {
-    id: 'protocolBuilder.pedigree.wordingHint.framingChoiceDescription',
-    defaultMessage:
-      'Explanation under the question about which words to use. Only used when participants choose the words.',
-    description:
-      'Hint under the setting holding the explanation under the wording question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
-  },
-  framingControlLabel: {
-    id: 'protocolBuilder.pedigree.wordingHint.framingControlLabel',
-    defaultMessage:
-      'Label of the control for changing the words used for family members. Only used when participants choose the words.',
-    description:
-      'Hint under the setting holding the wording control label, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
-  },
   placeholderParentsNote: {
     id: 'protocolBuilder.pedigree.wordingHint.placeholderParentsNote',
     defaultMessage:
@@ -85,7 +29,7 @@ export const pedigreeWordingHints = defineMessages({
   you: {
     id: 'protocolBuilder.pedigree.wordingHint.you',
     defaultMessage:
-      'Shown instead of a name wherever the participant appears in the family tree.',
+      'Shown instead of a name wherever the participant appears in the family tree. It can use an ego attribute, such as a name from an earlier form.',
     description:
       'Hint under the setting holding the participant’s own name, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
   },

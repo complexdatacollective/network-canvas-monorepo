@@ -261,15 +261,10 @@ describe('the family pedigree stage editor', () => {
       label: { 'en-US': expect.any(String) },
       subject: { entity: 'node', type: 'family_member' },
       prompt: { 'en-US': PROMPT_TEXT },
-      // Every word the interface shows, except the wording question, which a
-      // stage shows only once participants choose their own. The gender
-      // identity label among them is written by the save: the stage gained
-      // it when the attribute was bound, with its wording group closed.
-      wording: Object.fromEntries(
-        Object.entries(EVERY_PEDIGREE_WORD).filter(
-          ([key]) => !key.startsWith('framing'),
-        ),
-      ),
+      // Every word the stage shows. The gender identity label among them is
+      // written by the save: the stage gained it when the attribute was
+      // bound, with its wording group closed.
+      wording: EVERY_PEDIGREE_WORD,
       nodeConfiguration: {
         nameAttribute: 'fm_name',
         // The name question a new stage starts with, in the protocol's
@@ -1134,7 +1129,7 @@ describe('the completeness requirement', () => {
       relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
     });
     await openStageWording(harness);
-    await screen.findByRole('textbox', { name: 'Pointer tool button' });
+    await screen.findByRole('textbox', { name: 'Carrier question' });
     expect(
       screen.queryByRole('textbox', { name: 'Missing parents item' }),
     ).toBeNull();
@@ -1667,10 +1662,10 @@ describe('the participant wording', () => {
 
     expect(await part()).toHaveAttribute('aria-expanded', 'false');
     expect(
-      screen.queryByText('Pointer tool button', { selector: FIELD_LABEL }),
+      screen.queryByText('Carrier question', { selector: FIELD_LABEL }),
     ).toBeNull();
-    // So nothing on screen edits the wording yet.
-    expect(harness.ownedKeys()).not.toContain('wording');
+    // The closed part still owns the wording it parks.
+    expect(harness.ownedKeys()).toContain('wording');
   });
 
   it('shows every setting, with no headings between them, once opened', async () => {
@@ -1680,8 +1675,8 @@ describe('the participant wording', () => {
     await openStageWording(harness);
 
     expect(
-      await screen.findByRole('textbox', { name: 'Pointer tool button' }),
-    ).toHaveValue(String(get(EVERY_PEDIGREE_WORD, ['pointerTool', 'en-US'])));
+      await screen.findByRole('textbox', { name: 'Carrier question' }),
+    ).toHaveValue(String(get(EVERY_PEDIGREE_WORD, ['carrierLabel', 'en-US'])));
     expect(
       await screen.findByText('Connect question', { selector: FIELD_LABEL }),
     ).toBeVisible();
@@ -1704,10 +1699,8 @@ describe('the participant wording', () => {
     await openStageWording(harness);
 
     expect(
-      await screen.findByRole('textbox', { name: 'Pointer tool button' }),
-    ).toHaveAccessibleDescription(
-      /Name of the toolbar tool for selecting a family member/,
-    );
+      await screen.findByRole('textbox', { name: 'Carrier question' }),
+    ).toHaveAccessibleDescription(/Question asking who carried the pregnancy/);
   });
 
   /**
@@ -1773,36 +1766,9 @@ describe('the participant wording', () => {
     const harness = openFixture();
     await harness.opened();
 
-    // Nothing on screen edits the wording while it is closed, and the stage
-    // keeps every word of it all the same.
-    await harness.roundTrip({ unowned: ['wording'] });
-  });
-
-  it('writes Network Canvas’s words for the framing choice, chosen while the wording is closed', async () => {
-    const harness = openFixture();
-    await harness.opened();
-    expect(wordingOf(harness.seeded.fields)).not.toHaveProperty(
-      'framingChoiceTitle',
-    );
-
-    await harness.user.click(
-      await screen.findByRole('option', {
-        name: /^Let the participant choose/,
-      }),
-    );
-
-    const request = await harness.submit();
-    const wording = wordingOf(request?.stageDocument);
-    for (const key of [
-      'framingChoiceTitle',
-      'framingChoiceDescription',
-      'framingControlLabel',
-    ]) {
-      expect(wording[key]).toEqual(EVERY_PEDIGREE_WORD[key]);
-    }
-    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
-      true,
-    );
+    // The closed part parks the wording, and the stage keeps every word of
+    // it all the same.
+    await harness.roundTrip({ unowned: [] });
   });
 
   it('keeps what was written after the wording is closed', async () => {
@@ -1810,7 +1776,7 @@ describe('the participant wording', () => {
     await harness.opened();
     await openStageWording(harness);
     const field = await screen.findByRole('textbox', {
-      name: 'Pointer tool button',
+      name: 'Carrier question',
     });
     await harness.user.clear(field);
     await harness.user.type(field, 'Point');
@@ -1818,12 +1784,12 @@ describe('the participant wording', () => {
     await harness.user.click(await part());
     await waitFor(() =>
       expect(
-        screen.queryByRole('textbox', { name: 'Pointer tool button' }),
+        screen.queryByRole('textbox', { name: 'Carrier question' }),
       ).toBeNull(),
     );
 
     const request = await harness.submit();
-    expect(wordingOf(request?.stageDocument).pointerTool).toEqual({
+    expect(wordingOf(request?.stageDocument).carrierLabel).toEqual({
       'en-US': 'Point',
     });
   });
@@ -1833,12 +1799,12 @@ describe('the participant wording', () => {
     await harness.opened();
     await openStageWording(harness);
     await harness.user.clear(
-      await screen.findByRole('textbox', { name: 'Pointer tool button' }),
+      await screen.findByRole('textbox', { name: 'Carrier question' }),
     );
 
     expect(await harness.submit()).toBeNull();
     expect(
-      await screen.findByRole('textbox', { name: 'Pointer tool button' }),
+      await screen.findByRole('textbox', { name: 'Carrier question' }),
     ).toHaveFocus();
 
     // Closing it would hide the field that has to be put right.
@@ -1848,7 +1814,7 @@ describe('the participant wording', () => {
       expect(trigger).toHaveAttribute('aria-expanded', 'true'),
     );
     expect(
-      screen.getByRole('textbox', { name: 'Pointer tool button' }),
+      screen.getByRole('textbox', { name: 'Carrier question' }),
     ).toBeInTheDocument();
   });
 

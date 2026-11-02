@@ -649,15 +649,51 @@ const OWN_WORDS = {
 
 type OwnWord = keyof typeof OWN_WORDS;
 
+/**
+ * The words every Family Pedigree stage shows alike (its tools, their hints,
+ * and the framing choice), which the protocol holds once, as interface text.
+ */
+const SHARED_WORDS: ReadonlySet<OwnWord> = new Set([
+  'pointerTool',
+  'connectTool',
+  'disconnectTool',
+  'connectHint',
+  'disconnectHint',
+  'framingChoiceTitle',
+  'framingChoiceDescription',
+  'framingControlLabel',
+]);
+
 /** The stage's own words for the settings named, as a scenario's `wording`. */
 const ownWords = (
   ...keys: readonly OwnWord[]
 ): Record<string, string | { 'en-US': string }> =>
-  Object.fromEntries(keys.map((key) => [`wording.${key}`, OWN_WORDS[key]]));
+  Object.fromEntries(
+    keys
+      .filter((key) => !SHARED_WORDS.has(key))
+      .map((key) => [`wording.${key}`, OWN_WORDS[key]]),
+  );
+
+/** The protocol's own words for the shared words named, as interface text. */
+const setSharedWords = (
+  synth: SyntheticInterview,
+  ...keys: readonly OwnWord[]
+): void => {
+  for (const key of keys) {
+    if (SHARED_WORDS.has(key)) {
+      synth.setInterfaceText('familyPedigree', key, OWN_WORDS[key]);
+    }
+  }
+};
 
 /** The coverage keys a scenario claims for the words it proves. */
-const coversWords = (...keys: readonly OwnWord[]): string[] =>
-  keys.map((key) => `wording.${key}`);
+const coversWords = (...keys: readonly OwnWord[]): string[] => [
+  ...new Set(
+    keys.map((key) =>
+      SHARED_WORDS.has(key) ? 'interfaceText.familyPedigree' : `wording.${key}`,
+    ),
+  ),
+];
 
 /** The text of an own word that takes no arguments. */
 const plainWord = (key: OwnWord): string => {
@@ -2481,6 +2517,7 @@ function wordingConnectAndDisconnect(): ScenarioDefinition {
   const { synth, fp, person, relate } = scaffold({
     wording: ownWords(...words),
   });
+  setSharedWords(synth, ...words);
   person('ego', { name: 'Ella', gender: 'woman', sex: 'female', isEgo: true });
   person('mum', { name: 'Rachel', gender: 'woman', sex: 'female' });
   person('dad', { name: 'Tom', gender: 'man', sex: 'male' });
@@ -3121,6 +3158,7 @@ function wordingFramingChoice(): ScenarioDefinition {
     before: 'information',
     wording: ownWords(...words),
   });
+  setSharedWords(synth, ...words);
   person('ego', {
     name: 'Ari',
     gender: 'nonBinary',

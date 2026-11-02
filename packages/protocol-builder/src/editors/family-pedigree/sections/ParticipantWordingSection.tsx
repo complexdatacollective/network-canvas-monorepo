@@ -138,6 +138,7 @@ function WordingGroupFields({
           label={label}
           hint={hint}
           wraps={setting.wraps}
+          dynamicValues={setting.dynamicValues}
           initialValue={initialValue}
           required={REQUIRED}
         />

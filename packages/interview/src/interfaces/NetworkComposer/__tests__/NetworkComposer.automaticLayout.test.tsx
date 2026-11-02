@@ -16,7 +16,6 @@ import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import NetworkComposer from '../NetworkComposer';
-import { composerWords } from './composerWords';
 
 // jsdom has no Worker, and automatic mode would otherwise construct the shared
 // auto-layout worker. These tests cover the metadata-driven layout toggle, not
@@ -52,7 +51,6 @@ const QUICK_ADD_VAR = 'var-quick-add';
 const makeStage = (defaultEnabled: boolean) => ({
   id: 'nc1',
   type: 'NetworkComposer' as const,
-  ...composerWords(),
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   layoutVariable: asEntityAttributeReference(LAYOUT_VAR),

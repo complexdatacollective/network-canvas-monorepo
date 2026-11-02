@@ -153,7 +153,7 @@ function makePayload(id: string): InterviewPayload {
           minNodesNotice: {
             en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
           },
-          quickAddHint: { en: 'Press Enter when you are finished.' },
+          addNamePlaceholder: { en: 'Type a name, then press Enter' },
           label: { en: `Original_${id}` },
           subject: { entity: 'node', type: 'person' },
           quickAdd: asEntityAttributeReference('name'),

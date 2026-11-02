@@ -14,7 +14,6 @@ import { NAME_GENERATOR_ROSTER_SUPPLIED_TEXT } from './stage-wording/name-genera
 import { NAME_GENERATOR_SUPPLIED_TEXT } from './stage-wording/name-generator.ts';
 import { NARRATIVE_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/narrative-pedigree.ts';
 import { NARRATIVE_SUPPLIED_TEXT } from './stage-wording/narrative.ts';
-import { NETWORK_COMPOSER_SUPPLIED_TEXT } from './stage-wording/network-composer.ts';
 import type { SuppliedStageSetting } from './supplied-stage-setting.ts';
 import {
   type LanguageChange,
@@ -42,7 +41,6 @@ const SUPPLIED_STAGE_TEXT: Readonly<
   NameGeneratorRoster: NAME_GENERATOR_ROSTER_SUPPLIED_TEXT,
   Narrative: NARRATIVE_SUPPLIED_TEXT,
   NarrativePedigree: NARRATIVE_PEDIGREE_SUPPLIED_TEXT,
-  NetworkComposer: NETWORK_COMPOSER_SUPPLIED_TEXT,
   OrdinalBin: BIN_SUPPLIED_TEXT,
 };
 

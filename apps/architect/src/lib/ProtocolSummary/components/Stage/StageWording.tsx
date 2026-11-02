@@ -15,12 +15,10 @@ import { stageMessageArguments } from './stageMessageArguments';
 export type StageWordingKey =
   | 'minNodesNotice'
   | 'maxNodesNotice'
-  | 'quickAddHint'
+  | 'addNamePlaceholder'
   | 'allAddedNotice'
-  | 'offlineNotice'
-  | 'mapUnavailable'
+  | 'unnamedLabel'
   | 'outsideAreasLabel'
-  | 'searchFailed'
   | 'unplacedNodesNotice';
 
 /** A setting's label, and where the stage holds its wording. */
@@ -35,12 +33,10 @@ type StageWordingProps = {
 const STAGE_WORDING_SETTINGS: readonly WordingSetting[] = [
   [nameGeneratorWordingMessages.minNoticeLabel, 'minNodesNotice'],
   [nameGeneratorWordingMessages.maxNoticeLabel, 'maxNodesNotice'],
-  [nameGeneratorWordingMessages.quickAddHintLabel, 'quickAddHint'],
+  [nameGeneratorWordingMessages.addNamePlaceholderLabel, 'addNamePlaceholder'],
   [nameGeneratorWordingMessages.allAddedLabel, 'allAddedNotice'],
-  [geospatialWordingMessages.offlineLabel, 'offlineNotice'],
-  [geospatialWordingMessages.unavailableLabel, 'mapUnavailable'],
+  [nameGeneratorWordingMessages.unnamedLabelLabel, 'unnamedLabel'],
   [geospatialWordingMessages.outsideAreasLabel, 'outsideAreasLabel'],
-  [geospatialWordingMessages.searchFailedLabel, 'searchFailed'],
   [binBehavioursMessages.unplacedNoticeLabel, 'unplacedNodesNotice'],
 ];
 

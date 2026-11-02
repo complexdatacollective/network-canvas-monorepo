@@ -88,7 +88,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'linksHeading',
       'presets',
       'subject',
-      'tooltips',
     ],
   },
   {
@@ -106,7 +105,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Interviewer guidance',
     ],
     ownedKeys: [
-      'addNamePlaceholder',
       'background',
       'behaviours',
       'convexHullVariable',
@@ -114,10 +112,8 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'edges',
       'label',
       'layoutVariable',
-      'overtakenEditNotice',
       'quickAdd',
       'subject',
-      'tooltips',
     ],
   },
   {
@@ -145,8 +141,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'dynamicValues',
       'label',
       'mapOptions',
-      'mapUnavailable',
-      'offlineNotice',
       'outsideAreasLabel',
       'prompts',
       'subject',
@@ -171,12 +165,10 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'conditionText',
       'diseases',
       'dynamicValues',
-      'keyHeading',
       'label',
       'saveSnapshot',
       'showAtRiskStatuses',
       'sourceStageId',
-      'tooltips',
     ],
   },
   {

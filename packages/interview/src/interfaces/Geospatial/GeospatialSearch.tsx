@@ -21,10 +21,8 @@ import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import type { LocalizedString } from '@codaco/protocol-validation';
 
 import { runtimeMessages } from '../../i18n/runtimeMessages';
-import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { interfaceMessages } from '../messages';
 import {
   type Suggestion,
@@ -47,7 +45,7 @@ const preventBlur = (e: React.MouseEvent) => e.preventDefault();
 
 /**
  * A status is the words of a search's outcome (the protocol's
- * `search.searchNoMatch`, or the stage's `searchFailed`), or the one message
+ * `search.searchNoMatch`, or `geospatial.searchFailed`), or the one message
  * built with a place.
  */
 type SearchStatus =
@@ -61,15 +59,13 @@ export default function GeospatialSearch({
   resetKey,
   onSearchPerformed,
   className,
-  searchFailed: searchFailedWording,
 }: UseGeospatialSearchProps & {
   className?: string;
-  searchFailed: LocalizedString;
 }) {
   const intl = useAppIntl();
   const searchLabelText = intl.formatMessage(commonMessages.search);
   const noMatchText = intl.formatMessage(runtimeMessages.noSearchMatch);
-  const { text: failedText } = useLocalizedString(searchFailedWording);
+  const failedText = intl.formatMessage(interfaceMessages.searchFailed);
   const [isOpen, setIsOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<SearchStatus | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
