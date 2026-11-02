@@ -63,7 +63,9 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
   sudo pkill -9 -x apt-get || true
   sudo pkill -9 -f '^/usr/lib/apt/methods/' || true
   sudo pkill -9 -x dpkg || true
-  sudo dpkg --configure -a || true
+  # Bounded too: a maintainer script that stalled the attempt can stall its
+  # own re-run.
+  sudo timeout --kill-after=10 120 dpkg --configure -a || true
   sudo sed -i 's|http://azure\.archive\.ubuntu\.com/|http://archive.ubuntu.com/|g' \
     /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
 done

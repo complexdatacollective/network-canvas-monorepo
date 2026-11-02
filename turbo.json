@@ -850,6 +850,7 @@
         ".storybook/**/*.ts",
         ".storybook/**/*.tsx",
         "*.config.ts",
+        "vitest.sequencer.ts",
         "tsconfig*.json",
         "package.json"
       ],
