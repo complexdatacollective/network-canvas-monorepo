@@ -18,6 +18,7 @@ const BLOCK_COMPONENTS = new Set([
   'apponly',
   'responsivesvgpreview',
   'coordinateclassificationexample',
+  'walkthrough',
 ]);
 
 const isMeaningful = (child: Node) =>

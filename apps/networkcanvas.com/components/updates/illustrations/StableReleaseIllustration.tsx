@@ -2,8 +2,6 @@
 
 import { useId } from 'react';
 
-import { cx } from '@codaco/fresco-ui/utils/cva';
-
 import {
   backOut,
   inCubic,
@@ -11,7 +9,8 @@ import {
   segment,
   TAU,
   useIllustrationClock,
-} from './illustrationMotion';
+} from '@codaco/art/illustration/motion';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 const PHOTO_START = 0.2;
 const DEVICE_STARTS = [1, 1.8, 2.6] as const;

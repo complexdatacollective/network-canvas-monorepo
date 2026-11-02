@@ -21,11 +21,21 @@ export const backOut = (x: number) => {
 
 export const inCubic = (x: number) => x * x * x;
 
-export function useIllustrationClock(stillTime: number) {
+// SVG `scale(0)` collapses a group's transform; keep it just above zero.
+export const grow = (k: number) => Math.max(0.001, k);
+
+// Seconds of illustration time, advancing while the drawing is in view.
+// Looping scenes start at `stillTime` and take it modulo their loop; a scene
+// that plays once passes `from: 0`. With reduced motion it stays on
+// `stillTime`.
+export function useIllustrationClock(
+  stillTime: number,
+  { from = stillTime }: { from?: number } = {},
+) {
   const ref = useRef<SVGSVGElement>(null);
   const reduceMotion = usePrefersReducedMotion();
   const inView = useInView(ref, { amount: 0.2 });
-  const [time, setTime] = useState(stillTime);
+  const [time, setTime] = useState(from);
 
   useAnimationFrame((_, delta) => {
     if (!inView || reduceMotion) return;

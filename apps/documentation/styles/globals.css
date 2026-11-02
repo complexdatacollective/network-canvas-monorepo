@@ -1,6 +1,9 @@
 @import '@codaco/tailwind-config/fresco.css';
 @import '@codaco/fresco-ui/styles.css';
 
+/* Walkthrough illustrations draw with @codaco/art's shared pieces. */
+@source '../node_modules/@codaco/art/src/**/*.{ts,tsx}';
+
 @plugin '@tailwindcss/typography';
 
 /* next-themes sets data-theme independently of the OS colour preference. */

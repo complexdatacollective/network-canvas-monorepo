@@ -1,7 +1,6 @@
 'use client';
 
-import { cx } from '@codaco/fresco-ui/utils/cva';
-
+import { ClickRing, Cursor } from '@codaco/art/illustration/Cursor';
 import {
   backOut,
   inCubic,
@@ -9,7 +8,8 @@ import {
   segment,
   TAU,
   useIllustrationClock,
-} from './illustrationMotion';
+} from '@codaco/art/illustration/motion';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 const LOOP = 8.4;
 const OUT_START = 7.6;
@@ -98,8 +98,6 @@ const waves = [
 ] as const;
 const TIMELINE = { from: 150, to: 1062 } as const;
 
-const ARROW_PATH = 'M0 0 L0 30 L8 23 L14 36 L21 33 L15 21 L26 21 Z';
-
 function StageCard({
   dot,
   bars,
@@ -176,62 +174,6 @@ function StageCard({
         />
       ) : null}
     </g>
-  );
-}
-
-function Cursor({
-  tip,
-  fill,
-  opacity,
-}: {
-  tip: Point;
-  fill: string;
-  opacity: number;
-}) {
-  return (
-    <g
-      transform={`translate(${tip[0]} ${tip[1]}) scale(1.15)`}
-      opacity={opacity}
-    >
-      <rect
-        x={20}
-        y={36}
-        width={38}
-        height={20}
-        rx={10}
-        className={cx(fill, outline)}
-        strokeWidth={3}
-      />
-      <path
-        d={ARROW_PATH}
-        className={cx(fill, outline)}
-        strokeWidth={4}
-        strokeLinejoin="round"
-      />
-    </g>
-  );
-}
-
-function ClickRing({
-  at,
-  progress,
-  stroke,
-}: {
-  at: Point;
-  progress: number;
-  stroke: string;
-}) {
-  if (progress <= 0 || progress >= 1) return null;
-  return (
-    <circle
-      cx={at[0]}
-      cy={at[1]}
-      r={8 + progress * 26}
-      fill="none"
-      className={stroke}
-      strokeWidth={4}
-      opacity={1 - progress}
-    />
   );
 }
 
