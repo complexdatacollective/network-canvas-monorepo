@@ -1,15 +1,13 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   expectNoUnnamedControls,
   findUnnamedControls,
-} from './accessible-name-audit.js';
+  type KnownUnnamedControl,
+} from './accessible-name-audit.ts';
 
 /**
- * Every line below is a real line lifted from `e2e/aria-snapshots/**`, or that
+ * Every line below is a real line lifted from a committed ARIA baseline, or that
  * line with its accessible name deleted — which is precisely the regression
  * this audit exists to catch. Keeping both twins in one table is what makes the
  * test discriminating: a detector that flags neither, or flags both, fails.
@@ -206,42 +204,6 @@ describe('findUnnamedControls', () => {
   });
 });
 
-/**
- * The committed baselines are the closest available record of what the live
- * accessibility tree contains, so the audit is run over all of them here. This
- * is the ratchet in unit-test form: it goes red when a regenerated baseline
- * absorbs an operable control that lost its accessible name, without waiting
- * for anyone to run the browser matrix.
- */
-describe('committed ARIA baselines', () => {
-  const root = resolve(import.meta.dirname, '../aria-snapshots');
-
-  const walk = (dir: string): string[] =>
-    readdirSync(dir).flatMap((entry) => {
-      const path = join(dir, entry);
-      return statSync(path).isDirectory() ? walk(path) : [path];
-    });
-
-  const baselines = walk(root).filter((path) => path.endsWith('.aria.yml'));
-
-  it('has baselines to audit', () => {
-    // Without this, an empty or moved corpus would make the assertion below
-    // pass while reading nothing.
-    expect(baselines.length).toBeGreaterThan(100);
-  });
-
-  it('contains no unnamed controls', () => {
-    const found = baselines
-      .flatMap((path) => {
-        const roles = findUnnamedControls(readFileSync(path, 'utf8'));
-        return roles.map((role) => `${path.slice(root.length + 1)}: ${role}`);
-      })
-      .toSorted();
-
-    expect(found).toEqual([]);
-  });
-});
-
 describe('expectNoUnnamedControls', () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -274,14 +236,16 @@ describe('expectNoUnnamedControls', () => {
 
   it('passes a fully named tree without polling', async () => {
     const main = source('- main:\n  - button "Add"\n  - textbox "Name": Alex');
-    await expectNoUnnamedControls(main, 'no-such-key');
+    await expectNoUnnamedControls(main, 'no-such-key', []);
     expect(main.calls).toBe(1);
   });
 
   it('fails on an unnamed control that has a value', async () => {
     vi.useFakeTimers();
     const main = source('- main:\n  - textbox: Teacher');
-    const error = await settle(expectNoUnnamedControls(main, 'no-such-key'));
+    const error = await settle(
+      expectNoUnnamedControls(main, 'no-such-key', []),
+    );
     expect(String(error)).toContain('observed unnamed controls: [textbox]');
     expect(String(error)).toContain('gained NO accessible name');
   });
@@ -289,7 +253,9 @@ describe('expectNoUnnamedControls', () => {
   it('reports every unnamed control, including a flagged control with a value', async () => {
     vi.useFakeTimers();
     const main = source('- main:\n  - button\n  - textbox [invalid]: Teacher');
-    const error = await settle(expectNoUnnamedControls(main, 'no-such-key'));
+    const error = await settle(
+      expectNoUnnamedControls(main, 'no-such-key', []),
+    );
     expect(String(error)).toContain(
       'observed unnamed controls: [button, textbox]',
     );
@@ -304,12 +270,72 @@ describe('expectNoUnnamedControls', () => {
       '- main:\n  - textbox: Teacher',
       '- main:\n  - textbox "Occupation": Teacher',
     );
-    const settled = expectNoUnnamedControls(main, 'no-such-key').then(
+    const settled = expectNoUnnamedControls(main, 'no-such-key', []).then(
       () => 'resolved',
       (error: unknown) => error,
     );
     await vi.advanceTimersByTimeAsync(10_000);
     expect(await settled).toBe('resolved');
     expect(main.calls).toBe(2);
+  });
+
+  describe('the known-unnamed allowlist', () => {
+    const known: KnownUnnamedControl[] = [
+      {
+        key: 'slug-initial',
+        roles: ['button'],
+        reason: 'The icon button has no label yet.',
+        issue:
+          'https://github.com/complexdatacollective/network-canvas-monorepo/issues/1',
+      },
+      {
+        key: 'slug-final',
+        roles: ['textbox', 'textbox'],
+        reason: 'Two unlabeled inputs.',
+      },
+      { key: 'slug-final', roles: ['button'], reason: 'Same subject, again.' },
+    ];
+
+    it('passes when the observed roles equal the recorded ones exactly', async () => {
+      const main = source('- main:\n  - button\n  - button "Named"');
+      await expectNoUnnamedControls(main, 'slug-initial', known);
+      expect(main.calls).toBe(1);
+    });
+
+    it('gathers the roles of every entry recorded for a key', async () => {
+      const main = source(
+        '- main:\n  - textbox\n  - button\n  - textbox: value',
+      );
+      await expectNoUnnamedControls(main, 'slug-final', known);
+    });
+
+    it('fails on a NEW unnamed control beside a recorded one', async () => {
+      vi.useFakeTimers();
+      const main = source('- main:\n  - button\n  - button');
+      const error = await settle(
+        expectNoUnnamedControls(main, 'slug-initial', known),
+      );
+      expect(String(error)).toContain('recorded for this subject: [button]');
+      expect(String(error)).toContain('gained NO accessible name: button');
+    });
+
+    it('fails when a recorded violation no longer reproduces (stale entry)', async () => {
+      vi.useFakeTimers();
+      const main = source('- main:\n  - button "Fixed now"');
+      const error = await settle(
+        expectNoUnnamedControls(main, 'slug-initial', known),
+      );
+      expect(String(error)).toContain('no longer reproduce: button');
+      expect(String(error)).not.toContain('gained NO accessible name');
+    });
+
+    it('does not apply one key’s entries to another', async () => {
+      vi.useFakeTimers();
+      const main = source('- main:\n  - button');
+      const error = await settle(
+        expectNoUnnamedControls(main, 'some-other-key', known),
+      );
+      expect(String(error)).toContain('gained NO accessible name: button');
+    });
   });
 });

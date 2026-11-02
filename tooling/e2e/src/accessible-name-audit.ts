@@ -77,7 +77,8 @@ const NAME_AFTER_ROLE = /^\s*["/]/;
  * (losing one of three unnamed buttons still changes the result).
  *
  * Exported for `accessible-name-audit.test.ts`, which tables the named /
- * unnamed / valued / flagged forms this has to discriminate.
+ * unnamed / valued / flagged forms this has to discriminate, and for suites
+ * that audit their committed ARIA baselines directly.
  */
 export function findUnnamedControls(snapshot: string): string[] {
   return snapshot.split('\n').flatMap((line) => {
@@ -91,24 +92,38 @@ export function findUnnamedControls(snapshot: string): string[] {
 }
 
 /**
- * Controls that are missing an accessible name **today**, keyed by
- * `<snapshotSlug>-<label>` (the baseline file's basename). Every entry is a
- * source defect this audit found and that has not been fixed yet — not an
- * exemption, and never the right place to record a new one.
+ * One recorded accessible-name defect that is known and not yet fixed.
  *
- * The observed roles are compared to the entry for **exact** equality, so:
- *   - a newly unnamed control fails, even in a snapshot that already has one;
- *   - fixing one also fails, until its entry is deleted here.
- *
- * This list is not a place to record a NEW violation to make a run green. It
- * exists so the audit can be switched on over an imperfect corpus without
- * hiding what is still wrong.
+ * The allowlist belongs to the suite that owns the audited surface and is
+ * passed to `expectNoUnnamedControls`; this module carries no entries of its
+ * own.
  */
-const KNOWN_UNNAMED_CONTROLS: Readonly<Record<string, readonly string[]>> = {
-  // EgoForm's relative date pickers also carry names. The regenerated corpus
-  // records them, and this audit rejects any newly unnamed control before a
-  // snapshot update can absorb it.
+export type KnownUnnamedControl = {
+  /**
+   * Identifier of the audited subject — the string the suite passes as `key`
+   * (for the interview matrix, the ARIA baseline's file basename).
+   */
+  key: string;
+  /**
+   * The roles of the unnamed controls expected under `key`, one entry per
+   * node (`['button', 'button']` is two unnamed buttons).
+   */
+  roles: readonly string[];
+  /** Why the control has no name today. */
+  reason: string;
+  /** Link to the issue tracking the fix. */
+  issue?: string;
 };
+
+/** The roles recorded for `key`, gathered across every matching entry. */
+function knownRolesFor(
+  key: string,
+  known: readonly KnownUnnamedControl[],
+): string[] {
+  return known
+    .filter((entry) => entry.key === key)
+    .flatMap((entry) => entry.roles);
+}
 
 function describeFailure(
   key: string,
@@ -126,25 +141,25 @@ function describeFailure(
   return [
     `Accessible-name audit failed for "${key}".`,
     `  observed unnamed controls: [${observed.join(', ')}]`,
-    `  recorded for this snapshot: [${known.join(', ')}]`,
+    `  recorded for this subject: [${known.join(', ')}]`,
     ...(surplus.length > 0
       ? [
           '',
           `  ${surplus.length} operable control(s) gained NO accessible name: ${surplus.join(', ')}`,
           '  WCAG 4.1.2 requires a name for every one of these roles. Label the',
-          '  control in the component source — do NOT record it in',
-          '  KNOWN_UNNAMED_CONTROLS to make this pass.',
-          "  If it is a dependency's internal sentinel, exclude it from capture",
-          '  the way `[data-base-ui-focus-guard]` is excluded in',
-          '  e2e/fixtures/matrix-test.ts, so real defects stay visible.',
+          '  control in the component source — do NOT add it to the known-unnamed',
+          '  allowlist to make this pass.',
+          "  If it is a dependency's internal sentinel (for example Base UI's",
+          '  `[data-base-ui-focus-guard]`), exclude it from capture before the',
+          '  audit runs, so real defects stay visible.',
         ]
       : []),
     ...(missing.length > 0
       ? [
           '',
           `  ${missing.length} recorded violation(s) no longer reproduce: ${missing.join(', ')}`,
-          '  If you fixed them, delete this key from KNOWN_UNNAMED_CONTROLS in',
-          '  e2e/helpers/accessible-name-audit.ts.',
+          '  If you fixed them, delete the entry from the known-unnamed',
+          '  allowlist passed to expectNoUnnamedControls.',
         ]
       : []),
   ].join('\n');
@@ -162,7 +177,14 @@ type AriaSnapshotSource = Pick<Locator, 'ariaSnapshot'>;
 
 /**
  * Fail if `main` contains an operable control with no accessible name that is
- * not already recorded in `KNOWN_UNNAMED_CONTROLS`.
+ * not recorded in `knownUnnamed`.
+ *
+ * `knownUnnamed` lists the controls missing an accessible name **today**:
+ * source defects this audit found and that have not been fixed yet, not
+ * exemptions, and never the right place to record a new one. The observed
+ * roles are compared to the entries for `key` for **exact** equality, so:
+ *   - a newly unnamed control fails, even in a snapshot that already has one;
+ *   - fixing one also fails, until its entry is deleted.
  *
  * Polls rather than reading once: a stage captured mid-entrance can briefly
  * expose a control before its label renders, and a one-shot read would make
@@ -172,8 +194,9 @@ type AriaSnapshotSource = Pick<Locator, 'ariaSnapshot'>;
 export async function expectNoUnnamedControls(
   main: AriaSnapshotSource,
   key: string,
+  knownUnnamed: readonly KnownUnnamedControl[],
 ): Promise<void> {
-  const known = [...(KNOWN_UNNAMED_CONTROLS[key] ?? [])].toSorted();
+  const known = knownRolesFor(key, knownUnnamed).toSorted();
   const expected = known.join(', ');
   const deadline = Date.now() + AUDIT_TIMEOUT_MS;
   let observed: string[] = [];
