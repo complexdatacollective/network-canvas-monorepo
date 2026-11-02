@@ -13,11 +13,6 @@ const require = createRequire(import.meta.url);
 export const SILOS_PROTOCOL_PATH =
   require.resolve('@codaco/protocols/e2e/silos/silos_chicago-2026-06-02_17-31.netcanvas');
 
-export const TARGETED_SKIP_CONSENT_PROTOCOL_PATH = path.resolve(
-  import.meta.dirname,
-  '../protocols/targeted-skip-consent.json',
-);
-
 // Single source of truth for the development protocol's assets directory,
 // used by matrix scenarios that need a real image/audio/video/CSV/JSON asset
 // to attach. Resolved by package name via createRequire(...).resolve rather

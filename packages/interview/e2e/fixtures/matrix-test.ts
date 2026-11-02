@@ -56,8 +56,8 @@ function slugify(parts: string[]): string {
 
 /**
  * Matrix tests get a fresh page per test (Playwright's built-in fixtures —
- * deliberately NOT the worker-shared page interview-test.ts uses) so
- * fullyParallel workers cannot clobber each other's sessionStorage state.
+ * deliberately NOT a worker-shared page) so fullyParallel workers cannot
+ * clobber each other's sessionStorage state.
  * The snapshot prefix is derived from the test title path, so pixel and aria
  * snapshot names can never collide across files.
  */

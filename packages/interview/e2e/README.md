@@ -96,26 +96,28 @@ preserves the protocol/interview within the same tab.
 
 ## Writing a test
 
-The `interview-test` fixture composes everything — protocol install, interview
-creation, navigation helpers, and the screenshot capture wiring:
+The `matrixTest` fixture (`fixtures/matrix-test.ts`) composes everything — a
+fresh page per test, protocol install, interview creation, navigation helpers,
+and the screenshot capture wiring. Most tests are scenarios in a registry (see
+below); a spec that needs its own protocol uses the fixture directly:
 
 ```ts
-import { test, expect } from '../fixtures/test';
 import path from 'node:path';
 
-test.describe('My protocol', () => {
-  test.beforeAll(async ({ protocol, interview }) => {
+import { expect, matrixTest } from '../fixtures/matrix-test';
+
+matrixTest.describe('My protocol', () => {
+  matrixTest.beforeEach(async ({ protocol, interview }) => {
     const installed = await protocol.install(
-      path.resolve(__dirname, '../data/my-protocol.netcanvas'),
+      path.resolve(import.meta.dirname, '../data/my-protocol.netcanvas'),
     );
     interview.interviewId = await protocol.createInterview(
       installed.protocolId,
     );
   });
 
-  test('renders the first stage', async ({ interview, page }) => {
+  matrixTest('renders the first stage', async ({ interview, page }) => {
     await interview.goto(0);
-    await interview.captureInitial();
     await expect(page.getByRole('heading', { name: 'Welcome' })).toBeVisible();
     await interview.next();
   });
@@ -214,8 +216,9 @@ assertions, and flags (`smoke`, `visual`, `chromiumOnly`, `slow`,
 aggregates every registry; `specs/matrix/<iface>.spec.ts` is a three-line file
 that calls `defineScenarioTests(<registry>)`. The shared cross-cutting suite
 (`matrix/cross-cutting.scenarios.ts`) proves the engine-level `skipLogic` and
-stage `filter` machinery once — both skip actions and every Filter operator —
-rather than re-testing it per interface.
+stage `filter` machinery once — both skip actions and a Filter operator of each
+attribute type, with every operator's semantics unit-tested in
+`packages/network-query` — rather than re-testing it per interface.
 
 ### Coverage manifest
 
@@ -299,10 +302,11 @@ snapshots this way**: the resulting baselines won't match in CI.
 ## Troubleshooting
 
 - **"interviewId must be set before calling goto()"** — set `interview.interviewId`
-  in `beforeAll` after `protocol.createInterview()`.
+  in `beforeEach` after `protocol.createInterview()`.
 - **Stage doesn't render / "Unknown interview ID"** — `installProtocol` runs
   in browser context; if the page navigated since you called it, sessionStorage
-  may have been cleared. Use the `interview-test` fixture, which handles this.
+  may have been cleared. Use the `matrixTest` fixture, which installs onto a
+  fresh page for each test.
 - **Asset 404s** — the asset server reads from `e2e/.assets/<slug-or-id>/`.
   Confirm the directory exists and the rewritten URL in the protocol payload
   matches what the server is serving.
