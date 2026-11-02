@@ -917,6 +917,13 @@ jobs:
         # Through turbo so the suite is cached like every other test task; it
         # is a root task because scripts/ is not a workspace package.
         run: pnpm exec turbo run //#test:scripts
+      - name: Check repository-wide source invariants
+        id: invariants
+        continue-on-error: true
+        # Scans every package and app, so it is a root task whose inputs cover
+        # them all: a package's own test task only runs when that package (or
+        # a dependency) changed.
+        run: pnpm exec turbo run //#test:invariants
       - name: Build shared packages and release-sensitive apps
         id: build
         continue-on-error: true
@@ -965,6 +972,7 @@ jobs:
           STUDIO_RELEASE_OUTCOME: ${{ steps.studio-release.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
+          INVARIANTS_OUTCOME: ${{ steps.invariants.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
@@ -982,6 +990,7 @@ jobs:
             "studio-release=$STUDIO_RELEASE_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
+            "invariants=$INVARIANTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
             "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do

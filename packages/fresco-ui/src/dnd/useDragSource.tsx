@@ -80,11 +80,11 @@ type UseDragSourceReturn = {
     'onPointerDown': (e: React.PointerEvent) => void;
     'onKeyDown': (e: React.KeyboardEvent) => void;
     'style'?: React.CSSProperties;
-    'aria-grabbed'?: boolean;
-    'aria-dropeffect'?: 'none' | 'copy' | 'execute' | 'link' | 'move' | 'popup';
     'aria-label'?: string;
     'role'?: string;
     'tabIndex'?: number;
+    /** Present while this source is being dragged, by pointer or keyboard. */
+    'data-dragging'?: true;
     /** Present once a hold has freed the drag to move in any direction. */
     'data-drag-armed'?: true;
   };
@@ -564,9 +564,8 @@ export function useDragSource(
         'onKeyDown': handleKeyDown,
         'role': 'button',
         'tabIndex': disabled ? -1 : 0,
-        'aria-grabbed': isDragging,
-        'aria-dropeffect': 'move',
         'aria-label': announcedName,
+        'data-dragging': isDragging || undefined,
         'data-drag-armed': isArmed || undefined,
         'style': {
           cursor: disabled ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
