@@ -13,7 +13,7 @@ import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
 import { type DataTableFeatures } from './features';
 
-const messages = defineMessages({
+export const messages = defineMessages({
   rowsSelected: {
     id: 'frescoUi.dataTableFloatingBar.rowsSelected',
     defaultMessage:

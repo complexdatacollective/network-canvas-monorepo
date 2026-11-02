@@ -24,6 +24,7 @@
   "interviewer.dataView.noInterviewsMatchThisFilter": "没有符合此筛选条件的访谈。",
   "interviewer.dataView.noInterviewsRecordedYet": "尚未记录任何访谈。",
   "interviewer.dataView.selectAllTotalCountMatching": "{totalCount, plural, other {选择全部 # 次匹配的访谈 →}}",
+  "interviewer.dataView.tableLabel": "访谈",
   "interviewer.dataViewColumns.caseID": "案例 ID",
   "interviewer.dataViewColumns.exportStatus": "导出状态",
   "interviewer.dataViewColumns.interviewActions": "访谈操作",
