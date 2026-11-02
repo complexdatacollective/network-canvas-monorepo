@@ -579,7 +579,7 @@ const NarrativePedigreeStage = z
           inheritancePattern: z
             .enum(INHERITANCE_PATTERNS)
             .describe(
-              'How the condition is inherited. When you infer it, say so in the rationale.',
+              'How the condition is inherited: a pattern only when the condition itself has a known, established one; otherwise unknown.',
             ),
         }),
       )

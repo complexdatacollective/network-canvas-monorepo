@@ -61,7 +61,7 @@ describe('provider JSON Schemas', () => {
       maxEnum: 14,
       anyOfBranches: 13,
       maxObjectDepth: 2,
-      bytes: 36_736,
+      bytes: 36_782,
     });
     expect(
       Object.keys(toProviderJsonSchema(StudyDesignSchema).$defs as object),
@@ -84,16 +84,16 @@ describe('provider JSON Schemas', () => {
       ),
     ).toMatchInlineSnapshot(`
       {
-        "Critique": "c79f1990c73f117a70a4dc4212799d498318d1354962c31cf404fab0362b3b7f",
+        "Critique": "cae1302c13ba689279118f41a735b8f0ecaf9f5b39baba866e34b308455fbb58",
         "Screening": "b26b714997904503f942e3f7fa6302138337122472bc36eca22e938ef00df3a3",
-        "StudyDesign": "a99785cd6aba58a95b92d13a874ed46ae9c3292210e50c96f372fefbb71252ed",
+        "StudyDesign": "6043efd98d7832cbbc44c45e15b70d1ce873e44250183942f81f4fce4d1e6b37",
         "Wording": "4b760d7df90de94c5d6d013446340d1cc734f57ca66840b8a4b00495a484d24d",
       }
     `);
     expect(
       sha256(toProviderJsonSchema(StudyDesignSchema, { defs: false })),
     ).toMatchInlineSnapshot(
-      `"6097a2dfa42582f34f3f978871e83cc206cf8df990080eee93cb3b1d77befda1"`,
+      `"44a46224c2688f264d2256e2d7aee0073e5dbc922783f2b0e500c77bac1c2ce3"`,
     );
   });
 });

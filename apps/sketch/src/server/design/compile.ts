@@ -1376,11 +1376,13 @@ export const compile = (
         const source = d.stages.find((x) => x.id === s.sourceStageId);
         const t = source?.kind === 'familyPedigree' ? source.nodeTypeId : '';
         const sc = `node:${t}`;
-        s.conditions.forEach((c) =>
-          inheritanceNotes.push(
-            `${c.label} (${INHERITANCE_NAMES[c.inheritancePattern] ?? c.inheritancePattern})`,
-          ),
-        );
+        s.conditions
+          .filter((c) => c.inheritancePattern !== 'unknown')
+          .forEach((c) =>
+            inheritanceNotes.push(
+              `${c.label} (${INHERITANCE_NAMES[c.inheritancePattern] ?? c.inheritancePattern})`,
+            ),
+          );
         push(
           {
             ...base(s.id, 'NarrativePedigree', label(s.id, humanise(s.id))),
@@ -1466,7 +1468,7 @@ export const compile = (
       `**Validated instruments.** Check the wording and scoring of ${instrumentList.join(', ')} against the published instrument; Sketch reproduces them from memory.`,
     ...placeholderNotes,
     inheritanceNotes.length &&
-      `**Inheritance patterns.** Sketch assumed how each condition on the family tree is inherited: ${inheritanceNotes.join('; ')}. Check them before fielding: the tree marks relatives by them.`,
+      `**Inheritance patterns.** Sketch gave these conditions on the family tree the inheritance pattern they are known for: ${inheritanceNotes.join('; ')}. Check them before fielding: the tree marks relatives by them.`,
     !suppliesLanguage(lang) &&
       `**Language.** The interview is in ${lang}. Network Canvas does not supply its own interface text (buttons, notices, the closing screen) in this language, so that text is still in English. Translate it in Architect before fielding.`,
     !lang.toLowerCase().startsWith('en') &&

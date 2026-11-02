@@ -122,7 +122,7 @@ const design = (overrides: Partial<StudyDesign> = {}): StudyDesign =>
           {
             attributeId: 'ovarian_cancer',
             label: 'Ovarian cancer',
-            inheritancePattern: 'autosomalDominant',
+            inheritancePattern: 'unknown',
           },
         ],
       },
@@ -212,6 +212,13 @@ describe('family and narrative pedigrees', () => {
       operator: 'NOT',
       value: true,
     });
+  });
+
+  it('lists only the conditions given a known inheritance pattern', async () => {
+    const result = await preflight(design(), { now: NOW });
+    const notes = JSON.stringify(result.protocol.stages[0]);
+    expect(notes).toContain('Breast cancer (autosomal dominant)');
+    expect(notes).not.toContain('Ovarian cancer (');
   });
 
   it('turns at-risk statuses off without a professional present', async () => {
