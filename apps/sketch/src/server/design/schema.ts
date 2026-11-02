@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 // The three model-facing output schemas:
 //   Screening   (step 1, "Reading your research questions", Haiku 5.5)
 //   StudyDesign (step 2, "Designing the study", Opus 5.5 / OpenAI flagship)
@@ -13,7 +15,7 @@
 //   - no .min/.max/.length/.int/.regex/.email etc. (bounds live in analyse.ts / compile.ts)
 //   - primitive enums only; stage discriminators are z.literal (normalised to enum:[x])
 //   - no recursion; root is an object
-//   - EXACTLY ONE union in the whole StudyDesign schema: StageSchema (11 branches).
+//   - EXACTLY ONE union in the whole StudyDesign schema: StageSchema (13 branches).
 //     Anthropic allows 16 union-typed parameters per request; each anyOf or type
 //     array counts once. Do not add a second union without re-running the
 //     union-count test.
@@ -28,7 +30,10 @@
 //
 // Long guidance (method choice by network size, stage order, burden) lives in
 // the cached system prompt; descriptions here stay short.
-import { z } from 'zod';
+import {
+  INHERITANCE_PATTERNS,
+  PEDIGREE_COMPLETENESS_SCOPES,
+} from '@codaco/protocol-validation';
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -505,6 +510,85 @@ const GeospatialStage = z
     'Participant picks the COUNTRY of each node on a world map. Country level only; needs internet during the interview.',
   );
 
+const FamilyPedigreeStage = z
+  .object({
+    kind: z.literal('familyPedigree'),
+    ...stageCommon,
+    nodeTypeId: Ref(
+      'a node type used only for family members: no other stage may create its nodes',
+    ),
+    prompt: Text(
+      'Participant-facing instruction for drawing the family, one sentence; **bold** the key phrase, e.g. "Add the members of your **biological family**."',
+    ),
+    askGenderIdentity: z
+      .boolean()
+      .describe(
+        "true asks each relative's gender identity as well as sex assigned at birth (which is always asked). Only when the study needs it.",
+      ),
+    completeness: z
+      .enum(['none', ...PEDIGREE_COMPLETENESS_SCOPES])
+      .describe(
+        'Which relatives the participant is shown as missing before moving on (they may still continue): none, parents, firstDegree (parents, siblings, children), grandparents (and first degree), secondDegree (and aunts, uncles, grandchildren, half-siblings), thirdDegree (and cousins, great-grandparents).',
+      ),
+    attributeIds: z
+      .array(z.string())
+      .describe(
+        'Attributes of nodeTypeId asked about each relative as they are added (e.g. whether they are alive), in order. 0-3. Never name, sex or gender: the stage asks those itself.',
+      ),
+    nominationPrompts: z
+      .array(
+        z.object({
+          text: promptText,
+          attributeId: Ref(
+            'a yes_no attribute of nodeTypeId set to yes for every relative the participant selects',
+          ),
+          onlyFor: z
+            .enum(['anyone', 'female', 'male'])
+            .describe(
+              'anyone, or limit selection to relatives of that sex assigned at birth, for a condition only they can have.',
+            ),
+        }),
+      )
+      .describe(
+        'Questions asked of the whole family once it is drawn, e.g. "Who in your family has been **diagnosed with breast cancer**?". 0-4.',
+      ),
+  })
+  .describe(
+    'The participant draws their family tree (parents, partners, children, siblings, donors and surrogates). It creates its own nodes and the family ties between them.',
+  );
+
+const NarrativePedigreeStage = z
+  .object({
+    kind: z.literal('narrativePedigree'),
+    ...stageCommon,
+    sourceStageId: Ref(
+      'the earlier familyPedigree stage whose family is shown',
+    ),
+    showAtRiskStatuses: z
+      .boolean()
+      .describe(
+        'true marks relatives who will develop or carry a condition according to its inheritance pattern. Only when a genetic counsellor or another qualified professional is present.',
+      ),
+    conditions: z
+      .array(
+        z.object({
+          attributeId: Ref(
+            'a yes_no attribute of the family node type, set by a nomination prompt of the source stage or a form',
+          ),
+          label: Text('Participant-visible name of the condition, 1-4 words.'),
+          inheritancePattern: z
+            .enum(INHERITANCE_PATTERNS)
+            .describe(
+              'How the condition is inherited. When you infer it, say so in the rationale.',
+            ),
+        }),
+      )
+      .describe('1-4 conditions shown on the family tree.'),
+  })
+  .describe(
+    'Shows the family tree from a familyPedigree stage with each condition marked, for the participant (or the interviewer with them) to talk through. Collects no data.',
+  );
+
 export const StageSchema = z.union([
   InformationStage,
   EgoFormStage,
@@ -517,6 +601,8 @@ export const StageSchema = z.union([
   NarrativeStage,
   GeospatialStage,
   NetworkComposerStage,
+  FamilyPedigreeStage,
+  NarrativePedigreeStage,
 ]);
 export const DESIGN_STAGE_KINDS = [
   'information',
@@ -530,6 +616,8 @@ export const DESIGN_STAGE_KINDS = [
   'narrative',
   'geospatial',
   'networkComposer',
+  'familyPedigree',
+  'narrativePedigree',
 ] as const;
 
 // ---------------------------------------------------------------------------

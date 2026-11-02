@@ -676,6 +676,8 @@ export const analyse = (
   const markCollected = (scope: string, id: string) =>
     id && collected.add(`${scope}/${id}`);
   const kept: NStage[] = [];
+  // node types a familyPedigree creates, with the stage that does
+  const pedigreeTypes = new Map<string, string>();
 
   const checkFilter = (
     s: { filter: DesignNodeFilter },
@@ -959,6 +961,13 @@ export const analyse = (
         );
         if (!t) {
           drop('UNKNOWN_TYPE', `nameGenerator "${id}" has no valid node type.`);
+          continue;
+        }
+        if (pedigreeTypes.has(t)) {
+          drop(
+            'PEDIGREE_TYPE_SHARED',
+            `nameGenerator "${id}" adds "${t}" nodes, which the family pedigree "${pedigreeTypes.get(t)}" owns. Use another node type.`,
+          );
           continue;
         }
         s.nodeTypeId = t;
@@ -1619,6 +1628,13 @@ export const analyse = (
           );
           continue;
         }
+        if (pedigreeTypes.has(t)) {
+          drop(
+            'PEDIGREE_TYPE_SHARED',
+            `networkComposer "${id}" adds "${t}" nodes, which the family pedigree "${pedigreeTypes.get(t)}" owns. Use another node type.`,
+          );
+          continue;
+        }
         s.nodeTypeId = t;
         const scope = `node:${t}`;
         s.groupAttributeId = s.groupAttributeId
@@ -1698,6 +1714,123 @@ export const analyse = (
           sociogramTypes.add(t);
           namedAfterMap.delete(t);
         } else partialSociogramTypes.add(t);
+        break;
+      }
+      case 'familyPedigree': {
+        const t = resolveType(
+          s.nodeTypeId,
+          d.nodeTypes,
+          'node type',
+          `${path}.nodeTypeId`,
+        );
+        if (!t) {
+          drop(
+            'UNKNOWN_TYPE',
+            `familyPedigree "${id}" has no valid node type.`,
+          );
+          continue;
+        }
+        // The pedigree owns its nodes: it marks the participant and links
+        // every relative into one family, which people named elsewhere are
+        // not part of.
+        if (named.has(t)) {
+          drop(
+            'PEDIGREE_TYPE_SHARED',
+            `familyPedigree "${id}" uses node type "${t}", which an earlier stage already creates. Give the family its own node type.`,
+          );
+          continue;
+        }
+        s.nodeTypeId = t;
+        const scope = `node:${t}`;
+        s.attributeIds = [
+          ...new Set(
+            s.attributeIds
+              .map((a, i) =>
+                resolveAttr(
+                  a,
+                  scope,
+                  `${path}.attributeIds[${i}]`,
+                  FORM_KINDS,
+                  'Form attribute',
+                ),
+              )
+              .filter((x) => x && x !== 'name'),
+          ),
+        ];
+        const nominated = new Set<string>();
+        s.nominationPrompts = s.nominationPrompts.filter((p, i) => {
+          const a = resolveAttr(
+            p.attributeId,
+            scope,
+            `${path}.nominationPrompts[${i}].attributeId`,
+            ['yes_no'],
+            'Nomination attribute',
+          );
+          if (!a || !p.text || nominated.has(a) || s.attributeIds.includes(a))
+            return false;
+          nominated.add(a);
+          p.attributeId = a;
+          return true;
+        });
+        s.attributeIds.forEach((x) => markCollected(scope, x));
+        nominated.forEach((x) => markCollected(scope, x));
+        named.add(t);
+        pedigreeTypes.set(t, id);
+        break;
+      }
+      case 'narrativePedigree': {
+        const sourceId = slug(s.sourceStageId);
+        const source = kept.find(
+          (k) => k.kind === 'familyPedigree' && k.id === sourceId,
+        );
+        if (source?.kind !== 'familyPedigree') {
+          drop(
+            'UNKNOWN_SOURCE',
+            `narrativePedigree "${id}" needs sourceStageId to name an EARLIER familyPedigree stage ("${s.sourceStageId}" is not one).`,
+          );
+          continue;
+        }
+        s.sourceStageId = source.id;
+        const scope = `node:${source.nodeTypeId}`;
+        const shown = new Set<string>();
+        s.conditions = s.conditions.filter((c, i) => {
+          const a = resolveAttr(
+            c.attributeId,
+            scope,
+            `${path}.conditions[${i}].attributeId`,
+            ['yes_no'],
+            'Condition attribute',
+          );
+          if (!a || shown.has(a)) return false;
+          if (!collected.has(`${scope}/${a}`)) {
+            add(
+              'degraded',
+              'CONDITION_BEFORE_COLLECTED',
+              `${path}.conditions[${i}]`,
+              `Condition "${a}" is not recorded by any EARLIER stage. Removed.`,
+            );
+            return false;
+          }
+          shown.add(a);
+          c.attributeId = a;
+          if (!c.label) c.label = listOf(scope).find((x) => x.id === a)!.label;
+          return true;
+        });
+        if (!s.conditions.length) {
+          drop('NO_CONDITIONS', `narrativePedigree "${id}" has no conditions.`);
+          continue;
+        }
+        // At-risk statuses predict who will develop or carry a condition;
+        // only a professional should present them.
+        if (s.showAtRiskStatuses && d.administration !== 'face_to_face') {
+          s.showAtRiskStatuses = false;
+          add(
+            'adjusted',
+            'AT_RISK_SELF_ADMINISTERED',
+            path,
+            'At-risk statuses are shown only when a genetic counsellor or another professional is present, so they were turned off in this self-administered study.',
+          );
+        }
         break;
       }
       case 'relationshipForm': {
@@ -1876,6 +2009,11 @@ export const analyse = (
         s,
         shown,
       );
+    if (s.kind === 'familyPedigree')
+      s.attributeIds.forEach((x) => {
+        const k = `node:${s.nodeTypeId}/${x}`;
+        if (!formAt.has(k)) formAt.set(k, at);
+      });
     if (s.kind === 'networkComposer') {
       s.attributeIds.forEach((x) => {
         const k = `node:${s.nodeTypeId}/${x}`;
@@ -1952,6 +2090,16 @@ export const analyse = (
         highlightFilters.set(key, [...earlier, s.filter]);
         site(key, 'highlight prompt', dropHighlight);
       });
+    if (s.kind === 'familyPedigree')
+      s.nominationPrompts.forEach((p) =>
+        site(
+          `node:${s.nodeTypeId}/${p.attributeId}`,
+          'nomination prompt',
+          () => {
+            s.nominationPrompts = s.nominationPrompts.filter((x) => x !== p);
+          },
+        ),
+      );
     if (s.kind === 'networkComposer' && s.groupAttributeId)
       site(`node:${s.nodeTypeId}/${s.groupAttributeId}`, 'group', () => {
         s.groupAttributeId = '';
@@ -2048,6 +2196,10 @@ export const analyse = (
       return false;
     });
   d.stages = d.stages.filter((s) => {
+    if (s.kind === 'familyPedigree') {
+      s.attributeIds = keepUnwritten(`node:${s.nodeTypeId}`, s.attributeIds, s);
+      return true;
+    }
     if (s.kind === 'networkComposer') {
       s.attributeIds = keepUnwritten(`node:${s.nodeTypeId}`, s.attributeIds, s);
       for (const e of s.relationships)
@@ -2175,7 +2327,10 @@ export const analyse = (
   // ---- framing notes ----------------------------------------------------------------
   if (
     !d.stages.some(
-      (s) => s.kind === 'nameGenerator' || s.kind === 'networkComposer',
+      (s) =>
+        s.kind === 'nameGenerator' ||
+        s.kind === 'networkComposer' ||
+        s.kind === 'familyPedigree',
     )
   )
     add(

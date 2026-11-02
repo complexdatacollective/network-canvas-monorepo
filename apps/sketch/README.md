@@ -262,6 +262,14 @@ tell users that what they type is stored.
 - **Geospatial works at country level only**, with a bundled 212 KB world map
   and the testing Mapbox token, which does not work on Fresco deployments and
   must be replaced there.
+- **Family trees get their own node type.** A Family Pedigree creates its
+  relatives, the participant among them, and one "Family relationship" edge
+  type; Sketch writes the structural attributes (sex assigned at birth,
+  gender identity when asked, the participant marker, relatives not recorded)
+  and leaves the participant out of later stages about the family. Gender
+  identity answers are written in English only. A Narrative Pedigree's
+  inheritance patterns are the model's assumption and the researcher notes
+  say so; at-risk statuses are turned off unless an interviewer is present.
 - **Skip logic cannot count.** "Fewer than 2 friends" cannot be expressed; the
   automatic skip covers "nobody named" only, so a dyad census with one alter
   shows one empty screen.

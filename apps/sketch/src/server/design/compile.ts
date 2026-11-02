@@ -9,6 +9,11 @@ import {
   type CurrentProtocolSchema,
   DEFAULT_FINISH_SESSION_TEXT,
   missingSuppliedStageText,
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES,
+  PEDIGREE_RELATIONSHIP_KINDS,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+  suppliedOptionLabels,
   withInterfaceText,
 } from '@codaco/protocol-validation';
 import { TESTING_MAPBOX_TOKEN } from '@codaco/shared-consts';
@@ -153,6 +158,28 @@ const suppliesLanguage = (lang: string) =>
   lang in DEFAULT_FINISH_SESSION_TEXT ||
   (lang.split('-')[0] ?? '') in DEFAULT_FINISH_SESSION_TEXT;
 
+// Gender identity answers: Network Canvas supplies no labels for them, so
+// Sketch writes them, in English.
+const GENDER_IDENTITY_LABELS: Record<string, string> = {
+  woman: 'Woman',
+  man: 'Man',
+  nonBinary: 'Non-binary',
+  differentIdentity: 'A different identity',
+  unknown: 'Don\u2019t know',
+  preferNotToSay: 'Prefer not to say',
+};
+
+const INHERITANCE_NAMES: Record<string, string> = {
+  autosomalDominant: 'autosomal dominant',
+  autosomalRecessive: 'autosomal recessive',
+  xLinkedDominant: 'X-linked dominant',
+  xLinkedRecessive: 'X-linked recessive',
+  yLinked: 'Y-linked',
+  mitochondrial: 'mitochondrial',
+  multifactorial: 'multifactorial',
+  unknown: 'unknown',
+};
+
 const DECLINED_TEXT =
   '# Thank you\n\nYou chose not to take part, so the interview has ended. Nothing more will be asked.';
 
@@ -203,6 +230,11 @@ export const compile = (
     ),
   };
   const instruments = new Set(d.instrumentAttributes);
+  const lang = d.language || SKETCH_LOCALE;
+  const supplied = suppliesLanguage(lang);
+  const L = supplied
+    ? { defaultLocale: lang, locales: [lang] }
+    : SKETCH_LOCALIZATION;
 
   // ---- codebook -------------------------------------------------------------------
   const takenKeys = new Set<string>();
@@ -251,6 +283,8 @@ export const compile = (
       s.attributeIds.forEach((a) => askAt(`node:${s.nodeTypeId}/${a}`, i));
     if (s.kind === 'relationshipForm')
       s.attributeIds.forEach((a) => askAt(`rel:${s.relationshipId}/${a}`, i));
+    if (s.kind === 'familyPedigree')
+      s.attributeIds.forEach((a) => askAt(`node:${s.nodeTypeId}/${a}`, i));
     if (s.kind === 'networkComposer') {
       s.attributeIds.forEach((a) => askAt(`node:${s.nodeTypeId}/${a}`, i));
       s.relationships.forEach((e) =>
@@ -280,6 +314,23 @@ export const compile = (
           p.allowOther && otherFor.add(`node:${s.nodeTypeId}/${p.attributeId}`),
       );
 
+  // node types a family pedigree creates: the stage owns their structural
+  // attributes and one family edge type between them
+  const pedigrees = d.stages.filter(
+    (s): s is Extract<NStage, { kind: 'familyPedigree' }> =>
+      s.kind === 'familyPedigree',
+  );
+  const pedigreeOf = new Map(pedigrees.map((s) => [s.nodeTypeId, s]));
+  const pedigreeVars = new Map<
+    string,
+    { sex: string; gender: string; ego: string; notRecorded: string }
+  >();
+  const familyEdge = { key: '', kind: '', carrier: '', current: '' };
+  const option = (
+    set: 'pedigreeSexAssignedAtBirth' | 'pedigreeRelationship',
+    value: string,
+  ) => ({ value, label: suppliedOptionLabels(set, value, L) });
+
   const codebook: Json = {};
   const egoList = d.includeConsent
     ? [CONSENT, ...d.egoAttributes]
@@ -302,11 +353,10 @@ export const compile = (
       const scope = `node:${n.id}`;
       const tk = nodeKey.get(n.id)!;
       const vars: Json = {};
-      vars[claim(scope, 'name', tk)] = variableFor(
-        nameAttribute(n.nameQuestion),
-        'name',
-        true,
-      );
+      // A relative's name is optional: the participant may not know it.
+      vars[claim(scope, 'name', tk)] = pedigreeOf.has(n.id)
+        ? { name: 'name', type: 'text', component: 'Text' }
+        : variableFor(nameAttribute(n.nameQuestion), 'name', true);
       if (needsLayout.has(n.id))
         vars[claim(scope, 'layout', tk)] = { name: 'layout', type: 'layout' };
       // every declared id up front, so a generated `<id>_other` never takes one
@@ -333,6 +383,50 @@ export const compile = (
           };
         }
       }
+      const pedigree = pedigreeOf.get(n.id);
+      if (pedigree) {
+        const own = (id: string, variable: Json) => {
+          let nm = id;
+          for (let m = 2; names.has(nm); m++) nm = `${id}_${m}`;
+          names.add(nm);
+          // the name is unique among the type's attributes, so it is a key too
+          const k = claim(scope, nm, tk);
+          vars[k] = { name: nm, ...variable };
+          sourceMap.set(
+            `codebook.node.${tk}.variables.${k}`,
+            `the family pedigree "${pedigree.id}"`,
+          );
+          return k;
+        };
+        pedigreeVars.set(n.id, {
+          sex: own('sex_assigned_at_birth', {
+            type: 'categorical',
+            options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((v) =>
+              option('pedigreeSexAssignedAtBirth', v),
+            ),
+          }),
+          gender: pedigree.askGenderIdentity
+            ? own('gender_identity', {
+                type: 'categorical',
+                options: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map((g) => ({
+                  value: g.value,
+                  label: localized(GENDER_IDENTITY_LABELS[g.value] ?? g.value),
+                })),
+              })
+            : '',
+          ego: own('is_participant', { type: 'boolean' }),
+          notRecorded:
+            pedigree.completeness === 'none'
+              ? ''
+              : own('relatives_not_recorded', {
+                  type: 'categorical',
+                  options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map((o) => ({
+                    value: o.value,
+                    label: localized(o.label),
+                  })),
+                }),
+        });
+      }
       nodes[tk] = {
         name: n.singular,
         icon: ICONS[n.represents],
@@ -344,8 +438,8 @@ export const compile = (
     });
     codebook.node = nodes;
   }
+  const edges: Json = {};
   if (d.relationships.length) {
-    const edges: Json = {};
     d.relationships.forEach((r, i) => {
       const scope = `rel:${r.id}`;
       const tk = relKey.get(r.id)!;
@@ -365,8 +459,45 @@ export const compile = (
       };
       sourceMap.set(`codebook.edge.${tk}`, `relationships "${r.id}"`);
     });
-    codebook.edge = edges;
   }
+  // One family edge type serves every pedigree: Sketch has one per study.
+  if (pedigrees.length) {
+    const takenNames = new Set([
+      ...d.nodeTypes.map((n) => n.singular),
+      ...d.relationships.map((r) => r.name),
+    ]);
+    let name = 'Family relationship';
+    for (let m = 2; takenNames.has(name); m++)
+      name = `Family relationship ${m}`;
+    familyEdge.key = claimType('family');
+    const scope = 'rel:#family';
+    familyEdge.kind = claim(scope, 'relationship_kind', familyEdge.key);
+    familyEdge.carrier = claim(scope, 'gestational_carrier', familyEdge.key);
+    familyEdge.current = claim(scope, 'current_partner', familyEdge.key);
+    edges[familyEdge.key] = {
+      name,
+      color: `edge-color-seq-${(d.relationships.length % 8) + 1}`,
+      variables: {
+        [familyEdge.kind]: {
+          name: 'relationship_kind',
+          type: 'categorical',
+          options: PEDIGREE_RELATIONSHIP_KINDS.map((v) =>
+            option('pedigreeRelationship', v),
+          ),
+        },
+        [familyEdge.carrier]: {
+          name: 'gestational_carrier',
+          type: 'boolean',
+        },
+        [familyEdge.current]: { name: 'current_partner', type: 'boolean' },
+      },
+    };
+    sourceMap.set(
+      `codebook.edge.${familyEdge.key}`,
+      'the family pedigree (family relationships)',
+    );
+  }
+  if (Object.keys(edges).length) codebook.edge = edges;
 
   // ---- rules ------------------------------------------------------------------------
   const attrIn = (scope: string, id: string): NAttribute | undefined => {
@@ -421,6 +552,23 @@ export const compile = (
       .filter((r): r is ResolvedRule => typeof r !== 'string')
       .map(toRule);
     return rules.length ? filterOf(rules, s.filter.match) : undefined;
+  };
+  // A family pedigree's nodes include the participant, whom later stages
+  // about the family do not ask about.
+  const notParticipant = (t: string): Json | undefined => {
+    const ego = pedigreeVars.get(t)?.ego;
+    return ego
+      ? {
+          id: `rule_${++ruleCounter}`,
+          type: 'node',
+          options: {
+            type: nodeKey.get(t),
+            attribute: ego,
+            operator: 'NOT',
+            value: true,
+          },
+        }
+      : undefined;
   };
 
   // skip logic, including the mechanical auto-skip for stages whose nodes / ties may not exist
@@ -577,6 +725,9 @@ export const compile = (
   const createdFor = (t: string) =>
     createdRels.filter((r) => r.t === t).map((r) => r.ek);
   const namedBefore = new Set<string>();
+  // design id of each family pedigree -> its compiled stage id
+  const pedigreeStageId = new Map<string, string>();
+  const inheritanceNotes: string[] = [];
   const lastSociogramAuto = new Map<string, boolean>();
   let ordColor = 0;
 
@@ -714,7 +865,16 @@ export const compile = (
         : undefined;
     const withFilter = (st: Json) => {
       const f = nodeFilter(s);
-      if (f) st.filter = f;
+      const others =
+        'nodeTypeId' in s ? notParticipant(s.nodeTypeId) : undefined;
+      // An "any" filter cannot also require "not the participant": one
+      // filter has one join. It keeps the design's filter.
+      if (others && f?.join !== 'OR')
+        st.filter = {
+          ...(f ? { join: 'AND' } : {}),
+          rules: [others, ...(Array.isArray(f?.rules) ? f.rules : [])],
+        };
+      else if (f) st.filter = f;
       return st;
     };
     switch (s.kind) {
@@ -1148,6 +1308,97 @@ export const compile = (
         push(st, src);
         break;
       }
+      case 'familyPedigree': {
+        const v = pedigreeVars.get(s.nodeTypeId)!;
+        const st = base(s.id, 'FamilyPedigree', label(s.id, humanise(s.id)));
+        pedigreeStageId.set(s.id, st.id);
+        push(
+          {
+            ...st,
+            subject: nodeSubject(s.nodeTypeId),
+            prompt: prompt(s.id, 0, s.prompt),
+            nodeConfiguration: {
+              nameAttribute: key(scope, 'name'),
+              ...(v.gender
+                ? {
+                    genderIdentity: {
+                      attribute: v.gender,
+                      terms: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map((g) => ({
+                        value: g.value,
+                        words: g.words,
+                      })),
+                    },
+                  }
+                : {}),
+              sexAssignedAtBirthAttribute: v.sex,
+              egoAttribute: v.ego,
+            },
+            edgeConfiguration: {
+              type: familyEdge.key,
+              kindAttribute: familyEdge.kind,
+              gestationalCarrierAttribute: familyEdge.carrier,
+              currentPartnerAttribute: familyEdge.current,
+            },
+            ...(s.completeness !== 'none' && v.notRecorded
+              ? {
+                  completeness: {
+                    scope: s.completeness,
+                    enforcement: 'recommended',
+                    relativesNotRecordedAttribute: v.notRecorded,
+                  },
+                }
+              : {}),
+            ...(s.attributeIds.length
+              ? { form: { fields: s.attributeIds.map((a) => field(scope, a)) } }
+              : {}),
+            ...(s.nominationPrompts.length
+              ? {
+                  nominationPrompts: s.nominationPrompts.map((p, i) => ({
+                    id: `nomination${i + 1}`,
+                    text: prompt(s.id, i + 1, p.text),
+                    attribute: key(scope, p.attributeId),
+                    ...(p.onlyFor === 'anyone'
+                      ? {}
+                      : { onlyForSexAssignedAtBirth: p.onlyFor }),
+                  })),
+                }
+              : {}),
+            wording: {},
+          },
+          src,
+        );
+        namedBefore.add(s.nodeTypeId);
+        if (s.skipLogic.mode === 'always_show') guaranteed.add(s.nodeTypeId);
+        break;
+      }
+      case 'narrativePedigree': {
+        const source = d.stages.find((x) => x.id === s.sourceStageId);
+        const t = source?.kind === 'familyPedigree' ? source.nodeTypeId : '';
+        const sc = `node:${t}`;
+        s.conditions.forEach((c) =>
+          inheritanceNotes.push(
+            `${c.label} (${INHERITANCE_NAMES[c.inheritancePattern] ?? c.inheritancePattern})`,
+          ),
+        );
+        push(
+          {
+            ...base(s.id, 'NarrativePedigree', label(s.id, humanise(s.id))),
+            sourceStageId: pedigreeStageId.get(s.sourceStageId),
+            showAtRiskStatuses: s.showAtRiskStatuses,
+            diseases: s.conditions.map((c, i) => ({
+              id: `condition${i + 1}`,
+              label: localized(
+                pick(W.prompt.get(`${s.id}/condition${i + 1}`)?.text, c.label),
+              ),
+              color: `node-color-seq-${(i % 8) + 1}`,
+              attribute: key(sc, c.attributeId),
+              inheritancePattern: c.inheritancePattern,
+            })),
+          },
+          src,
+        );
+        break;
+      }
       case 'geospatial': {
         const region =
           MAP_REGION_PRESETS[s.mapRegion] ?? MAP_REGION_PRESETS.world!;
@@ -1213,6 +1464,11 @@ export const compile = (
     instrumentList.length &&
       `**Validated instruments.** Check the wording and scoring of ${instrumentList.join(', ')} against the published instrument; Sketch reproduces them from memory.`,
     ...placeholderNotes,
+    inheritanceNotes.length &&
+      `**Inheritance patterns.** Sketch assumed how each condition on the family tree is inherited: ${inheritanceNotes.join('; ')}. Check them before fielding: the tree marks relatives by them.`,
+    pedigrees.some((p) => p.askGenderIdentity) &&
+      !lang.startsWith('en') &&
+      `**Gender identity answers.** The answers to the family tree's gender identity question are in English. Translate them in Architect before fielding.`,
     !suppliesLanguage(d.language || SKETCH_LOCALE) &&
       `**Language.** The interview is in ${d.language}. Network Canvas does not supply its own interface text (buttons, notices, the closing screen) in this language, so that text is still in English. Translate it in Architect before fielding.`,
     changed.length &&
@@ -1234,11 +1490,6 @@ export const compile = (
   // Schema 9 ends every route at a finish stage. The normal ending comes
   // first, with the closing text Network Canvas supplies; early endings
   // follow it, and finish without asking.
-  const lang = d.language || SKETCH_LOCALE;
-  const supplied = suppliesLanguage(lang);
-  const L = supplied
-    ? { defaultLocale: lang, locales: [lang] }
-    : SKETCH_LOCALIZATION;
   stages.push(
     createDefaultFinishSessionStage({ id: sid('finish'), localization: L }),
   );

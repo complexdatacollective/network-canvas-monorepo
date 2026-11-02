@@ -209,6 +209,36 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
           ),
         );
         break;
+      case 'familyPedigree':
+        slot('none: return ""', 'none: return ""');
+        s.attributeIds.forEach((a) =>
+          q(
+            `node:${s.nodeTypeId}`,
+            a,
+            attr(`node:${s.nodeTypeId}`, a).question,
+          ),
+        );
+        [s.prompt, ...s.nominationPrompts.map((p) => p.text)].forEach(
+          (draft, i) =>
+            prompts.push({
+              promptKey: `${s.id}/p${i + 1}`,
+              draft,
+              kind: i ? 'family pedigree question' : 'family pedigree',
+              needsNegativeLabel: false,
+            }),
+        );
+        break;
+      case 'narrativePedigree':
+        slot('none: return ""', 'none: return ""');
+        s.conditions.forEach((c, i) =>
+          prompts.push({
+            promptKey: `${s.id}/condition${i + 1}`,
+            draft: c.label,
+            kind: 'condition name (1-4 words)',
+            needsNegativeLabel: false,
+          }),
+        );
+        break;
       case 'bins':
       case 'geospatial':
       case 'narrative':
