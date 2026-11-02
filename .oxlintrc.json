@@ -217,7 +217,6 @@
         "packages/network-exporters/src/**",
         "packages/protocol-validation/src/**",
         "packages/protocol-utilities/src/**",
-        "packages/protocol-builder/src/**",
         "apps/studio/web/src/**"
       ],
       "rules": {
