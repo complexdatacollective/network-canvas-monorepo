@@ -1194,10 +1194,12 @@ check's detail:
    browser: steps "app-choice-applies", "app-choice-persists", and
    "automatic-restores-negotiation".
 3. An interview follows the browser, never the app's chosen language, and
-   takes the best of each separately — the protocol's translation from the
-   protocol's languages, its built-in text from the interview's: steps
-   "interview-ignores-app-choice", "interview-second-preference",
-   "interview-builtins-follow-browser", and "interview-fallback".
+   negotiates once, over the protocol's languages: its own words come from
+   the protocol in that language, so a browser language the protocol lacks
+   never reaches it, and the accessible names of its icon controls are
+   English: steps "interview-ignores-app-choice",
+   "interview-second-preference", "interview-builtins-follow-protocol", and
+   "interview-fallback".
 4. The participant's choice on the language chooser switches the interview
    at once, survives a reload in the same tab without being stored with the
    session, and does not carry to the next interview: steps

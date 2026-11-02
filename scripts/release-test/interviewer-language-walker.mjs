@@ -8,16 +8,20 @@
 //   browser's languages, best fit one preference at a time, until a language
 //   is chosen in Settings → Language; "Automatic" hands it back to the
 //   browser;
-// - an interview follows the browser's languages for both the protocol's
-//   translation and its own built-in text, whatever the app's language, until
-//   the participant chooses a language on a language chooser stage. That
-//   choice belongs to that interview, in that tab: it survives a reload and
-//   never reaches the next interview or the stored session.
+// - an interview follows the browser's languages, whatever the app's
+//   language, until the participant chooses a language on a language chooser
+//   stage. It negotiates once, over the protocol's languages: every word it
+//   shows, its own included, comes from the protocol in that language, and
+//   the accessible names of its icon controls are English whatever the
+//   language. That choice belongs to that interview, in that tab: it
+//   survives a reload and never reaches the next interview or the stored
+//   session.
 // Each browser-language case runs in its own fresh profile with
 // navigator.languages set before any page loads, so the deployment's own
 // negotiation decides — the walker asserts the outcome, never drives it.
-// Expected words are read from the app's and the interview's own catalogs,
-// so a retranslation never breaks the walk and a wrong language always does.
+// Expected words are read from the app's own catalogs and the interview's
+// English source, so a retranslation never breaks the walk and a wrong
+// language always does.
 //
 // The interview cases conduct the release-smoke fixture
 // (packages/protocols/e2e/release-smoke, declaring en-US and es); its archive
@@ -179,8 +183,10 @@ function message(dir, locale, id) {
 }
 const appMessage = (locale, id) =>
   message('apps/interviewer/src/locales', locale, id);
-const interviewMessage = (locale, id) =>
-  message('packages/interview/src/locales', locale, id);
+// The interview ships only its English source: what it shows comes from the
+// protocol, and the accessible names of its icon controls are English.
+const interviewMessage = (id) =>
+  message('packages/interview/src/locales', 'en', id);
 
 // The archive is BUILT from the reviewable fixture at run time — a committed
 // binary could silently drift from the JSON reviewers inspect.
@@ -200,7 +206,7 @@ try {
     appMessage(locale, 'interviewer.settingsDialog.language');
     appMessage(locale, 'interviewer.language.label');
   }
-  interviewMessage('es', 'interview.navigation.nextStep');
+  interviewMessage('interview.navigation.nextStep');
 } catch (err) {
   setupFailure(
     `setup failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -431,16 +437,16 @@ function readSession(sessionId) {
       if (!listed) return { missingDatabase: dbName };
       const db = await new Promise((res, rej) => {
         const req = indexedDB.open(dbName);
-        req.onsuccess = () => res(req.result);
-        req.onerror = () => rej(req.error);
+        req.addEventListener('success', () => res(req.result));
+        req.addEventListener('error', () => rej(req.error));
       });
       const row = await new Promise((res, rej) => {
         const rq = db
           .transaction('sessions', 'readonly')
           .objectStore('sessions')
           .get(id);
-        rq.onsuccess = () => res(rq.result ?? null);
-        rq.onerror = () => rej(rq.error);
+        rq.addEventListener('success', () => res(rq.result ?? null));
+        rq.addEventListener('error', () => rej(rq.error));
       });
       db.close();
       return {
@@ -453,8 +459,9 @@ function readSession(sessionId) {
   );
 }
 
-const nextStepName = (locale) =>
-  interviewMessage(locale, 'interview.navigation.nextStep');
+// The Next arrow's accessible name, English in every interview: a browser's
+// French or German never reaches the interview.
+const nextStepName = () => interviewMessage('interview.navigation.nextStep');
 
 // One fresh profile per browser: import the fixture, start an interview and
 // read it on the language chooser before anyone chooses.
@@ -471,9 +478,9 @@ async function interviewCase(step, languages, expected, appLocale) {
       seen.chooser === expected.chooser &&
       seen.selected.length === 1 &&
       seen.selected[0] === expected.selected &&
-      seen.next === nextStepName(expected.builtIn) &&
+      seen.next === nextStepName() &&
       seen.app === appLocale,
-    `${JSON.stringify(languages)} → interview lang=${seen.lang} chooser=${JSON.stringify(seen.chooser)} selected=${JSON.stringify(seen.selected)} Next=${JSON.stringify(seen.next)} app lang=${seen.app} (expected interview ${expected.lang}, built-in text ${expected.builtIn}, app ${appLocale}: ${expected.rule})`,
+    `${JSON.stringify(languages)} → interview lang=${seen.lang} chooser=${JSON.stringify(seen.chooser)} selected=${JSON.stringify(seen.selected)} Next=${JSON.stringify(seen.next)} app lang=${seen.app} (expected interview ${expected.lang}, Next named in English, app ${appLocale}: ${expected.rule})`,
   );
   await context.close();
 }
@@ -566,9 +573,9 @@ try {
       first.chooser === 'Elige un idioma' &&
       first.selected.length === 1 &&
       first.selected[0] === 'español' &&
-      first.next === nextStepName('es') &&
+      first.next === nextStepName() &&
       first.app === 'en',
-    `app chosen English, browser es-MX → interview lang=${first.lang} chooser=${JSON.stringify(first.chooser)} selected=${JSON.stringify(first.selected)} Next=${JSON.stringify(first.next)} app lang=${first.app} (expected Spanish throughout the interview, the app still English)`,
+    `app chosen English, browser es-MX → interview lang=${first.lang} chooser=${JSON.stringify(first.chooser)} selected=${JSON.stringify(first.selected)} Next=${JSON.stringify(first.next)} app lang=${first.app} (expected the interview in Spanish with its accessible names in English, the app still English)`,
   );
 
   await page
@@ -582,7 +589,7 @@ try {
   ).toBeVisible();
   await expect(page.getByTestId('next-button')).toHaveAttribute(
     'aria-label',
-    nextStepName('en'),
+    nextStepName(),
   );
   await page.getByTestId('next-button').click();
   await expect(stageStep()).toHaveAttribute('data-stage-step', '1', {
@@ -637,7 +644,7 @@ try {
     second.lang === 'es' &&
       second.selected.length === 1 &&
       second.selected[0] === 'español' &&
-      second.next === nextStepName('es'),
+      second.next === nextStepName(),
     `the next interview in the same tab opens on the browser's language again: lang=${second.lang} selected=${JSON.stringify(second.selected)} Next=${JSON.stringify(second.next)} (the first participant's English choice stays with that interview)`,
   );
 
@@ -666,8 +673,8 @@ try {
   );
   await context.close();
 
-  // Phase 3: an interview negotiates the protocol's translation and its own
-  // built-in text separately, each the best it has for this browser.
+  // Phase 3: an interview negotiates once, over the protocol's languages, and
+  // its own words follow: the browser's French or German never reaches it.
   await interviewCase(
     'interview-second-preference',
     ['fr-FR', 'es'],
@@ -675,20 +682,18 @@ try {
       lang: 'es',
       chooser: 'Elige un idioma',
       selected: 'español',
-      builtIn: 'fr',
-      rule: 'the protocol has no French, so its Spanish (the second preference) is used; the built-in text has French',
+      rule: 'the protocol has no French, so its Spanish (the second preference) is used, its own words included; no French appears',
     },
     'fr',
   );
   await interviewCase(
-    'interview-builtins-follow-browser',
+    'interview-builtins-follow-protocol',
     ['de-AT'],
     {
       lang: 'en-US',
       chooser: 'Choose a language',
       selected: 'American English',
-      builtIn: 'de',
-      rule: 'the protocol has no German, so its default English is used; the built-in text has German',
+      rule: 'the protocol has no German, so its default English is used, its own words included; no German appears',
     },
     'de',
   );
@@ -699,8 +704,7 @@ try {
       lang: 'en-US',
       chooser: 'Choose a language',
       selected: 'American English',
-      builtIn: 'en',
-      rule: 'nothing matches Japanese, so both fall back to English',
+      rule: 'nothing matches Japanese, so the interview falls back to the protocol’s default English',
     },
     'en',
   );
