@@ -1336,6 +1336,10 @@ test('release-sensitive app builds run before merge', () => {
     supportJob,
     /turbo run build --filter='\.\/packages\/\*' --filter=@codaco\/background-creator/,
   );
+  // Architect and Interviewer take the source-map upload path only when both
+  // credentials are non-empty; the values themselves are dummies.
+  assert.match(supportJob, /POSTHOG_PERSONAL_API_KEY: \S+/);
+  assert.match(supportJob, /POSTHOG_PROJECT_ID: \S+/);
   assert.match(
     supportJob,
     /POSTHOG_CLI_BINARY_PATH: .*posthog-cli-upload-stub\.mjs/,
@@ -2267,7 +2271,7 @@ test('the unified E2E report aggregates every suite job and publishes failures o
   // and leaves a deleted report live).
   assert.match(
     reportJob,
-    /sha256sum \| cut -c1-8/,
+    /printf '%s' "\$1" \| sha256sum \| cut -c1-8/,
     'the slug carries a digest of the raw ref',
   );
   assert.match(
