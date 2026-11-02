@@ -3,7 +3,10 @@ import { useEffect, useRef, type MouseEvent } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { useKeyboardReorder } from '@codaco/fresco-ui/dnd/useKeyboardReorder';
+import {
+  focusWasLost,
+  useKeyboardReorder,
+} from '@codaco/fresco-ui/dnd/useKeyboardReorder';
 
 const messages = defineMessages({
   moveScreenUp: {
@@ -90,7 +93,10 @@ export default function OutlineStageRow({
     const pending = buttonMove.current;
     if (pending === null || pending.fromIndex === index) return undefined;
     buttonMove.current = null;
-    const frame = requestAnimationFrame(() => pending.control.focus());
+    // Given back only if the reorder took it, as the hook does for a key move.
+    const frame = requestAnimationFrame(() => {
+      if (focusWasLost(pending.control)) pending.control.focus();
+    });
     return () => cancelAnimationFrame(frame);
   }, [index]);
 

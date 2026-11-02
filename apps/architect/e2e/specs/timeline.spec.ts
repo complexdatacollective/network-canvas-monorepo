@@ -830,7 +830,7 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
   // oracle, since a keyboard move legitimately hands focus to the row that
   // moved. It is pinned where it can be observed directly instead:
   // `ArrayFieldDragHandle.test.tsx`'s "drops its claim on focus when the list
-  // refuses the move" refuses a move, parks focus elsewhere, drives an
+  // refuses the move" refuses a move, lets focus fall to the page body, drives an
   // unrelated index change and waits two frames. Deleting the disarm in
   // `useKeyboardReorder` turns that test red and leaves this spec green.
   await readProtocolJson(architectPage);

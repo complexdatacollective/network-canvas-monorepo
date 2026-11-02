@@ -24,12 +24,19 @@ const FIELD_WAIT_MS = 3000;
  * editing keeps every field disabled), the field's own element takes focus
  * instead, and failing that `fallback` runs: focus must end up somewhere that
  * names the problem, never on the page body.
+ *
+ * A wait belongs to the opening that asked for it. `cancelFieldFocus` ends it,
+ * and the caller calls it whenever something else is opened: a field of the
+ * same name on the screen opened next is not the one the problem was about,
+ * and a researcher who has moved on is not to be pulled back to the outline.
  */
 export function useFieldFocus(root: RefObject<HTMLElement | null>) {
   const cancelPending = useRef<(() => void) | undefined>(undefined);
   useEffect(() => () => cancelPending.current?.(), []);
 
-  return useCallback(
+  const cancelFieldFocus = useCallback(() => cancelPending.current?.(), []);
+
+  const focusField = useCallback(
     (fieldNames: readonly string[], fallback: () => void) => {
       cancelPending.current?.();
       // A problem about the screen as a whole names no field to wait for.
@@ -91,4 +98,6 @@ export function useFieldFocus(root: RefObject<HTMLElement | null>) {
     },
     [root],
   );
+
+  return { focusField, cancelFieldFocus };
 }

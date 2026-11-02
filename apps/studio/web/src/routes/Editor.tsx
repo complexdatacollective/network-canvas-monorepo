@@ -637,7 +637,9 @@ function EditorWorkspace({
   const intl = useAppIntl();
   const params = address;
   const { confirm } = useDialog();
-  const [selection, setSelection] = useState<Selection>({ kind: 'settings' });
+  const [selection, setSelectionState] = useState<Selection>({
+    kind: 'settings',
+  });
   const [stageFormDirty, setStageFormDirty] = useState(false);
   const [reconcilingAdd, setReconcilingAdd] = useState(false);
   const [addRecoveryFailed, setAddRecoveryFailed] = useState(false);
@@ -668,6 +670,23 @@ function EditorWorkspace({
   const [stageAccess, setStageAccess] = useState<
     { stageId: string; access: StageEditorAccess } | undefined
   >();
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const outlineRef = useRef<HTMLElement>(null);
+  const { focusField, cancelFieldFocus } = useFieldFocus(canvasRef);
+
+  // Opening something starts it afresh. What was said about the lock before
+  // is forgotten: a screen reopened is asked for its lock again, and what it
+  // said last time (held by somebody who has since let it go) is not true of
+  // this opening. A field still being waited for, for a problem on whatever
+  // was open, is no longer wanted.
+  const setSelection = useCallback(
+    (next: Selection) => {
+      setSelectionState(next);
+      setStageAccess(undefined);
+      cancelFieldFocus();
+    },
+    [cancelFieldFocus],
+  );
 
   const confirmDiscardStageChanges = useCallback(
     // `confirm` takes plain strings, so the descriptors are formatted here
@@ -713,7 +732,7 @@ function EditorWorkspace({
       setSelection(nextSelection);
       return true;
     },
-    [confirmDiscardStageChanges, selection, stageFormDirty],
+    [confirmDiscardStageChanges, selection, setSelection, stageFormDirty],
   );
 
   const shouldBlockNavigation = useCallback(async () => {
@@ -866,10 +885,6 @@ function EditorWorkspace({
     return landed;
   };
 
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const outlineRef = useRef<HTMLElement>(null);
-  const focusField = useFieldFocus(canvasRef);
-
   // Takes the researcher to what a validation problem is about: opens the
   // section that holds it, then moves focus to the field. A problem that names
   // no field this editor has (the interview as a whole, a section not built
@@ -886,6 +901,7 @@ function EditorWorkspace({
   }>();
   const goToProblem = async (target: ProblemTarget) => {
     if (target.kind === 'outline') {
+      cancelFieldFocus();
       outlineRef.current?.focus();
       return;
     }

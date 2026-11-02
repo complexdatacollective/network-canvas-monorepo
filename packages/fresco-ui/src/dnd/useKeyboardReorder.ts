@@ -41,6 +41,21 @@ export type KeyboardReorder<E extends HTMLElement> = {
  * that offers a keyboard equivalent to dragging, rather than hand-rolling a
  * copy that drifts (Architect's stage timeline is the outstanding one).
  */
+/**
+ * Whether focus is somewhere only a reorder could have put it: on the page
+ * body, where a repositioned control's focus falls, or still on the control.
+ * Exported for a list that gives focus back to a control of its own after the
+ * same kind of move.
+ */
+export function focusWasLost(control: HTMLElement): boolean {
+  const active = control.ownerDocument.activeElement;
+  return (
+    active === null ||
+    active === control.ownerDocument.body ||
+    active === control
+  );
+}
+
 export function useKeyboardReorder<E extends HTMLElement = HTMLButtonElement>({
   index,
   itemCount,
@@ -55,12 +70,18 @@ export function useKeyboardReorder<E extends HTMLElement = HTMLButtonElement>({
   // Committing a keyboard reorder repositions this control in the DOM, which
   // blurs it in browsers and drops focus to <body>. Restore focus on the next
   // frame (after the reposition settles) so repeated arrow presses keep working
-  // without tabbing back to the control each step.
+  // without tabbing back to the control each step. Only focus the reorder took
+  // away is given back: a user who moved focus somewhere else while the move
+  // was landing meant to, and keeps it.
   useEffect(() => {
     const movedFrom = movedFromIndexRef.current;
     if (movedFrom === null || movedFrom.fromIndex === index) return undefined;
     movedFromIndexRef.current = null;
-    const frame = requestAnimationFrame(() => ref.current?.focus());
+    const frame = requestAnimationFrame(() => {
+      if (ref.current !== null && focusWasLost(ref.current)) {
+        ref.current.focus();
+      }
+    });
     return () => cancelAnimationFrame(frame);
   }, [index]);
 

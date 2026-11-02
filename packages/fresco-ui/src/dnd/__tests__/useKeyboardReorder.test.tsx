@@ -44,9 +44,15 @@ const nextFrames = async () => {
   await new Promise((resolve) => requestAnimationFrame(resolve));
 };
 
-/** Presses ArrowDown on the item, answered later by `answer`, then parks focus elsewhere. */
+/**
+ * Presses ArrowDown on the item and answers it later with `answer`. Focus is
+ * then either LOST (on the page body, where a browser drops the focus of a
+ * repositioned control) or put ELSEWHERE by the user, and something unrelated
+ * moves the item: the moment a claim on focus still standing would act.
+ */
 async function pressAndAnswer(
   answer: (resolve: (moved: boolean) => void, reject: () => void) => void,
+  focus: 'lost' | 'elsewhere',
 ) {
   const { promise, resolve, reject } = Promise.withResolvers<boolean>();
   render(<Harness onMove={() => promise} />);
@@ -60,27 +66,36 @@ async function pressAndAnswer(
   });
 
   const elsewhere = screen.getByRole('button', { name: 'Somewhere else' });
-  elsewhere.focus();
-  // Something unrelated now moves the item. A claim still standing from the
-  // press above would pull focus back onto it here.
+  if (focus === 'lost') item.blur();
+  else elsewhere.focus();
   fireEvent.click(screen.getByRole('button', { name: 'Shift the item' }));
   await nextFrames();
   return { item, elsewhere };
 }
 
 describe('a move whose answer arrives later', () => {
-  it('reclaims focus when the answer is that the move landed', async () => {
-    const { item } = await pressAndAnswer((resolve) => resolve(true));
+  it('gives back the focus the reorder took when the answer is that the move landed', async () => {
+    const { item } = await pressAndAnswer((resolve) => resolve(true), 'lost');
     expect(item).toHaveFocus();
   });
 
   it('drops its claim on focus when the answer is that the move did not land', async () => {
-    const { elsewhere } = await pressAndAnswer((resolve) => resolve(false));
-    expect(elsewhere).toHaveFocus();
+    await pressAndAnswer((resolve) => resolve(false), 'lost');
+    expect(document.activeElement).toBe(document.body);
   });
 
   it('drops its claim on focus when the move fails outright', async () => {
-    const { elsewhere } = await pressAndAnswer((_, reject) => reject());
+    await pressAndAnswer((_, reject) => reject(), 'lost');
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
+describe('a move that lands after the user has moved on', () => {
+  it('leaves focus where the user put it', async () => {
+    const { elsewhere } = await pressAndAnswer(
+      (resolve) => resolve(true),
+      'elsewhere',
+    );
     expect(elsewhere).toHaveFocus();
   });
 });

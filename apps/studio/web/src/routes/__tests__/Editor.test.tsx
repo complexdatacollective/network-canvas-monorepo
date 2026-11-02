@@ -1803,6 +1803,34 @@ function holdMoves() {
   };
 }
 
+/**
+ * After a move the server lost: refreshes the order, lets focus fall to the
+ * page body, and has a collaborator move Welcome down a place, which is when a
+ * control still waiting on the lost move would take focus.
+ */
+async function expectCollaboratorReorderLeavesFocusAlone(): Promise<void> {
+  fireEvent.click(await screen.findByRole('button', { name: 'Refresh order' }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Move Follow-up up' }),
+    ).toHaveAttribute('aria-disabled', 'false'),
+  );
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+
+  await act(() => collaboratorRepairsStageOrder([STAGE_B, STAGE_A, STAGE_C]));
+  await waitFor(() =>
+    expect(outlineScreens()).toEqual([
+      'Follow-upInformation',
+      'Welcome, from the hostInformation',
+      'ThirdInformation',
+    ]),
+  );
+  await nextFrames();
+  expect(document.activeElement).toBe(document.body);
+}
+
 /** Two animation frames: long enough for any refocus a reorder schedules to run. */
 const nextFrames = async () => {
   await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -1960,11 +1988,11 @@ describe('reordering screens in the outline', () => {
   /**
    * A move the server did not keep leaves the screen where it was, so its
    * control has nothing to wait for. Still waiting, it would take focus the
-   * next time ANY move shifted the screen, from whichever control made that
-   * move.
+   * next time anything shifted the screen, here a collaborator's reorder
+   * landing while focus is on the page body (the one place a waiting control
+   * takes it back from).
    */
   it('stops waiting to take focus back after a move the server did not keep, when using the buttons', async () => {
-    holdMoves();
     moveStage.mockReturnValueOnce(Effect.die(new Error('response lost')));
     renderEditor();
     await screen.findByRole('button', { name: 'ThirdInformation' });
@@ -1974,34 +2002,11 @@ describe('reordering screens in the outline', () => {
     });
     welcomeDown.focus();
     fireEvent.click(welcomeDown);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Refresh order' }),
-    );
-    const followUpUp = screen.getByRole('button', {
-      name: 'Move Follow-up up',
-    });
-    await waitFor(() =>
-      expect(followUpUp).toHaveAttribute('aria-disabled', 'false'),
-    );
-
-    // Moving Follow-up up shifts Welcome down a place, which is what a stale
-    // wait on Welcome's button would answer by taking focus.
-    followUpUp.focus();
-    fireEvent.click(followUpUp);
-    await waitFor(() =>
-      expect(outlineScreens()).toEqual([
-        'Follow-upInformation',
-        'Welcome, from the hostInformation',
-        'ThirdInformation',
-      ]),
-    );
-    await waitFor(() => expect(followUpUp).toHaveFocus());
-    await nextFrames();
-    expect(followUpUp).toHaveFocus();
+    await expectCollaboratorReorderLeavesFocusAlone();
+    expect(welcomeDown).not.toHaveFocus();
   });
 
   it('stops waiting to take focus back after a move the server did not keep, when using the arrow keys', async () => {
-    holdMoves();
     moveStage.mockReturnValueOnce(Effect.die(new Error('response lost')));
     renderEditor();
     await screen.findByRole('button', { name: 'ThirdInformation' });
@@ -2009,18 +2014,30 @@ describe('reordering screens in the outline', () => {
     const welcome = nameButton('Welcome, from the host');
     welcome.focus();
     fireEvent.keyDown(welcome, { key: 'ArrowDown' });
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Refresh order' }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Move Follow-up up' }),
-      ).toHaveAttribute('aria-disabled', 'false'),
-    );
+    await expectCollaboratorReorderLeavesFocusAlone();
+    expect(welcome).not.toHaveFocus();
+  });
 
-    const followUp = nameButton('Follow-up');
-    followUp.focus();
-    fireEvent.keyDown(followUp, { key: 'ArrowUp' });
+  /**
+   * The move lands while the researcher is somewhere else: they moved on
+   * deliberately, and the control they left does not call them back.
+   */
+  it('leaves focus where the researcher put it while a move was landing, when using the buttons', async () => {
+    const moves = holdMoves();
+    moves.hold();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+
+    const welcomeDown = screen.getByRole('button', {
+      name: 'Move Welcome, from the host down',
+    });
+    welcomeDown.focus();
+    fireEvent.click(welcomeDown);
+    await waitFor(() => expect(moveStage).toHaveBeenCalledTimes(1));
+    const add = screen.getByRole('button', { name: 'Add' });
+    add.focus();
+
+    await act(async () => moves.release());
     await waitFor(() =>
       expect(outlineScreens()).toEqual([
         'Follow-upInformation',
@@ -2028,9 +2045,79 @@ describe('reordering screens in the outline', () => {
         'ThirdInformation',
       ]),
     );
-    await waitFor(() => expect(followUp).toHaveFocus());
     await nextFrames();
-    expect(followUp).toHaveFocus();
+    expect(add).toHaveFocus();
+  });
+
+  it('leaves focus where the researcher put it while a move was landing, when using the arrow keys', async () => {
+    const moves = holdMoves();
+    moves.hold();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+
+    const welcome = nameButton('Welcome, from the host');
+    welcome.focus();
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    await waitFor(() => expect(moveStage).toHaveBeenCalledTimes(1));
+    const add = screen.getByRole('button', { name: 'Add' });
+    add.focus();
+
+    await act(async () => moves.release());
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'Welcome, from the hostInformation',
+        'ThirdInformation',
+      ]),
+    );
+    await nextFrames();
+    expect(add).toHaveFocus();
+  });
+
+  it('does not leave another screen waiting for focus when its key is pressed during a move', async () => {
+    const moves = holdMoves();
+    moves.hold();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+
+    const welcome = nameButton('Welcome, from the host');
+    welcome.focus();
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    await waitFor(() => expect(moveStage).toHaveBeenCalledTimes(1));
+    // Third asks to move while Welcome's move is still with the server: no
+    // move of Third is sent, so Third has nothing to wait for.
+    const third = nameButton('Third');
+    third.focus();
+    fireEvent.keyDown(third, { key: 'ArrowUp' });
+    await act(async () => moves.release());
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'Welcome, from the hostInformation',
+        'ThirdInformation',
+      ]),
+    );
+    expect(moveStage).toHaveBeenCalledTimes(1);
+
+    // Welcome then moves down past Third, which shifts Third up a place. The
+    // control that made THIS move is the one to get focus back; Third, still
+    // waiting from its press, would take it first.
+    await nextFrames();
+    const welcomeDown = screen.getByRole('button', {
+      name: 'Move Welcome, from the host down',
+    });
+    welcomeDown.focus();
+    fireEvent.click(welcomeDown);
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'ThirdInformation',
+        'Welcome, from the hostInformation',
+      ]),
+    );
+    await waitFor(() => expect(welcomeDown).toHaveFocus());
+    await nextFrames();
+    expect(welcomeDown).toHaveFocus();
   });
 
   it('does not announce a move the server did not keep', async () => {
@@ -2164,6 +2251,44 @@ describe('the validation problems', () => {
         screen.getByRole('heading', { name: 'Protocol settings' }),
       ).toHaveFocus(),
     );
+  });
+
+  it('stop waiting for a field once the researcher opens something else', async () => {
+    await seedHost(BLANK_TITLE);
+    // Follow-up is somebody else's, so its fields stay disabled and the
+    // problem's field is waited for.
+    await collaborator().rpcCall('AcquireLock', {
+      protocolId: DRAFT.protocol.id,
+      sectionId: sectionId({ kind: 'stage', stageId: STAGE_B }),
+    });
+    renderEditor();
+    await findStageNameField();
+
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
+    );
+    expect(
+      await screen.findByText(/is editing this stage, so you can read it/),
+    ).toBeInTheDocument();
+
+    // The researcher moves on, to a screen with a field of the same name that
+    // can be edited, before the wait is over.
+    const welcome = screen.getByRole('button', {
+      name: 'Welcome, from the hostInformation',
+    });
+    welcome.focus();
+    fireEvent.click(welcome);
+    await waitFor(() =>
+      expect(welcome).toHaveAttribute('aria-current', 'page'),
+    );
+    await waitFor(async () =>
+      expect(await findStageNameField()).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 3500));
+    expect(welcome).toHaveFocus();
   });
 
   it('focus the field at once when its screen is already open', async () => {
@@ -2348,6 +2473,37 @@ describe('the editing lock', () => {
         ),
       { timeout: 3000 },
     );
+  });
+
+  it('says nothing old about a screen reopened after somebody else let it go', async () => {
+    const stageA = sectionId({ kind: 'stage', stageId: STAGE_A });
+    await collaborator().rpcCall('AcquireLock', {
+      protocolId: DRAFT.protocol.id,
+      sectionId: stageA,
+    });
+    renderEditor();
+    await waitFor(
+      () => expect(liveRegionText()).toMatch(/somebody else is editing it/),
+      { timeout: 3000 },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    await screen.findByRole('heading', { name: 'Protocol settings' });
+    await collaborator().rpcCall('ReleaseLock', {
+      protocolId: DRAFT.protocol.id,
+      sectionId: stageA,
+    });
+    // The screen is slow to arrive this time: longer than an announcement
+    // takes to settle. Nothing known about it yet is worth saying.
+    unreadableSections.set(stageA, 'withheld');
+    fireEvent.click(nameButton('Welcome, from the host'));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(liveRegionText()).not.toMatch(/read-only|edit/);
+
+    act(() => answerWithheldSections());
+    await findStageNameField();
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(liveRegionText()).not.toMatch(/read-only|edit/);
   });
 
   it('says nothing about a screen that simply opens and can be edited', async () => {
