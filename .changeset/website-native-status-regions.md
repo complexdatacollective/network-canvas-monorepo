@@ -2,6 +2,5 @@
 'networkcanvas.com': patch
 ---
 
-The protocol preview's loading screen, the empty search results card and the
-Updates search count are now `<output>` elements, so screen readers announce
-them as before without an added role.
+The Updates search count is now an `<output>` element, so screen readers
+announce it as before without an added role.
