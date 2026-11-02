@@ -142,7 +142,8 @@ function PerceivedFamilyStory({ step }: { step: number }) {
     };
   }, [step]);
   if (error) return <p role="alert">{error}</p>;
-  if (!rawPayload) return <p role="status">Preparing the demonstration…</p>;
+  if (!rawPayload)
+    return <output aria-live="polite">Preparing the demonstration…</output>;
   return (
     <div className="h-screen">
       <StoryInterviewShell rawPayload={rawPayload} isDevelopment={false} />

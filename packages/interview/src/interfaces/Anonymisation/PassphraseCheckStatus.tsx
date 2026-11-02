@@ -22,6 +22,8 @@ export default function PassphraseCheckStatus({
 
   return (
     <div
+      // An <output> may hold only phrasing content, and the spinner is a block.
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="status"
       aria-live="polite"
       className={cx('flex items-center gap-2', className)}

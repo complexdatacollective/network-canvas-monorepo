@@ -34,6 +34,7 @@ export const ProgressArt = ({ doneCount }: Props) => {
     <div className="border-night-line bg-night-panel rounded-[28px] border p-5">
       <svg
         viewBox="0 0 460 400"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an inline, animated SVG; role="img" with a label is how it is named as one image.
         role="img"
         aria-label="The network diagram fills in as each step finishes"
         className="block h-auto w-full"

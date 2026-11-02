@@ -2855,6 +2855,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // other stages have; the prompt floats over its top, on a fade so people
     // passing beneath it stay legible.
     <PedigreeWordsProvider value={words}>
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegated: hover, menu dismissal and the undo/redo shortcut catch events from the people and controls inside, which keep their own semantics. */}
       <div
         className="relative flex h-full w-full flex-col"
         onPointerDown={handleStagePointerDown}
@@ -3000,6 +3001,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               }}
             />
           </PedigreeViewport>
+          {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegated: + and − zoom while focus is on any of the toolbar's own buttons. */}
           <div
             ref={toolbarAreaRef}
             className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"

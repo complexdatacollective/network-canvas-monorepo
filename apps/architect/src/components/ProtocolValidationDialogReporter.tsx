@@ -140,16 +140,16 @@ const ProtocolValidationDialogReporter = () => {
       <Paragraph>
         {intl.formatMessage(messages.theProtocolContainsValidationErrors)}
       </Paragraph>
-      <pre
-        lang="en"
-        dir="ltr"
+      <section
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region has to take focus for keyboard users to scroll it.
         tabIndex={0}
-        role="region"
         aria-label={intl.formatMessage(messages.protocolValidationErrors)}
-        className="bg-surface-1 max-h-64 overflow-auto rounded-sm p-4 text-sm whitespace-pre-wrap"
+        className="bg-surface-1 max-h-64 overflow-auto rounded-sm p-4 text-sm"
       >
-        {currentEvent.errorMessage}
-      </pre>
+        <pre lang="en" dir="ltr" className="whitespace-pre-wrap">
+          {currentEvent.errorMessage}
+        </pre>
+      </section>
     </Dialog>
   );
 };

@@ -581,9 +581,9 @@ const ProtocolInfoCard = () => {
             {noticeText ?? describeAllowance(nameGraphemes, intl)}
           </p>
 
-          <span role="status" className="sr-only">
+          <output aria-live="polite" className="sr-only">
             {noticeText ?? ''}
-          </span>
+          </output>
         </div>
 
         <TextAreaField
