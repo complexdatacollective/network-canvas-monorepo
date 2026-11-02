@@ -62,10 +62,16 @@ const Prompts = ({
   );
 
   return (
-    <motion.output
+    <motion.div
       id={id}
       className={promptsClasses}
       variants={containerVariants}
+      // Answers name themselves from this element through aria-labelledby.
+      // An <output> keeps that name in browsers, but Playwright's
+      // accessible-name computation, which the e2e ARIA snapshots use,
+      // drops an <output>'s content there.
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+      role="status"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -98,7 +104,7 @@ const Prompts = ({
           )}
         </AnimatePresence>
       </motion.div>
-    </motion.output>
+    </motion.div>
   );
 };
 
