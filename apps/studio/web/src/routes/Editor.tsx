@@ -645,6 +645,9 @@ function EditorWorkspace({
   const [moveRecoveryFailed, setMoveRecoveryFailed] = useState(false);
   const [selectionInitialized, setSelectionInitialized] = useState(false);
   const discardRequestPending = useRef(false);
+  // Where focus goes once an outline the researcher refreshed has been read
+  // back: the Refresh button they pressed is in an alert that goes with it.
+  const addButtonRef = useRef<HTMLButtonElement>(null);
   // The outline, the position a reorder points at and the validation all read
   // the protocol as a WHOLE, so all three wait for the whole of it. A stage
   // whose section has not arrived is one `useStageIndex` leaves out, and an
@@ -888,10 +891,12 @@ function EditorWorkspace({
   };
 
   const reconcileAddStage = async () => {
+    if (reconcilingAdd) return;
     setReconcilingAdd(true);
     setAddRecoveryFailed(false);
     try {
       await rereadProtocol();
+      addButtonRef.current?.focus();
       addStage.reset();
     } catch {
       setAddRecoveryFailed(true);
@@ -901,10 +906,14 @@ function EditorWorkspace({
   };
 
   const reconcileMoveStage = async () => {
+    if (reconcilingMove) return;
     setReconcilingMove(true);
     setMoveRecoveryFailed(false);
     try {
       await rereadProtocol();
+      // Which screen the lost move was about is not known any more, so focus
+      // lands on the control that heads the list it reread.
+      addButtonRef.current?.focus();
       moveStage.reset();
     } catch {
       setMoveRecoveryFailed(true);
@@ -913,7 +922,14 @@ function EditorWorkspace({
     }
   };
 
+  // A button whose action is unavailable for now stays focusable
+  // (`aria-disabled`, not `disabled`): a `disabled` button drops the focus of
+  // the researcher who just pressed it.
+  const addUnavailable =
+    addStage.isPending || addStage.isError || reconcilingAdd;
+
   const requestAddStage = async () => {
+    if (addUnavailable) return;
     if (
       stageFormDirty &&
       !(await confirmDiscardStageChanges(messages.discardForNewScreen))
@@ -1001,12 +1017,11 @@ function EditorWorkspace({
                       {intl.formatMessage(messages.screens)}
                     </span>
                     <Button
+                      ref={addButtonRef}
                       size="sm"
                       variant="text"
                       icon={<Plus aria-hidden="true" />}
-                      disabled={
-                        addStage.isPending || addStage.isError || reconcilingAdd
-                      }
+                      aria-disabled={addUnavailable}
                       onClick={() => void requestAddStage()}
                     >
                       {intl.formatMessage(messages.addScreen)}
@@ -1021,7 +1036,7 @@ function EditorWorkspace({
                         className="mt-3"
                         size="sm"
                         variant="outline"
-                        disabled={reconcilingAdd}
+                        aria-disabled={reconcilingAdd}
                         onClick={() => void reconcileAddStage()}
                       >
                         {intl.formatMessage(messages.refreshOutline)}
@@ -1044,7 +1059,7 @@ function EditorWorkspace({
                         className="mt-3"
                         size="sm"
                         variant="outline"
-                        disabled={reconcilingMove}
+                        aria-disabled={reconcilingMove}
                         onClick={() => void reconcileMoveStage()}
                       >
                         {intl.formatMessage(messages.refreshOrder)}

@@ -1000,10 +1000,50 @@ describe('Studio editor shell', () => {
         /could not confirm whether the screen was added/i,
       ),
     ).toBeInTheDocument();
-    expect(add).toBeDisabled();
+    // Unavailable but still focusable, and a press does nothing.
+    expect(add).toBeEnabled();
+    expect(add).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(add);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh outline' }));
-    await waitFor(() => expect(add).toBeEnabled());
+    const refresh = screen.getByRole('button', { name: 'Refresh outline' });
+    refresh.focus();
+    fireEvent.click(refresh);
+    expect(refresh).toBeEnabled();
+    expect(refresh).toHaveAttribute('aria-disabled', 'true');
+    await waitFor(() => expect(add).toHaveAttribute('aria-disabled', 'false'));
+    // The alert, and the Refresh button in it, are gone; focus is not.
+    expect(refresh).not.toBeInTheDocument();
+    expect(add).toHaveFocus();
+    // Counted only now, once the outline has been read back: the press while
+    // Add was unavailable would have reached the server well before this.
+    expect(addInformationStage).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps focus on Add while the screen it asked for is being added', async () => {
+    let finishAdd = () => {};
+    addInformationStage.mockReturnValueOnce(
+      Effect.promise(
+        () =>
+          new Promise<{ sequence: string; hash: string }>((resolve) => {
+            finishAdd = () => resolve({ sequence: '3', hash: 'r3' });
+          }),
+      ),
+    );
+    renderEditor();
+    await screen.findByRole('heading', { name: 'Protocol sections' });
+
+    const add = screen.getByRole('button', { name: 'Add' });
+    add.focus();
+    fireEvent.click(add);
+
+    await waitFor(() => expect(add).toHaveAttribute('aria-disabled', 'true'));
+    expect(add).toBeEnabled();
+    expect(add).toHaveFocus();
+    fireEvent.click(add);
+
+    await act(async () => finishAdd());
+    await waitFor(() => expect(add).toHaveAttribute('aria-disabled', 'false'));
+    expect(addInformationStage).toHaveBeenCalledTimes(1);
   });
 
   /**
@@ -1088,10 +1128,15 @@ describe('Studio editor shell', () => {
       expect(button).toHaveAttribute('aria-disabled', 'true');
     }
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
+    const refresh = screen.getByRole('button', { name: 'Refresh order' });
+    refresh.focus();
+    fireEvent.click(refresh);
     await waitFor(() =>
       expect(moveUp).toHaveAttribute('aria-disabled', 'false'),
     );
+    // The alert went with its Refresh button; focus heads the reread list.
+    expect(refresh).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add' })).toHaveFocus();
   });
 
   it('offers no move that would put a screen after the finish stage', async () => {
