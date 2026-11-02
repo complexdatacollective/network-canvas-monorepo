@@ -456,8 +456,8 @@ function readDatabase() {
     if (!listed) return { found: false, missingDatabase: dbName };
     const db = await new Promise((res, rej) => {
       const req = indexedDB.open(dbName);
-      req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
+      req.addEventListener('success', () => res(req.result));
+      req.addEventListener('error', () => rej(req.error));
     });
     const all = (store) =>
       new Promise((res, rej) => {
@@ -465,8 +465,8 @@ function readDatabase() {
           .transaction(store, 'readonly')
           .objectStore(store)
           .getAll();
-        rq.onsuccess = () => res(rq.result);
-        rq.onerror = () => rej(rq.error);
+        rq.addEventListener('success', () => res(rq.result));
+        rq.addEventListener('error', () => rej(rq.error));
       });
     const [protocols, assets, sessions] = [
       await all('protocols'),
@@ -718,7 +718,7 @@ try {
       .waitFor({ timeout: 20_000 })
       .then(() => true)
       .catch(() => false);
-    routes.push(`${route}=${booted ? 'booted' : 'BLANK'}`);
+    routes.push(`${String(route)}=${booted ? 'booted' : 'BLANK'}`);
   }
   await shot('offline-not-found');
   record(
