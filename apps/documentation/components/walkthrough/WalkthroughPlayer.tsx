@@ -6,6 +6,7 @@ import {
   ArrowRight,
   BookOpen,
   Check,
+  ChevronDown,
   Pause,
   Play,
   Repeat,
@@ -24,6 +25,13 @@ import {
 
 import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@codaco/fresco-ui/DropdownMenu';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
@@ -86,6 +94,41 @@ type WalkthroughPlayerProps = {
   onGuide: (anchor: string) => void;
   onClose: () => void;
 };
+
+function ChapterNode({
+  number,
+  done,
+  className,
+}: {
+  number: number;
+  done: boolean;
+  className?: string;
+}) {
+  const reduceMotion = usePrefersReducedMotion();
+  return (
+    <span
+      className={cx(
+        'bg-neon-coral relative grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold text-white tabular-nums',
+        className,
+      )}
+    >
+      <AnimatePresence initial={false} mode="popLayout">
+        {done ? (
+          <motion.span
+            key="done"
+            initial={reduceMotion ? false : { scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={POP}
+          >
+            <Check aria-hidden className="size-4" />
+          </motion.span>
+        ) : (
+          <span key="number">{number}</span>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+}
 
 function GuideLink({
   target,
@@ -189,6 +232,15 @@ export default function WalkthroughPlayer({
       actions.current?.contains(document.activeElement) ?? false;
   };
 
+  const chapterIndex = walkthrough.chapters.findIndex(
+    (c) => c.id === chapter.id,
+  );
+
+  const startOver = () => {
+    rememberFocus();
+    onProgress(null);
+  };
+
   const goTo = (beatIdToShow: string | null, choices = progress.choices) => {
     rememberFocus();
     onProgress({ beat: beatIdToShow, choices });
@@ -280,19 +332,19 @@ export default function WalkthroughPlayer({
         : [];
 
   return (
-    <div className="@container grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] @min-[56rem]:grid-cols-[20rem_1fr] @min-[56rem]:grid-rows-1">
+    <div className="@container grid min-h-0 flex-1 @min-[56rem]:grid-cols-[20rem_1fr]">
       <ThemedRegion
         theme="interview"
-        className="bg-surface text-text publish-colors flex min-h-0 min-w-0 flex-col"
+        className="bg-surface text-text publish-colors hidden min-h-0 min-w-0 flex-col @min-[56rem]:flex"
       >
-        <div className="grid gap-1 px-6 pt-6 pb-2 @min-[56rem]:pt-8">
+        <div className="grid gap-1 px-6 pt-8 pb-2">
           <Eyebrow>{t('label')}</Eyebrow>
           <BaseDialog.Title render={<Heading level="h2" margin="none" />}>
             {walkthrough.title}
           </BaseDialog.Title>
         </div>
         <nav aria-label={t('chapters')} className="min-h-0 flex-1">
-          <ol className="flex h-full overflow-auto py-4 @min-[56rem]:flex-col">
+          <ol className="flex h-full flex-col overflow-auto py-4">
             {walkthrough.chapters.map((c, i) => {
               const status = chapterStatus(beats, index, c.id);
               const isFirst = i === 0;
@@ -313,7 +365,7 @@ export default function WalkthroughPlayer({
                     <span
                       aria-hidden
                       className={cx(
-                        'bg-neon-coral pointer-events-none absolute inset-s-8 w-1 -translate-x-1/2 @max-[56rem]:hidden rtl:translate-x-1/2',
+                        'bg-neon-coral pointer-events-none absolute inset-s-8 w-1 -translate-x-1/2 rtl:translate-x-1/2',
                         isFirst
                           ? 'top-1/2 bottom-0'
                           : isLast
@@ -321,23 +373,8 @@ export default function WalkthroughPlayer({
                             : 'inset-y-0',
                       )}
                     />
-                    <span className="bg-neon-coral relative grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold text-white tabular-nums">
-                      <AnimatePresence initial={false} mode="popLayout">
-                        {status === 'done' ? (
-                          <motion.span
-                            key="done"
-                            initial={reduceMotion ? false : { scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={POP}
-                          >
-                            <Check aria-hidden className="size-4" />
-                          </motion.span>
-                        ) : (
-                          <span key="number">{i + 1}</span>
-                        )}
-                      </AnimatePresence>
-                    </span>
-                    <span className="min-w-0 text-sm leading-tight font-bold @max-[56rem]:sr-only">
+                    <ChapterNode number={i + 1} done={status === 'done'} />
+                    <span className="min-w-0 text-sm leading-tight font-bold">
                       {c.title}
                       {status === 'done' && (
                         <span className="sr-only"> ({t('chapterDone')})</span>
@@ -355,10 +392,7 @@ export default function WalkthroughPlayer({
             size="sm"
             color="dynamic"
             icon={<RotateCcw aria-hidden className="size-4" />}
-            onClick={() => {
-              rememberFocus();
-              onProgress(null);
-            }}
+            onClick={startOver}
             className="w-full"
           >
             {t('startOver')}
@@ -367,11 +401,81 @@ export default function WalkthroughPlayer({
       </ThemedRegion>
 
       <div className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4 p-4 @min-[56rem]:p-6">
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2 @max-[56rem]:hidden">
           <GuideLink target={guideTarget} onGuide={onGuide}>
             {t('readGuide')}
           </GuideLink>
           <BaseDialog.Close render={<CloseButton />} />
+        </div>
+        <div className="grid gap-3 @min-[56rem]:hidden">
+          <div className="flex items-center gap-3">
+            <ThemedRegion
+              theme="interview"
+              className="min-w-0 flex-1 rounded-full"
+            >
+              <DropdownMenu>
+                <DropdownMenuTrigger className="bg-surface text-text publish-colors focusable flex w-full cursor-pointer items-center gap-3 rounded-full p-2 pe-5 text-start">
+                  <ChapterNode
+                    number={chapterIndex + 1}
+                    done={false}
+                    className="size-10 text-sm"
+                  />
+                  <span className="grid min-w-0 flex-1 gap-1">
+                    <span className="truncate font-bold">{chapter.title}</span>
+                    <Eyebrow render={<span />}>
+                      {t('chapterOf', {
+                        current: chapterIndex + 1,
+                        total: walkthrough.chapters.length,
+                      })}
+                    </Eyebrow>
+                  </span>
+                  <ChevronDown aria-hidden className="size-5 shrink-0" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {walkthrough.chapters.map((c, i) => {
+                    const status = chapterStatus(beats, index, c.id);
+                    return (
+                      <DropdownMenuItem
+                        key={c.id}
+                        icon={
+                          <ChapterNode
+                            number={i + 1}
+                            done={status === 'done'}
+                          />
+                        }
+                        aria-current={status === 'current' ? 'step' : undefined}
+                        onClick={() => goTo(firstBeatOf(beats, c.id))}
+                      >
+                        {c.title}
+                        {status === 'done' && (
+                          <span className="sr-only"> ({t('chapterDone')})</span>
+                        )}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    icon={<RotateCcw aria-hidden className="size-4" />}
+                    onClick={startOver}
+                  >
+                    {t('startOver')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </ThemedRegion>
+            <BaseDialog.Close render={<CloseButton />} />
+          </div>
+          <div aria-hidden className="flex gap-1.5">
+            {walkthrough.chapters.map((c, i) => (
+              <span
+                key={c.id}
+                className={cx(
+                  'h-1.5 flex-1 rounded-full',
+                  i <= chapterIndex ? 'bg-primary' : 'bg-current/10',
+                )}
+              />
+            ))}
+          </div>
         </div>
 
         <div
@@ -471,13 +575,23 @@ export default function WalkthroughPlayer({
                 {text}
               </RenderMarkdown>
             </BaseDialog.Description>
-            {links.length > 0 && (
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {links.map((link) => (
-                  <ExternalOrDocLink key={link.href} link={link} />
-                ))}
-              </div>
-            )}
+            <div
+              className={cx(
+                'flex flex-wrap gap-x-4 gap-y-2',
+                links.length === 0 && '@min-[56rem]:hidden',
+              )}
+            >
+              {links.map((link) => (
+                <ExternalOrDocLink key={link.href} link={link} />
+              ))}
+              <GuideLink
+                target={guideTarget}
+                onGuide={onGuide}
+                className="@min-[56rem]:hidden"
+              >
+                {t('readGuide')}
+              </GuideLink>
+            </div>
           </motion.div>
           <motion.div
             variants={CAPTION_PART}

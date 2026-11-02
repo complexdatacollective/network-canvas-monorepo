@@ -113,6 +113,7 @@
     "walkStep": "Walk through this step",
     "chapters": "Chapters",
     "chapterDone": "done",
+    "chapterOf": "Chapter {current} of {total}",
     "stepOf": "{chapter} · Step {current} of {total}",
     "continue": "Continue",
     "back": "Back",

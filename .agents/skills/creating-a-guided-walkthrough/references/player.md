@@ -145,6 +145,8 @@ mark springs in when it is finished. Each chapter has a `tint` for its band.
   stage list (`StagesMenu` in `@codaco/interview`): numbered coral nodes on a
   coral line, the current chapter in `bg-primary`. Give its colored background
   `publish-colors`, or `dynamic` buttons inside it read the page's background.
+  On a narrow dialog the list gives way to a `DropdownMenu` showing only the
+  current chapter, with the chapters and Start over in its menu.
 - **Type and color** come from the tokens fresco-ui and `@codaco/tailwind-config`
   already provide. Never paste token values into walkthrough code.
 - **Scale.** Lay the stage out in rem at a fixed design size and scale the whole
