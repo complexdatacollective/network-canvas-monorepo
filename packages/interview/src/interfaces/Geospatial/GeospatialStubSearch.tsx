@@ -2,7 +2,7 @@
 
 import { Toggle } from '@base-ui/react';
 import { Search, X } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -25,6 +25,7 @@ type Props = {
 
 export default function GeospatialStubSearch({ className }: Props) {
   const intl = useAppIntl();
+  const listboxId = useId();
   const searchLabelText = intl.formatMessage(commonMessages.search);
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -113,9 +114,11 @@ export default function GeospatialStubSearch({ className }: Props) {
                 }
               }}
               data-testid="geospatial-search-input"
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- InputField renders an <input>; the role makes it the ARIA combobox for the suggestion popup.
               role="combobox"
               aria-label={searchLabelText}
               aria-expanded={showSuggestions}
+              aria-controls={listboxId}
               aria-autocomplete="list"
               aria-haspopup="listbox"
               suffixComponent={
@@ -145,6 +148,8 @@ export default function GeospatialStubSearch({ className }: Props) {
               className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
             >
               <div
+                id={listboxId}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA combobox popup, as in GeospatialSearch; <select> and <datalist> cannot hold the two-line suggestion layout.
                 role="listbox"
                 aria-label={intl.formatMessage(
                   interfaceMessages.searchSuggestions,
@@ -154,6 +159,7 @@ export default function GeospatialStubSearch({ className }: Props) {
                 {STUB_SUGGESTIONS.map((s) => (
                   <div
                     key={s.id}
+                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA combobox popup: a native <option> cannot hold the two-line suggestion layout.
                     role="option"
                     aria-selected="false"
                     tabIndex={0}

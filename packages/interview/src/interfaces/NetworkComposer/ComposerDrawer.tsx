@@ -110,6 +110,7 @@ export default function ComposerDrawer({
             ].join(' ')}
           >
             <div
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a focusable window splitter (separator widget with a value); <hr> is a static, unfocusable break.
               role="separator"
               aria-orientation="vertical"
               aria-label={intl.formatMessage(interfaceMessages.resizePanel)}

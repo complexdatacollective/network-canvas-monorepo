@@ -1,6 +1,6 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import type { Decorator, Preview } from '@storybook/react-vite';
-import { useEffect, useLayoutEffect } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect } from 'react';
 
 import {
   type AppLocale,
@@ -163,21 +163,20 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
   const initialDirection =
     readStored(DIRECTION_STORAGE_KEY, isDirectionMode) ?? 'auto';
 
-  const withAppI18n: Decorator = (Story, context) => {
-    // Storybook types `globals` values as `any`; narrow before use.
-    const storedLocale: unknown = context.globals[LOCALE_KEY];
-    const storedMode: unknown = context.globals[DIRECTION_KEY];
-    const locale =
-      typeof storedLocale === 'string' ? storedLocale : defaultLocale;
-    const mode =
-      typeof storedMode === 'string' && isDirectionMode(storedMode)
-        ? storedMode
-        : 'auto';
-
-    const declared =
-      offered.find((entry) => entry.locale === locale)?.direction ?? 'ltr';
-    const direction = mode === 'auto' ? declared : mode;
-
+  // The decorator's state and effects live in a component of their own:
+  // Storybook calls a decorator as a plain function, which is no place for
+  // hooks.
+  function I18nFrame({
+    locale,
+    mode,
+    direction,
+    children,
+  }: {
+    locale: string;
+    mode: DirectionMode;
+    direction: AppLocale['direction'];
+    children: ReactNode;
+  }) {
     useEffect(() => {
       writeStored(LOCALE_STORAGE_KEY, locale);
     }, [locale]);
@@ -235,10 +234,32 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
             an anonymous block between it and that parent.
           */}
           <div dir={direction} className="contents">
-            <Story />
+            {children}
           </div>
         </DirectionProvider>
       </AppI18nProvider>
+    );
+  }
+
+  const withAppI18n: Decorator = (Story, context) => {
+    // Storybook types `globals` values as `any`; narrow before use.
+    const storedLocale: unknown = context.globals[LOCALE_KEY];
+    const storedMode: unknown = context.globals[DIRECTION_KEY];
+    const locale =
+      typeof storedLocale === 'string' ? storedLocale : defaultLocale;
+    const mode =
+      typeof storedMode === 'string' && isDirectionMode(storedMode)
+        ? storedMode
+        : 'auto';
+
+    const declared =
+      offered.find((entry) => entry.locale === locale)?.direction ?? 'ltr';
+    const direction = mode === 'auto' ? declared : mode;
+
+    return (
+      <I18nFrame locale={locale} mode={mode} direction={direction}>
+        <Story />
+      </I18nFrame>
     );
   };
 

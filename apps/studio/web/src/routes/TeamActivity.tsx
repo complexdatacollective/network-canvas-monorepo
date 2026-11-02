@@ -851,7 +851,12 @@ export default function TeamActivity() {
         </form>
       </Surface>
 
-      <Paragraph className="sr-only" role="status" margin="none">
+      <Paragraph
+        className="sr-only"
+        render={<output />}
+        aria-live="polite"
+        margin="none"
+      >
         {activity.isPending
           ? intl.formatMessage(messages.loading)
           : intl.formatMessage(messages.eventsShown, { count: items.length })}
@@ -988,7 +993,12 @@ function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
 
   if (detail.isPending) {
     return (
-      <div className="flex items-center gap-3" role="status">
+      <div
+        className="flex items-center gap-3"
+        // The live region holds a Spinner and a Paragraph, which are blocks; an <output> may hold only inline content.
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- holds block children
+        role="status"
+      >
         <Spinner size="sm" />
         <Paragraph margin="none">
           {intl.formatMessage(messages.loadingEvent)}

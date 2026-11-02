@@ -524,11 +524,10 @@ export const DescribeScreen = ({
 
               <div className="flex flex-col gap-[18px] lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-[18px]">
-                  <div
-                    role="group"
+                  <fieldset
                     aria-label="Model provider"
                     aria-busy={config.status === 'loading'}
-                    className={`bg-paper-track flex rounded-full p-1 sm:inline-flex ${comparing ? 'opacity-60' : ''}`}
+                    className={`bg-paper-track flex min-w-0 rounded-full p-1 sm:inline-flex ${comparing ? 'opacity-60' : ''}`}
                   >
                     {(providers.length > 0
                       ? providers
@@ -580,7 +579,7 @@ export const DescribeScreen = ({
                         </button>
                       );
                     })}
-                  </div>
+                  </fieldset>
 
                   {current && labels && (
                     <div className="flex flex-wrap items-center gap-3 sm:gap-[18px]">

@@ -39,14 +39,14 @@ describe('pair accessibility language', () => {
     const second = person('b', 'Irene <literal>');
     const before = structuredClone([first, second]);
     const pair = (
-      <section role="group" aria-labelledby="pair-name">
+      <fieldset aria-labelledby="pair-name">
         <Pair
           fromNode={first}
           toNode={second}
           edgeColor="edge-color-seq-1"
           labelId="pair-name"
         />
-      </section>
+      </fieldset>
     );
     const view = render(
       <InterviewI18nProvider requestedLocale="en">
@@ -70,14 +70,14 @@ describe('pair accessibility language', () => {
   it('translates only missing-name fallbacks', () => {
     render(
       <InterviewI18nProvider requestedLocale="es">
-        <section role="group" aria-labelledby="pair-name">
+        <fieldset aria-labelledby="pair-name">
           <Pair
             fromNode={person('a')}
             toNode={person('b')}
             edgeColor="edge-color-seq-1"
             labelId="pair-name"
           />
-        </section>
+        </fieldset>
       </InterviewI18nProvider>,
     );
     expect(

@@ -37,7 +37,9 @@ vi.mock('../VariableSpotlight', () => ({
   }) =>
     open
       ? createPortal(
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- stands in for the spotlight's Base UI popup, a div with the dialog role whose focus-out the blur handler mirrors.
           <div
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- see above.
             role="dialog"
             aria-label="Attribute library"
             data-variable-spotlight=""

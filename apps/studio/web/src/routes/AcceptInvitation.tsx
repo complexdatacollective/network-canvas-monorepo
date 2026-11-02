@@ -113,7 +113,7 @@ const messages = defineMessages({
     defaultMessage: 'Join team',
     description: 'Button accepting the team invitation.',
   },
-  useDifferentAccount: {
+  differentAccount: {
     id: 'studio.invitation.useDifferentAccount',
     defaultMessage: 'Use a different account',
     description:
@@ -151,7 +151,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
   const [error, setError] = useState<'accept' | 'signOut' | null>(null);
   const invitationId = TeamInvitationId.makeOption(props.invitationId);
 
-  const useDifferentAccount = async () => {
+  const switchAccount = async () => {
     if (Option.isNone(invitationId)) return;
     setSwitchingAccount(true);
     setError(null);
@@ -229,7 +229,12 @@ export default function AcceptInvitation(props: { invitationId: string }) {
             </Alert>
           </>
         ) : session.isPending ? (
-          <div className="flex items-center gap-3" role="status">
+          <div
+            className="flex items-center gap-3"
+            // The live region holds a Spinner and a Paragraph, which are blocks; an <output> may hold only inline content.
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- holds block children
+            role="status"
+          >
             <Spinner size="sm" />
             <Paragraph margin="none">
               {intl.formatMessage(messages.checkingAccount)}
@@ -249,7 +254,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
             <ScreenHeading>
               {intl.formatMessage(messages.acceptedHeading)}
             </ScreenHeading>
-            <Paragraph role="status">
+            <Paragraph render={<output />} aria-live="polite" className="block">
               {intl.formatMessage(messages.joined, {
                 teamName: Redacted.value(accepted.teamName),
                 role: roleLabel(intl, accepted.role),
@@ -314,9 +319,9 @@ export default function AcceptInvitation(props: { invitationId: string }) {
                 variant="outline"
                 disabled={accepting || switchingAccount}
                 aria-busy={switchingAccount}
-                onClick={() => void useDifferentAccount()}
+                onClick={() => void switchAccount()}
               >
-                {intl.formatMessage(messages.useDifferentAccount)}
+                {intl.formatMessage(messages.differentAccount)}
               </Button>
             </div>
           </>
