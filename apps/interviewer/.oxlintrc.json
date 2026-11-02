@@ -1,9 +1,6 @@
 {
   "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
-  "jsPlugins": [
-    "../../tooling/oxlint/tailwindcss.mjs",
-    "eslint-plugin-formatjs"
-  ],
+  "jsPlugins": ["oxlint-tailwindcss", "eslint-plugin-formatjs"],
   "settings": {
     "tailwindcss": {
       "entryPoint": "tooling/tailwind/fresco/fresco.css",

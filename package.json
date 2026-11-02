@@ -47,7 +47,7 @@
     "lint-staged": "^17.6.0",
     "oxfmt": "catalog:",
     "oxlint": "^1.89.0",
-    "oxlint-tailwindcss": "^1.16.0",
+    "oxlint-tailwindcss": "^1.17.1",
     "oxlint-tsgolint": "^7.0.2004",
     "pdfjs-dist": "catalog:",
     "playwright": "catalog:",

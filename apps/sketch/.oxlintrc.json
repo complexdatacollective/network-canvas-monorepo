@@ -1,6 +1,6 @@
 {
   "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
-  "jsPlugins": ["../../tooling/oxlint/tailwindcss.mjs"],
+  "jsPlugins": ["oxlint-tailwindcss"],
   "settings": {
     "tailwindcss": {
       "entryPoint": "apps/sketch/src/styles/tailwind.css",
