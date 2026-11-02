@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { JSONContent } from '@tiptap/react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import RichTextEditorField from './form/fields/RichTextEditor';
 import RichTextRenderer from './RichTextRenderer';
@@ -186,6 +186,7 @@ export const LivePreview: Story = {
 // Show JSON alongside the renderer
 function WithJsonPreviewComponent() {
   const [content, setContent] = useState<JSONContent>(sampleContent);
+  const jsonHeadingId = useId();
 
   return (
     <div className="flex gap-6">
@@ -210,10 +211,23 @@ function WithJsonPreviewComponent() {
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
-        <Heading level="h2" margin="none" className="mb-4 text-lg">
+        <Heading
+          level="h2"
+          margin="none"
+          className="mb-4 text-lg"
+          id={jsonHeadingId}
+        >
           JSON Content
         </Heading>
-        <pre className="bg-surface-1 text-surface-1-contrast max-h-[500px] overflow-auto rounded-lg p-4 text-xs">
+        {/* This preview scrolls, so it has to be reachable by keyboard: a tab
+            stop with a name, drawn with the shared focus ring. */}
+        <pre
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex, jsx-a11y/prefer-tag-over-role -- a scrolling preview must take keyboard focus so it can be scrolled; a named region is how a screen reader announces the stop.
+          tabIndex={0}
+          role="region"
+          aria-labelledby={jsonHeadingId}
+          className="focusable bg-surface-1 text-surface-1-contrast max-h-[500px] overflow-auto rounded-lg p-4 text-xs"
+        >
           {JSON.stringify(content, null, 2)}
         </pre>
       </div>
