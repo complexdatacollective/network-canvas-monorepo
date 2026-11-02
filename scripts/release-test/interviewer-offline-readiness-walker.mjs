@@ -457,7 +457,7 @@ function readDatabase() {
     const db = await new Promise((res, rej) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
+      req.addEventListener('error', () => rej(req.error));
     });
     const all = (store) =>
       new Promise((res, rej) => {
@@ -466,7 +466,7 @@ function readDatabase() {
           .objectStore(store)
           .getAll();
         rq.onsuccess = () => res(rq.result);
-        rq.onerror = () => rej(rq.error);
+        rq.addEventListener('error', () => rej(rq.error));
       });
     const [protocols, assets, sessions] = [
       await all('protocols'),
@@ -704,14 +704,20 @@ try {
     throw new Error('offline flip did not take — walk would be meaningless');
 
   const routes = [];
-  for (const [route, locator] of [
-    ['/', () => page.getByTestId('settings-trigger')],
-    ['/data', () => page.getByText('No interviews recorded yet.')],
-    ['/welcome', () => page.getByRole('button', { name: 'Get started' })],
-    [
-      '/definitely-not-a-route',
-      () => page.getByRole('heading', { name: 'Page not found' }),
-    ],
+  for (const { route, locator } of [
+    { route: '/', locator: () => page.getByTestId('settings-trigger') },
+    {
+      route: '/data',
+      locator: () => page.getByText('No interviews recorded yet.'),
+    },
+    {
+      route: '/welcome',
+      locator: () => page.getByRole('button', { name: 'Get started' }),
+    },
+    {
+      route: '/definitely-not-a-route',
+      locator: () => page.getByRole('heading', { name: 'Page not found' }),
+    },
   ]) {
     await page.goto(new URL(route, url).href);
     const booted = await locator()
