@@ -21,8 +21,7 @@ export default function PassphraseCheckStatus({
   const isSubmitting = useFormStore((state) => state.isSubmitting);
 
   return (
-    <div
-      role="status"
+    <output
       aria-live="polite"
       className={cx('flex items-center gap-2', className)}
     >
@@ -34,6 +33,6 @@ export default function PassphraseCheckStatus({
           </span>
         </>
       )}
-    </div>
+    </output>
   );
 }

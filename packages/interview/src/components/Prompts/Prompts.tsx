@@ -62,11 +62,10 @@ const Prompts = ({
   );
 
   return (
-    <motion.div
+    <motion.output
       id={id}
       className={promptsClasses}
       variants={containerVariants}
-      role="status"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -99,7 +98,7 @@ const Prompts = ({
           )}
         </AnimatePresence>
       </motion.div>
-    </motion.div>
+    </motion.output>
   );
 };
 
