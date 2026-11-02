@@ -4,6 +4,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -46,22 +47,6 @@ const ANALYTICS: InterviewAnalyticsMetadata = {
   hostApp: 'studio',
 };
 
-/**
- * The stage the participant is on, as the save handlers see it. It is a cell
- * the handlers read when a save runs, written by `onStepChange` the moment the
- * step changes, before `saveStep()` reads it, which a copy of `currentStep`
- * made during render would not yet reflect.
- */
-const createStepCell = (initial: number) => {
-  let step = initial;
-  return {
-    get: () => step,
-    set: (next: number) => {
-      step = next;
-    },
-  };
-};
-
 function StageCrashReporter({
   log,
   renderedStage,
@@ -86,12 +71,10 @@ function InterviewSessionView() {
   const loaded = route.useLoaderData();
   const [notice, setNotice] = useState<ParticipantNoticeKind>();
   const [currentStep, setCurrentStep] = useState(loaded.stageIndex);
-  // The step the save handlers read when they run. It is written by
-  // `onStepChange` the moment the step changes, before `saveStep()` reads it,
-  // which a render-time copy of `currentStep` would not yet reflect.
-  const [{ get: getStep, set: setStep }] = useState(() =>
-    createStepCell(loaded.stageIndex),
-  );
+  // The step the save handlers read when a save runs. `onStepChange` writes it
+  // the moment the step changes, before `saveStep()` reads it, so it is never
+  // behind `currentStep`.
+  const currentStepRef = useRef(loaded.stageIndex);
 
   const { payload } = loaded;
 
@@ -124,13 +107,16 @@ function InterviewSessionView() {
 
   const { onSync, onFinish, saveStep, flushStep } = useMemo(
     () =>
+      // The handlers keep `getCurrentStep` and call it only when a save runs,
+      // never during render; the rule cannot see that the closure is stored.
+      // oxlint-disable-next-line react/refs
       createParticipantHandlers({
         holderEpoch: loaded.holderEpoch,
         revision: loaded.revision,
         numberSavesFrom: pageRevisionBase(),
         session: payload.session,
         stageIds: payload.protocol.stages.map((stage) => stage.id),
-        getCurrentStep: getStep,
+        getCurrentStep: () => currentStepRef.current,
         onNotice: setNotice,
         onSaveOutcome: (outcome: SaveOutcome) => {
           const stage = participantStage(stageTypes, outcome.stageIndex);
@@ -142,7 +128,7 @@ function InterviewSessionView() {
           }
         },
       }),
-    [loaded, payload, stageTypes, log, getStep],
+    [loaded, payload, stageTypes, log, currentStepRef],
   );
 
   useEffect(() => {
@@ -164,11 +150,11 @@ function InterviewSessionView() {
 
   const onStepChange = useCallback<StepChangeHandler>(
     (step) => {
-      setStep(step);
+      currentStepRef.current = step;
       setCurrentStep(step);
       saveStep();
     },
-    [saveStep, setStep],
+    [saveStep, currentStepRef],
   );
 
   const onRequestAsset = useMemo<AssetResolver>(
