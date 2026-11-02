@@ -4156,10 +4156,12 @@
     },
     "narrative": {
       "toggleDrawing": {
-        "en-US": "Toggle drawing"
+        "en-US": "Toggle drawing",
+        "es": "Activar o desactivar el dibujo"
       },
       "toggleFreezing": {
-        "en-US": "Toggle freezing annotations"
+        "en-US": "Toggle freezing annotations",
+        "es": "Congelar o descongelar las anotaciones"
       },
       "resetAnnotations": {
         "en-US": "Reset annotations",

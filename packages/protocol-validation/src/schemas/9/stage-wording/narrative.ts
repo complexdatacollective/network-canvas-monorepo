@@ -31,21 +31,33 @@ const LINKS_HEADING = {
   'zh-Hant': '關係',
 } as const satisfies SuppliedWording;
 
-/**
- * The tooltip of the button that turns drawing on and off. English only until
- * its wording is approved and translated.
- */
+/** The tooltip of the button that turns drawing on and off. */
 export const TOGGLE_DRAWING_TOOLTIP = {
-  en: 'Toggle drawing',
+  'en': 'Toggle drawing',
+  'de': 'Zeichnen ein/aus',
+  'es': 'Activar o desactivar el dibujo',
+  'fr': 'Activer ou désactiver le dessin',
+  'it': 'Attiva o disattiva il disegno',
+  'nl': 'Tekenen aan/uit',
+  'pt-BR': 'Ativar ou desativar o desenho',
+  'zh-Hans': '开启或关闭绘图',
+  'zh-Hant': '開啟或關閉繪圖',
 } as const satisfies SuppliedWording;
 
 /**
  * The tooltip of the button that freezes what has been drawn, so it stays
- * put, and unfreezes it. English only until its wording is approved and
- * translated.
+ * put, and unfreezes it.
  */
 export const TOGGLE_FREEZING_TOOLTIP = {
-  en: 'Toggle freezing annotations',
+  'en': 'Toggle freezing annotations',
+  'de': 'Fixieren der Anmerkungen ein/aus',
+  'es': 'Congelar o descongelar las anotaciones',
+  'fr': 'Figer ou laisser s’estomper les annotations',
+  'it': 'Congela o scongela le annotazioni',
+  'nl': 'Annotaties vastzetten aan/uit',
+  'pt-BR': 'Congelar ou descongelar as anotações',
+  'zh-Hans': '冻结或解冻标注',
+  'zh-Hant': '固定或取消固定註記',
 } as const satisfies SuppliedWording;
 
 /** The tooltip of the button that clears what has been drawn. */

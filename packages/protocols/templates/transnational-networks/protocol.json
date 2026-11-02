@@ -1517,10 +1517,14 @@
     },
     "narrative": {
       "toggleDrawing": {
-        "en-US": "Toggle drawing"
+        "en-US": "Toggle drawing",
+        "es": "Activar o desactivar el dibujo",
+        "hu": "Rajzolás be- és kikapcsolása"
       },
       "toggleFreezing": {
-        "en-US": "Toggle freezing annotations"
+        "en-US": "Toggle freezing annotations",
+        "es": "Congelar o descongelar las anotaciones",
+        "hu": "Jegyzetek befagyasztása be/ki"
       },
       "resetAnnotations": {
         "en-US": "Reset annotations",
