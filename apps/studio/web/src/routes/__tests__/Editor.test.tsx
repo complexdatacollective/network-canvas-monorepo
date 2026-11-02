@@ -13,6 +13,7 @@ import { Effect, Layer, Predicate, Redacted, Schema } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
+import { NotLockHolder } from '@codaco/protocol-builder-core/contract/errors';
 import {
   HostSession,
   HostUnauthorized,
@@ -111,6 +112,9 @@ const lockAnswer = {
   requested: 0,
   gate: Promise.resolve(),
 };
+
+/** Whether the host now says every save is from somebody who no longer holds the lock. */
+const lockTaken = { away: false };
 
 const DRAFT_SECTIONS = {
   settings: {
@@ -340,6 +344,10 @@ function servedBy(handle: InMemoryHandlers): HandlersLayer {
             }),
       );
     },
+    Submit: (input) =>
+      lockTaken.away
+        ? Effect.fail(new NotLockHolder({ sectionId: input.sectionId }))
+        : handle.Submit(input),
     ListSections: (input) =>
       Effect.map(handle.ListSections(input), ({ sectionIds }) => ({
         sectionIds: [
@@ -486,6 +494,7 @@ beforeEach(async () => {
   telemetry.on = false;
   lockAnswer.requested = 0;
   lockAnswer.gate = Promise.resolve();
+  lockTaken.away = false;
   await seedHost(HOST_SECTIONS);
   vi.mocked(authClient.getSession).mockReset();
   vi.mocked(authClient.getSession).mockResolvedValue({
@@ -2091,5 +2100,75 @@ describe('the validation problems', () => {
       () => expect(liveRegionText()).toMatch(/1 validation problem\./),
       { timeout: 3000 },
     );
+  });
+});
+
+describe('the editing lock', () => {
+  it('is announced when it is lost in the middle of an edit, by a region that was already on the page', async () => {
+    // A first screen that is complete, so a save is refused for the lock and
+    // not for what is missing from it.
+    await seedHost({
+      ...HOST_SECTIONS,
+      [`stage:${STAGE_A}`]: {
+        ...HOST_SECTIONS[`stage:${STAGE_A}`],
+        items: [{ id: 'item-1', type: 'text', content: enUS('Hello') }],
+      },
+    });
+    renderEditor();
+    const nameField = await findStageNameField();
+    // The regions exist, empty, before anything has happened: one that is
+    // added together with its text is often not read out.
+    const regions = [
+      ...document.querySelectorAll('output[aria-live="polite"]'),
+    ];
+    expect(regions.length).toBeGreaterThan(0);
+    expect(regions.map((each) => each.textContent).join('')).toBe('');
+
+    // The host takes the stage away: the researcher's next save is refused.
+    lockTaken.away = true;
+    fireEvent.change(nameField, { target: { value: 'Edited' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save screen' }));
+
+    await waitFor(
+      () =>
+        expect(liveRegionText()).toMatch(
+          /You can no longer edit Welcome, from the host\. It is now read-only\./,
+        ),
+      { timeout: 3000 },
+    );
+    // The very element that was there before, with its text changed.
+    expect(
+      regions.some(
+        (each) => each.isConnected && /no longer edit/.test(each.textContent),
+      ),
+    ).toBe(true);
+    // And the screen really is read-only now.
+    expect(
+      await screen.findByText(/is editing this stage, so you can read it/),
+    ).toBeInTheDocument();
+  });
+
+  it('is announced when a screen the researcher opens is held by somebody else', async () => {
+    await collaborator().rpcCall('AcquireLock', {
+      protocolId: DRAFT.protocol.id,
+      sectionId: sectionId({ kind: 'stage', stageId: STAGE_A }),
+    });
+    renderEditor();
+
+    await waitFor(
+      () =>
+        expect(liveRegionText()).toMatch(
+          /Welcome, from the host is read-only, because somebody else is editing it\./,
+        ),
+      { timeout: 3000 },
+    );
+  });
+
+  it('says nothing about a screen that simply opens and can be edited', async () => {
+    renderEditor();
+    await findStageNameField();
+
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(liveRegionText()).not.toMatch(/read-only|edit/);
   });
 });

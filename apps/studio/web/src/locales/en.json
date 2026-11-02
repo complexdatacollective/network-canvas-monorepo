@@ -127,6 +127,18 @@
     "defaultMessage": "Keep editing",
     "description": "Button that dismisses the discard dialog and leaves the unsaved values in place."
   },
+  "studio.editor.lockHeldByAnother": {
+    "defaultMessage": "{name} is read-only, because somebody else is editing it.",
+    "description": "Screen-reader announcement when an interview screen the researcher opened turns out to be held by another researcher, so it can be read but not changed; {name} is the screen name."
+  },
+  "studio.editor.lockLost": {
+    "defaultMessage": "You can no longer edit {name}. It is now read-only.",
+    "description": "Screen-reader announcement when the researcher loses the right to edit the interview screen they were editing; {name} is the screen name."
+  },
+  "studio.editor.lockRegained": {
+    "defaultMessage": "You can edit {name} again.",
+    "description": "Screen-reader announcement when the researcher can change an interview screen again after it was read-only; {name} is the screen name."
+  },
   "studio.editor.moveScreenDown": {
     "defaultMessage": "Move {name} down",
     "description": "Accessible name of the control that moves an interview screen one place later; {name} is the screen name."

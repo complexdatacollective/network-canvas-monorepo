@@ -33,7 +33,10 @@ import type { ProtocolBuilderRpcs } from '@codaco/protocol-builder-core/contract
 import StageNameField from '@codaco/protocol-builder/fields/StageNameField';
 import { useStageName } from '@codaco/protocol-builder/naming/useStageName';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
-import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
+import type {
+  StageEditorAccess,
+  StageEditorActionContext,
+} from '@codaco/protocol-builder/stage-editor-contract';
 import StageEditor from '@codaco/protocol-builder/StageEditor';
 import {
   useProtocolRevision,
@@ -58,6 +61,7 @@ import {
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import LockAnnouncer from '../editor/LockAnnouncer.tsx';
 import OutlineStageRow from '../editor/OutlineStageRow.tsx';
 import { locateProblem, type ProblemTarget } from '../editor/problemTarget.ts';
 import { useFieldFocus } from '../editor/useFieldFocus.ts';
@@ -654,14 +658,13 @@ function EditorWorkspace({
   const rereadProtocol = useRereadProtocol();
   const { announce } = useAccessibilityAnnouncements();
   const draftValidation = useDraftValidation(reading);
-  // Stable between renders, and defined outside this component: the editor
-  // calls these as functions in its slots, but a function that returns
-  // elements and is made during render reads as a component made during
-  // render, which would remount its subtree each time if it were used as one.
-  const renderStageActions = useMemo(
-    () => stageActionsRenderer(setStageFormDirty),
-    [],
-  );
+  // What the open screen's editor last said about the editing lock, with the
+  // screen it said it for: the report outlives the editor that made it (a lost
+  // lock remounts the editor's form), so which screen it was about is kept
+  // beside it.
+  const [stageAccess, setStageAccess] = useState<
+    { stageId: string; access: StageEditorAccess } | undefined
+  >();
 
   const confirmDiscardStageChanges = useCallback(
     // `confirm` takes plain strings, so the descriptors are formatted here
@@ -739,6 +742,27 @@ function EditorWorkspace({
   }
 
   const selectedStageId = selection.kind === 'stage' ? selection.stageId : null;
+  const selectedStageIndex = stages.findIndex(
+    (stage) => stage.id === selectedStageId,
+  );
+  const selectedStage = stages[selectedStageIndex];
+  const selectedStageAccess =
+    stageAccess?.stageId === selectedStageId ? stageAccess?.access : undefined;
+
+  // Stable between renders for the screen that is open, and built outside the
+  // render of the slot: the editor calls these as functions in its slots, but
+  // a function that returns elements and is made during render reads as a
+  // component made during render, which would remount its subtree each time
+  // if it were used as one.
+  const renderStageActions = useMemo(
+    () =>
+      stageActionsRenderer(setStageFormDirty, (access) => {
+        if (selectedStageId !== null) {
+          setStageAccess({ stageId: selectedStageId, access });
+        }
+      }),
+    [selectedStageId],
+  );
 
   const addStage = useMutation({
     mutationFn: async () => {
@@ -923,6 +947,15 @@ function EditorWorkspace({
           </Paragraph>
         </div>
         <ValidationButton validation={draftValidation} />
+        <LockAnnouncer
+          key={selectedStageId ?? 'none'}
+          name={
+            selectedStage === undefined
+              ? ''
+              : stageLabel(intl, selectedStage, selectedStageIndex)
+          }
+          access={selectedStageAccess}
+        />
         <ValidationAnnouncer
           problemCount={
             draftValidation.status === 'invalid'
@@ -1197,9 +1230,16 @@ function ScreenTitle() {
 const renderScreenTitle = () => <ScreenTitle />;
 
 const stageActionsRenderer =
-  (onDirtyChange: (dirty: boolean) => void) =>
+  (
+    onDirtyChange: (dirty: boolean) => void,
+    onAccessChange: (access: StageEditorAccess) => void,
+  ) =>
   (context: StageEditorActionContext) => (
-    <StageActions context={context} onDirtyChange={onDirtyChange} />
+    <StageActions
+      context={context}
+      onDirtyChange={onDirtyChange}
+      onAccessChange={onAccessChange}
+    />
   );
 
 /**
@@ -1213,10 +1253,20 @@ const stageActionsRenderer =
 function StageActions(props: {
   context: StageEditorActionContext;
   onDirtyChange: (dirty: boolean) => void;
+  onAccessChange: (access: StageEditorAccess) => void;
 }) {
   const intl = useAppIntl();
   const dirty = useFormStore(selectIsFormDirty);
-  const { onDirtyChange } = props;
+  const { onDirtyChange, onAccessChange } = props;
+  const { access } = props.context;
+
+  // Reported upward rather than spoken from here: this chrome is rebuilt when
+  // the lock is lost (the editor starts again from what the protocol holds),
+  // and a live region that is rebuilt with its text already inside is often
+  // not announced. The route keeps the one that is always there.
+  useLayoutEffect(() => {
+    onAccessChange(access);
+  }, [access, onAccessChange]);
 
   useLayoutEffect(() => {
     onDirtyChange(dirty);
