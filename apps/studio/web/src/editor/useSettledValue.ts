@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
  * re-check and a collaborator's burst of edits, short enough that a researcher
  * who has just done something hears its result while it is still relevant.
  */
-export const SETTLE_MS = 600;
+const SETTLE_MS = 600;
 
 /**
  * `value`, once it has stopped changing for `delayMs`.
