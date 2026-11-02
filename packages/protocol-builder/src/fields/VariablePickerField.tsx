@@ -728,9 +728,8 @@ export default function VariablePickerField({
             required rule is one of the sentences `BaseField` already wires
             into `aria-describedby`, which is where a researcher reads it.
           */}
-          <div
+          <fieldset
             id={id}
-            role="group"
             aria-labelledby={ariaLabelledBy}
             aria-describedby={ariaDescribedBy}
             aria-invalid={ariaInvalid}
@@ -768,7 +767,7 @@ export default function VariablePickerField({
                 )}
               </div>
             )}
-          </div>
+          </fieldset>
           <Button
             ref={triggerRef}
             type="button"
@@ -814,7 +813,7 @@ export default function VariablePickerField({
               One region for both sentences, and polite for both. Neither
               interrupts anything: they are said about a create the researcher
               has already made and finished waiting for. */}
-          <div role="status" aria-live="polite" className="w-full empty:hidden">
+          <output aria-live="polite" className="block w-full empty:hidden">
             {notice?.kind === 'unassigned' && (
               <Alert variant="info" role="presentation">
                 <AlertDescription>
@@ -843,7 +842,7 @@ export default function VariablePickerField({
                 <AlertDescription>{notice.message}</AlertDescription>
               </Alert>
             )}
-          </div>
+          </output>
           <VariableSpotlight
             open={open}
             onOpenChange={(next) => {

@@ -49,6 +49,7 @@ import {
   type RuleSetVariant,
 } from '../../rules/ruleSet.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
+import { useLatest } from '../../state/useLatest.ts';
 import { useRowValue } from '../AttributeCodebookControls.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 import { useStageSubject } from '../useStageSubject.ts';
@@ -429,11 +430,9 @@ const panelSource = (
 function usePanelsValidation() {
   const protocolContext = useProtocolContext();
   const { staged } = useStagedResources();
-  const resolve = useRef<(dataSource: string) => PanelSource | undefined>(
-    () => undefined,
+  const resolve = useLatest((dataSource: string): PanelSource | undefined =>
+    panelSource(dataSource, protocolContext.assets, staged),
   );
-  resolve.current = (dataSource) =>
-    panelSource(dataSource, protocolContext.assets, staged);
 
   return useMemo(
     () => ({
@@ -455,7 +454,7 @@ function usePanelsValidation() {
             if (dataSource === undefined || dataSource === INTERVIEW_NETWORK) {
               return true;
             }
-            const source = resolve.current(dataSource);
+            const source = resolve()(dataSource);
             return (
               source === undefined ||
               acceptsResourceKind(PANEL_SOURCE_KIND, source.kind)
@@ -465,7 +464,7 @@ function usePanelsValidation() {
             : SOURCE_NOT_NETWORK,
       ]),
     }),
-    [],
+    [resolve],
   );
 }
 
@@ -834,13 +833,13 @@ function withoutUnanswerableRules(filter: FieldValue): FieldValue {
  * list that is itself one field value. The verdict is the same one, so a
  * researcher reads the same words whether the rules narrow a stage or a panel.
  *
- * The rule closure is built once and reads the codebook through a ref, because
+ * The rule closure is built once and reads the codebook through a getter of the latest one, because
  * a field's validation is memoised for the field's lifetime — a rule rebuilt
  * each render would be pinned to whichever codebook the first one closed over,
  * and a type a collaborator deleted would go on being legal.
  *
  * The targets are the ones the panel's own SOURCE names, and the variant is
- * read through a ref for the same reason the codebook is: the researcher can
+ * read the same way for the same reason the codebook is: the researcher can
  * switch the source while the dialog is open, and a rule that was fine over
  * the interview's own network is not fine over an imported file. The
  * reader's formatter is read the same way, so the verdict is stated in the
@@ -849,12 +848,9 @@ function withoutUnanswerableRules(filter: FieldValue): FieldValue {
 function usePanelFilterValidation(variant: PanelRuleSetVariant) {
   const protocolContext = useProtocolContext();
   const intl = useAppIntl();
-  const codebook = useRef(protocolContext.codebook);
-  codebook.current = protocolContext.codebook;
-  const currentVariant = useRef(variant);
-  currentVariant.current = variant;
-  const currentIntl = useRef(intl);
-  currentIntl.current = intl;
+  const codebook = useLatest(protocolContext.codebook);
+  const currentVariant = useLatest(variant);
+  const currentIntl = useLatest(intl);
 
   return useMemo(
     () => ({
@@ -864,18 +860,17 @@ function usePanelFilterValidation(variant: PanelRuleSetVariant) {
             ? undefined
             : ruleSetValidationMessage(
                 value,
-                codebook.current,
-                ruleSetTargets(currentVariant.current),
+                codebook(),
+                ruleSetTargets(currentVariant()),
                 {
-                  intl: currentIntl.current,
-                  allowEncryptedAttributes: ruleSetAllowsEncryptedAttributes(
-                    currentVariant.current,
-                  ),
+                  intl: currentIntl(),
+                  allowEncryptedAttributes:
+                    ruleSetAllowsEncryptedAttributes(currentVariant()),
                 },
               ),
       ]),
     }),
-    [],
+    [codebook, currentIntl, currentVariant],
   );
 }
 

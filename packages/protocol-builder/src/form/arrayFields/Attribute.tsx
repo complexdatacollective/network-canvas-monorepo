@@ -5,7 +5,6 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   type ComponentType,
 } from 'react';
 
@@ -35,6 +34,7 @@ import type { CreateOptionOutcome } from '../../fields/VariablePickerField.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
+import { useLatest } from '../../state/useLatest.ts';
 import { rowsOf } from '../rowDialog.tsx';
 import { useStageEditorForm } from '../stageEditorContext.ts';
 import { cellIssues, requiredCell } from './cellRules.ts';
@@ -336,10 +336,8 @@ export default function Attribute({
   // point is that the two are different moments. The handler is read the same
   // way and for the same reason — `ArrayField` withdraws it while the list is
   // not accepting changes, which can happen inside that window too.
-  const rowRef = useRef(item);
-  rowRef.current = item;
-  const onUpdateRef = useRef(onUpdate);
-  onUpdateRef.current = onUpdate;
+  const latestRow = useLatest(item);
+  const latestOnUpdate = useLatest(onUpdate);
   // A DISPLAY path only — the `data-field-name` seam E2E specs target. It is
   // the live position (fresco-ui's `committedIndex` holds it steady through a
   // drag preview) and is never an identity: nothing about this row's VALUE may
@@ -422,7 +420,7 @@ export default function Attribute({
         // the same reason it is enough anywhere a dialog outlives the row it
         // was opened on: two rows the researcher cannot tell apart are two rows
         // this control described identically.
-        const createdFrom = stripManagedProperties(rowRef.current);
+        const createdFrom = stripManagedProperties(latestRow());
         const outcome = await onCreateVariable(variableName);
         // The one answer that is a refusal: nothing was written, so the name
         // is still the researcher's to correct, and the reason travels with it
@@ -437,9 +435,9 @@ export default function Attribute({
         // control now names, and whether the list will still take a write to
         // it. Either can have changed inside the round trip, and neither is
         // something the assignment itself would report.
-        const assign = onUpdateRef.current;
+        const assign = latestOnUpdate();
         const stillTheSameRow = isEqual(
-          stripManagedProperties(rowRef.current),
+          stripManagedProperties(latestRow()),
           createdFrom,
         );
         const unassigned = async (description: string) => {

@@ -1,7 +1,6 @@
 import {
   createElement,
   useCallback,
-  useEffect,
   useMemo,
   useState,
   useSyncExternalStore,
@@ -124,7 +123,14 @@ export default function ParticipantWordingSection() {
     outline.getValidationIssues,
     outline.getValidationIssues,
   );
-  useEffect(() => {
+  // Adjusted during render, as the issues change, rather than in an effect:
+  // the issues are an external store, and a group opened a frame late would
+  // draw the refusal's field one frame after the form that owes it.
+  const [seenIssues, setSeenIssues] = useState<typeof issues | undefined>(
+    undefined,
+  );
+  if (seenIssues !== issues) {
+    setSeenIssues(issues);
     const refused = PARTICIPANT_WORDING_GROUPS.filter((group) =>
       issues.some((issue) =>
         group.settings.some((setting) =>
@@ -132,13 +138,14 @@ export default function ParticipantWordingSection() {
         ),
       ),
     ).map(groupValue);
-    if (refused.length === 0) return;
-    setOpenGroups((current) =>
-      refused.every((group) => current.includes(group))
-        ? current
-        : [...new Set([...current, ...refused])],
-    );
-  }, [issues]);
+    if (refused.length > 0) {
+      setOpenGroups((current) =>
+        refused.every((group) => current.includes(group))
+          ? current
+          : [...new Set([...current, ...refused])],
+      );
+    }
+  }
 
   /**
    * Opens at once; closes once the group's fields are known to be right,

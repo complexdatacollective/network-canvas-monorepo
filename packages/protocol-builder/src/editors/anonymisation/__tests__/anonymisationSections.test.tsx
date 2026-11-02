@@ -1,5 +1,5 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_PASSPHRASE_MIN_LENGTH } from '@codaco/shared-consts';
@@ -43,12 +43,18 @@ import {
  * answers, and the context it reads that from is what moves here.
  */
 function UntilTheEditorIsReadOnly({
-  stop,
+  onStop,
   children,
-}: Readonly<{ stop: { now: () => void }; children: ReactNode }>) {
+}: Readonly<{
+  /** Handed the function that makes the editor read-only, once mounted. */
+  onStop: (now: () => void) => void;
+  children: ReactNode;
+}>) {
   const context = useStageEditorForm();
   const [readOnly, setReadOnly] = useState(false);
-  stop.now = () => setReadOnly(true);
+  useEffect(() => {
+    onStop(() => setReadOnly(true));
+  }, [onStop]);
   const value = useMemo(() => ({ ...context, readOnly }), [context, readOnly]);
   return (
     <StageEditorFormContext value={value}>{children}</StageEditorFormContext>
@@ -1071,7 +1077,11 @@ describe('the attributes a passphrase protects', () => {
         stageId: 'anonymisation-1',
         adapter: alreadyProtecting('name'),
         sections: (
-          <UntilTheEditorIsReadOnly stop={stopWriting}>
+          <UntilTheEditorIsReadOnly
+            onStop={(now) => {
+              stopWriting.now = now;
+            }}
+          >
             <EncryptedAttributesSection />
           </UntilTheEditorIsReadOnly>
         ),

@@ -330,6 +330,7 @@ export default function Option({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- only catches Escape bubbling up from the focusable editor controls inside; the row is not itself a control
     <div
       className={cx('flex flex-col gap-4', ROW_CLASSES)}
       onKeyDown={(event) => {

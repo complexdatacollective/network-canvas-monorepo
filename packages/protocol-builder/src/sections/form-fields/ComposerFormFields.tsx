@@ -2,10 +2,10 @@ import { isEqual } from 'es-toolkit';
 import {
   createContext,
   type ReactNode,
-  type RefObject,
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from 'react';
@@ -100,6 +100,7 @@ import {
   variablesForSubject,
 } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
+import { useLatest } from '../../state/useLatest.ts';
 import AttributeCodebookControls, {
   useRowValue,
 } from '../AttributeCodebookControls.tsx';
@@ -209,12 +210,12 @@ type ComposerFormScope = Readonly<{
    * What the open row's picker names right now, for a codebook write to be
    * judged against when it answers.
    *
-   * A ref written on every render rather than state: the save reads it in the
-   * middle of an await, from a closure made before it, and an effect that has
-   * not run yet would answer with the previous render's row. The same seam
+   * Reported by the open row at every commit and held outside state: the save
+   * reads it in the middle of an await, from a closure made before it, and
+   * needs the row the researcher is looking at then. The same seam
    * `FormFieldsSection` reads its own row through, and for the same reason.
    */
-  rowUnderEdit: RefObject<string | undefined>;
+  reportRowUnderEdit: (variable: string | undefined) => void;
   /** The list as it stands now, so a row can see its own siblings. */
   rows: readonly RowValues[];
   /**
@@ -414,12 +415,13 @@ function ComposerFormRows({
   // See `ComposerFormScope.rowUnderEdit`: the open row fills this in, and the
   // create below reads it when the codebook answers.
   const rowUnderEdit = useRef<string | undefined>(undefined);
+  const reportRowUnderEdit = useCallback((variable: string | undefined) => {
+    rowUnderEdit.current = variable;
+  }, []);
+  const readRowUnderEdit = useCallback(() => rowUnderEdit.current, []);
   const createVariable = useCreateCodebookVariable(subject);
   const setOptions = useSetVariableOptions();
-  const whereTheAnswerLands = useWhereTheAnswerLands(
-    subject,
-    () => rowUnderEdit.current,
-  );
+  const whereTheAnswerLands = useWhereTheAnswerLands(subject, readRowUnderEdit);
 
   /**
    * Writes the attribute this row is inventing, before the row that names it
@@ -693,9 +695,9 @@ function ComposerFormRows({
       rows,
       draftUnvalidated,
       renderedElsewhere,
-      rowUnderEdit,
+      reportRowUnderEdit,
     }),
-    [draftUnvalidated, renderedElsewhere, rows, subject],
+    [draftUnvalidated, renderedElsewhere, reportRowUnderEdit, rows, subject],
   );
 
   return (
@@ -775,8 +777,13 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
   const { readOnly } = useStageEditorForm();
-  const { subject, rows, draftUnvalidated, renderedElsewhere, rowUnderEdit } =
-    useComposerFormScope();
+  const {
+    subject,
+    rows,
+    draftUnvalidated,
+    renderedElsewhere,
+    reportRowUnderEdit,
+  } = useComposerFormScope();
   const setRowValue = useFormStore((state) => state.setFieldValue);
   const inventing = useInventingAttribute(item);
   const inventedName =
@@ -962,11 +969,14 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
     [attributeType, inventedName, inventing, variableOptions],
   );
 
-  // What every codebook write this row makes is about. Written on every render
-  // rather than from an effect, the way the shared form row keeps its own view
-  // of the row it is editing: a save reads this in the middle of an await, and
-  // an effect that has not run yet would answer with the previous render's row.
-  rowUnderEdit.current = chosen;
+  // What every codebook write this row makes is about. Reported at every
+  // commit, before the browser paints, the way the shared form row keeps its
+  // own view of the row it is editing: a save reads this in the middle of an
+  // await, so it has to be the row the researcher is looking at rather than a
+  // render that never reached the screen.
+  useLayoutEffect(() => {
+    reportRowUnderEdit(chosen);
+  }, [chosen, reportRowUnderEdit]);
 
   /**
    * The control follows the attribute.
@@ -1090,14 +1100,12 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
    * never replace the one registered on the first render. Read this way, the
    * rule judges the block against the control the row holds NOW.
    */
-  const judgeAgainst = useRef({ shape, inherited });
-  judgeAgainst.current = { shape, inherited };
+  const judgeAgainst = useLatest({ shape, inherited });
   const parametersValidation = useMemo(
     () => ({
       custom: messageRuleValidation([
         (value: unknown) => {
-          const { shape: liveShape, inherited: liveInherited } =
-            judgeAgainst.current;
+          const { shape: liveShape, inherited: liveInherited } = judgeAgainst();
           if (liveShape === null) return undefined;
           const issues = validateParameters(
             liveShape,
@@ -1109,7 +1117,7 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
         },
       ]),
     }),
-    [],
+    [judgeAgainst],
   );
 
   /**

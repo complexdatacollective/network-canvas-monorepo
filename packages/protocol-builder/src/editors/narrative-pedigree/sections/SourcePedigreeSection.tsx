@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import {
   createMessageError,
@@ -24,6 +24,7 @@ import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useOnResearcherChange } from '../../../sections/researcherChange.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
+import { useLatest } from '../../../state/useLatest.ts';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 import {
   resolveSourceStages,
@@ -183,24 +184,25 @@ export default function SourcePedigreeSection() {
    * submit, and lets the section outline say this section has a problem rather
    * than that it is finished.
    *
-   * The verdict is read through a ref because `useField` memoises its
+   * The verdict is read through a getter of the latest one because `useField` memoises its
    * validation on a JSON of its props, which drops functions: a rule rebuilt
    * each render would serialise identically and pin the first closure — and
    * its first protocol — forever. One entry for the field's lifetime, reading
    * the current verdict, keeps it live without ever re-registering the field.
    */
-  const problemRef = useRef(problem);
-  problemRef.current = problem;
+  const latestProblem = useLatest(problem);
   const sourceValidation = useMemo(
     () => ({
       custom: messageRuleValidation([
-        () =>
-          problemRef.current === null
+        () => {
+          const standing = latestProblem();
+          return standing === null
             ? undefined
-            : createMessageError(PROBLEM_MESSAGES[problemRef.current]),
+            : createMessageError(PROBLEM_MESSAGES[standing]);
+        },
       ]),
     }),
-    [],
+    [latestProblem],
   );
 
   // Field validation runs when the researcher touches a control, and on
