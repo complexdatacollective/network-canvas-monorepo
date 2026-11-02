@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -39,6 +39,7 @@ import { composerFormFieldMessages } from '../../../sections/form-fields/compose
 import { ComposerFormFieldsField } from '../../../sections/form-fields/ComposerFormFields.tsx';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
+import { useLatest } from '../../../state/useLatest.ts';
 import { composerMessages as messages } from './composerMessages.ts';
 import { useSetStageValue } from './useSetStageValue.ts';
 
@@ -220,38 +221,37 @@ export default function ComposerNodesSection() {
   /**
    * What the rest of the protocol already claims, and what to say about it.
    *
-   * Read through a ref because `useField` memoises a field's validation on a
+   * Read through a getter of the latest value because `useField` memoises a field's validation on a
    * JSON of its props, which drops functions: a rule rebuilt each render would
    * serialise identically and pin the first closure — and its first protocol —
    * for the life of the field.
    */
-  const judge = useRef<
-    (value: unknown, writerClass: WriterClass) => string | undefined
-  >(() => undefined);
-  judge.current = (value, writerClass) => {
-    const variableId = asText(value);
-    if (subject === undefined || variableId === undefined) return undefined;
-    return hasConflictingUse(roleMap, subject, variableId, writerClass)
-      ? crossClassConflictMessage[writerClass](
-          variableDisplayName(allVariables, variableId),
-        )
-      : undefined;
-  };
+  const judge = useLatest(
+    (value: unknown, writerClass: WriterClass): string | undefined => {
+      const variableId = asText(value);
+      if (subject === undefined || variableId === undefined) return undefined;
+      return hasConflictingUse(roleMap, subject, variableId, writerClass)
+        ? crossClassConflictMessage[writerClass](
+            variableDisplayName(allVariables, variableId),
+          )
+        : undefined;
+    },
+  );
   const quickAddValidation = useMemo(
     () => ({
       custom: messageRuleValidation([
-        (value: unknown) => judge.current(value, 'validated'),
+        (value: unknown) => judge()(value, 'validated'),
       ]),
     }),
-    [],
+    [judge],
   );
   const hullValidation = useMemo(
     () => ({
       custom: messageRuleValidation([
-        (value: unknown) => judge.current(value, 'unvalidated'),
+        (value: unknown) => judge()(value, 'unvalidated'),
       ]),
     }),
-    [],
+    [judge],
   );
 
   const bindQuickAdd = useCallback(

@@ -1,5 +1,5 @@
 import { get } from 'es-toolkit/compat';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { formatMessageError } from '@codaco/app-i18n/messages';
@@ -26,6 +26,7 @@ import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
+import { useLatest } from '../../../state/useLatest.ts';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import { NODE_CONFIGURATION_PATHS } from './pedigreeSlots.ts';
 import {
@@ -128,8 +129,7 @@ export default function PersonSymbolsControl({
     Readonly<{ message: string; held: boolean }> | undefined
   >(undefined);
   /** Read when a confirmed choice is acted on, not when it was asked for. */
-  const writable = useRef(!readOnly);
-  writable.current = !readOnly;
+  const writable = useLatest(!readOnly);
 
   const definition = protocolContext.codebook.node?.[personSubject.type];
   const variables = shapeMappingVariables(definition?.variables);
@@ -280,7 +280,7 @@ export default function PersonSymbolsControl({
       });
       if (confirmed !== true) return;
     }
-    if (!writable.current) {
+    if (!writable()) {
       setFailure({ message: READ_ONLY_MESSAGE, held: true });
       return;
     }
@@ -315,14 +315,14 @@ export default function PersonSymbolsControl({
       )}
       <span className="block">{intl.formatMessage(messages.symbolsHint)}</span>
       {failure?.held === true && (
-        <span role="status" className="text-warning mt-1 block">
+        <output aria-live="polite" className="text-warning mt-1 block">
           {formatMessageError(failure.message, intl) ?? failure.message}
-        </span>
+        </output>
       )}
       {busy && (
-        <span role="status" className="mt-1 block">
+        <output aria-live="polite" className="mt-1 block">
           {intl.formatMessage(codebookEditingMessages.saving)}
-        </span>
+        </output>
       )}
     </>
   );

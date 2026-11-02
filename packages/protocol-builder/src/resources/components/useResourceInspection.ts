@@ -31,23 +31,31 @@ export function useResourceInspection(
 ): ResourceInspectionState {
   const resources = useResourceClient();
   const { busy, failure, retry, run, clear } = useResourceAttempt();
-  const [inspection, setInspection] = useState<ResourceInspection | undefined>(
-    undefined,
-  );
+  // Filed under the resource it describes, so a picker never shows the
+  // previous resource's name over the newly chosen one: an inspection of any
+  // other resource is simply not the answer for this one.
+  const [inspected, setInspected] = useState<
+    Readonly<{ resourceId: string; inspection: ResourceInspection }> | undefined
+  >(undefined);
+  const inspection =
+    inspected !== undefined && inspected.resourceId === resourceId
+      ? inspected.inspection
+      : undefined;
 
   const reload = useCallback(() => {
     if (resourceId === undefined) {
-      setInspection(undefined);
+      // Nothing to show: the inspection kept is filed under another resource,
+      // so it is not read for this one.
       clear();
       return;
     }
-    run(() => resources.inspect(resourceId), setInspection);
+    run(
+      () => resources.inspect(resourceId),
+      (data) => setInspected({ resourceId, inspection: data }),
+    );
   }, [clear, resourceId, resources, run]);
 
   useEffect(() => {
-    // Dropped before the new one is asked for, so a picker never shows the
-    // previous resource's name over the newly chosen one.
-    setInspection(undefined);
     reload();
   }, [reload]);
 

@@ -67,6 +67,19 @@ const MAX_TIMER_DELAY_MS = 2_147_483_647;
 /** One armed timer, however far away the moment it is armed for. */
 type PreviewTimer = Readonly<{ cancel: () => void }>;
 
+/** What a resolution was started for, so its outcome can be told apart later. */
+type PreviewOwner = Readonly<{
+  resourceId: string;
+  attempt: number;
+  resources: ReturnType<typeof useResourceClient>;
+}>;
+
+type PreviewOutcome = Readonly<{
+  owner: PreviewOwner;
+  preview: ResolvedPreview | undefined;
+  failure: ResourceGatewayFailure | undefined;
+}>;
+
 /**
  * Runs `wake` in `delayMs`, for any delay `expiresAt` can describe.
  *
@@ -186,20 +199,41 @@ export default function ResourcePreview({
 }: ResourcePreviewProps) {
   const resources = useResourceClient();
   const intl = useAppIntl();
-  const [preview, setPreview] = useState<ResolvedPreview | undefined>(
-    undefined,
-  );
-  const [failure, setFailure] = useState<ResourceGatewayFailure | undefined>(
-    undefined,
-  );
   const [attempt, setAttempt] = useState(0);
+  // What the effect below has put on screen, filed under the resolution that
+  // put it there. An outcome belonging to another resource, another retry or
+  // another client is not read at all, which is what clears the preview when
+  // any of them changes: nothing has to be reset from inside the effect, and
+  // the previous resource's content is never drawn under the new one's name.
+  const [outcome, setOutcome] = useState<PreviewOutcome | undefined>(undefined);
+  const onScreen =
+    outcome !== undefined &&
+    outcome.owner.resourceId === resourceId &&
+    outcome.owner.attempt === attempt &&
+    outcome.owner.resources === resources
+      ? outcome
+      : undefined;
+  const preview = onScreen?.preview;
+  const failure = onScreen?.failure;
 
   useEffect(() => {
     let state: PreviewState = { name: 'resolving' };
     let renewal: PreviewTimer | undefined;
     let expiry: PreviewTimer | undefined;
-    setPreview(undefined);
-    setFailure(undefined);
+    const owner: PreviewOwner = { resourceId, attempt, resources };
+    const publish = (
+      patch: Partial<Pick<PreviewOutcome, 'preview' | 'failure'>>,
+    ): void =>
+      setOutcome((previous) => ({
+        owner,
+        preview: previous?.owner === owner ? previous.preview : undefined,
+        failure: previous?.owner === owner ? previous.failure : undefined,
+        ...patch,
+      }));
+    const setPreview = (next: ResolvedPreview | undefined): void =>
+      publish({ preview: next });
+    const setFailure = (next: ResourceGatewayFailure | undefined): void =>
+      publish({ failure: next });
 
     const clearTimers = (): void => {
       renewal?.cancel();
@@ -406,6 +440,7 @@ export default function ResourcePreview({
     return (
       // The researcher's own imported media, which carries no caption track;
       // its accessible name is the name the manifest records for it.
+      // oxlint-disable-next-line jsx-a11y/media-has-caption -- protocol media carries no caption file and the asset schema has no field for one
       <video
         src={Redacted.value(preview.url)}
         controls={!presentational}
@@ -418,6 +453,7 @@ export default function ResourcePreview({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/media-has-caption -- protocol media carries no caption file and the asset schema has no field for one
     <audio
       src={Redacted.value(preview.url)}
       controls

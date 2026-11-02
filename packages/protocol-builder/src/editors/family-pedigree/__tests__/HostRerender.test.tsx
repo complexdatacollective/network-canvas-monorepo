@@ -40,19 +40,26 @@ function FormChangeCounter() {
 
 const FamilyPedigreeEditor = familyPedigreeStageEditor.FamilyPedigree;
 
+/**
+ * A header slot that is a new function on every call, as an inline one in a
+ * host is: the editor must not take a new header for a change of its form.
+ */
+const withFormChangeCounter =
+  (header: StageEditorProps<'FamilyPedigree'>['header']) =>
+  (context: Parameters<NonNullable<typeof header>>[0]) => (
+    <>
+      {header?.(context)}
+      <FormChangeCounter />
+    </>
+  );
+
 function RerenderingHost(props: StageEditorProps<'FamilyPedigree'>) {
   const [, setRenders] = useState(0);
   rerenderHost = () => setRenders((renders) => renders + 1);
-  const { header } = props;
   return (
     <FamilyPedigreeEditor
       {...props}
-      header={(context) => (
-        <>
-          {header?.(context)}
-          <FormChangeCounter />
-        </>
-      )}
+      header={withFormChangeCounter(props.header)}
     />
   );
 }

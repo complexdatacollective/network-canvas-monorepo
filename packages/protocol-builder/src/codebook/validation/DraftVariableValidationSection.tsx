@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -8,6 +8,7 @@ import Section from '@codaco/fresco-ui/Section';
 import DraftValidationRulesField, {
   draftRulesIssue,
 } from '../../fields/DraftValidationRulesField.tsx';
+import { useLatest } from '../../state/useLatest.ts';
 import { validationSectionMessages } from '../codebookMessages.ts';
 import { isValidationMap, type StageRendering } from '../variableValidation.ts';
 
@@ -57,25 +58,19 @@ export default function DraftVariableValidationSection({
    * never replace the one registered on the first render. Read through a ref,
    * the rule judges the map against the attribute the row is inventing NOW.
    */
-  const judgeAgainst = useRef({
+  const judgeAgainst = useLatest({
     variableType,
     variableName,
     allVariables,
     stageRendering,
   });
-  judgeAgainst.current = {
-    variableType,
-    variableName,
-    allVariables,
-    stageRendering,
-  };
   const rulesValidation = useMemo(
     () => ({
       custom: messageRuleValidation([
-        (value: unknown) => draftRulesIssue({ ...judgeAgainst.current, value }),
+        (value: unknown) => draftRulesIssue({ ...judgeAgainst(), value }),
       ]),
     }),
-    [],
+    [judgeAgainst],
   );
 
   const seeded = isValidationMap(initialValue) ? initialValue : undefined;
