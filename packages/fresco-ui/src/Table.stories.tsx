@@ -292,7 +292,7 @@ export const WithManyColumns: Story = {
 
 export const WithLongContent: Story = {
   render: () => (
-    <Table>
+    <Table aria-label="Titles and descriptions">
       <TableHeader>
         <TableRow>
           <TableHead>Title</TableHead>
@@ -395,7 +395,7 @@ export const WithAlignment: Story = {
 export const Responsive: Story = {
   render: () => (
     <div className="max-w-md">
-      <Table>
+      <Table aria-label="People">
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
