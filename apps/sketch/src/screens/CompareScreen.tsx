@@ -1,3 +1,4 @@
+import { Progress } from '@base-ui/react/progress';
 import { useEffect, useEffectEvent, useState } from 'react';
 
 import { sendPreference } from '../api/client.ts';
@@ -245,19 +246,16 @@ const RunCard = ({
       ) : (
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-2">
-            <div
-              role="progressbar"
+            <Progress.Root
+              value={progress.percent}
               aria-label={`${provider.label} progress`}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={progress.percent}
               className="bg-paper-track h-2.5 overflow-hidden rounded-full"
             >
-              <div
-                className="bg-sea-green h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none"
-                style={{ width: `${progress.percent}%` }}
-              />
-            </div>
+              <Progress.Track className="h-full">
+                {/* Base UI sets the indicator's width from the value. */}
+                <Progress.Indicator className="bg-sea-green h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none" />
+              </Progress.Track>
+            </Progress.Root>
             <div className="text-ink-muted flex justify-between text-sm">
               <span>
                 Step {progress.current} of {steps.length}

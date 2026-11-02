@@ -513,7 +513,7 @@ const Timeline = () => {
           // have left the "wrong number of stages" defect fixed on one of the
           // two engines Architect ships to. Same reason, same fix as
           // fresco-ui's `ArrayField`.
-          // oxlint-disable-next-line jsx-a11y/no-redundant-roles
+          // oxlint-disable-next-line jsx-a11y/no-redundant-roles, jsx-a11y/prefer-tag-over-role
           role="list"
           className="relative grid w-full grid-cols-1 justify-items-center gap-1"
           values={orderedStages}
