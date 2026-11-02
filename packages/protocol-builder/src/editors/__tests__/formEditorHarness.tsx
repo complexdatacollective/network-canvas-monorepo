@@ -169,23 +169,6 @@ const inventAttributeFromRow = async (
 };
 
 /**
- * Removes one row from a list the editor mounts.
- *
- * Two clicks, because the removal is confirmed first: the row's own control
- * asks, and the confirmation the list raises names what is going.
- */
-export const removeRow = async (harness: Harness, itemLabel: string) => {
-  const name = `Delete ${itemLabel}`;
-  const [rowControl] = screen.getAllByRole('button', { name });
-  if (rowControl === undefined) throw new Error(`There is no "${name}".`);
-  await harness.user.click(rowControl);
-
-  await harness.user.click(
-    await screen.findByRole('button', { name: `Delete ${itemLabel}` }),
-  );
-};
-
-/**
  * The stage as the PROTOCOL holds it, which is the only place an edit can have
  * reached: the draft lives in the form and nowhere else until a save hands the
  * whole section back.
