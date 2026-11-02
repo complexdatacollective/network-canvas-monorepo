@@ -2441,11 +2441,26 @@ jobs:
           free -h
           docker info --format '{{json .DriverStatus}}'
       - name: Run E2E tests
+        env:
+          RELEASE_BRANCH: ${{ startsWith(github.head_ref, 'changeset-release/') }}
         run: |
           # Pixel half only — the *-matrix projects run natively in
           # interview-e2e-native. Same project selector as
           # test:e2e:update-snapshots and the regeneration workflow.
-          args=(--project=chromium-visual --project=firefox-visual --project=webkit-visual)
+          #
+          # Firefox and WebKit capture only on generated release PRs (and in
+          # benchmarks, which measure the whole lane). They are two thirds of
+          # this lane's tests and about three of its minutes. In the record,
+          # every change to only their images was a regeneration after font or
+          # tooling drift, and each scenario is still captured in Chromium.
+          # A release PR always runs this lane in full (equivalence reuse
+          # reads only earlier release-branch runs), and a capture that fails
+          # there opens a baseline-update PR, so no release ships an engine's
+          # captures unchecked.
+          args=(--project=chromium-visual)
+          if [[ "$RELEASE_BRANCH" == "true" || "$E2E_BENCHMARK" == "true" ]]; then
+            args+=(--project=firefox-visual --project=webkit-visual)
+          fi
           if [[ -n "$E2E_SHARD" ]]; then
             if [[ ! "$E2E_SHARD" =~ ^[1-9][0-9]*/[1-9][0-9]*$ ]]; then
               echo "::error::Invalid Playwright shard '$E2E_SHARD' (expected N/M)"
