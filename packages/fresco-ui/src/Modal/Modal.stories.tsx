@@ -1,7 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { motion, MotionGlobalConfig, type MotionStyle } from 'motion/react';
+import {
+  cancelFrame,
+  frame,
+  motion,
+  MotionGlobalConfig,
+  type MotionStyle,
+} from 'motion/react';
 import { useRef, useState } from 'react';
-import { expect, fn, screen, userEvent, within } from 'storybook/test';
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import Modal from '.';
 import { AnimationProvider } from '../AnimationProvider';
@@ -494,13 +500,6 @@ export const LayoutIdMorph: Story = {
   },
 };
 
-const nextFrame = () =>
-  new Promise<void>((resolve) => {
-    requestAnimationFrame(() => {
-      resolve();
-    });
-  });
-
 /** The element's opacity as drawn: its own times every ancestor's. */
 const drawnOpacity = (element: Element) => {
   let opacity = 1;
@@ -554,21 +553,89 @@ export const LayoutIdMorphWithAnimationsDisabled: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    await userEvent.click(
-      canvas.getByRole('button', { name: /Project Alpha/ }),
-    );
-    const popup = await screen.findByRole('dialog');
-
+    // Sample the popup once a frame, from the first frame that shows it, at
+    // the end of Motion's own frame: after Motion has written that frame's
+    // styles and before the frame is drawn. A sample taken anywhere else can
+    // read a state no frame ever shows. In the microtasks after the commit
+    // Motion writes the morph's starting point (the popup at the card's place,
+    // fully transparent) and only finishes a skipped animation in its next
+    // frame; reading straight after `findByRole` sometimes landed in between.
     const frames: { opacity: number; rect: string }[] = [];
-    for (let frame = 0; frame < 12; frame++) {
-      frames.push({
-        opacity: drawnOpacity(popup),
-        rect: JSON.stringify(popup.getBoundingClientRect()),
-      });
-      await nextFrame();
+    const sample = () => {
+      const popup =
+        canvasElement.ownerDocument.querySelector('[role="dialog"]');
+      if (popup && frames.length < 12) {
+        frames.push({
+          opacity: drawnOpacity(popup),
+          rect: JSON.stringify(popup.getBoundingClientRect()),
+        });
+      }
+    };
+    frame.postRender(sample, true);
+
+    try {
+      await userEvent.click(
+        canvas.getByRole('button', { name: /Project Alpha/ }),
+      );
+      await screen.findByRole('dialog');
+      await waitFor(() => expect(frames).toHaveLength(12));
+    } finally {
+      cancelFrame(sample);
     }
 
     const settled = frames.at(-1);
+    await expect(settled?.opacity).toBe(1);
+    await expect(frames).toEqual(frames.map(() => settled));
+  },
+};
+
+// PROBE — temporary
+const probeDecorators: Story['decorators'] = [
+  (StoryComponent) => (
+    <AnimationProvider disableAnimations>
+      <StoryComponent />
+    </AnimationProvider>
+  ),
+];
+const dialogCommitted = (root: Document) =>
+  new Promise<Element>((resolve) => {
+    const observer = new MutationObserver(() => {
+      const dialog = root.querySelector('[role="dialog"]');
+      if (dialog) {
+        observer.disconnect();
+        resolve(dialog);
+      }
+    });
+    observer.observe(root.body, { subtree: true, childList: true });
+  });
+
+export const ProbeNewSamplingForcedEarly: Story = {
+  tags: ['!autodocs'],
+  decorators: probeDecorators,
+  render: () => <LayoutIdMorphExample />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+    const committed = dialogCommitted(canvasElement.ownerDocument);
+    void userEvent.click(canvas.getByRole('button', { name: /Project Alpha/ }));
+    const popup = await committed;
+    const early = drawnOpacity(popup);
+    const frames: { opacity: number; rect: string }[] = [];
+    const sample = () => {
+      if (frames.length < 12)
+        frames.push({
+          opacity: drawnOpacity(popup),
+          rect: JSON.stringify(popup.getBoundingClientRect()),
+        });
+    };
+    frame.postRender(sample, true);
+    try {
+      await waitFor(() => expect(frames).toHaveLength(12));
+    } finally {
+      cancelFrame(sample);
+    }
+    const settled = frames.at(-1);
+    await expect(early).toBe(0);
     await expect(settled?.opacity).toBe(1);
     await expect(frames).toEqual(frames.map(() => settled));
   },
