@@ -462,37 +462,76 @@ function parseColorMix(args: string): Color {
 const clipChannel = (channel: number | null) =>
   Math.min(1, Math.max(0, channel ?? 0));
 
+const alphaOf = (color: Color) => color.alpha ?? 1;
+
 /**
  * The colour as 0-1 sRGB, clipped channel by channel. That is what a browser
  * paints for an `oklch()` value outside the sRGB gamut on an sRGB display
  * (Chromium clips; it does not run the CSS Color 4 chroma-reduction mapper).
  * A P3 display shows such a colour slightly more saturated, so the ratios here
  * are the sRGB-display worst case the comments in the theme files also record.
+ *
+ * Throws on a translucent colour: its on-screen colour depends on what is
+ * behind it, so the caller has to composite it first (`compositeOver`).
  */
 export function toDisplayColor(color: Color): Color {
+  if (alphaOf(color) < 1) {
+    throw new Error(
+      `${color.toString()} is translucent; composite it over its backdrop before measuring`,
+    );
+  }
   const [r, g, b] = color.to('srgb').coords;
   return new Color('srgb', [clipChannel(r), clipChannel(g), clipChannel(b)]);
 }
 
-/** Paints `color` at `alpha` over `backdrop`, blending in gamma-encoded sRGB. */
+/**
+ * Paints `color` (at its own opacity times `alpha`) over `backdrop`, blending
+ * in gamma-encoded sRGB as a browser does. The backdrop must be opaque.
+ */
 export function compositeOver(
   color: Color,
   alpha: number,
   backdrop: Color,
 ): Color {
-  const top = toDisplayColor(color).coords;
+  const opacity = alphaOf(color) * alpha;
+  const top = toDisplayColor(new Color(color.space, color.coords, 1)).coords;
   const bottom = toDisplayColor(backdrop).coords;
   const mixed = top.map((channel, index) => {
-    return alpha * (channel ?? 0) + (1 - alpha) * (bottom[index] ?? 0);
+    return opacity * (channel ?? 0) + (1 - opacity) * (bottom[index] ?? 0);
   });
   return new Color('srgb', [mixed[0] ?? 0, mixed[1] ?? 0, mixed[2] ?? 0]);
 }
 
-/** WCAG 2.x contrast ratio (the formula is unchanged in 2.2), at least 1. */
-export function contrastRatio(foreground: Color, background: Color): number {
-  const fg = toDisplayColor(foreground);
-  const bg = toDisplayColor(background);
-  return fg.contrast(bg, 'WCAG21');
+/**
+ * WCAG 2.x contrast ratio (the formula is unchanged in 2.2), at least 1.
+ *
+ * A translucent foreground is composited over the background it is drawn on.
+ * A translucent background needs `pageBackdrop`, the opaque colour behind it;
+ * without one the real colour cannot be known, so this throws rather than
+ * measuring the colour as if it were opaque.
+ */
+export function contrastRatio(
+  foreground: Color,
+  background: Color,
+  pageBackdrop?: Color,
+): number {
+  let opaqueBackground = background;
+  if (alphaOf(background) < 1) {
+    if (!pageBackdrop) {
+      throw new Error(
+        `${background.toString()} is translucent and no backdrop was given to composite it over`,
+      );
+    }
+    opaqueBackground = compositeOver(background, 1, pageBackdrop);
+  }
+  const opaqueForeground =
+    alphaOf(foreground) < 1
+      ? compositeOver(foreground, 1, opaqueBackground)
+      : foreground;
+  return toDisplayColor(opaqueForeground).contrast(
+    toDisplayColor(opaqueBackground),
+    'WCAG21',
+  );
 }
 
 // ---------------------------------------------------------------------------

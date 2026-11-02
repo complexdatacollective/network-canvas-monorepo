@@ -37,8 +37,9 @@ import {
   compositeOver,
   contrastRatio,
   readThemeSource,
+  Scope,
   THEME_FILES,
-  type Scope,
+  toDisplayColor,
   type ScopeName,
 } from './theme-colors.ts';
 
@@ -237,6 +238,39 @@ describe('contrast measurement', () => {
       new Color('black'),
     );
     expect(clipped).not.toBeCloseTo(mapped, 1);
+  });
+
+  test('measures a translucent ink over the fill it is drawn on, so a transparent ink fails', () => {
+    const scope = new Scope('probe', [
+      new Map([
+        ['--probe', 'oklch(0.3 0.1 200)'],
+        ['--probe-contrast', 'oklch(1 0 0 / 0)'],
+        ['--probe-half-contrast', 'oklch(1 0 0 / 0.5)'],
+        ['--probe-solid-contrast', 'oklch(1 0 0)'],
+      ]),
+    ]);
+    const ratio = (ink: string) =>
+      contrastRatio(scope.token(ink), scope.token('--probe'));
+    // Fully transparent ink is the fill itself: 1:1, far under AA.
+    expect(ratio('--probe-contrast')).toBeCloseTo(1, 5);
+    expect(ratio('--probe-contrast')).toBeLessThan(AA_NORMAL_TEXT);
+    // Half-opaque ink lands between the fill and solid ink.
+    expect(ratio('--probe-half-contrast')).toBeGreaterThan(1);
+    expect(ratio('--probe-half-contrast')).toBeLessThan(
+      ratio('--probe-solid-contrast'),
+    );
+  });
+
+  test('refuses to guess a translucent fill or colour with no backdrop', () => {
+    const white = new Color('white');
+    const clear = new Color('oklch', [0.3, 0.1, 200], 0.5);
+    expect(() => contrastRatio(white, clear)).toThrow(/translucent/);
+    expect(() => toDisplayColor(clear)).toThrow(/translucent/);
+    // Given its backdrop, the same fill is measurable.
+    expect(contrastRatio(white, clear, white)).toBeCloseTo(
+      contrastRatio(white, compositeOver(clear, 1, white)),
+      8,
+    );
   });
 
   test('composites a tint over its backdrop in sRGB', () => {
