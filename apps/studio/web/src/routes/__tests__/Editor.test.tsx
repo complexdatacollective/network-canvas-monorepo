@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { Effect, Layer, Predicate, Redacted, Schema } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -1929,5 +1930,166 @@ describe('reordering screens in the outline', () => {
     ).toBeInTheDocument();
     expect(moveStage).not.toHaveBeenCalled();
     expect(followUp).toHaveFocus();
+  });
+});
+
+const BLANK_TITLE: Readonly<Record<string, SectionDoc>> = {
+  ...ENDS_AT_FINISH,
+  [`stage:${STAGE_B}`]: {
+    ...DRAFT_SECTIONS[`stage:${STAGE_B}`],
+    title: enUS(''),
+  },
+};
+
+const inspector = async () =>
+  within(await screen.findByRole('complementary', { name: 'Inspector' }));
+
+/** The visible label of the control that has focus, as a screen reader reads it. */
+function focusedLabel(): string {
+  const ids = document.activeElement?.getAttribute('aria-labelledby') ?? '';
+  return ids
+    .split(' ')
+    .map((id) => document.getElementById(id)?.textContent ?? '')
+    .join(' ')
+    .trim();
+}
+
+describe('the validation problems', () => {
+  it('are controls that open the screen they are about and focus the field', async () => {
+    await seedHost(BLANK_TITLE);
+    renderEditor();
+    // The first screen is open; the problem is in the second.
+    await findStageNameField();
+
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
+    );
+
+    await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+    expect(
+      screen.getByRole('button', { name: 'Follow-upInformation' }),
+    ).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('focus the field at once when its screen is already open', async () => {
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      [`stage:${STAGE_A}`]: {
+        ...HOST_SECTIONS[`stage:${STAGE_A}`],
+        title: enUS(''),
+      },
+    });
+    renderEditor();
+    await findStageNameField();
+
+    fireEvent.click(
+      await (
+        await inspector()
+      ).findByRole('button', {
+        name: /Welcome, from the host$/,
+      }),
+    );
+
+    await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+  });
+
+  it('open a section of the protocol that is not a screen', async () => {
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      settings: { ...DRAFT_SECTIONS.settings, name: '' },
+    });
+    renderEditor();
+    await findStageNameField();
+
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Settings$/ }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Protocol settings' }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('go to the screen entry when the problem is about the screen and no field', async () => {
+    renderEditor();
+    await findStageNameField();
+
+    // No finish screen: the schema anchors this at the last screen, not at
+    // any one of its fields.
+    fireEvent.click(
+      await (
+        await inspector()
+      ).findByRole('button', {
+        name: /must end with a finish stage.*Follow-up$/,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Follow-upInformation' }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('go to the outline when the problem is about the interview as a whole', async () => {
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      stageOrder: { stages: [STAGE_A, STAGE_B, FINISH, 'no-such-stage'] },
+    });
+    renderEditor();
+
+    fireEvent.click(
+      await (
+        await inspector()
+      ).findByRole('button', {
+        name: 'stageOrder names missing stage no-such-stage',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('navigation', { name: 'Protocol sections' }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('are counted aloud once the number has settled, and not for the number the editor opened with', async () => {
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      stageOrder: { stages: [STAGE_A, STAGE_B, FINISH, 'no-such-stage'] },
+    });
+    renderEditor();
+    expect(
+      await screen.findByRole('button', { name: '1 validation problem' }),
+    ).toBeInTheDocument();
+    // Opening on a protocol with a problem says nothing aloud: the button
+    // beside the title already does, and the editor has only just opened.
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(liveRegionText()).not.toMatch(/validation problem/);
+
+    // A collaborator puts it right.
+    await act(async () => {
+      await collaboratorRepairsStageOrder([STAGE_A, STAGE_B, FINISH]);
+    });
+    await waitFor(
+      () => expect(liveRegionText()).toMatch(/No validation problems\./),
+      { timeout: 3000 },
+    );
+
+    // And then breaks it again.
+    await act(async () => {
+      await collaboratorRepairsStageOrder([
+        STAGE_A,
+        'gone',
+        FINISH,
+        'also-gone',
+      ]);
+    });
+    await waitFor(
+      () => expect(liveRegionText()).toMatch(/1 validation problem\./),
+      { timeout: 3000 },
+    );
   });
 });

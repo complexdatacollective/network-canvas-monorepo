@@ -59,6 +59,9 @@ import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document'
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import OutlineStageRow from '../editor/OutlineStageRow.tsx';
+import { locateProblem, type ProblemTarget } from '../editor/problemTarget.ts';
+import { useFieldFocus } from '../editor/useFieldFocus.ts';
+import ValidationAnnouncer from '../editor/ValidationAnnouncer.tsx';
 import { createUuid } from '../lib/createUuid.ts';
 import { toStudyId } from '../lib/ids.ts';
 import { teamScope } from '../runtime/browserLogs.ts';
@@ -692,16 +695,17 @@ function EditorWorkspace({
         (nextSelection.kind !== 'stage' ||
           (selection.kind === 'stage' &&
             nextSelection.stageId === selection.stageId));
-      if (unchanged) return;
+      if (unchanged) return true;
 
       if (
         stageFormDirty &&
         !(await confirmDiscardStageChanges(messages.discardForSection))
       ) {
-        return;
+        return false;
       }
 
       setSelection(nextSelection);
+      return true;
     },
     [confirmDiscardStageChanges, selection, stageFormDirty],
   );
@@ -818,6 +822,41 @@ function EditorWorkspace({
     return true;
   };
 
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const outlineRef = useRef<HTMLElement>(null);
+  const focusField = useFieldFocus(canvasRef);
+
+  // Takes the researcher to what a validation problem is about: opens the
+  // section that holds it, then moves focus to the field. A problem that names
+  // no field this editor has (the interview as a whole, a section not built
+  // yet) lands on the nearest thing that does exist, never on the page body.
+  const goToProblem = async (target: ProblemTarget) => {
+    if (target.kind === 'outline') {
+      outlineRef.current?.focus();
+      return;
+    }
+    const opened = await requestSelection(
+      target.kind === 'stage'
+        ? { kind: 'stage', stageId: target.stageId }
+        : { kind: target.section },
+    );
+    if (!opened) return;
+
+    if (target.kind === 'section') {
+      // The section's heading is the only thing its canvas has to land on.
+      canvasRef.current
+        ?.querySelector<HTMLElement>('[data-canvas-heading]')
+        ?.focus();
+      return;
+    }
+    // The screen's own entry in the outline names it, and is the selected one.
+    focusField(target.fieldNames, () =>
+      outlineRef.current
+        ?.querySelector<HTMLElement>('[aria-current="page"]')
+        ?.focus(),
+    );
+  };
+
   // The reading is what reports a failure, so a retry that fails again has
   // nothing to add: it puts the same message back on screen.
   const retryReadingProtocol = () => {
@@ -884,6 +923,15 @@ function EditorWorkspace({
           </Paragraph>
         </div>
         <ValidationButton validation={draftValidation} />
+        <ValidationAnnouncer
+          problemCount={
+            draftValidation.status === 'invalid'
+              ? draftValidation.issues.length
+              : draftValidation.status === 'valid'
+                ? 0
+                : undefined
+          }
+        />
       </div>
 
       <div className="laptop:grid-cols-[minmax(15rem,1fr)_minmax(24rem,2.5fr)_minmax(16rem,1fr)] grid min-h-0 flex-1 grid-cols-1 gap-4 p-4">
@@ -900,8 +948,12 @@ function EditorWorkspace({
               {intl.formatMessage(messages.protocolSections)}
             </Heading>
             <nav
+              ref={outlineRef}
+              // Where focus goes for a validation problem about the interview
+              // as a whole, which no field or section holds.
+              tabIndex={-1}
               aria-label={intl.formatMessage(messages.protocolSections)}
-              className="min-h-0 overflow-y-auto"
+              className="focusable min-h-0 overflow-y-auto"
             >
               <ul className="m-0 flex list-none flex-col gap-2 p-0">
                 <OutlineButton
@@ -1053,7 +1105,7 @@ function EditorWorkspace({
           </Surface>
         </aside>
 
-        <div className="min-h-[24rem]">
+        <div ref={canvasRef} className="min-h-[24rem]">
           <Surface className="h-full" spacing="lg">
             {selection.kind === 'stage' ? (
               <StageEditor
@@ -1082,7 +1134,11 @@ function EditorWorkspace({
             <Heading id="inspector-heading" level="h2">
               {intl.formatMessage(messages.inspector)}
             </Heading>
-            <ProtocolProblems validation={draftValidation} />
+            <ProtocolProblems
+              validation={draftValidation}
+              stages={stages}
+              onSelectProblem={(target) => void goToProblem(target)}
+            />
           </Surface>
         </aside>
       </div>
@@ -1278,7 +1334,29 @@ function toDraftValidationIssue(
   };
 }
 
-function ProtocolProblems(props: { validation: DraftValidation }) {
+/**
+ * Names where a problem is, for the line under it: the screen, or the section
+ * of the protocol. A problem about the interview as a whole has no one place.
+ */
+function problemLocation(
+  intl: IntlShape,
+  target: ProblemTarget,
+  stages: readonly StageSummary[],
+): string | undefined {
+  if (target.kind === 'section') {
+    return intl.formatMessage(messages[target.section]);
+  }
+  if (target.kind !== 'stage') return undefined;
+  const index = stages.findIndex((stage) => stage.id === target.stageId);
+  const stage = stages[index];
+  return stage === undefined ? undefined : stageLabel(intl, stage, index);
+}
+
+function ProtocolProblems(props: {
+  validation: DraftValidation;
+  stages: readonly StageSummary[];
+  onSelectProblem: (target: ProblemTarget) => void;
+}) {
   const intl = useAppIntl();
   return (
     <section aria-labelledby="validation-heading">
@@ -1299,10 +1377,27 @@ function ProtocolProblems(props: { validation: DraftValidation }) {
         </Paragraph>
       )}
       {props.validation.status === 'invalid' && (
-        <ul className="list-disc space-y-2 ps-5">
-          {props.validation.issues.map((issue, index) => (
-            <li key={`${issue.path.join('.')}-${index}`}>{issue.message}</li>
-          ))}
+        <ul className="m-0 flex list-none flex-col gap-1 p-0">
+          {props.validation.issues.map((issue, index) => {
+            const target = locateProblem(issue.path, props.stages);
+            const location = problemLocation(intl, target, props.stages);
+            return (
+              <li key={`${issue.path.join('.')}-${index}`}>
+                {/* Each problem is a control: it opens the section and moves
+                    focus to the field it is about. */}
+                <button
+                  type="button"
+                  className="focusable w-full rounded px-2 py-1 text-start"
+                  onClick={() => props.onSelectProblem(target)}
+                >
+                  <span className="block">{issue.message}</span>
+                  {location !== undefined && (
+                    <span className="block text-xs opacity-70">{location}</span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
@@ -1336,7 +1431,10 @@ function SectionPlaceholder(props: {
   }[props.kind];
   return (
     <>
-      <Heading level="h2">{intl.formatMessage(content.heading)}</Heading>
+      {/* tabIndex: where focus lands for a validation problem in this section. */}
+      <Heading level="h2" tabIndex={-1} data-canvas-heading="">
+        {intl.formatMessage(content.heading)}
+      </Heading>
       <Paragraph>{intl.formatMessage(content.body)}</Paragraph>
     </>
   );

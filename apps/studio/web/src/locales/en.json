@@ -243,6 +243,10 @@
     "defaultMessage": "Unknown screen",
     "description": "Supporting line of an outline entry whose screen carries no recognisable type."
   },
+  "studio.editor.validationCountAnnouncement": {
+    "defaultMessage": "{count, plural, =0 {No validation problems.} one {# validation problem.} other {# validation problems.}}",
+    "description": "Screen-reader announcement of how many validation problems the protocol now has, said when that number changes."
+  },
   "studio.editor.validationHeading": {
     "defaultMessage": "Validation",
     "description": "Heading of the section listing the protocol’s validation problems."
