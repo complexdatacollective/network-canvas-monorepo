@@ -340,6 +340,9 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
         <DataTable
           table={table}
           aria-label={intl.formatMessage(messages.tableLabel)}
+          // The selection lives in `useSessionSelection` (it can span pages
+          // that were never fetched), not in the table's `rowSelection`.
+          selectedCount={selectedCount}
           bodyScroll
           emptyText={
             !loaded

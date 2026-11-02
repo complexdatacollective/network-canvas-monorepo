@@ -5,7 +5,7 @@ import {
   useTable,
 } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { DataTableColumnHeader } from './DataTable/ColumnHeader';
 import { DataTable } from './DataTable/DataTable';
@@ -526,5 +526,14 @@ export const ScrollsHorizontally: Story = {
 
     await userEvent.tab();
     await expect(region).toHaveFocus();
+
+    // The surface around the scroller clips overflow, so the focus ring has to
+    // be drawn inside the scroller rather than outside it.
+    // The offset animates in, so wait for it to settle.
+    await waitFor(() =>
+      expect(
+        Number.parseFloat(getComputedStyle(region).outlineOffset),
+      ).toBeLessThan(0),
+    );
   },
 };

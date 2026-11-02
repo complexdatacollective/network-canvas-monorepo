@@ -7,7 +7,7 @@ import {
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DataTableColumnHeader } from '../ColumnHeader';
 import { DataTable } from '../DataTable';
@@ -58,7 +58,8 @@ const noSorting: SortingState = [];
 
 type HarnessProps = {
   sorting?: SortingState;
-  label?: { 'aria-label': string } | { 'aria-labelledby': string };
+  label?: { 'aria-label': string } | { 'aria-labelledby': string } | object;
+  selectedCount?: number;
   initialSelection?: RowSelectionState;
 };
 
@@ -66,6 +67,7 @@ const Harness = ({
   sorting = noSorting,
   label = { 'aria-label': 'People' },
   initialSelection = {},
+  selectedCount,
 }: HarnessProps) => {
   const [rowSelection, setRowSelection] =
     useState<RowSelectionState>(initialSelection);
@@ -83,7 +85,7 @@ const Harness = ({
     onPaginationChange: setPagination,
   });
 
-  return <DataTable table={table} {...label} />;
+  return <DataTable table={table} selectedCount={selectedCount} {...label} />;
 };
 
 const columnHeader = (name: string) =>
@@ -151,6 +153,31 @@ describe('DataTable accessible name', () => {
   });
 });
 
+describe('DataTable name warning', () => {
+  it('warns in development when the table has no name', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(<Harness label={{}} />);
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('DataTable'));
+    warn.mockRestore();
+  });
+
+  it('stays silent when the table has a name', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { unmount } = render(<Harness label={{ 'aria-label': 'People' }} />);
+    unmount();
+    render(
+      <>
+        <h2 id="people-heading">People</h2>
+        <Harness label={{ 'aria-labelledby': 'people-heading' }} />
+      </>,
+    );
+
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
 describe('DataTable row selection', () => {
   it('does not put aria-selected on rows, which a table does not support', () => {
     render(<Harness initialSelection={{ 'row-0': true, 'row-1': true }} />);
@@ -179,6 +206,22 @@ describe('DataTable row selection', () => {
 
     await user.click(screen.getByRole('checkbox', { name: 'Select Person 3' }));
     await user.click(screen.getByRole('checkbox', { name: 'Select Person 0' }));
+    expect(live).toBeEmptyDOMElement();
+  });
+
+  it('announces a count handed in by a table that keeps its own selection', () => {
+    // Selection that is not TanStack's `rowSelection` (such as "all matching",
+    // which spans pages that were never fetched) is announced from the count
+    // the caller states.
+    const { rerender } = render(<Harness selectedCount={0} />);
+    const live = screen
+      .getAllByRole('status')
+      .find((region) => region.textContent === '');
+
+    rerender(<Harness selectedCount={48} />);
+    expect(live).toHaveTextContent('48 rows selected');
+
+    rerender(<Harness selectedCount={0} />);
     expect(live).toBeEmptyDOMElement();
   });
 

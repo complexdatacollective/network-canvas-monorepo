@@ -82,7 +82,9 @@ const Table = React.forwardRef<
           {...scrollerName}
           className={cx(
             'w-full max-w-full overflow-x-auto overscroll-x-none',
-            scrolls && 'focusable',
+            // Drawn inside: the surface around the scroller clips overflow, so the
+            // default outward ring would be cut off.
+            scrolls && 'focusable focus-visible:-outline-offset-3',
             bodyScroll && 'min-h-0 flex-1 overflow-y-auto overscroll-y-none',
             scrollerClassName,
           )}
