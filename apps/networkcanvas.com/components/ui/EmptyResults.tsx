@@ -14,6 +14,9 @@ export function EmptyResults({
       noContainer
       spacing="lg"
       shadow="sm"
+      // An <output> may hold only phrasing content, and this holds a
+      // heading and a paragraph.
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="status"
       className="mx-auto max-w-lg"
     >
