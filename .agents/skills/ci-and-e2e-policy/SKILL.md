@@ -154,6 +154,14 @@ regeneration workflow. Both halves are required by `quality`, and
 before a verdict can be reused. The capture helpers throw when
 `E2E_PIXEL_LANE=native` is set, so a mis-tagged visual test fails loudly
 instead of silently comparing container baselines against a runner's fonts.
+Interview's pixel lane captures only `chromium-visual` on feature PRs. The
+`firefox-visual` and `webkit-visual` captures (two thirds of the lane) run on
+generated release PRs, where the lane always runs in full, and in benchmark
+dispatches. A Firefox- or WebKit-only image change therefore surfaces on the
+release PR, whose snapshot-failure path opens the baseline-update PR described
+below. The native lane's Firefox and WebKit functional tests still run on every
+selected PR.
+
 Feature PRs never inherit an E2E verdict from an earlier commit: suite
 selection uses the cumulative merge-base-to-current-head diff, so every
 required verdict describes the exact head under review.

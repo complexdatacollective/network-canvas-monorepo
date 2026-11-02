@@ -2490,6 +2490,23 @@ test('every job the E2E policy names is a real, gated workflow job', () => {
   }
 });
 
+// Feature PRs capture Interview's pixels in Chromium alone; the other two
+// engines capture on generated release PRs, which always run the lane in full.
+test('Interview captures Firefox and WebKit pixels on release PRs only', () => {
+  const run = parsedWorkflow.jobs['interview-e2e'].steps.find(
+    (step) => step.name === 'Run E2E tests',
+  );
+  assert.equal(
+    run.env.RELEASE_BRANCH,
+    "${{ startsWith(github.head_ref, 'changeset-release/') }}",
+  );
+  assert.match(run.run, /args=\(--project=chromium-visual\)\n/);
+  assert.match(
+    run.run,
+    /if \[\[ "\$RELEASE_BRANCH" == "true" \|\| "\$E2E_BENCHMARK" == "true" \]\]; then\n\s+args\+=\(--project=firefox-visual --project=webkit-visual\)/,
+  );
+});
+
 // The two lanes are only safe while each stays on its own side of the pixel
 // boundary: the native lane must never reach a capture (its baselines were
 // rasterised in the pinned image), and must never author one.
