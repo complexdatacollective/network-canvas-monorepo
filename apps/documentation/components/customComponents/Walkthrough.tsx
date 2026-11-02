@@ -1,12 +1,13 @@
 'use client';
 
-import { Footprints, Play } from 'lucide-react';
+import { CirclePlay, Play } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useId, useRef, useState } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
-import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import DialogPopup from '@codaco/fresco-ui/dialogs/DialogPopup';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import Modal from '@codaco/fresco-ui/Modal';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { firstBeatOf, visibleBeats } from '~/components/walkthrough/sequence';
 import useWalkthroughProgress from '~/components/walkthrough/useWalkthroughProgress';
@@ -80,7 +81,7 @@ export default function Walkthrough({
           variant="outline"
           size="sm"
           color="primary"
-          icon={<Footprints aria-hidden className="size-4" />}
+          icon={<CirclePlay aria-hidden className="size-4" />}
           onClick={() => openAt(chapter)}
           className="my-4"
         >
@@ -109,21 +110,22 @@ export default function Walkthrough({
           </span>
         </Surface>
       )}
-      <Dialog
-        open={open}
-        closeDialog={() => setOpen(false)}
-        title={walkthrough.title}
-        size="fullscreen"
-        finalFocus={sectionHeading}
-      >
-        <WalkthroughPlayer
-          walkthrough={walkthrough}
-          progress={progress}
-          onProgress={saveProgress}
-          onGuide={goToGuide}
-          onClose={() => setOpen(false)}
-        />
-      </Dialog>
+      <Modal open={open} onOpenChange={setOpen}>
+        <DialogPopup
+          key="walkthrough-popup"
+          size="fullscreen"
+          finalFocus={sectionHeading}
+          className="overflow-hidden"
+        >
+          <WalkthroughPlayer
+            walkthrough={walkthrough}
+            progress={progress}
+            onProgress={saveProgress}
+            onGuide={goToGuide}
+            onClose={() => setOpen(false)}
+          />
+        </DialogPopup>
+      </Modal>
     </>
   );
 }

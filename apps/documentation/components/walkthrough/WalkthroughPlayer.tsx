@@ -1,6 +1,16 @@
 'use client';
 
-import { BookOpen, Check, Pause, Play, Repeat, RotateCcw } from 'lucide-react';
+import { Dialog as BaseDialog } from '@base-ui/react/dialog';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  Check,
+  Pause,
+  Play,
+  Repeat,
+  RotateCcw,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import {
@@ -13,6 +23,7 @@ import {
 } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
+import CloseButton from '@codaco/fresco-ui/CloseButton';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
@@ -20,7 +31,9 @@ import {
   getMarkdownLabelText,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
+import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { Link as LocaleLink } from '~/navigation';
@@ -88,7 +101,7 @@ function GuideLink({
   if (target.startsWith('#')) {
     return (
       <Button
-        variant="text"
+        variant="link"
         size="sm"
         icon={<BookOpen aria-hidden className="size-4" />}
         onClick={() => onGuide(target.slice(1))}
@@ -101,7 +114,7 @@ function GuideLink({
   return (
     <Button
       asChild
-      variant="text"
+      variant="link"
       size="sm"
       icon={<BookOpen aria-hidden className="size-4" />}
       className={className}
@@ -228,134 +241,139 @@ export default function WalkthroughPlayer({
             {option.label}
           </Button>
         ));
+      case 'finish':
+        return (
+          <Button ref={primaryAction} color="primary" onClick={onClose}>
+            {t('close')}
+          </Button>
+        );
+      case 'explain':
       case 'do':
+      case 'checkpoint':
+      default:
         return (
           <>
-            <Button
-              ref={primaryAction}
-              color="primary"
-              onClick={() => advance()}
-            >
-              {shown.confirm}
-            </Button>
-            {shown.skip && (
+            {shown.type === 'do' && shown.skip && (
               <Button variant="outline" onClick={() => advance()}>
                 {shown.skip}
               </Button>
             )}
-          </>
-        );
-      case 'checkpoint':
-        return (
-          <>
             <Button
               ref={primaryAction}
               color="primary"
+              icon={<ArrowRight aria-hidden className="size-4" />}
+              iconPosition="right"
               onClick={() => advance()}
             >
-              {shown.confirm}
+              {shown.confirm ?? t('continue')}
             </Button>
-            {shown.help && <ExternalOrDocLink link={shown.help} />}
           </>
-        );
-      case 'finish':
-        return (
-          <>
-            <Button ref={primaryAction} color="primary" onClick={onClose}>
-              {t('close')}
-            </Button>
-            {shown.links?.map((link) => (
-              <ExternalOrDocLink key={link.href} link={link} />
-            ))}
-          </>
-        );
-      case 'explain':
-      default:
-        return (
-          <Button ref={primaryAction} color="primary" onClick={() => advance()}>
-            {shown.confirm ?? t('continue')}
-          </Button>
         );
     }
   };
 
-  return (
-    <div className="@container grid h-[calc(100dvh-14rem)] max-h-[50rem] min-h-[30rem] grid-rows-[auto_minmax(0,1fr)] gap-6 @min-[56rem]:grid-cols-[15rem_1fr] @min-[56rem]:grid-rows-1">
-      <nav
-        aria-label={t('chapters')}
-        className="flex min-w-0 items-center gap-4 @min-[56rem]:flex-col @min-[56rem]:items-stretch"
-      >
-        <ol className="flex min-w-0 gap-1 overflow-x-auto @min-[56rem]:grid">
-          {walkthrough.chapters.map((c, i) => {
-            const status = chapterStatus(beats, index, c.id);
-            return (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  aria-current={status === 'current' ? 'step' : undefined}
-                  onClick={() => goTo(firstBeatOf(beats, c.id))}
-                  className={cx(
-                    'focusable flex w-full shrink-0 items-center gap-3 rounded px-3 py-2 text-start transition-colors',
-                    status === 'current'
-                      ? 'bg-primary text-primary-contrast'
-                      : 'hover:bg-current/10',
-                  )}
-                >
-                  <span
-                    className={cx(
-                      'grid size-7 shrink-0 place-items-center rounded-full text-sm font-bold',
-                      status === 'done' && 'bg-success text-success-contrast',
-                      status === 'upcoming' && 'border-2 border-current/40',
-                      status === 'current' &&
-                        'bg-primary-contrast text-primary',
-                    )}
-                  >
-                    <AnimatePresence initial={false} mode="popLayout">
-                      {status === 'done' ? (
-                        <motion.span
-                          key="done"
-                          initial={reduceMotion ? false : { scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={POP}
-                        >
-                          <Check aria-hidden className="size-4" />
-                        </motion.span>
-                      ) : (
-                        <span key="number">{i + 1}</span>
-                      )}
-                    </AnimatePresence>
-                  </span>
-                  <span
-                    className={cx(
-                      'font-heading min-w-0 font-bold',
-                      '@max-[56rem]:sr-only',
-                    )}
-                  >
-                    {c.title}
-                    {status === 'done' && (
-                      <span className="sr-only"> ({t('chapterDone')})</span>
-                    )}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-        <Button
-          variant="text"
-          size="sm"
-          icon={<RotateCcw aria-hidden className="size-4" />}
-          onClick={() => {
-            rememberFocus();
-            onProgress(null);
-          }}
-          className="ms-auto shrink-0 @min-[56rem]:ms-0 @min-[56rem]:mt-auto @min-[56rem]:self-start"
-        >
-          {t('startOver')}
-        </Button>
-      </nav>
+  const links =
+    beat.type === 'finish'
+      ? (beat.links ?? [])
+      : beat.type === 'checkpoint' && beat.help
+        ? [beat.help]
+        : [];
 
-      <div className="grid min-h-0 min-w-0 grid-rows-[1fr_auto] gap-6">
+  return (
+    <div className="@container grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] @min-[56rem]:grid-cols-[20rem_1fr] @min-[56rem]:grid-rows-1">
+      <ThemedRegion
+        theme="interview"
+        className="bg-surface text-text publish-colors flex min-h-0 min-w-0 flex-col"
+      >
+        <div className="grid gap-1 px-6 pt-6 pb-2 @min-[56rem]:pt-8">
+          <Eyebrow>{t('label')}</Eyebrow>
+          <BaseDialog.Title render={<Heading level="h2" margin="none" />}>
+            {walkthrough.title}
+          </BaseDialog.Title>
+        </div>
+        <nav aria-label={t('chapters')} className="min-h-0 flex-1">
+          <ol className="flex h-full overflow-auto py-4 @min-[56rem]:flex-col">
+            {walkthrough.chapters.map((c, i) => {
+              const status = chapterStatus(beats, index, c.id);
+              const isFirst = i === 0;
+              const isLast = i === walkthrough.chapters.length - 1;
+              return (
+                <li key={c.id} className="shrink-0">
+                  <button
+                    type="button"
+                    aria-current={status === 'current' ? 'step' : undefined}
+                    onClick={() => goTo(firstBeatOf(beats, c.id))}
+                    className={cx(
+                      'focusable relative flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start transition-colors duration-200',
+                      status === 'current'
+                        ? 'bg-primary text-primary-contrast'
+                        : 'hover:bg-accent',
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cx(
+                        'bg-neon-coral pointer-events-none absolute inset-s-8 w-1 -translate-x-1/2 @max-[56rem]:hidden rtl:translate-x-1/2',
+                        isFirst
+                          ? 'top-1/2 bottom-0'
+                          : isLast
+                            ? 'top-0 bottom-1/2'
+                            : 'inset-y-0',
+                      )}
+                    />
+                    <span className="bg-neon-coral relative grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold text-white tabular-nums">
+                      <AnimatePresence initial={false} mode="popLayout">
+                        {status === 'done' ? (
+                          <motion.span
+                            key="done"
+                            initial={reduceMotion ? false : { scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={POP}
+                          >
+                            <Check aria-hidden className="size-4" />
+                          </motion.span>
+                        ) : (
+                          <span key="number">{i + 1}</span>
+                        )}
+                      </AnimatePresence>
+                    </span>
+                    <span className="min-w-0 text-sm leading-tight font-bold @max-[56rem]:sr-only">
+                      {c.title}
+                      {status === 'done' && (
+                        <span className="sr-only"> ({t('chapterDone')})</span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+        <div className="border-text/10 shrink-0 border-t p-4">
+          <Button
+            variant="outline"
+            size="sm"
+            color="dynamic"
+            icon={<RotateCcw aria-hidden className="size-4" />}
+            onClick={() => {
+              rememberFocus();
+              onProgress(null);
+            }}
+            className="w-full"
+          >
+            {t('startOver')}
+          </Button>
+        </div>
+      </ThemedRegion>
+
+      <div className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4 p-4 @min-[56rem]:p-6">
+        <div className="flex items-center justify-end gap-2">
+          <GuideLink target={guideTarget} onGuide={onGuide}>
+            {t('readGuide')}
+          </GuideLink>
+          <BaseDialog.Close render={<CloseButton />} />
+        </div>
+
         <div
           className={cx(
             'relative grid min-h-0 rounded p-6 transition-colors duration-500',
@@ -410,72 +428,79 @@ export default function WalkthroughPlayer({
           )}
         </div>
 
-        <div className="grid gap-4">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Eyebrow>
-              {t('stepOf', {
-                chapter: chapter.title,
-                current: stepInChapter,
-                total: chapterBeats.length,
-              })}
-            </Eyebrow>
-            <ProgressBar
-              orientation="horizontal"
-              percentProgress={(stepInChapter / chapterBeats.length) * 100}
-              nudge={false}
-              label={chapter.title}
-              className="h-1.5 max-w-40"
-            />
-          </div>
-          <p aria-live="polite" className="sr-only">
-            {getMarkdownLabelText(text)}
-          </p>
+        <p aria-live="polite" className="sr-only">
+          {getMarkdownLabelText(text)}
+        </p>
+        <motion.div
+          key={beat.id}
+          className="flex flex-wrap items-end gap-x-8 gap-y-4"
+          variants={CAPTION}
+          initial={reduceMotion ? false : 'enter'}
+          animate="center"
+        >
           <motion.div
-            key={beat.id}
-            className="grid gap-4"
-            variants={CAPTION}
-            initial={reduceMotion ? false : 'enter'}
-            animate="center"
+            variants={CAPTION_PART}
+            className="grid min-w-[min(100%,20rem)] flex-1 gap-3"
           >
-            <motion.div variants={CAPTION_PART}>
-              <Paragraph
-                id={textId}
-                margin="none"
-                className="text-xl text-balance"
-              >
-                <RenderMarkdown
-                  allowedElements={BEAT_TEXT_ELEMENTS}
-                  unwrapDisallowed
-                >
-                  {text}
-                </RenderMarkdown>
-              </Paragraph>
-            </motion.div>
-            <motion.div
-              variants={CAPTION_PART}
-              className="flex flex-wrap items-center gap-x-4 gap-y-2"
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <Eyebrow>
+                {t('stepOf', {
+                  chapter: chapter.title,
+                  current: stepInChapter,
+                  total: chapterBeats.length,
+                })}
+              </Eyebrow>
+              <ProgressBar
+                orientation="horizontal"
+                percentProgress={(stepInChapter / chapterBeats.length) * 100}
+                nudge={false}
+                label={chapter.title}
+                className="h-1.5 max-w-40"
+              />
+            </div>
+            <Paragraph
+              id={textId}
+              margin="none"
+              className="text-xl text-balance"
             >
-              <div
-                ref={actions}
-                role={beat.type === 'choose' ? 'group' : undefined}
-                aria-labelledby={beat.type === 'choose' ? textId : undefined}
-                className="flex flex-wrap items-center gap-3"
+              <RenderMarkdown
+                allowedElements={BEAT_TEXT_ELEMENTS}
+                unwrapDisallowed
               >
-                {renderActions(beat)}
+                {text}
+              </RenderMarkdown>
+            </Paragraph>
+            {links.length > 0 && (
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {links.map((link) => (
+                  <ExternalOrDocLink key={link.href} link={link} />
+                ))}
               </div>
-              <div className="ms-auto flex flex-wrap items-center gap-2">
-                {index > 0 && (
-                  <Button variant="text" size="sm" onClick={back}>
-                    {t('back')}
-                  </Button>
-                )}
-                <GuideLink target={guideTarget} onGuide={onGuide}>
-                  {t('readGuide')}
-                </GuideLink>
-              </div>
-            </motion.div>
+            )}
           </motion.div>
-        </div>
+          <motion.div
+            variants={CAPTION_PART}
+            className="ms-auto flex flex-wrap items-center justify-end gap-3"
+          >
+            {index > 0 && (
+              <Button
+                variant="outline"
+                icon={<ArrowLeft aria-hidden className="size-4" />}
+                onClick={back}
+              >
+                {t('back')}
+              </Button>
+            )}
+            <div
+              ref={actions}
+              role={beat.type === 'choose' ? 'group' : undefined}
+              aria-labelledby={beat.type === 'choose' ? textId : undefined}
+              className="flex flex-wrap items-center justify-end gap-3"
+            >
+              {renderActions(beat)}
+            </div>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   );

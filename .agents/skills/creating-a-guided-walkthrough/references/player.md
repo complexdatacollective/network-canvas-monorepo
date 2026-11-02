@@ -129,14 +129,19 @@ mark springs in when it is finished. Each chapter has a `tint` for its band.
 
 ## Styling
 
-- **Components.** Build from fresco-ui: `dialogs/Dialog`, `Button` (with
+- **Components.** Build from fresco-ui: `Modal` and `dialogs/DialogPopup`
+  (the parts `Dialog` is made of, so the title can sit in the chapter list),
+  `ThemedRegion` for the interview-themed chapter list, `Button` (with
   `asChild` around a router link for links that should look like buttons),
   `NativeLink` (with `render` for a router link) for text links,
   `typography/Paragraph`, `typography/Eyebrow` for the step label,
   `ProgressBar`, `RenderMarkdown` and `layout/Surface`. Do not restyle them to
   "look like" themselves at another size. The chapter list is the one local
   control: fresco-ui has no step list (`NavItem` renders links to pages, not
-  buttons for steps), so it stays in the player, built from tokens.
+  buttons for steps), so it stays in the player, styled like the interview's
+  stage list (`StagesMenu` in `@codaco/interview`): numbered coral nodes on a
+  coral line, the current chapter in `bg-primary`. Give its colored background
+  `publish-colors`, or `dynamic` buttons inside it read the page's background.
 - **Type and color** come from the tokens fresco-ui and `@codaco/tailwind-config`
   already provide. Never paste token values into walkthrough code.
 - **Scale.** Lay the stage out in rem at a fixed design size and scale the whole

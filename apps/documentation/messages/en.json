@@ -107,6 +107,7 @@
     "docAvailableTxt": "This document is also available in"
   },
   "Walkthrough": {
+    "label": "Walkthrough",
     "start": "Start the step-by-step walkthrough",
     "resume": "Continue the walkthrough where you left off",
     "walkStep": "Walk through this step",
