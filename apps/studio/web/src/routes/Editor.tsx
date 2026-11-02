@@ -570,6 +570,7 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
   );
   useEffect(
     () => editorVisits.open(),
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- the address is the re-run trigger: a visit to another draft closes the last one's and opens its own.
     [address.teamId, address.protocolId, address.draftId],
   );
 
@@ -631,7 +632,7 @@ function EditorWorkspace({
   const [addRecoveryFailed, setAddRecoveryFailed] = useState(false);
   const [reconcilingMove, setReconcilingMove] = useState(false);
   const [moveRecoveryFailed, setMoveRecoveryFailed] = useState(false);
-  const selectionInitialized = useRef(false);
+  const [selectionInitialized, setSelectionInitialized] = useState(false);
   const discardRequestPending = useRef(false);
   // The outline, the position a reorder points at and the validation all read
   // the protocol as a WHOLE, so all three wait for the whole of it. A stage
@@ -645,6 +646,14 @@ function EditorWorkspace({
   const revision = useProtocolRevision();
   const rereadProtocol = useRereadProtocol();
   const draftValidation = useDraftValidation(reading);
+  // Stable between renders, and defined outside this component: the editor
+  // calls these as functions in its slots, but a function that returns
+  // elements and is made during render reads as a component made during
+  // render, which would remount its subtree each time if it were used as one.
+  const renderStageActions = useMemo(
+    () => stageActionsRenderer(setStageFormDirty),
+    [],
+  );
 
   const confirmDiscardStageChanges = useCallback(
     // `confirm` takes plain strings, so the descriptors are formatted here
@@ -667,6 +676,7 @@ function EditorWorkspace({
         discardRequestPending.current = false;
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- `confirm` and `intl` are used in the `try/finally`, which the rule cannot follow.
     [confirm, intl],
   );
 
@@ -711,14 +721,13 @@ function EditorWorkspace({
   // collaborator adds minutes later is theirs rather than something this
   // editor is moved to. A reading still missing sections would open on
   // whichever screen happened to arrive first.
-  useEffect(() => {
-    if (reading.status !== 'read' || selectionInitialized.current) return;
-    selectionInitialized.current = true;
+  if (reading.status === 'read' && !selectionInitialized) {
+    setSelectionInitialized(true);
     const firstStage = stages[0];
     if (firstStage !== undefined) {
       setSelection({ kind: 'stage', stageId: firstStage.id });
     }
-  }, [reading, stages]);
+  }
 
   const selectedStageId = selection.kind === 'stage' ? selection.stageId : null;
 
@@ -1066,13 +1075,8 @@ function EditorWorkspace({
                     stageId: selection.stageId,
                   }),
                 }}
-                header={() => <ScreenTitle />}
-                actions={(context) => (
-                  <StageActions
-                    context={context}
-                    onDirtyChange={setStageFormDirty}
-                  />
-                )}
+                header={renderScreenTitle}
+                actions={renderStageActions}
               />
             ) : (
               <SectionPlaceholder kind={selection.kind} />
@@ -1146,6 +1150,14 @@ function ScreenTitle() {
   );
 }
 
+const renderScreenTitle = () => <ScreenTitle />;
+
+const stageActionsRenderer =
+  (onDirtyChange: (dirty: boolean) => void) =>
+  (context: StageEditorActionContext) => (
+    <StageActions context={context} onDirtyChange={onDirtyChange} />
+  );
+
 /**
  * Studio's own chrome for the stage the package is editing.
  *
@@ -1202,38 +1214,34 @@ function ValidationButton(props: { validation: DraftValidation }) {
   );
 }
 
+const PENDING_VALIDATION: DraftValidation = { status: 'pending', issues: [] };
+const UNREADABLE_VALIDATION: DraftValidation = {
+  status: 'unreadable',
+  issues: [],
+};
+
 function useDraftValidation(reading: ProtocolReading): DraftValidation {
   const intl = useAppIntl();
-  const [validation, setValidation] = useState<DraftValidation>({
-    status: 'pending',
-    issues: [],
-  });
+  // The outcome of checking one reading, kept with the reading it is for. A
+  // reading that has changed since has no outcome yet, so what is shown is
+  // derived from the pair rather than reset by the effect that checks.
+  const [checked, setChecked] = useState<
+    { reading: ProtocolReading; validation: DraftValidation } | undefined
+  >();
 
   useEffect(() => {
+    if (reading.status !== 'read') return undefined;
     let active = true;
-    if (reading.status !== 'read') {
-      // "Could not be read" and "not yet" are different things to leave on
-      // screen: the first is an answer, and reporting it as the second is a
-      // check that never finishes.
-      setValidation(
-        reading.status === 'unreadable'
-          ? { status: 'unreadable', issues: [] }
-          : { status: 'pending', issues: [] },
-      );
-      return () => {
-        active = false;
-      };
-    }
-
     const { sections } = reading;
-    setValidation({ status: 'pending', issues: [] });
+    const settle = (validation: DraftValidation) => {
+      if (active) setChecked({ reading, validation });
+    };
     void (async () => {
       try {
         const result = await CurrentProtocolSchema.safeParseAsync(
           assembleProtocolSections(sections),
         );
-        if (!active) return;
-        setValidation(
+        settle(
           result.success
             ? { status: 'valid', issues: [] }
             : {
@@ -1242,8 +1250,7 @@ function useDraftValidation(reading: ProtocolReading): DraftValidation {
               },
         );
       } catch (error) {
-        if (!active) return;
-        setValidation({
+        settle({
           status: 'invalid',
           issues: [
             {
@@ -1262,7 +1269,14 @@ function useDraftValidation(reading: ProtocolReading): DraftValidation {
     };
   }, [intl, reading]);
 
-  return validation;
+  // "Could not be read" and "not yet" are different things to leave on
+  // screen: the first is an answer, and reporting it as the second is a
+  // check that never finishes.
+  if (reading.status === 'unreadable') return UNREADABLE_VALIDATION;
+  if (reading.status !== 'read' || checked?.reading !== reading) {
+    return PENDING_VALIDATION;
+  }
+  return checked.validation;
 }
 
 function toDraftValidationIssue(
