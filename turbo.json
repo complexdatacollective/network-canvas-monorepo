@@ -604,6 +604,7 @@
         "__tests__/**",
         "vitest.config.*",
         "vitest.setup.*",
+        "vitest.sequencer.*",
         "config/vitest/**",
         "package.json",
         ".env",
@@ -631,7 +632,12 @@
         "package.json",
         "tsconfig*.json"
       ],
-      "env": ["NODE_ENV", "STORYBOOK_MAPBOX_TOKEN", "SKIP_ENV_VALIDATION"],
+      "env": [
+        "NODE_ENV",
+        "STORYBOOK_MAPBOX_TOKEN",
+        "SKIP_ENV_VALIDATION",
+        "STORYBOOK_FIREFOX"
+      ],
       "outputs": []
     },
     "test:watch": {
@@ -864,6 +870,7 @@
         ".storybook/**/*.ts",
         ".storybook/**/*.tsx",
         "*.config.ts",
+        "vitest.sequencer.ts",
         "tsconfig*.json",
         "package.json"
       ],

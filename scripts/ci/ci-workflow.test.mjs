@@ -17,7 +17,7 @@ import { parse } from 'yaml';
 
 import { GATED_PRODUCT_RELEASE_LANES } from '../release/changeset-app-utils.mjs';
 import { E2E_JOB_NAMES } from './release-e2e-policy.mjs';
-import { TEST_SHARDS } from './test-shards.mjs';
+import { STORYBOOK_SHARDS, TEST_SHARDS } from './test-shards.mjs';
 
 const workflow = readFileSync(
   new URL('../../.github/workflows/ci-and-release.yml', import.meta.url),
@@ -1039,11 +1039,21 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   // The dangerous drift is a bucket with no runner: its packages are negated
   // by every shard that DOES run, so nothing executes them and CI stays
   // green while those suites silently stop running.
+  // A split bucket needs one leg per part, or a part's files never run.
   const legs = parsedWorkflow.jobs.test.strategy.matrix.include;
   assert.deepEqual(
-    legs.map((leg) => leg.shard).toSorted((a, b) => a - b),
-    TEST_SHARDS.map((s) => s.shard).toSorted((a, b) => a - b),
-    'every defined bucket has a matrix leg and vice versa',
+    legs
+      .map((leg) => `${leg.shard}${leg.part ? ` ${leg.part}` : ''}`)
+      .toSorted(),
+    TEST_SHARDS.flatMap((s) =>
+      s.parts === undefined
+        ? [`${s.shard}`]
+        : Array.from(
+            { length: s.parts },
+            (_, i) => `${s.shard} ${i + 1}/${s.parts}`,
+          ),
+    ).toSorted(),
+    'every defined bucket, and every part of a split one, has a matrix leg and vice versa',
   );
 
   assert.equal(
@@ -1086,6 +1096,11 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   );
   assert.match(
     testJob,
+    /PART_ARGS=\(-- "--shard=\$PART"\)/,
+    'a split leg passes its part through turbo to vitest',
+  );
+  assert.match(
+    testJob,
     /- name: Write protocol-validation \.env[\s\S]*?if: matrix\.protocolValidation/,
     'the secret-writing step is gated on that leg',
   );
@@ -1106,6 +1121,80 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
     testJob,
     /The Postgres container stopped before accepting connections/,
     'a stopped container is reported at once rather than waited out',
+  );
+});
+
+test('the storybook matrix runs exactly the legs scripts/ci/test-shards.mjs defines', () => {
+  const storybook = parsedWorkflow.jobs['test-storybook'];
+  const legs = storybook.strategy.matrix.include;
+  assert.deepEqual(
+    legs.map((leg) => [leg.shard, leg.browsers, leg.releaseBrowsers]),
+    STORYBOOK_SHARDS.map((s) => [s.shard, s.browsers, s.releaseBrowsers]),
+    'every storybook bucket has a leg installing the browsers it declares',
+  );
+  // fresco-ui's Firefox pass runs on generated release PRs only, and the leg
+  // installs Firefox exactly when it does.
+  assert.equal(
+    storybook.env.STORYBOOK_FIREFOX,
+    "${{ startsWith(github.head_ref, 'changeset-release/') }}",
+  );
+  const install = storybook.steps.find(
+    (step) => step.uses === './.github/actions/playwright-browsers',
+  );
+  assert.match(
+    install.with.browsers,
+    /env\.STORYBOOK_FIREFOX == 'true'\s+&& matrix\.releaseBrowsers/,
+  );
+  assert.equal(storybook.strategy['fail-fast'], false);
+
+  const codegenLegs = legs.filter((leg) => leg.frescoCodegen === true);
+  assert.deepEqual(
+    codegenLegs.map((leg) => leg.shard),
+    STORYBOOK_SHARDS.filter((s) =>
+      s.packages.some((p) => p.name === 'fresco'),
+    ).map((s) => s.shard),
+    "Fresco's codegen runs on the leg that holds its stories",
+  );
+
+  const body = job('test-storybook');
+  assert.match(
+    body,
+    /if ! node scripts\/ci\/test-shards\.mjs filters "\$SHARD" storybook >/,
+    'each leg derives its bucket from the one source of truth, gated on the exit status',
+  );
+  const runs =
+    body.match(/pnpm exec turbo run test:storybook\b(?:[^\n]*\\\n)*[^\n]*/g) ??
+    [];
+  assert.equal(runs.length, 2, 'exactly two turbo invocations');
+  for (const run of runs) {
+    assert.match(
+      run,
+      /"\$\{SHARD_FILTERS\[@\]\}"/,
+      `every turbo run is leg-restricted: ${run}`,
+    );
+  }
+  assert.doesNotMatch(
+    body,
+    /turbo run [^\n]*--affected/,
+    'turbo ignores --filter under --affected, so no invocation here may use it',
+  );
+});
+
+// One shared step installs every browser, so the time limit and retries in
+// .github/actions/playwright-browsers cover all of them.
+test('every CI browser install goes through the shared install action', () => {
+  for (const file of readdirSync(WORKFLOW_DIR)) {
+    const source = readFileSync(new URL(file, WORKFLOW_DIR), 'utf8');
+    assert.doesNotMatch(
+      source,
+      /exec playwright install/,
+      `${file} installs browsers without the time limit and retries`,
+    );
+  }
+  assert.ok(
+    (workflow.match(/uses: \.\/\.github\/actions\/playwright-browsers/g) ?? [])
+      .length >= 6,
+    'the native E2E lanes, Storybook, Studio and the cache warm use the action',
   );
 });
 

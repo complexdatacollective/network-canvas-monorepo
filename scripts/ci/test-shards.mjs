@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// Bucket assignment for the sharded `test` job in
-// .github/workflows/ci-and-release.yml.
+// Bucket assignment for the sharded `test` and `test-storybook` jobs in
+// .github/workflows/ci-and-release.yml. Everything below is written about
+// `test`; `test-storybook` uses the same mechanism for its `test:storybook`
+// suites (see STORYBOOK_SHARDS).
 //
 // The workspace unit suites are embarrassingly parallel across MACHINES and
 // stubbornly serial on one. Every vitest sizes its fork pool to the runner's
@@ -66,19 +68,27 @@
 //     it is the only workspace suite outside `@codaco/studio-api` that
 //     needs a database.
 //   * `@codaco/site-navigation-element` pays a fixed `playwright install
-//     --with-deps chromium` before its (tiny) suite, so it is weighted by that
-//     install rather than by its tests.
+//     chromium` before its (tiny) suite, so it is weighted by that install
+//     rather than by its tests.
 //
 // Five shards rather than four, even though four would give the same wall
 // time today. The job cannot finish sooner than its largest single package
-// however many runners it gets, and protocol-builder is that package at 540s;
-// four shards would pack the remaining 1200s into ~400s buckets, which is only
-// 26% under protocol-builder and so inside the ~30% runner-to-runner variance
-// measured above — a shard would sometimes become the critical path instead.
-// Five leaves the rest at 260-353s, comfortably clear, and the extra runner is
-// free on a public repository. Going below 540s needs the protocol-builder
-// suite itself split, which is a different change: turbo's unit of work is the
-// package.
+// however many runners it gets, and protocol-builder is that package; four
+// shards would pack the remaining 1200s into ~400s buckets, which is inside the
+// ~30% runner-to-runner variance measured above. Five leaves the rest at
+// 260-353s, and the extra runner is free on a public repository.
+//
+// SPLITTING ONE SUITE ACROSS RUNNERS
+//
+// Turbo's unit of work is the package, so no packing gets a shard below its
+// largest suite. protocol-builder grew to 1,103s by November 2026 (run
+// 41408437901) and was the job that finished last on half of pull requests, so
+// its bucket declares `parts: 3`: the matrix runs it as three legs, and each
+// leg passes `-- --shard=<k>/3` through turbo to vitest. Turbo hashes
+// passed-through arguments, so each part caches on its own. The package's
+// vitest.sequencer.ts decides which files each part runs, by recorded
+// duration rather than vitest's default path hash. A bucket with `parts` must
+// own exactly one package: the argument reaches every suite in the run.
 //
 // TO REBALANCE: take a recent full-suite `test` shard log, read each package's
 // elapsed time, and re-pack. The weights are documentation, not inputs — only
@@ -107,9 +117,13 @@ const NOT_SHARDED = {
 };
 
 /**
+ * @typedef {{ shard: number, parts?: number, postgres?: true, browsers?: string, releaseBrowsers?: string, packages: { name: string, seconds: number }[] }} Bucket
+ */
+
+/**
  * The buckets, in shard order. `seconds` is the measured weight the packing
  * was built from and is never read by the code.
- * @type {{ shard: number, postgres?: true, packages: { name: string, seconds: number }[] }[]}
+ * @type {Bucket[]}
  */
 export const TEST_SHARDS = [
   // One suite, alone, because it is the floor: no bucket can finish sooner
@@ -117,7 +131,8 @@ export const TEST_SHARDS = [
   // whole workspace. Everything else is packed to sit under it.
   {
     shard: 1,
-    packages: [{ name: '@codaco/protocol-builder', seconds: 540 }],
+    parts: 3,
+    packages: [{ name: '@codaco/protocol-builder', seconds: 1103 }],
   },
   {
     shard: 2,
@@ -175,18 +190,84 @@ export const TEST_SHARDS = [
   },
 ];
 
-/** Every package name this module has assigned to a shard. */
-export function shardedPackages() {
-  return TEST_SHARDS.flatMap((s) => s.packages.map((p) => p.name));
+/**
+ * The `test-storybook` job's legs: each runs its bucket's `test:storybook`
+ * suites one at a time on a whole runner, because browsers starve each other
+ * on four cores. Weights are each suite's wall time in the full run
+ * 41074704120 (30 Oct 2026), which took 541s serially, fresco-ui with its
+ * Firefox pass. `browsers` is what the leg installs; `releaseBrowsers` is
+ * what it adds on a generated release PR, the only place fresco-ui's stories
+ * also run in Firefox (see its vitest.config.ts).
+ * @type {Bucket[]}
+ */
+export const STORYBOOK_SHARDS = [
+  {
+    shard: 1,
+    browsers: 'chromium',
+    releaseBrowsers: 'firefox',
+    packages: [{ name: '@codaco/fresco-ui', seconds: 201 }],
+  },
+  {
+    shard: 2,
+    browsers: 'chromium',
+    packages: [{ name: '@codaco/interview', seconds: 201 }],
+  },
+  {
+    shard: 3,
+    browsers: 'chromium',
+    packages: [
+      { name: '@codaco/protocol-builder', seconds: 68 },
+      { name: '@codaco/interviewer', seconds: 37 },
+      { name: '@codaco/architect', seconds: 20 },
+      { name: 'fresco', seconds: 13 },
+      // Joined after the weighing run (#2501, 12 story files); an estimate
+      // until a full run measures it.
+      { name: '@codaco/art', seconds: 10 },
+    ],
+  },
+];
+
+/**
+ * Each sharded suite: the package script it runs, its buckets, and the
+ * packages that carry that script but deliberately belong to no bucket.
+ * @type {Record<string, { script: string, shards: Bucket[], notSharded: Record<string, string> }>}
+ */
+const SUITES = {
+  test: { script: 'test', shards: TEST_SHARDS, notSharded: NOT_SHARDED },
+  storybook: {
+    script: 'test:storybook',
+    shards: STORYBOOK_SHARDS,
+    notSharded: {},
+  },
+};
+
+/** @param {string} suite */
+function suiteNamed(suite) {
+  const found = SUITES[suite];
+  if (!found) {
+    throw new Error(
+      `unknown suite ${suite}; defined suites are ${Object.keys(SUITES).join(', ')}`,
+    );
+  }
+  return found;
 }
 
 /**
- * Every workspace package that declares a `test` script, read from
+ * Every package name this module has assigned to a shard of `suite`.
+ * @param {string} [suite]
+ */
+export function shardedPackages(suite = 'test') {
+  return suiteNamed(suite).shards.flatMap((s) => s.packages.map((p) => p.name));
+}
+
+/**
+ * Every workspace package that declares `script`, read from
  * pnpm-workspace.yaml so a new package cannot slip past the coverage check.
  * @param {string} [root]
+ * @param {string} [script]
  * @returns {string[]}
  */
-export function workspaceTestPackages(root = REPO_ROOT) {
+export function workspaceTestPackages(root = REPO_ROOT, script = 'test') {
   const workspace = parse(
     readFileSync(join(root, 'pnpm-workspace.yaml'), 'utf8'),
   );
@@ -200,7 +281,7 @@ export function workspaceTestPackages(root = REPO_ROOT) {
       const manifest = JSON.parse(
         readFileSync(join(root, manifestPath), 'utf8'),
       );
-      if (manifest.scripts?.test) names.add(manifest.name);
+      if (manifest.scripts?.[script]) names.add(manifest.name);
     }
   }
   // Sorted so the emitted filter list is stable across platforms: it is
@@ -215,19 +296,30 @@ export function workspaceTestPackages(root = REPO_ROOT) {
  * bucket, stop being negated on that shard and run there concurrently with
  * the dedicated job it was carved out into.
  * @param {string[]} [testPackages]
+ * @param {string} [suite]
  */
-export function assertShardCoverage(testPackages = workspaceTestPackages()) {
-  const assigned = shardedPackages();
+export function assertShardCoverage(testPackages, suite = 'test') {
+  const { script, shards, notSharded } = suiteNamed(suite);
+  const packages = testPackages ?? workspaceTestPackages(REPO_ROOT, script);
+  const assigned = shardedPackages(suite);
   const seen = new Set();
   for (const name of assigned) {
     if (seen.has(name)) {
-      throw new Error(`${name} is assigned to more than one test shard`);
+      throw new Error(`${name} is assigned to more than one ${suite} shard`);
     }
     seen.add(name);
   }
 
+  for (const bucket of shards) {
+    if (bucket.parts !== undefined && bucket.packages.length !== 1) {
+      throw new Error(
+        `${suite} shard ${bucket.shard} is split into ${bucket.parts} parts, so it must own exactly one package: the part argument reaches every suite in the run`,
+      );
+    }
+  }
+
   for (const name of assigned) {
-    const reason = NOT_SHARDED[name];
+    const reason = notSharded[name];
     if (reason !== undefined) {
       throw new Error(
         `${name} is assigned to a test shard, but it is deliberately not sharded: it ${reason}. A shard that owns it stops negating it, so it would run there as well.`,
@@ -235,67 +327,91 @@ export function assertShardCoverage(testPackages = workspaceTestPackages()) {
     }
   }
 
-  const known = new Set(testPackages);
+  const known = new Set(packages);
   for (const name of assigned) {
     if (!known.has(name)) {
       throw new Error(
-        `test shard references ${name}, which is not a workspace package with a "test" script`,
+        `${suite} shard references ${name}, which is not a workspace package with a "${script}" script`,
       );
     }
   }
-  for (const name of Object.keys(NOT_SHARDED)) {
+  for (const name of Object.keys(notSharded)) {
     if (!known.has(name)) {
       throw new Error(
-        `NOT_SHARDED lists ${name}, which is not a workspace package with a "test" script`,
+        `NOT_SHARDED lists ${name}, which is not a workspace package with a "${script}" script`,
       );
     }
   }
 
-  const unassigned = testPackages.filter(
-    (name) => !seen.has(name) && !(name in NOT_SHARDED),
+  const unassigned = packages.filter(
+    (name) => !seen.has(name) && !(name in notSharded),
   );
   if (unassigned.length > 0) {
     throw new Error(
-      `these workspace packages declare a "test" script but belong to no test shard, so no shard would run them: ${unassigned.join(', ')}. Add each to a bucket in scripts/ci/test-shards.mjs (or to NOT_SHARDED with the job that does run it).`,
+      `these workspace packages declare a "${script}" script but belong to no ${suite} shard, so no shard would run them: ${unassigned.join(', ')}. Add each to a bucket in scripts/ci/test-shards.mjs (or to NOT_SHARDED with the job that does run it).`,
     );
   }
 }
 
 /**
  * The turbo arguments that restrict a run to one shard's bucket: one negation
- * per test-carrying package the shard does not own.
+ * per package carrying the suite's script that the shard does not own.
  * @param {number} shard
  * @param {string[]} [testPackages]
+ * @param {string} [suite]
  * @returns {string[]}
  */
-export function shardFilters(shard, testPackages = workspaceTestPackages()) {
-  assertShardCoverage(testPackages);
-  const bucket = TEST_SHARDS.find((s) => s.shard === shard);
+export function shardFilters(shard, testPackages, suite = 'test') {
+  const { script, shards } = suiteNamed(suite);
+  const packages = testPackages ?? workspaceTestPackages(REPO_ROOT, script);
+  assertShardCoverage(packages, suite);
+  const bucket = shards.find((s) => s.shard === shard);
   if (!bucket) {
     throw new Error(
-      `unknown test shard ${shard}; defined shards are ${TEST_SHARDS.map((s) => s.shard).join(', ')}`,
+      `unknown ${suite} shard ${shard}; defined shards are ${shards.map((s) => s.shard).join(', ')}`,
     );
   }
   const owned = new Set(bucket.packages.map((p) => p.name));
-  return testPackages
+  return packages
     .filter((name) => !owned.has(name))
     .map((name) => `--filter=!${name}`);
 }
 
+/**
+ * The suites split across several runners, as `<package> <parts>` lines, for
+ * the cache seed, which has to run each part to seed the entries the legs
+ * look up.
+ */
+export function splitSuites() {
+  return TEST_SHARDS.filter((s) => s.parts !== undefined).map(
+    (s) => `${s.packages[0].name} ${s.parts}`,
+  );
+}
+
 function main(argv) {
-  const [command, argument] = argv;
+  const [command, argument, suite = 'test'] = argv;
   if (command === 'filters') {
     const shard = Number(argument);
     if (!Number.isInteger(shard)) {
-      throw new Error(`usage: test-shards.mjs filters <shard>`);
+      throw new Error(`usage: test-shards.mjs filters <shard> [suite]`);
     }
-    return shardFilters(shard).join('\n');
+    return shardFilters(shard, undefined, suite).join('\n');
+  }
+  if (command === 'split') {
+    assertShardCoverage();
+    return splitSuites().join('\n');
   }
   if (command === 'check') {
-    assertShardCoverage();
-    return `every workspace test suite is covered by a shard (${shardedPackages().length} packages across ${TEST_SHARDS.length} shards)`;
+    return Object.keys(SUITES)
+      .map((name) => {
+        assertShardCoverage(undefined, name);
+        return `every workspace ${name} suite is covered by a shard (${shardedPackages(name).length} packages across ${suiteNamed(name).shards.length} shards)`;
+      })
+      .join('\n');
   }
-  throw new Error(`usage: test-shards.mjs <filters <shard>|check>`);
+  throw new Error(
+    `usage: test-shards.mjs <filters <shard> [suite]|split|check>`,
+  );
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
