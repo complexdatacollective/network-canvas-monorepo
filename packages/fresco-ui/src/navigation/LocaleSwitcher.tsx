@@ -475,6 +475,8 @@ export default function LocaleSwitcher({
               )}
             </Combobox.List>
             <div
+              // An <output> may hold only phrasing content, and the spinner is a block.
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
               role="status"
               aria-live="polite"
               className={

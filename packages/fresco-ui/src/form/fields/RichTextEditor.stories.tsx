@@ -772,7 +772,6 @@ function EditorWithValue({ initial }: { initial: JSONContent | undefined }) {
       <RichTextEditorField
         id="versions-editor"
         name="versions-editor"
-        aria-describedby=""
         aria-label="Question"
         singleLine
         toolbarOptions={{ headings: false, lists: false }}

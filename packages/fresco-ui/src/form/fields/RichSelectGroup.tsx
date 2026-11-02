@@ -329,6 +329,7 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
             useColumns,
             className,
           })}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a listbox of rich option cards, which <select> cannot render.
           role="listbox"
           aria-orientation={orientation}
           aria-label={fieldsetProps['aria-label']}

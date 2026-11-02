@@ -159,6 +159,44 @@ describe('Collection Filtering', () => {
       expect(screen.getByRole('status')).toBeEmptyDOMElement();
     });
 
+    // A <label> wrapped around the field labels its first labelable
+    // descendant. The status region comes before the input, so it must not
+    // be labelable itself (an <output> would be) or it takes the label.
+    it('lets a wrapping label name and focus the search input', async () => {
+      const user = userEvent.setup();
+      const layout = new ListLayout<Item>({ gap: 8 });
+      render(
+        <Collection
+          items={testItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={layout}
+          aria-label="Labelled collection"
+          filterKeys={['name']}
+          renderItem={(item, itemProps) => (
+            <div {...itemProps}>{item.name}</div>
+          )}
+        >
+          {(CollectionElements) => (
+            <>
+              {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- CollectionFilterInput renders the input inside this label. */}
+              <label>
+                <span>Find an item</span>
+                <CollectionFilterInput placeholder="Search..." />
+              </label>
+              {CollectionElements}
+            </>
+          )}
+        </Collection>,
+      );
+
+      const input = screen.getByPlaceholderText('Search...');
+      expect(screen.getByLabelText('Find an item')).toBe(input);
+
+      await user.click(screen.getByText('Find an item'));
+      expect(input).toHaveFocus();
+    });
+
     it('should render all items initially', () => {
       render(<FilterableCollection />);
 
