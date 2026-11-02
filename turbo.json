@@ -584,6 +584,7 @@
         "__tests__/**",
         "vitest.config.*",
         "vitest.setup.*",
+        "vitest.sequencer.*",
         "config/vitest/**",
         "package.json",
         ".env",
