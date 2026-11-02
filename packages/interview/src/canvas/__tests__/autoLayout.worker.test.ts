@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { VariableOptionValue } from '@codaco/protocol-validation';
 
-import { collideRadiusForNode } from '../layoutGeometry';
+import { collideRadiusForNode, EDGE_GAP_RATIO } from '../layoutGeometry';
 
 // The shared auto-layout worker drives a REAL d3-force simulation (unlike the
 // legacy Sociogram worker test, which mocks d3-force). We spy on
@@ -192,7 +192,7 @@ describe('autoLayout worker', () => {
     expect(link.distance()(liveLinks[0]!, 0, liveLinks)).toBeCloseTo(
       1.8 * (collideRadiusForNode(48) / 800),
     );
-    expect(link.strength()(liveLinks[0]!, 0, liveLinks)).toBe(1);
+    expect(link.strength()(liveLinks[0]!, 0, liveLinks)).toBe(2);
     expect(link.iterations()).toBe(3);
   });
 
@@ -344,8 +344,8 @@ describe('autoLayout worker', () => {
     expect(capturedSim!.force('anchorY')).toBeTruthy();
   });
 
-  it('keeps people round until the first link exists, then takes the canvas shape', () => {
-    const spread = (links: SimLink[]) => {
+  it('keeps people round until the first link exists, then puts people with no ties on an oval ring', () => {
+    const layout = (links: SimLink[]) => {
       posted = [];
       handleMessage({
         type: 'initialize',
@@ -359,21 +359,39 @@ describe('autoLayout worker', () => {
         options: SCRATCH_OPTIONS,
       });
       handleMessage({ type: 'start' });
-      const end = posted.find((m) => m.type === 'end')!;
-      const xs = end.nodes.map((n) => n.x ?? 0);
-      const ys = end.nodes.map((n) => n.y ?? 0);
+      return posted.find((m) => m.type === 'end')!.nodes;
+    };
+    const spread = (nodes: SimNode[]) => {
+      const xs = nodes.map((n) => n.x ?? 0);
+      const ys = nodes.map((n) => n.y ?? 0);
       return {
         x: Math.max(...xs) - Math.min(...xs),
         y: Math.max(...ys) - Math.min(...ys),
       };
     };
 
-    const round = spread([]);
+    const round = spread(layout([]));
     expect(round.x / round.y).toBeLessThan(1.3);
     expect(round.y / round.x).toBeLessThan(1.3);
 
-    const wide = spread([{ source: 0, target: 1 }]);
-    expect(wide.x).toBeGreaterThan(2 * wide.y);
+    const nodes = layout([{ source: 0, target: 1 }]);
+    const wide = spread(nodes);
+    expect(wide.x).toBeGreaterThan(1.3 * wide.y);
+    const { simWidth, boundsInset } = SCRATCH_OPTIONS;
+    const halfX = simWidth / 2 - boundsInset;
+    const halfY = 0.5 - boundsInset;
+    const ring = {
+      x: 0.78 * (halfX + (halfY - halfX) * 0.5),
+      y: 0.78 * halfY,
+    };
+    for (const loner of nodes.slice(2)) {
+      const onRing = Math.hypot(
+        ((loner.x ?? 0) - simWidth / 2) / ring.x,
+        ((loner.y ?? 0) - 0.5) / ring.y,
+      );
+      expect(onRing).toBeGreaterThan(0.8);
+      expect(onRing).toBeLessThan(1.4);
+    }
   });
 
   it('ignores a repeated start once the layout has settled', () => {
@@ -435,6 +453,47 @@ describe('autoLayout worker', () => {
     });
     expect(closest).toBeGreaterThanOrEqual(2 * SIM_COLLIDE_RADIUS - 1e-9);
     expect((closestBetweenTied - 2 * radius) / radius).toBeGreaterThan(1.4);
+  });
+
+  it('keeps ties short from scratch', () => {
+    const tree: SimLink[] = [
+      [0, 1],
+      [0, 2],
+      [0, 3],
+      [1, 4],
+      [1, 5],
+      [2, 6],
+      [2, 7],
+      [3, 8],
+      [4, 9],
+      [6, 10],
+      [8, 11],
+      [8, 12],
+      [11, 13],
+    ].map(([source, target]) => ({ source: source!, target: target! }));
+    handleMessage({
+      type: 'initialize',
+      nodes: Array.from({ length: 18 }, (_, i) => ({
+        nodeId: `n${i}`,
+        x: 0.8,
+        y: 0.5,
+        placed: false,
+      })),
+      links: tree,
+      options: SCRATCH_OPTIONS,
+    });
+    handleMessage({ type: 'start' });
+
+    const nodes = posted.find((m) => m.type === 'end')!.nodes;
+    const longest = Math.max(
+      ...tree.map(({ source, target }) => {
+        const a = nodes[source as number]!;
+        const b = nodes[target as number]!;
+        return Math.hypot((a.x ?? 0) - (b.x ?? 0), (a.y ?? 0) - (b.y ?? 0));
+      }),
+    );
+    const radius = SIM_COLLIDE_RADIUS / (1 + EDGE_GAP_RATIO);
+    expect(longest).toBeLessThan(4 * radius);
   });
 
   it('untangles the best layout from scratch', () => {

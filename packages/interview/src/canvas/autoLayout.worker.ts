@@ -99,7 +99,7 @@ const DEFAULT_OPTIONS: AutoLayoutOptions = {
   // Firm enough that connected nodes reach the collision floor during the anneal
   // and stay pressed there against charge, giving connected pairs a visibly
   // tighter spacing than the charge-spread unconnected pairs.
-  linkStrength: 1,
+  linkStrength: 2,
   // Symmetric horizontal and vertical positioning forces keep every interface's
   // composition centered. Fractions are targets within the simulation extents.
   biasXFraction: 0.5,
@@ -137,10 +137,11 @@ const EARLY_STOP_MAX_SPEED = 0.0008;
 // Displacement-proportional, so scale-invariant across canvas sizes.
 const GROUP_COHESION_STRENGTH = 0.1;
 
-// A new node with no placed neighbours starts in the emptiest spot on this
-// oval ring.
+// Once the first tie exists, people with no ties or groups sit on this oval
+// ring, and a new node with no placed neighbours starts in its emptiest spot.
 const RING_RADIUS = 0.78;
 const RING_ROUNDNESS = 0.5;
+const RING_STRENGTH = 0.4;
 const LINK_ITERATIONS = 3;
 const COMPONENT_GAP = 2;
 const COMPONENT_GAP_STRENGTH = 0.25;
@@ -317,6 +318,13 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   // Until the first link exists the composition stays round.
   const anyLinks = links.length > 0;
   const components = componentIds(sim.nodes().length);
+  const linked = new Set(linkEndpoints().flat());
+  const isolated = sim
+    .nodes()
+    .map(
+      (node, index) =>
+        anyLinks && !linked.has(index) && !node.groupKeys?.length,
+    );
   if (options.charge !== 0) {
     // Guard against an empty seed so the divisor is never 0.
     const nodeCount = Math.max(sim.nodes().length, 1);
@@ -384,6 +392,7 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   // divided by aspect² so the composition takes the canvas shape.
   const members = new Map<number, number[]>();
   components.forEach((component, index) => {
+    if (isolated[index]) return;
     members.set(component, [...(members.get(component) ?? []), index]);
   });
   const aspect =
@@ -419,8 +428,9 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   sim.force('componentGap', () => {
     const nodes = sim.nodes();
     for (let i = 0; i < nodes.length; i += 1) {
+      if (!linked.has(i)) continue;
       for (let j = i + 1; j < nodes.length; j += 1) {
-        if (components[i] === components[j]) continue;
+        if (!linked.has(j) || components[i] === components[j]) continue;
         const a = nodes[i]!;
         const b = nodes[j]!;
         const dx = (b.x ?? 0) + (b.vx ?? 0) - (a.x ?? 0) - (a.vx ?? 0);
@@ -435,6 +445,22 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
       }
     }
   });
+  const ring = ringAxes();
+  if (ring) {
+    sim.force('ring', (alpha: number) => {
+      sim.nodes().forEach((node, index) => {
+        if (!isolated[index]) return;
+        if (node.x == null || node.y == null) return;
+        const dx = node.x - ring.cx;
+        const dy = node.y - ring.cy;
+        const scale = Math.hypot(dx / ring.ax, dy / ring.ay) || 1e-6;
+        node.vx = (node.vx ?? 0) + (dx / scale - dx) * RING_STRENGTH * alpha;
+        node.vy = (node.vy ?? 0) + (dy / scale - dy) * RING_STRENGTH * alpha;
+      });
+    });
+  } else {
+    sim.force('ring', null);
+  }
 };
 
 // Holds placed nodes near where they are now, so a change re-settles the
