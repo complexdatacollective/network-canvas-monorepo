@@ -220,6 +220,9 @@ export const STORYBOOK_SHARDS = [
       { name: '@codaco/interviewer', seconds: 37 },
       { name: '@codaco/architect', seconds: 20 },
       { name: 'fresco', seconds: 13 },
+      // Joined after the weighing run (#2501, 12 story files); an estimate
+      // until a full run measures it.
+      { name: '@codaco/art', seconds: 10 },
     ],
   },
 ];

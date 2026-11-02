@@ -35,11 +35,11 @@ to satisfy required contexts that only `main` has.
 #### Storybook interaction tests
 
 `test:storybook` (`vitest run --project=storybook`) executes every story's
-play function and assertions in a real browser. Six workspaces define it:
-`@codaco/architect`, `@codaco/fresco-ui`, `@codaco/interview`,
+play function and assertions in a real browser. Seven workspaces define it:
+`@codaco/architect`, `@codaco/art`, `@codaco/fresco-ui`, `@codaco/interview`,
 `@codaco/interviewer`, `@codaco/protocol-builder`, and `fresco`. The
 `test-storybook` CI job runs them through Turbo in three legs (fresco-ui;
-interview; the other four) and the `quality` gate requires it. fresco-ui's
+interview; the other five) and the `quality` gate requires it. fresco-ui's
 stories also run in Firefox, but in CI only on generated release PRs
 (`STORYBOOK_FIREFOX`, read by its `vitest.config.ts`). Chromatic does
 not replace this: it has no project for Architect, Fresco or Protocol Builder,
