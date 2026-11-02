@@ -315,15 +315,15 @@ const Fallback = ({
 const ProblemNote = ({ id, children }: { id: string; children: string }) => {
   const intl = useAppIntl();
   return (
-    <p
+    <output
       id={id}
-      role="status"
+      aria-live="polite"
       lang={intl.locale}
       dir="auto"
-      className="text-destructive-ink px-3 pb-2 text-sm"
+      className="text-destructive-ink block px-3 pb-2 text-sm"
     >
       {children}
-    </p>
+    </output>
   );
 };
 
@@ -617,6 +617,7 @@ const CellOpener = ({
     type="button"
     aria-labelledby={labelledBy}
     aria-describedby={describedBy}
+    // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- the closed cell's opener stands in for the editor it opens; screen readers still say "invalid entry" for it, which the description alone does not.
     aria-invalid={invalid}
     data-row={rowIndex}
     data-col={colIndex}
