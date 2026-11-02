@@ -14,8 +14,9 @@ export function EmptyResults({
       noContainer
       spacing="lg"
       shadow="sm"
-      role="status"
-      className="mx-auto max-w-lg"
+      as="output"
+      aria-live="polite"
+      className="mx-auto block max-w-lg"
     >
       <Heading level="h3" margin="none">
         {heading}

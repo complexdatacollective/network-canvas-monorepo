@@ -32,12 +32,12 @@ export function PreviewMessageScreen({
 
 export function PreviewLoadingScreen({ label }: { label: string }) {
   return (
-    <div
-      role="status"
+    <output
+      aria-live="polite"
       className="flex min-h-dvh flex-col items-center justify-center gap-4 p-8 text-center"
     >
       <Spinner size="lg" />
       <Paragraph margin="none">{label}</Paragraph>
-    </div>
+    </output>
   );
 }
