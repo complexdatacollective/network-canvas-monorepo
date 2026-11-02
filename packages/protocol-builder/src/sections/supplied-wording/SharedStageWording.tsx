@@ -1,5 +1,5 @@
 import { isEqual } from 'es-toolkit';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useId, useState } from 'react';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -22,6 +22,7 @@ import {
   nameInterfaceTextGroup,
 } from '../../localization/interfaceTextNames.ts';
 import { useProtocolLocalization } from '../../localization/ProtocolLocalization.tsx';
+import { useLatest } from '../../state/useLatest.ts';
 import type {
   SharedWordingGroup,
   SharedWordingWrites,
@@ -112,12 +113,15 @@ function SharedWordingGroupFields({
   const [refusals, setRefusals] = useState<ReadonlyMap<string, string>>(
     () => new Map(),
   );
-  const latest = useRef({ drafts, entries });
-  latest.current = { drafts, entries };
+  const latest = useLatest({ drafts, entries });
 
   // A draft the protocol has caught up with is the protocol's again, so a
   // collaborator's later change is shown rather than hidden behind it.
-  useEffect(() => {
+  // Adjusted during render, as the protocol's entries change, rather than in
+  // an effect.
+  const [seenEntries, setSeenEntries] = useState(entries);
+  if (seenEntries !== entries) {
+    setSeenEntries(entries);
     setDrafts((current) => {
       const caughtUp = [...current].filter(([key, value]) =>
         isEqual(entries.find(([held]) => held === key)?.[1], value),
@@ -127,11 +131,11 @@ function SharedWordingGroupFields({
       for (const [key] of caughtUp) next.delete(key);
       return next;
     });
-  }, [entries]);
+  }
 
   const flush = useCallback(async () => {
     if (localization === undefined || readOnly) return;
-    const { drafts: pending, entries: held } = latest.current;
+    const { drafts: pending, entries: held } = latest();
     const updates = [...pending].flatMap(([key, value]) => {
       const current = held.find(([heldKey]) => heldKey === key)?.[1];
       return isEqual(current, value) ||
@@ -152,12 +156,11 @@ function SharedWordingGroupFields({
       }
       return next;
     });
-  }, [group, intl, localization, readOnly, writes]);
+  }, [group, intl, latest, localization, readOnly, writes]);
 
   // Leaving the editor with focus still in a field writes what it holds.
-  const flushOnLeave = useRef(flush);
-  flushOnLeave.current = flush;
-  useEffect(() => () => void flushOnLeave.current(), []);
+  const flushOnLeave = useEffectEvent(() => void flush());
+  useEffect(() => () => flushOnLeave(), []);
 
   if (localization === undefined) return null;
 

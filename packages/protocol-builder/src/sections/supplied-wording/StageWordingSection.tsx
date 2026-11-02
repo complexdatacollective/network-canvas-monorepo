@@ -262,12 +262,14 @@ function WordingParts({
     paths.some((path) => refusesSetting(issue.path, path)),
   );
   const refused = fieldRefused || issueRefused;
-  useEffect(() => {
-    if (!refused) return;
-    setOpen((current) =>
-      current.includes(SPECIFIC) ? current : [...current, SPECIFIC],
-    );
-  }, [refused]);
+  // Adjusted during render, as a refusal arrives, rather than in an effect:
+  // a part opened a frame late would draw the refused field one frame after
+  // the refusal.
+  const [seenRefused, setSeenRefused] = useState(false);
+  if (seenRefused !== refused) {
+    setSeenRefused(refused);
+    if (refused && !open.includes(SPECIFIC)) setOpen([...open, SPECIFIC]);
+  }
 
   const parts = [
     { value: SPECIFIC, title: messages.specificHeading, body: children },
