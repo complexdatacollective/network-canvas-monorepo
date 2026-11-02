@@ -6,9 +6,11 @@ import Color from 'colorjs.io';
  *
  *  1. Every fill / `-contrast` pair, in every theme and mode, reaches AA
  *     (4.5:1, the normal-size text criterion, SC 1.4.3). Pairs that fall short
- *     today are listed in KNOWN_FAILURES with a reason; the list is compared
- *     for exact equality, so a new failure fails the test and so does a known
- *     failure that starts passing.
+ *     today are listed in KNOWN_FAILURES with a reason, and each is reported
+ *     as a warning on every run (a GitHub Actions warning annotation in CI) so
+ *     it stays visible rather than accepted. The list is compared for exact
+ *     equality, so a new failure fails the test and so does a known failure
+ *     that starts passing.
  *  2. Every ratio quoted in a comment in those files (`recorded-ratios.ts`)
  *     still agrees with the colours it was measured on, to within
  *     RATIO_TOLERANCE, and every ratio the files quote is accounted for.
@@ -367,6 +369,27 @@ describe('WCAG 2.2 AA (4.5:1) for every fill / -contrast pair', () => {
       pairKey(entry.scope, entry),
     ).toSorted();
     expect(failing).toEqual(known);
+  });
+
+  // The design owner keeps these colours and wants each shortfall flagged, not
+  // failed: the test passes, and every run prints one warning per known pair.
+  test('reports every known failure as a warning', () => {
+    const known = rows.filter((row) => isKnownFailure(row.scope, row.pair));
+    expect(known).toHaveLength(KNOWN_FAILURES.length);
+    for (const row of known) {
+      const entry = KNOWN_FAILURES.find(
+        (candidate) =>
+          candidate.scope === row.scope &&
+          candidate.fill === row.pair.fill &&
+          candidate.contrast === row.pair.contrast,
+      );
+      const message = `${row.scope} ${row.pair.fill} / ${row.pair.contrast} is ${row.ratio.toFixed(2)}:1, below WCAG AA ${AA_NORMAL_TEXT}:1. ${entry?.reason ?? ''}`;
+      console.warn(
+        process.env.GITHUB_ACTIONS === 'true'
+          ? `::warning title=Theme contrast below WCAG AA::${message}`
+          : `Theme contrast warning: ${message}`,
+      );
+    }
   });
 
   test('every known failure has a reason', () => {
