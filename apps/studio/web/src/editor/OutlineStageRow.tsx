@@ -41,10 +41,10 @@ type OutlineStageRowProps = {
   onSelect: () => void;
   /**
    * Moves the screen to `targetIndex`. Returns `false` when the move was
-   * refused, so nothing waits to give focus back for a move that never
-   * happened.
+   * refused, or a promise of whether the server kept it, so nothing waits to
+   * give focus back for a move that never happened.
    */
-  onMove: (stageId: string, targetIndex: number) => boolean;
+  onMove: (stageId: string, targetIndex: number) => false | Promise<boolean>;
 };
 
 /**
@@ -101,8 +101,16 @@ export default function OutlineStageRow({
   ) => {
     // `aria-disabled` does not stop a click, so the handler does.
     if (!available) return;
-    buttonMove.current = { control: event.currentTarget, fromIndex: index };
-    if (!onMove(stageId, targetIndex)) buttonMove.current = null;
+    const claim = { control: event.currentTarget, fromIndex: index };
+    buttonMove.current = claim;
+    // Withdrawn only if it is still this press's: a later press owns its own.
+    const withdraw = () => {
+      if (buttonMove.current === claim) buttonMove.current = null;
+    };
+    const answer = onMove(stageId, targetIndex);
+    if (answer === false) withdraw();
+    else
+      void answer.then((moved) => (moved ? undefined : withdraw()), withdraw);
   };
 
   return (

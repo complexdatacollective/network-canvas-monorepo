@@ -803,6 +803,10 @@ function EditorWorkspace({
     },
   });
   const moveBlocked = moveStage.isError || reconcilingMove;
+  // The screen whose move is with the server, and whether it landed.
+  const moveInFlight = useRef<
+    { stageId: string; landed: Promise<boolean> } | undefined
+  >(undefined);
 
   // Whether a screen may be moved to `toIndex` right now, for the outline's
   // controls. A move in flight counts as unavailable, but is not a reason to
@@ -820,33 +824,46 @@ function EditorWorkspace({
   // somewhere else is how a move computed from THIS order was accepted against
   // another one.
   //
-  // Returns whether the move was accepted. A move already in flight is
-  // answered `true` without being repeated: the control that asked is waiting
-  // for the list to reorder around it, and saying `false` would tell it
-  // nothing is coming.
-  const requestMoveStage = (stageId: string, toIndex: number): boolean => {
+  // Answers `false` for a move refused on the spot, and otherwise a promise of
+  // whether the server kept it, so a control waiting to take focus back after
+  // the list reorders stops waiting for a move that never landed. A second
+  // press on the screen whose move is in flight is not repeated; it is given
+  // that move's answer, since its control is waiting on the same reorder.
+  const requestMoveStage = (
+    stageId: string,
+    toIndex: number,
+  ): false | Promise<boolean> => {
     const fromIndex = stages.findIndex((stage) => stage.id === stageId);
     const stage = stages[fromIndex];
     if (revision === undefined || stage === undefined || moveBlocked) {
       return false;
     }
-    if (moveStage.isPending) return true;
+    if (moveStage.isPending) {
+      const inFlight = moveInFlight.current;
+      return inFlight?.stageId === stageId ? inFlight.landed : false;
+    }
     const name = stageLabel(intl, stage, fromIndex);
     if (moveAddsTimelineProblems(stages, fromIndex, toIndex)) {
       announce(intl.formatMessage(messages.screenMoveRefused, { name }));
       return false;
     }
-    moveStage.mutate({
-      stageId,
-      toIndex,
-      expectedRevision: revision,
-      announcement: intl.formatMessage(messages.screenMoved, {
-        name,
-        position: toIndex + 1,
-        total: stages.length,
-      }),
-    });
-    return true;
+    const landed = moveStage
+      .mutateAsync({
+        stageId,
+        toIndex,
+        expectedRevision: revision,
+        announcement: intl.formatMessage(messages.screenMoved, {
+          name,
+          position: toIndex + 1,
+          total: stages.length,
+        }),
+      })
+      .then(
+        () => true,
+        () => false,
+      );
+    moveInFlight.current = { stageId, landed };
+    return landed;
   };
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -857,6 +874,16 @@ function EditorWorkspace({
   // section that holds it, then moves focus to the field. A problem that names
   // no field this editor has (the interview as a whole, a section not built
   // yet) lands on the nearest thing that does exist, never on the page body.
+  //
+  // Focus moves once the selection that opens the problem has been DRAWN, not
+  // when it has been asked for. After a discard prompt the selection is set
+  // outside any event, and React draws it after the code that asked has
+  // already carried on, which would then search the canvas it is leaving and
+  // land on a field of the screen being closed. Each request is a fresh object
+  // so that asking twice for the same problem moves focus twice.
+  const [problemToReach, setProblemToReach] = useState<{
+    target: Exclude<ProblemTarget, { kind: 'outline' }>;
+  }>();
   const goToProblem = async (target: ProblemTarget) => {
     if (target.kind === 'outline') {
       outlineRef.current?.focus();
@@ -867,8 +894,11 @@ function EditorWorkspace({
         ? { kind: 'stage', stageId: target.stageId }
         : { kind: target.section },
     );
-    if (!opened) return;
-
+    if (opened) setProblemToReach({ target });
+  };
+  useEffect(() => {
+    if (problemToReach === undefined) return;
+    const { target } = problemToReach;
     if (target.kind === 'section') {
       // The section's heading is the only thing its canvas has to land on.
       canvasRef.current
@@ -876,13 +906,16 @@ function EditorWorkspace({
         ?.focus();
       return;
     }
-    // The screen's own entry in the outline names it, and is the selected one.
+    // The canvas now holds the target screen's editor, which is keyed by the
+    // screen and draws nothing until that screen has been read, so no field
+    // found here belongs to the screen that was open before. The screen's own
+    // entry in the outline names it, and is the selected one.
     focusField(target.fieldNames, () =>
       outlineRef.current
         ?.querySelector<HTMLElement>('[aria-current="page"]')
         ?.focus(),
     );
-  };
+  }, [problemToReach, focusField]);
 
   // The reading is what reports a failure, so a retry that fails again has
   // nothing to add: it puts the same message back on screen.

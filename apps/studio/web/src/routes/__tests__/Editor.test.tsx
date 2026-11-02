@@ -1803,6 +1803,12 @@ function holdMoves() {
   };
 }
 
+/** Two animation frames: long enough for any refocus a reorder schedules to run. */
+const nextFrames = async () => {
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+};
+
 const nameButton = (name: string) =>
   screen.getByRole('button', { name: `${name}Information` });
 
@@ -1951,6 +1957,82 @@ describe('reordering screens in the outline', () => {
     expect(moveDown).toHaveAttribute('aria-disabled', 'false');
   });
 
+  /**
+   * A move the server did not keep leaves the screen where it was, so its
+   * control has nothing to wait for. Still waiting, it would take focus the
+   * next time ANY move shifted the screen, from whichever control made that
+   * move.
+   */
+  it('stops waiting to take focus back after a move the server did not keep, when using the buttons', async () => {
+    holdMoves();
+    moveStage.mockReturnValueOnce(Effect.die(new Error('response lost')));
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+
+    const welcomeDown = screen.getByRole('button', {
+      name: 'Move Welcome, from the host down',
+    });
+    welcomeDown.focus();
+    fireEvent.click(welcomeDown);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Refresh order' }),
+    );
+    const followUpUp = screen.getByRole('button', {
+      name: 'Move Follow-up up',
+    });
+    await waitFor(() =>
+      expect(followUpUp).toHaveAttribute('aria-disabled', 'false'),
+    );
+
+    // Moving Follow-up up shifts Welcome down a place, which is what a stale
+    // wait on Welcome's button would answer by taking focus.
+    followUpUp.focus();
+    fireEvent.click(followUpUp);
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'Welcome, from the hostInformation',
+        'ThirdInformation',
+      ]),
+    );
+    await waitFor(() => expect(followUpUp).toHaveFocus());
+    await nextFrames();
+    expect(followUpUp).toHaveFocus();
+  });
+
+  it('stops waiting to take focus back after a move the server did not keep, when using the arrow keys', async () => {
+    holdMoves();
+    moveStage.mockReturnValueOnce(Effect.die(new Error('response lost')));
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+
+    const welcome = nameButton('Welcome, from the host');
+    welcome.focus();
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Refresh order' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Move Follow-up up' }),
+      ).toHaveAttribute('aria-disabled', 'false'),
+    );
+
+    const followUp = nameButton('Follow-up');
+    followUp.focus();
+    fireEvent.keyDown(followUp, { key: 'ArrowUp' });
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'Welcome, from the hostInformation',
+        'ThirdInformation',
+      ]),
+    );
+    await waitFor(() => expect(followUp).toHaveFocus());
+    await nextFrames();
+    expect(followUp).toHaveFocus();
+  });
+
   it('does not announce a move the server did not keep', async () => {
     moveStage.mockReturnValueOnce(Effect.die(new Error('response lost')));
     renderEditor();
@@ -2023,6 +2105,65 @@ describe('the validation problems', () => {
     expect(
       screen.getByRole('button', { name: 'Follow-upInformation' }),
     ).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('focus the field of the screen they open after unsaved changes are discarded', async () => {
+    await seedHost(BLANK_TITLE);
+    renderEditor();
+    // The open screen has a field of the same name as the one the problem is
+    // about, and it is that screen which is dirty.
+    const openField = await findStageNameField();
+    fireEvent.change(openField, { target: { value: 'Unsaved welcome' } });
+
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
+    );
+    const discard = await screen.findByRole('button', {
+      name: 'Discard changes',
+    });
+    // Everything focus passes through on the way. A field of the screen being
+    // closed would be focused and then taken off the page with its screen,
+    // even if something put focus right again afterwards.
+    const focused: Element[] = [];
+    const record = (event: FocusEvent) => {
+      if (event.target instanceof Element) focused.push(event.target);
+    };
+    document.addEventListener('focusin', record);
+    try {
+      fireEvent.click(discard);
+      await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+    } finally {
+      document.removeEventListener('focusin', record);
+    }
+
+    expect(focused.filter((element) => !element.isConnected)).toEqual([]);
+    expect(openField).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Follow-upInformation' }),
+    ).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('open a section after unsaved changes are discarded, and focus it', async () => {
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      settings: { ...DRAFT_SECTIONS.settings, name: '' },
+    });
+    renderEditor();
+    const openField = await findStageNameField();
+    fireEvent.change(openField, { target: { value: 'Unsaved welcome' } });
+
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Settings$/ }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Protocol settings' }),
+      ).toHaveFocus(),
+    );
   });
 
   it('focus the field at once when its screen is already open', async () => {
