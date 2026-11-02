@@ -625,6 +625,100 @@ jobs:
             echo "::warning::warm-playwright-cache did not warm the shared browser cache (install: $INSTALL_OUTCOME). Every e2e job on the next pull requests will install browsers itself until a later push to main succeeds."
           fi
 
+  # Writes the build cache of the two Studio images, which every pull
+  # request's `studio-stack` and `studio-egress` legs read.
+  #
+  # Only main writes it. A cache a pull request writes is readable by that
+  # pull request alone, the repository's Actions cache sits at its 10 GB
+  # ceiling (see `warm-playwright-cache`), and preparing the export cost each
+  # pull-request build about 96 seconds.
+  #
+  # And main writes it only when the part worth reading can have changed. The
+  # Dockerfile copies the whole repository before `turbo prune`, so the
+  # application builds after the dependency install run again on every source
+  # change whatever the cache holds. What a pull request reads back is the
+  # base image, apt, and `pnpm install` from the pruned manifests, and those
+  # change only with the lockfile, a workspace manifest or the Dockerfile.
+  # `mode=max` exports the build stages too, so warming on every push would
+  # write layers no pull request reads on every merge, and push other jobs'
+  # entries out of the cache.
+  warm-studio-image-cache:
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || (github.event_name == 'workflow_dispatch'
+      && github.ref == 'refs/heads/main')
+    # Cache warming only: a failure here must not fail the push run, which
+    # also carries the release jobs.
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - name: Decide whether the dependency layers need writing
+        id: decide
+        env:
+          BEFORE: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          warm() {
+            echo "warm=true" >> "$GITHUB_OUTPUT"
+            echo "Writing the Studio image cache: $1"
+            exit 0
+          }
+          [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]] && warm "dispatched by hand"
+
+          # Missing, or evicted under the cache ceiling: write it whatever the
+          # push changed. A failed listing counts as missing, which costs one
+          # extra write rather than a pull request without a cache.
+          for target in studio-api studio-web; do
+            if ! count="$(gh cache list --ref refs/heads/main --limit 1000 --json key \
+                --jq "[.[] | select(.key | contains(\"studio-stack-$target\"))] | length")" \
+              || [[ "$count" == "0" ]]; then
+              warm "main holds no cache for $target"
+            fi
+          done
+
+          if ! git fetch --no-tags --depth=1 origin "$BEFORE" 2>/dev/null; then
+            warm "the previous tip $BEFORE could not be fetched"
+          fi
+          if ! git diff --quiet "$BEFORE" HEAD -- \
+              pnpm-lock.yaml pnpm-workspace.yaml .dockerignore \
+              apps/studio/Dockerfile ':(glob)**/package.json'; then
+            warm "this push changed the dependency layers' inputs"
+          fi
+          echo "warm=false" >> "$GITHUB_OUTPUT"
+          echo "The dependency layers' inputs are unchanged and main's cache exists; nothing to write"
+      - name: Select a cache-capable builder
+        if: steps.decide.outputs.warm == 'true'
+        run: docker buildx create --name studio-stack --driver docker-container --use
+      # See `studio-stack` for why the cache service is exposed this way.
+      - name: Expose the Actions cache service to the build
+        if: steps.decide.outputs.warm == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            for (const name of [
+              'ACTIONS_RUNTIME_TOKEN',
+              'ACTIONS_CACHE_URL',
+              'ACTIONS_RESULTS_URL',
+            ]) {
+              const value = process.env[name];
+              if (value) core.exportVariable(name, value);
+            }
+      - name: Build the stack images into the cache
+        if: steps.decide.outputs.warm == 'true'
+        env:
+          BUILDX_BUILDER: studio-stack
+          BUILD_CACHE_FROM: type=gha,version=2,scope=studio-stack-{target}
+          # Not `ignore-error`: an export the service refuses is this job's
+          # whole purpose failing, and the job is `continue-on-error`, so
+          # failing it says so without failing the run.
+          BUILD_CACHE_TO: type=gha,version=2,scope=studio-stack-{target},mode=max
+        run: apps/studio/stack-test/build.sh
+
   seed-turbo-cache:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Cache warming only — a flake here must not fail the push run, which also
@@ -1148,32 +1242,45 @@ jobs:
       && inputs.interview_e2e_benchmark == true)
       && needs.detect.outputs.studio == 'true'
     runs-on: ubuntu-latest
-    # A cold build of studio-api is most of this, and the GitHub Actions cache
-    # below is what keeps it off the critical path on every run after the
-    # first. Once the images exist, each variant is one up/assert/down cycle.
-    # two-api is the longest: it waits out a lock's 30 second lease with one
-    # replica stopped, then relays a save from one replica to a tab watching
-    # on the other.
+    # Three legs, each on its own runner, because the seven variants share a
+    # Compose project name, the host's ports 80 and 443, and two fixed
+    # subnets, so on one host they can only run one after another (about 5.5
+    # minutes on 2 Nov 2026). Nothing else ties one variant to another. Each
+    # leg builds the images itself, from the cache main writes, and runs its
+    # variants in turn: the reference stack with the participant walk-through;
+    # the own-proxy and two-api variants (about 140s; two-api waits out a
+    # lock's 30-second lease with one replica stopped, then relays a save
+    # from one replica to a tab watching on the other); and the four store
+    # swaps (about 100s).
+    name: studio-stack (${{ matrix.leg }})
     timeout-minutes: 40
+    strategy:
+      # Every leg's verdict is wanted: a failed swap must not cancel the
+      # reference stack and hide whether it passed.
+      fail-fast: false
+      matrix:
+        include:
+          - leg: reference
+          - leg: ingress-and-replicas
+          - leg: swapped-stores
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      # `--cache-to type=gha` needs a builder that can export a cache, and the
-      # runner's default one is the `docker` driver, which cannot — it fails
-      # the build rather than ignoring the flag. One `buildx create` rather
-      # than a third-party action: this is the whole of what that action would
-      # do here; `build.sh` calls `docker buildx build`, which follows the
-      # selected builder (`docker build` on this runner does not, and fails).
-      # `docker buildx use` alone was not enough: the first run built on the
-      # default driver and could not export the cache.
+      # `--cache-from type=gha` needs a builder that can read the Actions
+      # cache, and the runner's default one is the `docker` driver, which
+      # cannot. One `buildx create` rather than a third-party action: this is
+      # the whole of what that action would do here; `build.sh` calls `docker
+      # buildx build`, which follows the selected builder (`docker build` on
+      # this runner does not, and fails). `docker buildx use` alone was not
+      # enough: the first run built on the default driver.
       - name: Select a cache-capable builder
         run: docker buildx create --name studio-stack --driver docker-container --use
       # The `gha` cache backend authenticates with the job's runtime token, and
       # GitHub exposes that (and the cache service address) to ACTIONS, not to
       # `run:` steps — which is why `docker/build-push-action` can use the
-      # backend and a shell script cannot. Re-exporting the three variables
-      # from inside an action is what makes `build.sh` usable here unchanged,
+      # backend and a shell script cannot. Re-exporting the variables from
+      # inside an action is what makes `build.sh` usable here unchanged,
       # rather than CI building the images some other way than a developer
       # does. They are job-scoped and go no further than this job.
       - name: Expose the Actions cache service to the build
@@ -1192,81 +1299,93 @@ jobs:
         env:
           # Belt and braces with the `buildx create --use` above: buildx reads
           # this before its saved selection, so the build cannot fall back to
-          # the default driver, whose cache export the first run failed on.
+          # the default driver.
           BUILDX_BUILDER: studio-stack
-          # Scoped per target by the `{target}` placeholder, so the two images
-          # do not overwrite each other's cache manifest.
-          BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
-          # `ignore-error`: a cache export that the service refuses is a slower
-          # next run, not a broken build, and this job's verdict is about the
-          # stack rather than about the cache.
-          BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+          # Read-only: `warm-studio-image-cache` writes these scopes on main,
+          # where every pull request can read them; see that job for why a
+          # pull request does not write. `version=2` because version 1 of
+          # the cache service is retired: without it buildx asked version 1
+          # and got "Our services aren't available right now" on every
+          # import and export, so these builds never had a cache.
+          BUILD_CACHE_FROM: type=gha,version=2,scope=studio-stack-{target}
         run: apps/studio/stack-test/build.sh
 
+      # Only the participant walk-through drives a browser, from the
+      # workspace's own dependencies; the other legs run Docker and bash.
       - uses: ./.github/actions/turbo-ci-setup
+        if: matrix.leg == 'reference'
       - name: Install Playwright's Chromium
+        if: matrix.leg == 'reference'
         run: pnpm --filter @codaco/studio-web exec playwright install --with-deps chromium
 
-      # Serial, and each variant torn down before the next: they share a
-      # Compose project name, the host's ports 80 and 443, and two fixed
-      # subnets. `down.sh` runs whatever the assertions did, so a failed
-      # variant cannot leave containers holding the network the next one needs.
+      # Within a leg, serial, and each variant torn down before the next: they
+      # share a Compose project name, the host's ports 80 and 443, and two
+      # fixed subnets. `down.sh` runs whatever the assertions did, so a failed
+      # variant cannot leave containers holding the network the next one
+      # needs.
       - name: The reference stack
+        if: matrix.leg == 'reference'
         run: |
           apps/studio/stack-test/up.sh --variant reference
           apps/studio/stack-test/assert.sh --variant reference
           apps/studio/stack-test/participants.sh --variant reference
       - name: Tear down the reference stack
-        if: always()
+        if: always() && matrix.leg == 'reference'
         run: apps/studio/stack-test/down.sh --variant reference
 
-      - name: A swapped database
-        run: |
-          apps/studio/stack-test/up.sh --variant external-postgres
-          apps/studio/stack-test/assert.sh --variant external-postgres
-      - name: Tear down the swapped database
-        if: always()
-        run: apps/studio/stack-test/down.sh --variant external-postgres
-
-      - name: A swapped object store
-        run: |
-          apps/studio/stack-test/up.sh --variant external-bucket
-          apps/studio/stack-test/assert.sh --variant external-bucket
-      - name: Tear down the swapped object store
-        if: always()
-        run: apps/studio/stack-test/down.sh --variant external-bucket
-
-      - name: A swapped object store (Azure Blob)
-        run: |
-          apps/studio/stack-test/up.sh --variant external-bucket-azure
-          apps/studio/stack-test/assert.sh --variant external-bucket-azure
-      - name: Tear down the swapped object store (Azure Blob)
-        if: always()
-        run: apps/studio/stack-test/down.sh --variant external-bucket-azure
-
-      - name: A swapped rate-limit store
-        run: |
-          apps/studio/stack-test/up.sh --variant external-redis
-          apps/studio/stack-test/assert.sh --variant external-redis
-      - name: Tear down the swapped rate-limit store
-        if: always()
-        run: apps/studio/stack-test/down.sh --variant external-redis
-
       - name: A swapped ingress
+        if: matrix.leg == 'ingress-and-replicas'
         run: |
           apps/studio/stack-test/up.sh --variant own-proxy
           apps/studio/stack-test/assert.sh --variant own-proxy
       - name: Tear down the swapped ingress
-        if: always()
+        if: always() && matrix.leg == 'ingress-and-replicas'
         run: apps/studio/stack-test/down.sh --variant own-proxy
 
       - name: Two API replicas
+        if: matrix.leg == 'ingress-and-replicas'
         run: |
           apps/studio/stack-test/up.sh --variant two-api
           apps/studio/stack-test/assert.sh --variant two-api
       - name: Tear down two API replicas
-        if: always()
+        if: always() && matrix.leg == 'ingress-and-replicas'
         run: apps/studio/stack-test/down.sh --variant two-api
+
+      - name: A swapped database
+        if: matrix.leg == 'swapped-stores'
+        run: |
+          apps/studio/stack-test/up.sh --variant external-postgres
+          apps/studio/stack-test/assert.sh --variant external-postgres
+      - name: Tear down the swapped database
+        if: always() && matrix.leg == 'swapped-stores'
+        run: apps/studio/stack-test/down.sh --variant external-postgres
+
+      - name: A swapped object store
+        if: matrix.leg == 'swapped-stores'
+        run: |
+          apps/studio/stack-test/up.sh --variant external-bucket
+          apps/studio/stack-test/assert.sh --variant external-bucket
+      - name: Tear down the swapped object store
+        if: always() && matrix.leg == 'swapped-stores'
+        run: apps/studio/stack-test/down.sh --variant external-bucket
+
+      - name: A swapped object store (Azure Blob)
+        if: matrix.leg == 'swapped-stores'
+        run: |
+          apps/studio/stack-test/up.sh --variant external-bucket-azure
+          apps/studio/stack-test/assert.sh --variant external-bucket-azure
+      - name: Tear down the swapped object store (Azure Blob)
+        if: always() && matrix.leg == 'swapped-stores'
+        run: apps/studio/stack-test/down.sh --variant external-bucket-azure
+
+      - name: A swapped rate-limit store
+        if: matrix.leg == 'swapped-stores'
+        run: |
+          apps/studio/stack-test/up.sh --variant external-redis
+          apps/studio/stack-test/assert.sh --variant external-redis
+      - name: Tear down the swapped rate-limit store
+        if: always() && matrix.leg == 'swapped-stores'
+        run: apps/studio/stack-test/down.sh --variant external-redis
 
       # The assertions print `docker compose ps` and the last 200 log lines
       # inline, which is where a reader looks first; `down.sh` writes the same
@@ -1280,7 +1399,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: studio-stack-diagnostics
+          name: studio-stack-${{ matrix.leg }}-diagnostics
           include-hidden-files: true
           path: |
             apps/studio/stack-test/.work/*-ps.txt
@@ -1327,8 +1446,8 @@ jobs:
       - name: Build the stack images
         env:
           BUILDX_BUILDER: studio-stack
-          BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
-          BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+          # Read-only, as in `studio-stack`; see there.
+          BUILD_CACHE_FROM: type=gha,version=2,scope=studio-stack-{target}
         run: apps/studio/stack-test/build.sh
 
       - name: What leaves the machine
@@ -1420,10 +1539,10 @@ jobs:
       - name: Run the upgrade lane
         env:
           BUILDX_BUILDER: studio-upgrade
-          # The same scopes `studio-stack` writes, so either job warms the
-          # other's build of the candidate images.
-          BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
-          BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+          # The same scopes `warm-studio-image-cache` writes and
+          # `studio-stack` reads, so a release run warms them too.
+          BUILD_CACHE_FROM: type=gha,version=2,scope=studio-stack-{target}
+          BUILD_CACHE_TO: type=gha,version=2,scope=studio-stack-{target},mode=max,ignore-error=true
           # Used only for run C's `docker login ghcr.io`, which happens only
           # when a release tag exists.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

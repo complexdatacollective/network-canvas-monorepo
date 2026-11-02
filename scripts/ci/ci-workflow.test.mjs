@@ -2627,6 +2627,11 @@ function stackTestVariants() {
     .toSorted();
 }
 
+/** The studio-stack leg a step is gated to, read from its `if:`. */
+function legOf(step) {
+  return /matrix\.leg == '(?<leg>[^']+)'/.exec(step.if ?? '')?.groups?.leg;
+}
+
 function egressVariants() {
   const list = job('studio-egress')?.match(
     /^ {8}variant: \[(?<names>[^\]]*)\]$/m,
@@ -2696,6 +2701,79 @@ test('the studio-stack job runs every variant through up, assert and down', () =
     variants.length,
     'each down.sh step is if: always()',
   );
+});
+
+// The variants run on three legs because on one host they can only take
+// turns. A variant whose steps name no leg, or a leg the matrix lacks, would
+// never run, and the up/assert/down test above would still pass.
+test('every studio-stack variant runs on exactly one leg, with its teardown', () => {
+  const { strategy, steps } = parsedWorkflow.jobs['studio-stack'];
+  assert.equal(strategy['fail-fast'], false, 'a failed leg hides no other');
+  const legs = strategy.matrix.include.map((entry) => entry.leg);
+
+  const ran = new Map();
+  for (const step of steps) {
+    const variant = /--variant (?<v>\S+)/.exec(step.run ?? '')?.groups?.v;
+    if (!variant) continue;
+    const leg = legOf(step);
+    assert.ok(legs.includes(leg), `${step.name} runs on a leg the matrix has`);
+    const legsForVariant = ran.get(variant) ?? new Set();
+    legsForVariant.add(leg);
+    ran.set(variant, legsForVariant);
+    if (/down\.sh/.test(step.run)) {
+      assert.match(step.if, /^always\(\) && /, `${step.name} always runs`);
+    }
+  }
+  for (const [variant, onLegs] of ran) {
+    assert.equal(onLegs.size, 1, `${variant} runs on one leg`);
+  }
+  for (const leg of legs) {
+    assert.ok(
+      [...ran.values()].some((onLegs) => onLegs.has(leg)),
+      `the ${leg} leg runs a variant`,
+    );
+  }
+
+  // The walk-through is the one step that needs the workspace and a browser,
+  // so the leg that runs it is the one that installs them.
+  const participantsLeg = legOf(
+    steps.find((step) => /participants\.sh/.test(step.run ?? '')),
+  );
+  for (const step of steps.filter(
+    (candidate) =>
+      candidate.uses === './.github/actions/turbo-ci-setup' ||
+      /playwright install/.test(candidate.run ?? ''),
+  )) {
+    assert.equal(legOf(step), participantsLeg);
+  }
+});
+
+// Pull requests read the Studio image cache and never write it: a write from a
+// pull request is readable by that pull request alone, and the Actions cache
+// is at its ceiling. `version=2` because buildx otherwise asks the retired
+// version 1 service, which refuses every import and export.
+test('pull requests read the Studio image cache that only main writes', () => {
+  for (const name of ['studio-stack', 'studio-egress']) {
+    const build = parsedWorkflow.jobs[name].steps.find(
+      (step) => step.name === 'Build the stack images',
+    );
+    assert.equal(
+      build.env.BUILD_CACHE_FROM,
+      'type=gha,version=2,scope=studio-stack-{target}',
+      `${name} reads the version 2 cache`,
+    );
+    assert.ok(!('BUILD_CACHE_TO' in build.env), `${name} does not write it`);
+  }
+
+  const warm = parsedWorkflow.jobs['warm-studio-image-cache'];
+  assert.match(warm.if, /github\.ref == 'refs\/heads\/main'/);
+  assert.equal(warm['continue-on-error'], true);
+  const write = warm.steps.find((step) => step.env?.BUILD_CACHE_TO);
+  assert.equal(
+    write.env.BUILD_CACHE_TO,
+    'type=gha,version=2,scope=studio-stack-{target},mode=max',
+  );
+  assert.equal(write.if, "steps.decide.outputs.warm == 'true'");
 });
 
 test('the studio-egress job runs each egress variant through up, egress and down', () => {
