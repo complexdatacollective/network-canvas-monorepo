@@ -12,13 +12,14 @@ import {
   RelationshipSchema,
   StageSchema,
   type DesignAttribute,
+  type DesignEnding,
   type DesignStage,
   type StudyDesign,
 } from './schema.ts';
 
 const Text = (what: string) => z.string().describe(what);
 
-export const CRITIQUE_SEVERITIES = ['critical', 'major', 'minor'] as const;
+const CRITIQUE_SEVERITIES = ['critical', 'major', 'minor'] as const;
 
 const IssueSchema = z.object({
   stageId: Text(
@@ -172,91 +173,122 @@ const insertAfter = (
   return [...stages.slice(0, at + 1), stage, ...stages.slice(at + 1)];
 };
 
-/**
- * The critique's edits in the order they are applied: entities first, so a
- * stage can use an attribute the same critique adds.
- */
-export const critiqueEdits = (critique: Critique): CritiqueEdit[] => [
-  ...critique.relationships.map((r) => ({
-    describe: `relationship "${r.id}"`,
-    apply: (d: StudyDesign) => ({
-      ...d,
-      relationships: upsert(d.relationships, r),
-    }),
-  })),
-  ...critique.endings.map((e) => ({
-    describe: `ending "${e.id}"`,
-    apply: (d: StudyDesign) => ({ ...d, endings: upsert(d.endings, e) }),
-  })),
-  ...critique.attributes.map((a) => ({
-    describe: `attribute "${a.attribute.id}"`,
-    apply: (d: StudyDesign) =>
-      withAttributes(d, a.owner, a.ownerId, (list) =>
-        upsert(list, a.attribute),
-      ),
-  })),
-  ...critique.removeStageIds.map((id) => ({
-    describe: `removing stage "${id}"`,
-    apply: (d: StudyDesign) => ({
-      ...d,
-      stages: d.stages.filter((s) => s.id !== id),
-    }),
-  })),
-  ...critique.stages.map((s) => ({
-    describe:
-      s.action === 'replace'
-        ? `stage "${s.stage.id}"`
-        : `new stage "${s.stage.id}"`,
-    apply: (d: StudyDesign) =>
-      s.action === 'replace' && d.stages.some((x) => x.id === s.stage.id)
+const stageEdit = (s: Critique['stages'][number]): CritiqueEdit => ({
+  describe:
+    s.action === 'replace'
+      ? `stage "${s.stage.id}"`
+      : `new stage "${s.stage.id}"`,
+  apply: (d: StudyDesign) => {
+    if (s.action === 'replace')
+      // A replacement names a stage that must exist: an unknown id changes
+      // nothing, so the edit is reported as skipped.
+      return d.stages.some((x) => x.id === s.stage.id)
         ? {
             ...d,
             stages: d.stages.map((x) => (x.id === s.stage.id ? s.stage : x)),
           }
-        : {
-            ...d,
-            stages: insertAfter(
-              d.stages.filter((x) => x.id !== s.stage.id),
-              s.afterStageId,
-              s.stage,
-            ),
-          },
-  })),
-  ...critique.removeAttributes.map((a) => ({
-    describe: `removing attribute "${a.attributeId}"`,
-    apply: (d: StudyDesign) =>
-      withAttributes(d, a.owner, a.ownerId, (list) =>
-        list.filter((x) => x.id !== a.attributeId),
+        : d;
+    return {
+      ...d,
+      stages: insertAfter(
+        d.stages.filter((x) => x.id !== s.stage.id),
+        s.afterStageId,
+        s.stage,
       ),
-  })),
-  ...(critique.consentText.trim()
-    ? [
-        {
-          describe: 'consent text',
-          apply: (d: StudyDesign) => ({
-            ...d,
-            consentText: critique.consentText,
-          }),
-        },
-      ]
-    : []),
-  ...(critique.rationaleNote.trim()
-    ? [
-        {
-          describe: 'rationale',
-          apply: (d: StudyDesign) => ({
-            ...d,
-            rationale: `${d.rationale} ${critique.rationaleNote}`.trim(),
-          }),
-        },
-      ]
-    : []),
-];
+    };
+  },
+});
+
+const endingEdit = (e: DesignEnding): CritiqueEdit => ({
+  describe: `ending "${e.id}"`,
+  apply: (d: StudyDesign) => ({ ...d, endings: upsert(d.endings, e) }),
+});
+
+/**
+ * The critique's edits in the order they are applied: entities first, so a
+ * stage can use an attribute the same critique adds. An ending and the
+ * changed stages that route to it are one edit: apart, the stage could be
+ * kept while the ending is not, sending screened-out participants to the
+ * normal, completed ending.
+ */
+export const critiqueEdits = (critique: Critique): CritiqueEdit[] => {
+  const routes = (e: DesignEnding) =>
+    critique.stages.filter((s) => e.fromStageIds.includes(s.stage.id));
+  const routed = new Set(critique.endings.flatMap(routes));
+  return [
+    ...critique.relationships.map((r) => ({
+      describe: `relationship "${r.id}"`,
+      apply: (d: StudyDesign) => ({
+        ...d,
+        relationships: upsert(d.relationships, r),
+      }),
+    })),
+    ...critique.endings.filter((e) => !routes(e).length).map(endingEdit),
+    ...critique.attributes.map((a) => ({
+      describe: `attribute "${a.attribute.id}"`,
+      apply: (d: StudyDesign) =>
+        withAttributes(d, a.owner, a.ownerId, (list) =>
+          upsert(list, a.attribute),
+        ),
+    })),
+    ...critique.removeStageIds.map((id) => ({
+      describe: `removing stage "${id}"`,
+      apply: (d: StudyDesign) => ({
+        ...d,
+        stages: d.stages.filter((s) => s.id !== id),
+      }),
+    })),
+    ...critique.stages.filter((s) => !routed.has(s)).map(stageEdit),
+    ...critique.endings
+      .filter((e) => routes(e).length)
+      .map((e) => {
+        const parts = [endingEdit(e), ...routes(e).map(stageEdit)];
+        return {
+          describe: parts.map((x) => x.describe).join(' with '),
+          apply: (d: StudyDesign) => {
+            const next = parts.reduce((x, part) => part.apply(x), d);
+            return next;
+          },
+        };
+      }),
+    ...critique.removeAttributes.map((a) => ({
+      describe: `removing attribute "${a.attributeId}"`,
+      apply: (d: StudyDesign) =>
+        withAttributes(d, a.owner, a.ownerId, (list) =>
+          list.filter((x) => x.id !== a.attributeId),
+        ),
+    })),
+    ...(critique.consentText.trim()
+      ? [
+          {
+            describe: 'consent text',
+            apply: (d: StudyDesign) => ({
+              ...d,
+              consentText: critique.consentText,
+            }),
+          },
+        ]
+      : []),
+    ...(critique.rationaleNote.trim()
+      ? [
+          {
+            describe: 'rationale',
+            apply: (d: StudyDesign) => ({
+              ...d,
+              rationale: `${d.rationale} ${critique.rationaleNote}`.trim(),
+            }),
+          },
+        ]
+      : []),
+  ];
+};
 
 /**
  * Applies the edits, all at once when the result is acceptable, otherwise
- * one by one, keeping each that leaves the design acceptable. `acceptable`
- * is the caller's check, usually a preflight build.
+ * one by one, keeping each that leaves the design acceptable and retrying
+ * the rest while that keeps more of them. An edit that changes nothing (a
+ * replacement of a stage that does not exist) is skipped. `acceptable` is
+ * the caller's check, usually a preflight build.
  */
 export const applyCritique = async (
   design: StudyDesign,
@@ -264,18 +296,41 @@ export const applyCritique = async (
   acceptable: (design: StudyDesign) => Promise<boolean>,
 ): Promise<{ design: StudyDesign; applied: string[]; skipped: string[] }> => {
   if (!edits.length) return { design, applied: [], skipped: [] };
-  const all = edits.reduce((d, e) => e.apply(d), design);
-  if (await acceptable(all))
-    return { design: all, applied: edits.map((e) => e.describe), skipped: [] };
   let current = design;
-  const applied: string[] = [];
-  const skipped: string[] = [];
+  let pending: CritiqueEdit[] = [];
+  const noOps: CritiqueEdit[] = [];
+  let all = design;
   for (const edit of edits) {
-    const next = edit.apply(current);
-    if (await acceptable(next)) {
-      current = next;
-      applied.push(edit.describe);
-    } else skipped.push(edit.describe);
+    const next = edit.apply(all);
+    if (next === all) noOps.push(edit);
+    else {
+      all = next;
+      pending.push(edit);
+    }
   }
-  return { design: current, applied, skipped };
+  if (pending.length && (await acceptable(all)))
+    return {
+      design: all,
+      applied: pending.map((e) => e.describe),
+      skipped: noOps.map((e) => e.describe),
+    };
+  const applied: string[] = [];
+  for (let progress = true; progress && pending.length;) {
+    progress = false;
+    const rejected: CritiqueEdit[] = [];
+    for (const edit of pending) {
+      const next = edit.apply(current);
+      if (next !== current && (await acceptable(next))) {
+        current = next;
+        applied.push(edit.describe);
+        progress = true;
+      } else rejected.push(edit);
+    }
+    pending = rejected;
+  }
+  return {
+    design: current,
+    applied,
+    skipped: [...noOps, ...pending].map((e) => e.describe),
+  };
 };

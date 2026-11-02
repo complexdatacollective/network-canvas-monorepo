@@ -151,6 +151,7 @@ type Stage = {
   nominationPrompts?: { onlyForSexAssignedAtBirth?: string }[];
   completeness?: { scope: string };
   filter?: { join?: string; rules: { options: Record<string, unknown> }[] };
+  skipLogic?: unknown;
 };
 type Protocol = {
   stages: Stage[];
@@ -193,6 +194,13 @@ describe('family and narrative pedigrees', () => {
     expect(Object.values(protocol.codebook.edge)[0]?.name).toBe(
       'Family relationship',
     );
+  });
+
+  it('never skips the family tree, which starts with no relatives', async () => {
+    const result = await preflight(design(), { now: NOW });
+    const protocol = result.protocol as unknown as Protocol;
+    const pedigree = protocol.stages.find((s) => s.type === 'FamilyPedigree');
+    expect(pedigree?.skipLogic).toBeUndefined();
   });
 
   it('leaves the participant out of later stages about the family', async () => {
@@ -253,6 +261,19 @@ describe('family and narrative pedigrees', () => {
     const result = await preflight(design(), { now: NOW });
     const burden = estimateBurden(result.protocol as unknown as Protocol, 10);
     expect(burden.itemsPerPerson).toBeGreaterThanOrEqual(2);
+  });
+
+  it('declares a language Network Canvas has no text for, and notes the English it adds', async () => {
+    const result = await preflight(design({ language: 'zh-TW' }), {
+      now: NOW,
+    });
+    expect(
+      result.validation.success,
+      JSON.stringify(result.validation.error?.issues),
+    ).toBe(true);
+    expect(JSON.stringify(result.protocol.stages[0])).toContain(
+      'Text Sketch adds in English.',
+    );
   });
 
   it('declares Spanish with Network Canvas labels for the family answers', async () => {

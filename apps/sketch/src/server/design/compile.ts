@@ -7,7 +7,7 @@ import type { z } from 'zod';
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocolSchema,
-  DEFAULT_FINISH_SESSION_TEXT,
+  defaultFinishSessionText,
   missingSuppliedStageText,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIP_KINDS,
@@ -155,8 +155,7 @@ const relabel = (node: unknown, from: string, to: string): unknown => {
 
 /** Whether Network Canvas supplies its own interface text in this language. */
 const suppliesLanguage = (lang: string) =>
-  lang in DEFAULT_FINISH_SESSION_TEXT ||
-  (lang.split('-')[0] ?? '') in DEFAULT_FINISH_SESSION_TEXT;
+  defaultFinishSessionText(lang) !== undefined;
 
 // Gender identity answers: Network Canvas supplies no labels for them, so
 // Sketch writes them, in English.
@@ -180,7 +179,7 @@ const INHERITANCE_NAMES: Record<string, string> = {
   unknown: 'unknown',
 };
 
-const DECLINED_TEXT =
+export const DECLINED_TEXT =
   '# Thank you\n\nYou chose not to take part, so the interview has ended. Nothing more will be asked.';
 
 /** Sets `value` at `path` in `target`, creating the records on the way. */
@@ -614,7 +613,9 @@ export const compile = (
     const nodeType =
       'nodeTypeId' in s &&
       s.kind !== 'nameGenerator' &&
-      s.kind !== 'networkComposer'
+      s.kind !== 'networkComposer' &&
+      // the pedigree creates its nodes, starting with the participant
+      s.kind !== 'familyPedigree'
         ? s.nodeTypeId
         : '';
     const absentRule: ResolvedRule | undefined =
@@ -1466,11 +1467,10 @@ export const compile = (
     ...placeholderNotes,
     inheritanceNotes.length &&
       `**Inheritance patterns.** Sketch assumed how each condition on the family tree is inherited: ${inheritanceNotes.join('; ')}. Check them before fielding: the tree marks relatives by them.`,
-    pedigrees.some((p) => p.askGenderIdentity) &&
-      !lang.startsWith('en') &&
-      `**Gender identity answers.** The answers to the family tree's gender identity question are in English. Translate them in Architect before fielding.`,
-    !suppliesLanguage(d.language || SKETCH_LOCALE) &&
-      `**Language.** The interview is in ${d.language}. Network Canvas does not supply its own interface text (buttons, notices, the closing screen) in this language, so that text is still in English. Translate it in Architect before fielding.`,
+    !suppliesLanguage(lang) &&
+      `**Language.** The interview is in ${lang}. Network Canvas does not supply its own interface text (buttons, notices, the closing screen) in this language, so that text is still in English. Translate it in Architect before fielding.`,
+    !lang.toLowerCase().startsWith('en') &&
+      `**Text Sketch adds in English.** Sketch writes a few texts of its own in English whatever the interview's language: the answers to the consent question, the "Already mentioned" panel title, the "Other" option and its follow-up, and the family tree's gender identity answers. Translate them in Architect before fielding.`,
     changed.length &&
       `**Changes Sketch made.**\n${changed.map((i) => `- ${i.message}`).join('\n')}`,
     opts.reviewNotes?.length &&
@@ -1517,7 +1517,7 @@ export const compile = (
       declinedStageId,
       'ineligible',
       'Consent declined',
-      DECLINED_TEXT,
+      pick(W.stage.get('consent_declined')?.text, DECLINED_TEXT),
     );
   for (const e of earlyEndings)
     earlyFinish(e.stageId, e.outcome, graphemes(humanise(e.id), 50), e.message);

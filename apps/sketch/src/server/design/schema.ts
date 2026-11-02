@@ -641,7 +641,7 @@ export const EndingSchema = z.object({
   ),
 });
 
-export const NodeTypeSchema = z.object({
+const NodeTypeSchema = z.object({
   id: Id('node type'),
   singular: Text(
     'Capitalised singular display name, e.g. "Person". Distinct from every other node type and relationship name.',

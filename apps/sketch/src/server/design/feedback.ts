@@ -2,7 +2,7 @@
 import type { ProtocolValidationIssue } from '@codaco/protocol-validation';
 
 import type { NormalizedDesign } from './analyse.ts';
-import type { StageSource } from './compile.ts';
+import { DECLINED_TEXT, type StageSource } from './compile.ts';
 import { taskIntroductions } from './intros.ts';
 import type { DesignIssue } from './rules.ts';
 
@@ -121,6 +121,14 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
     questions.push({
       questionKey: 'consent',
       draft: 'Do you agree to take part in this study?',
+    });
+    stages.push({
+      stageKey: 'consent_declined',
+      kind: 'ending for declined consent',
+      purpose: 'Shown when the participant does not agree to take part',
+      title: 'none: return ""',
+      text: 'screen body (Markdown): a "# " heading, then that the interview has ended and nothing more will be asked',
+      draft: DECLINED_TEXT,
     });
   }
   const intros = taskIntroductions(d);
@@ -271,5 +279,11 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
         }),
       );
   }
-  return { summary: d.summary, stages, prompts, questions };
+  return {
+    language: d.language,
+    summary: d.summary,
+    stages,
+    prompts,
+    questions,
+  };
 };

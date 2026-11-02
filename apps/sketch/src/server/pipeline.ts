@@ -311,7 +311,7 @@ const compileDetail = (b: BuildResult) => {
 const reviewNotesFor = (critique: Critique, skipped: string[]): string[] => [
   ...critique.issues.map(
     (i) =>
-      `${i.severity === 'minor' ? '' : `**${i.severity}:** `}${i.problem}${i.change ? ` *Changed:* ${i.change}` : ' *For you to decide.*'}`,
+      `${i.severity === 'minor' ? '' : `**${i.severity}:** `}${i.problem}${i.change ? ` ${skipped.length ? '*Proposed (check it was applied):*' : '*Changed:*'} ${i.change}` : ' *For you to decide.*'}`,
   ),
   ...(skipped.length
     ? [
