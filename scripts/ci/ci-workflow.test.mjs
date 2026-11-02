@@ -2774,6 +2774,16 @@ test('pull requests read the Studio image cache that only main writes', () => {
     'type=gha,version=2,scope=studio-stack-{target},mode=max',
   );
   assert.equal(write.if, "steps.decide.outputs.warm == 'true'");
+
+  // The marker that stops later pushes rewriting the cache is saved only
+  // after the export, so an export that failed is retried on the next push.
+  const decide = warm.steps.find((step) => step.id === 'decide');
+  assert.match(decide.env.MARKER, /^studio-image-deps-\$\{\{ hashFiles\(/);
+  const save = warm.steps.findIndex((step) =>
+    step.uses?.startsWith('actions/cache/save@'),
+  );
+  assert.ok(save > warm.steps.indexOf(write), 'the marker follows the export');
+  assert.equal(warm.steps[save].with.key, '${{ steps.decide.outputs.marker }}');
 });
 
 test('the studio-egress job runs each egress variant through up, egress and down', () => {

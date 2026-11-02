@@ -633,7 +633,10 @@ jobs:
   # ceiling (see `warm-playwright-cache`), and preparing the export cost each
   # pull-request build about 96 seconds.
   #
-  # And main writes it only when the part worth reading can have changed. The
+  # And main writes it only when the part worth reading has not been written
+  # yet: when no export has succeeded for the current dependency inputs (a
+  # marker entry named after them records each one that did), or when the
+  # cache has been evicted. The
   # Dockerfile copies the whole repository before `turbo prune`, so the
   # application builds after the dependency install run again on every source
   # change whatever the cache holds. What a pull request reads back is the
@@ -659,38 +662,37 @@ jobs:
       - name: Decide whether the dependency layers need writing
         id: decide
         env:
-          BEFORE: ${{ github.event.before }}
           GH_TOKEN: ${{ github.token }}
+          # Names the inputs of the layers a pull request reads back. A marker
+          # entry under this key is saved only after those layers export, so a
+          # failed export leaves it missing and the next push tries again,
+          # whatever that push changed.
+          MARKER: studio-image-deps-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', '.dockerignore', 'apps/studio/Dockerfile', '**/package.json') }}
         run: |
           set -euo pipefail
+          echo "marker=$MARKER" >> "$GITHUB_OUTPUT"
           warm() {
             echo "warm=true" >> "$GITHUB_OUTPUT"
             echo "Writing the Studio image cache: $1"
             exit 0
           }
+          # A failed listing counts as missing, which costs one extra write
+          # rather than a pull request without a cache.
+          present() {
+            local count
+            count="$(gh cache list --ref refs/heads/main --limit 1000 --json key \
+              --jq "[.[] | select(.key | contains(\"$1\"))] | length")" \
+              && [[ "$count" != "0" ]]
+          }
           [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]] && warm "dispatched by hand"
-
-          # Missing, or evicted under the cache ceiling: write it whatever the
-          # push changed. A failed listing counts as missing, which costs one
-          # extra write rather than a pull request without a cache.
+          present "$MARKER" \
+            || warm "main has not exported the layers for these dependency inputs ($MARKER)"
+          # Evicted under the cache ceiling since the marker was saved.
           for target in studio-api studio-web; do
-            if ! count="$(gh cache list --ref refs/heads/main --limit 1000 --json key \
-                --jq "[.[] | select(.key | contains(\"studio-stack-$target\"))] | length")" \
-              || [[ "$count" == "0" ]]; then
-              warm "main holds no cache for $target"
-            fi
+            present "studio-stack-$target" || warm "main holds no cache for $target"
           done
-
-          if ! git fetch --no-tags --depth=1 origin "$BEFORE" 2>/dev/null; then
-            warm "the previous tip $BEFORE could not be fetched"
-          fi
-          if ! git diff --quiet "$BEFORE" HEAD -- \
-              pnpm-lock.yaml pnpm-workspace.yaml .dockerignore \
-              apps/studio/Dockerfile ':(glob)**/package.json'; then
-            warm "this push changed the dependency layers' inputs"
-          fi
           echo "warm=false" >> "$GITHUB_OUTPUT"
-          echo "The dependency layers' inputs are unchanged and main's cache exists; nothing to write"
+          echo "Main's cache already holds the layers for these dependency inputs; nothing to write"
       - name: Select a cache-capable builder
         if: steps.decide.outputs.warm == 'true'
         run: docker buildx create --name studio-stack --driver docker-container --use
@@ -718,6 +720,16 @@ jobs:
           # failing it says so without failing the run.
           BUILD_CACHE_TO: type=gha,version=2,scope=studio-stack-{target},mode=max
         run: apps/studio/stack-test/build.sh
+      - name: Record the dependency inputs the cache now holds
+        if: steps.decide.outputs.warm == 'true'
+        env:
+          MARKER: ${{ steps.decide.outputs.marker }}
+        run: echo "$MARKER" > "$RUNNER_TEMP/studio-image-deps"
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.decide.outputs.warm == 'true'
+        with:
+          path: ${{ runner.temp }}/studio-image-deps
+          key: ${{ steps.decide.outputs.marker }}
 
   seed-turbo-cache:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
