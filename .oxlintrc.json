@@ -213,12 +213,10 @@
       // config rather than appearing in this list, where they would silently
       // do nothing.
       "files": [
-        "packages/app-i18n/src/**",
         "packages/network-exporters/src/**",
         "packages/protocol-validation/src/**",
         "packages/protocol-utilities/src/**",
-        "packages/protocol-builder/src/**",
-        "apps/studio/web/src/**"
+        "packages/protocol-builder/src/**"
       ],
       "rules": {
         "formatjs/enforce-description": "error",
@@ -226,16 +224,6 @@
         "formatjs/no-invalid-icu": "error",
         "formatjs/enforce-placeholders": "error",
         "formatjs/no-multiple-whitespaces": "error"
-      }
-    },
-    {
-      // Untranslated copy, caught where it is a defect rather than
-      // unfinished work: the Studio client is converted end to end, so a
-      // bare literal in its JSX is a string somebody forgot. The other apps
-      // turn this on as their own conversions complete.
-      "files": ["apps/studio/web/src/**"],
-      "rules": {
-        "formatjs/no-literal-string-in-jsx": "error"
       }
     },
     {

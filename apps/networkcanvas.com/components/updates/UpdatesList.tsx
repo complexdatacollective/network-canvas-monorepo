@@ -161,8 +161,9 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
           margin="none"
           intent="meta"
           emphasis="muted"
-          role="status"
-          className="mt-3"
+          render={<output />}
+          aria-live="polite"
+          className="mt-3 block"
         >
           {narrowed
             ? t('search.results', {

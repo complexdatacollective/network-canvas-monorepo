@@ -301,7 +301,7 @@ const EgoFormInner = (props: EgoFormProps) => {
             floating
             spacing="xs"
             shadow="xs"
-            role="status"
+            as="output"
             aria-live="polite"
             // oxlint-disable-next-line tailwindcss/no-unknown-classes -- semantic marker matching e2e scenario ids
             className="scroll-nudge mx-auto mt-2 mb-4 flex shrink-0"

@@ -20,8 +20,7 @@ const CodeCopyButton = ({ code }: { code: string }) => {
     <div className="absolute top-2 right-2 flex items-center gap-2">
       {/* Always-present live region so the "Copied!" result is announced; it
           also renders the visible confirmation bubble when copied. */}
-      <span
-        role="status"
+      <output
         aria-live="polite"
         className={
           isCopied
@@ -30,7 +29,7 @@ const CodeCopyButton = ({ code }: { code: string }) => {
         }
       >
         {isCopied ? 'Copied!' : ''}
-      </span>
+      </output>
       <IconButton
         aria-label="Copy code"
         color="primary"

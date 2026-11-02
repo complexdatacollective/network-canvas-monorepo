@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { authClient } from '../lib/auth.ts';
 import { invalidateMemberships } from '../lib/landing.ts';
@@ -102,7 +102,9 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
   // argument). Deferring the second write is what makes that matter — the
   // effect now runs again the moment a write finishes, and without this it
   // would meet a stale comparison and write the same team for ever.
-  const settledTeamId = useRef<string | undefined>(undefined);
+  const [settledTeamId, setSettledTeamId] = useState<string | undefined>(
+    undefined,
+  );
   // The team a write failed for, so a failure is retried on request rather
   // than on the next render: nothing about the effect's dependencies changes
   // when a write fails, so an unrecorded failure would be re-attempted by
@@ -121,27 +123,28 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
     undefined,
   );
 
-  useEffect(() => {
-    // The second half of a reconciliation, before anything else: the write
-    // landed and the two refreshes have now been given their chance.
-    //
-    // Ahead of the `committedTeamId` guard so it always completes. A
-    // researcher who navigates to a study or `/account` while the refreshes
-    // are out names no team on arrival, and leaving this half undone would
-    // strand the idempotency key on a write that did happen.
-    if (refreshedTeamId !== undefined) {
-      if (refreshFailed) {
-        setFailedTeamId(refreshedTeamId);
-      } else {
-        settledTeamId.current = refreshedTeamId;
-        setFailedTeamId(undefined);
-      }
-      setRefreshedTeamId(undefined);
-      return;
+  // The second half of a reconciliation, before anything else: the write
+  // landed and the two refreshes have now been given their chance.
+  //
+  // Settled during the render that reads the hooks fresh, and ahead of the
+  // `committedTeamId` guard so it always completes. A researcher who
+  // navigates to a study or `/account` while the refreshes are out names no
+  // team on arrival, and leaving this half undone would strand the
+  // idempotency key on a write that did happen. React re-renders at once with
+  // the state this sets, so the effect below never sees a half-settled pass.
+  if (refreshedTeamId !== undefined) {
+    if (refreshFailed) {
+      setFailedTeamId(refreshedTeamId);
+    } else {
+      setSettledTeamId(refreshedTeamId);
+      setFailedTeamId(undefined);
     }
+    setRefreshedTeamId(undefined);
+  }
 
+  useEffect(() => {
     if (committedTeamId === undefined) return;
-    if (committedTeamId === settledTeamId.current) return;
+    if (committedTeamId === settledTeamId) return;
     if (writingTeamId !== undefined) return;
     if (failedTeamId === committedTeamId) return;
     // §6.6's optimisation, and the one condition under which it is safe to
@@ -152,6 +155,7 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
     // which §6.6 says it must never do.
     if (committedTeamId === activeTeamId && !refreshFailed) return;
 
+    // oxlint-disable-next-line react/set-state-in-effect -- this marks the write as on the wire, which is what makes the next pass defer a second one; the effect is the external write's start, not a derivation of state.
     setWritingTeamId(committedTeamId);
     void (async () => {
       let failed = true;
@@ -200,11 +204,12 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
     activeTeamId,
     committedTeamId,
     failedTeamId,
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `queryClient` and the two refetchers are used in the write's `try/finally`, which the rule cannot follow.
     queryClient,
     refetchActiveMember,
     refetchActiveTeam,
-    refreshedTeamId,
     refreshFailed,
+    settledTeamId,
     writingTeamId,
   ]);
 

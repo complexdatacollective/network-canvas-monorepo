@@ -33,6 +33,9 @@ export function PreviewMessageScreen({
 export function PreviewLoadingScreen({ label }: { label: string }) {
   return (
     <div
+      // An <output> may hold only phrasing content, and the spinner and
+      // paragraph are blocks.
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="status"
       className="flex min-h-dvh flex-col items-center justify-center gap-4 p-8 text-center"
     >

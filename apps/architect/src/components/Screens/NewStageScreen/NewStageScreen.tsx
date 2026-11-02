@@ -327,9 +327,8 @@ const NewStageScreen = ({
             >
               {intl.formatMessage(messages.filterByCapabilities)}
             </Heading>
-            <div
+            <fieldset
               className="flex min-w-0 flex-wrap gap-1"
-              role="group"
               aria-label={intl.formatMessage(
                 messages.interfaceCapabilityFilters,
               )}
@@ -345,7 +344,7 @@ const NewStageScreen = ({
                   {interfaceTagLabel(value, intl)}
                 </Tag>
               ))}
-            </div>
+            </fieldset>
           </div>
         </div>
       }
