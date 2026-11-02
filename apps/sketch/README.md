@@ -23,11 +23,11 @@ steps. They are the five rows the generating screen shows
    screening call fails, the job carries on as if it had passed.
 2. **Design.** The design model returns a `StudyDesign` (a constrained JSON
    object, `src/server/design/schema.ts`) under a byte-stable, cached system
-   prompt (`src/server/prompts/`). A deterministic preflight normalises and
+   prompt (`src/server/prompts/design.md` and `decision-guide.md`). A deterministic preflight normalises and
    checks it (`analyse.ts`), compiles it and validates the result. A design
    with problems gets **one** retry, with the problems spelled out as feedback.
    A critic (the design model, with its own prompt in
-   `src/server/prompts/critic.ts`) then reviews the chosen design and returns
+   `src/server/prompts/critic.md`) then reviews the chosen design and returns
    its findings and edits to the design (`src/server/design/critique.ts`).
    Code applies the edits, keeping each one only if the design still builds
    as cleanly, and lists the findings on the researcher-notes screen.
@@ -80,7 +80,7 @@ The page then hands the protocol to Architect:
 | `src/handoff/`                 | Architect handoff and `.netcanvas` download.                                                       |
 | `src/server/pipeline.ts`       | The five steps, with injected provider adapters.                                                   |
 | `src/server/design/`           | Design schema, analysis, compiler, retry feedback, assets.                                         |
-| `src/server/prompts/`          | System prompts and the decision guide.                                                             |
+| `src/server/prompts/`          | System prompts and the decision guide, as Markdown files (`*.md`) the `.ts` modules import.        |
 | `src/server/providers/`        | Anthropic and OpenAI adapters behind one `ProviderAdapter` type.                                   |
 | `src/server/handlers.ts`       | Request handlers. The Netlify functions only wire production dependencies into them.               |
 | `src/server/jobs.ts`           | Job records, the research log and the daily budget, in Netlify Blobs.                              |
@@ -121,7 +121,9 @@ npx netlify dev --filter @codaco/sketch   # http://localhost:5186
 
 The `[dev]` block in `netlify.toml` serves `netlify dev` on
 `http://localhost:5186` and moves Vite to an inner port (5187), so the page
-keeps the one origin a development build of Architect accepts.
+keeps the one origin a development build of Architect accepts. It serves the
+bundled functions (`netlify/.bundled`), which `bundle-functions --watch`
+rebuilds on every change, because only that bundle loads the Markdown prompts.
 
 To try the Architect handoff locally, run Architect's dev server and start
 Sketch with `VITE_ARCHITECT_URL=http://localhost:5173 npx netlify dev --filter
