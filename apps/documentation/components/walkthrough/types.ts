@@ -31,7 +31,25 @@ export type SceneId =
   | 'safe'
   | 'storage'
   | 'bucket'
-  | 'live';
+  | 'live'
+  | 'roster-drag'
+  | 'architect-versions'
+  | 'classic-tab'
+  | 'roster-files'
+  | 'roster-download'
+  | 'sheet-layout'
+  | 'sheet-name'
+  | 'sheet-unique'
+  | 'sheet-csv'
+  | 'sheet-check'
+  | 'card-detail'
+  | 'two-questions'
+  | 'added-once'
+  | 'side-panels'
+  | 'roster-ready'
+  | 'classroom'
+  | 'ego-filter'
+  | 'ego-first';
 
 // The pastel band a chapter's visuals sit on, as on the /updates page.
 export type Tint =

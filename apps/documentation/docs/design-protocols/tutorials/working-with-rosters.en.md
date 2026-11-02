@@ -23,6 +23,8 @@ To follow along, you should:
 </PrerequisitesSection>
 </SummaryCard>
 
+<Walkthrough id="working-with-rosters"></Walkthrough>
+
 ## What is a roster?
 
 A roster is a list where each row can potentially become a node in a network. This list might consist of students in a classroom, workers in an office, or people in a team sport. Rosters can also include people mentioned in previous surveys by a specific individual, lists of words related to one's occupation, or any item where it is useful to nominate members of that list in Network Canvas. Commonly, rosters are used in whole network studies since you can merge together all of the ego-alter nominations to create a whole network. Each person in the whole network would make their nominations to others and then the researcher could combine these.
@@ -45,6 +47,8 @@ A roster in Network Canvas exists at the protocol level. That is, a protocol is 
 ## How to create a roster
 
 A roster is a list of potential nodes. To avoid confusion, the elements of this list will be called 'items' or roster items because they are not yet nodes in any given interview. This list of items should be prepared outside of Network Canvas in a spreadsheet program and exported as a special kind of file type: csv or comma-separated values.
+
+<Walkthrough id="working-with-rosters" chapter="prepare"></Walkthrough>
 
 Below is an example of a table:
 
@@ -149,7 +153,21 @@ You can also add the roster when you are creating a roster name generator. Below
 
 ### Selecting the Name Generator Interface
 
-To use a roster, you should select the interface "Name Generator for Roster Data". Give the stage a name (such as `roster_01`) and then create or select a node type. In the example, we have created a node type called "person" and so we will choose this. Then the program asks for "Data Source for Roster". If you have already uploaded the CSV to the Resource Library it will be available to select. Otherwise, you can upload it now.
+To use a roster, you should select the interface "Name Generator for Roster Data".
+
+<Walkthrough id="working-with-rosters" chapter="stage"></Walkthrough>
+
+<AppOnly app="current">
+
+Give the stage a name by clicking the name at the top of the stage editor (such as `roster_01`), and then pick a node type under **Node type**, or click **Create new node type**. In the example, we have created a node type called "person" and so we will choose this. Then, under **Roster source**, click **Select a data file**. If you have already added the CSV to the Resource Library, choose it under **Resources in this protocol**. Otherwise, import it now under **Import a data file**.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Give the stage a name (such as `roster_01`) and then create or select a node type. In the example, we have created a node type called "person" and so we will choose this. Then the program asks for "Data Source for Roster". If you have already uploaded the CSV to the Resource Library it will be available to select. Otherwise, you can upload it now.
+
+</AppOnly>
 
 <AppOnly app="classic">
 
@@ -157,7 +175,19 @@ To use a roster, you should select the interface "Name Generator for Roster Data
 
 </AppOnly>
 
-Before you select the roster it is useful to inspect it to see that it has formatted correctly. Each roster resource has a preview button (an eye icon). Clicking on that will show the CSV that has been uploaded.
+Before you select the roster it is useful to inspect it to see that it has formatted correctly.
+
+<AppOnly app="current">
+
+Once you choose a file, the stage lists its columns under **What this data file holds**. To see the file itself, open **Resources** from the navigation bar and click the preview button (an eye icon) on the roster.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Each roster resource has a preview button (an eye icon). Clicking on that will show the CSV that has been uploaded.
+
+</AppOnly>
 
 <AppOnly app="classic">
 
@@ -175,6 +205,8 @@ With the `simpsons-roster` you can observe that there is an empty cell for occup
 
 ### Formatting the display of the roster
 
+<Walkthrough id="working-with-rosters" chapter="display"></Walkthrough>
+
 Once you have selected a roster the next three items allow you to customize the look of the roster item in Interviewer. Roster items are displayed as cards rather than nodes. To nominate a roster member, the participant drags its card into the node panel, which turns it into a node and removes the card from the list. For a full description of how participants nominate roster members, see the [Name Generator for Roster Data documentation](/en/design-protocols/interface-documentation/name-generator-roster).
 
 <AppOnly app="classic">
@@ -183,7 +215,21 @@ Once you have selected a roster the next three items allow you to customize the 
 
 </AppOnly>
 
-By default, the cards will display the name of the roster item. However, you can add additional details on the card by turning on 'card display options'. This will then allow you to select from the additional columns of the CSV to be shown below the name. The left hand drop down allows you to choose the column from the CSV and the right hand item allows you to give that variable a different label. So in the `simpsons-roster` example, while the CSV had a column called `gender` (in lower case) on the card we will write `Gender` to be displayed.
+By default, the cards will display the name of the roster item. However, you can add additional details on the card.
+
+<AppOnly app="current">
+
+Turn on **Card display** and click **Add new display property**. Under **Attribute**, choose a column from the CSV to show below the name, and under **Label**, give it the wording participants will see.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Turn on 'card display options'. This will then allow you to select from the additional columns of the CSV to be shown below the name. The left hand drop down allows you to choose the column from the CSV and the right hand item allows you to give that variable a different label.
+
+</AppOnly>
+
+So in the `simpsons-roster` example, while the CSV had a column called `gender` (in lower case) on the card we will write `Gender` to be displayed.
 
 <AppOnly app="classic">
 
@@ -191,9 +237,9 @@ By default, the cards will display the name of the roster item. However, you can
 
 </AppOnly>
 
-Since a roster might have a large number of people to scan, you can also enable the cards to be sorted by some value. So if we add occupation, then in the interview the participant can sort the roster by occupation.
+Since a roster might have a large number of people to scan, you can also enable the cards to be sorted by some value. So if we add occupation, then in the interview the participant can sort the roster by occupation. In Architect, turn on **Roster sorting** and click **Add new sortable property**.
 
-Finally, you can permit participants to search through the roster items using a search box. Selecting name and keeping the accuracy low means that people can find others by typing characters close to the person's name if not exactly.
+Finally, you can permit participants to search through the roster items using a search box. Selecting name and keeping the accuracy low means that people can find others by typing characters close to the person's name if not exactly. In Architect, turn on **Roster search**, tick **name** under **Searchable attributes**, and slide **Search accuracy** to **Low accuracy**.
 
 <AppOnly app="current">
 
@@ -202,6 +248,8 @@ In a protocol written in more than one language (see [Translating Your Protocol]
 </AppOnly>
 
 ### Prompting for a roster item
+
+<Walkthrough id="working-with-rosters" chapter="prompt"></Walkthrough>
 
 Much like in other name generator interfaces, in order to select roster items the interface needs a prompt. This could be as simple as "Please select the people you know" however, we strongly encourage researchers to consider using common prompts or ones that relate carefully to a research question. You can use multiple prompts on the same interface.
 
@@ -213,14 +261,14 @@ A roster item can only be added to the interview once (or more strictly, once pe
 
 In order to manage cases where alters could qualify for multiple prompts, it is useful to do two things:
 
-- Use the ['assign additional variables'](/en/design-protocols/key-concepts/additional-variables) feature when creating a prompt.
+- Use the ['assign additional variables'](/en/design-protocols/key-concepts/additional-variables) feature when creating a prompt. In Architect it is the prompt's **Additional attributes** section, where you click **Add new attribute to assign**.
 - Use the 'already mentioned' panel in the interview.
 
 When you assign an additional variable with a prompt it means that not only will that prompt create a node, but it will assign some additional data. Usually we use a boolean variable per prompt. So if you have a prompt for classmates who study together then you should also assign an additional variable 'study_together' and set it to True. Then do the same for the prompt about known before this year. When you look at your data later on, you will have two additional columns. The people nominated on the `study_together` prompt will have `True` in that column and the people nominated on the `known_before` prompt will have `True` in that column.
 
 Since you can only turn a roster item into a node once that means that if people were created in the first, `study_together` prompt we need an additional way to include them in the `known_before` prompt. This is why we use a side panel. Side panels are available in the [Name Generator (using forms)](/en/design-protocols/interface-documentation/name-generator-using-forms) and [Name Generator (using quick add)](/en/design-protocols/interface-documentation/name-generator-using-quick-add) interfaces.
 
-With a Name Generator (using quick add), we can nominate new nodes with the new node button in the lower right. But on the left hand side we can have a side panel. In fact we can have two - one for people already nominated who are now in the alter pool and one for the remaining roster items who have not yet been nominated.
+With a Name Generator (using quick add), which Architect lists as **Name Generator (quick add)**, we can nominate new nodes with the new node button in the lower right. But on the left hand side we can have a side panel. In fact we can have two - one for people already nominated who are now in the alter pool and one for the remaining roster items who have not yet been nominated.
 
 <AppOnly app="classic">
 
@@ -258,6 +306,8 @@ Remember, if the participant creates a new node with a duplicate name and they w
 
 ## Tips for rosters in sociocentric studies
 
+<Walkthrough id="working-with-rosters" chapter="whole"></Walkthrough>
+
 A sociocentric study is one where you are interested in the connections between people within a given network boundary. To start simple, imagine we are only interested in ego-alter ties. That is, we are not focusing on a classmate's impression of whether two other people are friends. We simply want to have people nominate their peers. This can then be converted into a whole network as a matrix using some data wrangling. We do not show such wrangling here, but given past experience we can show some steps to make this process easier.
 
 Recall that an adjacency matrix for a network has rows and columns. The rows represent the participants' data and the columns are the targets (i.e. the people that the participants nominated). Since it is a sociocentric study, the rows and the columns should have the same names. In the following simple table, we see a classroom with four students. 'Alice' nominates 'Bob' and 'Cam' as friends. 'Dot' nominates everyone as a friend, while 'Bob' and 'Cam' only nominate each other. The resulting matrix would look like the following:
@@ -273,7 +323,7 @@ In the case of a roster in Network Canvas, each participant would contribute a r
 
 To collect this sort of data in Network Canvas we can use a roster and only collect nominations from the participants. However, we would like to have the participant identify themselves in the roster so that they are not available for subsequent questions. To do this we can use several features of Network Canvas in tandem:
 
-1. We can create an 'identify yourself' stage with a single prompt, and set the stage's minimum and maximum number of alters to 1.
+1. We can create an 'identify yourself' stage with a single prompt, and set the stage's minimum and maximum number of alters to 1. In Architect, turn on **Nomination limits** and set **Minimum number of alters** and **Maximum number of alters** to 1.
 2. We can attach an additional variable called `is_ego` and set it to True for that one node.
 3. Because roster items become nodes only once, ego will then not be listed on subsequent roster prompts.
 4. However, ego is still in the alter pool, so any time we want to do something with the alters, such as ask for data on frequency of communication, we need to filter out ego, which we can do with [stage level filtering](/en/design-protocols/key-concepts/network-filtering) and our `is_ego` variable.
