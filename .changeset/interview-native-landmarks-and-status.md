@@ -1,5 +1,8 @@
 ---
 '@codaco/interview': patch
+'@codaco/architect': patch
+'@codaco/interviewer': patch
+'fresco': patch
 ---
 
 Status messages, the navigation bar and the pedigree regions now use native
