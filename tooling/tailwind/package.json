@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
+    "@codaco/vitest-config": "workspace:^",
     "@types/node": "catalog:",
     "colorjs.io": "catalog:",
     "typescript": "catalog:",
