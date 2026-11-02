@@ -156,9 +156,12 @@ export function CollectionFilterInput({
       ) : (
         <Search aria-hidden="true" />
       )}
-      <output aria-live="polite" className="sr-only">
+      {/* An <output> would be labelable: sitting before the input, it would
+          take the click of a <label> wrapped around this field. */}
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role */}
+      <span role="status" aria-live="polite" className="sr-only">
         {showingLoading ? statusText : ''}
-      </output>
+      </span>
     </>
   );
 

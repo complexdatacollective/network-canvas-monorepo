@@ -63,7 +63,11 @@ type TimeAgoProps = Omit<
 > & {
   date: Date | string | number;
   dateOptions?: Intl.DateTimeFormatOptions;
-  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  /**
+   * Called when the time is activated, by a click or (since it is a button)
+   * by Enter or Space.
+   */
+  onClick?: React.MouseEventHandler<HTMLElement>;
 };
 
 const TimeAgo: React.FC<TimeAgoProps> = ({
