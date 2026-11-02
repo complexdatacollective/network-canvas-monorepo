@@ -671,6 +671,10 @@
     "defaultMessage": "No attributes.",
     "description": "The emptyText text in components / Codebook / VariableList."
   },
+  "architect.codebook.variableList.tableLabel": {
+    "defaultMessage": "Attributes",
+    "description": "Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached."
+  },
   "architect.codebook.variables.actions": {
     "defaultMessage": "Actions",
     "description": "Visible text in components / Codebook / Variables."
@@ -690,6 +694,10 @@
   "architect.codebook.variables.noAttributes": {
     "defaultMessage": "No attributes.",
     "description": "The emptyText text in components / Codebook / Variables."
+  },
+  "architect.codebook.variables.tableLabel": {
+    "defaultMessage": "Attributes",
+    "description": "Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached."
   },
   "architect.codebook.variables.unknown": {
     "defaultMessage": "Unknown",

@@ -24,6 +24,7 @@
   "interviewer.dataView.noInterviewsMatchThisFilter": "Aucun entretien ne correspond à ce filtre.",
   "interviewer.dataView.noInterviewsRecordedYet": "Aucun entretien enregistré pour l’instant.",
   "interviewer.dataView.selectAllTotalCountMatching": "{totalCount, plural, one {Sélectionner le résultat correspondant (#) →} other {Sélectionner tous les # résultats correspondants →}}",
+  "interviewer.dataView.tableLabel": "Entretiens",
   "interviewer.dataViewColumns.caseID": "Identifiant de cas",
   "interviewer.dataViewColumns.exportStatus": "Statut d’exportation",
   "interviewer.dataViewColumns.interviewActions": "Actions sur l’entretien",

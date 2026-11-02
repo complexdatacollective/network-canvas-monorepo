@@ -32,6 +32,12 @@ import { useClientDataTable } from '~/hooks/useClientDataTable';
 import { type GetApiTokensReturnType } from '~/queries/apiTokens';
 
 const messages = defineMessages({
+  tableLabel: {
+    id: 'fresco.ApiTokenManagement.tableLabel',
+    defaultMessage: 'API Tokens',
+    description:
+      'Accessible name of the table listing API tokens, announced by screen readers when it is reached.',
+  },
   activeToken: {
     id: 'fresco.apiToken.activeToken',
     defaultMessage: 'Active token: {name}',
@@ -394,6 +400,7 @@ export default function ApiTokenManagement({
       </Button>
       <DataTable
         table={table}
+        aria-label={intl.formatMessage(messages.tableLabel)}
         emptyText={intl.formatMessage(messages.noAPITokensCreatedYet)}
         showPagination={false}
       />
