@@ -23,7 +23,6 @@ const meta = {
   title: 'Design System/Motion Spring',
   parameters: {
     layout: 'padded',
-    a11y: { disable: true },
     docs: {
       description: {
         component:
