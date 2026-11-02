@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet } from '@tanstack/react-router';
+import { useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl, useAppLocale } from '@codaco/app-i18n/react';
@@ -228,6 +229,10 @@ export default function SiteLayout() {
   // the branch that does have a guard.
   useSessionRevalidation();
 
+  // The footer's year, fixed when the layout mounts: `new Date()` read during
+  // render would differ between renders.
+  const [today] = useState(() => new Date());
+
   const socialLinks: readonly SiteFooterSocialLink[] = [
     {
       platform: 'youtube',
@@ -288,7 +293,7 @@ export default function SiteLayout() {
         copyright={intl.formatMessage(messages.copyright, {
           // Through intl, not `getFullYear` interpolation: the year is a
           // formatted number in the reader's locale and calendar.
-          year: intl.formatDate(new Date(), { year: 'numeric' }),
+          year: intl.formatDate(today, { year: 'numeric' }),
         })}
         socialLinks={socialLinks}
       />

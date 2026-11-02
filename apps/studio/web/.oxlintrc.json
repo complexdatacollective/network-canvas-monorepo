@@ -1,0 +1,34 @@
+{
+  "extends": ["../../../.oxlintrc.json", "../../../tooling/oxlint/react.json"],
+  "jsPlugins": ["eslint-plugin-formatjs"],
+  "rules": {
+    // Descriptor hygiene and untranslated-copy detection for Studio's
+    // messages. The root config's overrides name `apps/studio/web/src/**`, but
+    // an override's `files` are matched against the config that declares it,
+    // so they cannot reach a package with a config of its own: they are
+    // repeated here.
+    "formatjs/enforce-description": "error",
+    "formatjs/enforce-default-message": "error",
+    "formatjs/no-invalid-icu": "error",
+    "formatjs/enforce-placeholders": "error",
+    "formatjs/no-multiple-whitespaces": "error",
+    // The Studio client is converted end to end, so a bare literal in its JSX
+    // is a string somebody forgot.
+    "formatjs/no-literal-string-in-jsx": "error"
+  },
+  "overrides": [
+    {
+      // Test and story fixtures render throwaway copy on purpose, and nobody
+      // translates a fixture (mirrors the root's override).
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.stories.ts",
+        "**/*.stories.tsx",
+        "**/__tests__/**",
+        "**/__mocks__/**"
+      ],
+      "rules": { "formatjs/no-literal-string-in-jsx": "off" }
+    }
+  ]
+}

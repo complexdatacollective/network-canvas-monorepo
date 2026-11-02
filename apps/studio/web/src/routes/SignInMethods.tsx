@@ -70,7 +70,7 @@ const messages = defineMessages({
     defaultMessage: 'Continue with Microsoft',
     description: 'Button starting sign-in through Microsoft.',
   },
-  useDifferentEmail: {
+  differentEmail: {
     id: 'studio.signIn.useDifferentEmail',
     defaultMessage: 'Use a different email address',
     description:
@@ -304,12 +304,18 @@ export function SentLinkConfirmation({
 
   return (
     <>
-      <Paragraph role="status" ref={sentRef} tabIndex={-1}>
+      <Paragraph
+        render={<output />}
+        aria-live="polite"
+        className="block"
+        ref={sentRef}
+        tabIndex={-1}
+      >
         {sentTo !== null && intl.formatMessage(message, { email: sentTo })}
       </Paragraph>
       {sentTo !== null && (
         <Button size="sm" onClick={onReset}>
-          {intl.formatMessage(messages.useDifferentEmail)}
+          {intl.formatMessage(messages.differentEmail)}
         </Button>
       )}
     </>

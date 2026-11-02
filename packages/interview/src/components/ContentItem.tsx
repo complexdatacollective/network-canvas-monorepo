@@ -174,6 +174,7 @@ function VideoPlayer({
           <AppMessage message={messages.itemUnavailable} />
         </Paragraph>
       )}
+      {/* oxlint-disable-next-line jsx-a11y/media-has-caption -- protocol assets carry no caption file (the asset schema has no field for one), so there is no track to point at. */}
       <video
         loop
         controls
@@ -256,6 +257,7 @@ function AssetItem({
       );
     case 'audio':
       return (
+        // oxlint-disable-next-line jsx-a11y/media-has-caption -- protocol assets carry no caption file (the asset schema has no field for one), so there is no track to point at.
         <audio
           controls
           autoPlay
@@ -270,7 +272,6 @@ function AssetItem({
               'audio/mpeg',
             )}
           />
-          <track kind="captions" />
         </audio>
       );
     case 'video':

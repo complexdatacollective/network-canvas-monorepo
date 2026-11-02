@@ -20,7 +20,7 @@ import {
   Stream,
 } from 'effect';
 import type { Rpc, RpcClient, RpcClientError } from 'effect/rpc';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 
 import type {
   ChunkOf,
@@ -208,27 +208,40 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
     streamOptions?: { readonly enabled?: boolean },
   ): StreamState<ErrorOf<Rpcs, Tag>> => {
     const enabled = streamOptions?.enabled ?? true;
-    const [state, setState] = useState<StreamState<ErrorOf<Rpcs, Tag>>>(IDLE);
+    // A run is one stream for one tag and payload. Its settled state is kept
+    // with the key it belongs to, so a new run reads as streaming until its
+    // own stream settles, with no reset inside the effect.
+    const runKey = `${tag}:${hashKey([payload])}`;
+    const [settled, setSettled] = useState<{
+      readonly runKey: string;
+      readonly state: StreamState<ErrorOf<Rpcs, Tag>>;
+    } | null>(null);
+    const state: StreamState<ErrorOf<Rpcs, Tag>> = !enabled
+      ? IDLE
+      : settled?.runKey === runKey
+        ? settled.state
+        : STREAMING;
 
-    const onChunkRef = useRef(onChunk);
-    onChunkRef.current = onChunk;
-    const payloadRef = useRef(payload);
-    payloadRef.current = payload;
-    const payloadHash = hashKey([payload]);
+    // The latest callback and payload, read when a run starts and as chunks
+    // arrive, without restarting the stream when only their identity changes.
+    const emitChunk = useEffectEvent((chunk: ChunkOf<Rpcs, Tag>) =>
+      onChunk(chunk),
+    );
+    const currentPayload = useEffectEvent(() => payload);
 
     useEffect(() => {
       if (!enabled) {
-        setState(IDLE);
         return undefined;
       }
-      setState(STREAMING);
+      const settle = (next: StreamState<ErrorOf<Rpcs, Tag>>) =>
+        setSettled({ runKey, state: next });
       let live = true;
       const fiber = runtime.runFork(
         Effect.flatMap(client, (c) =>
           Stream.runForEach(
             // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- RpcClient.Flat's conditional return type does not resolve for a generic Rpcs; StreamAt is that call's resolved shape, pinned by _flatClientShapeProbe
-            (c as unknown as StreamAt<Rpcs, Tag>)(tag, payloadRef.current),
-            (chunk) => Effect.sync(() => onChunkRef.current(chunk)),
+            (c as unknown as StreamAt<Rpcs, Tag>)(tag, currentPayload()),
+            (chunk) => Effect.sync(() => emitChunk(chunk)),
           ),
         ),
       );
@@ -237,7 +250,7 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
           return;
         }
         if (Exit.isSuccess(exit)) {
-          setState(DONE);
+          settle(DONE);
           return;
         }
         if (Cause.hasInterruptsOnly(exit.cause)) {
@@ -246,16 +259,19 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
         const failure = Cause.findErrorOption(exit.cause);
         if (Option.isSome(failure)) {
           onFailure?.(failure.value);
-          setState({ status: 'failed', error: failure.value });
+          settle({ status: 'failed', error: failure.value });
           return;
         }
-        setState({ status: 'failed', error: undefined });
+        settle({ status: 'failed', error: undefined });
       });
       return () => {
         live = false;
         Effect.runFork(Fiber.interrupt(fiber));
+        // A run that ends without a successor (disabled, then enabled again
+        // with the same payload) must not show this run's outcome.
+        setSettled(null);
       };
-    }, [enabled, tag, payloadHash]);
+    }, [enabled, tag, runKey]);
 
     return state;
   };
