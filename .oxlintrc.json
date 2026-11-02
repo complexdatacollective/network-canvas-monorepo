@@ -213,7 +213,6 @@
       // config rather than appearing in this list, where they would silently
       // do nothing.
       "files": [
-        "packages/app-i18n/src/**",
         "packages/network-exporters/src/**",
         "packages/protocol-validation/src/**",
         "packages/protocol-utilities/src/**",
