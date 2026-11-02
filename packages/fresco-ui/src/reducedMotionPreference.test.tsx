@@ -119,19 +119,25 @@ describe('the operating-system reduced-motion preference', () => {
       });
     });
 
+    // Strictly between the start (0) and the end (100): the animation has both
+    // begun and not finished. A skipped animation sits at 100, and one that
+    // never ran sits at 0 (an identity transform, which Motion writes as
+    // `none`), so neither satisfies this.
+    async function expectMidAnimation(element: HTMLElement) {
+      await waitFor(() => {
+        const match = /^translateX\((.+)px\)$/.exec(element.style.transform);
+        expect(match).not.toBeNull();
+        const x = Number(match?.[1]);
+        expect(x).toBeGreaterThan(0);
+        expect(x).toBeLessThan(100);
+      });
+    }
+
     it('animate when the user has no preference', async () => {
       emulateSystem('no-preference');
       const { getByTestId } = render(<Slider />, { wrapper: Root });
 
-      // Wait for the animation to have started, then check it has not landed.
-      await waitFor(() => {
-        expect(getByTestId('slider').style.transform).toMatch(
-          /^translateX\(.+px\)$/,
-        );
-      });
-      expect(getByTestId('slider').style.transform).not.toBe(
-        'translateX(100px)',
-      );
+      await expectMidAnimation(getByTestId('slider'));
     });
 
     it('use the preference as it stands when they mount, not an earlier one', async () => {
@@ -139,14 +145,7 @@ describe('the operating-system reduced-motion preference', () => {
       emulateSystem('no-preference');
       const { getByTestId } = render(<Slider />, { wrapper: Root });
 
-      await waitFor(() => {
-        expect(getByTestId('slider').style.transform).toMatch(
-          /^translateX\(.+px\)$/,
-        );
-      });
-      expect(getByTestId('slider').style.transform).not.toBe(
-        'translateX(100px)',
-      );
+      await expectMidAnimation(getByTestId('slider'));
     });
   });
 
@@ -162,7 +161,9 @@ describe('the operating-system reduced-motion preference', () => {
   });
 
   describe('useSafeAnimate', () => {
-    function animateOpacity() {
+    // The element stays mounted while the assertion runs, so a real animation
+    // gets the frames it needs to move it.
+    function startOpacityAnimation() {
       const { result } = renderHook(() => useSafeAnimate(), {
         wrapper: Root,
       });
@@ -171,26 +172,33 @@ describe('the operating-system reduced-motion preference', () => {
       const element = document.createElement('div');
       element.style.opacity = '1';
       document.body.append(element);
-      try {
-        animate(element, { opacity: 0.5 }, { duration: 30 });
-        return element.style.opacity;
-      } finally {
-        element.remove();
-      }
+
+      animate(element, { opacity: 0.5 }, { duration: 30 });
+      return element;
     }
+
+    afterEach(() => {
+      document.body.replaceChildren();
+    });
 
     it('applies the end state at once when the user prefers reduced motion', () => {
       emulateSystem('reduce');
 
-      expect(animateOpacity()).toBe('0.5');
+      expect(startOpacityAnimation().style.opacity).toBe('0.5');
     });
 
-    it('starts a real animation when the user has no preference', () => {
+    it('runs a real animation when the user has no preference', async () => {
       emulateSystem('no-preference');
+      const element = startOpacityAnimation();
 
-      // The animation has only just begun, so the element is still at its
-      // start; it would read 0.5 if the call had skipped to the end state.
-      expect(animateOpacity()).toBe('1');
+      // Strictly between the start (1) and the end (0.5): it has moved, and it
+      // has not been skipped to the end. A no-op animator leaves it at 1, and
+      // skipping to the end state puts it at 0.5.
+      await waitFor(() => {
+        const opacity = Number(element.style.opacity);
+        expect(opacity).toBeLessThan(1);
+        expect(opacity).toBeGreaterThan(0.5);
+      });
     });
   });
 });
