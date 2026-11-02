@@ -3,7 +3,7 @@
   - button "Close search" [expanded] [pressed]
   - combobox "Search" [expanded]: Still nowhere
   - button "Clear search"
-  - listbox "Search suggestions"
+  - listbox "Search suggestions": The place search broke - matrix check
   - button "Zoom in"
   - button "Zoom out"
   - button "Recenter Map"

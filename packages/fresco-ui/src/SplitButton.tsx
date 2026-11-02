@@ -175,7 +175,7 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
     ref,
   ) => {
     const intl = useAppIntl();
-    const segmentId = React.useId();
+    const generatedSegmentId = React.useId();
     const popoverContentProps = getPopoverContentProps(popover);
     const {
       'aria-label': segmentAriaLabel,
@@ -183,10 +183,14 @@ const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
       'children': segmentChildren,
       'disabled': segmentOwnDisabled,
       'icon': segmentIcon,
+      'id': segmentOwnId,
       'iconPosition': segmentIconPosition,
       'position': segmentPositionProp,
       ...segmentProps
     } = segment;
+    // The popup is named by this button, so both use the one ID: the
+    // caller's, when it gives one.
+    const segmentId = segmentOwnId ?? generatedSegmentId;
     const segmentPosition = segmentPositionProp ?? 'right';
     const segmentHasVisibleContent = hasVisibleContent(segmentChildren);
     const segmentDisabled = disabled || segmentOwnDisabled;

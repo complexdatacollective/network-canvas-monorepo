@@ -179,4 +179,21 @@ describe('SplitButton', () => {
       await screen.findByRole('dialog', { name: 'Save options' }),
     ).toBeInTheDocument();
   });
+
+  it('still names its popup when the segment brings its own id', async () => {
+    render(
+      <SplitButton
+        popover={{ content: <div>More save options</div> }}
+        segment={{ ...defaultSegment, id: 'save-more' }}
+      >
+        Save
+      </SplitButton>,
+    );
+    const segmentButton = screen.getByRole('button', { name: 'Open options' });
+    expect(segmentButton).toHaveAttribute('id', 'save-more');
+    await userEvent.click(segmentButton);
+    expect(
+      await screen.findByRole('dialog', { name: 'Open options' }),
+    ).toBeInTheDocument();
+  });
 });

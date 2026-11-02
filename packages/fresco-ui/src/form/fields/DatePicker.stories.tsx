@@ -667,7 +667,6 @@ export const BirthDateExample: Story = {
             Date of Birth
           </label>
           <DatePickerField
-            aria-label="Birth date"
             id="birth-date-input"
             type="full"
             value={birthDate}
