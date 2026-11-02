@@ -31,28 +31,28 @@ export function useResourceInspection(
 ): ResourceInspectionState {
   const resources = useResourceClient();
   const { busy, failure, retry, run, clear } = useResourceAttempt();
-  // Filed under the resource it describes, so a picker never shows the
-  // previous resource's name over the newly chosen one: an inspection of any
-  // other resource is simply not the answer for this one.
-  const [inspected, setInspected] = useState<
-    Readonly<{ resourceId: string; inspection: ResourceInspection }> | undefined
-  >(undefined);
-  const inspection =
-    inspected !== undefined && inspected.resourceId === resourceId
-      ? inspected.inspection
-      : undefined;
+  const [inspection, setInspection] = useState<ResourceInspection | undefined>(
+    undefined,
+  );
+  // What the inspection was asked about. A different resource, a different
+  // client, or the selection passing through none and coming back, drops the
+  // inspection kept: a picker never shows the previous resource's name over a
+  // newly chosen one, and an inspection from before a selection was left does
+  // not return to be shown when the same resource is chosen again, nor outlive
+  // a request for it that fails. Adjusted during the render that sees the
+  // change, so no frame draws the stale one.
+  const [asked, setAsked] = useState({ resourceId, resources });
+  if (asked.resourceId !== resourceId || asked.resources !== resources) {
+    setAsked({ resourceId, resources });
+    setInspection(undefined);
+  }
 
   const reload = useCallback(() => {
     if (resourceId === undefined) {
-      // Nothing to show: the inspection kept is filed under another resource,
-      // so it is not read for this one.
       clear();
       return;
     }
-    run(
-      () => resources.inspect(resourceId),
-      (data) => setInspected({ resourceId, inspection: data }),
-    );
+    run(() => resources.inspect(resourceId), setInspection);
   }, [clear, resourceId, resources, run]);
 
   useEffect(() => {

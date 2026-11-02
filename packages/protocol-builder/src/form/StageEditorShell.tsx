@@ -298,11 +298,17 @@ function StageEditorFormBody({
   const clearRefusedWrite = useCallback(() => {
     setRefusedWrite(undefined);
   }, []);
-  // A refusal is only ever reported while the stage cannot be written, so it
-  // goes the moment the stage can be: adjusted during the render that sees the
-  // access change rather than in an effect, which would draw one frame of a
-  // writable stage still carrying a refusal banner.
-  if (!readOnly && refusedWrite !== undefined) setRefusedWrite(undefined);
+  // A refusal reported while the stage cannot be written goes the moment the
+  // stage can be, and only then: a list editor also reports refusals on a
+  // writable stage (a batch it chose not to issue), and those stand until the
+  // next write. Adjusted during the render that sees the access change rather
+  // than in an effect, which would draw one frame of a writable stage still
+  // carrying a refusal banner.
+  const [wasReadOnly, setWasReadOnly] = useState(readOnly);
+  if (wasReadOnly !== readOnly) {
+    setWasReadOnly(readOnly);
+    if (!readOnly) setRefusedWrite(undefined);
+  }
 
   /**
    * The one way a refused structural write is said out loud, wherever the
