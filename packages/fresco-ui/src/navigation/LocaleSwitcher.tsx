@@ -474,8 +474,7 @@ export default function LocaleSwitcher({
                 </Combobox.Item>
               )}
             </Combobox.List>
-            <div
-              role="status"
+            <output
               aria-live="polite"
               className={
                 notice === null
@@ -520,7 +519,7 @@ export default function LocaleSwitcher({
                   </Button>
                 </>
               )}
-            </div>
+            </output>
           </Combobox.Popup>
         </Combobox.Positioner>
       </Combobox.Portal>

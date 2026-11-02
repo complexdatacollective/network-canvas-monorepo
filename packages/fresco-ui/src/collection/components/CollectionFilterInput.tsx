@@ -156,9 +156,9 @@ export function CollectionFilterInput({
       ) : (
         <Search aria-hidden="true" />
       )}
-      <span role="status" className="sr-only">
+      <output aria-live="polite" className="sr-only">
         {showingLoading ? statusText : ''}
-      </span>
+      </output>
     </>
   );
 

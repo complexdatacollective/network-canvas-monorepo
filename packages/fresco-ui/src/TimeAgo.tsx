@@ -63,7 +63,7 @@ type TimeAgoProps = Omit<
 > & {
   date: Date | string | number;
   dateOptions?: Intl.DateTimeFormatOptions;
-  onClick?: React.MouseEventHandler<HTMLSpanElement>;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
 };
 
 const TimeAgo: React.FC<TimeAgoProps> = ({
@@ -116,20 +116,13 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
   }, [date]);
 
   return (
-    <span
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={(event) => {
         setShowRaw((prev) => !prev);
         onClick?.(event);
       }}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          setShowRaw((prev) => !prev);
-        }
-      }}
-      className={cx('cursor-pointer select-none', className)}
+      className={cx('focusable cursor-pointer select-none', className)}
     >
       <time
         {...props}
@@ -139,7 +132,7 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
       >
         {showRaw ? localisedDate : timeAgo}
       </time>
-    </span>
+    </button>
   );
 };
 

@@ -24,6 +24,7 @@ describe('Node toggle state', () => {
   });
 
   it('keeps a declared state off roles that cannot carry it', () => {
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/role-has-required-aria-props, jsx-a11y/role-supports-aria-props -- the role and state clash on purpose, to prove Node drops the state (Node sets aria-selected from `selected`).
     render(<Node label="Ash" role="option" selected aria-pressed={true} />);
     expect(screen.getByRole('option')).not.toHaveAttribute('aria-pressed');
   });

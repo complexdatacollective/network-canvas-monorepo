@@ -469,9 +469,11 @@ export default function EverythingBar({
     if (row.kind !== 'item') {
       const RowIcon = row.kind === 'show-more' ? Ellipsis : TriangleAlert;
       return (
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- keys reach the option through the combobox input's aria-activedescendant; the option itself is never focused.
         <div
           key={row.key}
           id={optionId(row.key)}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an ARIA combobox option; a native <option> cannot hold the icon and label layout.
           role="option"
           aria-selected={highlighted}
           tabIndex={-1}
@@ -612,6 +614,7 @@ export default function EverythingBar({
             <header className="shrink-0 px-4 pt-4 pb-2">
               <InputField
                 ref={inputRef}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- InputField renders an <input>; the role makes it the ARIA combobox for the results list.
                 role="combobox"
                 aria-expanded
                 aria-controls={listId}
@@ -644,6 +647,7 @@ export default function EverythingBar({
             >
               <div
                 id={listId}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- the combobox's results popup; <select> and <datalist> cannot hold grouped, rich results.
                 role="listbox"
                 aria-label={labels.results}
                 className="flex flex-col"
@@ -668,6 +672,7 @@ export default function EverythingBar({
                   return (
                     <div
                       key={section.id}
+                      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an option group inside the ARIA listbox, where a <fieldset> is not allowed.
                       role="group"
                       aria-labelledby={headingId}
                       className="flex flex-col pb-1"
@@ -689,9 +694,9 @@ export default function EverythingBar({
               ) : null}
             </ScrollArea>
 
-            <div role="status" aria-live="polite" className="sr-only">
+            <output aria-live="polite" className="sr-only">
               {announcement}
-            </div>
+            </output>
 
             <footer className="flex shrink-0 flex-wrap items-center gap-4 border-t border-current/10 px-4 py-2 text-xs text-current/60">
               <span className="flex items-center gap-1.5">

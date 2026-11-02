@@ -1185,7 +1185,7 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
     'insertMenu'?: RichTextInsertMenu;
     'id': string;
     'name': string;
-    'aria-describedby': string;
+    'aria-describedby'?: string;
   }
 >;
 
