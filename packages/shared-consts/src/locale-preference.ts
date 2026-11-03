@@ -87,7 +87,9 @@ const isWithinDomain = (host: string, domain: string) => {
  * The `Set-Cookie` / `document.cookie` values that keep a choice made on
  * `host`, or forget it with null. On a host within the cookie's domain the
  * choice is kept for the whole domain, and any choice kept for the host alone
- * is expired so it cannot shadow the shared one.
+ * is expired so it cannot shadow the shared one. The expiry comes first: on the
+ * domain's own host some cookie stores treat the two as one cookie, and the
+ * later write must be the one that is kept.
  */
 export function serializeLocalePreferenceCookies(
   cookie: LocalePreferenceCookie,
@@ -106,5 +108,5 @@ export function serializeLocalePreferenceCookies(
   ) {
     return [hostOnly];
   }
-  return [value(` Domain=${cookie.domain};`, true), value('', false)];
+  return [value('', false), value(` Domain=${cookie.domain};`, true)];
 }
