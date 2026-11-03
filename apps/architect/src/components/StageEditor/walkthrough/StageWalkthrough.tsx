@@ -208,10 +208,10 @@ function isDone(step: StageWalkthroughStep, stage: Stage | undefined) {
  * above the form, so there it floats over the corner of the page instead.
  */
 const SIDEBAR_LAYOUT =
-  '@min-[60rem]:sticky @min-[60rem]:top-(--architect-nav-height) @min-[60rem]:max-h-[calc(100dvh-var(--architect-nav-height))] @max-[60rem]:fixed @max-[60rem]:right-6 @max-[60rem]:bottom-24 @max-[60rem]:z-50 @max-[60rem]:max-h-[calc(100dvh-8rem)] @max-[60rem]:w-[min(26rem,calc(100vw-3rem))] @max-[60rem]:border-2 @max-[60rem]:bg-surface-popover @max-[60rem]:text-surface-popover-contrast @max-[60rem]:shadow-xl';
+  '@min-[60rem]:sticky @min-[60rem]:top-(--architect-nav-height) @min-[60rem]:max-h-[calc(100dvh-var(--architect-nav-height))] @max-[60rem]:fixed @max-[60rem]:end-6 @max-[60rem]:bottom-24 @max-[60rem]:z-50 @max-[60rem]:max-h-[calc(100dvh-8rem)] @max-[60rem]:w-[min(26rem,calc(100vw-3rem))] @max-[60rem]:border-2 @max-[60rem]:bg-surface-popover @max-[60rem]:text-surface-popover-contrast @max-[60rem]:shadow-xl';
 
 const FLOATING_LAYOUT =
-  'fixed right-6 bottom-24 z-50 max-h-[calc(100dvh-8rem)] w-[min(26rem,calc(100vw-3rem))]';
+  'fixed end-6 bottom-24 z-50 max-h-[calc(100dvh-8rem)] w-[min(26rem,calc(100vw-3rem))]';
 
 function WalkthroughPanel({
   steps,
@@ -458,7 +458,7 @@ function Summary({
             <button
               type="button"
               onClick={() => onPick(position)}
-              className="focusable flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-left text-sm hover:bg-current/5"
+              className="focusable flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-start text-sm hover:bg-current/5"
             >
               <Icon
                 aria-hidden
