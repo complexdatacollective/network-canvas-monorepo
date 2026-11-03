@@ -99,12 +99,20 @@ type ComposerActions = {
     member: boolean,
   ) => Promise<void>;
   /**
-   * Turns the automatic layout on or off. It moves everyone when it is turned
-   * on, so undoing that puts everyone back where they were. Turning it off
-   * keeps everyone where they are shown, which `readShownPositions` reads.
+   * Saves where someone was moved to, at once and outside the history. In
+   * automatic layout the layout decides where they come to rest, so the move
+   * is no step of the participant's own to undo, but it is kept if they leave
+   * the stage before the layout settles.
    */
-  setAutomaticLayout: (
-    enabled: boolean,
+  placeNode: (id: string, position: Position) => Promise<void>;
+  /**
+   * Switches the automatic layout on or off, whichever it is when the switch
+   * is made, so every switch changes it and is a step of its own. Switching it
+   * on moves everyone, so undoing that puts everyone back where they were.
+   * Switching it off keeps everyone where they are shown, which
+   * `readShownPositions` reads.
+   */
+  toggleAutomaticLayout: (
     readShownPositions: () => ReadonlyMap<string, Position>,
   ) => Promise<void>;
 };
@@ -678,31 +686,35 @@ export function useComposerActions({
     });
   }
 
+  async function placeNode(id: string, position: Position): Promise<void> {
+    await dispatch(
+      updateNode({
+        nodeId: id,
+        attributePatch: { set: { [layoutVariable]: position }, unset: [] },
+        currentStep,
+      }),
+    ).unwrap();
+  }
+
   // The automatic layout saves positions only when it settles, so where
   // someone is shown can be newer than where they are saved.
   async function saveShownPositions(
     readShownPositions: () => ReadonlyMap<string, Position>,
   ): Promise<void> {
-    for (const [id, position] of readShownPositions()) {
-      if (!readNode(id)) continue;
-      await dispatch(
-        updateNode({
-          nodeId: id,
-          attributePatch: { set: { [layoutVariable]: position }, unset: [] },
-          currentStep,
-        }),
-      ).unwrap();
-    }
+    const unsaved = [...readShownPositions()].filter(([id, shown]) => {
+      const node = readNode(id);
+      if (!node) return false;
+      const saved = node[entityAttributesProperty][layoutVariable];
+      return !isPosition(saved) || saved.x !== shown.x || saved.y !== shown.y;
+    });
+    await Promise.all(unsaved.map(([id, position]) => placeNode(id, position)));
   }
 
-  async function setAutomaticLayout(
-    enabled: boolean,
+  async function toggleAutomaticLayout(
     readShownPositions: () => ReadonlyMap<string, Position>,
   ): Promise<void> {
     await undoStore.getState().record(async () => {
-      if (readAutomaticLayout() === enabled) return null;
-
-      if (!enabled) {
+      if (readAutomaticLayout()) {
         await saveShownPositions(readShownPositions);
         writeAutomaticLayout(false);
 
@@ -752,6 +764,7 @@ export function useComposerActions({
     repositionNode,
     toggleGroupMembership,
     setGroupMembership,
-    setAutomaticLayout,
+    placeNode,
+    toggleAutomaticLayout,
   };
 }

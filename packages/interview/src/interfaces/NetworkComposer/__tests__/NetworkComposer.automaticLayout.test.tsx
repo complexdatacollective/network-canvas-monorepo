@@ -331,7 +331,7 @@ describe('NetworkComposer automatic layout', () => {
     await waitFor(() => expect(layoutMode()).toBe('AUTOMATIC'));
   });
 
-  it('does not make moving someone in automatic layout a step to undo', async () => {
+  it('saves a move made in automatic layout at once, without making it a step to undo', async () => {
     const { store } = renderInterface({ nodes: makeNodes() });
 
     fireEvent.click(layoutToggle());
@@ -339,6 +339,14 @@ describe('NetworkComposer automatic layout', () => {
     fireEvent.keyDown(screen.getByRole('button', { name: /Alex/ }), {
       key: 'ArrowUp',
     });
+
+    // Saved before the layout settles, so leaving the stage keeps it.
+    await waitFor(() =>
+      expect(storedPositions(store).alex).toEqual({
+        x: MANUAL_LAYOUT.alex.x,
+        y: MANUAL_LAYOUT.alex.y - 0.02,
+      }),
+    );
 
     // One undo reverses turning the layout on, not the move.
     pressUndo();

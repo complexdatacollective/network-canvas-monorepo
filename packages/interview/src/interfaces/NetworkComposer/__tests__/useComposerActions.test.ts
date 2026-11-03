@@ -969,22 +969,27 @@ describe('useComposerActions reading the network when a change is made', () => {
     expect(built).toBe(true);
   });
 
-  it('turns the automatic layout on once however often it is asked to', async () => {
+  const automaticLayoutOf = (store: ReturnType<typeof makeStore>) =>
+    store.getState().session.stageMetadata?.[0];
+  const noneShown = () => new Map<string, { x: number; y: number }>();
+
+  it('makes every switch of the automatic layout a step, so an undo asked for while they wait reverses the newest', async () => {
     const before = { x: 0.1, y: 0.1 };
     const { store, undoStore, actions, settle } = setUp([at('a', before)]);
-    const noneShown = () => new Map<string, { x: number; y: number }>();
 
-    const first = actions().setAutomaticLayout(true, noneShown);
-    const second = actions().setAutomaticLayout(true, noneShown);
-    await settle(first, second);
+    // Two presses while the history is busy, then an undo.
+    const first = actions().toggleAutomaticLayout(noneShown);
+    const second = actions().toggleAutomaticLayout(noneShown);
+    const undoing = undoStore.getState().undo();
+    await settle(first, second, undoing);
 
-    expect(store.getState().session.stageMetadata?.[0]).toEqual({
-      automaticLayout: true,
-    });
+    // On, then off; the undo reverses switching it off.
+    expect(automaticLayoutOf(store)).toEqual({ automaticLayout: true });
     expect(undoStore.getState().past).toHaveLength(1);
+    expect(undoStore.getState().future).toHaveLength(1);
 
-    // The layout saves a position of its own; one undo puts the earlier one
-    // back.
+    // The layout saves a position of its own; the next undo puts the earlier
+    // one back.
     await act(async () => {
       await store
         .dispatch(
@@ -1000,9 +1005,18 @@ describe('useComposerActions reading the network when a change is made', () => {
         .unwrap();
       await undoStore.getState().undo();
     });
-    expect(store.getState().session.stageMetadata?.[0]).toEqual({
-      automaticLayout: false,
-    });
+    expect(automaticLayoutOf(store)).toEqual({ automaticLayout: false });
     expect(layoutOf(store, 'a')).toEqual(before);
+  });
+
+  it('saves a placed position without making it a step', async () => {
+    const { store, undoStore, actions, settle } = setUp([
+      at('a', { x: 0.1, y: 0.1 }),
+    ]);
+
+    await settle(actions().placeNode('a', { x: 0.4, y: 0.5 }));
+
+    expect(layoutOf(store, 'a')).toEqual({ x: 0.4, y: 0.5 });
+    expect(undoStore.getState().past).toHaveLength(0);
   });
 });

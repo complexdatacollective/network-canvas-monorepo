@@ -337,9 +337,12 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const handleNodeDragEnd = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
       // In automatic layout a drag only nudges the layout, which decides
-      // where the person comes to rest and saves it, so there is no move of
-      // the participant's own to undo.
-      if (layoutMode === 'AUTOMATIC') return;
+      // where the person comes to rest, so the move is saved without being a
+      // step to undo.
+      if (layoutMode === 'AUTOMATIC') {
+        void actions.placeNode(nodeId, position);
+        return;
+      }
       void actions.repositionNode(nodeId, position);
     },
     [actions, layoutMode],
@@ -496,15 +499,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     [composerStore, undoStore, actions, deleteEntities],
   );
 
-  const handleToggleAutomaticLayout = useCallback(
-    (next: boolean) => {
-      void actions.setAutomaticLayout(
-        next,
-        () => canvasStore.getState().positions,
-      );
-    },
-    [actions, canvasStore],
-  );
+  const handleToggleAutomaticLayout = useCallback(() => {
+    void actions.toggleAutomaticLayout(() => canvasStore.getState().positions);
+  }, [actions, canvasStore]);
 
   const edgeEntries = (stage.edges ?? []).map((edgeDef) => {
     const edgeType = edgeDef.subject.type;
