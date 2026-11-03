@@ -1,3 +1,4 @@
+import { JSDOM } from 'jsdom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -30,17 +31,29 @@ describe('client locale selection', () => {
     expect(
       getLocaleCookies('en-US', 'protocolgallery.networkcanvas.com'),
     ).toEqual([
-      'NEXT_LOCALE=en-US; Path=/; Domain=networkcanvas.com; Max-Age=31536000; SameSite=Lax',
       'NEXT_LOCALE=; Path=/; Max-Age=0; SameSite=Lax',
+      'NEXT_LOCALE=en-US; Path=/; Domain=networkcanvas.com; Max-Age=31536000; SameSite=Lax',
     ]);
   });
 
   it('expires the preference so the edge negotiates again', () => {
     expect(getLocaleCookies(null, 'networkcanvas.com')).toEqual([
-      'NEXT_LOCALE=; Path=/; Domain=networkcanvas.com; Max-Age=0; SameSite=Lax',
       'NEXT_LOCALE=; Path=/; Max-Age=0; SameSite=Lax',
+      'NEXT_LOCALE=; Path=/; Domain=networkcanvas.com; Max-Age=0; SameSite=Lax',
     ]);
   });
+
+  // A cookie store that ignores the host-only flag when matching (RFC 6265, as
+  // jsdom's does) sees both cookies as one on the apex host.
+  it.each(['networkcanvas.com', 'protocolgallery.networkcanvas.com'])(
+    'keeps the choice in the cookie store on %s',
+    (host) => {
+      const page = new JSDOM('', { url: `https://${host}/` }).window.document;
+      page.cookie = 'NEXT_LOCALE=fr; Path=/';
+      for (const cookie of getLocaleCookies('es', host)) page.cookie = cookie;
+      expect(page.cookie).toBe('NEXT_LOCALE=es');
+    },
+  );
 
   it("keeps a deploy preview's choice to that preview", () => {
     expect(getLocaleCookies('es', 'deploy-preview-1--nc.netlify.app')).toEqual([

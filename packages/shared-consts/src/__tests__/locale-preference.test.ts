@@ -82,8 +82,8 @@ describe('locale preference cookies', () => {
       'keeps a choice made on %s for the whole domain',
       (host) => {
         expect(serializeLocalePreferenceCookies(shared, 'es', host)).toEqual([
-          'site.locale=es; Path=/; Domain=example.org; Max-Age=31536000; SameSite=Lax',
           'site.locale=; Path=/; Max-Age=0; SameSite=Lax',
+          'site.locale=es; Path=/; Domain=example.org; Max-Age=31536000; SameSite=Lax',
         ]);
       },
     );
@@ -92,8 +92,8 @@ describe('locale preference cookies', () => {
       expect(
         serializeLocalePreferenceCookies(shared, null, 'docs.example.org'),
       ).toEqual([
-        'site.locale=; Path=/; Domain=example.org; Max-Age=0; SameSite=Lax',
         'site.locale=; Path=/; Max-Age=0; SameSite=Lax',
+        'site.locale=; Path=/; Domain=example.org; Max-Age=0; SameSite=Lax',
       ]);
     });
 
