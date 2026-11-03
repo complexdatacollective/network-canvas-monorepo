@@ -182,6 +182,52 @@ describe('palettes', () => {
     },
   );
 
+  // The home page has no sheet (landing.scss): its lead and section text sit
+  // on the page, and its tiles on --surface-2, in the darker muted step.
+  it.each(['--background', '--surface-2'])(
+    'keeps --primary-high legible on %s, where the home page sets text',
+    (background) => {
+      const declaration = /--primary-high: ([^;]+);/.exec(
+        text('scss/variables.scss'),
+      );
+      if (!declaration?.[1]) throw new Error('No --primary-high');
+      const expression = declaration[1].replaceAll('var(--nc-', 'var(--');
+      for (const scope of Object.values(SCOPE_FOR)) {
+        const ratio = contrastRatio(
+          toDisplayColor(scope.color(expression)),
+          toDisplayColor(scope.token(background)),
+        );
+        expect(ratio, scope.name).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
+
+  // A field's edge is what shows it is there: WCAG's non-text contrast asks
+  // 3:1 against what surrounds it (the page) and what fills it (the surface).
+  it('gives the home page search a visible edge', () => {
+    const declaration =
+      /\.search-input \{\s*border-color: (color-mix\([^;]+\));/.exec(
+        text('scss/landing.scss'),
+      );
+    if (!declaration?.[1]) {
+      throw new Error('No search field edge in landing.scss');
+    }
+    const expression = declaration[1]
+      .replace(/\s+/g, ' ')
+      .replaceAll('var(--nc-', 'var(--');
+    for (const scope of Object.values(SCOPE_FOR)) {
+      for (const background of ['--background', '--surface']) {
+        const ratio = contrastRatio(
+          toDisplayColor(scope.color(expression)),
+          toDisplayColor(scope.token(background)),
+        );
+        expect(ratio, `${scope.name} on ${background}`).toBeGreaterThanOrEqual(
+          3,
+        );
+      }
+    }
+  });
+
   // Notices are a tint of their colour under the text colour (alerts.scss),
   // because the shared Alert's white-on-colour fills fall short of 4.5:1.
   it.each(['text', 'info', 'success', 'warning', 'destructive'])(

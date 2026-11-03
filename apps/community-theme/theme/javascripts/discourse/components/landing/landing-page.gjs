@@ -7,7 +7,10 @@ import DButton from "discourse/components/d-button";
 import SearchMenu from "discourse/components/search-menu";
 import ageWithTooltip from "discourse/helpers/age-with-tooltip";
 import avatar from "discourse/helpers/avatar";
-import categoryLink from "discourse/helpers/category-link";
+import bodyClass from "discourse/helpers/body-class";
+import categoryLink, {
+  categoryBadgeHTML,
+} from "discourse/helpers/category-link";
 import icon from "discourse/helpers/d-icon";
 import number from "discourse/helpers/number";
 import { ajax } from "discourse/lib/ajax";
@@ -28,14 +31,17 @@ import {
 // The four places the page sends people, in the order it offers them. Each is
 // a category named by a theme setting (a slug, or "parent/child"); one that
 // does not exist, or that the visitor cannot see, is left out. `posts` says
-// whether the card's button starts a topic or, for the team's announcements,
-// opens the category.
+// whether its button starts a topic or, for the team's announcements, opens
+// the category; the three that take posts sit beside the heading, and the
+// announcements below them. `primary` marks the one route whose button is
+// filled: most people come with a question.
 const ROUTES = [
   {
     key: "help",
     setting: "help_category",
     icon: HelpIcon,
     posts: true,
+    primary: true,
     title: "landing.routes.help.title",
     body: "landing.routes.help.body",
     action: "landing.routes.help.action",
@@ -163,14 +169,25 @@ export default class LandingPage extends Component {
       return {
         ...route,
         category,
+        // The category's name and colour, not a link: the browse link beside
+        // it goes to the same page.
+        badge: htmlSafe(categoryBadgeHTML(category, { link: false })),
         latest,
         latestUrl: latest ? topicUrl(latest) : null,
         actionUrl: route.posts
           ? `/new-topic?category=${encodeURIComponent(category.slug)}`
           : category.path,
-        actionClass: route.posts ? "btn-primary" : "btn-default",
+        actionClass: route.primary ? "btn-primary" : "btn-default",
       };
     });
+  }
+
+  get postingRoutes() {
+    return this.routes.filter((route) => route.posts);
+  }
+
+  get newsRoute() {
+    return this.routes.find((route) => !route.posts);
   }
 
   get latestTopics() {
@@ -202,9 +219,10 @@ export default class LandingPage extends Component {
   }
 
   <template>
+    {{bodyClass "nc-landing-page"}}
     <div class="nc-landing">
-      <section class="nc-landing__hero" aria-labelledby="nc-landing-title">
-        <div class="nc-landing__intro">
+      <div class="nc-landing__top">
+        <section class="nc-landing__hero" aria-labelledby="nc-landing-title">
           {{#if this.news}}
             <a class="nc-landing__news" href={{this.newsUrl}}>
               <span class="nc-landing__news-label">
@@ -237,68 +255,95 @@ export default class LandingPage extends Component {
               />
             </div>
           </div>
-        </div>
-        <HeroIllustration />
-      </section>
+          <HeroIllustration />
+        </section>
 
-      <section class="nc-landing__routes" aria-labelledby="nc-landing-routes">
-        <h2 id="nc-landing-routes" class="nc-landing__heading">
-          {{i18n (themePrefix "landing.routes.title")}}
-        </h2>
-        <p class="nc-landing__section-lead">
-          {{i18n (themePrefix "landing.routes.lead")}}
-        </p>
-        <ul class="nc-landing__route-list">
-          {{#each this.routes as |route|}}
-            <li class="nc-route-card nc-route-card--{{route.key}}">
-              <div class="nc-route-card__icon">
-                <route.icon />
-              </div>
-              <div class="nc-route-card__body">
-                <h3 class="nc-route-card__title">
-                  {{i18n (themePrefix route.title)}}
-                </h3>
-                <div class="nc-route-card__category">
-                  {{categoryLink route.category}}
+        <section class="nc-landing__routes" aria-labelledby="nc-landing-routes">
+          <h2 id="nc-landing-routes" class="nc-landing__heading">
+            {{i18n (themePrefix "landing.routes.title")}}
+          </h2>
+          <p class="nc-landing__section-lead">
+            {{i18n (themePrefix "landing.routes.lead")}}
+          </p>
+          <ul class="nc-landing__route-list">
+            {{#each this.postingRoutes as |route|}}
+              <li class="nc-landing__card nc-route nc-route--{{route.key}}">
+                <div class="nc-landing__icon">
+                  <route.icon />
                 </div>
-                <p class="nc-route-card__text">
-                  {{i18n (themePrefix route.body)}}
-                </p>
-                {{#if route.latest}}
-                  <div class="nc-route-card__latest">
-                    <span class="nc-route-card__latest-label">
-                      {{i18n (themePrefix "landing.routes.latestTopic")}}
-                    </span>
-                    <a href={{route.latestUrl}}>
-                      {{fancyTitle route.latest}}
-                    </a>
-                  </div>
-                {{/if}}
-                <div class="nc-route-card__actions">
+                <div class="nc-route__body">
+                  <h3 class="nc-route__title">
+                    {{i18n (themePrefix route.title)}}
+                  </h3>
+                  <p class="nc-route__text">
+                    {{i18n (themePrefix route.body)}}
+                  </p>
+                  {{#if route.latest}}
+                    <p class="nc-route__latest">
+                      <span class="nc-landing__eyebrow">
+                        {{i18n (themePrefix "landing.routes.latestTopic")}}
+                      </span>
+                      <a href={{route.latestUrl}}>
+                        {{fancyTitle route.latest}}
+                      </a>
+                    </p>
+                  {{/if}}
+                </div>
+                <div class="nc-route__end">
                   <DButton
                     @href={{route.actionUrl}}
                     @translatedLabel={{i18n (themePrefix route.action)}}
                     class={{route.actionClass}}
                   />
-                  <a class="nc-route-card__browse" href={{route.category.url}}>
+                  <span class="nc-route__category">{{route.badge}}</span>
+                  <a class="nc-route__browse" href={{route.category.url}}>
                     {{i18n
                       (themePrefix "landing.routes.browse")
                       count=route.category.topic_count
                     }}
+                    {{icon "arrow-right"}}
                   </a>
                 </div>
-              </div>
-            </li>
-          {{/each}}
-        </ul>
-        <aside class="nc-landing__docs">
-          <DocsIcon />
-          <p>{{i18n (themePrefix "landing.docs.text")}}</p>
+              </li>
+            {{/each}}
+          </ul>
+        </section>
+      </div>
+
+      <div class="nc-landing__tiles">
+        {{#if this.newsRoute}}
+          <section
+            class="nc-landing__tile nc-landing__tile--news"
+            aria-labelledby="nc-landing-news"
+          >
+            <div class="nc-landing__icon">
+              <this.newsRoute.icon />
+            </div>
+            <div class="nc-landing__tile-body">
+              <h2 id="nc-landing-news" class="nc-landing__tile-title">
+                {{i18n (themePrefix this.newsRoute.title)}}
+              </h2>
+              <p>{{i18n (themePrefix this.newsRoute.body)}}</p>
+            </div>
+            <DButton
+              @href={{this.newsRoute.actionUrl}}
+              @translatedLabel={{i18n (themePrefix this.newsRoute.action)}}
+              class={{this.newsRoute.actionClass}}
+            />
+          </section>
+        {{/if}}
+        <aside class="nc-landing__tile nc-landing__tile--docs">
+          <div class="nc-landing__icon">
+            <DocsIcon />
+          </div>
+          <p class="nc-landing__tile-body">
+            {{i18n (themePrefix "landing.docs.text")}}
+          </p>
           <a class="btn btn-default" href={{settings.documentation_url}}>
             {{i18n (themePrefix "landing.docs.action")}}
           </a>
         </aside>
-      </section>
+      </div>
 
       <section
         class="nc-landing__activity"
@@ -314,7 +359,7 @@ export default class LandingPage extends Component {
           </p>
         {{else}}
           <div class="nc-landing__activity-grid">
-            <div class="nc-landing__latest">
+            <div class="nc-landing__card nc-landing__panel nc-landing__latest">
               <h3 class="nc-landing__subheading">
                 {{i18n (themePrefix "landing.activity.latest")}}
               </h3>
@@ -358,7 +403,9 @@ export default class LandingPage extends Component {
 
             <div class="nc-landing__aside">
               {{#if this.latest}}
-                <figure class="nc-landing__panel nc-landing__network">
+                <figure
+                  class="nc-landing__card nc-landing__panel nc-landing__network"
+                >
                   <h3 class="nc-landing__subheading">
                     {{i18n (themePrefix "landing.activity.network.title")}}
                   </h3>
@@ -372,7 +419,9 @@ export default class LandingPage extends Component {
                 </figure>
               {{/if}}
               {{#if this.stats}}
-                <div class="nc-landing__panel nc-landing__stats">
+                <div
+                  class="nc-landing__card nc-landing__panel nc-landing__stats"
+                >
                   <h3 class="nc-landing__subheading">
                     {{i18n (themePrefix "landing.activity.stats.title")}}
                   </h3>

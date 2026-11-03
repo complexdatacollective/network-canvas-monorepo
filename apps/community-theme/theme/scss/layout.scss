@@ -58,3 +58,24 @@ body:is(
   padding-inline: max(var(--main-outlet-padding-x), env(safe-area-inset-left))
     max(var(--main-outlet-padding-x), env(safe-area-inset-right));
 }
+
+// The home page (landing.scss) has no sheet: its cards sit on the tinted
+// page, as on the website, in a column as wide as the website's. The bar
+// above shares the column and its gutters (Discourse gives the header a
+// padding variable of its own), so its title lines up with the page's edge.
+body.nc-landing-page {
+  --d-max-width: 83rem;
+  --d-wrap-padding-x: var(--space-4);
+  --d-header-padding-x: var(--d-wrap-padding-x);
+  --main-outlet-padding-x: 0;
+
+  @include viewport.from(md) {
+    --d-wrap-padding-x: var(--space-6);
+  }
+
+  #main-outlet {
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+}

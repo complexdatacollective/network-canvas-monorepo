@@ -1,17 +1,16 @@
-@use 'lib/viewport';
-
-// The forum's home page (javascripts/discourse/components/landing): a hero
-// with search, a card for each place to post, and recent activity. It sits on
-// the content sheet like every other page.
+// The forum's home page (javascripts/discourse/components/landing). Its first
+// screen answers "where should I post?": the heading, lead and search on one
+// side and the three categories that take posts on the other, each a raised
+// card with its button. The announcements and the documentation follow as
+// quieter tiles, then recent activity.
+//
+// The page has no content sheet (layout.scss): its cards sit on the tinted
+// page in a wider column, as on the website. The layout answers to the width
+// of that column, not the window, so a sidebar beside it narrows it too.
 
 .nc-landing {
-  display: grid;
-  gap: var(--space-12);
-  padding-block: var(--space-2) var(--space-4);
-
-  @include viewport.until(md) {
-    gap: var(--space-8);
-  }
+  container: nc-landing / inline-size;
+  padding-block: var(--space-4) calc(var(--nc-spacing-base) * 16);
 
   h1,
   h2,
@@ -21,25 +20,30 @@
   }
 }
 
-.nc-landing__hero {
+// The heading and the categories side by side; the categories take the
+// wider share, since choosing one is what the page is for. Below 66rem they
+// stack, the illustration goes (it carries nothing the heading does not), and
+// the first card starts on a phone's first screen.
+.nc-landing__top {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-8);
+  grid-template-columns: minmax(0, 4.5fr) minmax(0, 7.5fr);
+  align-items: start;
+  gap: calc(var(--nc-spacing-base) * 14);
 
+  @container nc-landing (width < 66rem) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+  }
+}
+
+.nc-landing__hero {
   .nc-illustration--hero {
     width: 100%;
-    max-width: 30rem;
-    justify-self: center;
-  }
+    max-width: 21rem;
+    margin-top: var(--space-8);
 
-  @include viewport.until(md) {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4);
-
-    .nc-illustration--hero {
-      order: -1;
-      max-width: 17rem;
+    @container nc-landing (width < 66rem) {
+      display: none;
     }
   }
 }
@@ -48,19 +52,26 @@
 // tracking its step of the type scale carries: the page title an h1
 // (text-3xl) at the black weight, which keeps translated titles to four lines
 // or fewer; section titles a subheading (text-2xl, black); card titles an h3
-// (text-xl, bold); and panel titles an h4 (text-lg, bold). The scale is
-// fluid, so they need no phone sizes.
+// (text-xl, bold); and panel and tile titles an h4 (text-lg, bold). The scale
+// is fluid, so they need no phone sizes.
 .nc-landing__title {
-  margin: 0 0 var(--space-4);
+  margin: var(--space-5) 0 0;
   font-size: var(--nc-text-3xl);
   font-weight: 900;
   line-height: var(--nc-text-3xl--line-height);
   letter-spacing: var(--nc-text-3xl--letter-spacing);
   text-wrap: balance;
+
+  &:first-child {
+    margin-top: 0;
+  }
 }
 
+// Text straight on the page, here and under the section headings, is the
+// darker of the muted steps: the lighter (--primary-medium) is set for the
+// white surface and falls under 4.5:1 on the tinted page.
 .nc-landing__lead {
-  margin: 0;
+  margin: var(--space-4) 0 0;
   max-width: 34em;
   font-size: var(--nc-text-lg);
   line-height: var(--nc-text-lg--line-height);
@@ -73,7 +84,7 @@
   align-items: center;
   gap: var(--space-2);
   max-width: 100%;
-  margin-bottom: var(--space-5);
+  min-height: var(--space-9);
   padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
   border-radius: 999px;
   background: color-mix(in oklab, var(--nc-accent) 12%, var(--nc-surface));
@@ -112,7 +123,10 @@
 }
 
 // Discourse's welcome-banner search, borrowed for its results panel and
-// styles; only its spacing is the page's own.
+// styles. On the page rather than a sheet, the field needs an edge of its
+// own: half the text colour, 3:1 or more against the page and the surface
+// (WCAG's non-text contrast), where the input border's outline colour is
+// barely visible.
 .nc-landing__search.welcome-banner__wrap {
   margin-top: var(--space-6);
   padding: 0;
@@ -121,162 +135,309 @@
     max-width: 34rem;
     margin-inline: 0;
   }
+
+  .search-menu .search-input {
+    border-color: color-mix(in oklab, var(--nc-text) 55%, var(--nc-surface));
+  }
 }
 
 .nc-landing__heading {
-  margin: 0 0 var(--space-2);
+  margin: 0;
   font-size: var(--nc-text-2xl);
   font-weight: 900;
   line-height: var(--nc-text-2xl--line-height);
   letter-spacing: var(--nc-text-2xl--letter-spacing);
+  text-wrap: balance;
 }
 
 .nc-landing__section-lead {
-  margin: 0 0 var(--space-6);
-  color: var(--primary-high);
-}
-
-.nc-landing__subheading {
-  margin: 0 0 var(--space-3);
+  margin: var(--space-1) 0 0;
   font-size: var(--nc-text-lg);
-  font-weight: 700;
   line-height: var(--nc-text-lg--line-height);
-  letter-spacing: var(--nc-text-lg--letter-spacing);
+  color: var(--primary-high);
+  text-wrap: pretty;
 }
 
-.nc-landing__route-list {
+// The raised surface every card on the page shares: the content colour, the
+// shared radius and medium shadow, and a hairline that keeps it apart from
+// the page in the dark palette, where the two are nearly the same colour.
+.nc-landing__card {
+  min-width: 0;
+  border: 1px solid color-mix(in oklab, var(--nc-text) 8%, transparent);
+  border-radius: var(--nc-radius-base);
+  background: var(--nc-surface);
+  color: var(--nc-surface-contrast);
+  box-shadow: var(--nc-shadow-md-base);
+}
+
+// A category's drawing on a wash of its own colour.
+.nc-landing__icon {
+  --nc-landing-tint: oklch(var(--nc-sea-serpent));
+
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
-  gap: var(--space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.nc-route-card {
-  display: flex;
-  gap: var(--space-4);
-  padding: var(--space-5);
-  border-radius: var(--nc-radius-sm);
-  background: var(--nc-surface-1);
-
-  @include viewport.until(sm) {
-    padding: var(--space-4);
-  }
-}
-
-.nc-route-card__icon {
   flex: none;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: var(--nc-radius-sm);
+  background: color-mix(
+    in oklab,
+    var(--nc-landing-tint) 18%,
+    var(--nc-surface)
+  );
 
   .nc-illustration {
-    width: 4rem;
-    height: 4rem;
-
-    @include viewport.until(sm) {
-      width: 3rem;
-      height: 3rem;
-    }
+    width: 68%;
+    height: 68%;
   }
 }
 
-.nc-route-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
+.nc-route--ideas .nc-landing__icon {
+  --nc-landing-tint: oklch(var(--nc-mustard));
 }
 
-.nc-route-card__title {
-  margin: 0;
-  font-size: var(--nc-text-xl);
-  font-weight: 700;
-  line-height: var(--nc-text-xl--line-height);
-  letter-spacing: var(--nc-text-xl--letter-spacing);
+.nc-route--conversation .nc-landing__icon,
+.nc-landing__tile--docs .nc-landing__icon {
+  --nc-landing-tint: oklch(var(--nc-neon-coral));
 }
 
-.nc-route-card__category {
-  font-size: var(--nc-text-sm);
+.nc-landing__tile--news .nc-landing__icon {
+  --nc-landing-tint: oklch(var(--nc-purple-pizazz));
 }
 
-.nc-route-card__text {
-  margin: 0;
-  color: var(--primary-high);
-}
-
-.nc-route-card__latest {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: var(--nc-text-sm);
-
-  a {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    color: var(--nc-text);
-  }
-}
-
-.nc-route-card__latest-label {
+.nc-landing__eyebrow {
+  display: block;
   font-family: var(--nc-heading-font);
   font-size: var(--nc-text-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--primary-medium);
+
+  &:lang(zh) {
+    letter-spacing: 0.02em;
+  }
 }
 
-.nc-route-card__actions {
-  display: flex;
-  flex-wrap: wrap;
+// Each category in three columns: its drawing; what it is for and its
+// newest topic; and its button, name and topic count. The cards share the
+// list's columns, so the buttons line up and are as wide as the longest label
+// in the reader's language, on one line. When the list is too narrow for
+// that, the third column drops below the other two. The outer columns are
+// sized by their content because a card's padding counts towards them.
+.nc-landing__routes {
+  container: nc-routes / inline-size;
+}
+
+.nc-landing__route-list {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(15.5rem, max-content);
+  gap: var(--space-4) var(--space-5);
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+
+  @container nc-routes (width < 44rem) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
+
+.nc-route {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: var(--space-2) var(--space-4);
-  margin-top: auto;
-  padding-top: var(--space-2);
+  row-gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+
+  .nc-landing__icon {
+    align-self: start;
+  }
+
+  @container nc-routes (width < 44rem) {
+    padding: var(--space-5);
+
+    .nc-landing__icon {
+      width: 3.5rem;
+      height: 3.5rem;
+    }
+  }
 }
 
-.nc-route-card__browse,
+.nc-route__title {
+  margin: 0;
+  font-size: var(--nc-text-xl);
+  font-weight: 700;
+  line-height: var(--nc-text-xl--line-height);
+  letter-spacing: var(--nc-text-xl--letter-spacing);
+  text-wrap: balance;
+}
+
+.nc-route__text {
+  margin: var(--space-1) 0 0;
+  font-size: var(--nc-text-sm);
+  color: var(--primary-high);
+  text-wrap: pretty;
+}
+
+.nc-route__latest {
+  margin: var(--space-3) 0 0;
+  font-size: var(--nc-text-sm);
+  line-height: 1.45;
+
+  a {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    color: var(--nc-text);
+  }
+}
+
+.nc-route__end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+
+  .btn {
+    align-self: stretch;
+    margin-bottom: var(--space-2);
+    white-space: nowrap;
+  }
+
+  @container nc-routes (width < 44rem) {
+    grid-column: 1 / -1;
+
+    .btn {
+      align-self: flex-start;
+      white-space: normal;
+    }
+  }
+}
+
+// The category's name, and the link to its topics: each at least 24px tall,
+// WCAG 2.2's smallest target.
+.nc-route__category {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-6);
+  max-width: 100%;
+}
+
+.nc-route__browse,
 .nc-landing__more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--space-7);
   font-family: var(--nc-heading-font);
+  font-size: var(--nc-text-sm);
   font-weight: 700;
 }
 
-.nc-route-card__browse {
-  font-size: var(--nc-text-sm);
+// The announcements and the documentation: flat tiles on the tint of the
+// page, under the cards that take posts. Their text is the darker muted step
+// and their only links are buttons, because the link colour falls short on
+// this tint in the dark palette.
+.nc-landing__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: var(--space-6);
+  margin-top: calc(var(--nc-spacing-base) * 14);
+
+  @container nc-landing (width < 44rem) {
+    margin-top: var(--space-10);
+  }
 }
 
-.nc-landing__docs {
+.nc-landing__tile {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3) var(--space-4);
-  margin-top: var(--space-4);
-  padding: var(--space-4) var(--space-5);
-  border: 2px dashed var(--nc-outline);
-  border-radius: var(--nc-radius-sm);
+  gap: var(--space-4) var(--space-5);
+  padding: var(--space-6) var(--space-7);
+  border-radius: var(--nc-radius-base);
+  background: var(--nc-surface-2);
 
-  .nc-illustration {
-    flex: none;
-    width: 3rem;
-    height: 3rem;
+  .nc-landing__icon {
+    width: 3.5rem;
+    height: 3.5rem;
   }
 
+  @container nc-landing (width < 44rem) {
+    padding: var(--space-5);
+  }
+}
+
+.nc-landing__tile-body {
+  flex: 1 1 14rem;
+  min-width: 0;
+  margin: 0;
+  color: var(--nc-text);
+
   p {
-    flex: 1 1 18rem;
-    margin: 0;
+    margin: var(--space-1) 0 0;
+    font-size: var(--nc-text-sm);
+    color: var(--primary-high);
+    text-wrap: pretty;
+  }
+}
+
+.nc-landing__tile-title {
+  margin: 0;
+  font-size: var(--nc-text-lg);
+  font-weight: 700;
+  line-height: var(--nc-text-lg--line-height);
+  letter-spacing: var(--nc-text-lg--letter-spacing);
+}
+
+.nc-landing__activity {
+  margin-top: calc(var(--nc-spacing-base) * 24);
+
+  > .nc-landing__heading {
+    text-align: center;
+  }
+
+  @container nc-landing (width < 44rem) {
+    margin-top: var(--space-12);
   }
 }
 
 .nc-landing__activity-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   align-items: start;
-  gap: var(--space-8);
+  gap: var(--space-6);
+  margin-top: var(--space-8);
 
-  @include viewport.until(lg) {
+  @container nc-landing (width < 66rem) {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.nc-landing__panel {
+  margin: 0;
+  padding: var(--space-8);
+
+  @container nc-landing (width < 44rem) {
+    padding: var(--space-6);
+  }
+
+  figcaption {
+    margin-top: var(--space-2);
+    font-size: var(--nc-text-sm);
+    color: var(--primary-medium);
+  }
+}
+
+.nc-landing__subheading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--nc-text-lg);
+  font-weight: 700;
+  line-height: var(--nc-text-lg--line-height);
+  letter-spacing: var(--nc-text-lg--letter-spacing);
 }
 
 .nc-latest-list {
@@ -288,8 +449,8 @@
 .nc-latest-list__item {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-3);
-  padding-block: var(--space-3);
+  gap: var(--space-4);
+  padding-block: var(--space-4);
   border-bottom: 1px solid var(--primary-low);
 
   .avatar {
@@ -316,9 +477,15 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-1) var(--space-3);
+  gap: var(--space-1) var(--space-4);
   font-size: var(--nc-text-sm);
   color: var(--primary-medium);
+
+  .badge-category__wrapper {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--space-6);
+  }
 }
 
 .nc-latest-list__placeholder {
@@ -329,28 +496,12 @@
 }
 
 .nc-landing__more {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
   margin-top: var(--space-4);
 }
 
 .nc-landing__aside {
   display: grid;
-  gap: var(--space-4);
-}
-
-.nc-landing__panel {
-  margin: 0;
-  padding: var(--space-4) var(--space-5);
-  border-radius: var(--nc-radius-sm);
-  background: var(--nc-surface-1);
-
-  figcaption {
-    margin-top: var(--space-2);
-    font-size: var(--nc-text-sm);
-    color: var(--primary-medium);
-  }
+  gap: var(--space-6);
 }
 
 .nc-activity-network {
@@ -381,11 +532,13 @@
   }
 }
 
+// The totals are a step under the section headings, so they do not compete
+// with the page title.
 .nc-landing__stats dl {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
-  margin: 0;
+  margin: var(--space-3) 0 0;
 
   div {
     display: flex;
@@ -400,16 +553,17 @@
   dd {
     margin: 0;
     font-family: var(--nc-heading-font);
-    font-size: var(--nc-text-3xl);
+    font-size: var(--nc-text-2xl);
     font-weight: 900;
-    line-height: 1.1;
-    letter-spacing: var(--nc-text-3xl--letter-spacing);
+    line-height: 1.15;
+    letter-spacing: var(--nc-text-2xl--letter-spacing);
     color: var(--nc-text);
   }
 }
 
 .nc-landing__unavailable {
-  margin: 0;
+  margin: var(--space-4) 0 0;
+  text-align: center;
   color: var(--primary-high);
 }
 
