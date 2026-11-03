@@ -1,5 +1,6 @@
 import { elevationShadow } from '@codaco/tailwind-config/elevation';
 import { buildScopes, type Scope } from '@codaco/tailwind-config/theme-colors';
+import { typeScale } from '@codaco/tailwind-config/type-scale';
 
 /**
  * Every custom property the default Network Canvas theme declares, renamed
@@ -39,6 +40,23 @@ function elevationDeclarations() {
   );
 }
 
+/**
+ * The shared type scale as `--nc-text-<step>`, each with the
+ * `--line-height` and `--letter-spacing` its `text-*` utility applies. The
+ * sizes read the theme's root size as `--nc-theme-root-size`, declared with
+ * the other tokens; nothing declares `--nc-theme-vw`, so the fluid middle
+ * terms use the viewport, as they do outside the interview.
+ */
+function typeDeclarations() {
+  return typeScale().flatMap(
+    ({ name, fontSize, lineHeight, letterSpacing }) => [
+      `  --nc-text-${name}: ${fontSize.replaceAll('var(--', 'var(--nc-')};`,
+      `  --nc-text-${name}--line-height: ${lineHeight};`,
+      `  --nc-text-${name}--letter-spacing: ${letterSpacing};`,
+    ],
+  );
+}
+
 const indent = (lines: string[]) => lines.map((line) => `  ${line}`);
 
 /**
@@ -55,9 +73,11 @@ export function colorDefinitionsScss() {
     '  @if is-dark-color-scheme() {',
     ...indent(tokenDeclarations(scopes['default-dark'])),
     ...indent(elevationDeclarations()),
+    ...indent(typeDeclarations()),
     '  } @else {',
     ...indent(tokenDeclarations(scopes['default-light'])),
     ...indent(elevationDeclarations()),
+    ...indent(typeDeclarations()),
     '  }',
     '}',
     '',

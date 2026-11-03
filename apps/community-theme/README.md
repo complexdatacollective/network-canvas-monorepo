@@ -13,7 +13,8 @@ site header above Discourse's own.
   "Community" in the visitor's language (the shared header's own word for it).
 - **Design tokens.** Every token of the default Network Canvas theme is
   declared as `--nc-*` (light and dark), and Discourse's variables are set from
-  them: fonts, radii, buttons, inputs, links and its muted text shades.
+  them: fonts, its text sizes, radii, buttons, inputs, links and its muted
+  text shades. Buttons and notices follow the shared Button and Alert.
 - **Palettes.** Ships "Network Canvas" and "Network Canvas Dark" palettes,
   filled from the same tokens.
 - **Fonts.** Ships Nunito and Inclusive Sans as theme assets, the same files
@@ -34,6 +35,7 @@ generates it from the workspace packages:
 | ------------------------------- | -------------------------------------------------------------------------- |
 | `common/color_definitions.scss` | `@codaco/tailwind-config` theme tokens (`fresco/themes/default.css`)       |
 |                                 | and its `elevation-*` shadows (`@codaco/tailwind-config/elevation`)        |
+|                                 | and type scale (`@codaco/tailwind-config/type-scale`)                      |
 | palettes in `about.json`        | the same tokens, resolved to hex by `@codaco/tailwind-config/theme-colors` |
 | `scss/fonts.scss`, `assets/`    | `@codaco/tailwind-config/fonts/*.css` and their fontsource files           |
 | `locales/*.yml`                 | the shared header's messages in `@codaco/fresco-ui`, and the home page's   |
@@ -57,9 +59,9 @@ pnpm --filter @codaco/community-theme build
 This writes `dist/network-canvas/` (the theme as a folder) and
 `dist/network-canvas.zip`. `pnpm --filter @codaco/community-theme test` checks
 that every `--nc-*` token the stylesheets read is generated in both modes,
-that text, links and muted text stay legible on what they sit on, that every
-font face and translation the theme uses is shipped, and that the home page's
-network keeps people and discussions apart.
+that text, links and muted text stay legible on what they sit on (notices
+included), that every font face and translation the theme uses is shipped,
+and that the home page's network keeps people and discussions apart.
 
 ## Home page copy
 

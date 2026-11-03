@@ -181,6 +181,32 @@ describe('palettes', () => {
       }
     },
   );
+
+  // Notices are a tint of their colour under the text colour (alerts.scss),
+  // because the shared Alert's white-on-colour fills fall short of 4.5:1.
+  it.each(['text', 'info', 'success', 'warning', 'destructive'])(
+    'keeps text legible on a %s notice',
+    (colour) => {
+      const declaration =
+        /background-color: (color-mix\(\s*in oklab,\s*var\(--nc-alert-color\)[^;]+\));/.exec(
+          text('scss/alerts.scss'),
+        );
+      if (!declaration?.[1]) {
+        throw new Error('No notice background in alerts.scss');
+      }
+      const expression = declaration[1]
+        .replace(/\s+/g, ' ')
+        .replace('var(--nc-alert-color)', `var(--nc-${colour})`)
+        .replaceAll('var(--nc-', 'var(--');
+      for (const scope of Object.values(SCOPE_FOR)) {
+        const ratio = contrastRatio(
+          toDisplayColor(scope.token('--text')),
+          toDisplayColor(scope.color(expression)),
+        );
+        expect(ratio, scope.name).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
 });
 
 describe('fonts', () => {
@@ -285,6 +311,22 @@ describe('languages', () => {
       few: '%{count} odpowiedzi',
       other: '%{count} replies',
     });
+    // A category the language has and the message leaves to `other` is
+    // spelled out, since Discourse does not fall back to `other` as ICU does.
+    expect(
+      toDiscourseMessage(
+        '{count, plural, one {# réponse} other {# réponses}}',
+        'replies',
+        'fr',
+      ),
+    ).toEqual({
+      one: '%{count} réponse',
+      many: '%{count} réponses',
+      other: '%{count} réponses',
+    });
+    expect(
+      toDiscourseMessage('{count, plural, other {# 条回复}}', 'replies', 'zh'),
+    ).toEqual({ other: '%{count} 条回复' });
     expect(toDiscourseMessage('Hello {name}', 'greeting')).toBe(
       'Hello %{name}',
     );

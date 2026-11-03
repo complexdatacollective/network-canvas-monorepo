@@ -44,23 +44,25 @@
   }
 }
 
+// The headings are the shared Heading's variants, each with the leading and
+// tracking its step of the type scale carries: the page title a
+// section-heading (text-4xl, black), section titles a subheading (text-2xl,
+// black), card titles an h3 (text-xl, bold) and the panel titles an h4
+// (text-lg, bold). The scale is fluid, so they need no phone sizes.
 .nc-landing__title {
   margin: 0 0 var(--space-4);
-  font-size: var(--font-up-6);
+  font-size: var(--nc-text-4xl);
   font-weight: 900;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  line-height: var(--nc-text-4xl--line-height);
+  letter-spacing: var(--nc-text-4xl--letter-spacing);
   text-wrap: balance;
-
-  @include viewport.until(md) {
-    font-size: var(--font-up-4);
-  }
 }
 
 .nc-landing__lead {
   margin: 0;
   max-width: 34em;
-  font-size: var(--font-up-1);
+  font-size: var(--nc-text-lg);
+  line-height: var(--nc-text-lg--line-height);
   color: var(--primary-high);
   text-wrap: pretty;
 }
@@ -75,7 +77,7 @@
   border-radius: 999px;
   background: color-mix(in oklab, var(--nc-accent) 12%, var(--nc-surface));
   color: var(--nc-text);
-  font-size: var(--font-down-1);
+  font-size: var(--nc-text-sm);
   text-decoration: none;
 
   &:hover,
@@ -122,9 +124,10 @@
 
 .nc-landing__heading {
   margin: 0 0 var(--space-2);
-  font-size: var(--font-up-4);
+  font-size: var(--nc-text-2xl);
   font-weight: 900;
-  letter-spacing: -0.01em;
+  line-height: var(--nc-text-2xl--line-height);
+  letter-spacing: var(--nc-text-2xl--letter-spacing);
 }
 
 .nc-landing__section-lead {
@@ -134,8 +137,10 @@
 
 .nc-landing__subheading {
   margin: 0 0 var(--space-3);
-  font-size: var(--font-up-1);
+  font-size: var(--nc-text-lg);
   font-weight: 700;
+  line-height: var(--nc-text-lg--line-height);
+  letter-spacing: var(--nc-text-lg--letter-spacing);
 }
 
 .nc-landing__route-list {
@@ -182,12 +187,14 @@
 
 .nc-route-card__title {
   margin: 0;
-  font-size: var(--font-up-2);
-  font-weight: 900;
+  font-size: var(--nc-text-xl);
+  font-weight: 700;
+  line-height: var(--nc-text-xl--line-height);
+  letter-spacing: var(--nc-text-xl--letter-spacing);
 }
 
 .nc-route-card__category {
-  font-size: var(--font-down-1);
+  font-size: var(--nc-text-sm);
 }
 
 .nc-route-card__text {
@@ -199,7 +206,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  font-size: var(--font-down-1);
+  font-size: var(--nc-text-sm);
 
   a {
     display: -webkit-box;
@@ -212,7 +219,7 @@
 
 .nc-route-card__latest-label {
   font-family: var(--nc-heading-font);
-  font-size: var(--font-down-2);
+  font-size: var(--nc-text-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -235,7 +242,7 @@
 }
 
 .nc-route-card__browse {
-  font-size: var(--font-down-1);
+  font-size: var(--nc-text-sm);
 }
 
 .nc-landing__docs {
@@ -309,7 +316,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1) var(--space-3);
-  font-size: var(--font-down-1);
+  font-size: var(--nc-text-sm);
   color: var(--primary-medium);
 }
 
@@ -340,7 +347,7 @@
 
   figcaption {
     margin-top: var(--space-2);
-    font-size: var(--font-down-1);
+    font-size: var(--nc-text-sm);
     color: var(--primary-medium);
   }
 }
@@ -385,16 +392,17 @@
   }
 
   dt {
-    font-size: var(--font-down-1);
+    font-size: var(--nc-text-sm);
     color: var(--primary-medium);
   }
 
   dd {
     margin: 0;
     font-family: var(--nc-heading-font);
-    font-size: var(--font-up-4);
+    font-size: var(--nc-text-3xl);
     font-weight: 900;
     line-height: 1.1;
+    letter-spacing: var(--nc-text-3xl--letter-spacing);
     color: var(--nc-text);
   }
 }

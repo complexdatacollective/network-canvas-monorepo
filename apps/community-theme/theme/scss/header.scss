@@ -24,12 +24,3 @@
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
-
-// Sign up and Log in sit just under the shared header's "Get started" and do
-// the same job, so they take its size as well as its type: the shared Button
-// at size sm is ten spacing steps tall with six either side.
-.d-header .header-buttons .btn {
-  height: calc(var(--nc-spacing-base) * 10);
-  padding-block: 0;
-  padding-inline: calc(var(--nc-spacing-base) * 6);
-}

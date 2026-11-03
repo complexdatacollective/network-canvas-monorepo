@@ -1,7 +1,7 @@
-// Buttons, after the shared Button: the heading face in bold with wide
-// tracking, and the shared low elevation, which drops away as the button is
-// pressed in. Like the shared Button, nothing changes on hover. Colours come
-// from the --d-button-* variables in variables.scss.
+// Buttons, after the shared Button (fresco-ui Button.tsx): the heading face,
+// and the shared low elevation on filled buttons, which drops away as the
+// button is pressed in. Like the shared Button, nothing changes on hover.
+// Colours come from the --d-button-* variables in variables.scss.
 
 .btn {
   font-family: var(--nc-heading-font);
@@ -10,25 +10,36 @@
   transition:
     box-shadow 0.15s,
     translate 0.15s;
+}
 
-  &.btn-default,
-  &.btn-primary,
-  &.btn-danger,
-  &.btn-success {
-    box-shadow: var(--nc-elevation-low);
+.btn:is(.btn-default, .btn-primary, .btn-danger, .btn-success) {
+  box-shadow: var(--nc-elevation-low);
 
-    &:not([disabled]):active {
-      box-shadow: none;
-      translate: 0 2px;
-    }
+  &:not([disabled]):active {
+    box-shadow: none;
+    translate: 0 2px;
   }
+}
 
-  // The main call to action in each view is set like the shared header's
-  // "Get started": capitals in the heading face's black weight.
-  &.btn-primary {
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+// Every filled button with a label has one size and one typeface, whatever
+// Discourse calls it (btn-small, btn-large) and wherever it sits: the shared
+// Button at its small size, set like the shared header's "Get started"
+// (navigation/SiteNavigation.tsx), which sits above them all. That is ten
+// spacing steps tall with six either side and two between icon and label,
+// in text-sm capitals at the heading face's black weight and the widest
+// tracking. The height is a minimum so a long translated label can wrap.
+.btn:is(.btn-default, .btn-primary, .btn-danger, .btn-success):not(.no-text) {
+  gap: calc(var(--nc-spacing-base) * 2);
+  min-height: calc(var(--nc-spacing-base) * 10);
+  padding: var(--nc-spacing-base) calc(var(--nc-spacing-base) * 6);
+  font-size: var(--nc-text-sm);
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+
+  .d-icon {
+    margin: 0;
   }
 }
 

@@ -58,6 +58,10 @@ Used by `packages/ui`, `packages/art`, and `apps/documentation`. New consumers s
 
 `@codaco/tailwind-config/elevation` exports `elevationShadow(elevation, options?)`, the `box-shadow` value the `elevation-low`, `elevation-medium` and `elevation-high` utilities apply, as plain CSS. The elevation plugin builds its utilities from it, so the two cannot drift. Like `theme-colors`, it loads under Node's type stripping. The community forum's Discourse theme writes it into `--nc-elevation-*` tokens for its buttons.
 
+### Type scale outside Tailwind
+
+`@codaco/tailwind-config/type-scale` exports `typeScale()`, every step of the `text-*` scale (`2xs` to `6xl`) read from the `@theme` block in `fresco/theme.css`: its font size, and the line height and letter spacing the utility applies with it. Sizes keep their `var(--theme-root-size)` and `var(--theme-vw, 1vw)` terms, so the consumer declares those. The community forum's Discourse theme sets Discourse's type steps from it.
+
 ### Contrast tests
 
 `tests/theme-contrast.test.ts` resolves every colour token in `fresco/themes/*.css` for each theme and mode (with the resolver exported as `@codaco/tailwind-config/theme-colors`), then checks every fill / `-contrast` pair against WCAG 2.2 AA (4.5:1). It also checks that each ratio quoted in a theme comment still matches the colours it was measured on (`tests/recorded-ratios.ts` pairs each quote with its colours). Run it with `pnpm --filter @codaco/tailwind-config test`. Pairs that fall short today are listed, with reasons, in `KNOWN_FAILURES`; the test fails when one is added or starts passing.

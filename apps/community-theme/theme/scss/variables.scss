@@ -33,6 +33,25 @@
   --font-family: var(--nc-body-font);
   --heading-font-family: var(--nc-heading-font);
 
+  // Discourse's text steps, set to the shared type scale
+  // (tooling/tailwind/fresco/theme.css): --font-down-1 is the apps' text-sm,
+  // --font-up-1 their text-lg. The shared steps are rem-based where
+  // Discourse's are em-based, so a step no longer compounds inside another;
+  // --font-0 stays 1em, Discourse's way of keeping the surrounding size.
+  //
+  // The steps from --font-up-2 up stay Discourse's. Discourse sizes most of
+  // its icons with them (header icons, close buttons), and the shared scale's
+  // larger steps grow with the window, to a third larger than Discourse's on
+  // a desktop screen. The theme's own headings read --nc-text-* instead.
+  --font-down-3: var(--nc-text-2xs);
+  --font-down-2: var(--nc-text-xs);
+  --font-down-1: var(--nc-text-sm);
+  --font-up-1: var(--nc-text-lg);
+  --font-down-2-rem: var(--nc-text-xs);
+  --font-down-1-rem: var(--nc-text-sm);
+  --font-0-rem: var(--nc-text-base);
+  --font-up-1-rem: var(--nc-text-lg);
+
   --d-border-radius: var(--nc-radius-xs);
   --d-border-radius-large: var(--nc-radius-sm);
   --d-button-border-radius: var(--nc-radius-base);

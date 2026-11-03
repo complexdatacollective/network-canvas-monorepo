@@ -111,20 +111,36 @@ function interpolated(
  * `%{name}`, and a message that is one `{count, plural, …}` becomes the
  * per-case map Discourse pluralises on `count`. Anything Discourse has no
  * form for is refused rather than shipped wrong.
+ *
+ * ICU uses `other` for any category a message leaves out, but Discourse shows
+ * a missing translation instead, so each of the language's categories that
+ * the message omits is filled with its `other` text (French, for one, has a
+ * `many` that only round millions reach).
  */
-export function toDiscourseMessage(icu: string, id: string): DiscourseMessage {
+export function toDiscourseMessage(
+  icu: string,
+  id: string,
+  locale = 'en',
+): DiscourseMessage {
   const elements = parse(icu);
   const [first] = elements;
   if (elements.length === 1 && first?.type === TYPE.plural) {
     if (first.value !== 'count' || first.offset !== 0) {
       throw new Error(`${id}: Discourse pluralises on {count} alone`);
     }
-    return Object.fromEntries(
+    const cases: Partial<Record<PluralKey, string>> = Object.fromEntries(
       Object.entries(first.options).map(([option, { value }]) => [
         pluralKey(option, id),
         interpolated(value, id),
       ]),
     );
+    const other = cases.other;
+    if (other === undefined) throw new Error(`${id}: the plural has no other`);
+    for (const category of new Intl.PluralRules(locale).resolvedOptions()
+      .pluralCategories) {
+      cases[category] ??= other;
+    }
+    return cases;
   }
   return interpolated(elements, id);
 }
@@ -175,7 +191,10 @@ function landingMessages(siteLocale: SiteLocale): Record<string, string> {
   );
 }
 
-function nest(messages: Record<string, string>): { [key: string]: YamlValue } {
+function nest(
+  messages: Record<string, string>,
+  locale: string,
+): { [key: string]: YamlValue } {
   const root: { [key: string]: YamlValue } = {};
   for (const [id, message] of Object.entries(messages)) {
     if (!id.startsWith(MESSAGE_ID_PREFIX)) {
@@ -193,7 +212,7 @@ function nest(messages: Record<string, string>): { [key: string]: YamlValue } {
       branch = next;
     }
     if (leaf in branch) throw new Error(`${id} collides with another key`);
-    branch[leaf] = toDiscourseMessage(message, id);
+    branch[leaf] = toDiscourseMessage(message, id, locale);
   }
   return root;
 }
@@ -223,7 +242,7 @@ export function themeStrings() {
     }
     const strings: { [key: string]: YamlValue } = {
       community: siteNavigationMessages[siteLocale].community,
-      ...nest(landingMessages(siteLocale)),
+      ...nest(landingMessages(siteLocale), siteLocale),
     };
     if (discourseLocale === 'en') strings.theme_metadata = THEME_METADATA;
     return { discourseLocale, strings };
