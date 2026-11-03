@@ -1802,6 +1802,21 @@ export const analyse = (
             'Condition attribute',
           );
           if (!a || shown.has(a)) return false;
+          // Only a condition a relative has belongs on the tree: not, for
+          // example, relatives whose health history is unknown.
+          if (
+            !source.nominationPrompts.some(
+              (p) => p.attributeId === a && p.records === 'condition',
+            )
+          ) {
+            add(
+              'adjusted',
+              'NOT_A_CONDITION',
+              `${path}.conditions[${i}]`,
+              `"${a}" is not a condition nominated in "${source.id}", so the family tree does not show it as one.`,
+            );
+            return false;
+          }
           if (!collected.has(`${scope}/${a}`)) {
             add(
               'degraded',

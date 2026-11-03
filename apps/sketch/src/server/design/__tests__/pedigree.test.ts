@@ -90,11 +90,13 @@ const design = (overrides: Partial<StudyDesign> = {}): StudyDesign =>
             text: 'Who in your family has had **breast cancer**?',
             attributeId: 'breast_cancer',
             onlyFor: 'anyone',
+            records: 'condition',
           },
           {
             text: 'Who in your family has had **ovarian cancer**?',
             attributeId: 'ovarian_cancer',
             onlyFor: 'female',
+            records: 'condition',
           },
         ],
       },
@@ -304,6 +306,59 @@ describe('family and narrative pedigrees', () => {
     expect(pedigree).toContain('breast cancer');
     expect(narrative).toBeTruthy();
     expect(result.issues.map((i) => i.code)).not.toContain('WRITTEN_BY_FORM');
+  });
+
+  it('never shows a nomination that is not a condition on the tree', async () => {
+    const base = design();
+    const stages = base.stages.map((s) => {
+      if (s.kind === 'familyPedigree')
+        return {
+          ...s,
+          nominationPrompts: [
+            ...s.nominationPrompts,
+            {
+              text: "Whose **health history** don't you know?",
+              attributeId: 'history_unknown',
+              onlyFor: 'anyone' as const,
+              records: 'other' as const,
+            },
+          ],
+        };
+      if (s.kind === 'narrativePedigree')
+        return {
+          ...s,
+          conditions: [
+            ...s.conditions,
+            {
+              attributeId: 'history_unknown',
+              label: 'History not known',
+              inheritancePattern: 'unknown' as const,
+            },
+          ],
+        };
+      return s;
+    });
+    const result = await preflight(
+      parseDesign({
+        ...base,
+        nodeTypes: base.nodeTypes.map((t) => ({
+          ...t,
+          attributes: [
+            ...t.attributes,
+            yesNo('history_unknown', 'History unknown'),
+          ],
+        })),
+        stages,
+      }),
+      { now: NOW },
+    );
+    expect(result.validation.success).toBe(true);
+    expect(result.issues.map((i) => i.code)).toContain('NOT_A_CONDITION');
+    const narrative = JSON.stringify(
+      result.protocol.stages.find((s) => s.type === 'NarrativePedigree'),
+    );
+    expect(narrative).not.toContain('History not known');
+    expect(narrative).toContain('Breast cancer');
   });
 
   it('turns at-risk statuses off without a professional present', async () => {

@@ -542,6 +542,11 @@ const FamilyPedigreeStage = z
           attributeId: Ref(
             'a yes_no attribute of nodeTypeId set to yes for every relative the participant selects',
           ),
+          records: z
+            .enum(['condition', 'other'])
+            .describe(
+              'condition = a diagnosis or health condition the relative has, which a narrativePedigree may show. other = anything else, such as relatives whose health history is unknown; never shown as a condition.',
+            ),
           onlyFor: z
             .enum(['anyone', 'female', 'male'])
             .describe(
@@ -573,7 +578,7 @@ const NarrativePedigreeStage = z
       .array(
         z.object({
           attributeId: Ref(
-            'a yes_no attribute of the family node type, set by a nomination prompt of the source stage or a form',
+            'a yes_no attribute set by a nomination prompt of the source stage whose records is condition',
           ),
           label: Text('Participant-visible name of the condition, 1-4 words.'),
           inheritancePattern: z
