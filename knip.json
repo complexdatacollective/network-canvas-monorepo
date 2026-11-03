@@ -121,8 +121,13 @@
       // schema-8/src is the bundled schema 8 interview's package
       // (`fresco-schema-8`, installed from `file:./schema-8`); the app imports
       // it through its package exports, which resolve to the installed copy,
-      // so knip cannot see that the source files are used.
-      "entry": ["release-test/scripts/*.mjs", "schema-8/src/*.js"],
+      // so knip cannot see that the source files are used. Fresco's tsconfig
+      // excludes schema-8, so its declarations need listing as well.
+      "entry": [
+        "release-test/scripts/*.mjs",
+        "schema-8/src/*.js",
+        "schema-8/src/*.d.ts"
+      ],
       "project": ["**/*.{js,jsx,ts,tsx}", "release-test/scripts/*.mjs"],
       "ignore": ["knip.config.ts"],
       "ignoreDependencies": [
