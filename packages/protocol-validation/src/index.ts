@@ -65,6 +65,7 @@ export {
 export {
   normalizeLocalePreferences,
   parseAcceptLanguage,
+  resolveProtocolLocale,
   selectProtocolLocale,
 } from './localization/localePreferences.ts';
 export {

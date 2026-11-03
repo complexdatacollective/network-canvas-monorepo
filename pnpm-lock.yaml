@@ -70,8 +70,8 @@ catalogs:
       specifier: ^3.5.22
       version: 3.5.22
     '@formatjs/intl-localematcher':
-      specifier: ^0.9.0
-      version: 0.9.0
+      specifier: ^0.10.1
+      version: 0.10.1
     '@formatjs/unplugin':
       specifier: ^1.2.14
       version: 1.2.14
@@ -327,7 +327,7 @@ importers:
         version: 3.0.3
       '@formatjs/intl-localematcher':
         specifier: 'catalog:'
-        version: 0.9.0
+        version: 0.10.1
       '@posthog/cli':
         specifier: 'catalog:'
         version: 0.18.12
@@ -1823,9 +1823,6 @@ importers:
       '@fontsource-variable/nunito':
         specifier: 'catalog:'
         version: 5.3.0
-      '@formatjs/intl-localematcher':
-        specifier: 'catalog:'
-        version: 0.9.0
       '@posthog/nextjs-config':
         specifier: 'catalog:'
         version: 1.11.5(next@16.4.2(@babel/core@8.0.1)(@opentelemetry/api@1.9.1)(@playwright/test@1.64.1)(@types/node@24.19.2)(babel-plugin-macros@2.8.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.106.1))(posthog-js@1.438.15(@types/react@19.3.0)(react@19.3.1))(webpack@5.105.2(@swc/core@1.16.13(@swc/helpers@0.5.23))(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.31)(uglify-js@3.19.3))
@@ -2225,9 +2222,6 @@ importers:
       '@formatjs/icu-messageformat-parser':
         specifier: 'catalog:'
         version: 3.5.22
-      '@formatjs/intl-localematcher':
-        specifier: 'catalog:'
-        version: 0.9.0
       '@formatjs/unplugin':
         specifier: 'catalog:'
         version: 1.2.14(esbuild@0.28.2)(rolldown@1.2.15)(rollup@4.62.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.106.1)(sass@1.106.1)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))(webpack@5.105.2(@swc/core@1.16.13(@swc/helpers@0.5.23))(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.31)(uglify-js@3.19.3))
@@ -3176,9 +3170,6 @@ importers:
       '@formatjs/icu-messageformat-parser':
         specifier: 'catalog:'
         version: 3.5.22
-      '@formatjs/intl-localematcher':
-        specifier: 'catalog:'
-        version: 0.9.0
       csvtojson:
         specifier: 'catalog:'
         version: 2.0.14
@@ -3235,6 +3226,9 @@ importers:
 
   packages/shared-consts:
     dependencies:
+      '@formatjs/intl-localematcher':
+        specifier: 'catalog:'
+        version: 0.10.1
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -5755,6 +5749,9 @@ packages:
 
   '@formatjs/icu-skeleton-parser@2.1.12':
     resolution: {integrity: sha512-ca7tZMLpfHX3sUD7hP6gE/qr6Iq89EDd3ZLeRhbsB7r0UD55DGJq+tmFLzrGrnx5StahUevQmQQVtbDRHsfDHA==}
+
+  '@formatjs/intl-localematcher@0.10.1':
+    resolution: {integrity: sha512-gBqglQK9rXuHsLmM8wzTMBy4Xo4d0jamirIVKuEL8F1rwbskWdpMA1kZarSkny+uvr5q/K6GSzE0Rcq1wZLl3g==}
 
   '@formatjs/intl-localematcher@0.8.13':
     resolution: {integrity: sha512-kHEAFOkeJSPNi7c5PaKaRjxcBrJwzzt81ifUu+8uve1EDW/VJl83KsxmqgqNZLzcFEhSliZGvx3+pk/RH0IOmg==}
@@ -20725,6 +20722,10 @@ snapshots:
   '@formatjs/icu-skeleton-parser@2.1.11': {}
 
   '@formatjs/icu-skeleton-parser@2.1.12': {}
+
+  '@formatjs/intl-localematcher@0.10.1':
+    dependencies:
+      '@formatjs/fast-memoize': 3.1.7
 
   '@formatjs/intl-localematcher@0.8.13':
     dependencies:

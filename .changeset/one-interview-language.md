@@ -12,9 +12,9 @@ interview's own buttons, menus and messages, so a browser set to French and
 Spanish no longer gets a Spanish protocol inside French buttons.
 
 - The interview chooses its language once, from the protocol's languages: the
-  language a Language Chooser stage or the host states, or else the first of
-  the participant's browser languages that the protocol offers, or else the
-  protocol's default language.
+  language a Language Chooser stage or the host states, or else the
+  protocol language that best fits the participant's browser languages, or
+  else the protocol's default language.
 - Text that only screen readers read, such as announcements and the names of
   icon buttons, stays in English for now.
 - Icons beside text that already says what they mean are hidden from screen

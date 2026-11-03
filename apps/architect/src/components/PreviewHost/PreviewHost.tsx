@@ -27,7 +27,7 @@ import {
   type CurrentProtocol,
   getLocaleMetadata,
   type LocaleTag,
-  selectProtocolLocale,
+  resolveProtocolLocale,
   type Stage,
 } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
@@ -484,8 +484,9 @@ export function PreviewHost() {
     );
   }
   // The language the interview shows, chosen as the interview chooses it.
-  const shownLocale = selectProtocolLocale(
-    statedLocale === null ? browserLanguages : [statedLocale],
+  const shownLocale = resolveProtocolLocale(
+    statedLocale,
+    browserLanguages,
     interviewPayload.protocol.localization,
   );
   return (

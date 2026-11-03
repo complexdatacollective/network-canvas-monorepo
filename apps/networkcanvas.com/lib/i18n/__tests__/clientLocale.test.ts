@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  getClearedLocaleCookie,
-  getLocaleCookie,
+  getLocaleCookies,
   getLocalizedPathname,
   readLocalePreference,
 } from '~/lib/i18n/clientLocale';
@@ -27,16 +26,26 @@ describe('client locale selection', () => {
     },
   );
 
-  it('persists an explicit locale for one year', () => {
-    expect(getLocaleCookie('en-US')).toBe(
-      'NEXT_LOCALE=en-US; Path=/; Max-Age=31536000; SameSite=Lax',
-    );
+  it('persists an explicit locale for one year on every Network Canvas website', () => {
+    expect(
+      getLocaleCookies('en-US', 'protocolgallery.networkcanvas.com'),
+    ).toEqual([
+      'NEXT_LOCALE=en-US; Path=/; Domain=networkcanvas.com; Max-Age=31536000; SameSite=Lax',
+      'NEXT_LOCALE=; Path=/; Max-Age=0; SameSite=Lax',
+    ]);
   });
 
   it('expires the preference so the edge negotiates again', () => {
-    expect(getClearedLocaleCookie()).toBe(
+    expect(getLocaleCookies(null, 'networkcanvas.com')).toEqual([
+      'NEXT_LOCALE=; Path=/; Domain=networkcanvas.com; Max-Age=0; SameSite=Lax',
       'NEXT_LOCALE=; Path=/; Max-Age=0; SameSite=Lax',
-    );
+    ]);
+  });
+
+  it("keeps a deploy preview's choice to that preview", () => {
+    expect(getLocaleCookies('es', 'deploy-preview-1--nc.netlify.app')).toEqual([
+      'NEXT_LOCALE=es; Path=/; Max-Age=31536000; SameSite=Lax',
+    ]);
   });
 
   it.each([

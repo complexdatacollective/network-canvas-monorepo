@@ -24,6 +24,7 @@ import {
   type LocalizedString,
   type ResolvedLocalizedString,
   resolveLocalizedString,
+  resolveProtocolLocale,
   selectProtocolLocale,
   sortByLanguageName,
 } from '@codaco/protocol-validation';
@@ -114,15 +115,11 @@ export function ProtocolLocalizationProvider({
   onLocalePreferenceChange: (locale: LocaleTag) => void;
   children: ReactNode;
 }) {
-  // The interview's one language negotiation. A stated preference is passed
-  // as the only request, so a preference the protocol no longer matches
-  // yields its default rather than a browser language.
+  // The interview's one language choice: the participant's stated preference
+  // first, then the browser's languages.
   const locale = useMemo(
     () =>
-      selectProtocolLocale(
-        localePreference === null ? requestedLocales : [localePreference],
-        localization,
-      ),
+      resolveProtocolLocale(localePreference, requestedLocales, localization),
     [localePreference, requestedLocales, localization],
   );
 
