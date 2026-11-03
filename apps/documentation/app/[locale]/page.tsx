@@ -1,7 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 
-import type { Locale } from '~/app/types';
 import { Hero } from '~/components/Hero';
+import type { Locale } from '~/lib/i18n/locales';
 
 const Page = async (props: { params: Promise<{ locale: Locale }> }) => {
   const params = await props.params;

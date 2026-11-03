@@ -15,10 +15,8 @@ import {
 
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
-  type Locale,
   type Section,
   type SidebarPage,
-  toLocale,
   toSection,
   type TSideBar,
   type SidebarFolder as TSidebarFolder,
@@ -28,6 +26,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '~/components/ui/collapsible';
+import { type Locale, toLocale } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
 
 const PATH_SEPARATOR_REGEX = /[\\/]/;
