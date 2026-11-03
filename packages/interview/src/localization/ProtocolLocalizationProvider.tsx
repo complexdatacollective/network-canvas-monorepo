@@ -200,6 +200,15 @@ export function useProtocolLocale(): Readonly<{
 }
 
 /**
+ * The participant's languages, most preferred first: the interview language,
+ * then the browser's. Text Network Canvas does not take from the protocol,
+ * such as a map's place names, is matched against them.
+ */
+export function useProtocolLanguageOrder(): readonly [LocaleTag, ...string[]] {
+  return useProtocolLocalizationState().resolutionOrder;
+}
+
+/**
  * The language the protocol's own values are written for, to format and
  * alphabetise them in: the protocol language the interview shows. Participant
  * and protocol data sit among the protocol's text, so a participant reading

@@ -1,4 +1,4 @@
-import { toScriptMatchingTag } from '@codaco/shared-consts';
+import { canonicalizeLocaleTag, negotiateLocale } from '@codaco/shared-consts';
 
 /**
  * Languages Mapbox GL JS can put on map labels (`language` option /
@@ -7,7 +7,7 @@ import { toScriptMatchingTag } from '@codaco/shared-consts';
  * https://docs.mapbox.com/help/dive-deeper/maps-internationalization/
  * (as documented on 2026-10; Mapbox adds languages without a version bump)
  */
-const MAP_LANGUAGES: ReadonlySet<string> = new Set([
+const MAP_LANGUAGES: readonly string[] = [
   'ar',
   'bg',
   'bs',
@@ -51,7 +51,7 @@ const MAP_LANGUAGES: ReadonlySet<string> = new Set([
   'vi',
   'zh-Hans',
   'zh-Hant',
-]);
+];
 
 /**
  * Languages the Search Box API returns results in (`language` on `/suggest`
@@ -59,7 +59,7 @@ const MAP_LANGUAGES: ReadonlySet<string> = new Set([
  * https://docs.mapbox.com/api/search/search-box/
  * (as documented on 2026-10)
  */
-const SEARCH_LANGUAGES: ReadonlySet<string> = new Set([
+const SEARCH_LANGUAGES: readonly string[] = [
   'cs',
   'hr',
   'da',
@@ -85,54 +85,61 @@ const SEARCH_LANGUAGES: ReadonlySet<string> = new Set([
   'sv',
   'tr',
   'uk',
-]);
+];
 
 const SEARCH_FALLBACK_LANGUAGE = 'en';
 
 /**
- * Where Mapbox spells a language differently from the canonical form
- * `Intl.Locale` gives: it canonicalises both `tl` and `fil` to `fil`, but
- * Mapbox lists Tagalog as `tl`. Every other code on either list (`he`, `id`,
- * `no`, `nb`, ...) is already its own canonical form, so legacy tags such as
- * `iw` and `in` reach it correctly.
+ * A tag's language in canonical form (`fil` for both `tl` and `fil`, `he` for
+ * `iw`), or `undefined` for a tag that cannot be parsed.
  */
-const MAPBOX_SPELLING: Readonly<Record<string, string>> = { fil: 'tl' };
-
-/**
- * The code Mapbox would be asked for: Chinese keeps its script (`zh-Hans` or
- * `zh-Hant`, by the same rule protocol locales are matched with), every other
- * tag is cut to its language (`pt-BR` becomes `pt`), because Mapbox documents
- * no regional tags. `undefined` for a tag that cannot be parsed.
- */
-function toMapboxCode(tag: string): string | undefined {
-  try {
-    const { language } = new Intl.Locale(tag);
-    return language === 'zh'
-      ? toScriptMatchingTag(tag)
-      : (MAPBOX_SPELLING[language] ?? language);
-  } catch {
-    return undefined;
-  }
+function languageOf(tag: string): string | undefined {
+  const canonical = canonicalizeLocaleTag(tag);
+  return canonical === undefined
+    ? undefined
+    : new Intl.Locale(canonical).language;
 }
 
 /**
- * The language to label the map in, or `undefined` when Mapbox has none for
- * this locale. Mapbox then shows each label in its place's own language, which
- * is its documented behaviour for any label without a translation.
+ * The language Mapbox offers that best fits the person's languages, most
+ * preferred first, by Network Canvas's one locale negotiation. Only a fit in
+ * one of those languages counts: CLDR would otherwise label a map in Dutch for
+ * someone who reads Afrikaans, or in Russian for someone who reads
+ * Belarusian, so Mapbox's languages are first narrowed to the ones the person
+ * listed. A regional or script variant of a listed language still fits
+ * (`pt-BR` gets `pt`, `zh-TW` gets `zh-Hant`). `undefined` when Mapbox has
+ * none of them.
  */
-export function getMapLanguage(locale: string): string | undefined {
-  const code = toMapboxCode(locale);
-  return code !== undefined && MAP_LANGUAGES.has(code) ? code : undefined;
+function ownLanguageFit(
+  requested: readonly string[],
+  offered: readonly string[],
+): string | undefined {
+  const own = new Set(requested.map(languageOf));
+  return negotiateLocale(
+    requested,
+    offered.filter((code) => own.has(languageOf(code))),
+  );
 }
 
 /**
- * The language to ask place search for: the protocol language the participant
- * is reading, when Search Box has it; otherwise English, Search Box's own
- * default.
+ * The language to label the map in: the participant's interview language,
+ * else the next of their browser's languages Mapbox has labels in. With none,
+ * `undefined`, and Mapbox shows each label in its place's own language, its
+ * documented behaviour for any label without a translation.
  */
-export function getSearchLanguage(protocolLocale: string): string {
-  const code = toMapboxCode(protocolLocale);
-  return code !== undefined && SEARCH_LANGUAGES.has(code)
-    ? code
-    : SEARCH_FALLBACK_LANGUAGE;
+export function getMapLanguage(
+  requested: readonly string[],
+): string | undefined {
+  return ownLanguageFit(requested, MAP_LANGUAGES);
+}
+
+/**
+ * The language to ask place search for: the first of the participant's
+ * languages (see `getMapLanguage`) that Search Box has; otherwise English,
+ * Search Box's own default, since a search has to be in some language.
+ */
+export function getSearchLanguage(requested: readonly string[]): string {
+  return (
+    ownLanguageFit(requested, SEARCH_LANGUAGES) ?? SEARCH_FALLBACK_LANGUAGE
+  );
 }
