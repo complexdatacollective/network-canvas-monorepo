@@ -4,9 +4,10 @@ import type { Status } from '../genetics/status';
 import { Sticker } from './Sticker';
 
 /**
- * The stage's plain-language meaning of each glyph (`conditionText.notation`
- * in the protocol). The at-risk meanings are held only while the stage shows
- * at-risk statuses.
+ * The plain-language meaning of each glyph, with the condition shown named
+ * where the protocol's wording names it (its `narrativePedigree` interface
+ * text, the same for every Narrative Pedigree). The at-risk meanings are
+ * shown only while the stage shows at-risk statuses.
  */
 export type NotationWords = Readonly<{
   affected: string;

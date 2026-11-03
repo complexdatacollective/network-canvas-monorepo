@@ -3033,10 +3033,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 data-testid="pedigree-connect-hint"
               >
                 {showPiped(connectNotice ?? undefined) ??
-                  text(
+                  intl.formatMessage(
                     tool === 'connect'
-                      ? wording.connectHint
-                      : wording.disconnectHint,
+                      ? messages.connectHint
+                      : messages.disconnectHint,
                   )}
               </p>
             )}
@@ -3083,10 +3083,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   >
                     <ToolbarIconButton
                       value="pointer"
-                      aria-label={text(wording.pointerTool)}
+                      aria-label={intl.formatMessage(messages.pointerTool)}
                       tooltip={
                         <ToolTip
-                          name={text(wording.pointerTool)}
+                          name={intl.formatMessage(messages.pointerTool)}
                           description={intl.formatMessage(
                             messages.pointerToolDescription,
                           )}
@@ -3097,10 +3097,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     />
                     <ToolbarIconButton
                       value="connect"
-                      aria-label={text(wording.connectTool)}
+                      aria-label={intl.formatMessage(messages.connectTool)}
                       tooltip={
                         <ToolTip
-                          name={text(wording.connectTool)}
+                          name={intl.formatMessage(messages.connectTool)}
                           description={intl.formatMessage(
                             messages.connectToolDescription,
                           )}
@@ -3111,10 +3111,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     />
                     <ToolbarIconButton
                       value="disconnect"
-                      aria-label={text(wording.disconnectTool)}
+                      aria-label={intl.formatMessage(messages.disconnectTool)}
                       tooltip={
                         <ToolTip
-                          name={text(wording.disconnectTool)}
+                          name={intl.formatMessage(messages.disconnectTool)}
                           description={intl.formatMessage(
                             messages.disconnectToolDescription,
                           )}

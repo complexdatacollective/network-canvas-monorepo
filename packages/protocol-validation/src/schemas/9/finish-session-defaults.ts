@@ -35,8 +35,9 @@ export type FinishSessionText = Readonly<{
  * time.
  *
  * Each translation was checked by blind back-translation and adversarial
- * comparison (#2131; the finished-screen text when it was added). A regional variant is served by its language
- * (`suppliedTextFor`), so British English reads the `en` text.
+ * comparison (#2131; the finished-screen text when it was added). Only the
+ * exact language is served (`suppliedTextFor`): British English gets none,
+ * and falls back to `en` where the protocol has that language too.
  */
 export const DEFAULT_FINISH_SESSION_TEXT = {
   'en': {
@@ -118,18 +119,20 @@ const FINISH_SESSION_TEXT_FIELDS = [
 
 /**
  * The finish stage's text fields with the supplied text for every one of the
- * given languages that has it. A language without supplied text is left out,
- * and reported as untranslated like any other missing translation.
+ * protocol's languages that has it. A language without supplied text is left
+ * out, and reported as untranslated like any other missing translation; in
+ * the default language, the researcher must write it before the protocol
+ * leaves its editor (`findFinishStageTextProblems`).
  */
 export const defaultFinishSessionFields = (
-  locales: readonly LocaleTag[],
+  localization: LocalizationDeclaration,
 ): Record<FinishSessionTextField, LocalizedString> => {
   const fields: Record<FinishSessionTextField, Record<LocaleTag, string>> = {
     label: {},
     content: {},
     finishedContent: {},
   };
-  for (const locale of locales) {
+  for (const locale of localization.locales) {
     const text = defaultFinishSessionText(locale);
     if (text === undefined) continue;
     for (const field of FINISH_SESSION_TEXT_FIELDS) {
@@ -183,7 +186,7 @@ export const createDefaultFinishSessionStage = ({
   id,
   type: 'FinishSession',
   mode,
-  ...defaultFinishSessionFields(localization.locales),
+  ...defaultFinishSessionFields(localization),
   ...suppliedFinishSessionSettings(localization),
   outcome,
 });
@@ -212,14 +215,24 @@ type FinishSessionScreens = Pick<
   FinishSessionTextField | 'mode'
 >;
 
+/**
+ * Whether the fields hold, in one language, exactly the text Network Canvas
+ * supplies there: none, where it supplies none in that language.
+ */
 const holdsSuppliedText = (
   stage: Pick<FinishSessionStage, FinishSessionTextField>,
   locale: LocaleTag,
   fields: readonly FinishSessionTextField[],
 ): boolean => {
   const text = defaultFinishSessionText(locale);
-  if (text === undefined) return false;
-  return fields.every((field) => stage[field]?.[locale] === text[field]);
+  return fields.every((field) => {
+    const held = stage[field];
+    const written =
+      held !== undefined && Object.hasOwn(held, locale)
+        ? held[locale]
+        : undefined;
+    return written === text?.[field];
+  });
 };
 
 /**
@@ -229,7 +242,9 @@ const holdsSuppliedText = (
  * Architect only fills in a newly added language when this holds for the
  * default language, because supplied text beside a researcher's own wording
  * would say something else. The stage's label is a name, not something the
- * participant reads, so renaming it does not count.
+ * participant reads, so renaming it does not count. In a language Network
+ * Canvas supplies no text in, the screens are still its own while the
+ * researcher has written none.
  */
 export const hasDefaultFinishSessionText = (
   stage: FinishSessionScreens,

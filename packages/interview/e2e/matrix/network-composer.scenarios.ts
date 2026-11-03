@@ -10,7 +10,8 @@ import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
 
 // A researcher's own wording for the tools and the notice, each distinct from
-// the text Network Canvas supplies.
+// the text Network Canvas supplies. Every Network Composer stage shows them
+// alike, so the protocol holds them once, as interface text.
 const NAME_PLACEHOLDER = 'Who is it? - matrix check';
 const OVERTAKEN_EDIT_NOTICE = 'Your edit was overtaken - matrix check';
 const GROUPS_HEADING = 'Circles - matrix check';
@@ -290,14 +291,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
 
     {
       id: 'wording-palette-and-overtaken-edit-notice',
-      covers: [
-        'addNamePlaceholder',
-        'overtakenEditNotice',
-        'groupsHeading',
-        'tooltips.addPerson',
-        'tooltips.automaticLayout',
-        'tooltips.drawConnection',
-      ],
+      covers: ['interfaceText.networkComposer'],
       seedNetwork: true,
       build: () => {
         const synth = new SyntheticInterview(197);
@@ -325,18 +319,20 @@ export const networkComposerScenarios: InterfaceScenarios = {
           nodeForm: {
             fields: [{ variable: age.id, component: 'Number', label: 'Age' }],
           },
-          // The researcher's own words, each distinct from the text Network
-          // Canvas supplies, so an assertion on one proves the stage's own
-          // setting is what the participant sees.
-          wording: {
-            'addNamePlaceholder': NAME_PLACEHOLDER,
-            'overtakenEditNotice': OVERTAKEN_EDIT_NOTICE,
-            'groupsHeading': GROUPS_HEADING,
-            'tooltips.addPerson': ADD_PERSON_TOOLTIP,
-            'tooltips.automaticLayout': AUTOMATIC_LAYOUT_TOOLTIP,
-            'tooltips.drawConnection': DRAW_CONNECTION_TOOLTIP,
-          },
         });
+        // The researcher's own words, each distinct from the text Network
+        // Canvas supplies, so an assertion on one proves the protocol's
+        // wording is what the interviewer sees.
+        for (const [key, text] of [
+          ['addNamePlaceholder', NAME_PLACEHOLDER],
+          ['overtakenEditNotice', OVERTAKEN_EDIT_NOTICE],
+          ['groupsHeading', GROUPS_HEADING],
+          ['addNodeTooltip', ADD_PERSON_TOOLTIP],
+          ['automaticLayoutTooltip', AUTOMATIC_LAYOUT_TOOLTIP],
+          ['drawEdgeTooltip', DRAW_CONNECTION_TOOLTIP],
+        ] as const) {
+          synth.setInterfaceText('networkComposer', key, text);
+        }
         stage.addEdgeType({ type: friendship.id });
         // A saved age gives an undo something to change.
         synth.addManualNode(stage.id, person.id, 'nc-dev', {
@@ -355,7 +351,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           return s?.nodes[0]?.[entityAttributesProperty][nodeFormRefs.age];
         };
 
-        // Each tool carries the stage's own name, and none of the names
+        // Each tool carries the protocol's own name, and none of the names
         // Network Canvas supplies.
         for (const [own, supplied] of [
           [ADD_PERSON_TOOLTIP, 'Add node'],
@@ -371,7 +367,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           ).toHaveCount(0);
         }
 
-        // The name field the add-person tool opens shows the stage's hint.
+        // The name field the add-node tool opens shows the protocol's hint.
         await page
           .getByRole('button', { name: ADD_PERSON_TOOLTIP, exact: true })
           .click();
@@ -384,7 +380,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         await expect(nameField).toBeHidden();
 
         // An undo pressed before an edit is saved overtakes it; leaving then
-        // asks before discarding it, in the stage's own words.
+        // asks before discarding it, in the protocol's own words.
         await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
         await composer.getNode('Dev').click();
         const age = composer.getField(nodeFormRefs.age).getByRole('spinbutton');

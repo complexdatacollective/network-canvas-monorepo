@@ -12,7 +12,6 @@
     - option "Eustace"
   - button "Missing import":
     - heading "Missing import" [level=3]
-  - img "Warning"
   - heading "Something went wrong" [level=4]
   - paragraph: That list could not load - matrix check
   - slider "Resize panel and node list areas"

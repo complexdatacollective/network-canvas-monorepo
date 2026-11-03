@@ -170,24 +170,12 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
       });
     }),
   // The interview's own words on this stage, which Network Canvas supplies
-  // (`stage-wording/narrative-pedigree.ts`). The two at-risk notation rows are
-  // drawn only while `showAtRiskStatuses` is on, and are required then
-  // (`missingRequiredStageSettings`).
-  keyHeading: localizedString(nonBlankText(), 'plain'),
+  // (`stage-wording/narrative-pedigree.ts`). The key's heading and rows and
+  // the clear focus tooltip, which every Narrative Pedigree shows alike, are
+  // interface text (`interface-text-wording.ts`).
   saveSnapshot: localizedString(nonBlankText(), 'plain'),
-  tooltips: z.strictObject({
-    clearFocus: localizedString(nonBlankText(), 'plain'),
-  }),
   conditionText: z.strictObject({
     selectCondition: localizedString(nonBlankText(), 'plain'),
-    notation: z.strictObject({
-      affected: localizedString(nonBlankText(), 'plain'),
-      obligateAffected: localizedString(nonBlankText(), 'plain'),
-      obligateCarrier: localizedString(nonBlankText(), 'plain'),
-      atRiskAffected: localizedString(nonBlankText(), 'plain').optional(),
-      atRiskCarrier: localizedString(nonBlankText(), 'plain').optional(),
-      unknown: localizedString(nonBlankText(), 'plain'),
-    }),
     snapshotCondition: localizedMessage(nonBlankText(), {
       arguments: SNAPSHOT_CONDITION_ARGUMENTS,
     }),

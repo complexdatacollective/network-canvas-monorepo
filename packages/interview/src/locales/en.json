@@ -23,9 +23,17 @@
     "defaultMessage": "{isYou, select, true {Recorded that you have no biological children.} other {Recorded that {name} has no biological children.}}",
     "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no children. name is the person’s name or how they are related to the participant."
   },
+  "interview.familyPedigree.connectHint": {
+    "defaultMessage": "Select a person, then select another to connect them.",
+    "description": "Shown over the family tree while the Connect tool is chosen, telling the participant how to join two people already in the tree."
+  },
   "interview.familyPedigree.connectHintLinking": {
     "defaultMessage": "{isYou, select, true {Now select the person to connect to you.} other {Now select the person to connect to {name}.}}",
     "description": "Read out to screen reader users, not shown, once the first of two people to connect has been selected. name is that person’s name or how they are related to the participant."
+  },
+  "interview.familyPedigree.connectTool": {
+    "defaultMessage": "Connect",
+    "description": "Name of the family tree toolbar tool that joins two people already in the tree with a relationship. Shown as the tool’s tooltip heading and read as its accessible name."
   },
   "interview.familyPedigree.connectToolDescription": {
     "defaultMessage": "Select two family members to connect them and say how they are related.",
@@ -35,9 +43,17 @@
     "defaultMessage": "{relationship} ({kind})",
     "description": "Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example Julie is a parent of Rob); kind is the kind of parent chosen (for example Adoptive parent)."
   },
+  "interview.familyPedigree.disconnectHint": {
+    "defaultMessage": "Select a person, then select someone they are connected to, to remove that connection.",
+    "description": "Shown over the family tree while the Disconnect tool is chosen, telling the participant how to remove a relationship line."
+  },
   "interview.familyPedigree.disconnectHintLinking": {
     "defaultMessage": "{isYou, select, true {Now select the person to disconnect from you.} other {Now select the person to disconnect from {name}.}}",
     "description": "Read out to screen reader users, not shown, once the first of two people to disconnect has been selected. name is that person’s name or how they are related to the participant."
+  },
+  "interview.familyPedigree.disconnectTool": {
+    "defaultMessage": "Disconnect",
+    "description": "Name of the family tree toolbar tool that removes a relationship line between two people. Shown as the tool’s tooltip heading and read as its accessible name."
   },
   "interview.familyPedigree.disconnectToolDescription": {
     "defaultMessage": "Select two connected family members to remove the connection between them.",
@@ -47,6 +63,14 @@
     "defaultMessage": "{firstIsYou, select, true {The connection between you and {second} was removed.} other {The connection between {first} and {second} was removed.}}",
     "description": "Screen reader announcement after the connection between two people is removed. first and second are their names or how they are related to the participant."
   },
+  "interview.familyPedigree.framingChoiceDescription": {
+    "defaultMessage": "Choose the words you would like us to use for the people in your family. You can change this at any time.",
+    "description": "Explanation under the question asking which set of words for relatives the family tree should use."
+  },
+  "interview.familyPedigree.framingChoiceTitle": {
+    "defaultMessage": "How should we describe your family?",
+    "description": "Question over the choice between sets of words for relatives, such as mother and father, or egg parent and sperm parent."
+  },
   "interview.familyPedigree.framingChosenAnnouncement": {
     "defaultMessage": "{framing, select, gamete {Family members are now described with words like egg parent, sperm parent and sibling.} other {Family members are now described with words like mother, father, sister and brother.}}",
     "description": "Screen-reader announcement after the participant chooses the words used to describe family members, which changes the labels of everyone they have not named. {framing} is \"gamete\" for the words that do not depend on gender, otherwise the words that follow gender."
@@ -54,6 +78,10 @@
   "interview.familyPedigree.framingControlDescription": {
     "defaultMessage": "Choose the relationship words your family tree uses for your relatives.",
     "description": "Tooltip text, under the heading “Wording” (or the stage’s own name for it), of the family tree toolbar button that opens a choice between sets of words for relatives, such as mother and father, or egg parent and sperm parent. Read by participants."
+  },
+  "interview.familyPedigree.framingControlLabel": {
+    "defaultMessage": "Wording",
+    "description": "Name of the family tree toolbar button that opens a choice between sets of words for relatives, such as mother and father, or egg parent and sperm parent. Shown as its tooltip heading and read as its accessible name."
   },
   "interview.familyPedigree.personAccessibleName": {
     "defaultMessage": "{isYou, select, true {You} other {{name}}}",
@@ -66,6 +94,10 @@
   "interview.familyPedigree.personMissingDetailsDescription": {
     "defaultMessage": "Some details are missing.",
     "description": "Read out after the name of a family member’s symbol in the family tree when required details about the person have not been given yet, which the tree shows with a warning icon."
+  },
+  "interview.familyPedigree.pointerTool": {
+    "defaultMessage": "Add and edit",
+    "description": "Name of the family tree toolbar tool that is chosen by default: with it, selecting a family member opens their details, and buttons beside them add a parent, sibling, partner or child. Shown as the tool’s tooltip heading and read as its accessible name."
   },
   "interview.familyPedigree.pointerToolDescription": {
     "defaultMessage": "Select a family member to edit their details or add their relatives.",
@@ -211,6 +243,22 @@
     "defaultMessage": "Close search",
     "description": "Accessible name of the toggle while the geospatial place-search panel is open."
   },
+  "interview.interfaces.composerAddNode": {
+    "defaultMessage": "Add node",
+    "description": "Accessible name and tooltip of the network-composer tool that adds a node."
+  },
+  "interview.interfaces.composerAutomaticLayout": {
+    "defaultMessage": "Automatic layout",
+    "description": "Accessible name and tooltip of the network-composer toggle that lays the nodes out automatically."
+  },
+  "interview.interfaces.composerDrawEdge": {
+    "defaultMessage": "Draw edge",
+    "description": "Accessible name and tooltip of the network-composer tool that draws an edge between two nodes."
+  },
+  "interview.interfaces.composerGroups": {
+    "defaultMessage": "Groups",
+    "description": "Heading over the groups in the network-composer side panel, and the name of the tool that puts nodes in groups."
+  },
   "interview.interfaces.composerTools": {
     "defaultMessage": "Network composer tools",
     "description": "Accessible name of the vertical toolbar used to create and edit a network."
@@ -299,9 +347,17 @@
     "defaultMessage": "Map moved to {place}.",
     "description": "Screen-reader announcement after a selected search result moves the map. place is the unchanged place name returned by the map service."
   },
+  "interview.interfaces.mapOffline": {
+    "defaultMessage": "You are offline — the map will not load until you reconnect.",
+    "description": "Notice over a Geospatial map while the device is offline and the map cannot load."
+  },
   "interview.interfaces.mapTitle": {
     "defaultMessage": "Map",
     "description": "Accessible region name of the native Mapbox canvas in the geospatial interface."
+  },
+  "interview.interfaces.mapUnavailable": {
+    "defaultMessage": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
+    "description": "Explanation shown when a Geospatial map cannot be drawn at all."
   },
   "interview.interfaces.mapboxHomepage": {
     "defaultMessage": "Mapbox homepage",
@@ -318,6 +374,10 @@
   "interview.interfaces.ordinalContainer": {
     "defaultMessage": "Container for the value ''{label}''",
     "description": "Drag-and-drop name of a rating container. label is the unchanged researcher-authored ordinal response label; keep it as a value, not a translation key."
+  },
+  "interview.interfaces.overtakenEditNotice": {
+    "defaultMessage": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.",
+    "description": "Warning in the network-composer side panel when an undo or redo changed an answer the interviewer was in the middle of editing."
   },
   "interview.interfaces.passphraseAccepted": {
     "defaultMessage": "Passphrase accepted! Click \"Next\" to continue.",
@@ -339,6 +399,10 @@
     "defaultMessage": "Previous preset",
     "description": "Action that selects the previous researcher-configured narrative view."
   },
+  "interview.interfaces.quickAddHint": {
+    "defaultMessage": "Press Enter when you are finished.",
+    "description": "Line shown under the quick-add name field after it has been open a while, telling the participant how to add what they typed."
+  },
   "interview.interfaces.quickAddInput": {
     "defaultMessage": "Quick add input",
     "description": "Accessible name of the active quick-add toggle while its name-entry field is open."
@@ -350,6 +414,10 @@
   "interview.interfaces.redo": {
     "defaultMessage": "Redo",
     "description": "Toolbar action that makes again a change that was undone, in the network composer and the family pedigree."
+  },
+  "interview.interfaces.resetAnnotations": {
+    "defaultMessage": "Reset annotations",
+    "description": "Accessible name and tooltip of the Narrative button that clears everything drawn on the canvas."
   },
   "interview.interfaces.resizePanel": {
     "defaultMessage": "Resize panel",
@@ -370,6 +438,10 @@
   "interview.interfaces.scrollForQuestions": {
     "defaultMessage": "Scroll to see more questions",
     "description": "Hint at the bottom of a long personal-information form indicating that more questions are below the visible area."
+  },
+  "interview.interfaces.searchFailed": {
+    "defaultMessage": "Search could not be completed. Try again in a moment.",
+    "description": "Notice under the Geospatial map search when a search could not run."
   },
   "interview.interfaces.searchLocation": {
     "defaultMessage": "Search location",
@@ -403,6 +475,14 @@
     "defaultMessage": "Toggle attribution",
     "description": "Accessible name and tooltip of the native map control that expands or collapses map source credits; source credit text remains unchanged."
   },
+  "interview.interfaces.toggleDrawing": {
+    "defaultMessage": "Toggle drawing",
+    "description": "Accessible name and tooltip of the Narrative button that turns drawing on the canvas on and off."
+  },
+  "interview.interfaces.toggleFreezing": {
+    "defaultMessage": "Toggle freezing annotations",
+    "description": "Accessible name and tooltip of the Narrative button that freezes what has been drawn so it stays put, and unfreezes it."
+  },
   "interview.interfaces.undo": {
     "defaultMessage": "Undo",
     "description": "Toolbar action that reverses the most recent change, in the network composer and the family pedigree."
@@ -427,6 +507,10 @@
     "defaultMessage": "At risk (carrier)",
     "description": "Clinical status label for uncertain carrier status, distinct from uncertain risk of developing the condition."
   },
+  "interview.narrativePedigree.clearFocus": {
+    "defaultMessage": "Clear focus",
+    "description": "Accessible name and tooltip of the button that stops focusing the family tree on one person."
+  },
   "interview.narrativePedigree.conditionKey": {
     "defaultMessage": "Condition key",
     "description": "Accessible name of the side panel listing protocol-authored conditions and explaining the pedigree status symbols."
@@ -438,6 +522,34 @@
   "interview.narrativePedigree.focusOn": {
     "defaultMessage": "Focus on {name}",
     "description": "Accessible action focusing the inheritance view on a person. name is entered research text or a localized relationship fallback; do not alter it."
+  },
+  "interview.narrativePedigree.keyCarries": {
+    "defaultMessage": "Carries this condition",
+    "description": "Key row: what the symbol with a horizontal line means. condition is the name of the condition the key shows, which the protocol may use."
+  },
+  "interview.narrativePedigree.keyHasCondition": {
+    "defaultMessage": "Has this condition",
+    "description": "Key row: what the filled symbol means. condition is the name of the condition the key shows, which the protocol may use."
+  },
+  "interview.narrativePedigree.keyHeading": {
+    "defaultMessage": "Key",
+    "description": "Heading over the key that explains the symbols drawn on the family tree for the chosen condition."
+  },
+  "interview.narrativePedigree.keyMayCarry": {
+    "defaultMessage": "May carry this condition",
+    "description": "Key row: what the symbol with a horizontal line and a question mark means. condition is the name of the condition the key shows, which the protocol may use."
+  },
+  "interview.narrativePedigree.keyMayDevelop": {
+    "defaultMessage": "May develop this condition",
+    "description": "Key row: what the symbol with a vertical line and a question mark means. condition is the name of the condition the key shows, which the protocol may use."
+  },
+  "interview.narrativePedigree.keyNotKnown": {
+    "defaultMessage": "Not known",
+    "description": "Key row: what the plain symbol means when nothing is known about the condition. condition is the name of the condition the key shows, which the protocol may use."
+  },
+  "interview.narrativePedigree.keyWillDevelop": {
+    "defaultMessage": "Will develop this condition",
+    "description": "Key row: what the symbol with a vertical line means. condition is the name of the condition the key shows, which the protocol may use."
   },
   "interview.narrativePedigree.obligateAffected": {
     "defaultMessage": "Obligate affected",
@@ -601,7 +713,7 @@
   },
   "interview.runtime.dropToRemove": {
     "defaultMessage": "Drop here to remove",
-    "description": "Hint shown on the tray when dropping an item removes its position."
+    "description": "Hint shown on the tray when dropping an item removes its position. subject is the name of the kind of item, such as Person, which the protocol may use in its own wording."
   },
   "interview.runtime.expandDrawer": {
     "defaultMessage": "Expand drawer",
@@ -678,10 +790,6 @@
   "interview.runtime.unnamed": {
     "defaultMessage": "Unnamed",
     "description": "Label shown on, and read out for, a person or other item the participant added without giving it a name."
-  },
-  "interview.runtime.unnamedNumbered": {
-    "defaultMessage": "Unnamed {number}",
-    "description": "Title of an entry in a list of people or other items to choose from when the entry has no name or other details to show. number tells the entries apart: 1, 2, 3 and so on."
   },
   "interview.runtime.unplacedCount": {
     "defaultMessage": "{count, number} unplaced",

@@ -53,7 +53,7 @@ describe('the geospatial sections, read in Spanish', () => {
       'Conjunto de preguntas',
       'Apariencia del mapa',
       'Posición inicial del mapa',
-      'Mensajes',
+      'Personalizar la redacción predeterminada',
     ]);
     expect(
       screen.getByRole('combobox', { name: 'Estilo de Mapbox' }),

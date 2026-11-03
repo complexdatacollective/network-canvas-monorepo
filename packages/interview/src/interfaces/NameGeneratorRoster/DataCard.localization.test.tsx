@@ -1,9 +1,11 @@
 import { render, screen, within } from '@testing-library/react';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
-import { TestProtocolLocalization } from '../__tests__/TestProtocolLocalization';
+import {
+  suppliedInterfaceText,
+  TestProtocolLocalization,
+} from '../__tests__/TestProtocolLocalization';
 import DataCard, { type DataCardDetail } from './DataCard';
 
 const details: DataCardDetail[] = [
@@ -12,33 +14,40 @@ const details: DataCardDetail[] = [
   { id: 'number', label: 'Authored number', value: 7 },
 ];
 
+const bilingual = { defaultLocale: 'en', locales: ['en', 'es'] };
+// A roster whose cards show answers, which may be yes or no.
+const interfaceText = suppliedInterfaceText(bilingual, [
+  {
+    type: 'NameGeneratorRoster',
+    cardOptions: { additionalProperties: [{ label: 'Question' }] },
+  },
+]);
+
 function Example({ locale }: { locale?: string }) {
   const card = <DataCard label="Researcher label" details={details} />;
   return locale ? (
-    <InterviewI18nProvider requestedLocale={locale}>
-      {card}
+    <InterviewI18nProvider>
+      <TestProtocolLocalization
+        localization={bilingual}
+        locale={locale}
+        interfaceText={interfaceText}
+      >
+        {card}
+      </TestProtocolLocalization>
     </InterviewI18nProvider>
   ) : (
     card
   );
 }
 
-// Loaded before anything renders, as a host loads a language before it
-// mounts an interview, so renders in these languages are synchronous.
-beforeAll(async () => {
-  await Promise.all(
-    ['es', 'de', 'fr'].map((locale) => interviewCatalogSource.load(locale)),
-  );
-});
-
 describe('roster built-in value localization', () => {
-  it('switches boolean display text without translating authored names, questions, or stored data', () => {
+  it("switches boolean display text, worded by the protocol's interface text, without translating authored names, questions, or stored data", () => {
     const original = structuredClone(details);
     const { rerender } = render(<Example locale="en" />);
     const card = screen.getByRole('article', { name: 'Researcher label' });
     expect(within(card).getByText('Yes and No')).toBeInTheDocument();
 
-    rerender(<Example locale="es-MX" />);
+    rerender(<Example locale="es" />);
     expect(screen.getByRole('article', { name: 'Researcher label' })).toBe(
       card,
     );
@@ -67,9 +76,9 @@ describe('roster values follow the language the protocol is read in', () => {
   const text = (label: string) =>
     screen.getByText(label).nextElementSibling?.textContent;
 
-  it('formats numbers, lists and coordinates for the protocol language, not the interface language', () => {
+  it('formats numbers, lists and coordinates for the protocol language', () => {
     render(
-      <InterviewI18nProvider requestedLocale="en">
+      <InterviewI18nProvider>
         <TestProtocolLocalization
           localization={{ defaultLocale: 'de', locales: ['de'] }}
         >
@@ -81,31 +90,21 @@ describe('roster values follow the language the protocol is read in', () => {
     expect(text('Number')).toBe('1.234,5');
     expect(text('List')).toBe('a, b und c');
     expect(text('Place')).toBe('41,3083 und -72,9279');
-    // The words stay in the interface language.
-    // A dash shows the empty value; its words are read by screen readers only.
+    // A dash shows the empty value; its words are read by screen readers
+    // only, and screen reader text stays in English.
     expect(text('Empty')).toBe('—No value');
     expect(text('None')).toBe('—No value');
   });
 
-  it('formats for the interface language outside a protocol provider', () => {
+  it('formats in English outside a protocol provider', () => {
     render(
-      <InterviewI18nProvider requestedLocale="de">
+      <InterviewI18nProvider>
         <DataCard label="Card" details={values} />
       </InterviewI18nProvider>,
     );
 
-    expect(text('Number')).toBe('1.234,5');
-    expect(text('List')).toBe('a, b und c');
-    expect(text('Empty')).toBe('—Kein Wert');
-  });
-
-  it('writes the empty value in the interface language of each catalog', () => {
-    render(
-      <InterviewI18nProvider requestedLocale="fr">
-        <DataCard label="Card" details={[values[3]!]} />
-      </InterviewI18nProvider>,
-    );
-
-    expect(text('Empty')).toBe('—Aucune valeur');
+    expect(text('Number')).toBe('1,234.5');
+    expect(text('List')).toBe('a, b, and c');
+    expect(text('Empty')).toBe('—No value');
   });
 });

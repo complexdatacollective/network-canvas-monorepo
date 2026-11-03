@@ -56,12 +56,11 @@ Three stage-level behaviors change how participants can interact with the canvas
 
 <AppOnly app="current">
 
-### Words on the canvas
+### Customize built-in wording
 
-The **Words on the canvas** section of the stage editor holds the headings of the panels and the tooltips of the tools. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). A setting is in the section only while the part of the stage it belongs to is switched on, and it is removed when you switch that part off.
+The **Customize built-in wording** section of the stage editor holds the headings of the panels, under **Specific to this stage**. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). A heading is in the section only while a preset highlights attributes, shows links or groups nodes, and it is removed when no preset does.
 
-- **Attributes**, **Links** and **Groups** headings, which are there when a preset highlights attributes, shows links or groups nodes.
-- **Drawing tooltips** for enabling and disabling drawing and for freezing, unfreezing and resetting annotations, which are there when **Free-draw** is on.
+The tooltips of the drawing tools are the same on every Narrative stage, so they are under **Shared by every stage of this kind**, in the same section, while **Free-draw** is on. A change to them applies to every such stage, and is saved as soon as you leave the field. There are three: **Toggle drawing tooltip** names the button that switches drawing on and off, **Toggle freezing annotations tooltip** the button that freezes and unfreezes annotations, and **Reset annotations tooltip** the button that clears them.
 
 The tooltips for pausing and resuming the automatic layout are [interview text](/en/design-protocols/translating-your-protocol#interview-text), shared with the Sociogram, and are reworded and translated in the translation table under **Buttons**.
 

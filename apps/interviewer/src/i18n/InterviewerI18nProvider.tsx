@@ -16,6 +16,7 @@ import { interviewerDefaultLocale, interviewerLocales } from './locales';
 import {
   browserLanguages,
   LOCALE_PREFERENCE_KEY,
+  localePreferenceStore,
   negotiateLocale,
   readPreference,
 } from './preference';
@@ -68,15 +69,9 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
       setSaveState('idle');
       return;
     }
-    try {
-      if (next === null) localStorage.removeItem(LOCALE_PREFERENCE_KEY);
-      else localStorage.setItem(LOCALE_PREFERENCE_KEY, next);
-      setSaveState('saved');
-    } catch {
-      // Apply the current choice even when storage is blocked, and tell the
-      // researcher that reloading cannot restore it.
-      setSaveState('failed');
-    }
+    // Apply the current choice even when storage is blocked, and tell the
+    // researcher that reloading cannot restore it.
+    setSaveState(localePreferenceStore.write(next) ? 'saved' : 'failed');
     setRequested(browserLanguages());
   }, []);
 

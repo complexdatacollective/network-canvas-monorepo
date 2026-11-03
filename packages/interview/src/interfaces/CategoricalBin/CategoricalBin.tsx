@@ -4,7 +4,8 @@ import type { ComponentProps } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector, useStore } from 'react-redux';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { commonMessages } from '@codaco/app-i18n/common';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -460,6 +461,8 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
           />
         ),
         intent: 'default',
+        // Worded by the protocol's Save, as the Family Pedigree's forms are.
+        submitLabel: <AppMessage message={commonMessages.save} />,
         // Saving inside the dialog means a refused save keeps it open with
         // the answer as typed and the reason shown, ready to retry.
         onSubmit: async (values) => {

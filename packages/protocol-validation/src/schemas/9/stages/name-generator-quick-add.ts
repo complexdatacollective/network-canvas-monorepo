@@ -7,7 +7,8 @@ import {
   panelsSchema,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
-import { localizedString, nonBlankText } from '../localized-string.ts';
+import { localizedMessage, nonBlankText } from '../localized-string.ts';
+import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
 import { baseStageSchema } from './base.ts';
 import {
   nameGeneratorBehavioursSchema,
@@ -39,10 +40,15 @@ export const nameGeneratorQuickAddStage = baseStageSchema
         }
       }),
     behaviours: nameGeneratorBehavioursSchema,
-    // The line under the quick-add field, which Network Canvas supplies
-    // (`stage-wording/name-generator-quick-add.ts`): every quick-add stage has
-    // the field, so the hint is always required.
-    quickAddHint: localizedString(nonBlankText(), 'plain'),
+    // What the quick-add field shows before anything is typed in it, which
+    // Network Canvas supplies (`stage-wording/name-generator-quick-add.ts`).
+    // Every quick-add stage has the field, so it is always required. Worded by
+    // each stage, since what is typed depends on the attribute it fills. The
+    // line under the field, which every quick-add stage shows alike, is
+    // interface text (`interface-text-wording.ts`).
+    addNamePlaceholder: localizedMessage(nonBlankText(), {
+      arguments: SUBJECT_ARGUMENTS,
+    }),
     ...nameGeneratorWording,
   })
   .superRefine(requireNameGeneratorWording);

@@ -183,12 +183,6 @@ describe('Geospatial targetFeatureProperty (#674)', () => {
     id: 'geo1',
     label: localized('Geospatial'),
     type: 'Geospatial' as const,
-    offlineNotice: localized(
-      'You are offline — the map will not load until you reconnect.',
-    ),
-    mapUnavailable: localized(
-      'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
-    ),
     outsideAreasLabel: localized('Outside Selectable Areas'),
     subject: { entity: 'node' as const, type: 'person' },
     prompts: [{ id: 'p1', text: localized('Pick a place'), variable: 'home' }],
@@ -476,6 +470,7 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
     label: localized('Roster'),
     type: 'NameGeneratorRoster' as const,
     allAddedNotice: localized('There is nothing left to add from this list.'),
+    unnamedLabel: localized('Unnamed {count}'),
     subject: { entity: 'node' as const, type: 'person' },
     dataSource: 'roster-asset',
     panelTitle: localized('Available to add'),

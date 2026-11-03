@@ -3,11 +3,13 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { loadCatalog } from '@codaco/app-i18n/locales';
-import { AppI18nProvider, AppIntlOverlay } from '@codaco/app-i18n/react';
+import { AppIntlOverlay } from '@codaco/app-i18n/react';
 
-import { interviewLocales } from '../../i18n/locales';
-import { interviewCatalogLoaders } from '../../locales/catalogs';
+import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
+import {
+  suppliedInterfaceText,
+  TestProtocolLocalization,
+} from '../../interfaces/__tests__/TestProtocolLocalization';
 
 let online = true;
 vi.mock('../../hooks/useOnline', () => ({
@@ -148,26 +150,38 @@ describe('StageErrorBoundary', () => {
   });
 
   // The message is markdown: a heading and three paragraphs, in every
-  // language the interview ships.
-  it.each(interviewLocales.map(({ locale }) => locale))(
+  // language Network Canvas supplies the protocol's interface text in.
+  const supplied = {
+    defaultLocale: 'en',
+    locales: [
+      'en',
+      'de',
+      'es',
+      'fr',
+      'it',
+      'nl',
+      'pt-BR',
+      'zh-Hans',
+      'zh-Hant',
+    ],
+  };
+  const interfaceText = suppliedInterfaceText(supplied);
+  it.each(supplied.locales)(
     'renders the message as a heading and paragraphs in %s',
-    async (locale) => {
+    (locale) => {
       online = true;
-      const messages =
-        locale === 'en'
-          ? {}
-          : await loadCatalog(locale, interviewCatalogLoaders);
       const { container } = render(
-        <AppI18nProvider
-          locale={locale}
-          locales={interviewLocales}
-          messages={messages}
-          manageDocument={false}
-        >
-          <StageErrorBoundary>
-            <Boom />
-          </StageErrorBoundary>
-        </AppI18nProvider>,
+        <InterviewI18nProvider>
+          <TestProtocolLocalization
+            localization={supplied}
+            locale={locale}
+            interfaceText={interfaceText}
+          >
+            <StageErrorBoundary>
+              <Boom />
+            </StageErrorBoundary>
+          </TestProtocolLocalization>
+        </InterviewI18nProvider>,
       );
 
       const heading = screen.getByRole('heading', { level: 1 });

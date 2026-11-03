@@ -5,18 +5,25 @@ import {
   createAppIntl,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
-import { useAppIntl, useLocaleCatalog } from '@codaco/app-i18n/react';
+import { useLocaleCatalog } from '@codaco/app-i18n/react';
+import { useContentLocaleIn } from '@codaco/interview';
+import { architectDefaultLocale, architectLocales } from '~/i18n/locales';
 import { architectCatalogSource } from '~/locales/catalogs';
 
-// Shell owns its catalog and can select a language independently of Architect.
-// Resolve a host-specific message against the Architect catalog explicitly
-// while subscribing to the Shell locale, including in an already-open dialog.
+// The Shell shows the language it negotiates from the protocol's languages,
+// independently of Architect's. Resolve a host-specific message against the
+// Architect catalog explicitly, in the language the interview shows (or
+// Architect's nearest one: es for a protocol in es-MX), including in an
+// already-open dialog.
 export function ShellLanguageMessage({
   message,
 }: {
   message: MessageDescriptor;
 }) {
-  const { locale } = useAppIntl();
+  const locale = useContentLocaleIn(
+    architectLocales.map((entry) => entry.locale),
+    architectDefaultLocale,
+  );
   // Usually the Shell renders Architect's own language, which startup already
   // loaded. When it does not, that language's Architect catalog loads here.
   // Keyed by locale so a switch suspends rather than keep the previous

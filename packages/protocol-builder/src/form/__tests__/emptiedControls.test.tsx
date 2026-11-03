@@ -63,44 +63,53 @@ describe('a control the researcher emptied', () => {
 
   it('takes the container it emptied with it', async () => {
     const { probe, draft } = createStageDraftProbe();
+    const names = [
+      ['conditionText.selectCondition', 'Select condition'],
+      ['conditionText.snapshotCondition', 'Snapshot condition'],
+    ] as const;
     const harness = renderStageEditor({
-      stageId: 'network-composer-1',
+      stage: {
+        type: 'NarrativePedigree',
+        fields: {
+          conditionText: {
+            selectCondition: { 'en-US': 'Pick a condition' },
+            snapshotCondition: { 'en-US': 'Snapshot' },
+          },
+        },
+      },
       sections: (
         <>
-          <BuilderSection title="Tooltips">
+          <BuilderSection title="Condition text">
             {probe}
-            <Field
-              name="tooltips.addPerson"
-              label="Add person tooltip"
-              component={LocalizedInputField}
-            />
-            <Field
-              name="tooltips.automaticLayout"
-              label="Automatic layout tooltip"
-              component={LocalizedInputField}
-            />
+            {names.map(([name, label]) => (
+              <Field
+                key={name}
+                name={name}
+                label={label}
+                component={LocalizedInputField}
+              />
+            ))}
           </BuilderSection>
         </>
       ),
     });
 
-    const addPerson = await harness.findByRole('textbox', {
-      name: 'Add person tooltip',
-    });
-    // The fixture's stage holds both, so the object is there to be taken.
-    expect(Object.hasOwn(draft(), 'tooltips')).toBe(true);
+    await harness.findByRole('textbox', { name: 'Select condition' });
+    // The stage holds both, so the object is there to be taken.
+    expect(Object.hasOwn(draft(), 'conditionText')).toBe(true);
 
-    await harness.user.clear(addPerson);
-    await harness.user.clear(
-      await harness.findByRole('textbox', { name: 'Automatic layout tooltip' }),
-    );
+    for (const [, label] of names) {
+      await harness.user.clear(
+        await harness.findByRole('textbox', { name: label }),
+      );
+    }
 
     // Read off the draft rather than out of a save: a save writes Network
     // Canvas's own wording back into any of these the stage lacks, so what it
-    // stores says nothing about what the form assembled. A `tooltips` with
-    // neither translation map left in it is an object the researcher did not
+    // stores says nothing about what the form assembled. A `conditionText`
+    // with no translation map left in it is an object the researcher did not
     // write, holding nothing.
-    expect(Object.hasOwn(draft(), 'tooltips')).toBe(false);
+    expect(Object.hasOwn(draft(), 'conditionText')).toBe(false);
   });
 
   it('is refused rather than dropped when the field is required', async () => {

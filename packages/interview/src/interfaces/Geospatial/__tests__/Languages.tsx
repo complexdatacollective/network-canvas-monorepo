@@ -10,14 +10,12 @@ const PROTOCOL_LOCALES: LocalizationDeclaration = {
   locales: ['en', 'hu', 'pt-BR', 'zh-Hans', 'sw'],
 };
 
-// The protocol language (the participant's stated preference) and interface
-// language (the Shell's) the wrapped hook runs in. Read at render, so a test
-// changes them and re-renders.
-const current = { protocol: 'en', interface: 'en' };
+// The protocol language (the participant's stated preference) the wrapped
+// hook runs in. Read at render, so a test changes it and re-renders.
+const current = { protocol: 'en' };
 
-export const setLanguages = (protocol: string, interfaceLocale = 'en') => {
+export const setLanguages = (protocol: string) => {
   current.protocol = protocol;
-  current.interface = interfaceLocale;
 };
 
 /**
@@ -34,7 +32,7 @@ export function Languages({ children }: { children: ReactNode }) {
     afterHookLayoutEffects.current?.();
   });
   return (
-    <InterviewI18nProvider requestedLocale={current.interface}>
+    <InterviewI18nProvider>
       <TestProtocolLocalization
         localization={PROTOCOL_LOCALES}
         locale={current.protocol}

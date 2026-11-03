@@ -29,13 +29,14 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { NodeColorReference } from '@codaco/protocol-validation';
 import { isFamilyPedigreeStageMetadata } from '@codaco/shared-consts';
 
+import { useDynamicValueSources } from '../../../dynamicValues/DynamicValueScope';
 import { useNodeMeasurement } from '../../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   useLocalizedString,
-  useOptionalLocalizedText,
   useResolveLocalizedMessage,
   useResolveLocalizedString,
+  useResolveLocalizedStringIn,
 } from '../../../localization/ProtocolLocalizationProvider';
 import { useContentFormat } from '../../../localization/useContentFormat';
 import {
@@ -148,32 +149,14 @@ export default function NarrativePedigreeView({
   const resolve = useResolveLocalizedString();
   const resolveMessage = useResolveLocalizedMessage();
   const stageLabel = useLocalizedString(stage.label).text;
-  // The stage's own words (`stage-wording/narrative-pedigree.ts`). The two
-  // at-risk rows are held only while the stage shows at-risk statuses.
-  const atRiskAffected = useOptionalLocalizedText(
-    stage.conditionText.notation.atRiskAffected,
-  );
-  const atRiskCarrier = useOptionalLocalizedText(
-    stage.conditionText.notation.atRiskCarrier,
-  );
+  // The stage's own words (`stage-wording/narrative-pedigree.ts`).
   const conditionControlWords: ConditionControlWords = {
     selectCondition: resolve(stage.conditionText.selectCondition).text,
   };
   const saveSnapshotText = resolve(stage.saveSnapshot).text;
-  const conditionWords: ConditionPanelWords = {
-    keyHeading: resolve(stage.keyHeading).text,
-    notation: {
-      affected: resolve(stage.conditionText.notation.affected).text,
-      obligateAffected: resolve(stage.conditionText.notation.obligateAffected)
-        .text,
-      obligateCarrier: resolve(stage.conditionText.notation.obligateCarrier)
-        .text,
-      atRiskAffected,
-      atRiskCarrier,
-      unknown: resolve(stage.conditionText.notation.unknown).text,
-    },
-  };
-  const clearFocusText = resolve(stage.tooltips.clearFocus).text;
+  // The key and the clear focus button are worded alike on every Narrative
+  // Pedigree (the protocol's interface text).
+  const clearFocusText = intl.formatMessage(messages.clearFocus);
   // Architect stores the selected node palette entry as a typed protocol
   // reference. SVG and inline CSS need the corresponding theme variable, so
   // resolve every disease once at the view boundary before it reaches the key,
@@ -245,6 +228,23 @@ export default function NarrativePedigreeView({
   const pedigreeText = usePedigreeText();
   const pedigreePiped = usePedigreePiped();
   const kinshipLocale = useKinshipLocale(sourceStage?.wording);
+  // The participant is called as the source stage calls them, with that
+  // stage's dynamic values (their name from an earlier form, say) written in.
+  const dynamicValueSources = useDynamicValueSources();
+  const resolveIn = useResolveLocalizedStringIn();
+  const sourceYou = useMemo(
+    () =>
+      sourceStage
+        ? resolveIn(
+            sourceStage.wording.you,
+            dynamicValueSources && {
+              ...dynamicValueSources,
+              bindings: sourceStage.dynamicValues ?? {},
+            },
+          ).text
+        : '',
+    [sourceStage, resolveIn, dynamicValueSources],
+  );
   const sourceWords = useMemo<PedigreeWords | null>(
     () =>
       sourceStage
@@ -252,10 +252,11 @@ export default function NarrativePedigreeView({
             wording: sourceStage.wording,
             text: pedigreeText,
             piped: pedigreePiped,
+            you: sourceYou,
             locale: kinshipLocale,
           }
         : null,
-    [sourceStage, pedigreeText, pedigreePiped, kinshipLocale],
+    [sourceStage, pedigreeText, pedigreePiped, sourceYou, kinshipLocale],
   );
   const labels = useMemo(
     () =>
@@ -441,6 +442,21 @@ export default function NarrativePedigreeView({
     selectedDiseaseId !== null
       ? shownDiseases.find((d) => d.id === selectedDiseaseId)
       : undefined;
+  // The key's rows may name the condition it shows. The key is shown only
+  // while a condition is chosen; the at-risk rows only while the stage shows
+  // at-risk statuses.
+  const keyValues = { condition: selectedDisease?.label ?? '' };
+  const conditionWords: ConditionPanelWords = {
+    keyHeading: intl.formatMessage(messages.keyHeading),
+    notation: {
+      affected: intl.formatMessage(messages.keyHasCondition, keyValues),
+      obligateAffected: intl.formatMessage(messages.keyWillDevelop, keyValues),
+      obligateCarrier: intl.formatMessage(messages.keyCarries, keyValues),
+      atRiskAffected: intl.formatMessage(messages.keyMayDevelop, keyValues),
+      atRiskCarrier: intl.formatMessage(messages.keyMayCarry, keyValues),
+      unknown: intl.formatMessage(messages.keyNotKnown, keyValues),
+    },
+  };
   // Focusing a person highlights who contributes to THEIR inheritance of the
   // SELECTED condition, so it is only meaningful once a condition is chosen
   // from the key. Until then the focal affordance is disabled.

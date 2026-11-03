@@ -31,7 +31,7 @@ import type {
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import Inspector, { type InspectorProps } from '../Inspector';
 import NetworkComposer from '../NetworkComposer';
-import { composerWords, OVERTAKEN_EDIT_NOTICE } from './composerWords';
+import { OVERTAKEN_EDIT_NOTICE } from './composerWords';
 
 // What the drawer is asked to show on each render: the real drawer renders
 // it, and a test can read what it was given while it slides away.
@@ -132,7 +132,6 @@ const edgeForm = {
 const stage = {
   id: 'nc1',
   type: 'NetworkComposer' as const,
-  ...composerWords(),
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   layoutVariable: LAYOUT_VAR,

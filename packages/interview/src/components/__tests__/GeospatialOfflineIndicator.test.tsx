@@ -10,25 +10,25 @@ vi.mock('../../hooks/useOnline', () => ({
 
 import { GeospatialOfflineIndicator } from '../GeospatialOfflineIndicator';
 
-const NOTICE = { en: 'You are offline. The map will not load.' };
-
 describe('GeospatialOfflineIndicator', () => {
-  it('renders the stage’s offline notice when offline on a Geospatial stage', () => {
+  it('renders the offline notice when offline on a Geospatial stage', () => {
     online = false;
     render(
       <TestProtocolLocalization>
-        <GeospatialOfflineIndicator notice={NOTICE} />
+        <GeospatialOfflineIndicator onMapStage />
       </TestProtocolLocalization>,
     );
     const status = screen.getByRole('status');
-    expect(status).toHaveTextContent('You are offline. The map will not load.');
+    expect(status).toHaveTextContent(
+      'You are offline — the map will not load until you reconnect.',
+    );
   });
 
   it('renders nothing when online on a Geospatial stage', () => {
     online = true;
     const { container } = render(
       <TestProtocolLocalization>
-        <GeospatialOfflineIndicator notice={NOTICE} />
+        <GeospatialOfflineIndicator onMapStage />
       </TestProtocolLocalization>,
     );
     expect(container.innerHTML).toBe('');
@@ -38,7 +38,7 @@ describe('GeospatialOfflineIndicator', () => {
     online = false;
     const { container } = render(
       <TestProtocolLocalization>
-        <GeospatialOfflineIndicator notice={undefined} />
+        <GeospatialOfflineIndicator onMapStage={false} />
       </TestProtocolLocalization>,
     );
     expect(container.innerHTML).toBe('');

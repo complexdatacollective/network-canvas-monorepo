@@ -11,7 +11,7 @@ import {
   bundleLegacyProtocol,
   bundleProtocol,
   downloadProtocolAsNetcanvas,
-  MissingFinishStageTextError,
+  MissingDefaultLanguageTextError,
   UnresolvedAssetsError,
 } from '../bundleProtocol';
 import type { LegacyStoredProtocolRow } from '../legacyProtocolLibrary';
@@ -242,7 +242,9 @@ describe('the finish stage text guard', () => {
 
   it('refuses to bundle a protocol whose finish stage has no closing or finished text in the default language', async () => {
     const refusal = bundleProtocol(japaneseProtocol());
-    await expect(refusal).rejects.toBeInstanceOf(MissingFinishStageTextError);
+    await expect(refusal).rejects.toBeInstanceOf(
+      MissingDefaultLanguageTextError,
+    );
     await expect(refusal).rejects.toMatchObject({
       problem: {
         stageId: 'end',
@@ -284,7 +286,27 @@ describe('the finish stage text guard', () => {
     ).rejects.toMatchObject({ problem: { missing: ['finishedContent'] } });
   });
 
-  it('bundles it once both are written in the default language', async () => {
+  it('then refuses it while its built-in wording has none in the default language', async () => {
+    const protocol = japaneseProtocol();
+    const [finish] = protocol.stages;
+    if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
+    await expect(
+      bundleProtocol({
+        ...protocol,
+        stages: [
+          {
+            ...finish,
+            content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
+            finishedContent: { ja: '# 終了しました' },
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      problem: { kind: 'builtInWording', locale: 'ja', count: 3 },
+    });
+  });
+
+  it('bundles it once its closing, finished and built-in text are written in the default language', async () => {
     const protocol = japaneseProtocol();
     const [finish] = protocol.stages;
     if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
@@ -295,6 +317,9 @@ describe('the finish stage text guard', () => {
           ...finish,
           content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
           finishedContent: { ja: '# 終了しました' },
+          finishLabel: { ja: '終了' },
+          finishConfirmation: { ja: 'インタビューを終了しますか?' },
+          finishFailed: { ja: 'インタビューを終了できませんでした。' },
         },
       ],
     });
@@ -305,7 +330,7 @@ describe('the finish stage text guard', () => {
   it('passes the refusal through a download unwrapped, so its caller can describe it', async () => {
     await expect(
       downloadProtocolAsNetcanvas(japaneseProtocol(), 'Japanese'),
-    ).rejects.toBeInstanceOf(MissingFinishStageTextError);
+    ).rejects.toBeInstanceOf(MissingDefaultLanguageTextError);
   });
 });
 

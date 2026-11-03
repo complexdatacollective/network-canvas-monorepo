@@ -8,9 +8,9 @@ import {
  * The text Architect shows for a schema `LocalizedString`: the translation in
  * the protocol's default language, as plain text rather than the stored ICU
  * message. The page objects locate rows and controls by that text, and the
- * fixtures do not share one default language (`emptyProtocol()` is `en`, the
- * all-interfaces and sample protocols are `en-US`), so the protocol says which
- * translation to read.
+ * fixtures do not share one default language (`emptyProtocol()` and the
+ * sample protocol are `en`, the all-interfaces protocol is `en-US`), so the
+ * protocol says which translation to read.
  */
 export function defaultLanguageText(
   protocol: Pick<CurrentProtocol, 'localization'>,

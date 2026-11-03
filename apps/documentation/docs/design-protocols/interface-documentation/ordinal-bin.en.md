@@ -23,6 +23,14 @@ An Ordinal Bin screen can include multiple [prompts](/en/design-protocols/key-co
 
 ![](/assets/img/interface-documentation/ordinal-bin/architect_2.png)
 
+<AppOnly app="current">
+
+### Customize built-in wording
+
+When **Require every node to be placed** is switched on in the stage's **Placing nodes** section, participants cannot continue until every node is in a bin. The notice they see when they try is under **Nodes not yet placed** in the **Customize built-in wording** section of the stage editor. Network Canvas fills in starting wording, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). The notice can show the name of the stage's node type, inserted as a pill with the field's piped text button.
+
+</AppOnly>
+
 ### Best Practices
 
 <GoodPractice>

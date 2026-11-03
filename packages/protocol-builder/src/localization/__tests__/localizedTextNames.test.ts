@@ -183,7 +183,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       ] as const,
   ),
   [[...fixtureStage('Geospatial'), 'mapOptions', 'allowSearch'], true],
-  [[...fixtureStage('Geospatial'), 'searchFailed'], en('The search failed.')],
+  [['interfaceText', 'geospatial', 'searchFailed'], en('The search failed.')],
   [
     [...fixtureStage('CategoricalBin'), 'prompts', 0, 'otherVariable'],
     'contactOther',
@@ -230,16 +230,17 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   // the fixture chooses them for the pattern check to reach their rules.
   [[...fixtureStage('FamilyPedigree'), 'framing'], 'participantPreference'],
   [
-    [...fixtureStage('FamilyPedigree'), 'wording', 'framingChoiceTitle'],
+    ['interfaceText', 'familyPedigree', 'framingChoiceTitle'],
     en('How should we describe your family?'),
   ],
   [
-    [...fixtureStage('FamilyPedigree'), 'wording', 'framingChoiceDescription'],
+    ['interfaceText', 'familyPedigree', 'framingChoiceDescription'],
     en('Choose the words you would like us to use for your family.'),
   ],
+  [['interfaceText', 'familyPedigree', 'framingControlLabel'], en('Wording')],
   [
-    [...fixtureStage('FamilyPedigree'), 'wording', 'framingControlLabel'],
-    en('Wording'),
+    ['interfaceText', 'familyPedigree', 'framingControlDescription'],
+    en('Choose the words for your family.'),
   ],
   [
     [...fixtureStage('FamilyPedigree'), 'completeness'],
@@ -306,33 +307,23 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   ],
   // A composer with a connection type holds the tooltip of the tool that draws it.
   [
-    [...fixtureStage('NetworkComposer'), 'tooltips', 'drawConnection'],
+    ['interfaceText', 'networkComposer', 'drawEdgeTooltip'],
     { 'en-US': 'Draw edge' },
   ],
   // Each setting a configuration switches on is held once that configuration is
-  // on, so the fixture exercises it: grouping, automatic layout and at-risk
-  // statuses.
+  // on, so the fixture exercises it: grouping, automatic layout
+  // and at-risk statuses.
   [[...fixtureStage('NetworkComposer'), 'convexHullVariable'], 'contactType'],
-  [[...fixtureStage('NetworkComposer'), 'groupsHeading'], en('Groups')],
+  [['interfaceText', 'networkComposer', 'groupsHeading'], en('Groups')],
   [[...fixtureStage('Narrative'), 'behaviours', 'automaticLayout'], true],
   [[...fixtureStage('NarrativePedigree'), 'showAtRiskStatuses'], true],
   [
-    [
-      ...fixtureStage('NarrativePedigree'),
-      'conditionText',
-      'notation',
-      'atRiskAffected',
-    ],
-    en('May develop this condition'),
+    ['interfaceText', 'narrativePedigree', 'mayDevelop'],
+    en('May develop {condition}'),
   ],
   [
-    [
-      ...fixtureStage('NarrativePedigree'),
-      'conditionText',
-      'notation',
-      'atRiskCarrier',
-    ],
-    en('May carry this condition'),
+    ['interfaceText', 'narrativePedigree', 'mayCarry'],
+    en('May carry {condition}'),
   ],
 ];
 
@@ -537,7 +528,7 @@ describe('nameLocalizedText', () => {
     ]);
   });
 
-  it('names the words of a pedigree’s list by the group they sit in', () => {
+  it('names the words of a pedigree’s list by the section they sit in', () => {
     expect(
       name([
         ...stageAt('FamilyPedigree'),
@@ -547,8 +538,7 @@ describe('nameLocalizedText', () => {
         'noneButton',
       ]),
     ).toEqual([
-      { key: '[]', label: 'Participant wording' },
-      { key: '["completeness"]', label: 'Completeness checklist' },
+      { key: '[]', label: 'Customize built-in wording' },
       {
         key: '["completeness","itemText","siblings","noneButton"]',
         label: 'No brothers or sisters button',

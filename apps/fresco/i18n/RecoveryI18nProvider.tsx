@@ -4,6 +4,7 @@ import { useDeferredValue, useSyncExternalStore, type ReactNode } from 'react';
 
 import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
+import { readLocalePreferenceCookie } from '@codaco/shared-consts';
 import {
   frescoLocales,
   frescoTimeZone,
@@ -18,11 +19,7 @@ const subscribe = (onChange: () => void) => {
 function recoveryLocale() {
   let stored: string | null = null;
   try {
-    const value = document.cookie
-      .split('; ')
-      .find((cookie) => cookie.startsWith(`${localeMirrorCookie}=`))
-      ?.slice(localeMirrorCookie.length + 1);
-    stored = value ? decodeURIComponent(value) : null;
+    stored = readLocalePreferenceCookie(localeMirrorCookie, document.cookie);
   } catch {
     // A denied or malformed convenience mirror still permits browser fallback.
   }
