@@ -51,10 +51,15 @@ const windowWithSaveFilePicker: WindowWithSaveFilePicker = window;
 // A Chromium build with no file dialog to show — an embedded browser such as
 // an Electron app's web view, or headless Chrome — rejects the picker with the
 // same AbortError a person's cancel produces, but within one round trip to the
-// browser process (14–24 ms measured). A person has to see the native panel
-// appear before they can dismiss it, and visual reaction time alone is about
-// 200 ms, so an AbortError sooner than this means the picker never appeared.
-// Treating it as a cancel would leave the click doing nothing at all.
+// browser process (14–24 ms measured). Timing is the only difference: the page
+// keeps focus and user activation either way. So an AbortError sooner than
+// this is read as "the picker never appeared" and the save downloads instead
+// of doing nothing. Dismissing a panel a person has seen takes longer than
+// this, since visual reaction time alone is about 200 ms. The rule can misread
+// in two directions. A slower no-dialog rejection still reads as a cancel, so
+// the click does nothing, as before this rule. An Escape that reaches a real
+// panel inside the window still downloads, which costs an unwanted file
+// rather than a lost one.
 const PICKER_NEVER_SHOWN_MS = 200;
 
 // Ported from apps/interviewer/src/lib/files/download.ts's saveBlob capability
