@@ -13,7 +13,7 @@ import {
   useState,
 } from 'react';
 
-import { useProtocolLocale } from '../../localization/ProtocolLocalizationProvider';
+import { useProtocolLanguageOrder } from '../../localization/ProtocolLocalizationProvider';
 import { getSearchLanguage } from './mapboxLanguage';
 
 // Zoom level when flying to a selected location
@@ -96,11 +96,11 @@ export const useGeospatialSearch = ({
   const sessionTokenRef = useRef(initialSessionToken);
 
   // Suggestions follow the protocol language the participant is reading, else
-  // English (Search Box's own default). Search Box takes the language per
-  // call, so it is sent with every request rather than set once on the
-  // client, which would default every call to English.
-  const { locale: protocolLocale } = useProtocolLocale();
-  const language = getSearchLanguage(protocolLocale);
+  // the next of their browser's languages Search Box has, else English (Search
+  // Box's own default). Search Box takes the language per call, so it is sent
+  // with every request rather than set once on the client, which would default
+  // every call to English.
+  const language = getSearchLanguage(useProtocolLanguageOrder());
 
   // Use the hook from @mapbox/search-js-react
   const searchBox = useSearchBoxCore({

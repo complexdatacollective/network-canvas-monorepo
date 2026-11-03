@@ -19,6 +19,7 @@ import {
   type LocalizedString,
   messageText,
   missingSuppliedStageText,
+  suppliedInterfaceText,
   suppliedStageText,
   type Stage,
   type StageType,
@@ -1863,31 +1864,34 @@ export class SyntheticInterview {
     }
 
     // With the interview's shared words a protocol shows, as Architect writes
-    // them.
-    return withInterfaceText({
-      id: `protocol-${this.seed}`,
-      schemaVersion: CURRENT_SCHEMA_VERSION,
-      localization: {
-        defaultLocale: this.localization.defaultLocale,
-        locales: [...this.localization.locales],
-      },
-      codebook,
-      // Stage configs are built dynamically and satisfy the Stage schema
-      // at runtime, but TypeScript can't verify this statically.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the stage configs are assembled from loose records; the unit tests parse generated protocols against the Stage schema
-      stages: stages as Stage[],
-      assets: this.assets as unknown[],
-      ...(this.interfaceText.size > 0 && {
-        interfaceText: Object.fromEntries(
-          [...this.interfaceText].map(([group, entries]) => [
-            group,
-            Object.fromEntries(
-              [...entries].map(([key, text]) => [key, this.localized(text)]),
-            ),
-          ]),
-        ),
+    // them, and written by the fixture's author in a default language Network
+    // Canvas has none in.
+    return this.withDefaultLanguageInterfaceText(
+      withInterfaceText({
+        id: `protocol-${this.seed}`,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        localization: {
+          defaultLocale: this.localization.defaultLocale,
+          locales: [...this.localization.locales],
+        },
+        codebook,
+        // Stage configs are built dynamically and satisfy the Stage schema
+        // at runtime, but TypeScript can't verify this statically.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the stage configs are assembled from loose records; the unit tests parse generated protocols against the Stage schema
+        stages: stages as Stage[],
+        assets: this.assets as unknown[],
+        ...(this.interfaceText.size > 0 && {
+          interfaceText: Object.fromEntries(
+            [...this.interfaceText].map(([group, entries]) => [
+              group,
+              Object.fromEntries(
+                [...entries].map(([key, text]) => [key, this.localized(text)]),
+              ),
+            ]),
+          ),
+        }),
       }),
-    });
+    );
   }
 
   getNetwork(): NcNetwork {
@@ -2702,6 +2706,54 @@ export class SyntheticInterview {
   }
 
   /**
+   * `value` with Network Canvas's English wording written under the default
+   * language when it holds nothing there. Network Canvas writes its wording
+   * only in a language it has it in exactly, and a protocol cannot leave its
+   * editor without it in its default language; a fixture's author writes it
+   * there, as a researcher must, so the fixture stays valid (and reads as it
+   * always has) whatever languages it declares, `en-US` above all.
+   */
+  private writtenInDefaultLanguage(
+    value: LocalizedString,
+    english: string | undefined,
+  ): LocalizedString {
+    const { defaultLocale } = this.localization;
+    return value[defaultLocale] !== undefined || english === undefined
+      ? value
+      : { ...value, [defaultLocale]: english };
+  }
+
+  private withDefaultLanguageInterfaceText<
+    Protocol extends { interfaceText?: Record<string, unknown> },
+  >(protocol: Protocol): Protocol {
+    const { interfaceText } = protocol;
+    if (interfaceText === undefined) return protocol;
+    const english = { defaultLocale: 'en', locales: ['en'] };
+    return {
+      ...protocol,
+      interfaceText: Object.fromEntries(
+        Object.entries(interfaceText).map(([group, entries]) => [
+          group,
+          isObject(entries)
+            ? Object.fromEntries(
+                Object.entries(entries).map(([key, value]) => [
+                  key,
+                  isObject(value)
+                    ? this.writtenInDefaultLanguage(
+                        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- interface text entries are language-to-text maps, as withInterfaceText wrote them
+                        value as LocalizedString,
+                        suppliedInterfaceText(group, key, english)?.en,
+                      )
+                    : value,
+                ]),
+              )
+            : entries,
+        ]),
+      ),
+    };
+  }
+
+  /**
    * The finish stage a protocol built without one ends at: the supplied text
    * in each of the protocol's languages that has it, and English text under
    * the default language when that language has none, so the fixture stays
@@ -2711,7 +2763,7 @@ export class SyntheticInterview {
     const taken = new Set(this.stages.map((stage) => stage.id));
     let id = 'finish';
     for (let suffix = 2; taken.has(id); suffix += 1) id = `finish-${suffix}`;
-    const fields = defaultFinishSessionFields(this.localization.locales);
+    const fields = defaultFinishSessionFields(this.localization);
     const { defaultLocale } = this.localization;
     for (const field of ['label', 'content', 'finishedContent'] as const) {
       if (fields[field][defaultLocale] === undefined) {
@@ -2742,11 +2794,21 @@ export class SyntheticInterview {
     config: Record<string, unknown>,
     type: string,
   ): Record<string, unknown> {
+    const english = new Map(
+      missingSuppliedStageText(
+        { ...config, type },
+        { defaultLocale: 'en', locales: ['en'] },
+      ).map(({ path, value }) => [path.join('.'), value.en]),
+    );
     for (const { path, value } of missingSuppliedStageText(
       { ...config, type },
       this.localization,
     )) {
-      setAtPath(config, path, value);
+      setAtPath(
+        config,
+        path,
+        this.writtenInDefaultLanguage(value, english.get(path.join('.'))),
+      );
     }
     return config;
   }

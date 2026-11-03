@@ -226,10 +226,12 @@ export const ShapesAtAllSizes: Story = {
           <div className="flex items-end gap-6">
             {(['circle', 'square', 'diamond'] as const).map((shape) => (
               <div key={shape} className="flex flex-col items-center gap-2">
+                {/* Size samples, not controls: nothing here can be pressed. */}
                 <Node
                   size={size}
                   shape={shape}
                   label={size === 'xxs' ? '' : shape}
+                  presentational
                 />
                 <span className="text-xs text-current/70">{shape}</span>
               </div>

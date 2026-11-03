@@ -1,5 +1,12 @@
 import { isEqual } from 'es-toolkit';
-import { useCallback, useEffect, useEffectEvent, useId, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -115,6 +122,25 @@ function SharedWordingGroupFields({
   );
   const latest = useLatest({ drafts, entries });
 
+  // The words last sent for each entry and not yet landed. Until they land,
+  // they are what the protocol will hold, so a draft is compared with them
+  // rather than with what it holds now: words put back while a change is on
+  // its way match the protocol, but must still be written after that change.
+  // Read by `flush` from the ref, and while rendering from its copy in state.
+  const sending = useRef(new Map<string, LocalizedString>());
+  const [sendingNow, setSendingNow] = useState<
+    ReadonlyMap<string, LocalizedString>
+  >(() => new Map());
+  const updateSending = useCallback(
+    (change: (next: Map<string, LocalizedString>) => void) => {
+      const next = new Map(sending.current);
+      change(next);
+      sending.current = next;
+      setSendingNow(next);
+    },
+    [],
+  );
+
   // A draft the protocol has caught up with is the protocol's again, so a
   // collaborator's later change is shown rather than hidden behind it.
   // Adjusted during render, as the protocol's entries change, rather than in
@@ -123,8 +149,10 @@ function SharedWordingGroupFields({
   if (seenEntries !== entries) {
     setSeenEntries(entries);
     setDrafts((current) => {
-      const caughtUp = [...current].filter(([key, value]) =>
-        isEqual(entries.find(([held]) => held === key)?.[1], value),
+      const caughtUp = [...current].filter(
+        ([key, value]) =>
+          isEqual(entries.find(([held]) => held === key)?.[1], value) &&
+          (!sendingNow.has(key) || isEqual(sendingNow.get(key), value)),
       );
       if (caughtUp.length === 0) return current;
       const next = new Map(current);
@@ -137,7 +165,9 @@ function SharedWordingGroupFields({
     if (localization === undefined || readOnly) return;
     const { drafts: pending, entries: held } = latest();
     const updates = [...pending].flatMap(([key, value]) => {
-      const current = held.find(([heldKey]) => heldKey === key)?.[1];
+      const current = sending.current.has(key)
+        ? sending.current.get(key)
+        : held.find(([heldKey]) => heldKey === key)?.[1];
       return isEqual(current, value) ||
         problemOf(group, key, value, localization.defaultLocale, intl) !==
           undefined
@@ -145,7 +175,33 @@ function SharedWordingGroupFields({
         : [{ group, key, value }];
     });
     if (updates.length === 0) return;
+    updateSending((next) => {
+      for (const { key, value } of updates) next.set(key, value);
+    });
     const outcome = await writes.write(updates);
+    // Landed or refused: forget the words sent, unless later ones replaced
+    // them, and let go of a draft the protocol now holds, as the protocol's
+    // entries may have changed while those words were still on their way.
+    const settled = updates.filter(
+      ({ key, value }) => sending.current.get(key) === value,
+    );
+    updateSending((next) => {
+      for (const { key } of settled) next.delete(key);
+    });
+    const { entries: now } = latest();
+    setDrafts((current) => {
+      const caughtUp = settled.filter(({ key }) => {
+        const drafted = current.get(key);
+        return (
+          drafted !== undefined &&
+          isEqual(now.find(([nowKey]) => nowKey === key)?.[1], drafted)
+        );
+      });
+      if (caughtUp.length === 0) return current;
+      const next = new Map(current);
+      for (const { key } of caughtUp) next.delete(key);
+      return next;
+    });
     // Held back: the section is closing and resets these words itself.
     if (outcome === undefined) return;
     setRefusals((current) => {
@@ -156,7 +212,7 @@ function SharedWordingGroupFields({
       }
       return next;
     });
-  }, [group, intl, latest, localization, readOnly, writes]);
+  }, [group, intl, latest, localization, readOnly, updateSending, writes]);
 
   // Leaving the editor with focus still in a field writes what it holds.
   const flushOnLeave = useEffectEvent(() => void flush());

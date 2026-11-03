@@ -10,7 +10,7 @@ describe('getMapLanguage', () => {
     ['ko', 'ko'],
     ['ar', 'ar'],
   ])('passes the supported language %s through', (locale, expected) => {
-    expect(getMapLanguage(locale)).toBe(expected);
+    expect(getMapLanguage([locale])).toBe(expected);
   });
 
   it.each([
@@ -25,7 +25,7 @@ describe('getMapLanguage', () => {
     ['zh-Hant-TW', 'zh-Hant'],
     ['zh-Hans-CN', 'zh-Hans'],
   ])('maps the Chinese tag %s by script to %s', (locale, expected) => {
-    expect(getMapLanguage(locale)).toBe(expected);
+    expect(getMapLanguage([locale])).toBe(expected);
   });
 
   it.each([
@@ -35,7 +35,7 @@ describe('getMapLanguage', () => {
     ['en-GB', 'en'],
     ['fr-CA', 'fr'],
   ])('cuts the regional tag %s to %s', (locale, expected) => {
-    expect(getMapLanguage(locale)).toBe(expected);
+    expect(getMapLanguage([locale])).toBe(expected);
   });
 
   it.each([
@@ -49,7 +49,7 @@ describe('getMapLanguage', () => {
     ['no', 'no'],
     ['nb', 'nb'],
   ])('maps %s to the Mapbox spelling %s', (locale, expected) => {
-    expect(getMapLanguage(locale)).toBe(expected);
+    expect(getMapLanguage([locale])).toBe(expected);
   });
 
   it.each([
@@ -63,40 +63,74 @@ describe('getMapLanguage', () => {
     'not a tag',
     '',
   ])('has no map language for %s, so labels show local names', (locale) => {
-    expect(getMapLanguage(locale)).toBeUndefined();
+    expect(getMapLanguage([locale])).toBeUndefined();
+  });
+});
+
+describe('the participant’s other languages', () => {
+  it.each([
+    // CLDR would substitute a related language for each of these.
+    ['af', 'nl'],
+    ['be', 'ru'],
+    ['gl', 'es'],
+    ['lb', 'de'],
+    ['nn', 'nb'],
+    ['gsw', 'de'],
+  ])(
+    'never label the map for someone reading %s in %s',
+    (locale, substitute) => {
+      expect(getMapLanguage([locale])).toBeUndefined();
+      expect(getMapLanguage([locale, substitute])).toBe(substitute);
+    },
+  );
+
+  it('label the map in the next of them Mapbox has', () => {
+    expect(getMapLanguage(['sw', 'fr-CA', 'en'])).toBe('fr');
+    expect(getMapLanguage(['af', 'en', 'nl'])).toBe('en');
+  });
+
+  it('keep a regional fit of the interview language ahead of them', () => {
+    expect(getMapLanguage(['pt-BR', 'en'])).toBe('pt');
+    expect(getMapLanguage(['zh-TW', 'en'])).toBe('zh-Hant');
+  });
+
+  it('choose the search language the same way', () => {
+    expect(getSearchLanguage(['af', 'nl'])).toBe('nl');
+    expect(getSearchLanguage(['zh-Hant', 'de'])).toBe('de');
+    expect(getSearchLanguage(['af'])).toBe('en');
   });
 });
 
 describe('getSearchLanguage', () => {
   it('uses the protocol language when Search Box lists it', () => {
-    expect(getSearchLanguage('hu')).toBe('hu');
-    expect(getSearchLanguage('pt-BR')).toBe('pt');
-    expect(getSearchLanguage('es-MX')).toBe('es');
+    expect(getSearchLanguage(['hu'])).toBe('hu');
+    expect(getSearchLanguage(['pt-BR'])).toBe('pt');
+    expect(getSearchLanguage(['es-MX'])).toBe('es');
   });
 
   it('does not keep a Chinese script, which Search Box does not list', () => {
-    expect(getSearchLanguage('zh-Hans')).toBe('en');
-    expect(getSearchLanguage('zh-TW')).toBe('en');
+    expect(getSearchLanguage(['zh-Hans'])).toBe('en');
+    expect(getSearchLanguage(['zh-TW'])).toBe('en');
   });
 
   it.each(['ko', 'ar', 'he', 'th', 'vi'])(
     'does not use %s, which the map lists but Search Box does not',
     (protocolLocale) => {
-      expect(getSearchLanguage(protocolLocale)).toBe('en');
+      expect(getSearchLanguage([protocolLocale])).toBe('en');
     },
   );
 
   it('has no Tagalog or Filipino results, which Search Box does not list', () => {
-    expect(getSearchLanguage('fil')).toBe('en');
+    expect(getSearchLanguage(['fil'])).toBe('en');
   });
 
   it('falls back to English when the protocol language is unsupported', () => {
-    expect(getSearchLanguage('sw')).toBe('en');
-    expect(getSearchLanguage('zh-Hant')).toBe('en');
-    expect(getSearchLanguage('und')).toBe('en');
+    expect(getSearchLanguage(['sw'])).toBe('en');
+    expect(getSearchLanguage(['zh-Hant'])).toBe('en');
+    expect(getSearchLanguage(['und'])).toBe('en');
   });
 
   it('uses a supported protocol language', () => {
-    expect(getSearchLanguage('hu')).toBe('hu');
+    expect(getSearchLanguage(['hu'])).toBe('hu');
   });
 });

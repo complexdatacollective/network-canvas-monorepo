@@ -289,7 +289,7 @@ test.describe('the language chooser stage', () => {
     await interviewNav.startNewSession('Idioma-17');
 
     const interview = page.locator('main[data-theme-interview]');
-    await expect(interview).toHaveAttribute('lang', 'en-US');
+    await expect(interview).toHaveAttribute('lang', 'en');
     await expect(
       page.getByRole('listbox', { name: 'Choose a language', exact: true }),
     ).toBeVisible();
@@ -436,10 +436,11 @@ test.describe('installed app catalog availability', () => {
       page.getByRole('button', { name: 'Settings', exact: true }),
     ).toBeVisible();
     await interviewNav.startNewSession('GB-offline-17');
-    // The interview carries the protocol's language, not the browser's.
+    // The interview carries the protocol's language (the sample declares
+    // English), not the browser's.
     await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
       'lang',
-      'en-US',
+      'en',
     );
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
     await interviewNav.exitInterview();

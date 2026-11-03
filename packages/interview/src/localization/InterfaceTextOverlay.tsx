@@ -79,7 +79,11 @@ export function InterfaceTextOverlay({
   const override = useCallback<AppMessageOverride>(
     (message, values) => {
       const value = message.id === undefined ? undefined : held.get(message.id);
-      if (value === undefined) return undefined;
+      // Text with no translation yet keeps the catalog's wording: only a
+      // protocol still being written, which Architect previews, holds it.
+      if (value === undefined || Object.keys(value).length === 0) {
+        return undefined;
+      }
       // A message given markup to wrap its words in keeps its catalog's
       // wording, since protocol text is plain.
       const plain = plainValues(values);

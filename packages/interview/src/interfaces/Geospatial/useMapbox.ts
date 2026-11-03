@@ -20,7 +20,7 @@ import { useSelector } from 'react-redux';
 import type { CaptureException } from '../../analytics/tracker';
 import { useCaptureException } from '../../analytics/useTrack';
 import { useContractFlags } from '../../contract/context';
-import { useProtocolLocale } from '../../localization/ProtocolLocalizationProvider';
+import { useProtocolLanguageOrder } from '../../localization/ProtocolLocalizationProvider';
 import { makeGetApiKeyAssetValue } from '../../selectors/protocol';
 
 // `interface` is required (not `type`) so this declaration MERGES with the
@@ -193,11 +193,11 @@ export const useMapbox = ({
   useEffect(() => {
     intlRef.current = intl;
   }, [intl]);
-  // Map labels follow the protocol language the participant is reading. Read
-  // through a ref by the construction effect so a language change updates the
-  // live map instead of rebuilding it.
-  const { locale: protocolLocale } = useProtocolLocale();
-  const mapLanguage = getMapLanguage(protocolLocale);
+  // Map labels follow the protocol language the participant is reading, else
+  // the next of their browser's languages Mapbox has. Read through a ref by
+  // the construction effect so a language change updates the live map instead
+  // of rebuilding it.
+  const mapLanguage = getMapLanguage(useProtocolLanguageOrder());
   const mapLanguageRef = useRef(mapLanguage);
   useEffect(() => {
     mapLanguageRef.current = mapLanguage;

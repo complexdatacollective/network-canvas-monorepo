@@ -6,8 +6,13 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import type { FinishStageTextProblem } from '@codaco/protocol-validation';
 import { useAppSelector } from '~/ducks/hooks';
-import { getFinishStageTextProblem } from '~/selectors/issues';
+import { getDefaultLanguageTextProblem } from '~/selectors/issues';
+import {
+  type DefaultLanguageTextProblem,
+  isBuiltInWordingSummary,
+} from '~/utils/defaultLanguageText';
 
+import { translationTableHref } from './Localization/translationTableLinks';
 import { useLanguageName } from './Localization/useLanguageName';
 
 const messages = defineMessages({
@@ -15,7 +20,20 @@ const messages = defineMessages({
     id: 'architect.finishStageText.cannotBeDownloadedYet',
     defaultMessage: 'This protocol can’t be downloaded yet',
     description:
-      'Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language.',
+      'Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, or while Network Canvas’s built-in wording has no text in that language.',
+  },
+  missingBuiltInWording: {
+    id: 'architect.builtInWording.missingInDefaultLanguage',
+    defaultMessage:
+      'Network Canvas has no built-in wording, such as button labels and messages, in {language}. Translate it into {language}, or make a language that has built-in wording the default. The protocol can’t be downloaded until then.',
+    description:
+      'Shown while the protocol’s default language is one Network Canvas has no built-in wording in (for example Mexican Spanish or Japanese), so the wording Network Canvas supplies (button labels, messages and similar) has no text in it. The researcher can translate that wording into the language in the translation table, or make another of the protocol’s languages that Network Canvas has wording in (for example Spanish) the default. language is the name of the default language, for example “Spanish (Mexico)”.',
+  },
+  showMissingWording: {
+    id: 'architect.builtInWording.showMissing',
+    defaultMessage: 'Show the wording to translate',
+    description:
+      'Link in the notice about built-in wording missing in the protocol’s default language. It opens the translation table showing only the text that has no translation in that language.',
   },
   missingClosingAndFinishedText: {
     id: 'architect.finishStageText.missingClosingAndFinishedText',
@@ -53,39 +71,43 @@ const describeProblem = ({ missing }: FinishStageTextProblem) => {
 };
 
 /** The title for a refused download, matching the notice's own. */
-export const FinishStageTextRefusalTitle = () => {
+export const DefaultLanguageTextRefusalTitle = () => {
   const intl = useAppIntl();
   return <>{intl.formatMessage(messages.cannotBeDownloadedYet)}</>;
 };
 
 /** What is missing, in which language, and that it blocks downloading. */
-export const FinishStageTextRefusal = ({
+export const DefaultLanguageTextRefusal = ({
   problem,
 }: {
-  problem: FinishStageTextProblem;
+  problem: DefaultLanguageTextProblem;
 }) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
   return (
     <>
-      {intl.formatMessage(describeProblem(problem), {
-        language: languageName(problem.locale),
-      })}
+      {intl.formatMessage(
+        isBuiltInWordingSummary(problem)
+          ? messages.missingBuiltInWording
+          : describeProblem(problem),
+        { language: languageName(problem.locale) },
+      )}
     </>
   );
 };
 
 /**
- * Stage-list notice shown whenever a stage that ends the interview has no
- * text for a screen it shows in the protocol's default language: a new protocol in a
- * language Network Canvas supplies no closing text for, or text a researcher
- * cleared. The protocol can still be edited and saved; only downloading it is
- * refused. Not dismissable, because the download stays refused until the text
- * is written. Renders nothing otherwise.
+ * Stage-list notice shown whenever text a participant must read has none in
+ * the protocol's default language: a stage that ends the interview with no
+ * text for a screen it shows, or Network Canvas's built-in wording, in a new
+ * protocol in a language Network Canvas has no wording in, or text a
+ * researcher cleared. The protocol can still be edited and saved; only
+ * downloading it is refused. Not dismissable, because the download stays
+ * refused until the text is written. Renders nothing otherwise.
  */
-const FinishStageTextAlert = () => {
+const DefaultLanguageTextAlert = () => {
   const intl = useAppIntl();
-  const problem = useAppSelector(getFinishStageTextProblem);
+  const problem = useAppSelector(getDefaultLanguageTextProblem);
 
   if (problem === null) return null;
 
@@ -96,16 +118,31 @@ const FinishStageTextAlert = () => {
       </AlertTitle>
       <AlertDescription className="space-y-4 text-sm">
         <span className="block">
-          <FinishStageTextRefusal problem={problem} />
+          <DefaultLanguageTextRefusal problem={problem} />
         </span>
-        <NativeLink
-          render={<Link href={`/protocol/stage/${problem.stageId}`} />}
-        >
-          {intl.formatMessage(messages.editFinishStage)}
-        </NativeLink>
+        {isBuiltInWordingSummary(problem) ? (
+          <NativeLink
+            render={
+              <Link
+                href={translationTableHref({
+                  kind: 'language',
+                  locale: problem.locale,
+                })}
+              />
+            }
+          >
+            {intl.formatMessage(messages.showMissingWording)}
+          </NativeLink>
+        ) : (
+          <NativeLink
+            render={<Link href={`/protocol/stage/${problem.stageId}`} />}
+          >
+            {intl.formatMessage(messages.editFinishStage)}
+          </NativeLink>
+        )}
       </AlertDescription>
     </Alert>
   );
 };
 
-export default FinishStageTextAlert;
+export default DefaultLanguageTextAlert;

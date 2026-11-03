@@ -76,13 +76,22 @@ The repository runs several automated accessibility checks:
 - committed ARIA-tree snapshots and accessible-name audits in the end-to-end
   suites
 
-Not all of these block a merge yet. Most Storybook projects still report axe
-violations without failing (`a11y.test: 'todo'`), and the end-to-end suites do
-not yet scan pages with axe. #1318 turns both into blocking checks.
+Not all of these block a merge yet. The fresco-ui and art Storybook projects
+fail a story on any axe violation (`a11y.test: 'error'`); the other Storybook
+projects still report violations without failing (`a11y.test: 'todo'`), and the
+end-to-end suites do not yet scan pages with axe. #1318 turns all of them into
+blocking checks.
+
+Colour contrast is reported but never fails a check. The theme's colour pairs
+that miss AA are a known set, listed as warnings by
+`tooling/tailwind/tests/theme-contrast.test.ts`, and the decision was to keep
+flagging them rather than retune the palette. Storybook configures axe's
+`color-contrast` rule with `reviewOnFail`, so each failure appears in the a11y
+panel as needing review.
 
 These catch a minority of WCAG failures by construction. They verify structure
 and a limited set of programmatic properties: that a control has a name, that
-an attribute is valid, that contrast is sufficient for the colours axe can see.
+an attribute is valid. Contrast is surfaced for review, not enforced.
 They do not verify that a task can actually be done with a screen reader, with
 a switch, at 400% zoom, or by someone who cannot see the screen.
 

@@ -10,6 +10,7 @@ import {
   collectLocalizedStringsFromSchema,
 } from '../../../utils/collectLocalizedStrings.ts';
 import { localized } from '../../../utils/test-utils.ts';
+import { builtInWordingPaths } from '../built-in-wording.ts';
 import { PEDIGREE_RELATIONSHIP_KINDS } from '../family-pedigree-values.ts';
 import {
   type LocalizedStringFormat,
@@ -370,11 +371,23 @@ describe('localized string coverage', () => {
     },
   );
 
+  // Wording Network Canvas supplies is written only in a language it has it
+  // in exactly, so a protocol in any other may hold it with no translation
+  // until the researcher writes it; `validateProtocol` stops such a protocol
+  // leaving its editor (`findBuiltInWordingProblems`).
+  const builtIn = builtInWordingPaths(withFinishStage(completeProtocol()));
+
+  it('finds supplied wording among the localized sites', () => {
+    expect(builtIn.size).toBeGreaterThan(0);
+    expect(builtIn.has(JSON.stringify(['stages', 0, 'title']))).toBe(true);
+  });
+
   it.each(EXPECTED_SITES.map((expected) => [siteName(expected), expected]))(
     'keeps the field rule for copy with no translation at %s',
     (_name, { path, allowsNoTranslation }) => {
       const paths = failurePaths(withValueAt(path, {}));
-      if (allowsNoTranslation) expect(paths).toEqual([]);
+      if (allowsNoTranslation || builtIn.has(JSON.stringify(path)))
+        expect(paths).toEqual([]);
       else expect(paths).toContain(pathKey(path));
     },
   );

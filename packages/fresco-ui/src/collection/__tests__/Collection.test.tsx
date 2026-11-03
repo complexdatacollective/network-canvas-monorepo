@@ -446,6 +446,35 @@ describe('Collection', () => {
       },
     );
 
+    // A listbox may be empty, but may hold nothing other than options: the
+    // empty state is drawn where items would be, so the list carries it as
+    // its description and the text itself is out of the accessibility tree.
+    it('gives an empty list its empty state as a description, not as content', () => {
+      const layout = new ListLayout<Item>({ gap: 2 });
+
+      render(
+        <Collection
+          items={[]}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.name}
+          layout={layout}
+          aria-label="Added people"
+          renderItem={(item, itemProps) => (
+            <div {...itemProps}>{item.name}</div>
+          )}
+        >
+          {(CollectionElements) => CollectionElements}
+        </Collection>,
+      );
+
+      const list = screen.getByRole('listbox', { name: 'Added people' });
+      expect(list).toHaveAccessibleDescription('No items to display.');
+      expect(screen.getByText('No items to display.')).toBeVisible();
+      expect(
+        screen.queryByText('No items to display.', { ignore: '[aria-hidden]' }),
+      ).toBeNull();
+    });
+
     it('should apply ARIA attributes', () => {
       render(<ControlledCollection />);
 

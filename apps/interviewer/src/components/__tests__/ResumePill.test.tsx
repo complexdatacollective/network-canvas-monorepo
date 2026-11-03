@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock('wouter', () => ({ useLocation: () => ['/', mocks.navigate] }));
 vi.mock('~/lib/db/api', () => ({ updateSettings: mocks.updateSettings }));
 
-const { pickResumable, ResumePill } = await import('../ResumePill');
+const { pickResumable, ResumePill, ResumePillView } =
+  await import('../ResumePill');
 
 const session = (
   id: string,
@@ -100,5 +101,33 @@ describe('ResumePill', () => {
       />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('pulses its dot only while the window is focused', async () => {
+    let focused = true;
+    vi.spyOn(document, 'hasFocus').mockImplementation(() => focused);
+    const emulateFocus = async (next: boolean) => {
+      await act(async () => {
+        focused = next;
+        window.dispatchEvent(new Event(next ? 'focus' : 'blur'));
+        // The blur check runs a task later.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    };
+    const { container } = render(
+      <ResumePillView
+        session={{ protocolName: 'Wave One', caseId: 'case-1' }}
+        onResume={vi.fn()}
+      />,
+    );
+    const dot = container.querySelector('span.bg-sea-green');
+    expect(dot).toHaveClass('animate-pulse-glow');
+
+    await emulateFocus(false);
+    expect(dot).not.toHaveClass('animate-pulse-glow');
+
+    await emulateFocus(true);
+    expect(dot).toHaveClass('animate-pulse-glow');
+    vi.restoreAllMocks();
   });
 });

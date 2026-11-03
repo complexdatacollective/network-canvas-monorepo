@@ -5,8 +5,8 @@
   "lastModified": "2022-11-22T18:28:58.258Z",
   "schemaVersion": 9,
   "localization": {
-    "defaultLocale": "en-US",
-    "locales": ["en-US"]
+    "defaultLocale": "en",
+    "locales": ["en"]
   },
   "codebook": {
     "node": {
@@ -35,31 +35,31 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Last 24 hours"
+                  "en": "Last 24 hours"
                 },
                 "value": 5
               },
               {
                 "label": {
-                  "en-US": "Last week"
+                  "en": "Last week"
                 },
                 "value": 4
               },
               {
                 "label": {
-                  "en-US": "Last six months"
+                  "en": "Last six months"
                 },
                 "value": 3
               },
               {
                 "label": {
-                  "en-US": "Last two years"
+                  "en": "Last two years"
                 },
                 "value": 2
               },
               {
                 "label": {
-                  "en-US": "Over two years ago"
+                  "en": "Over two years ago"
                 },
                 "value": -1
               }
@@ -79,25 +79,25 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Family Member"
+                  "en": "Family Member"
                 },
                 "value": "family"
               },
               {
                 "label": {
-                  "en-US": "Friends"
+                  "en": "Friends"
                 },
                 "value": "friends"
               },
               {
                 "label": {
-                  "en-US": "Work Colleague"
+                  "en": "Work Colleague"
                 },
                 "value": "colleague"
               },
               {
                 "label": {
-                  "en-US": "School"
+                  "en": "School"
                 },
                 "value": "school"
               }
@@ -120,25 +120,25 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Work Colleague"
+                  "en": "Work Colleague"
                 },
                 "value": "Work_Colleague"
               },
               {
                 "label": {
-                  "en-US": "Classmate"
+                  "en": "Classmate"
                 },
                 "value": "Classmate"
               },
               {
                 "label": {
-                  "en-US": "Co-author"
+                  "en": "Co-author"
                 },
                 "value": "Co-author"
               },
               {
                 "label": {
-                  "en-US": "Supervisor"
+                  "en": "Supervisor"
                 },
                 "value": "Supervisor"
               }
@@ -200,31 +200,31 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Excellent"
+                  "en": "Excellent"
                 },
                 "value": 5
               },
               {
                 "label": {
-                  "en-US": "Above Average"
+                  "en": "Above Average"
                 },
                 "value": 4
               },
               {
                 "label": {
-                  "en-US": "Average"
+                  "en": "Average"
                 },
                 "value": 3
               },
               {
                 "label": {
-                  "en-US": "Below Average"
+                  "en": "Below Average"
                 },
                 "value": 2
               },
               {
                 "label": {
-                  "en-US": "Poor"
+                  "en": "Poor"
                 },
                 "value": 1
               }
@@ -237,13 +237,13 @@
             "options": [
               {
                 "label": {
-                  "en-US": "Visited\n"
+                  "en": "Visited\n"
                 },
                 "value": true
               },
               {
                 "label": {
-                  "en-US": "Studied\n"
+                  "en": "Studied\n"
                 },
                 "value": false,
                 "negative": false
@@ -308,49 +308,49 @@
           "options": [
             {
               "label": {
-                "en-US": "English"
+                "en": "English"
               },
               "value": "english"
             },
             {
               "label": {
-                "en-US": "Mandarin Chinese"
+                "en": "Mandarin Chinese"
               },
               "value": "mandarin-chinese"
             },
             {
               "label": {
-                "en-US": "Hindi"
+                "en": "Hindi"
               },
               "value": "hindi"
             },
             {
               "label": {
-                "en-US": "Spanish"
+                "en": "Spanish"
               },
               "value": "spanish"
             },
             {
               "label": {
-                "en-US": "French"
+                "en": "French"
               },
               "value": "french"
             },
             {
               "label": {
-                "en-US": "Arabic"
+                "en": "Arabic"
               },
               "value": "arabic"
             },
             {
               "label": {
-                "en-US": "Bengali"
+                "en": "Bengali"
               },
               "value": "bengali"
             },
             {
               "label": {
-                "en-US": "Russian"
+                "en": "Russian"
               },
               "value": "russian"
             }
@@ -363,31 +363,31 @@
           "options": [
             {
               "label": {
-                "en-US": "Very Satisfied"
+                "en": "Very Satisfied"
               },
               "value": 5
             },
             {
               "label": {
-                "en-US": "Somewhat Satisfied"
+                "en": "Somewhat Satisfied"
               },
               "value": 4
             },
             {
               "label": {
-                "en-US": "Neither Satisfied or Dissatisfied"
+                "en": "Neither Satisfied or Dissatisfied"
               },
               "value": 3
             },
             {
               "label": {
-                "en-US": "Somewhat Dissatisfied"
+                "en": "Somewhat Dissatisfied"
               },
               "value": 2
             },
             {
               "label": {
-                "en-US": "Very Dissatisfied"
+                "en": "Very Dissatisfied"
               },
               "value": 1
             }
@@ -400,31 +400,31 @@
           "options": [
             {
               "label": {
-                "en-US": "Very Satisfied"
+                "en": "Very Satisfied"
               },
               "value": 2
             },
             {
               "label": {
-                "en-US": "Somewhat Satisfied"
+                "en": "Somewhat Satisfied"
               },
               "value": 1
             },
             {
               "label": {
-                "en-US": "Neither Satisfied or Dissatisfied"
+                "en": "Neither Satisfied or Dissatisfied"
               },
               "value": 0
             },
             {
               "label": {
-                "en-US": "Somewhat Dissatisfied"
+                "en": "Somewhat Dissatisfied"
               },
               "value": -1
             },
             {
               "label": {
-                "en-US": "Very Dissatisfied"
+                "en": "Very Dissatisfied"
               },
               "value": -2
             }
@@ -436,10 +436,10 @@
           "component": "VisualAnalogScale",
           "parameters": {
             "minLabel": {
-              "en-US": "No pain"
+              "en": "No pain"
             },
             "maxLabel": {
-              "en-US": "Unbearable pain"
+              "en": "Unbearable pain"
             }
           }
         },
@@ -455,25 +455,25 @@
           "options": [
             {
               "label": {
-                "en-US": "Email"
+                "en": "Email"
               },
               "value": "email"
             },
             {
               "label": {
-                "en-US": "Post"
+                "en": "Post"
               },
               "value": "post"
             },
             {
               "label": {
-                "en-US": "SMS"
+                "en": "SMS"
               },
               "value": "sms"
             },
             {
               "label": {
-                "en-US": "Phonecall"
+                "en": "Phonecall"
               },
               "value": "phone"
             }
@@ -489,14 +489,14 @@
           "options": [
             {
               "label": {
-                "en-US": "**Yes**. I wish to participate in the study in accordance with the terms outlined above.\n"
+                "en": "**Yes**. I wish to participate in the study in accordance with the terms outlined above.\n"
               },
               "value": true,
               "negative": false
             },
             {
               "label": {
-                "en-US": "**No**. I decline to participate, and wish to immediately withdraw from this study.\n"
+                "en": "**No**. I decline to participate, and wish to immediately withdraw from this study.\n"
               },
               "value": false,
               "negative": true
@@ -572,25 +572,25 @@
     {
       "id": "3a352ae0-32e3-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Welcome"
+        "en": "Welcome"
       },
       "type": "Information",
       "title": {
-        "en-US": "Welcome to the Sample Protocol"
+        "en": "Welcome to the Sample Protocol"
       },
       "items": [
         {
           "id": "f12c365f-237b-49da-99d2-2eeacc817997",
           "type": "text",
           "content": {
-            "en-US": "We developed this sample interview protocol to provide an overview of the features of Interviewer, and give examples of the key tasks associated with conducting a personal network interview. Specifically, we will be discussing:\n\n* Options for name generation within Interviewer, including the use of existing roster data\n* Name interpreter functionality, including dedicated interfaces for certain types of data, and general purpose \"form\" interfaces for everything else\n* The use of the Sociogram Interface, and other methods of creating edges\n* The use of skip logic and network filtering on a stage to minimize response burden\n* The Narrative Interface as a tool for qualitative network interviewing"
+            "en": "We developed this sample interview protocol to provide an overview of the features of Interviewer, and give examples of the key tasks associated with conducting a personal network interview. Specifically, we will be discussing:\n\n* Options for name generation within Interviewer, including the use of existing roster data\n* Name interpreter functionality, including dedicated interfaces for certain types of data, and general purpose \"form\" interfaces for everything else\n* The use of the Sociogram Interface, and other methods of creating edges\n* The use of skip logic and network filtering on a stage to minimize response burden\n* The Narrative Interface as a tool for qualitative network interviewing"
           }
         },
         {
           "id": "fd3a3fea-b094-4098-ac7a-d6e06722432d",
           "type": "text",
           "content": {
-            "en-US": "To move through this protocol, use the arrows on the left hand side of the screen. When you are ready to continue, click the down arrow."
+            "en": "To move through this protocol, use the arrows on the left hand side of the screen. When you are ready to continue, click the down arrow."
           }
         },
         {
@@ -604,18 +604,18 @@
     {
       "id": "426884b0-3594-11eb-8030-7590bae3c8d1",
       "label": {
-        "en-US": "Information Interface"
+        "en": "Information Interface"
       },
       "type": "Information",
       "title": {
-        "en-US": "Information Interface"
+        "en": "Information Interface"
       },
       "items": [
         {
           "id": "176d0f5a-132c-45b9-b542-8f7b7a83e71b",
           "type": "text",
           "content": {
-            "en-US": "The screen you are currently viewing was built using the **Information Interface** within Architect.\n\nUnlike other interfaces, this interface captures no data from the participant. Instead, researchers are able to include explanatory **text** and **image**, **audio**, and **video** files to assist in the administration of Network Canvas Interviews.\n\nWhile these screens are helpful in guiding interviews, it should be noted that Interviewer has been designed to conduct interviews in a face-to-face setting, where tasks on each screen are able to be fully explained to the participant by the researcher.\n"
+            "en": "The screen you are currently viewing was built using the **Information Interface** within Architect.\n\nUnlike other interfaces, this interface captures no data from the participant. Instead, researchers are able to include explanatory **text** and **image**, **audio**, and **video** files to assist in the administration of Network Canvas Interviews.\n\nWhile these screens are helpful in guiding interviews, it should be noted that Interviewer has been designed to conduct interviews in a face-to-face setting, where tasks on each screen are able to be fully explained to the participant by the researcher.\n"
           }
         },
         {
@@ -629,18 +629,18 @@
     {
       "id": "3bc23580-acdf-11eb-a565-f3cb02ccfc34",
       "label": {
-        "en-US": "Ego Form Introduction"
+        "en": "Ego Form Introduction"
       },
       "type": "Information",
       "title": {
-        "en-US": "Introducing the Ego Form"
+        "en": "Introducing the Ego Form"
       },
       "items": [
         {
           "id": "8d5c5245-78d9-4fe5-86fb-bbc0f4063f8e",
           "type": "text",
           "content": {
-            "en-US": "Interviewer supports collecting arbitrary data from the participant, through the use of the **Ego Form** interface. This interface allows you to present as many questions as you wish to the participant. Answers given are stored separately from node and edge attribute data, and can be exported along with other data.\n\nThe next screen uses the Ego Form interface to create an example of a consent form.\n"
+            "en": "Interviewer supports collecting arbitrary data from the participant, through the use of the **Ego Form** interface. This interface allows you to present as many questions as you wish to the participant. Answers given are stored separately from node and edge attribute data, and can be exported along with other data.\n\nThe next screen uses the Ego Form interface to create an example of a consent form.\n"
           }
         }
       ]
@@ -648,15 +648,15 @@
     {
       "id": "400b9810-9dc2-11eb-8192-d9f6b822b280",
       "label": {
-        "en-US": "Consent Form"
+        "en": "Consent Form"
       },
       "type": "EgoForm",
       "introductionPanel": {
         "title": {
-          "en-US": "Sample Consent Form"
+          "en": "Sample Consent Form"
         },
         "text": {
-          "en-US": "**STUDY TITLE:** A Sample Network Canvas Study\n\n**RESEARCHER DETAILS:** Joshua Melville, Northwestern University\n\n**PURPOSE OF STUDY:** Demonstration\n\nBy answering **yes** below, you confirm the following:\n\n\n1. I have read the information sheet, have asked questions and received satisfactory answers\n1. I understand that this project has been reviewed by, and received ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;\n1. I understand that my participation is voluntary and that I am free to withdraw myself or my data at any time, without giving any reason, and without any adverse consequences\n1. I understand who will have access to personal data provided\n1. I understand how personal data will be stored and what will happen to the data at the end of the project\n1. I understand that the research will be written up and published in the public domain.\n1. I understand how to raise concerns or make a complaint\n\n"
+          "en": "**STUDY TITLE:** A Sample Network Canvas Study\n\n**RESEARCHER DETAILS:** Joshua Melville, Northwestern University\n\n**PURPOSE OF STUDY:** Demonstration\n\nBy answering **yes** below, you confirm the following:\n\n\n1. I have read the information sheet, have asked questions and received satisfactory answers\n1. I understand that this project has been reviewed by, and received ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;\n1. I understand that my participation is voluntary and that I am free to withdraw myself or my data at any time, without giving any reason, and without any adverse consequences\n1. I understand who will have access to personal data provided\n1. I understand how personal data will be stored and what will happen to the data at the end of the project\n1. I understand that the research will be written up and published in the public domain.\n1. I understand how to raise concerns or make a complaint\n\n"
         }
       },
       "form": {
@@ -664,7 +664,7 @@
           {
             "variable": "09306238-68e4-498c-8c12-923eb2eec760",
             "prompt": {
-              "en-US": "Do you consent to participate in this study in accordance with the terms above?\n"
+              "en": "Do you consent to participate in this study in accordance with the terms above?\n"
             }
           }
         ]
@@ -673,7 +673,7 @@
     {
       "id": "e922f680-32ee-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Ego Form"
+        "en": "Ego Form"
       },
       "type": "EgoForm",
       "skipLogic": {
@@ -698,10 +698,10 @@
       },
       "introductionPanel": {
         "title": {
-          "en-US": "Conventional Ego Data Collection Example"
+          "en": "Conventional Ego Data Collection Example"
         },
         "text": {
-          "en-US": "This screen shows an example of a more conventional participant-level data collection form. Note the collection of many different types of data, and the use of touch optimized input controls alongside more familiar text entry.\n\nInterviewer is not intended to replace dedicated participant-level survey tools. However, it can be used to collect basic ego data, and is especially useful if you need to collect information that can link your participant to survey data collected through a different platform.\n"
+          "en": "This screen shows an example of a more conventional participant-level data collection form. Note the collection of many different types of data, and the use of touch optimized input controls alongside more familiar text entry.\n\nInterviewer is not intended to replace dedicated participant-level survey tools. However, it can be used to collect basic ego data, and is especially useful if you need to collect information that can link your participant to survey data collected through a different platform.\n"
         }
       },
       "form": {
@@ -709,55 +709,55 @@
           {
             "variable": "4ab18994-a252-47cb-ba19-20b6ffc0e927",
             "prompt": {
-              "en-US": "What is your first name?"
+              "en": "What is your first name?"
             }
           },
           {
             "variable": "3b5197a9-d024-421c-8663-1e06e0587999",
             "prompt": {
-              "en-US": "What is your last name?"
+              "en": "What is your last name?"
             }
           },
           {
             "variable": "198bdb95-9556-4775-9c82-22531a382aa5",
             "prompt": {
-              "en-US": "What is your date of birth?"
+              "en": "What is your date of birth?"
             }
           },
           {
             "variable": "92326a8e-f5a1-4918-8717-a4d6917a9264",
             "prompt": {
-              "en-US": "Which of the following languages do you speak fluently?"
+              "en": "Which of the following languages do you speak fluently?"
             }
           },
           {
             "variable": "aa418971-ce17-4f0f-8060-438197298a82",
             "prompt": {
-              "en-US": "Overall, how satisfied are you with existing social network analysis software?"
+              "en": "Overall, how satisfied are you with existing social network analysis software?"
             }
           },
           {
             "variable": "d2ac00d6-337a-4ce4-87de-028eccd81617",
             "prompt": {
-              "en-US": "How satisfied are you with the level of support you receive?"
+              "en": "How satisfied are you with the level of support you receive?"
             }
           },
           {
             "variable": "3609188b-dfbe-482a-995c-d71387e22054",
             "prompt": {
-              "en-US": "Thinking back to your last medical procedure, how much pain do you feel you experienced?"
+              "en": "Thinking back to your last medical procedure, how much pain do you feel you experienced?"
             }
           },
           {
             "variable": "835ea5b5-1fbf-472d-ad3a-df74ec1d6870",
             "prompt": {
-              "en-US": "How would you prefer to be contacted about your next interview?"
+              "en": "How would you prefer to be contacted about your next interview?"
             }
           },
           {
             "variable": "5a77b483-8120-4a64-aff1-c8c5d4ac33d1",
             "prompt": {
-              "en-US": "Is there any other information you would like to provide at this time?"
+              "en": "Is there any other information you would like to provide at this time?"
             }
           }
         ]
@@ -766,18 +766,18 @@
     {
       "id": "33a5faa0-32e4-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Generating Nodes"
+        "en": "Generating Nodes"
       },
       "type": "Information",
       "title": {
-        "en-US": "Generating Nodes"
+        "en": "Generating Nodes"
       },
       "items": [
         {
           "id": "45ca0997-c8cf-4d94-bc71-f2dccff41442",
           "type": "text",
           "content": {
-            "en-US": "The first key step within a social network interview is the generation of the network members - or nodes. On the next screen you will see an example of a Name Generator Interface using **Quick Add**, which asks you to enter the names of any individuals whom you have felt close to or have discussed important personal matters with. \n\nEnter the names of these individuals by pressing the **‘Add a Person’ Icon** at the bottom right corner of the screen. Type the name of the individual and press enter. Numerous individuals can be entered in rapid succession. \n\nResearchers are able to choose from four types of name generator interfaces based on their priorities and needs. A researcher might choose this 'quick add' name generator if they wish to prioritize the elicitation of many names as quickly as possible. If a mistake is made, nodes can be easily deleted by dragging them toward the bottom of the screen into the garbage bin that appears."
+            "en": "The first key step within a social network interview is the generation of the network members - or nodes. On the next screen you will see an example of a Name Generator Interface using **Quick Add**, which asks you to enter the names of any individuals whom you have felt close to or have discussed important personal matters with. \n\nEnter the names of these individuals by pressing the **‘Add a Person’ Icon** at the bottom right corner of the screen. Type the name of the individual and press enter. Numerous individuals can be entered in rapid succession. \n\nResearchers are able to choose from four types of name generator interfaces based on their priorities and needs. A researcher might choose this 'quick add' name generator if they wish to prioritize the elicitation of many names as quickly as possible. If a mistake is made, nodes can be easily deleted by dragging them toward the bottom of the screen into the garbage bin that appears."
           }
         },
         {
@@ -791,7 +791,7 @@
     {
       "id": "f6cff4b0-32e7-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Quick Add Name Generator"
+        "en": "Quick Add Name Generator"
       },
       "type": "NameGeneratorQuickAdd",
       "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
@@ -803,29 +803,29 @@
         {
           "id": "ef3a3de1-b986-472a-a074-1b42634680dd",
           "text": {
-            "en-US": "Within the **past 6 months**, who have you felt **close to**, or discussed **important personal matters** with?"
+            "en": "Within the **past 6 months**, who have you felt **close to**, or discussed **important personal matters** with?"
           }
         }
       ],
       "addNamePlaceholder": {
-        "en-US": "Type a name, then press Enter"
+        "en": "Type a name, then press Enter"
       }
     },
     {
       "id": "73f13080-32e8-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Name Generation Using a Side Panel"
+        "en": "Name Generation Using a Side Panel"
       },
       "type": "Information",
       "title": {
-        "en-US": "Name Generation Using a Side Panel"
+        "en": "Name Generation Using a Side Panel"
       },
       "items": [
         {
           "id": "8ad0af99-37cb-40c0-b2f1-8c482aab16d7",
           "type": "text",
           "content": {
-            "en-US": "Sometimes the individuals named within network interviews have multiple relationships with the interviewee that are important to the researcher. For example, someone might be a *close friend* but also a *co-worker*. Instead of having the research participant enter these names twice, researchers can use **Side Panels** to allow the participant to select and drag over nodes already entered from the in-progress interview. The use of Side Panels speeds data entry, and can be used for simple name interpreter functionality. \n\nSide panels can also be populated before the interview (when building the protocol within Architect) by adding a network data file containing a roster of individuals from which all participants would be able to select - such as a classroom. This is the first of three locations where roster data can be used in your protocol.\n\nOn the next screen - add individuals by clicking the ‘Add a Person' Icon or dragging individuals from the side panel. \n"
+            "en": "Sometimes the individuals named within network interviews have multiple relationships with the interviewee that are important to the researcher. For example, someone might be a *close friend* but also a *co-worker*. Instead of having the research participant enter these names twice, researchers can use **Side Panels** to allow the participant to select and drag over nodes already entered from the in-progress interview. The use of Side Panels speeds data entry, and can be used for simple name interpreter functionality. \n\nSide panels can also be populated before the interview (when building the protocol within Architect) by adding a network data file containing a roster of individuals from which all participants would be able to select - such as a classroom. This is the first of three locations where roster data can be used in your protocol.\n\nOn the next screen - add individuals by clicking the ‘Add a Person' Icon or dragging individuals from the side panel. \n"
           }
         },
         {
@@ -839,7 +839,7 @@
     {
       "id": "39e14c40-32e8-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Quick Add with Sidepanel"
+        "en": "Quick Add with Sidepanel"
       },
       "type": "NameGeneratorQuickAdd",
       "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
@@ -851,7 +851,7 @@
         {
           "id": "a4666c9c-d2a6-4730-abf7-8d15e39378e9",
           "title": {
-            "en-US": "People you have already mentioned"
+            "en": "People you have already mentioned"
           },
           "dataSource": "existing"
         }
@@ -860,7 +860,7 @@
         {
           "id": "f98a377f-314a-4313-a4f3-fa7aa921333b",
           "text": {
-            "en-US": "Within the **past 6 months**, who have you discussed **social networks research** with?"
+            "en": "Within the **past 6 months**, who have you discussed **social networks research** with?"
           },
           "additionalAttributes": [
             {
@@ -871,24 +871,24 @@
         }
       ],
       "addNamePlaceholder": {
-        "en-US": "Type a name, then press Enter"
+        "en": "Type a name, then press Enter"
       }
     },
     {
       "id": "501a9420-32e9-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Name Generator using Forms"
+        "en": "Name Generator using Forms"
       },
       "type": "Information",
       "title": {
-        "en-US": "Name Generation using Forms"
+        "en": "Name Generation using Forms"
       },
       "items": [
         {
           "id": "bf1390c3-a703-4bae-831d-9ab78e4f0ad5",
           "type": "text",
           "content": {
-            "en-US": "The previous two name generator tasks have used the **Quick Add** version of our Name Generator, which means that the participant only needed to enter a name for the alter in order to add them to the interview.\n\nFor more in-depth data collection about alters as they are collected, we provide a version of the name generator that uses **Forms**. A form is a collection of one or more variables which is shown to the participant each time they click the 'Add a Person' Icon on the name generator. \n\nFor example, on the next screen, Clinics or Health Care Providers visited within the past 12 months are entered. Names are required, along with date of visit and a text description of the purpose of the visit. \n\nThe choice of name generation interface should depend on the priorities of the researcher. The *Quick Add* version back-loads the burden of name interpreter tasks, whereas the *Name Generator using Forms* front-loads some of that burden."
+            "en": "The previous two name generator tasks have used the **Quick Add** version of our Name Generator, which means that the participant only needed to enter a name for the alter in order to add them to the interview.\n\nFor more in-depth data collection about alters as they are collected, we provide a version of the name generator that uses **Forms**. A form is a collection of one or more variables which is shown to the participant each time they click the 'Add a Person' Icon on the name generator. \n\nFor example, on the next screen, Clinics or Health Care Providers visited within the past 12 months are entered. Names are required, along with date of visit and a text description of the purpose of the visit. \n\nThe choice of name generation interface should depend on the priorities of the researcher. The *Quick Add* version back-loads the burden of name interpreter tasks, whereas the *Name Generator using Forms* front-loads some of that burden."
           }
         },
         {
@@ -902,30 +902,30 @@
     {
       "id": "1aa15990-32ea-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Clinic or Health Care Provider Name Generator"
+        "en": "Clinic or Health Care Provider Name Generator"
       },
       "type": "NameGenerator",
       "form": {
         "title": {
-          "en-US": "Add a Clinic or Health Care Provider"
+          "en": "Add a Clinic or Health Care Provider"
         },
         "fields": [
           {
             "variable": "45a62b9c-42ec-4735-bf1a-4074a2001d2c",
             "prompt": {
-              "en-US": "What is the name of this clinic or health care provider?"
+              "en": "What is the name of this clinic or health care provider?"
             }
           },
           {
             "variable": "1d1460f2-8c11-4f66-8647-83801116aebf",
             "prompt": {
-              "en-US": "When was your visit?"
+              "en": "When was your visit?"
             }
           },
           {
             "variable": "37fb19da-3ec0-4427-bb4b-3b59003a7e60",
             "prompt": {
-              "en-US": "In your own words, what was the purpose of your visit?"
+              "en": "In your own words, what was the purpose of your visit?"
             }
           }
         ]
@@ -938,7 +938,7 @@
         {
           "id": "eea94879-29d5-4a15-98e7-6741521ee928",
           "text": {
-            "en-US": "Within **the past 12 months**, which **clinics** or **healthcare providers** have you visited?"
+            "en": "Within **the past 12 months**, which **clinics** or **healthcare providers** have you visited?"
           }
         }
       ]
@@ -946,18 +946,18 @@
     {
       "id": "ae3f75f0-32eb-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Name Generator with Roster Info"
+        "en": "Name Generator with Roster Info"
       },
       "type": "Information",
       "title": {
-        "en-US": "Name Generation Using Roster Data"
+        "en": "Name Generation Using Roster Data"
       },
       "items": [
         {
           "id": "e2937966-8e0f-4a48-b090-84fc078e1852",
           "type": "text",
           "content": {
-            "en-US": "Interviewer also supports the use of rosters containing pre\\-populated lists of names. The name generator you saw earlier featuring a side panel for &quot;people already mentioned&quot; is one place this roster data can be used, but the following two screens demonstrate our dedicated interface for this type of data.\n\nThe roster interface is split into two panels. One panel displays &#39;cards&#39; that represent each item in your roster. The other panel represents nodes in the interview, and will initially be empty. **To nominate an alter**, the participant must drag a card from the first panel, into the second. This card will then be removed from the card list, and a node will be created representing the roster member in the interview network.\n\nThe interface supports configurable options for sorting cards, searching for cards, and displaying cards.\n\nThe first screen you will see shows a smaller roster. Alters elicited on this stage will be used on a later stage (Dyad Census) which requires at _at least two nodes be nominated._ Please be sure to **nominate at least two classmates from the roster.**\n\nThe second screen shows a larger roster. Where the roster is above 100 members in size, the participant must use the search function before any cards are shown.\n"
+            "en": "Interviewer also supports the use of rosters containing pre\\-populated lists of names. The name generator you saw earlier featuring a side panel for &quot;people already mentioned&quot; is one place this roster data can be used, but the following two screens demonstrate our dedicated interface for this type of data.\n\nThe roster interface is split into two panels. One panel displays &#39;cards&#39; that represent each item in your roster. The other panel represents nodes in the interview, and will initially be empty. **To nominate an alter**, the participant must drag a card from the first panel, into the second. This card will then be removed from the card list, and a node will be created representing the roster member in the interview network.\n\nThe interface supports configurable options for sorting cards, searching for cards, and displaying cards.\n\nThe first screen you will see shows a smaller roster. Alters elicited on this stage will be used on a later stage (Dyad Census) which requires at _at least two nodes be nominated._ Please be sure to **nominate at least two classmates from the roster.**\n\nThe second screen shows a larger roster. Where the roster is above 100 members in size, the participant must use the search function before any cards are shown.\n"
           }
         }
       ]
@@ -965,10 +965,10 @@
     {
       "id": "01455ba0-32ee-11eb-8503-3b4fa95b8bc6",
       "allAddedNotice": {
-        "en-US": "There is nothing left to add from this list."
+        "en": "There is nothing left to add from this list."
       },
       "label": {
-        "en-US": "Small Roster - Classroom"
+        "en": "Small Roster - Classroom"
       },
       "type": "NameGeneratorRoster",
       "subject": {
@@ -977,19 +977,19 @@
       },
       "dataSource": "86b7feeb-b71a-4c15-8eb4-25a75491d512",
       "panelTitle": {
-        "en-US": "Available to add"
+        "en": "Available to add"
       },
       "cardOptions": {
         "additionalProperties": [
           {
             "label": {
-              "en-US": "First Name"
+              "en": "First Name"
             },
             "variable": "first_name"
           },
           {
             "label": {
-              "en-US": "Last Name"
+              "en": "Last Name"
             },
             "variable": "last_name"
           }
@@ -1005,13 +1005,13 @@
         "sortableProperties": [
           {
             "label": {
-              "en-US": "First Name"
+              "en": "First Name"
             },
             "variable": "first_name"
           },
           {
             "label": {
-              "en-US": "Last Name"
+              "en": "Last Name"
             },
             "variable": "last_name"
           }
@@ -1021,21 +1021,21 @@
         {
           "id": "ef6cbd25-7614-4d96-92d6-bd8fc89b3a87",
           "text": {
-            "en-US": "Please select any members of your class that you spend time with **other than when studying**. Tap a card to select, and press the **down arrow** when you are finished."
+            "en": "Please select any members of your class that you spend time with **other than when studying**. Tap a card to select, and press the **down arrow** when you are finished."
           }
         }
       ],
       "unnamedLabel": {
-        "en-US": "Unnamed {count}"
+        "en": "Unnamed {count}"
       }
     },
     {
       "id": "dfde4a90-32ec-11eb-8503-3b4fa95b8bc6",
       "allAddedNotice": {
-        "en-US": "There is nothing left to add from this list."
+        "en": "There is nothing left to add from this list."
       },
       "label": {
-        "en-US": "University Roster"
+        "en": "University Roster"
       },
       "type": "NameGeneratorRoster",
       "subject": {
@@ -1044,19 +1044,19 @@
       },
       "dataSource": "d94b5dae-4ed5-42bf-9d1c-b6585fbe078d",
       "panelTitle": {
-        "en-US": "Available to add"
+        "en": "Available to add"
       },
       "cardOptions": {
         "additionalProperties": [
           {
             "label": {
-              "en-US": "Website"
+              "en": "Website"
             },
             "variable": "website"
           },
           {
             "label": {
-              "en-US": "Country Code"
+              "en": "Country Code"
             },
             "variable": "country"
           }
@@ -1070,29 +1070,29 @@
         {
           "id": "fe89d20d-d517-4ee6-83f4-bbff5115a45f",
           "text": {
-            "en-US": "Which universities have you either **visited** or **studied at**?"
+            "en": "Which universities have you either **visited** or **studied at**?"
           }
         }
       ],
       "unnamedLabel": {
-        "en-US": "Unnamed {count}"
+        "en": "Unnamed {count}"
       }
     },
     {
       "id": "3ca90480-32f8-11eb-8503-3b4fa95b8bc6-introduction",
       "type": "Information",
       "label": {
-        "en-US": "University Per-alter Form"
+        "en": "University Per-alter Form"
       },
       "title": {
-        "en-US": "University Per-alter Form"
+        "en": "University Per-alter Form"
       },
       "items": [
         {
           "id": "introduction-text",
           "type": "text",
           "content": {
-            "en-US": "Name interpreter interfaces can also be used to capture data about the network members named. On the next screens, we will first demonstrate how data might be captured utilizing a **Per Alter Form**, which shows a form for each alter - in this case, University - that the participant named."
+            "en": "Name interpreter interfaces can also be used to capture data about the network members named. On the next screens, we will first demonstrate how data might be captured utilizing a **Per Alter Form**, which shows a form for each alter - in this case, University - that the participant named."
           }
         }
       ]
@@ -1100,7 +1100,7 @@
     {
       "id": "3ca90480-32f8-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "University Per Alter Form"
+        "en": "University Per Alter Form"
       },
       "type": "AlterForm",
       "subject": {
@@ -1117,13 +1117,13 @@
           {
             "variable": "95c5bb4d-5ac2-4ddd-8dd9-fca518f15748",
             "prompt": {
-              "en-US": "Did you visit {nodeLabel} or study there?"
+              "en": "Did you visit {nodeLabel} or study there?"
             }
           },
           {
             "variable": "d91ca102-954d-4da1-b8b8-d9490c7bca44",
             "prompt": {
-              "en-US": "Overall, how would you describe your experience at {nodeLabel}?"
+              "en": "Overall, how would you describe your experience at {nodeLabel}?"
             }
           }
         ]
@@ -1132,18 +1132,18 @@
     {
       "id": "36e08b20-3b06-11eb-9e09-d7e61d6a0624",
       "label": {
-        "en-US": "Sociogram Information"
+        "en": "Sociogram Information"
       },
       "type": "Information",
       "title": {
-        "en-US": "Using the Sociogram"
+        "en": "Using the Sociogram"
       },
       "items": [
         {
           "id": "dab3ed09-8b8b-4bd0-a9aa-550e29fac2c4",
           "type": "text",
           "content": {
-            "en-US": "The next interface we will introduce is the **Sociogram**. Participants use this interface to position their alters on the screen, create ties between them, and to nominate alters as having a given attribute. \n\nOn the next two screens you will be asked to position alters onto the Sociogram screen, first onto a default image of concentric circles, placing folks who know each other closer together and those who do not know each other farther away. On the second screen, you will see an example of a customized responsive background image, using the political compass diagram. We included this image by adding it as a resource when we were building the protocol within Architect. This allows the researcher immense flexibility in how the Sociogram might be utilized. "
+            "en": "The next interface we will introduce is the **Sociogram**. Participants use this interface to position their alters on the screen, create ties between them, and to nominate alters as having a given attribute. \n\nOn the next two screens you will be asked to position alters onto the Sociogram screen, first onto a default image of concentric circles, placing folks who know each other closer together and those who do not know each other farther away. On the second screen, you will see an example of a customized responsive background image, using the political compass diagram. We included this image by adding it as a resource when we were building the protocol within Architect. This allows the researcher immense flexibility in how the Sociogram might be utilized. "
           }
         },
         {
@@ -1157,7 +1157,7 @@
     {
       "id": "73ac2120-32fc-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Person Sociogram"
+        "en": "Person Sociogram"
       },
       "type": "Sociogram",
       "subject": {
@@ -1172,7 +1172,7 @@
         {
           "id": "788a8dcb-f2fb-4ec5-8a3f-304a4e575752",
           "text": {
-            "en-US": "Please position the people you have named amongst the concentric circles. Place people who know each other together, and put people you are closer to towards the center of the circles."
+            "en": "Please position the people you have named amongst the concentric circles. Place people who know each other together, and put people you are closer to towards the center of the circles."
           },
           "layout": {
             "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
@@ -1186,7 +1186,7 @@
     {
       "id": "8dcc71c0-32fe-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Person Sociogram with Background Image"
+        "en": "Person Sociogram with Background Image"
       },
       "type": "Sociogram",
       "subject": {
@@ -1200,7 +1200,7 @@
         {
           "id": "53b81a21-402c-443f-9421-4ca752d8fa0a",
           "text": {
-            "en-US": "Please position the people you have named in the boxes according to which group you feel they most belong to"
+            "en": "Please position the people you have named in the boxes according to which group you feel they most belong to"
           },
           "layout": {
             "layoutVariable": "88271ba2-301d-402c-8407-cfa89446ca1d"
@@ -1214,18 +1214,18 @@
     {
       "id": "0f0dbd20-32ff-11eb-8982-61526ca14943",
       "label": {
-        "en-US": "Information about Edge Creation Between Alters"
+        "en": "Information about Edge Creation Between Alters"
       },
       "type": "Information",
       "title": {
-        "en-US": "Creating Edges on the Sociogram"
+        "en": "Creating Edges on the Sociogram"
       },
       "items": [
         {
           "id": "56717145-8fcc-44f7-913f-359a591b6766",
           "type": "text",
           "content": {
-            "en-US": "Once alters have been positioned on the screen, the *Sociogram Interface* can also be used to measure relationships between alters. \n\nOn the next screens you will be asked to create connections or **edges** between individuals who have a certain relationship with each other. To do this, you tap one node and then tap a second node. You can go through this process again to remove a tie. \n\nMultiple kinds of edges can be created. While on the first screen we ask you to connect any two people who might spend time together without you being there, on the second screen we ask you to connect individuals are have conflict or who do not get along with each other well. "
+            "en": "Once alters have been positioned on the screen, the *Sociogram Interface* can also be used to measure relationships between alters. \n\nOn the next screens you will be asked to create connections or **edges** between individuals who have a certain relationship with each other. To do this, you tap one node and then tap a second node. You can go through this process again to remove a tie. \n\nMultiple kinds of edges can be created. While on the first screen we ask you to connect any two people who might spend time together without you being there, on the second screen we ask you to connect individuals are have conflict or who do not get along with each other well. "
           }
         },
         {
@@ -1239,7 +1239,7 @@
     {
       "id": "692ce010-32ff-11eb-8982-61526ca14943",
       "label": {
-        "en-US": "Sociogram Edge Creation"
+        "en": "Sociogram Edge Creation"
       },
       "type": "Sociogram",
       "subject": {
@@ -1254,7 +1254,7 @@
         {
           "id": "ebbdc24d-51d4-4790-bf45-76493ae41d63",
           "text": {
-            "en-US": "Please connect any two people who might spend time together without you being there"
+            "en": "Please connect any two people who might spend time together without you being there"
           },
           "layout": {
             "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
@@ -1270,7 +1270,7 @@
         {
           "id": "47a9bfde-fd5c-4fb2-a8fe-c79744b0589a",
           "text": {
-            "en-US": "Please connect any two people who have conflict, or who don't get on well with each other"
+            "en": "Please connect any two people who have conflict, or who don't get on well with each other"
           },
           "layout": {
             "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
@@ -1289,17 +1289,17 @@
       "id": "b267f9e0-32ff-11eb-8982-61526ca14943-introduction",
       "type": "Information",
       "label": {
-        "en-US": "Dyad Census"
+        "en": "Dyad Census"
       },
       "title": {
-        "en-US": "Dyad Census"
+        "en": "Dyad Census"
       },
       "items": [
         {
           "id": "introduction-text",
           "type": "text",
           "content": {
-            "en-US": "Edges can also be made between alters using something called the **Dyad Census Interface**. \n\nWhile before we showed how ties can be captured by placing and drawing edges between nodes on the *Sociogram* itself, some researchers might want each potential edge between alters to be systematically queried.  \n\nIn the next screens, if you selected two or more classmate alters on the prior *Small Roster Name Generator*, then you will be systematically presented every possible pair of alters. By answering 'Yes' to if these two individuals spend time together outside of class, an edge between both alters will then be created."
+            "en": "Edges can also be made between alters using something called the **Dyad Census Interface**. \n\nWhile before we showed how ties can be captured by placing and drawing edges between nodes on the *Sociogram* itself, some researchers might want each potential edge between alters to be systematically queried.  \n\nIn the next screens, if you selected two or more classmate alters on the prior *Small Roster Name Generator*, then you will be systematically presented every possible pair of alters. By answering 'Yes' to if these two individuals spend time together outside of class, an edge between both alters will then be created."
           }
         }
       ],
@@ -1322,7 +1322,7 @@
     {
       "id": "b267f9e0-32ff-11eb-8982-61526ca14943",
       "label": {
-        "en-US": "Classmates Dyad Census"
+        "en": "Classmates Dyad Census"
       },
       "skipLogic": {
         "action": "SKIP",
@@ -1356,7 +1356,7 @@
         {
           "id": "be867d80-1dce-49ed-984d-5de4ca344d5c",
           "text": {
-            "en-US": "To the best of your knowledge, do {firstLabel} and {secondLabel} spend time together outside of class?"
+            "en": "To the best of your knowledge, do {firstLabel} and {secondLabel} spend time together outside of class?"
           },
           "createEdge": "a489e869-2555-4896-a760-2d38046b54f9"
         }
@@ -1365,7 +1365,7 @@
     {
       "id": "5d1c3b80-3300-11eb-8982-61526ca14943",
       "label": {
-        "en-US": "Dyad Census Skipped"
+        "en": "Dyad Census Skipped"
       },
       "skipLogic": {
         "action": "SKIP",
@@ -1384,14 +1384,14 @@
       },
       "type": "Information",
       "title": {
-        "en-US": "Please create some \"classmate\" nodes"
+        "en": "Please create some \"classmate\" nodes"
       },
       "items": [
         {
           "id": "85353555-72d0-49ef-aba9-75023648ead1",
           "type": "text",
           "content": {
-            "en-US": "The dyad census interface was not shown because you do not have any \"classmates\" in this interview network. \n\nTo see the dyad census interface:\n\n1. Click the timeline on the left to show the interview timeline\n2. Click on Stage \"10. Small Roster - Classroom\"\n3. Add two or more classmates\n4. Return to Stage \"19. Classmates Dyad Census\" "
+            "en": "The dyad census interface was not shown because you do not have any \"classmates\" in this interview network. \n\nTo see the dyad census interface:\n\n1. Click the timeline on the left to show the interview timeline\n2. Click on Stage \"10. Small Roster - Classroom\"\n3. Add two or more classmates\n4. Return to Stage \"19. Classmates Dyad Census\" "
           }
         }
       ]
@@ -1399,18 +1399,18 @@
     {
       "id": "82824a20-3302-11eb-8982-61526ca14943",
       "label": {
-        "en-US": "Name Interpreter Introduction"
+        "en": "Name Interpreter Introduction"
       },
       "type": "Information",
       "title": {
-        "en-US": "Name Interpreter Techniques"
+        "en": "Name Interpreter Techniques"
       },
       "items": [
         {
           "id": "8b518105-17f1-4f95-91b4-f0d00a7bf5e5",
           "type": "text",
           "content": {
-            "en-US": "On the next series of screens, we will demonstrate several ways that information can be gathered about numerous alters at once using either the *Sociogram Interface* or by using various **Name Interpreter Interfaces**\n\nWhen a researcher wants to ask a question where the answer is either *Yes* or *No*, they may wish to utilize a sociogram screen so participants just select particular individuals. For example, on this screen we ask to select anyone whom you have asked for advice within the prior 6 months. \n\nFollowing the *Sociogram*, we demonstrate the **Ordinal Bin Interface**, where nodes appear at the top and can be quickly sorted into the correct category, and rearranged at any point. Next, the **Categorical Bin Interface** is demonstrated, where nodes can again be sorted into the most appropriate category. Bins can be clicked on to move nodes after they have been placed. \n"
+            "en": "On the next series of screens, we will demonstrate several ways that information can be gathered about numerous alters at once using either the *Sociogram Interface* or by using various **Name Interpreter Interfaces**\n\nWhen a researcher wants to ask a question where the answer is either *Yes* or *No*, they may wish to utilize a sociogram screen so participants just select particular individuals. For example, on this screen we ask to select anyone whom you have asked for advice within the prior 6 months. \n\nFollowing the *Sociogram*, we demonstrate the **Ordinal Bin Interface**, where nodes appear at the top and can be quickly sorted into the correct category, and rearranged at any point. Next, the **Categorical Bin Interface** is demonstrated, where nodes can again be sorted into the most appropriate category. Bins can be clicked on to move nodes after they have been placed. \n"
           }
         },
         {
@@ -1424,7 +1424,7 @@
     {
       "id": "0f43c470-3303-11eb-8982-61526ca14943",
       "label": {
-        "en-US": "Sociogram Attribute Nomination"
+        "en": "Sociogram Attribute Nomination"
       },
       "type": "Sociogram",
       "subject": {
@@ -1439,7 +1439,7 @@
         {
           "id": "1acac0d9-0ef6-4792-acb2-ba5e1dcc7b39",
           "text": {
-            "en-US": "Please select anyone who you have asked for advice within the previous 6 months"
+            "en": "Please select anyone who you have asked for advice within the previous 6 months"
           },
           "layout": {
             "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
@@ -1458,7 +1458,7 @@
         {
           "id": "ec442369-54a0-4306-8387-1cc612a5f778",
           "text": {
-            "en-US": "Please select anyone who has supported you financially within the previous 6 months"
+            "en": "Please select anyone who has supported you financially within the previous 6 months"
           },
           "layout": {
             "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
@@ -1479,7 +1479,7 @@
     {
       "id": "3b85fcc0-3302-11eb-8982-61526ca14943",
       "label": {
-        "en-US": "Contact Frequency"
+        "en": "Contact Frequency"
       },
       "type": "OrdinalBin",
       "subject": {
@@ -1490,7 +1490,7 @@
         {
           "id": "e0a50862-a3c2-461a-bece-5e4f7144c209",
           "text": {
-            "en-US": "When was the last time that you communicated with each of the people you named?"
+            "en": "When was the last time that you communicated with each of the people you named?"
           },
           "variable": "6637c4a8-c383-4a54-bfd8-7f093a1cb4e1",
           "color": "ord-color-seq-1"
@@ -1500,7 +1500,7 @@
     {
       "id": "44cbe790-330c-11eb-8982-61526ca14943",
       "label": {
-        "en-US": "Categorical Group Membership"
+        "en": "Categorical Group Membership"
       },
       "type": "CategoricalBin",
       "subject": {
@@ -1511,15 +1511,15 @@
         {
           "id": "663ae627-2b6e-4785-948e-01c2f8fbe725",
           "text": {
-            "en-US": "Which of these options best describes how you know this person?"
+            "en": "Which of these options best describes how you know this person?"
           },
           "variable": "132ad372-2ef2-4eec-820e-9eae91829e53",
           "otherVariable": "1380a661-ae08-4477-8e53-253f6c928ed9",
           "otherVariablePrompt": {
-            "en-US": "Which context best describes how you know this person?"
+            "en": "Which context best describes how you know this person?"
           },
           "otherOptionLabel": {
-            "en-US": "Other"
+            "en": "Other"
           }
         }
       ]
@@ -1527,25 +1527,25 @@
     {
       "id": "cd76d7f0-32fb-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Skip Logic and Filtering Info"
+        "en": "Skip Logic and Filtering Info"
       },
       "type": "Information",
       "title": {
-        "en-US": "Skip Logic and Network Filtering"
+        "en": "Skip Logic and Network Filtering"
       },
       "items": [
         {
           "id": "7043ca48-87e6-4517-a461-13957c71aa4c",
           "type": "text",
           "content": {
-            "en-US": "On the next screen, we have implemented both skip logic and network filtering for the stage. \n\nSkip logic is a feature that allows you to conditionally skip or show a stage within an interview, based on information previously provided by a participant. By implementing skip logic, a participant will bypass information not relevant to them, thus making for a more streamlined interview process. Skip logic rules can be based on _ego, alter,_ or _edges_ and resolve to either **true** or **false** which determines whether the stage is shown.\n\n"
+            "en": "On the next screen, we have implemented both skip logic and network filtering for the stage. \n\nSkip logic is a feature that allows you to conditionally skip or show a stage within an interview, based on information previously provided by a participant. By implementing skip logic, a participant will bypass information not relevant to them, thus making for a more streamlined interview process. Skip logic rules can be based on _ego, alter,_ or _edges_ and resolve to either **true** or **false** which determines whether the stage is shown.\n\n"
           }
         },
         {
           "id": "7e33fc24-0899-4779-b523-01d5254671bd",
           "type": "text",
           "content": {
-            "en-US": "Network filtering refers to a feature that allows you to define rules that determine which nodes or edges should be shown on a given stage. It can be used to only show a subset of a network, based on node type, node attributes, and edge types. \n\nIn summary, _skip logic_ determines if a stage should be shown at all and _network filtering_ determines which nodes should be shown on a given stage. \n"
+            "en": "Network filtering refers to a feature that allows you to define rules that determine which nodes or edges should be shown on a given stage. It can be used to only show a subset of a network, based on node type, node attributes, and edge types. \n\nIn summary, _skip logic_ determines if a stage should be shown at all and _network filtering_ determines which nodes should be shown on a given stage. \n"
           }
         },
         {
@@ -1559,7 +1559,7 @@
     {
       "id": "8acc7f90-32fb-11eb-8503-3b4fa95b8bc6",
       "label": {
-        "en-US": "Relationship Type"
+        "en": "Relationship Type"
       },
       "skipLogic": {
         "action": "SHOW",
@@ -1610,15 +1610,15 @@
         {
           "id": "7b354391-fe50-4de6-80ec-307a185b74ef",
           "text": {
-            "en-US": "You indicated that you've discussed social networks research with these people. Which category best describes your relationship with each person?"
+            "en": "You indicated that you've discussed social networks research with these people. Which category best describes your relationship with each person?"
           },
           "variable": "52138688-e1e9-418b-9c33-ec9f3def499b",
           "otherVariable": "2bee574a-a12e-4ee0-8610-263130299a2d",
           "otherVariablePrompt": {
-            "en-US": "What is your relationship with this person?"
+            "en": "What is your relationship with this person?"
           },
           "otherOptionLabel": {
-            "en-US": "Other"
+            "en": "Other"
           }
         }
       ]
@@ -1626,18 +1626,18 @@
     {
       "id": "8f07cf90-330c-11eb-8982-61526ca14943",
       "label": {
-        "en-US": "Narrative Introduction"
+        "en": "Narrative Introduction"
       },
       "type": "Information",
       "title": {
-        "en-US": "Narrative Interface"
+        "en": "Narrative Interface"
       },
       "items": [
         {
           "id": "80806937-1630-4600-8212-4cf21de990dd",
           "type": "text",
           "content": {
-            "en-US": "While we've already demonstrated how the *Sociogram Interface* can be used to place nodes, draw edges, and select particular nodes, the **Narrative Interface** is able to display information on the sociogram in a way to elicit qualitative data from the participant about their network. \n\nResearchers are able to configure display presets that are then able to be toggled on and off to reveal colored convex hulls which represent group-level data, to highlight nodes of a certain type, or to display different edge types. \n\nParticipants can interact with this screen by drawing, freezing, and erasing lines. Unlike many other screens, no data is collected on this Interface."
+            "en": "While we've already demonstrated how the *Sociogram Interface* can be used to place nodes, draw edges, and select particular nodes, the **Narrative Interface** is able to display information on the sociogram in a way to elicit qualitative data from the participant about their network. \n\nResearchers are able to configure display presets that are then able to be toggled on and off to reveal colored convex hulls which represent group-level data, to highlight nodes of a certain type, or to display different edge types. \n\nParticipants can interact with this screen by drawing, freezing, and erasing lines. Unlike many other screens, no data is collected on this Interface."
           }
         }
       ]
@@ -1645,16 +1645,16 @@
     {
       "id": "7fb3b540-330c-11eb-8982-61526ca14943",
       "attributesHeading": {
-        "en-US": "Attributes"
+        "en": "Attributes"
       },
       "linksHeading": {
-        "en-US": "Links"
+        "en": "Links"
       },
       "groupsHeading": {
-        "en-US": "Groups"
+        "en": "Groups"
       },
       "label": {
-        "en-US": "Narrative Interface"
+        "en": "Narrative Interface"
       },
       "type": "Narrative",
       "subject": {
@@ -1665,7 +1665,7 @@
         {
           "id": "b6241839-24df-4e50-bcb5-bdf7f3337ada",
           "label": {
-            "en-US": "Sample Preset"
+            "en": "Sample Preset"
           },
           "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe",
           "groupVariable": "132ad372-2ef2-4eec-820e-9eae91829e53",
@@ -1674,13 +1674,13 @@
               {
                 "type": "a489e869-2555-4896-a760-2d38046b54f9",
                 "label": {
-                  "en-US": "know"
+                  "en": "know"
                 }
               },
               {
                 "type": "8487418e-cd64-452b-9064-b46ffff28a79",
                 "label": {
-                  "en-US": "conflict"
+                  "en": "conflict"
                 }
               }
             ]
@@ -1689,13 +1689,13 @@
             {
               "variable": "7e84034b-9aa5-4996-a1c4-2deb3e38c645",
               "label": {
-                "en-US": "provides_advice"
+                "en": "provides_advice"
               }
             },
             {
               "variable": "20cf8ab4-9356-4568-81e2-8460258e1b45",
               "label": {
-                "en-US": "provides_material_support"
+                "en": "provides_material_support"
               }
             }
           ]
@@ -1712,24 +1712,24 @@
     {
       "id": "finish",
       "finishLabel": {
-        "en-US": "Finish"
+        "en": "Finish"
       },
       "finishConfirmation": {
-        "en-US": "Are you sure you want to finish the interview?"
+        "en": "Are you sure you want to finish the interview?"
       },
       "finishFailed": {
-        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
       },
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {
-        "en-US": "Finish Interview"
+        "en": "Finish Interview"
       },
       "content": {
-        "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+        "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
       "finishedContent": {
-        "en-US": "# Interview Finished\n\nThank you for participating!"
+        "en": "# Interview Finished\n\nThank you for participating!"
       },
       "outcome": "completed"
     },
@@ -1738,22 +1738,22 @@
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {
-        "en-US": "Not Taking Part"
+        "en": "Not Taking Part"
       },
       "content": {
-        "en-US": "# You Chose Not to Take Part\n\nThank you for your time. Because you chose not to take part in this study, the interview ends here. If you chose this by mistake, go back and change your answer. Otherwise, press Finish."
+        "en": "# You Chose Not to Take Part\n\nThank you for your time. Because you chose not to take part in this study, the interview ends here. If you chose this by mistake, go back and change your answer. Otherwise, press Finish."
       },
       "finishedContent": {
-        "en-US": "# Interview Finished\n\nThank you for your time."
+        "en": "# Interview Finished\n\nThank you for your time."
       },
       "finishLabel": {
-        "en-US": "Finish"
+        "en": "Finish"
       },
       "finishConfirmation": {
-        "en-US": "Are you sure you want to finish the interview?"
+        "en": "Are you sure you want to finish the interview?"
       },
       "finishFailed": {
-        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
       },
       "outcome": "terminated"
     }
@@ -1761,149 +1761,149 @@
   "interfaceText": {
     "navigation": {
       "exitInterview": {
-        "en-US": "Exit interview"
+        "en": "Exit interview"
       },
       "exitInterviewDescription": {
-        "en-US": "Your answers so far will be saved and you can continue later."
+        "en": "Your answers so far will be saved and you can continue later."
       },
       "back": {
-        "en-US": "Back"
+        "en": "Back"
       },
       "continue": {
-        "en-US": "Continue"
+        "en": "Continue"
       },
       "exitFailed": {
-        "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+        "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
       }
     },
     "interviewer": {
       "exitReview": {
-        "en-US": "Exit review"
+        "en": "Exit review"
       },
       "exitReviewTitle": {
-        "en-US": "Exit this review?"
+        "en": "Exit this review?"
       },
       "exitReviewDescription": {
-        "en-US": "Changes made during this review will not be saved."
+        "en": "Changes made during this review will not be saved."
       },
       "hiddenScreen": {
-        "en-US": "Hidden by answers"
+        "en": "Hidden by answers"
       },
       "outsidePath": {
-        "en-US": "Outside current path"
+        "en": "Outside current path"
       },
       "showScreenTitle": {
-        "en-US": "Show this screen?"
+        "en": "Show this screen?"
       },
       "hiddenScreenDescription": {
-        "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+        "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
       },
       "outsidePathDescription": {
-        "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+        "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
       },
       "showScreen": {
-        "en-US": "Show screen"
+        "en": "Show screen"
       }
     },
     "buttons": {
       "cancel": {
-        "en-US": "Cancel"
+        "en": "Cancel"
       },
       "done": {
-        "en-US": "Done"
+        "en": "Done"
       },
       "delete": {
-        "en-US": "Delete"
+        "en": "Delete"
       },
       "yes": {
-        "en-US": "Yes"
+        "en": "Yes"
       },
       "no": {
-        "en-US": "No"
+        "en": "No"
       },
       "save": {
-        "en-US": "Save"
+        "en": "Save"
       },
       "copy": {
-        "en-US": "Copy"
+        "en": "Copy"
       },
       "copied": {
-        "en-US": "Copied"
+        "en": "Copied"
       }
     },
     "messages": {
       "stageError": {
-        "en-US": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+        "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
       "itemUnavailable": {
-        "en-US": "This item could not be displayed."
+        "en": "This item could not be displayed."
       },
       "error": {
-        "en-US": "An error occurred."
+        "en": "An error occurred."
       },
       "externalDataError": {
-        "en-US": "External data could not be loaded."
+        "en": "External data could not be loaded."
       },
       "loading": {
-        "en-US": "Loading…"
+        "en": "Loading…"
       },
       "unnamed": {
-        "en-US": "Unnamed"
+        "en": "Unnamed"
       }
     },
     "search": {
       "searchLabel": {
-        "en-US": "Search"
+        "en": "Search"
       },
       "searchNoMatch": {
-        "en-US": "Nothing matched your search term."
+        "en": "Nothing matched your search term."
       }
     },
     "forms": {
       "discardChangesTitle": {
-        "en-US": "Discard changes?"
+        "en": "Discard changes?"
       },
       "discardChangesDescription": {
-        "en-US": "Do you want to discard your changes?"
+        "en": "Do you want to discard your changes?"
       }
     },
     "validation": {
       "required": {
-        "en-US": "You must answer this question before continuing."
+        "en": "You must answer this question before continuing."
       },
       "minDate": {
-        "en-US": "Must be on or after {min}."
+        "en": "Must be on or after {min}."
       }
     },
     "categoricalBin": {
       "placeHere": {
-        "en-US": "Place here"
+        "en": "Place here"
       }
     },
     "quickAdd": {
       "quickAddHint": {
-        "en-US": "Press Enter when you are finished."
+        "en": "Press Enter when you are finished."
       }
     },
     "roster": {
       "dropToRemove": {
-        "en-US": "Drop here to remove"
+        "en": "Drop here to remove"
       }
     },
     "narrative": {
       "toggleDrawing": {
-        "en-US": "Toggle drawing"
+        "en": "Toggle drawing"
       },
       "toggleFreezing": {
-        "en-US": "Toggle freezing annotations"
+        "en": "Toggle freezing annotations"
       },
       "resetAnnotations": {
-        "en-US": "Reset annotations"
+        "en": "Reset annotations"
       }
     },
     "egoForm": {
       "scrollForQuestions": {
-        "en-US": "Scroll to see more questions"
+        "en": "Scroll to see more questions"
       }
     }
   }

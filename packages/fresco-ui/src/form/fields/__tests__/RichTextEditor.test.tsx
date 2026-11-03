@@ -190,6 +190,10 @@ describe('RichTextEditorField', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add link' }));
     const url = await screen.findByLabelText('Link URL');
+    // The panel is a dialog, named as the button that opened it.
+    expect(screen.getByRole('dialog', { name: 'Add link' })).toContainElement(
+      url,
+    );
     await user.type(url, 'https://example.com');
 
     rerender(field(true));
@@ -1155,6 +1159,10 @@ describe('undo and redo of values and versions', () => {
 
     await user.click(editor);
     await user.click(screen.getByRole('button', { name: 'Insert a value' }));
+    // The menu is a dialog, named as the button that opened it.
+    expect(
+      await screen.findByRole('dialog', { name: 'Insert a value' }),
+    ).toBeInTheDocument();
     await user.click(await screen.findByRole('option', { name: /Name/ }));
     await waitFor(() =>
       expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),

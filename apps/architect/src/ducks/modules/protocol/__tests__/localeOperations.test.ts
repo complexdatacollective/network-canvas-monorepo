@@ -693,20 +693,18 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
     );
   });
 
-  it('gives a new default language with no supplied labels the English ones, so a language added later is still filled in', () => {
+  it('leaves a new default language with no built-in labels without them, and still fills in a language added later', () => {
     const withHungarian = protocolOf(addLocales(withPedigree(), ['hu']));
     const huDefault = protocolOf(setDefaultLocale(withHungarian, 'hu'));
     expect(labelsOf(huDefault, 'node', 'relative', 'sex')).toEqual(
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
         en: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
-        hu: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
       })),
     );
     const withGerman = protocolOf(addLocales(huDefault, ['de']));
     expect(labelsOf(withGerman, 'node', 'relative', 'sex')).toEqual(
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
         en: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
-        hu: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
         de: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'de'),
       })),
     );
@@ -758,16 +756,17 @@ describe('a roster stage’s supplied panel title', () => {
     ).toEqual({ en: 'Services' });
   });
 
-  // A panel title is required, so a language Network Canvas has no wording
-  // for keeps the English text rather than being left with none.
-  it('stays in English when the protocol’s only language is corrected to one it is not supplied in', () => {
+  // Network Canvas writes its wording only in a language it has it in, so
+  // the researcher writes this one; until then the protocol can't be
+  // downloaded.
+  it('is left for the researcher to write when the protocol’s only language is corrected to one Network Canvas has no wording in', () => {
     expect(
       panelTitleOf(
         protocolOf(
           changeLocale(withRoster({ en: 'Available to add' }), 'en', 'hu'),
         ),
       ),
-    ).toEqual({ hu: 'Available to add' });
+    ).toEqual({});
   });
 });
 

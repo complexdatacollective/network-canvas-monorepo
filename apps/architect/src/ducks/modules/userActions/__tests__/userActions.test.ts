@@ -252,15 +252,11 @@ describe('userActions', () => {
           mode: 'confirmation',
           content: {},
           finishedContent: {},
-          // The screen's own words are required, so they are English under
-          // Japanese until the researcher translates them.
-          finishLabel: { ja: 'Finish' },
-          finishConfirmation: {
-            ja: 'Are you sure you want to finish the interview?',
-          },
-          finishFailed: {
-            ja: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
-          },
+          // The screen's own words start empty too, for the researcher to
+          // write in Japanese before the protocol can be downloaded.
+          finishLabel: {},
+          finishConfirmation: {},
+          finishFailed: {},
           outcome: 'completed',
         },
       ]);

@@ -170,4 +170,20 @@ describe('the editor for the stage where a participant chooses a language', () =
       title: { [FIXTURE_LANGUAGE]: 'Choose a language' },
     });
   });
+
+  it('starts a new stage without a heading in a language Network Canvas has no wording in', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'LanguageChooser', position: 0 },
+      editor: mountedAs(languageChooserStageEditor.LanguageChooser),
+      localization: { defaultLocale: 'en-GB', locales: ['en-GB'] },
+    });
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+
+    const saved = await harness.submit();
+    // Built-in wording may hold no text while the protocol is being written;
+    // the researcher writes it before the protocol can be downloaded.
+    expect(saved?.stageDocument).toEqual(
+      expect.objectContaining({ title: {} }),
+    );
+  });
 });

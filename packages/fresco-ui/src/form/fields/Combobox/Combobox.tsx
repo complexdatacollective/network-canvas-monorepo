@@ -301,6 +301,11 @@ function ComboboxField(props: ComboboxFieldProps) {
         {/* The popup layer, as `Popover`'s: this can open from inside one. */}
         <Combobox.Positioner align="start" sideOffset={10} className="z-3000">
           <Combobox.Popup
+            // The popup is a dialog when it holds the search input, and a
+            // dialog needs a name of its own; the field's name is the one a
+            // participant already knows it by.
+            aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledBy}
             render={
               <Surface
                 floating
