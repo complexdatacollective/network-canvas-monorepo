@@ -19,9 +19,10 @@ const DEFAULT_SHADOW_COLOR = 'oklch(10% 1 180)';
  * from `--published-bg` when an ancestor sets it, so the value is plain CSS
  * that works outside Tailwind too.
  *
- * Exported as `@codaco/tailwind-config/elevation` for code that styles
- * elements without Tailwind: the community forum's Discourse theme gives its
- * buttons the same shadow as the shared Button.
+ * Exported to this repository as `@codaco/tailwind-config/elevation`, for
+ * code that styles elements without Tailwind: the community forum's Discourse
+ * theme gives its buttons the same shadow as the shared Button. It is not
+ * published (see `publishConfig.exports`).
  */
 export function elevationShadow(
   elevation: Elevation,

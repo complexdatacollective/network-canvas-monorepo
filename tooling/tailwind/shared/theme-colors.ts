@@ -11,9 +11,10 @@
  *
  * The colour maths (OKLCH conversion, mixing, WCAG contrast) is colorjs.io's.
  *
- * Exported as `@codaco/tailwind-config/theme-colors` for build tools that need
- * a token as a concrete colour: the contrast test (`tests/`) and the community
- * forum's Discourse theme, whose colour palettes must be hex values.
+ * Exported to this repository as `@codaco/tailwind-config/theme-colors`, for
+ * build tools that need a token as a concrete colour: the contrast test
+ * (`tests/`) and the community forum's Discourse theme, whose colour palettes
+ * must be hex values. It is not published (see `publishConfig.exports`).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';

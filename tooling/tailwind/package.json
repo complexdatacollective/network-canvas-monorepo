@@ -29,6 +29,14 @@
     "./type-scale": "./shared/type-scale.ts"
   },
   "publishConfig": {
+    "exports": {
+      "./fresco.css": "./fresco/fresco.css",
+      "./studio.css": "./fresco/studio.css",
+      "./colors.css": "./shared/colors.css",
+      "./interfaces.css": "./shared/interfaces.css",
+      "./fonts/inclusive-sans.css": "./shared/fonts/inclusive-sans.css",
+      "./fonts/nunito.css": "./shared/fonts/nunito.css"
+    },
     "access": "public"
   },
   "scripts": {
@@ -38,13 +46,13 @@
   "dependencies": {
     "@fontsource-variable/inclusive-sans": "catalog:",
     "@fontsource-variable/nunito": "catalog:",
-    "colorjs.io": "catalog:",
     "motion": "catalog:"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
     "@types/node": "catalog:",
+    "colorjs.io": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

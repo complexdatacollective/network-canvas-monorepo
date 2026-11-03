@@ -3,9 +3,10 @@
  * `@theme` block in `fresco/theme.css`: each step's font size with the line
  * height and letter spacing Tailwind's `text-*` utilities apply alongside it.
  *
- * Exported as `@codaco/tailwind-config/type-scale` for code that styles
- * elements without Tailwind: the community forum's Discourse theme sets
- * Discourse's type steps from it. Sizes are written against
+ * Exported to this repository as `@codaco/tailwind-config/type-scale`, for
+ * code that styles elements without Tailwind: the community forum's Discourse
+ * theme sets Discourse's type steps from it. It is not published (see
+ * `publishConfig.exports`). Sizes are written against
  * `var(--theme-root-size)` and `var(--theme-vw, 1vw)`, as in the theme, so a
  * consumer declares (or renames) those.
  */
