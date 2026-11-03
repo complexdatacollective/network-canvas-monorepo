@@ -41,6 +41,7 @@ export * from './interface-owned-options.ts';
 export * from './stages/index.ts';
 export * from './variables/index.ts';
 
+import { findEmptyTextPaths } from './built-in-wording.ts';
 // Import what we need for the ProtocolSchema
 import type { Codebook, NodeDefinition } from './codebook/index.ts';
 import type { FormField, StageSubject } from './common/index.ts';
@@ -666,6 +667,14 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     ProtocolStructureSchema,
     protocol,
   );
+
+  for (const path of findEmptyTextPaths(protocol, localizedStrings, hits)) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'Text must have at least one translation.',
+      path: [...path],
+    });
+  }
 
   if (localization) {
     for (const hit of localizedStrings) {

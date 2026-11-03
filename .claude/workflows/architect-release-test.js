@@ -782,6 +782,100 @@ row's Remove control.
 9. "cleanup": Delete your protocol from the start screen.`,
   },
   {
+    key: 'base-languages',
+    tag: 'base',
+    browser: 'playwright',
+    expected: [
+      'create-variant',
+      'variant-languages',
+      'variant-not-downloadable',
+      'base-default',
+      'preview-fallback',
+      'decline-base',
+      'no-close-offer',
+      'built-in-notice',
+      'default-region',
+      'cleanup',
+    ],
+    checklist: `
+Network Canvas writes its own wording (button labels, the finish stage's
+name, closing and finished text, and other messages) into a protocol only in
+a language it has that wording in: Spanish (and Spain's Spanish), but not
+Mexican Spanish; English (and American English, which its English is), but
+not British English. When a researcher adds, or creates a
+protocol in, a regional variant of one of those languages, Architect asks
+whether to also add that language ("Also add Spanish?"). Added, the base
+language holds Network Canvas's wording and the interview shows it wherever
+the variant has no text of its own; it is never made the default. A
+language that is only close to one (Galician to Spanish) is never offered.
+While the default language has no built-in wording, the protocol can't be
+downloaded. Architect names languages in the browser's language, so
+"Mexican Spanish" may read "Spanish (Mexico)"; match by the language, not
+the exact spelling.
+1. "create-variant": Start creating a protocol. In the creation dialog's
+   languages box remove the starting language and choose Mexican Spanish
+   ("es-MX"), so it is the only language and the default, then press
+   "Create Protocol". Confirm a dialog titled "Also add Spanish?" opens
+   before the editor, saying Network Canvas has built-in wording in Spanish
+   but not in Mexican Spanish, that participants using Mexican Spanish see
+   the Spanish wording wherever you haven’t written your own, and (because
+   Mexican Spanish is the default) that the protocol can’t be downloaded
+   until its built-in wording is translated into Mexican Spanish, or Spanish
+   is made the default. Its buttons are "Add Spanish" and "Don’t add
+   Spanish". Press "Add Spanish".
+2. "variant-languages": Open the "Languages" page. Confirm it lists exactly
+   two languages: Mexican Spanish marked "Default", and Spanish, not marked
+   "Default". Spanish must read "M of M strings translated" with no
+   "Missing translations" badge; Mexican Spanish must show "Missing
+   translations" with fewer than M translated (note both counts).
+3. "variant-not-downloadable": Go to the stages. Confirm a warning titled
+   "This protocol can’t be downloaded yet" is shown, saying a stage that
+   ends the interview has no text for its closing or finished screen in
+   Mexican Spanish. Press "Download" and confirm a dialog with that same
+   title opens and no file downloads; close it with "OK".
+4. "base-default": On the "Languages" page set the "Default language"
+   select to Spanish. Go to the stages and confirm the warning is gone.
+5. "preview-fallback": Open the stage "Finalizar entrevista" (the finish
+   stage, named in Spanish now) with its "Edit stage" control and press
+   "Preview". In the new preview tab choose Mexican Spanish in the "Preview
+   language" select and confirm the stage shows the Spanish heading
+   "Finalizar entrevista" and finish button "Finalizar" (the variant has no
+   text, so Spanish is shown, never English). Close the preview tab, select
+   the editor's tab and leave the editor with "Cancel".
+6. "decline-base": On the "Languages" page press "Add languages", choose
+   Austrian German ("de-AT") and press the dialog's own "Add languages".
+   Confirm a dialog titled "Also add German?" opens, without the sentence
+   about the default language (Austrian German is not the default), and
+   press "Don’t add German". Confirm the list gains Austrian German and no
+   German row.
+7. "no-close-offer": Press "Add languages" again, choose Galician ("gl")
+   and add it. Confirm no "Also add …?" dialog opens and the list gains a
+   Galician row, with no other new row.
+8. "built-in-notice": Set the "Default language" select to Galician. Go to
+   the stages and confirm the warning "This protocol can’t be downloaded
+   yet" is back. Open the "Translation table", filter "Translations to
+   show" to "Missing Galician", and write Galician text for the finish
+   stage's "Closing text" and "Finished text" (any text, for example "#
+   Fin" and "# Rematado"), then "Save". Go to the stages and confirm the
+   warning now says Network Canvas has no built-in wording, such as button
+   labels and messages, in Galician, offering a "Show the wording to
+   translate" link. Press it and confirm the "Translation table" opens
+   listing only Galician rows that need translating (the finish button
+   among them). Close it with "Cancel", then set the "Default language"
+   back to Spanish and confirm the warning is gone.
+9. "default-region": Network Canvas's English is American English, so
+   American English counts as English. Press "Add languages", choose
+   American English ("en-US") and add it. Confirm no "Also add English?"
+   dialog opens and the list gains only an American English row, which
+   shows no "Missing translations" badge for the built-in wording (its
+   count may still be short of Spanish's for your own text). Set the
+   "Default language" select to American English, go to the stages and
+   confirm the finish stage is named "Finish Interview" and no "This
+   protocol can’t be downloaded yet" warning is shown. Set the "Default
+   language" back to Spanish.
+10. "cleanup": Delete your protocol from the start screen.`,
+  },
+  {
     key: 'send-to-interviewer',
     tag: 'send',
     browser: 'playwright',

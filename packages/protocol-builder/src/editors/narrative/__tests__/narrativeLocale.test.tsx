@@ -42,7 +42,7 @@ describe('the narrative sections, read in Spanish', () => {
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Vistas predefinidas',
       'Comportamientos de la narrativa',
-      'Textos del lienzo',
+      'Personalizar la redacción predeterminada',
     ]);
     expect(
       screen.getByRole('switch', { name: 'Dibujo libre' }),

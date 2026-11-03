@@ -48,15 +48,16 @@ type EdgeEntry = {
 };
 
 /**
- * The words the stage holds for its tools. The connection and groups tools
- * appear only when the stage has edge types and groups, and so have words.
+ * The words of the tools, which every Network Composer shows alike. The
+ * connection and groups tools appear only when the stage has edge types and
+ * groups.
  */
 export type ComposerToolWords = Readonly<{
   addNamePlaceholder: string;
   addPerson: string;
   automaticLayout: string;
-  drawConnection?: string;
-  groups?: string;
+  drawConnection: string;
+  groups: string;
 }>;
 
 type ToolPaletteProps = {
@@ -226,7 +227,7 @@ export default function ToolPalette({
 
         {/* One edge button opens a menu instead of crowding the toolbar with
             identical link icons. */}
-        {edges.length > 0 && words.drawConnection !== undefined ? (
+        {edges.length > 0 ? (
           <ToolbarMenu
             trigger={
               <ToolbarIconButton
@@ -257,7 +258,7 @@ export default function ToolPalette({
         ) : null}
 
         {/* A single Groups button opens the active group value picker. */}
-        {groupVariable !== null && words.groups !== undefined ? (
+        {groupVariable !== null ? (
           <ToolbarPopover
             open={groupsOpen}
             onOpenChange={setGroupsOpen}

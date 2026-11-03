@@ -117,15 +117,26 @@ export default function EdgeLayer({
           hit.setAttribute('y2', String(to.y));
         }
       });
-
-      rafRef.current = requestAnimationFrame(updatePositions);
     };
 
-    rafRef.current = requestAnimationFrame(updatePositions);
+    // Redraw when a position changes, at most once a frame, so a canvas where
+    // nothing moves does no work.
+    updatePositions();
+    const unsubscribe = store.subscribe(
+      (state) => state.positions,
+      () => {
+        rafRef.current ??= requestAnimationFrame(() => {
+          rafRef.current = null;
+          updatePositions();
+        });
+      },
+    );
 
     return () => {
+      unsubscribe();
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
       clickListeners.forEach((remove) => remove());
       visualLines.forEach((el) => {

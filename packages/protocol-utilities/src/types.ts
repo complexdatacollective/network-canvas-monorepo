@@ -355,7 +355,7 @@ export type StageEntry = {
   narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
   narrativePedigreeShowAtRiskStatuses?: boolean;
   /** Stage settings holding participant-visible wording the researcher has
-   * written, by setting name (`tooltips.addPerson` for one inside a group; a
+   * written, by setting name (`conditionText.selectCondition` for one inside a group; a
    * Family Pedigree's may be named with or without its `wording.` group); a
    * setting not named here takes the text Network Canvas supplies. */
   wording?: Record<string, TextInput>;
@@ -615,7 +615,7 @@ export type AddStageInput = {
   >;
   /** Stage settings holding participant-visible wording the researcher has
    * written, by setting name (for example `panelTitle`, or a dotted name
-   * such as `tooltips.addPerson` for a setting inside a group); a setting not
+   * such as `conditionText.selectCondition` for a setting inside a group); a setting not
    * named here takes the text Network Canvas supplies. */
   wording?: Record<string, TextInput>;
   // Geospatial

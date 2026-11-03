@@ -106,9 +106,8 @@ export const newStageFields = (
 ): Record<string, FieldValue> => {
   const template = getInterfaceTemplate(interfaceType);
   if (interfaceType === 'FinishSession') {
-    const { content, finishedContent } = defaultFinishSessionFields(
-      localization.locales,
-    );
+    const { content, finishedContent } =
+      defaultFinishSessionFields(localization);
     Object.assign(template, { content, finishedContent });
   }
   return withMissingSuppliedStageText(template, interfaceType, localization);

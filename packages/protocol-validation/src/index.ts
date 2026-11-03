@@ -45,6 +45,7 @@ import {
   validateNames,
 } from './utils/validateExternalData.ts';
 import validateProtocol, {
+  BUILT_IN_WORDING_MISSING,
   FINISH_STAGE_TEXT_MISSING,
   formatProtocolValidationIssues,
   ProtocolValidationError,
@@ -65,6 +66,7 @@ export {
 export {
   normalizeLocalePreferences,
   parseAcceptLanguage,
+  resolveProtocolLocale,
   selectProtocolLocale,
 } from './localization/localePreferences.ts';
 export {
@@ -230,8 +232,14 @@ export {
   PEDIGREE_PERSON_ARGUMENTS,
   PEDIGREE_WORDING_ARGUMENTS,
 } from './schemas/9/stages/family-pedigree.ts';
-// The arguments a name generator's minimum notice may use.
-export { NODE_COUNT_ARGUMENTS } from './schemas/9/stages/name-generator.ts';
+// The arguments a name generator's limit notices may use, and those of the
+// other words a stage shows about its nodes, for an editor of them.
+export {
+  MAX_NODES_ARGUMENTS,
+  MIN_NODES_ARGUMENTS,
+} from './schemas/9/stages/name-generator.ts';
+export { UNNAMED_LABEL_ARGUMENTS } from './schemas/9/stages/name-generator-roster.ts';
+export { SUBJECT_ARGUMENTS } from './schemas/9/stage-wording/subject.ts';
 export { familyPedigreeWordingIn } from './schemas/9/stage-wording/family-pedigree.ts';
 // The Family Pedigree option labels Network Canvas supplies, written into a
 // protocol by Architect.
@@ -245,7 +253,11 @@ export {
   suppliedOptionLabelsAfterLanguageChange,
 } from './schemas/9/family-pedigree-option-labels.ts';
 // How text Network Canvas supplies follows a change to a protocol's languages.
-export { type LanguageChange } from './schemas/9/supplied-text.ts';
+export {
+  hasSuppliedWording,
+  type LanguageChange,
+  suppliedBaseLanguage,
+} from './schemas/9/supplied-text.ts';
 // The arguments of the Narrative Pedigree's snapshot titles, which the stage
 // editor offers the same placeholders as the schema declares.
 export {
@@ -256,7 +268,6 @@ export {
 // stage by Architect when it is made and when a language is added.
 export {
   inapplicableStageSettings,
-  isSuppliedEnglishMessage,
   missingSuppliedStageText,
   type SuppliedStageText,
   suppliedStageText,
@@ -269,7 +280,10 @@ export {
   INTERFACE_TEXT_MESSAGES,
   type InterfaceText,
   interfaceTextAfterLanguageChange,
+  interfaceTextArguments,
   type InterfaceTextUpdate,
+  STAGE_TYPE_INTERFACE_TEXT,
+  suppliedInterfaceText,
   withInterfaceText,
 } from './schemas/9/interface-text.ts';
 // The finish stage text Network Canvas supplies, written into a protocol by
@@ -288,6 +302,10 @@ export {
   type FinishStageTextField,
   type FinishStageTextProblem,
 } from './schemas/9/finish-stage-text.ts';
+export {
+  type BuiltInWordingProblem,
+  findBuiltInWordingProblems,
+} from './schemas/9/built-in-wording.ts';
 export {
   findTimelineStructureProblems,
   isFinishSessionStage,
@@ -359,6 +377,7 @@ export {
   type ExtractedAssets,
   extractProtocol,
   extractProtocolFromZip,
+  BUILT_IN_WORDING_MISSING,
   FINISH_STAGE_TEXT_MISSING,
   findCollidingAttributeNames,
   formatProtocolValidationIssues,

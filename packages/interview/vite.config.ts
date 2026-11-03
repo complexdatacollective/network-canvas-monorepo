@@ -231,19 +231,14 @@ export default defineConfig({
     // verbatim by cssCopyPlugin and consumed via the `./styles.css` export.
     lib: {
       // The main (React) public API, plus React-free entries a server can
-      // import: the `contract` bundle of utilities/types, the per-language
-      // `locales` loaders, and the `catalog` loader a server host awaits to
-      // hand `Shell` its messages. The React code (`Shell`, contexts) is
-      // reachable only from `index`, so it never lands in those bundles —
-      // letting server (RSC) code import them without evaluating any
-      // module-level `createContext`. `catalog` and `index` share one catalog
-      // source through a common chunk, so a language loaded through either is
-      // loaded for both. The `protocol-schema-version` and `protocol-payload`
-      // entries are their own bundles so a host's Node-loaded code can import
-      // just that constant or the payload converter.
+      // import: the `contract` bundle of utilities/types. The React code
+      // (`Shell`, contexts) is reachable only from `index`, so it never lands
+      // in that bundle — letting server (RSC) code import it without
+      // evaluating any module-level `createContext`. The
+      // `protocol-schema-version` and `protocol-payload` entries are their own
+      // bundles so a host's Node-loaded code can import just that constant or
+      // the payload converter.
       entry: {
-        'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
-        'catalog': resolve(__dirname, 'src/i18n/catalog.ts'),
         'index': resolve(__dirname, 'src/index.ts'),
         'contract': resolve(__dirname, 'src/contract/index.ts'),
         'protocol-schema-version': resolve(

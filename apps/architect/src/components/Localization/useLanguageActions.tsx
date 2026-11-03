@@ -36,6 +36,7 @@ import {
   LanguagePicker,
   languageOptionText,
 } from './LanguagePicker';
+import { useBaseLanguageOffer } from './useBaseLanguageOffer';
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
@@ -159,6 +160,7 @@ export const useLanguageActions = (
   const { openDialog, confirm } = useDialog();
   const protocol = useSelector(getProtocol);
   const languageName = useLanguageName();
+  const offerBaseLanguage = useBaseLanguageOffer();
   const declared = protocol?.localization.locales;
   const draftTexts = draft?.texts ?? NO_TEXTS;
   const rewriteDraft = draft?.rewrite;
@@ -243,8 +245,9 @@ export const useLanguageActions = (
     if (!values) return;
     const locales = chosenLanguages(values);
     if (locales.length === 0) return;
+    const bases = await offerBaseLanguage(locales, declared);
     const before = localizationNow();
-    dispatch(addProtocolLocales({ locales }));
+    dispatch(addProtocolLocales({ locales: [...locales, ...bases] }));
     followInDraft(before, unchangedText);
   }, [
     availableChoices,
@@ -254,6 +257,7 @@ export const useLanguageActions = (
     followInDraft,
     intl,
     localizationNow,
+    offerBaseLanguage,
     openDialog,
   ]);
 

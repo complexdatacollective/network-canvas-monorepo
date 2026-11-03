@@ -2,28 +2,45 @@
   "name": "E2E Fixture",
   "description": "Lean fixture for the Interviewer app e2e suite.",
   "schemaVersion": 9,
-  "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US"]
+  },
   "lastModified": "2026-07-12T00:00:00.000Z",
   "codebook": {
     "node": {
       "person": {
         "name": "Person",
         "color": "node-color-seq-1",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "name": {
             "name": "name",
             "type": "text",
             "component": "Text",
-            "validation": { "required": true }
+            "validation": {
+              "required": true
+            }
           },
           "close": {
             "name": "close",
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": { "en-US": "Yes" }, "value": true },
-              { "label": { "en-US": "No" }, "value": false }
+              {
+                "label": {
+                  "en-US": "Yes"
+                },
+                "value": true
+              },
+              {
+                "label": {
+                  "en-US": "No"
+                },
+                "value": false
+              }
             ]
           },
           "layout": {
@@ -45,7 +62,9 @@
           "name": "ego_name",
           "type": "text",
           "component": "Text",
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         }
       }
     }
@@ -54,13 +73,19 @@
     {
       "id": "stage-info",
       "type": "Information",
-      "label": { "en-US": "Welcome" },
-      "title": { "en-US": "Welcome" },
+      "label": {
+        "en-US": "Welcome"
+      },
+      "title": {
+        "en-US": "Welcome"
+      },
       "items": [
         {
           "id": "item-1",
           "type": "text",
-          "content": { "en-US": "# Welcome\n\nThanks for taking part." }
+          "content": {
+            "en-US": "# Welcome\n\nThanks for taking part."
+          }
         }
       ]
     },
@@ -74,13 +99,17 @@
         "title": {
           "en-US": "Introduction"
         },
-        "text": { "en-US": "Tell us about **you**." }
+        "text": {
+          "en-US": "Tell us about **you**."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_name",
-            "prompt": { "en-US": "What is your name?" }
+            "prompt": {
+              "en-US": "What is your name?"
+            }
           }
         ]
       }
@@ -93,38 +122,66 @@
       "maxNodesNotice": {
         "en-US": "You have completed this task. Click the next arrow to continue."
       },
-      "quickAddHint": {
-        "en-US": "Press Enter when you are finished."
-      },
       "type": "NameGeneratorQuickAdd",
-      "label": { "en-US": "Name people" },
-      "subject": { "entity": "node", "type": "person" },
+      "label": {
+        "en-US": "Name people"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
       "quickAdd": "name",
-      "behaviours": { "minNodes": 1, "maxNodes": 8 },
+      "behaviours": {
+        "minNodes": 1,
+        "maxNodes": 8
+      },
       "prompts": [
-        { "id": "p1", "text": { "en-US": "Who are the people you know?" } }
-      ]
+        {
+          "id": "p1",
+          "text": {
+            "en-US": "Who are the people you know?"
+          }
+        }
+      ],
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      }
     },
     {
       "id": "stage-socio",
       "type": "Sociogram",
-      "label": { "en-US": "Connect people" },
-      "subject": { "entity": "node", "type": "person" },
-      "background": { "concentricCircles": 4, "skewedTowardCenter": true },
+      "label": {
+        "en-US": "Connect people"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
       "prompts": [
         {
           "id": "p1",
           "text": {
             "en-US": "Drag to place; link people who know each other."
           },
-          "layout": { "layoutVariable": "layout" },
-          "edges": { "create": "knows", "display": ["knows"] }
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "create": "knows",
+            "display": ["knows"]
+          }
         }
       ]
     },
     {
       "id": "finish",
-      "finishLabel": { "en-US": "Finish" },
+      "finishLabel": {
+        "en-US": "Finish"
+      },
       "finishConfirmation": {
         "en-US": "Are you sure you want to finish the interview?"
       },
@@ -133,7 +190,9 @@
       },
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": { "en-US": "Finish Interview" },
+      "label": {
+        "en-US": "Finish Interview"
+      },
       "content": {
         "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
@@ -156,6 +215,38 @@
       },
       "continue": {
         "en-US": "Continue"
+      },
+      "exitFailed": {
+        "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en-US": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en-US": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en-US": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en-US": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en-US": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en-US": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en-US": "Show screen"
       }
     },
     "buttons": {
@@ -173,6 +264,12 @@
       },
       "no": {
         "en-US": "No"
+      },
+      "copy": {
+        "en-US": "Copy"
+      },
+      "copied": {
+        "en-US": "Copied"
       }
     },
     "messages": {
@@ -184,6 +281,20 @@
       },
       "error": {
         "en-US": "An error occurred."
+      },
+      "loading": {
+        "en-US": "Loading…"
+      },
+      "unnamed": {
+        "en-US": "Unnamed"
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en-US": "Search"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term."
       }
     },
     "forms": {
@@ -197,6 +308,16 @@
     "validation": {
       "required": {
         "en-US": "You must answer this question before continuing."
+      }
+    },
+    "quickAdd": {
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      }
+    },
+    "egoForm": {
+      "scrollForQuestions": {
+        "en-US": "Scroll to see more questions"
       }
     }
   }

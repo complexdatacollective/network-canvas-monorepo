@@ -23,31 +23,76 @@ describe('the roster panel title Network Canvas supplies', () => {
   it('is written in each protocol language it is supplied in', () => {
     expect(
       suppliedStageText('NameGeneratorRoster', {
-        defaultLocale: 'en-GB',
-        locales: ['en-GB', 'es', 'hu'],
+        defaultLocale: 'en',
+        locales: ['en', 'es', 'hu'],
       }).filter(panelTitleOnly),
     ).toEqual([
       {
         path: ['panelTitle'],
-        value: { 'en-GB': 'Available to add', 'es': 'Disponibles para añadir' },
+        value: { en: 'Available to add', es: 'Disponibles para añadir' },
       },
     ]);
   });
 
-  // It is required, so a default language Network Canvas has no wording for
-  // holds the English text, as the Family Pedigree's option labels do.
-  it('is written in English in a default language it is not supplied in', () => {
+  // Only the exact language is written: a default language Network Canvas
+  // has no wording in is left for the researcher to write, with no English
+  // in its place.
+  it('is not written in a default language it is not supplied in', () => {
     expect(
       suppliedStageText('NameGeneratorRoster', {
         defaultLocale: 'hu',
         locales: ['hu', 'fr'],
       }).filter(panelTitleOnly),
     ).toEqual([
-      {
-        path: ['panelTitle'],
-        value: { hu: 'Available to add', fr: 'Éléments disponibles' },
-      },
+      { path: ['panelTitle'], value: { fr: 'Éléments disponibles' } },
     ]);
+  });
+
+  describe('beside a regional variant of a language it is supplied in', () => {
+    it('is written in the base language only, which the variant falls back to', () => {
+      expect(
+        suppliedStageText('NameGeneratorRoster', {
+          defaultLocale: 'en',
+          locales: ['en', 'es-MX', 'es'],
+        }).filter(panelTitleOnly),
+      ).toEqual([
+        {
+          path: ['panelTitle'],
+          value: { en: 'Available to add', es: 'Disponibles para añadir' },
+        },
+      ]);
+    });
+
+    it('is still Network Canvas’s in a default language it is not supplied in while that is unwritten', () => {
+      const roster = {
+        type: 'NameGeneratorRoster',
+        panelTitle: { es: 'Disponibles para añadir' },
+      };
+      expect(
+        suppliedStageTextAfterLanguageChange(roster, {
+          before: { defaultLocale: 'es-MX', locales: ['es-MX', 'es'] },
+          after: { defaultLocale: 'es-MX', locales: ['es-MX', 'es', 'fr'] },
+        }),
+      ).toEqual([
+        {
+          path: ['panelTitle'],
+          value: { es: 'Disponibles para añadir', fr: 'Éléments disponibles' },
+        },
+      ]);
+    });
+
+    it('is the researcher’s once they write it in that default language', () => {
+      const roster = {
+        type: 'NameGeneratorRoster',
+        panelTitle: { 'es-MX': 'Disponibles', 'es': 'Disponibles para añadir' },
+      };
+      expect(
+        suppliedStageTextAfterLanguageChange(roster, {
+          before: { defaultLocale: 'es-MX', locales: ['es-MX', 'es'] },
+          after: { defaultLocale: 'es-MX', locales: ['es-MX', 'es', 'fr'] },
+        }),
+      ).toEqual([]);
+    });
   });
 
   it('is supplied for no other stage', () => {
@@ -87,36 +132,33 @@ describe('the roster panel title Network Canvas supplies', () => {
     ]);
   });
 
-  it('stays in English when its only language is corrected to one it is not supplied in', () => {
+  it('is left unwritten when its only language is corrected to one it is not supplied in', () => {
     expect(
       suppliedStageTextAfterLanguageChange(roster({ en: 'Available to add' }), {
         before: english,
         after: { defaultLocale: 'hu', locales: ['hu'] },
         renamed: { en: 'hu' },
       }),
-    ).toEqual([{ path: ['panelTitle'], value: { hu: 'Available to add' } }]);
+    ).toEqual([{ path: ['panelTitle'], value: {} }]);
   });
 
-  it('stays in English in a new default language it is not supplied in when the old one is removed', () => {
+  it('is left unwritten in a new default language it is not supplied in when the old one is removed', () => {
     expect(
       suppliedStageTextAfterLanguageChange(roster({ en: 'Available to add' }), {
         before: { defaultLocale: 'en', locales: ['en', 'hu'] },
         after: { defaultLocale: 'hu', locales: ['hu'] },
       }),
-    ).toEqual([{ path: ['panelTitle'], value: { hu: 'Available to add' } }]);
+    ).toEqual([{ path: ['panelTitle'], value: {} }]);
   });
 
-  it('is still Network Canvas’s when a default language it is not supplied in holds the English text', () => {
+  it('is still Network Canvas’s while a default language it is not supplied in is unwritten', () => {
     expect(
-      suppliedStageTextAfterLanguageChange(roster({ hu: 'Available to add' }), {
+      suppliedStageTextAfterLanguageChange(roster({}), {
         before: { defaultLocale: 'hu', locales: ['hu'] },
         after: { defaultLocale: 'hu', locales: ['hu', 'fr'] },
       }),
     ).toEqual([
-      {
-        path: ['panelTitle'],
-        value: { hu: 'Available to add', fr: 'Éléments disponibles' },
-      },
+      { path: ['panelTitle'], value: { fr: 'Éléments disponibles' } },
     ]);
   });
 
@@ -177,12 +219,12 @@ describe('the Language Chooser heading Network Canvas supplies', () => {
     expect(
       missingSuppliedStageText(
         { type: 'LanguageChooser' },
-        { defaultLocale: 'en-US', locales: ['en-US', 'es', 'hu'] },
+        { defaultLocale: 'en', locales: ['en', 'es', 'hu'] },
       ),
     ).toEqual([
       {
         path: ['title'],
-        value: { 'en-US': 'Choose a language', 'es': 'Elige un idioma' },
+        value: { en: 'Choose a language', es: 'Elige un idioma' },
       },
     ]);
   });
@@ -311,53 +353,59 @@ describe('the Family Pedigree wording Network Canvas supplies', () => {
 describe('which supplied settings apply to a stage', () => {
   it('applies a setting with no condition to every stage of its type', () => {
     expect(
-      suppliedStageSettingApplies({ type: 'NetworkComposer' }, [
+      suppliedStageSettingApplies({ type: 'NameGeneratorQuickAdd' }, [
         'addNamePlaceholder',
       ]),
     ).toBe(true);
   });
 
-  it('applies a Network Composer groups heading only once the stage has groups', () => {
+  it('applies a Narrative groups heading only once a preset has groups', () => {
     expect(
-      suppliedStageSettingApplies({ type: 'NetworkComposer' }, [
+      suppliedStageSettingApplies({ type: 'Narrative', presets: [{}] }, [
         'groupsHeading',
       ]),
     ).toBe(false);
     expect(
       suppliedStageSettingApplies(
-        { type: 'NetworkComposer', convexHullVariable: 'contactType' },
+        { type: 'Narrative', presets: [{ groupVariable: 'contactType' }] },
         ['groupsHeading'],
       ),
     ).toBe(true);
   });
 
-  it('applies a drawing tooltip only while the stage’s free drawing is on', () => {
-    const path = ['tooltips', 'enableDrawing'];
+  it('applies a maximum notice only while the stage has a maximum', () => {
+    const path = ['maxNodesNotice'];
     expect(
       suppliedStageSettingApplies(
-        { type: 'Narrative', behaviours: { freeDraw: true } },
+        { type: 'NameGenerator', behaviours: { maxNodes: 3 } },
         path,
       ),
     ).toBe(true);
     expect(
       suppliedStageSettingApplies(
-        { type: 'Narrative', behaviours: { freeDraw: false } },
+        { type: 'NameGenerator', behaviours: {} },
         path,
       ),
     ).toBe(false);
   });
 
-  it('applies an at-risk notation only when the Narrative Pedigree shows at-risk statuses', () => {
-    const path = ['conditionText', 'notation', 'atRiskAffected'];
+  it('applies the unplaced notice only while a bin stage requires every node placed', () => {
+    const path = ['unplacedNodesNotice'];
     expect(
       suppliedStageSettingApplies(
-        { type: 'NarrativePedigree', showAtRiskStatuses: false },
+        {
+          type: 'CategoricalBin',
+          behaviours: { requireCompletePlacement: false },
+        },
         path,
       ),
     ).toBe(false);
     expect(
       suppliedStageSettingApplies(
-        { type: 'NarrativePedigree', showAtRiskStatuses: true },
+        {
+          type: 'CategoricalBin',
+          behaviours: { requireCompletePlacement: true },
+        },
         path,
       ),
     ).toBe(true);
@@ -371,37 +419,31 @@ describe('which supplied settings apply to a stage', () => {
 });
 
 describe('the settings a stage holds but no longer shows', () => {
-  const tooltips = {
-    enableDrawing: { en: 'Draw' },
-    disableDrawing: { en: 'Stop drawing' },
+  const notices = {
+    minNodesNotice: { en: 'Add {count, plural, one {# more} other {# more}}' },
+    maxNodesNotice: { en: 'That is everyone' },
   };
 
   it('are the conditional ones whose configuration is off', () => {
     expect(
       inapplicableStageSettings({
-        type: 'Narrative',
-        behaviours: { freeDraw: false },
-        tooltips,
+        type: 'NameGenerator',
+        behaviours: {},
+        ...notices,
       }),
-    ).toEqual([
-      ['tooltips', 'enableDrawing'],
-      ['tooltips', 'disableDrawing'],
-    ]);
+    ).toEqual([['minNodesNotice'], ['maxNodesNotice']]);
   });
 
   it('leave out a setting whose configuration is on, or one the stage lacks', () => {
     expect(
       inapplicableStageSettings({
-        type: 'Narrative',
-        behaviours: { freeDraw: true },
-        tooltips,
+        type: 'NameGenerator',
+        behaviours: { minNodes: 1, maxNodes: 3 },
+        ...notices,
       }),
     ).toEqual([]);
     expect(
-      inapplicableStageSettings({
-        type: 'Narrative',
-        behaviours: { freeDraw: false },
-      }),
+      inapplicableStageSettings({ type: 'NameGenerator', behaviours: {} }),
     ).toEqual([]);
   });
 });

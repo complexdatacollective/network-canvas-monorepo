@@ -40,7 +40,6 @@ import {
   type SidebarPage,
   type SidebarSection,
   SideBarSchema,
-  toLocale,
   toSection,
   type TSideBar,
 } from '~/app/types';
@@ -80,6 +79,7 @@ import DownloadLink from '~/components/DownloadLink';
 import Link from '~/components/Link';
 import { Details, Summary } from '~/components/ui/typography/Details';
 import { ListItem } from '~/components/ui/typography/ListItem';
+import { toLocale } from '~/lib/i18n/locales';
 import { getCompatibility } from '~/lib/interfaceCompatibility';
 
 import { DOCS_PATH, get } from './helper_functions';

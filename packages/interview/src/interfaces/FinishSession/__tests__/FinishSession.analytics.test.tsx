@@ -86,7 +86,7 @@ function renderFinish(onFinish: FinishHandler) {
   });
   render(
     <AnimationProvider disableAnimations reducedMotion="always">
-      <InterviewI18nProvider requestedLocale="en">
+      <InterviewI18nProvider>
         <ProtocolLocalizationProvider
           localization={payload.protocol.localization}
           localeOptions={payload.session.localeOptions}

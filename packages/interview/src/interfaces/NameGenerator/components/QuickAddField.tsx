@@ -25,7 +25,6 @@ import {
 } from '@codaco/fresco-ui/Tooltip';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import type { LocalizedString } from '@codaco/protocol-validation';
 
 import {
   actionCircleVariants,
@@ -35,7 +34,6 @@ import {
 } from '../../../components/actionButtonVariants';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import { useLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
 import { getNodeIconName } from '../../../selectors/name-generator';
 import {
   getNodeColorSelector,
@@ -74,7 +72,8 @@ type QuickAddFieldProps = {
   name: string;
   placeholder: string;
   /** The stage's line about finishing, shown beside the field. */
-  hint: LocalizedString;
+  /** The line under the field once it has been open a while. */
+  hint: string;
   disabled: boolean;
   onShowInput?: () => void;
   /**
@@ -104,7 +103,6 @@ export default function QuickAddField({
   ...validationProps
 }: QuickAddFieldProps) {
   const intl = useAppIntl();
-  const { text: hintText } = useLocalizedString(hint);
   const [checked, setChecked] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
@@ -309,7 +307,7 @@ export default function QuickAddField({
                     className="max-w-md text-sm"
                     sideOffset={25}
                   >
-                    {hintText}
+                    {hint}
                   </TooltipContent>
                 </Tooltip>
               </TooltipTrigger>
@@ -420,6 +418,7 @@ export default function QuickAddField({
                     exit={{ y: '100%' }}
                     className="flex h-full items-center justify-center"
                   >
+                    {/* The icon's title is the button's only name. */}
                     {isInterviewerIconName(icon) && (
                       <Icon name={icon} className={actionIconClass} />
                     )}

@@ -1,5 +1,6 @@
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
 import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
+import { webStorageLocalePreference } from '@codaco/shared-consts';
 
 import {
   interviewerDefaultLocale,
@@ -7,6 +8,15 @@ import {
 } from './locales';
 
 export const LOCALE_PREFERENCE_KEY = 'interviewer.locale';
+
+/**
+ * The choice made in the dashboard's language switcher, kept on this device.
+ * It is never a choice for an interview, which keeps its own.
+ */
+export const localePreferenceStore = webStorageLocalePreference(
+  () => localStorage,
+  LOCALE_PREFERENCE_KEY,
+);
 
 export function browserLanguages(): readonly string[] {
   return navigator.languages?.length
@@ -16,7 +26,7 @@ export function browserLanguages(): readonly string[] {
 
 export function readPreference(): string | null {
   try {
-    const stored = localStorage.getItem(LOCALE_PREFERENCE_KEY);
+    const stored = localePreferenceStore.read();
     if (stored === null || stored === PSEUDO_LOCALE) return null;
     const result = resolveAppLocale({
       stored,
@@ -24,7 +34,7 @@ export function readPreference(): string | null {
       locales: interviewerProductionLocales,
       defaultLocale: interviewerDefaultLocale,
     });
-    return result.source === 'stored' ? result.locale : null;
+    return result.source === 'chosen' ? result.locale : null;
   } catch {
     return null;
   }

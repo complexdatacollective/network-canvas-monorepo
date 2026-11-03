@@ -33,7 +33,7 @@ import {
 } from '~/utils/beforeUnloadGuard';
 import {
   downloadProtocolAsNetcanvas,
-  MissingFinishStageTextError,
+  MissingDefaultLanguageTextError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
 import { beginExport, setImportInProgress } from '~/utils/criticalOperation';
@@ -822,9 +822,9 @@ export const exportNetcanvas = createAppAsyncThunk(
           assetNames: error.assetNames,
         } as const;
       }
-      if (error instanceof MissingFinishStageTextError) {
+      if (error instanceof MissingDefaultLanguageTextError) {
         return {
-          status: 'missing-finish-stage-text',
+          status: 'missing-default-language-text',
           problem: error.problem,
         } as const;
       }

@@ -20,7 +20,7 @@ import {
   ADA,
   callerOf,
   EDIT,
-  enUS,
+  inEnglish,
   GRACE,
   holdingPresence,
   revisionsOf,
@@ -171,7 +171,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId,
           document: Redacted.make({
             ...Redacted.value(held.document),
-            label: enUS('Saved after the restart'),
+            label: inEnglish('Saved after the restart'),
           }),
           revision: held.revision,
         }),
@@ -218,7 +218,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             sectionId,
             document: Redacted.make({
               ...Redacted.value(behind.document),
-              label: enUS('Renamed by the second tab'),
+              label: inEnglish('Renamed by the second tab'),
             }),
             revision: behind.revision,
           }),

@@ -554,7 +554,7 @@ export const OtherReasonComparedWithProtected: Story = {
     docs: {
       description: {
         story:
-          'The "Other" reason must differ from the person\'s name, which is protected and has not been unlocked. The dialog asking for the reason covers the navigation\'s passphrase prompt, so it offers the passphrase itself; once entered, focus returns to Submit and the reason is checked against the name as the participant gave it.',
+          'The "Other" reason must differ from the person\'s name, which is protected and has not been unlocked. The dialog asking for the reason covers the navigation\'s passphrase prompt, so it offers the passphrase itself; once entered, focus returns to Save and the reason is checked against the name as the participant gave it.',
       },
     },
   },
@@ -589,7 +589,7 @@ export const OtherReasonComparedWithProtected: Story = {
     await expect(
       dialog.queryByRole('button', { name: 'Passphrase' }),
     ).not.toBeInTheDocument();
-    const submit = dialog.getByRole('button', { name: 'Submit' });
+    const submit = dialog.getByRole('button', { name: 'Save' });
     await expect(submit).toHaveFocus();
 
     const reason = dialog.getByRole('textbox', {

@@ -19,7 +19,6 @@ import {
 import { useAppIntl, useAppLocale } from '@codaco/app-i18n/react';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
-import { InterviewI18nProvider } from '@codaco/interview';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { VARIABLE_TYPES } from '~/config/variables';
 import { architectCatalogSource } from '~/locales/catalogs';
@@ -54,14 +53,8 @@ function Harness() {
         />
         <button type="submit">Validate</button>
       </Form>
-      <InterviewI18nProvider requestedLocale={intl.locale}>
-        <PreviewProbe />
-      </InterviewI18nProvider>
     </>
   );
-}
-function PreviewProbe() {
-  return <output data-testid="preview-locale">{useAppIntl().locale}</output>;
 }
 
 // The provider shows a language once its catalog has loaded. Loading these
@@ -101,7 +94,6 @@ describe('Architect device language', () => {
     expect(screen.getByTestId('label')).toHaveTextContent('Número');
     expect(document.documentElement).toHaveAttribute('lang', 'es');
     expect(document.documentElement).toHaveAttribute('dir', 'ltr');
-    expect(screen.getByTestId('preview-locale')).toHaveTextContent('es');
   });
 
   it('switches existing labels and validation errors, preserves authored values, and persists through remount', async () => {
@@ -124,10 +116,6 @@ describe('Architect device language', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('Authored identifier')).toHaveValue(
       'Research_1',
-    );
-    // The interview follows once its own Spanish catalog has loaded.
-    await waitFor(() =>
-      expect(screen.getByTestId('preview-locale')).toHaveTextContent('es'),
     );
     expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBe('es');
     view.unmount();
@@ -226,9 +214,6 @@ it('uses the switched researcher locale for a later thunk failure without changi
 
   fireEvent.click(screen.getByRole('button', { name: 'Spanish' }));
   expect(getArchitectIntl().locale).toBe('es');
-  await waitFor(() =>
-    expect(screen.getByTestId('preview-locale')).toHaveTextContent('es'),
-  );
   const result = await store
     .dispatch(openLibraryProtocol({ id: 'missing_authored_id' }))
     .unwrap();

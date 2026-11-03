@@ -5,7 +5,7 @@ import type {
 import type { StageRecord } from './configuration.ts';
 
 /** The heading over the symbol legend. */
-const KEY_HEADING = {
+export const KEY_HEADING = {
   'en': 'Key',
   'de': 'Legende',
   'es': 'Leyenda',
@@ -32,7 +32,7 @@ const SELECT_CONDITION = {
 } as const satisfies SuppliedWording;
 
 /** The legend's meaning of the affected symbol. */
-const HAS_CONDITION = {
+export const HAS_CONDITION = {
   'en': 'Has this condition',
   'de': 'Hat diese Erkrankung',
   'es': 'Tiene esta afección',
@@ -45,7 +45,7 @@ const HAS_CONDITION = {
 } as const satisfies SuppliedWording;
 
 /** The legend's meaning of the obligate affected symbol. */
-const WILL_DEVELOP = {
+export const WILL_DEVELOP = {
   'en': 'Will develop this condition',
   'de': 'Wird diese Erkrankung entwickeln',
   'es': 'Desarrollará esta afección',
@@ -58,7 +58,7 @@ const WILL_DEVELOP = {
 } as const satisfies SuppliedWording;
 
 /** The legend's meaning of the obligate carrier symbol. */
-const CARRIES = {
+export const CARRIES = {
   'en': 'Carries this condition',
   'de': 'Trägt die Anlage für diese Erkrankung',
   'es': 'Es portador/a de esta afección',
@@ -71,7 +71,7 @@ const CARRIES = {
 } as const satisfies SuppliedWording;
 
 /** The legend's meaning of the uncertain affected symbol. */
-const MAY_DEVELOP = {
+export const MAY_DEVELOP = {
   'en': 'May develop this condition',
   'de': 'Kann diese Erkrankung entwickeln',
   'es': 'Puede desarrollar esta afección',
@@ -84,7 +84,7 @@ const MAY_DEVELOP = {
 } as const satisfies SuppliedWording;
 
 /** The legend's meaning of the uncertain carrier symbol. */
-const MAY_CARRY = {
+export const MAY_CARRY = {
   'en': 'May carry this condition',
   'de': 'Kann die Anlage für diese Erkrankung tragen',
   'es': 'Puede ser portador/a de esta afección',
@@ -97,7 +97,7 @@ const MAY_CARRY = {
 } as const satisfies SuppliedWording;
 
 /** The legend's meaning when the status is not known. */
-const NOT_KNOWN = {
+export const NOT_KNOWN = {
   'en': 'Not known',
   'de': 'Nicht bekannt',
   'es': 'No se sabe',
@@ -109,7 +109,7 @@ const NOT_KNOWN = {
   'zh-Hant': '不明',
 } as const satisfies SuppliedWording;
 
-const CLEAR_FOCUS_TOOLTIP = {
+export const CLEAR_FOCUS_TOOLTIP = {
   'en': 'Clear focus',
   'de': 'Fokus aufheben',
   'es': 'Quitar el foco',
@@ -160,43 +160,22 @@ export const SNAPSHOT_INHERITANCE = {
   'zh-Hant': '{title}：{condition}（{name} 的遺傳情形）',
 } as const satisfies SuppliedWording;
 
-/** The at-risk rows of the legend are drawn only when the stage shows them. */
-const showsAtRiskStatuses = (stage: StageRecord) =>
+/** The at-risk rows of the key are drawn only when the stage shows them. */
+export const showsAtRiskStatuses = (stage: StageRecord) =>
   stage.showAtRiskStatuses === true;
 
-/** The Narrative Pedigree's settings Network Canvas words. */
+/**
+ * The Narrative Pedigree's settings Network Canvas words. Its key and the
+ * clear focus tooltip, which every Narrative Pedigree shows alike, are
+ * interface text (`interface-text-wording.ts`).
+ */
 export const NARRATIVE_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] =
   [
-    { path: ['keyHeading'], message: KEY_HEADING },
     { path: ['saveSnapshot'], message: SAVE_SNAPSHOT },
-    { path: ['tooltips', 'clearFocus'], message: CLEAR_FOCUS_TOOLTIP },
     {
       path: ['conditionText', 'selectCondition'],
       message: SELECT_CONDITION,
     },
-    {
-      path: ['conditionText', 'notation', 'affected'],
-      message: HAS_CONDITION,
-    },
-    {
-      path: ['conditionText', 'notation', 'obligateAffected'],
-      message: WILL_DEVELOP,
-    },
-    {
-      path: ['conditionText', 'notation', 'obligateCarrier'],
-      message: CARRIES,
-    },
-    {
-      path: ['conditionText', 'notation', 'atRiskAffected'],
-      message: MAY_DEVELOP,
-      when: showsAtRiskStatuses,
-    },
-    {
-      path: ['conditionText', 'notation', 'atRiskCarrier'],
-      message: MAY_CARRY,
-      when: showsAtRiskStatuses,
-    },
-    { path: ['conditionText', 'notation', 'unknown'], message: NOT_KNOWN },
     {
       path: ['conditionText', 'snapshotCondition'],
       message: SNAPSHOT_CONDITION,

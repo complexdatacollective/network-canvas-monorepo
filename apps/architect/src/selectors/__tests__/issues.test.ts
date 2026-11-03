@@ -40,6 +40,7 @@ const protocol = {
       id: 's2',
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
       label: 'Roster',
       subject: { entity: 'node', type: 'person' },
       dataSource: 'asset1',

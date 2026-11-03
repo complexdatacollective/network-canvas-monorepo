@@ -997,7 +997,7 @@ function buildSearchNoMatchAndFailureScenario(): ScenarioDefinition {
 
   return {
     id: 'search-no-match-and-failure-wording',
-    covers: ['searchNoMatch', 'searchFailed'],
+    covers: ['searchNoMatch', 'interfaceText.geospatial.searchFailed'],
     // Firefox and webkit run the stub search, which never asks Mapbox.
     chromiumOnly: true,
     slow: true,
@@ -1012,9 +1012,9 @@ function buildSearchNoMatchAndFailureScenario(): ScenarioDefinition {
         subject: { entity: 'node', type: person.id },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions({ allowSearch: true }),
-        wording: { searchFailed: SEARCH_FAILED },
       });
       synth.setInterfaceText('search', 'searchNoMatch', SEARCH_NO_MATCH);
+      synth.setInterfaceText('geospatial', 'searchFailed', SEARCH_FAILED);
       geo.addPrompt({
         variable: locationVar.id,
         text: 'Search for this person’s neighbourhood.',
@@ -1066,7 +1066,7 @@ function buildSearchNoMatchAndFailureScenario(): ScenarioDefinition {
 function buildMapErrorOverlayScenario(): ScenarioDefinition {
   return {
     id: 'map-error-overlay-webgl-failure',
-    covers: ['map-error-overlay', 'mapUnavailable'],
+    covers: ['map-error-overlay', 'interfaceText.geospatial.mapUnavailable'],
     chromiumOnly: true,
     slow: true,
     build: () => {
@@ -1081,8 +1081,8 @@ function buildMapErrorOverlayScenario(): ScenarioDefinition {
         subject: { entity: 'node', type: person.id },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions(),
-        wording: { mapUnavailable: MAP_UNAVAILABLE },
       });
+      synth.setInterfaceText('geospatial', 'mapUnavailable', MAP_UNAVAILABLE);
       geo.addPrompt({
         variable: locationVar.id,
         text: 'Where does this person currently live?',
@@ -1143,7 +1143,7 @@ function buildMapErrorOverlayScenario(): ScenarioDefinition {
 function buildOfflineIndicatorScenario(): ScenarioDefinition {
   return {
     id: 'offline-indicator-geospatial-only',
-    covers: ['offline-indicator', 'offlineNotice'],
+    covers: ['offline-indicator', 'interfaceText.geospatial.offlineNotice'],
     slow: true,
     build: () => {
       const { synth, person } = newPersonInterview();

@@ -5,9 +5,9 @@ import { AppErrorMessage, AppMessage } from '@codaco/app-i18n/react';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import {
-  FinishStageTextRefusal,
-  FinishStageTextRefusalTitle,
-} from '~/components/FinishStageTextAlert';
+  DefaultLanguageTextRefusal,
+  DefaultLanguageTextRefusalTitle,
+} from '~/components/DefaultLanguageTextAlert';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 import type { AppDispatch } from '~/ducks/store';
 
@@ -61,12 +61,12 @@ const runDownload = async (
     const result = await dispatch(
       exportNetcanvas(await readProtocol()),
     ).unwrap();
-    if (result.status === 'missing-finish-stage-text') {
+    if (result.status === 'missing-default-language-text') {
       void openDialog({
         type: 'acknowledge',
         intent: 'destructive',
-        title: createElement(FinishStageTextRefusalTitle),
-        description: createElement(FinishStageTextRefusal, {
+        title: createElement(DefaultLanguageTextRefusalTitle),
+        description: createElement(DefaultLanguageTextRefusal, {
           problem: result.problem,
         }),
         actions: {
@@ -140,7 +140,7 @@ const runDownload = async (
  * uncommitted stage draft, which lives outside `activeProtocol`.
  *
  * Nor is one whose finish stage has no heading or text in its default
- * language: no host would import it (`MissingFinishStageTextError`).
+ * language: no host would import it (`MissingDefaultLanguageTextError`).
  */
 export const downloadActiveProtocol = (
   dispatch: AppDispatch,

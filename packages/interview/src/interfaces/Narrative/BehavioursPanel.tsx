@@ -14,10 +14,8 @@ import { interfaceMessages } from '../messages';
 
 /** The words of the free-draw annotation controls. */
 export type DrawingWords = Readonly<{
-  enableDrawing: string;
-  disableDrawing: string;
-  freezeAnnotations: string;
-  unfreezeAnnotations: string;
+  toggleDrawing: string;
+  toggleFreezing: string;
   resetAnnotations: string;
 }>;
 
@@ -90,21 +88,13 @@ export default function BehavioursPanel({
           aria-label={intl.formatMessage(interfaceMessages.drawingControls)}
         >
           <ToolbarIconButton
-            aria-label={
-              isDrawingEnabled
-                ? drawingWords.disableDrawing
-                : drawingWords.enableDrawing
-            }
+            aria-label={drawingWords.toggleDrawing}
             icon={<Pencil />}
             pressed={isDrawingEnabled}
             onPressedChange={onToggleDrawing}
           />
           <ToolbarIconButton
-            aria-label={
-              isFrozen
-                ? drawingWords.unfreezeAnnotations
-                : drawingWords.freezeAnnotations
-            }
+            aria-label={drawingWords.toggleFreezing}
             icon={<Snowflake />}
             pressed={isFrozen}
             onPressedChange={onToggleFreeze}

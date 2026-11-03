@@ -52,10 +52,6 @@ export const hasExternalPanels = (stage: StageRecord): boolean => {
   );
 };
 
-/** Whether a roster stage has a search, which needs its own wording. */
-export const hasRosterSearch = (stage: StageRecord): boolean =>
-  fieldOf(stage, 'searchOptions') !== undefined;
-
 /** Whether a Geospatial stage's map has a search box. */
 export const hasMapSearch = (stage: StageRecord): boolean =>
   fieldOf(fieldOf(stage, 'mapOptions'), 'allowSearch') === true;

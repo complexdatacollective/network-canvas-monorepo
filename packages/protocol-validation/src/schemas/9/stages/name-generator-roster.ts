@@ -19,9 +19,13 @@ import {
   requireWhenShown,
   type StageRecord,
 } from '../stage-wording/conditions.ts';
+import { UNNAMED_LABEL } from '../stage-wording/name-generator-roster.ts';
+import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
+import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { baseStageSchema } from './base.ts';
 import {
-  NODE_COUNT_ARGUMENTS,
+  MAX_NODES_ARGUMENTS,
+  MIN_NODES_ARGUMENTS,
   nameGeneratorBehavioursSchema,
 } from './name-generator.ts';
 
@@ -48,17 +52,34 @@ const rosterColumnReference = () =>
   });
 
 /**
+ * What the label of an item with no name may use: the number that tells it
+ * from other unnamed items, which every translation must show where the
+ * supplied wording does, and the name of the stage's node type.
+ */
+export const UNNAMED_LABEL_ARGUMENTS = requireSuppliedPlacements(
+  { count: { kind: 'text' }, ...SUBJECT_ARGUMENTS },
+  UNNAMED_LABEL,
+);
+
+/**
  * The roster's own words (`stage-wording/name-generator-roster.ts`). The
- * roster always loads its data, so its loading error and its all-added notice
- * are always required; its limit notices and search wording are required only
- * while the limit or the search is on.
+ * roster always loads its data, so its all-added notice and the label of an
+ * unnamed item are always required; its limit notices are required only while
+ * the limit is on.
  */
 const rosterWording = {
   minNodesNotice: localizedMessage(nonBlankText(), {
-    arguments: NODE_COUNT_ARGUMENTS,
+    arguments: MIN_NODES_ARGUMENTS,
   }).optional(),
-  maxNodesNotice: localizedString(nonBlankText(), 'plain').optional(),
-  allAddedNotice: localizedString(nonBlankText(), 'plain'),
+  maxNodesNotice: localizedMessage(nonBlankText(), {
+    arguments: MAX_NODES_ARGUMENTS,
+  }).optional(),
+  allAddedNotice: localizedMessage(nonBlankText(), {
+    arguments: SUBJECT_ARGUMENTS,
+  }),
+  unnamedLabel: localizedMessage(nonBlankText(), {
+    arguments: UNNAMED_LABEL_ARGUMENTS,
+  }),
 };
 
 const requireRosterWording = (stage: StageRecord, ctx: z.RefinementCtx) =>
