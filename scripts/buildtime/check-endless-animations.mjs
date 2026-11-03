@@ -8,7 +8,8 @@
 // loop running and drain the battery. `@codaco/fresco-ui/pageActivity` decides
 // whether the page is in front of the user. `AnimationProvider` uses it to
 // pause endless CSS and Web Animations API animations on its own; a loop it
-// cannot see — a self-rescheduling `requestAnimationFrame`, a Motion transition
+// cannot see — a function that schedules itself with `requestAnimationFrame`,
+// whether by name or through a wrapping callback, a Motion transition
 // with `repeat: Infinity`, Motion's `useAnimationFrame` — has to consult it.
 //
 // This guard finds those loops and fails on any file that has one but never
@@ -32,9 +33,11 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Files known to hold each kind of loop. Finding none in them means the
-// matcher stopped reading what it should.
+// matcher stopped reading what it should. Fresco's canvas hook schedules
+// itself through a wrapping callback rather than by name.
 const KNOWN_LOOPS = new Map([
   ['packages/art/src/BackgroundLights/BackgroundLights.tsx', 'frame loop'],
+  ['apps/fresco/hooks/useCanvas.ts', 'frame loop'],
   ['packages/fresco-ui/src/NodeDropAnimation.tsx', 'Motion repeat'],
 ]);
 
@@ -86,29 +89,62 @@ const bodyEnd = (source, from) => {
 
 const lineOf = (source, index) => source.slice(0, index).split('\n').length;
 
+/** The text between the `(` at `open` and the `)` that closes it. */
+const argumentAt = (source, open) => {
+  let depth = 0;
+  for (let index = open; index < source.length; index += 1) {
+    if (source[index] === '(') depth += 1;
+    else if (source[index] === ')') {
+      depth -= 1;
+      if (depth === 0) return source.slice(open + 1, index);
+    }
+  }
+  return '';
+};
+
+/**
+ * The functions a frame callback runs: the callback itself when it is passed
+ * by name (`requestAnimationFrame(tick)`), otherwise every function the
+ * callback calls (`requestAnimationFrame((t) => render(ctx, t))`).
+ */
+const frameCallees = (argument) => {
+  const bare = argument.trim();
+  if (/^[A-Za-z_$][\w$]*$/.test(bare)) return [bare];
+  return [...argument.matchAll(/([A-Za-z_$][\w$]*)\s*\(/g)].map(
+    ([, name]) => name,
+  );
+};
+
+/** Whether `index` lies inside the body of a definition of `name`. */
+const insideDefinitionOf = (source, name, index) => {
+  const definition = new RegExp(
+    `(?:function\\s+${name}\\s*\\(|(?:const|let|var)\\s+${name}\\s*=)`,
+    'g',
+  );
+  for (const found of source.matchAll(definition)) {
+    if (found.index < index && index < bodyEnd(source, found.index)) {
+      return true;
+    }
+  }
+  return false;
+};
+
 /**
  * Each loop with no end, as `{ line, kind }`: a function that schedules itself
- * with `requestAnimationFrame`, a Motion `repeat` of `Infinity`, or Motion's
- * `useAnimationFrame`.
+ * with `requestAnimationFrame`, by name or from inside a wrapping callback, a
+ * Motion `repeat` of `Infinity`, or Motion's `useAnimationFrame`.
  */
 export const endlessLoops = (rawSource) => {
   const source = stripComments(rawSource);
   const loops = [];
 
-  for (const call of source.matchAll(
-    /requestAnimationFrame\(\s*([A-Za-z_$][\w$]*)\s*\)/g,
-  )) {
-    const name = call[1];
-    const definition = new RegExp(
-      `(?:function\\s+${name}\\s*\\(|(?:const|let|var)\\s+${name}\\s*=)`,
-      'g',
-    );
-    for (const found of source.matchAll(definition)) {
-      const end = bodyEnd(source, found.index);
-      if (found.index < call.index && call.index < end) {
-        loops.push({ line: lineOf(source, call.index), kind: 'frame loop' });
-        break;
-      }
+  for (const call of source.matchAll(/\brequestAnimationFrame\(/g)) {
+    const open = call.index + call[0].length - 1;
+    const callees = new Set(frameCallees(argumentAt(source, open)));
+    if (
+      [...callees].some((name) => insideDefinitionOf(source, name, call.index))
+    ) {
+      loops.push({ line: lineOf(source, call.index), kind: 'frame loop' });
     }
   }
 

@@ -156,10 +156,17 @@ describe('AnimationProvider pausing endless animations', () => {
       configurable: true,
       value: () => animations as unknown as Animation[],
     });
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      writable: true,
+      value: (_keyframes: unknown, options?: KeyframeAnimationOptions) =>
+        stubAnimation(options?.iterations === Infinity ? Infinity : 400),
+    });
   });
 
   afterEach(() => {
     Reflect.deleteProperty(document, 'getAnimations');
+    Reflect.deleteProperty(Element.prototype, 'animate');
   });
 
   it('pauses only endless animations while the page is inactive, and resumes them', async () => {
@@ -205,6 +212,35 @@ describe('AnimationProvider pausing endless animations', () => {
     });
 
     expect(lateStarter.playState).toBe('paused');
+  });
+
+  // No event announces a Web Animations API animation, so nothing is
+  // dispatched here: the animation is only created.
+  it('pauses a native animation created while the page is inactive', async () => {
+    render(<AnimationProvider>content</AnimationProvider>);
+    await emulateWindow({ focused: false });
+
+    const element = document.createElement('span');
+    const endless = element.animate([{ opacity: 0 }], {
+      iterations: Infinity,
+    });
+    const finite = element.animate([{ opacity: 0 }], { duration: 400 });
+    expect(endless.playState).toBe('paused');
+    expect(finite.playState).toBe('running');
+
+    await emulateWindow({ focused: true });
+    expect(endless.playState).toBe('running');
+  });
+
+  it('leaves native animations alone once it unmounts', async () => {
+    const { unmount } = render(<AnimationProvider>content</AnimationProvider>);
+    await emulateWindow({ focused: false });
+    unmount();
+
+    const endless = document
+      .createElement('span')
+      .animate([{ opacity: 0 }], { iterations: Infinity });
+    expect(endless.playState).toBe('running');
   });
 
   it('pauses once per document, however many providers are nested', async () => {

@@ -21,11 +21,17 @@ const FRAME_LOOP =
   '  move();\n' +
   '  frame = requestAnimationFrame(tick);\n' +
   '};\n';
+const WRAPPED_FRAME_LOOP =
+  'const render = (ctx, time) => {\n' +
+  '  paint(ctx, time);\n' +
+  '  frame = requestAnimationFrame((t) => render(ctx, t));\n' +
+  '};\n';
 const MOTION_REPEAT = 'const t = { duration: 2, repeat: Infinity };\n';
 
 // The files the guard expects to find each kind of loop in, gated as they are.
 const KNOWN = {
   'packages/art/src/BackgroundLights/BackgroundLights.tsx': GATED + FRAME_LOOP,
+  'apps/fresco/hooks/useCanvas.ts': GATED + WRAPPED_FRAME_LOOP,
   'packages/fresco-ui/src/NodeDropAnimation.tsx': GATED + MOTION_REPEAT,
 };
 
@@ -111,6 +117,32 @@ test('does not count a frame scheduled by another function, or a one-off', () =>
         'requestAnimationFrame(() => paint());\n',
     ),
     [],
+  );
+});
+
+test('finds a function that schedules itself through a wrapping callback', () => {
+  assert.deepEqual(endlessLoops(WRAPPED_FRAME_LOOP), [
+    { line: 3, kind: 'frame loop' },
+  ]);
+  assert.deepEqual(
+    endlessLoops(
+      'function tick() {\n' +
+        '  requestAnimationFrame(() => {\n' +
+        '    tick();\n' +
+        '  });\n' +
+        '}\n',
+    ),
+    [{ line: 2, kind: 'frame loop' }],
+  );
+
+  const cwd = fixture({
+    'apps/fresco/components/Waves.tsx': '\n' + WRAPPED_FRAME_LOOP,
+  });
+  const result = run(cwd);
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /apps\/fresco\/components\/Waves\.tsx:4 \(frame loop\)/,
   );
 });
 

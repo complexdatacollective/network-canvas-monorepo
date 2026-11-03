@@ -83,8 +83,11 @@ const endsNever = (animation: Animation) =>
 /**
  * Pauses every endless CSS or Web Animations API animation in the document
  * while the page is inactive, and resumes the ones it paused when the page
- * returns. Animations that end on their own are left to finish. Mounted once
- * per document by the outermost `AnimationProvider`.
+ * returns. Animations that end on their own are left to finish. An animation
+ * that starts while the page is inactive is paused as it starts: a CSS one on
+ * its `animationstart` event, a Web Animations API one where
+ * `Element.prototype.animate` creates it. Mounted once per document by the
+ * outermost `AnimationProvider`.
  *
  * JavaScript-driven loops (a `requestAnimationFrame` loop, or a Motion
  * animation Motion runs on its own frame loop) are invisible to the document's
@@ -97,12 +100,15 @@ export function usePauseEndlessAnimationsWhileInactive(enabled: boolean) {
     }
 
     const paused = new Set<Animation>();
+    const pauseIfEndless = (animation: Animation) => {
+      if (animation.playState === 'running' && endsNever(animation)) {
+        animation.pause();
+        paused.add(animation);
+      }
+    };
     const pauseEndless = () => {
       for (const animation of document.getAnimations()) {
-        if (animation.playState === 'running' && endsNever(animation)) {
-          animation.pause();
-          paused.add(animation);
-        }
+        pauseIfEndless(animation);
       }
     };
     const resume = () => {
@@ -116,6 +122,18 @@ export function usePauseEndlessAnimationsWhileInactive(enabled: boolean) {
     const pauseLateStarter = () => {
       if (!isPageActive()) pauseEndless();
     };
+    // A Web Animations API animation (Motion's hardware-accelerated path among
+    // them) fires no event as it starts, so one created while the page is
+    // inactive is caught where it is created. After cleanup the wrapper only
+    // passes through, in case another wrapper installed later still calls it.
+    // oxlint-disable-next-line typescript/unbound-method -- kept to be called with each element as `this`, and restored on cleanup
+    const nativeAnimate = Element.prototype.animate;
+    let wrapping = true;
+    function animate(this: Element, ...args: Parameters<Element['animate']>) {
+      const animation = nativeAnimate.apply(this, args);
+      if (wrapping && !isPageActive()) pauseIfEndless(animation);
+      return animation;
+    }
 
     if (!isPageActive()) pauseEndless();
     const unsubscribe = subscribeToPageActivity((active) => {
@@ -123,10 +141,17 @@ export function usePauseEndlessAnimationsWhileInactive(enabled: boolean) {
       else pauseEndless();
     });
     document.addEventListener('animationstart', pauseLateStarter);
+    if (typeof nativeAnimate === 'function') {
+      Element.prototype.animate = animate;
+    }
 
     return () => {
       unsubscribe();
       document.removeEventListener('animationstart', pauseLateStarter);
+      wrapping = false;
+      if (Element.prototype.animate === animate) {
+        Element.prototype.animate = nativeAnimate;
+      }
       resume();
     };
   }, [enabled]);
