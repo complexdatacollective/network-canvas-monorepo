@@ -10,8 +10,8 @@ import { REQUIRED } from '../../form/requiredField.ts';
 import BuilderSection from '../BuilderSection.tsx';
 
 /** The schema keeps a stage's introduction in one object with two parts. */
-const TITLE_FIELD = 'introductionPanel.title';
-const TEXT_FIELD = 'introductionPanel.text';
+export const TITLE_FIELD = 'introductionPanel.title';
+export const TEXT_FIELD = 'introductionPanel.text';
 
 export const introductionMessages = defineMessages({
   title: {

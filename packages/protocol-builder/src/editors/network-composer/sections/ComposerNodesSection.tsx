@@ -43,16 +43,16 @@ import { useLatest } from '../../../state/useLatest.ts';
 import { composerMessages as messages } from './composerMessages.ts';
 import { useSetStageValue } from './useSetStageValue.ts';
 
-const QUICK_ADD_FIELD = 'quickAdd';
-const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
-const CONVEX_HULL_FIELD = 'convexHullVariable';
-const NODE_FORM_FIELD = 'nodeForm.fields';
+export const QUICK_ADD_FIELD = 'quickAdd';
+export const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
+export const CONVEX_HULL_FIELD = 'convexHullVariable';
+export const NODE_FORM_FIELD = 'nodeForm.fields';
 /**
  * Where the canvas STARTS, not how it behaves: the participant has a switch
  * of their own, and the interview remembers which way they left it
  * (`NetworkComposerStageMetadataSchema`).
  */
-const AUTOMATIC_LAYOUT_FIELD = 'behaviours.automaticLayout';
+export const AUTOMATIC_LAYOUT_FIELD = 'behaviours.automaticLayout';
 
 /**
  * A quick-add attribute must hold a value from the moment the node exists:

@@ -29,6 +29,14 @@ export const ALL_RATIOS = Object.keys(RATIOS) as Ratio[];
 
 export const DEVICE_SCALE_FACTOR = 2;
 
+/**
+ * Walkthrough stills are shown in a panel about 26rem wide, so they need no
+ * width beyond twice that. 16:9 also keeps them out of Architect's precache,
+ * which takes every 4:3 variant.
+ */
+export const WALKTHROUGH_RATIO: Ratio = '16:9';
+export const WALKTHROUGH_WIDTHS = [480, 960];
+
 export const WEBP_QUALITY = 82;
 
 /** Default extra settle time after network idle, ms (parameters.capture.delay). */

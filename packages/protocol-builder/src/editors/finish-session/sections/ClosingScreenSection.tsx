@@ -7,7 +7,7 @@ import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { finishSessionMessages } from './finishSessionMessages.ts';
 import { useFinishMode } from './useFinishMode.ts';
 
-const CONTENT_FIELD = 'content';
+export const CONTENT_FIELD = 'content';
 
 /**
  * The text a participant reads before finishing the interview, heading

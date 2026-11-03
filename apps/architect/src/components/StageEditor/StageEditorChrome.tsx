@@ -1,3 +1,4 @@
+import { CirclePlay } from 'lucide-react';
 import { createElement, useCallback, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
@@ -8,9 +9,12 @@ import {
   AppMessage,
   useAppIntl,
 } from '@codaco/app-i18n/react';
+import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
+import { stageWalkthrough } from '@codaco/protocol-builder/interfaces/walkthroughs/stageWalkthroughs';
 import { useProtocolLocalization } from '@codaco/protocol-builder/localization/ProtocolLocalization';
 import { useStandingStageNameProposal } from '@codaco/protocol-builder/naming/useStandingStageNameProposal';
 import type {
@@ -45,6 +49,12 @@ import {
 } from './stageDraftBeacon';
 import StageSectionOutline from './StageSectionOutline';
 import StageTitle from './StageTitle';
+import StageWalkthrough from './walkthrough/StageWalkthrough';
+import {
+  openWalkthrough,
+  useWalkthroughState,
+} from './walkthrough/walkthroughStore';
+
 const messages = defineMessages({
   openingPreview: {
     id: 'architect.chrome.stageEditor.stageEditor.openingPreview',
@@ -108,6 +118,12 @@ const messages = defineMessages({
     defaultMessage: 'Start preview with example data',
     description: 'Visible text in components / StageEditor / StageEditor.',
   },
+  walkthrough: {
+    id: 'architect.stageEditor.stageEditorChrome.walkthrough',
+    defaultMessage: 'Walk me through it',
+    description:
+      'Button at the top of the list of sections of the stage being edited. It starts a step-by-step guide to each of the stage’s settings, which takes the place of the list while open.',
+  },
   respectSkipLogic: {
     id: 'architect.stageEditor.stageEditor.respectSkipLogic',
     defaultMessage: 'Respect skip logic',
@@ -158,7 +174,8 @@ export default function StageEditorChrome({
     <>
       <StageDraftPublisher />
       {outlineHost !== null &&
-        createPortal(<StageSectionOutline sections={sections} />, outlineHost)}
+        createPortal(<SidebarOutline sections={sections} />, outlineHost)}
+      <StageWalkthrough sections={sections} host={outlineHost} />
       <StageEditorActions
         formId={formId}
         readOnly={readOnly}
@@ -168,6 +185,46 @@ export default function StageEditorChrome({
         onCancel={onCancel}
       />
     </>
+  );
+}
+
+/**
+ * The section list, which gives the sidebar up to the walkthrough while it is
+ * open. Below the two-column breakpoint the list is a row of chips above the
+ * form and the walkthrough floats, so there the list stays.
+ */
+function SidebarOutline({
+  sections,
+}: Readonly<{ sections: StageSectionsStore }>) {
+  const intl = useAppIntl();
+  const { identity } = useStageEdit();
+  const { open } = useWalkthroughState();
+  const hasWalkthrough =
+    identity !== undefined && stageWalkthrough(identity.type) !== undefined;
+  return (
+    <div className={cx('contents', open && '@min-[60rem]:hidden')}>
+      <StageSectionOutline
+        sections={sections}
+        header={
+          hasWalkthrough && (
+            // Hidden rather than unmounted while open, so closing the
+            // walkthrough can return focus to it.
+            <Button
+              color="primary"
+              size="sm"
+              icon={<CirclePlay aria-hidden />}
+              className={cx(
+                'shrink-0 @min-[60rem]:mb-2 @min-[60rem]:w-full',
+                open && 'hidden',
+              )}
+              onClick={(event) => openWalkthrough(event.currentTarget)}
+            >
+              {intl.formatMessage(messages.walkthrough)}
+            </Button>
+          )
+        }
+      />
+    </div>
   );
 }
 

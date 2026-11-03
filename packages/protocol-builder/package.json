@@ -45,6 +45,8 @@
     "./interfaces/documentation": "./src/interfaces/documentation.ts",
     "./interfaces/interfaceNames": "./src/interfaces/interfaceNames.ts",
     "./interfaces/useStageTypeInfo": "./src/interfaces/useStageTypeInfo.ts",
+    "./interfaces/walkthroughs/stageWalkthroughs": "./src/interfaces/walkthroughs/stageWalkthroughs.ts",
+    "./interfaces/walkthroughs/walkthroughTypes": "./src/interfaces/walkthroughs/walkthroughTypes.ts",
     "./interfaces/templates": "./src/interfaces/templates.ts",
     "./localization/LanguageNaming": "./src/localization/LanguageNaming.tsx",
     "./localization/localizedText": "./src/localization/localizedText.ts",

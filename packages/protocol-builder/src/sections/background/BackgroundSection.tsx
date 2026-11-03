@@ -135,6 +135,9 @@ const messages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const backgroundSectionTitle = messages.backgroundTitle;
+
 /**
  * Held at module scope so it keeps one identity across renders: an inline
  * arrow returning JSX is a component defined during render.

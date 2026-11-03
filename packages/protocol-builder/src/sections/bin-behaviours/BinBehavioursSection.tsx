@@ -6,8 +6,9 @@ import InteractionModeField from '../../fields/InteractionModeField.tsx';
 import BuilderSection from '../BuilderSection.tsx';
 import { binBehavioursMessages } from './binBehavioursMessages.ts';
 
-const INTERACTION_MODE_FIELD = 'behaviours.interactionMode';
-const REQUIRE_COMPLETE_PLACEMENT_FIELD = 'behaviours.requireCompletePlacement';
+export const INTERACTION_MODE_FIELD = 'behaviours.interactionMode';
+export const REQUIRE_COMPLETE_PLACEMENT_FIELD =
+  'behaviours.requireCompletePlacement';
 
 /**
  * How the participant places nodes on an Ordinal or Categorical Bin stage

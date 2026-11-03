@@ -33,6 +33,15 @@ export type CaptureParameters = {
    * removes the navigation from the DOM before taking the screenshot.
    */
   advance?: number;
+  /**
+   * Names a still for the stage editor's walkthrough instead of the
+   * interface's own thumbnail: captured at 16:9 only, and listed in
+   * @codaco/interface-images' walkthroughManifest under `interface`.
+   */
+  walkthrough?: string;
+  /** Leave focus where the play function put it, for a picture of an open
+   * popover or menu that closes when its control loses focus. */
+  keepFocus?: boolean;
 };
 
 /**

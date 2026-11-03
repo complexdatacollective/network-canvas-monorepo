@@ -142,6 +142,10 @@ const messages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const nodeSubjectSectionTitle = messages.nodeTitle;
+export const edgeSubjectSectionTitle = messages.edgeTitle;
+
 /**
  * The words each subject uses, whole per subject rather than a noun swapped
  * into a shared frame: "a node" and "an edge" do not differ only in the noun

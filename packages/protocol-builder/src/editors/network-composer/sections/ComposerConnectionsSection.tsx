@@ -37,7 +37,7 @@ import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { composerMessages as messages } from './composerMessages.ts';
 import { useSetStageValue } from './useSetStageValue.ts';
 
-const EDGES_FIELD = 'edges';
+export const EDGES_FIELD = 'edges';
 const SUBJECT_FIELD = 'subject';
 const LABEL_FIELD = 'label';
 

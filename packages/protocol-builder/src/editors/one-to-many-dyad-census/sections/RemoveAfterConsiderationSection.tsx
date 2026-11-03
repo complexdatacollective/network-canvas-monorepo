@@ -42,6 +42,9 @@ const messages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const removeAfterConsiderationSectionTitle = messages.title;
+
 /**
  * What becomes of a person the participant has already been asked about.
  *

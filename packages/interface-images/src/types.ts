@@ -14,3 +14,6 @@ export type RatioImages = {
 };
 
 export type ManifestEntry = Partial<Record<Ratio, RatioImages>>;
+
+/** One still of the stage editor's walkthrough, at 16:9. */
+export type WalkthroughStill = RatioImages;

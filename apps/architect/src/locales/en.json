@@ -3275,6 +3275,10 @@
     "defaultMessage": "OK",
     "description": "The label that dismisses a preview dialog in components / StageEditor / StageEditorChrome."
   },
+  "architect.stageEditor.stageEditorChrome.walkthrough": {
+    "defaultMessage": "Walk me through it",
+    "description": "Button at the top of the list of sections of the stage being edited. It starts a step-by-step guide to each of the stage’s settings, which takes the place of the list while open."
+  },
   "architect.stageEditor.stageEditorPage.otherTab": {
     "defaultMessage": "Another tab",
     "description": "What an editor calls the browser tab that holds the saved copy of this protocol, when it is not this one. Read as, for example, “Another tab is editing this stage”."
@@ -3286,6 +3290,46 @@
   "architect.stageEditor.stageTitle.position": {
     "defaultMessage": "Stage {index, number} of {total, number}",
     "description": "Where the stage being edited sits in the interview, shown above its name. index is one-based. A stage is one step of an interview."
+  },
+  "architect.stageEditor.walkthrough.back": {
+    "defaultMessage": "Back",
+    "description": "Button that returns to the previous walkthrough step."
+  },
+  "architect.stageEditor.walkthrough.done": {
+    "defaultMessage": "Done",
+    "description": "Shown on a walkthrough step once the stage has the setting the step asks for."
+  },
+  "architect.stageEditor.walkthrough.finish": {
+    "defaultMessage": "Finish",
+    "description": "Button on the last walkthrough step that closes it."
+  },
+  "architect.stageEditor.walkthrough.label": {
+    "defaultMessage": "Walkthrough",
+    "description": "Accessible name of the panel that guides a researcher through the settings of the stage they are editing."
+  },
+  "architect.stageEditor.walkthrough.next": {
+    "defaultMessage": "Next",
+    "description": "Button that moves to the next walkthrough step."
+  },
+  "architect.stageEditor.walkthrough.notDone": {
+    "defaultMessage": "Not set yet",
+    "description": "Shown on a walkthrough step while the stage does not yet have the setting the step asks for."
+  },
+  "architect.stageEditor.walkthrough.optional": {
+    "defaultMessage": "Optional",
+    "description": "Badge on a walkthrough step whose setting the researcher can leave alone."
+  },
+  "architect.stageEditor.walkthrough.progress": {
+    "defaultMessage": "Step {index, number} of {total, number}",
+    "description": "Where the researcher is in the stage walkthrough, shown above the step title. index is one-based."
+  },
+  "architect.stageEditor.walkthrough.summary": {
+    "defaultMessage": "What the stage has so far",
+    "description": "Accessible name of the list, on the last walkthrough step, of the settings the walkthrough asked for and whether each is set."
+  },
+  "architect.stageEditor.walkthrough.visualSwitch": {
+    "defaultMessage": "Show the interview",
+    "description": "Accessible name of the buttons that switch a walkthrough screenshot between the interview with a setting and without it."
   },
   "architect.storageUnavailableBanner.downloadFailed": {
     "defaultMessage": "Download failed",

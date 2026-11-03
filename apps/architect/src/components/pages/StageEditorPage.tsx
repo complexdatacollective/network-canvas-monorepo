@@ -14,6 +14,7 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { EnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { DialogDraftRegistrarContext } from '@codaco/protocol-builder/form/dialogDraftRegistrar';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
@@ -34,6 +35,7 @@ import StageEditorChrome, {
   StageEditorHeader,
 } from '~/components/StageEditor/StageEditorChrome';
 import { STAGE_FORM_ID } from '~/components/StageEditor/stageFormId';
+import { useWalkthroughState } from '~/components/StageEditor/walkthrough/walkthroughStore';
 import { getActiveProtocolId, getProtocolOwnedHere } from '~/ducks/modules/app';
 import { creationIndex } from '~/ducks/modules/protocol/stages';
 import type { RootState } from '~/ducks/store';
@@ -113,6 +115,7 @@ const StageEditorPage = () => {
   // has to re-render when the element arrives: a ref's mutation tells React
   // nothing, and the list would wait for some other reason to render.
   const [outlineHost, setOutlineHost] = useState<HTMLElement | null>(null);
+  const { open: walkthroughOpen } = useWalkthroughState();
 
   // The create flow carries its interface and its place in the interview on the
   // URL, so a new stage can be linked to the way an existing one is.
@@ -376,7 +379,16 @@ const StageEditorPage = () => {
           instead — which is nothing, and the two columns would never arrive.
         */}
         <div className="@container mx-auto w-full max-w-6xl">
-          <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
+          <div
+            // Wider while the walkthrough holds the column: its pictures of
+            // the interview are unreadable at the section list's width.
+            className={cx(
+              'grid grid-cols-1 gap-6 @min-[60rem]:gap-10',
+              walkthroughOpen
+                ? '@min-[60rem]:grid-cols-[24rem_minmax(0,1fr)]'
+                : '@min-[60rem]:grid-cols-[16rem_minmax(0,1fr)]',
+            )}
+          >
             {/*
               Where the section list goes. The editor publishes its sections on
               the action slot, which is called inside the form — so the chrome

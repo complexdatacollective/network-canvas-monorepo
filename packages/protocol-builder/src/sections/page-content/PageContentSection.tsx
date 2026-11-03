@@ -111,8 +111,8 @@ export const pageContentMessages = defineMessages({
 
 const AT_LEAST_ONE_ITEM = createMessageError(pageContentMessages.atLeastOne);
 
-const TITLE_FIELD = 'title';
-const ITEMS_FIELD = 'items';
+export const TITLE_FIELD = 'title';
+export const ITEMS_FIELD = 'items';
 
 export type PageContentSectionProps = Readonly<{
   /**

@@ -11,6 +11,7 @@ import {
   DEVICE_SCALE_FACTOR,
   type Ratio,
   RATIOS,
+  WALKTHROUGH_RATIO,
 } from './config.mts';
 
 const MIME_TYPES: Record<string, string> = {
@@ -96,6 +97,15 @@ export type CaptureParameters = {
   /** Click the Next button this many times before capturing; the
    * navigation is removed from the DOM afterwards. */
   advance?: number;
+  /**
+   * Names a still for the stage editor's walkthrough instead of the
+   * interface's own thumbnail. Captured at 16:9 only, written as
+   * `<interface>.<walkthrough>.*`, and listed in walkthroughManifest.ts.
+   */
+  walkthrough?: string;
+  /** Leave focus where the story's play function put it, for a picture of an
+   * open popover or menu that closes when its control loses focus. */
+  keepFocus?: boolean;
 };
 
 const field = (value: object, key: string): unknown => Reflect.get(value, key);
@@ -113,6 +123,8 @@ const isCaptureParameters = (value: unknown): value is CaptureParameters => {
   const env = field(value, 'env');
   const skip = field(value, 'skip');
   const advance = field(value, 'advance');
+  const walkthrough = field(value, 'walkthrough');
+  const keepFocus = field(value, 'keepFocus');
   return (
     typeof name === 'string' &&
     name !== '' &&
@@ -122,7 +134,11 @@ const isCaptureParameters = (value: unknown): value is CaptureParameters => {
     (env === undefined ||
       (Array.isArray(env) && env.every((item) => typeof item === 'string'))) &&
     (skip === undefined || typeof skip === 'boolean') &&
-    (advance === undefined || typeof advance === 'number')
+    (advance === undefined || typeof advance === 'number') &&
+    (keepFocus === undefined || typeof keepFocus === 'boolean') &&
+    (walkthrough === undefined ||
+      (typeof walkthrough === 'string' &&
+        /^[a-z][a-zA-Z0-9]*$/.test(walkthrough)))
   );
 };
 
@@ -174,7 +190,7 @@ export const enumerateCaptureStories = async (
       const capture = story.parameters?.capture;
       if (!isCaptureParameters(capture)) {
         throw new Error(
-          `Story ${story.id} is tagged 'capture' but has no valid parameters.capture (it needs an interface name; delay and advance must be numbers, ratios and env arrays, skip a boolean)`,
+          `Story ${story.id} is tagged 'capture' but has no valid parameters.capture (it needs an interface name; delay and advance must be numbers, ratios and env arrays, skip a boolean, walkthrough a camelCase name)`,
         );
       }
       entries.push({ id: story.id, capture });
@@ -182,13 +198,14 @@ export const enumerateCaptureStories = async (
 
     const seen = new Map<string, string>();
     for (const { id, capture } of entries) {
-      const existing = seen.get(capture.interface);
+      const key = captureName(capture);
+      const existing = seen.get(key);
       if (existing) {
         throw new Error(
-          `Duplicate capture stories for interface "${capture.interface}": ${existing} and ${id}`,
+          `Duplicate capture stories for "${key}": ${existing} and ${id}`,
         );
       }
-      seen.set(capture.interface, id);
+      seen.set(key, id);
     }
     return entries.toSorted((a, b) =>
       a.capture.interface.localeCompare(b.capture.interface),
@@ -230,6 +247,7 @@ export const captureStory = async (
   ratio: Ratio,
   delay: number,
   advance = 0,
+  keepFocus = false,
 ): Promise<Buffer> => {
   const context = await browser.newContext({
     viewport: RATIOS[ratio].viewport,
@@ -289,10 +307,12 @@ export const captureStory = async (
     // An interface that focuses its first control on mount (e.g. a census
     // answer) would otherwise be pictured with a keyboard focus ring, which a
     // participant using a pointer or touch never sees.
-    await page.evaluate(() => {
-      const active = document.activeElement;
-      if (active instanceof HTMLElement) active.blur();
-    });
+    if (!keepFocus) {
+      await page.evaluate(() => {
+        const active = document.activeElement;
+        if (active instanceof HTMLElement) active.blur();
+      });
+    }
 
     await page.waitForTimeout(delay);
 
@@ -321,6 +341,14 @@ export const captureStory = async (
 export const launchBrowser = () => chromium.launch();
 
 export const ratiosFor = (capture: CaptureParameters): Ratio[] =>
-  capture.ratios ?? ALL_RATIOS;
+  capture.walkthrough === undefined
+    ? (capture.ratios ?? ALL_RATIOS)
+    : [WALKTHROUGH_RATIO];
+
+/** The name a capture's files are written under. */
+export const captureName = (capture: CaptureParameters): string =>
+  capture.walkthrough === undefined
+    ? capture.interface
+    : `${capture.interface}.${capture.walkthrough}`;
 
 export { DEFAULT_DELAY_MS };

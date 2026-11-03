@@ -175,6 +175,9 @@ const messages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const rosterSearchSectionTitle = messages.title;
+
 const SEARCH_CAPABILITY: SectionCapability = {
   fields: [MATCH_PROPERTIES, FUZZINESS],
   confirmClear: {

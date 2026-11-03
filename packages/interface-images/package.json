@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     "./InterfacePicture": "./src/InterfacePicture.tsx",
-    "./manifest": "./src/generated/manifest.ts"
+    "./manifest": "./src/generated/manifest.ts",
+    "./walkthroughManifest": "./src/generated/walkthroughManifest.ts"
   },
   "scripts": {
     "generate": "turbo run build-storybook --filter=@codaco/interview && node scripts/generate.mts",

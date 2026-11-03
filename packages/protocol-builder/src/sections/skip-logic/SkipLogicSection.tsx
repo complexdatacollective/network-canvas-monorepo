@@ -99,6 +99,9 @@ const messages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const skipLogicSectionTitle = messages.title;
+
 /**
  * Skip logic is one value of the stage with three parts, and it is all or
  * nothing: the protocol schema requires an action and a rule set together, so

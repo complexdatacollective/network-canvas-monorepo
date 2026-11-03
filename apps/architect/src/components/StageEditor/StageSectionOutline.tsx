@@ -1,5 +1,5 @@
 import { AlertCircle, Check, Circle, Lock, MinusCircle } from 'lucide-react';
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
 
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -119,7 +119,12 @@ const STATUS_PRESENTATION: Record<
  */
 export default function StageSectionOutline({
   sections,
-}: Readonly<{ sections: StageSectionsStore }>) {
+  header,
+}: Readonly<{
+  sections: StageSectionsStore;
+  /** Shown above the sections, inside the same card. */
+  header?: ReactNode;
+}>) {
   const intl = useAppIntl();
   const entries = useSyncExternalStore(
     sections.subscribe,
@@ -163,6 +168,7 @@ export default function StageSectionOutline({
         shadow="sm"
         className="@max-[60rem]:contents @min-[60rem]:max-h-[calc(100dvh-var(--architect-nav-height))] @min-[60rem]:overflow-y-auto"
       >
+        {header}
         <ol className="flex list-none gap-2 overflow-x-auto p-0 @min-[60rem]:flex-col @min-[60rem]:overflow-visible">
           {entries.map((section) => (
             <li key={section.id} className="shrink-0">

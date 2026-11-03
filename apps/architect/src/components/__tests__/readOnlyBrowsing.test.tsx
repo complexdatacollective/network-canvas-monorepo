@@ -74,7 +74,9 @@ const ALLOWED: readonly AllowedControl[] = [
   },
   { role: 'button', name: /^preview ./i },
   { role: 'button', name: /^download ./i },
-  // Stage editor: move between sections, close it, preview the stage.
+  // Stage editor: read its walkthrough, move between sections, close it,
+  // preview the stage.
+  { role: 'button', name: /^walk me through it$/i },
   {
     role: 'button',
     name: /./,

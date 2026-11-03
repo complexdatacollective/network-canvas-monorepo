@@ -100,6 +100,9 @@ const messages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const quickAddSectionTitle = messages.title;
+
 const CHOOSE_AN_ATTRIBUTE = createMessageError(messages.fieldRequired);
 
 /**

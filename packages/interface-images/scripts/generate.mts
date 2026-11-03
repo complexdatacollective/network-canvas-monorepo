@@ -3,6 +3,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  captureName,
   captureStory,
   DEFAULT_DELAY_MS,
   enumerateCaptureStories,
@@ -10,12 +11,14 @@ import {
   ratiosFor,
   serveStatic,
 } from './capture.mts';
-import { variantFileName } from './config.mts';
+import { variantFileName, WALKTHROUGH_WIDTHS } from './config.mts';
 import {
   type GeneratedRatio,
+  type GeneratedVariant,
   processMaster,
   pruneAssets,
   writeManifest,
+  writeWalkthroughManifest,
 } from './process.mts';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -46,11 +49,13 @@ try {
   console.log(`Found ${stories.length} capture stories`);
 
   const results = new Map<string, GeneratedRatio[]>();
+  const walkthroughResults = new Map<string, Map<string, GeneratedVariant[]>>();
   const expectedFiles = new Set<string>();
 
   for (const { id, capture } of stories) {
+    const name = captureName(capture);
     if (capture.skip) {
-      console.log(`- ${capture.interface}: skipped (parameters.capture.skip)`);
+      console.log(`- ${name}: skipped (parameters.capture.skip)`);
       continue;
     }
     for (const envVar of capture.env ?? []) {
@@ -63,7 +68,7 @@ try {
     }
     const generated: GeneratedRatio[] = [];
     for (const ratio of ratiosFor(capture)) {
-      console.log(`- ${capture.interface} @ ${ratio} (${id})`);
+      console.log(`- ${name} @ ${ratio} (${id})`);
       const master = await captureStory(
         browser,
         url,
@@ -71,23 +76,34 @@ try {
         ratio,
         capture.delay ?? DEFAULT_DELAY_MS,
         capture.advance ?? 0,
+        capture.keepFocus ?? false,
       );
       const result = await processMaster(
         assetsDir,
-        capture.interface,
+        name,
         ratio,
         master,
+        capture.walkthrough === undefined ? undefined : WALKTHROUGH_WIDTHS,
       );
       generated.push(result);
       for (const variant of result.variants) {
-        expectedFiles.add(variantFileName(capture.interface, ratio, variant.w));
+        expectedFiles.add(variantFileName(name, ratio, variant.w));
       }
     }
-    results.set(capture.interface, generated);
+    if (capture.walkthrough === undefined) {
+      results.set(capture.interface, generated);
+    } else {
+      const stills =
+        walkthroughResults.get(capture.interface) ??
+        new Map<string, GeneratedVariant[]>();
+      stills.set(capture.walkthrough, generated[0]?.variants ?? []);
+      walkthroughResults.set(capture.interface, stills);
+    }
   }
 
   await pruneAssets(assetsDir, expectedFiles);
   await writeManifest(generatedDir, results);
+  await writeWalkthroughManifest(generatedDir, walkthroughResults);
 
   console.log(`Done: ${results.size} interfaces, ${expectedFiles.size} assets`);
 } finally {

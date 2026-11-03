@@ -8382,5 +8382,1233 @@
   "protocolBuilder.variableValidation.wholeNumberRule": {
     "defaultMessage": "{rule} must be a whole number",
     "description": "Refusal shown when a rule counting characters or choices was given a fraction. rule is the schema’s own name for the rule, such as minValue, and is not translated."
+  },
+  "protocolBuilder.walkthrough.alterEdgeForm.fieldsBody": {
+    "defaultMessage": "Add a question for each thing to record about a connection, such as how often the two people talk. Each question saves its answer in a variable and is answered with the control you pick. Drag questions to change the order they are asked in.",
+    "description": "Body of the walkthrough step about the questions the form asks. A variable is a named piece of data recorded about each connection."
+  },
+  "protocolBuilder.walkthrough.alterEdgeForm.fieldsTitle": {
+    "defaultMessage": "Write the questions",
+    "description": "Title of the walkthrough step about the questions the form asks."
+  },
+  "protocolBuilder.walkthrough.alterEdgeForm.filterBody": {
+    "defaultMessage": "Switch this on and add rules to show the form only for the connections that match them. Without a filter, the form is shown for every connection of the chosen type.",
+    "description": "Body of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.alterEdgeForm.filterTitle": {
+    "defaultMessage": "Ask about only some connections",
+    "description": "Title of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.alterEdgeForm.introBody": {
+    "defaultMessage": "A Per Alter Edge Form asks the same questions about each connection the participant has already recorded, one connection at a time. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Per Alter Edge Form walkthrough."
+  },
+  "protocolBuilder.walkthrough.alterEdgeForm.introTitle": {
+    "defaultMessage": "Setting up a Per Alter Edge Form stage",
+    "description": "Title of the first step of a guided walkthrough of the Per Alter Edge Form stage editor. Per Alter Edge Form is the name of an interface; a stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.alterEdgeForm.subjectBody": {
+    "defaultMessage": "Pick the edge type the participant answers questions about. The form is shown once for each connection of this type in the network. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the edge type. An edge is a connection between two members of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.alterEdgeForm.subjectTitle": {
+    "defaultMessage": "Choose which connections the form is about",
+    "description": "Title of the walkthrough step about the edge type."
+  },
+  "protocolBuilder.walkthrough.alterForm.fieldsBody": {
+    "defaultMessage": "Add a question for each thing to record about a person. Each question saves its answer in a variable and is answered with the control you pick, such as a text box or a list of options. Drag questions to change the order they are asked in.",
+    "description": "Body of the walkthrough step about the questions the form asks. A variable is a named piece of data recorded about each person."
+  },
+  "protocolBuilder.walkthrough.alterForm.fieldsTitle": {
+    "defaultMessage": "Write the questions",
+    "description": "Title of the walkthrough step about the questions the form asks."
+  },
+  "protocolBuilder.walkthrough.alterForm.filterBody": {
+    "defaultMessage": "Switch this on and add rules to show the form only for the people that match them, such as those the participant sees every week. Without a filter, the form is shown for everyone of the chosen type.",
+    "description": "Body of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.alterForm.filterTitle": {
+    "defaultMessage": "Ask about only some people",
+    "description": "Title of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.alterForm.introBody": {
+    "defaultMessage": "A Per Alter Form asks the same questions about each person the participant has already named, one person at a time. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Per Alter Form walkthrough."
+  },
+  "protocolBuilder.walkthrough.alterForm.introTitle": {
+    "defaultMessage": "Setting up a Per Alter Form stage",
+    "description": "Title of the first step of a guided walkthrough of the Per Alter Form stage editor. Per Alter Form is the name of an interface; a stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.alterForm.subjectBody": {
+    "defaultMessage": "Pick the node type the participant answers questions about. The form is shown once for each person of this type in the network. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.alterForm.subjectTitle": {
+    "defaultMessage": "Choose who the form is about",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.anonymisation.attributesBody": {
+    "defaultMessage": "Select the text attributes, for each node type, that are encrypted with the passphrase. This is a setting of the attributes themselves, so it applies across the whole protocol and is saved straight away.",
+    "description": "Body of the walkthrough step about which attributes are encrypted with the passphrase. A node type is a kind of person or thing in the network; an attribute is something recorded about it. The change is written to the codebook at once, not when the stage is saved."
+  },
+  "protocolBuilder.walkthrough.anonymisation.attributesTitle": {
+    "defaultMessage": "Choose what the passphrase protects",
+    "description": "Title of the walkthrough step about which attributes are encrypted with the passphrase."
+  },
+  "protocolBuilder.walkthrough.anonymisation.explanationBody": {
+    "defaultMessage": "The participant reads this text before they choose a passphrase. Write what it protects and what they need to do. A heading can go on the first line.",
+    "description": "Body of the walkthrough step about the text a participant reads before choosing a passphrase."
+  },
+  "protocolBuilder.walkthrough.anonymisation.explanationTitle": {
+    "defaultMessage": "Explain the passphrase",
+    "description": "Title of the walkthrough step about the text a participant reads before choosing a passphrase."
+  },
+  "protocolBuilder.walkthrough.anonymisation.introBody": {
+    "defaultMessage": "This stage asks the participant to choose a passphrase, which then protects the identifying details you pick, such as names. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Anonymisation walkthrough. A passphrase is a secret the participant chooses; it encrypts some of their answers."
+  },
+  "protocolBuilder.walkthrough.anonymisation.introTitle": {
+    "defaultMessage": "Setting up an Anonymisation stage",
+    "description": "Title of the first step of a guided walkthrough of the Anonymisation stage editor. \"Anonymisation\" is the name of the stage type. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.anonymisation.rulesBody": {
+    "defaultMessage": "Switch this on to require a minimum or maximum length. The participant cannot continue until their passphrase meets the rules. Left off, any passphrase is accepted.",
+    "description": "Body of the walkthrough step about the rules a passphrase has to meet."
+  },
+  "protocolBuilder.walkthrough.anonymisation.rulesTitle": {
+    "defaultMessage": "Set passphrase rules",
+    "description": "Title of the walkthrough step about the rules a passphrase has to meet, such as a minimum length."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.completeBody": {
+    "defaultMessage": "With this on, the participant cannot move on from a prompt until every person is in a bin. With it off, they can continue with people left unplaced.",
+    "description": "Body of the walkthrough step about requiring every person to be placed in a bin."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.completeTitle": {
+    "defaultMessage": "Decide whether everyone must be placed",
+    "description": "Title of the walkthrough step about requiring every person to be placed in a bin."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.filterBody": {
+    "defaultMessage": "Switch this on and add rules to sort only the people who match them, such as only those the participant sees weekly. Leave it off to show everyone of this type.",
+    "description": "Body of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.filterTitle": {
+    "defaultMessage": "Show only some people",
+    "description": "Title of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.interactionBody": {
+    "defaultMessage": "The participant either drags each person onto a bin, or taps a bin to place the person who is selected. Leave it as it is to use dragging.",
+    "description": "Body of the walkthrough step about how the participant places people into bins."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.interactionTitle": {
+    "defaultMessage": "Choose how people are placed",
+    "description": "Title of the walkthrough step about how the participant places people into bins."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.introBody": {
+    "defaultMessage": "On a Categorical Bin stage, the participant sorts the people they have named into bins, one bin for each option of a question, such as where they met. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Categorical Bin walkthrough. A bin is one of the groups the participant sorts people into."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.introTitle": {
+    "defaultMessage": "Setting up a Categorical Bin stage",
+    "description": "Title of the first step of a guided walkthrough of the Categorical Bin stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.promptsBody": {
+    "defaultMessage": "Each prompt is one question, answered by dragging people into bins. Add a prompt, write its question, and pick a categorical variable: each of its options becomes a bin. A prompt can also add an \"other\" bin that asks the participant to type an answer.",
+    "description": "Body of the walkthrough step about the prompts of a Categorical Bin stage. A categorical variable is one whose answers come from a fixed list of options."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.promptsTitle": {
+    "defaultMessage": "Write the questions",
+    "description": "Title of the walkthrough step about the prompts of a Categorical Bin stage."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.subjectBody": {
+    "defaultMessage": "Pick the node type the participant sorts on this stage. Every person of this type already in the interview is shown. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.subjectTitle": {
+    "defaultMessage": "Choose who is sorted",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.wordingBody": {
+    "defaultMessage": "Network Canvas supplies some of the words on this stage, such as the message shown when people are still unplaced. Words shared by every Categorical Bin stage change for all of them.",
+    "description": "Body of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.categoricalBin.wordingTitle": {
+    "defaultMessage": "Change the built-in wording",
+    "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.dyadCensus.filterBody": {
+    "defaultMessage": "Switch this on and add rules to pair only the people who match them. The number of pairs grows quickly with each person, so a filter also shortens the stage.",
+    "description": "Body of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.dyadCensus.filterTitle": {
+    "defaultMessage": "Pair only some people",
+    "description": "Title of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.dyadCensus.introBody": {
+    "defaultMessage": "On a Dyad Census stage, the participant is shown every pair of the people they have named, one pair at a time, and answers yes or no for each. A yes adds a connection between the two. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Dyad Census walkthrough."
+  },
+  "protocolBuilder.walkthrough.dyadCensus.introTitle": {
+    "defaultMessage": "Setting up a Dyad Census stage",
+    "description": "Title of the first step of a guided walkthrough of the Dyad Census stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.dyadCensus.promptsBody": {
+    "defaultMessage": "Each prompt is one yes-or-no question asked about every pair, such as whether the two know each other. Add a prompt, write its question, and pick the edge type a yes creates between the two people.",
+    "description": "Body of the walkthrough step about the prompts of a Dyad Census stage. An edge type is a kind of connection between two people, such as friendship."
+  },
+  "protocolBuilder.walkthrough.dyadCensus.promptsTitle": {
+    "defaultMessage": "Write the questions",
+    "description": "Title of the walkthrough step about the prompts of a Dyad Census stage."
+  },
+  "protocolBuilder.walkthrough.dyadCensus.subjectBody": {
+    "defaultMessage": "Pick the node type whose members are paired on this stage. Every person of this type already in the interview is included. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.dyadCensus.subjectTitle": {
+    "defaultMessage": "Choose who is paired",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.egoForm.fieldsBody": {
+    "defaultMessage": "Add a question for each thing to record about the participant. Each question saves its answer in a variable and is answered with the control you pick, such as a text box or a list of options. Drag questions to change the order they are asked in.",
+    "description": "Body of the walkthrough step about the questions the form asks. A variable is a named piece of data recorded about the participant."
+  },
+  "protocolBuilder.walkthrough.egoForm.fieldsTitle": {
+    "defaultMessage": "Write the questions",
+    "description": "Title of the walkthrough step about the questions the form asks."
+  },
+  "protocolBuilder.walkthrough.egoForm.headingBody": {
+    "defaultMessage": "The heading is shown at the top of the screen, above the questions. Every Ego Form needs one.",
+    "description": "Body of the walkthrough step about the heading shown above the questions."
+  },
+  "protocolBuilder.walkthrough.egoForm.headingTitle": {
+    "defaultMessage": "Give the form a heading",
+    "description": "Title of the walkthrough step about the heading shown above the questions."
+  },
+  "protocolBuilder.walkthrough.egoForm.introBody": {
+    "defaultMessage": "An Ego Form asks the participant questions about themselves, such as their age or where they live. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Ego Form walkthrough. Ego is the participant being interviewed."
+  },
+  "protocolBuilder.walkthrough.egoForm.introTitle": {
+    "defaultMessage": "Setting up an Ego Form stage",
+    "description": "Title of the first step of a guided walkthrough of the Ego Form stage editor. Ego Form is the name of an interface; a stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.egoForm.textBody": {
+    "defaultMessage": "This text appears under the heading, before the first question. Use it to say what the questions are about, or leave it empty to show the heading alone.",
+    "description": "Body of the walkthrough step about the introduction text shown above the questions."
+  },
+  "protocolBuilder.walkthrough.egoForm.textTitle": {
+    "defaultMessage": "Introduce the questions",
+    "description": "Title of the walkthrough step about the introduction text shown above the questions."
+  },
+  "protocolBuilder.walkthrough.egoForm.wordingBody": {
+    "defaultMessage": "Network Canvas supplies the few words the form shows on its own, such as the hint to scroll for more questions. They are shared by every Ego Form stage in the protocol, so a change here applies to all of them.",
+    "description": "Body of the walkthrough step about the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.egoForm.wordingTitle": {
+    "defaultMessage": "Change the built-in wording",
+    "description": "Title of the walkthrough step about the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.completenessBody": {
+    "defaultMessage": "Switch this on and choose how far the family must reach, and whether that is required or only recommended. A checklist shows the participant what is missing. Pick an attribute for answers such as “no siblings”.",
+    "description": "Body of the walkthrough step about how much of the family must be drawn."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.completenessChoiceBody": {
+    "defaultMessage": "For example, both parents and every sibling. Without a check, the participant can continue with whatever they have drawn. Your answer only decides which steps come next; it does not change the stage.",
+    "description": "Body of the walkthrough step asking whether the stage checks that enough of the family has been drawn."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.completenessChoiceTitle": {
+    "defaultMessage": "Should participants record a minimum part of the family?",
+    "description": "Title of the walkthrough step asking the researcher whether the stage checks that enough of the family has been drawn before the participant continues."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.completenessTitle": {
+    "defaultMessage": "Set what must be recorded",
+    "description": "Title of the walkthrough step about how much of the family must be drawn."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.edgeAttributesBody": {
+    "defaultMessage": "The stage saves the kind of each relationship, who carried each pregnancy, and whether partners are still together. Pick or create an attribute for each.",
+    "description": "Body of the walkthrough step about the attributes the stage writes on each family relationship."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.edgeAttributesTitle": {
+    "defaultMessage": "Choose what is saved about each relationship",
+    "description": "Title of the walkthrough step about the attributes the stage writes on each family relationship."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.edgeTypeBody": {
+    "defaultMessage": "Each parent and partner connection in the family is saved as this edge type. Siblings are not saved directly: two people are siblings when they share a parent.",
+    "description": "Body of the walkthrough step about the edge type family relationships are recorded as. An edge is a connection between two people."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.edgeTypeTitle": {
+    "defaultMessage": "Choose how relationships are saved",
+    "description": "Title of the walkthrough step about the edge type family relationships are recorded as."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.egoBody": {
+    "defaultMessage": "The participant is a person in their own family. The stage sets this true or false attribute on them, so later stages can tell them apart from their relatives.",
+    "description": "Body of the walkthrough step about the attribute marking which family member is the participant."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.egoTitle": {
+    "defaultMessage": "Choose how the participant is marked",
+    "description": "Title of the walkthrough step about the attribute marking which family member is the participant."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.framingBody": {
+    "defaultMessage": "People the participant has not named yet are called by a family word. Choose everyday words such as mother and father, egg and sperm parent words, or let the participant choose. This changes only what participants read.",
+    "description": "Body of the walkthrough step about the words used for unnamed family members."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.framingTitle": {
+    "defaultMessage": "Choose the family words",
+    "description": "Title of the walkthrough step about the words used for unnamed family members, such as mother or egg parent."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.genderBody": {
+    "defaultMessage": "When this is on, the side panel asks each person’s gender identity, and words such as mother or brother follow the answer. Pick the attribute and the words each answer takes. Switch it off to have those words follow sex assigned at birth instead.",
+    "description": "Body of the walkthrough step about asking each family member’s gender identity."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.genderTitle": {
+    "defaultMessage": "Ask about gender identity",
+    "description": "Title of the walkthrough step about asking each family member’s gender identity."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.introBody": {
+    "defaultMessage": "On this stage the participant draws their family tree, starting from themselves and adding parents, siblings, partners and children. Most settings choose where the stage records what it learns about each person and relationship. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Family Pedigree walkthrough."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.introTitle": {
+    "defaultMessage": "Setting up a Family Pedigree stage",
+    "description": "Title of the first step of a guided walkthrough of the Family Pedigree stage editor. A stage is one step of an interview; a pedigree is a family tree."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.nameBody": {
+    "defaultMessage": "The side panel asks for each new person’s name and saves it in this text attribute. Pick one, or create one. The question and its hint below start with Network Canvas’s wording, which you can change.",
+    "description": "Body of the walkthrough step about the attribute holding each family member’s name. The side panel is where each person is described."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.nameTitle": {
+    "defaultMessage": "Choose where names are saved",
+    "description": "Title of the walkthrough step about the attribute holding each family member’s name."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.nominationBody": {
+    "defaultMessage": "Switch this on and add a prompt for each question. Once the family is drawn, the participant answers each in turn by selecting everyone it applies to, which sets a true or false attribute on them.",
+    "description": "Body of the walkthrough step about the questions asked about the whole family."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.nominationChoiceBody": {
+    "defaultMessage": "For example, “Who in your family has had heart disease?”. A Narrative Pedigree stage can later show the answers on the family tree.",
+    "description": "Body of the walkthrough step asking whether the stage asks questions about the whole family. Narrative Pedigree is the name of another stage type."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.nominationChoiceTitle": {
+    "defaultMessage": "Will you ask about the whole family?",
+    "description": "Title of the walkthrough step asking the researcher whether the stage asks questions about the whole family once it is drawn."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.nominationTitle": {
+    "defaultMessage": "Write the family questions",
+    "description": "Title of the walkthrough step about the questions asked about the whole family."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.personFormBody": {
+    "defaultMessage": "Switch this on to add your own questions to the side panel, such as year of birth. They come after the stage’s own questions about each person.",
+    "description": "Body of the walkthrough step about extra questions asked about each family member."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.personFormTitle": {
+    "defaultMessage": "Ask more about each person",
+    "description": "Title of the walkthrough step about extra questions asked about each family member."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.promptBody": {
+    "defaultMessage": "The participant reads this instruction while they draw their family, for example “Add the members of your family you know about.”",
+    "description": "Body of the walkthrough step about the instruction shown while the participant draws their family."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.promptTitle": {
+    "defaultMessage": "Write the prompt",
+    "description": "Title of the walkthrough step about the instruction shown while the participant draws their family."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.relationToYouBody": {
+    "defaultMessage": "Switch this on to save each person’s relationship to the participant, such as aunt or cousin. It is worked out from the family drawn, never asked, and later stages can filter or skip on it.",
+    "description": "Body of the walkthrough step about recording each family member’s relationship to the participant."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.relationToYouTitle": {
+    "defaultMessage": "Record how each person is related",
+    "description": "Title of the walkthrough step about recording each family member’s relationship to the participant."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.sexBody": {
+    "defaultMessage": "The side panel also asks each person’s sex assigned at birth and saves it in this attribute. Network Canvas supplies its answer options, so you do not write them.",
+    "description": "Body of the walkthrough step about the attribute holding each family member’s sex assigned at birth. The answer options of this attribute are supplied by Network Canvas, not written by the researcher."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.sexTitle": {
+    "defaultMessage": "Choose where sex assigned at birth is saved",
+    "description": "Title of the walkthrough step about the attribute holding each family member’s sex assigned at birth."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.subjectBody": {
+    "defaultMessage": "Every person in the family, the participant included, is recorded as this node type. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type family members are recorded as. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.subjectTitle": {
+    "defaultMessage": "Choose the node type for family members",
+    "description": "Title of the walkthrough step about the node type family members are recorded as."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.symbolsBody": {
+    "defaultMessage": "Each person is drawn as a circle, square or diamond. Choose whether the shape follows sex assigned at birth or gender identity. This changes the node type in the codebook straight away, so it applies on every stage that shows these people.",
+    "description": "Body of the walkthrough step about the symbol each family member is drawn with. The codebook holds the protocol’s node types and their settings."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.symbolsTitle": {
+    "defaultMessage": "Choose the symbols",
+    "description": "Title of the walkthrough step about the symbol (circle, square or diamond) each family member is drawn with."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.wordingBody": {
+    "defaultMessage": "Network Canvas supplies every word the participant reads while drawing, such as the side panel questions and the checklist. Switch this on only if you want different words.",
+    "description": "Body of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.familyPedigree.wordingTitle": {
+    "defaultMessage": "Change the built-in wording",
+    "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.finishBody": {
+    "defaultMessage": "Below is what the stage has so far; pick a step to go back to it. Then use **Preview** to try the stage as a participant would.",
+    "description": "Body of the last step of a stage walkthrough. Markdown; Preview is the label of the button that opens a preview of the stage."
+  },
+  "protocolBuilder.walkthrough.finishSession.closingBody": {
+    "defaultMessage": "Participants read this text, with the Finish button beneath it, before they end the interview. Put a heading on its first line if you want one.",
+    "description": "Body of the walkthrough step about the text shown before the participant finishes the interview. Finish is the label of the button that ends the interview."
+  },
+  "protocolBuilder.walkthrough.finishSession.closingTitle": {
+    "defaultMessage": "Write the closing screen",
+    "description": "Title of the walkthrough step about the text shown before the participant finishes the interview."
+  },
+  "protocolBuilder.walkthrough.finishSession.finishedBody": {
+    "defaultMessage": "Participants read this text once the interview has ended, and again whenever the finished interview is opened. It starts with wording Network Canvas supplies, which you can change.",
+    "description": "Body of the walkthrough step about the text shown once the interview has ended."
+  },
+  "protocolBuilder.walkthrough.finishSession.finishedTitle": {
+    "defaultMessage": "Write the finished screen",
+    "description": "Title of the walkthrough step about the text shown once the interview has ended."
+  },
+  "protocolBuilder.walkthrough.finishSession.introBody": {
+    "defaultMessage": "A Finish Screen ends the interview. A protocol can have more than one, so different routes through the interview can end differently. You can keep editing while this walkthrough is open.",
+    "description": "Body of the first step of the Finish Screen walkthrough."
+  },
+  "protocolBuilder.walkthrough.finishSession.introTitle": {
+    "defaultMessage": "Setting up a Finish Screen stage",
+    "description": "Title of the first step of a guided walkthrough of the Finish Screen stage editor. Finish Screen is the name of an interface; a stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.finishSession.modeBody": {
+    "defaultMessage": "With **Participants confirm**, participants read a closing screen and press a button to finish, and can still go back until they do. With **Finish automatically**, the interview ends as soon as they reach this stage.",
+    "description": "Body of the walkthrough step about whether participants confirm that they are finished. Markdown; the bold phrases are the labels of the two options in the editor."
+  },
+  "protocolBuilder.walkthrough.finishSession.modeTitle": {
+    "defaultMessage": "Choose how the interview ends",
+    "description": "Title of the walkthrough step about whether participants confirm that they are finished."
+  },
+  "protocolBuilder.walkthrough.finishSession.outcomeBody": {
+    "defaultMessage": "The outcome is saved with every interview that ends here and included in data exports, so endings can be told apart later. Participants never see it.",
+    "description": "Body of the walkthrough step about the outcome."
+  },
+  "protocolBuilder.walkthrough.finishSession.outcomeTitle": {
+    "defaultMessage": "Record how the interview ended",
+    "description": "Title of the walkthrough step about the outcome."
+  },
+  "protocolBuilder.walkthrough.finishSession.wordingBody": {
+    "defaultMessage": "Network Canvas supplies the words of the Finish button, the question it asks before ending the interview, and the message shown if the interview could not be ended. Switch this on to change them for this stage.",
+    "description": "Body of the walkthrough step about the wording of the Finish button and the messages around it."
+  },
+  "protocolBuilder.walkthrough.finishSession.wordingTitle": {
+    "defaultMessage": "Change the finishing words",
+    "description": "Title of the walkthrough step about the wording of the Finish button and the messages around it."
+  },
+  "protocolBuilder.walkthrough.finishTitle": {
+    "defaultMessage": "Try it out",
+    "description": "Title of the last step of a stage walkthrough."
+  },
+  "protocolBuilder.walkthrough.geospatial.accessBody": {
+    "defaultMessage": "The map cannot be drawn without an API key from your own Mapbox account. Choose a stored key, or add one as a resource.",
+    "description": "Body of the walkthrough step about the Mapbox API key. A resource is a file or key stored with the protocol."
+  },
+  "protocolBuilder.walkthrough.geospatial.accessTitle": {
+    "defaultMessage": "Add your Mapbox key",
+    "description": "Title of the walkthrough step about the Mapbox API key. Mapbox is the name of the map provider and stays untranslated."
+  },
+  "protocolBuilder.walkthrough.geospatial.appearanceBody": {
+    "defaultMessage": "Pick the map style drawn under the areas, and the shade used to outline them and mark the one selected. You can also show public transit, or let the participant search for a place.",
+    "description": "Body of the walkthrough step about the map style, highlight and extra map features."
+  },
+  "protocolBuilder.walkthrough.geospatial.appearanceTitle": {
+    "defaultMessage": "Choose how the map looks",
+    "description": "Title of the walkthrough step about the map style, highlight and extra map features."
+  },
+  "protocolBuilder.walkthrough.geospatial.filterBody": {
+    "defaultMessage": "Switch this on to show only some people of that type, chosen by rules about their answers so far. Left off, everyone of that type is shown.",
+    "description": "Body of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.geospatial.filterTitle": {
+    "defaultMessage": "Limit who is shown",
+    "description": "Title of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.geospatial.introBody": {
+    "defaultMessage": "On this stage the participant answers each prompt by choosing an area on a map, for each person in their network. The map comes from Mapbox, drawn with a key and a file of areas that you provide. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Geospatial walkthrough. Mapbox is the name of the map provider and stays untranslated."
+  },
+  "protocolBuilder.walkthrough.geospatial.introTitle": {
+    "defaultMessage": "Setting up a Geospatial stage",
+    "description": "Title of the first step of a guided walkthrough of the Geospatial stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.geospatial.layerBody": {
+    "defaultMessage": "Choose a GeoJSON file holding the areas the participant can select, such as census tracts or postal areas. They are outlined on the map.",
+    "description": "Body of the walkthrough step about the GeoJSON file of areas a participant can choose. GeoJSON is a file format and stays untranslated."
+  },
+  "protocolBuilder.walkthrough.geospatial.layerTitle": {
+    "defaultMessage": "Choose the areas to pick from",
+    "description": "Title of the walkthrough step about the GeoJSON file of areas a participant can choose on the map."
+  },
+  "protocolBuilder.walkthrough.geospatial.promptsBody": {
+    "defaultMessage": "Each prompt is a question, such as “Where does this person live?”, answered by selecting an area. Pick the variable each answer is saved in. Add at least one.",
+    "description": "Body of the walkthrough step about the stage prompts. A variable is where an answer is stored about each person."
+  },
+  "protocolBuilder.walkthrough.geospatial.promptsTitle": {
+    "defaultMessage": "Write the prompts",
+    "description": "Title of the walkthrough step about the stage prompts."
+  },
+  "protocolBuilder.walkthrough.geospatial.propertyBody": {
+    "defaultMessage": "When the participant selects an area, the value of this property is saved as their answer. Pick one that names each area, and is different for every one.",
+    "description": "Body of the walkthrough step about the property of a chosen area that is saved as the answer. A property is one named value each area in the GeoJSON file carries."
+  },
+  "protocolBuilder.walkthrough.geospatial.propertyTitle": {
+    "defaultMessage": "Choose what is recorded",
+    "description": "Title of the walkthrough step about the property of a chosen area that is saved as the answer."
+  },
+  "protocolBuilder.walkthrough.geospatial.subjectBody": {
+    "defaultMessage": "Pick the node type the participant answers about. Each person of that type is shown in turn. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.geospatial.subjectTitle": {
+    "defaultMessage": "Choose who is placed on the map",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.geospatial.viewBody": {
+    "defaultMessage": "Set the place and zoom level the map shows when the stage opens. Move the map to the study area, then accept that view.",
+    "description": "Body of the walkthrough step about the starting position and zoom of the map."
+  },
+  "protocolBuilder.walkthrough.geospatial.viewTitle": {
+    "defaultMessage": "Choose where the map opens",
+    "description": "Title of the walkthrough step about the starting position and zoom of the map."
+  },
+  "protocolBuilder.walkthrough.geospatial.wordingBody": {
+    "defaultMessage": "Network Canvas supplies the words on the map, such as the button for a place outside the areas offered. Switch this on only if you want different words.",
+    "description": "Body of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.geospatial.wordingTitle": {
+    "defaultMessage": "Change the built-in wording",
+    "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.guidanceBody": {
+    "defaultMessage": "Switch this on to write anything the interviewer should say or do on this stage. Participants never see it.",
+    "description": "Body of the walkthrough step about interviewer guidance."
+  },
+  "protocolBuilder.walkthrough.guidanceTitle": {
+    "defaultMessage": "Add notes for interviewers",
+    "description": "Title of the walkthrough step about interviewer guidance."
+  },
+  "protocolBuilder.walkthrough.information.headingBody": {
+    "defaultMessage": "The heading is shown in large text at the top of the page. Every Information stage needs one.",
+    "description": "Body of the walkthrough step about the heading at the top of the page."
+  },
+  "protocolBuilder.walkthrough.information.headingTitle": {
+    "defaultMessage": "Write the page heading",
+    "description": "Title of the walkthrough step about the heading at the top of the page."
+  },
+  "protocolBuilder.walkthrough.information.introBody": {
+    "defaultMessage": "An Information stage is a page the participant reads, with a heading and any mix of text, images, audio and video. It asks no questions. You can keep editing while this walkthrough is open.",
+    "description": "Body of the first step of the Information walkthrough."
+  },
+  "protocolBuilder.walkthrough.information.introTitle": {
+    "defaultMessage": "Setting up an Information stage",
+    "description": "Title of the first step of a guided walkthrough of the Information stage editor. Information is the name of an interface; a stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.information.itemsBody": {
+    "defaultMessage": "Add a block for each piece of text, image, audio or video, in the order the participant should see them. Drag blocks to reorder them. The page scrolls, so it can hold as many as you need.",
+    "description": "Body of the walkthrough step about the blocks of text and media on the page."
+  },
+  "protocolBuilder.walkthrough.information.itemsTitle": {
+    "defaultMessage": "Add the content",
+    "description": "Title of the walkthrough step about the blocks of text and media on the page."
+  },
+  "protocolBuilder.walkthrough.introAlt": {
+    "defaultMessage": "An example of this stage as a participant sees it.",
+    "description": "Alternative text for the picture on the first step of a stage walkthrough: a screenshot of the kind of stage being edited, taken from a real interview."
+  },
+  "protocolBuilder.walkthrough.languageChooser.headingBody": {
+    "defaultMessage": "Network Canvas supplies a heading shown above the languages, and it switches to the chosen language as soon as the participant picks one. Switch this section on only if you want different words.",
+    "description": "Body of the walkthrough step about the heading shown above the languages a participant chooses between."
+  },
+  "protocolBuilder.walkthrough.languageChooser.headingTitle": {
+    "defaultMessage": "Change the heading",
+    "description": "Title of the walkthrough step about the heading shown above the languages a participant chooses between."
+  },
+  "protocolBuilder.walkthrough.languageChooser.introBody": {
+    "defaultMessage": "On this stage the participant picks the language the rest of their interview is shown in. There is little to set up: the choices come from the protocol itself. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Language Chooser walkthrough."
+  },
+  "protocolBuilder.walkthrough.languageChooser.introTitle": {
+    "defaultMessage": "Setting up a Language Chooser stage",
+    "description": "Title of the first step of a guided walkthrough of the Language Chooser stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.languageChooser.languagesBody": {
+    "defaultMessage": "The participant chooses from every language this protocol is written in, listed here. To add or remove one, change the languages of the whole protocol; they cannot be changed on this stage.",
+    "description": "Body of the walkthrough step about the list of languages a participant can choose between. The list follows the languages of the whole protocol."
+  },
+  "protocolBuilder.walkthrough.languageChooser.languagesTitle": {
+    "defaultMessage": "Check the languages on offer",
+    "description": "Title of the walkthrough step about the list of languages a participant can choose between."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.formBody": {
+    "defaultMessage": "Each time the participant adds someone, this form opens. Give it a title, then add at least one field: each field pairs a variable with the control used to answer it, such as a name box.",
+    "description": "Body of the walkthrough step about the form filled in for each node."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.formTitle": {
+    "defaultMessage": "Write the form for each person",
+    "description": "Title of the walkthrough step about the form filled in for each node."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.introBody": {
+    "defaultMessage": "On a Name Generator, the participant answers a question by adding people, filling in a short form for each one. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Name Generator walkthrough."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.introTitle": {
+    "defaultMessage": "Setting up a Name Generator (using forms) stage",
+    "description": "Title of the first step of a guided walkthrough of the Name Generator stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.limitsBody": {
+    "defaultMessage": "Switch this on to set a minimum or maximum number of people across the whole stage. The participant cannot continue below the minimum, and cannot add more once the maximum is reached.",
+    "description": "Body of the walkthrough step about nomination limits."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.limitsTitle": {
+    "defaultMessage": "Limit how many people are named",
+    "description": "Title of the walkthrough step about nomination limits."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.panelsBody": {
+    "defaultMessage": "Switch this on to show up to two lists beside the prompt, holding people named earlier in the interview or listed in a data file. The participant drags someone from a list instead of adding them again.",
+    "description": "Body of the walkthrough step about side panels."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.panelsTitle": {
+    "defaultMessage": "Offer people to add from a list",
+    "description": "Title of the walkthrough step about side panels."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.promptsBody": {
+    "defaultMessage": "A prompt is the question the participant answers, such as “Who do you talk to about important matters?”. Add at least one; with several, the participant moves through them in order. A prompt can also set values on everyone named under it.",
+    "description": "Body of the walkthrough step about the prompts. The quoted question is an example and may be translated."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.promptsTitle": {
+    "defaultMessage": "Write the prompts",
+    "description": "Title of the walkthrough step about the prompts. A prompt is one question the participant answers on the stage."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.subjectBody": {
+    "defaultMessage": "Pick the node type this stage creates, such as a person or a place. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.subjectTitle": {
+    "defaultMessage": "Choose who is added",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.wordingBody": {
+    "defaultMessage": "Network Canvas supplies the messages shown on this stage, such as the notice when the minimum has not been reached. Switch this on to write your own.",
+    "description": "Body of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.nameGenerator.wordingTitle": {
+    "defaultMessage": "Change the built-in wording",
+    "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.introBody": {
+    "defaultMessage": "On this stage, the participant answers a question by typing names into a single box, one at a time. Each name adds a person straight away, with no form to fill in. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the quick-add Name Generator walkthrough."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.introTitle": {
+    "defaultMessage": "Setting up a Name Generator (quick add) stage",
+    "description": "Title of the first step of a guided walkthrough of the quick-add Name Generator stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.limitsBody": {
+    "defaultMessage": "Switch this on to set a minimum or maximum number of people across the whole stage. The participant cannot continue below the minimum, and cannot add more once the maximum is reached.",
+    "description": "Body of the walkthrough step about nomination limits."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.limitsTitle": {
+    "defaultMessage": "Limit how many people are named",
+    "description": "Title of the walkthrough step about nomination limits."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.panelsBody": {
+    "defaultMessage": "Switch this on to show up to two lists beside the prompt, holding people named earlier in the interview or listed in a data file. The participant drags someone from a list instead of typing their name again.",
+    "description": "Body of the walkthrough step about side panels."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.panelsTitle": {
+    "defaultMessage": "Offer people to add from a list",
+    "description": "Title of the walkthrough step about side panels."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.promptsBody": {
+    "defaultMessage": "A prompt is the question the participant answers, such as “Who do you talk to about important matters?”. Add at least one; with several, the participant moves through them in order. A prompt can also set values on everyone named under it.",
+    "description": "Body of the walkthrough step about the prompts. The quoted question is an example and may be translated."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.promptsTitle": {
+    "defaultMessage": "Write the prompts",
+    "description": "Title of the walkthrough step about the prompts. A prompt is one question the participant answers on the stage."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.quickAddBody": {
+    "defaultMessage": "Whatever the participant types in the box is saved in this text variable, which is usually a name. Pick one, or create one here.",
+    "description": "Body of the walkthrough step about the attribute the quick-add box fills in."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.quickAddTitle": {
+    "defaultMessage": "Choose where names are saved",
+    "description": "Title of the walkthrough step about the attribute the quick-add box fills in."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.subjectBody": {
+    "defaultMessage": "Pick the node type this stage creates, such as a person or a place. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.subjectTitle": {
+    "defaultMessage": "Choose who is added",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.wordingBody": {
+    "defaultMessage": "Network Canvas supplies the words on this stage, such as the hint shown in the empty name box. Switch this on to write your own.",
+    "description": "Body of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorQuickAdd.wordingTitle": {
+    "defaultMessage": "Change the built-in wording",
+    "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.cardsBody": {
+    "defaultMessage": "Each person in the list is shown as a card with their name. Switch this on to add other details from the data file to each card, such as age, to help the participant tell people apart.",
+    "description": "Body of the walkthrough step about the extra details shown on each card in the list."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.cardsTitle": {
+    "defaultMessage": "Show more on each card",
+    "description": "Title of the walkthrough step about the extra details shown on each card in the list."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.introBody": {
+    "defaultMessage": "On this stage, the participant answers a question by picking people from a list that comes from a data file, such as everyone in a class. Nobody is typed in. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the roster Name Generator walkthrough."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.introTitle": {
+    "defaultMessage": "Setting up a Name Generator for Roster Data stage",
+    "description": "Title of the first step of a guided walkthrough of the roster Name Generator stage editor. A stage is one step of an interview; a roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.limitsBody": {
+    "defaultMessage": "Switch this on to set a minimum or maximum number of people across the whole stage. The participant cannot continue below the minimum, and cannot add more once the maximum is reached.",
+    "description": "Body of the walkthrough step about nomination limits."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.limitsTitle": {
+    "defaultMessage": "Limit how many people are picked",
+    "description": "Title of the walkthrough step about nomination limits."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.panelBody": {
+    "defaultMessage": "This heading sits above the list the participant picks from. It starts with wording Network Canvas supplies, which you can change.",
+    "description": "Body of the walkthrough step about the heading above the list of people the participant picks from."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.panelTitle": {
+    "defaultMessage": "Name the list",
+    "description": "Title of the walkthrough step about the heading above the list of people the participant picks from."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.promptsBody": {
+    "defaultMessage": "A prompt is the question the participant answers, such as “Which of these people do you study with?”. Add at least one; with several, the participant moves through them in order. A prompt can also set values on everyone picked under it.",
+    "description": "Body of the walkthrough step about the prompts. The quoted question is an example and may be translated."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.promptsTitle": {
+    "defaultMessage": "Write the prompts",
+    "description": "Title of the walkthrough step about the prompts. A prompt is one question the participant answers on the stage."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.searchBody": {
+    "defaultMessage": "Switch this on to add a search box above the list. Choose which attributes a search looks in, and how closely what is typed has to match.",
+    "description": "Body of the walkthrough step about searching the list."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.searchTitle": {
+    "defaultMessage": "Let the participant search",
+    "description": "Title of the walkthrough step about searching the list."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.sortBody": {
+    "defaultMessage": "Switch this on to set the order the list starts in, and the attributes the participant can sort it by.",
+    "description": "Body of the walkthrough step about sorting the list."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.sortTitle": {
+    "defaultMessage": "Sort the list",
+    "description": "Title of the walkthrough step about sorting the list."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.sourceBody": {
+    "defaultMessage": "The list the participant picks from is read from this network data file. The card, sorting and search settings later on all use its attributes, so choosing a different file clears them.",
+    "description": "Body of the walkthrough step about the data file the roster lists people from."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.sourceTitle": {
+    "defaultMessage": "Choose the data file",
+    "description": "Title of the walkthrough step about the data file the roster lists people from."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.subjectBody": {
+    "defaultMessage": "Pick the node type that people picked from the list become, such as a person. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.subjectTitle": {
+    "defaultMessage": "Choose who is added",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.wordingBody": {
+    "defaultMessage": "Network Canvas supplies the messages shown on this stage, such as the one shown once everyone in the list has been added. Switch this on to write your own.",
+    "description": "Body of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.nameGeneratorRoster.wordingTitle": {
+    "defaultMessage": "Change the built-in wording",
+    "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.narrative.backgroundBody": {
+    "defaultMessage": "Draw concentric circles behind the canvas, or use an image of your own. People are shown where they were placed on earlier stages, on top of this background.",
+    "description": "Body of the walkthrough step about the canvas background."
+  },
+  "protocolBuilder.walkthrough.narrative.backgroundTitle": {
+    "defaultMessage": "Choose the background",
+    "description": "Title of the walkthrough step about the canvas background."
+  },
+  "protocolBuilder.walkthrough.narrative.filterBody": {
+    "defaultMessage": "Switch this on to write rules that decide which people and connections appear on this stage, such as only the people named as close friends. Without a filter, everyone of the chosen type is shown.",
+    "description": "Body of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.narrative.filterTitle": {
+    "defaultMessage": "Show only some people",
+    "description": "Title of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.narrative.introBody": {
+    "defaultMessage": "A Narrative stage shows the participant the network they have already built, so they can talk about it. Nothing new is collected: the canvas switches between saved views of the network while the participant tells its story. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Narrative walkthrough."
+  },
+  "protocolBuilder.walkthrough.narrative.introTitle": {
+    "defaultMessage": "Setting up a Narrative stage",
+    "description": "Title of the first step of a guided walkthrough of the Narrative stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.narrative.permissionsBody": {
+    "defaultMessage": "Automatic layout lets the canvas move people by their connections, starting from where they were placed. Free-draw lets the participant draw on the canvas while they talk, and repositioning lets them drag people around. None of these changes the positions saved in the interview.",
+    "description": "Body of the walkthrough step about the switches deciding what the participant may do to the canvas. Free-draw is the label of one of the switches."
+  },
+  "protocolBuilder.walkthrough.narrative.permissionsTitle": {
+    "defaultMessage": "Choose what can be done on the canvas",
+    "description": "Title of the walkthrough step about the switches deciding what the participant may do to the canvas."
+  },
+  "protocolBuilder.walkthrough.narrative.presetsBody": {
+    "defaultMessage": "Each preset is one view of the network that can be picked during the interview. It places people by a layout variable saved on an earlier stage, and can also group people, show some types of connection, and highlight people by a true-or-false variable. Add at least one.",
+    "description": "Body of the walkthrough step about presets: saved views of the network that can be switched between during the interview."
+  },
+  "protocolBuilder.walkthrough.narrative.presetsTitle": {
+    "defaultMessage": "Create the views",
+    "description": "Title of the walkthrough step about presets: saved views of the network that can be switched between during the interview."
+  },
+  "protocolBuilder.walkthrough.narrative.subjectBody": {
+    "defaultMessage": "Pick the node type shown on the canvas. Everyone of that type named earlier in the interview appears here. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.narrative.subjectTitle": {
+    "defaultMessage": "Choose who goes on the canvas",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.narrative.wordingBody": {
+    "defaultMessage": "Network Canvas supplies the words on this stage, such as the headings in the key that explains what is highlighted, connected and grouped. Switch this on to write your own.",
+    "description": "Body of the walkthrough step about changing the wording Network Canvas supplies for the stage. The key is the panel on the canvas explaining what each mark means."
+  },
+  "protocolBuilder.walkthrough.narrative.wordingTitle": {
+    "defaultMessage": "Change the built-in wording",
+    "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.narrativePedigree.atRiskBody": {
+    "defaultMessage": "Switch this on to also mark people who may develop or carry a disease, worked out from the family and each inheritance pattern. They are drawn with a question mark. Left off, only people recorded as having a disease are marked.",
+    "description": "Body of the walkthrough step about showing people who might develop or carry a condition."
+  },
+  "protocolBuilder.walkthrough.narrativePedigree.atRiskTitle": {
+    "defaultMessage": "Show who may be at risk",
+    "description": "Title of the walkthrough step about showing people who might develop or carry a condition."
+  },
+  "protocolBuilder.walkthrough.narrativePedigree.diseasesBody": {
+    "defaultMessage": "Each disease marks the people who have it, read from an attribute recorded about them, usually a question asked on the Family Pedigree stage. Give each a name, a shade and an inheritance pattern. Add at least one.",
+    "description": "Body of the walkthrough step about the conditions drawn onto the family tree. An attribute is something recorded about each person; the inheritance pattern is how the condition passes through a family."
+  },
+  "protocolBuilder.walkthrough.narrativePedigree.diseasesTitle": {
+    "defaultMessage": "Add the diseases to show",
+    "description": "Title of the walkthrough step about the conditions drawn onto the family tree."
+  },
+  "protocolBuilder.walkthrough.narrativePedigree.introBody": {
+    "defaultMessage": "This stage shows the family a participant drew on an earlier Family Pedigree stage, marked with the conditions recorded about each person. It asks no new questions: the family is there to explore and talk through. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Narrative Pedigree walkthrough. Family Pedigree is the name of another stage type."
+  },
+  "protocolBuilder.walkthrough.narrativePedigree.introTitle": {
+    "defaultMessage": "Setting up a Narrative Pedigree stage",
+    "description": "Title of the first step of a guided walkthrough of the Narrative Pedigree stage editor. A stage is one step of an interview; a pedigree is a family tree."
+  },
+  "protocolBuilder.walkthrough.narrativePedigree.sourceBody": {
+    "defaultMessage": "Pick the Family Pedigree stage whose family is shown here. It has to come earlier in the interview. Choosing a different one later removes the diseases set up below.",
+    "description": "Body of the walkthrough step about which Family Pedigree stage this stage reads its family from."
+  },
+  "protocolBuilder.walkthrough.narrativePedigree.sourceTitle": {
+    "defaultMessage": "Choose the family to show",
+    "description": "Title of the walkthrough step about which Family Pedigree stage this stage reads its family from."
+  },
+  "protocolBuilder.walkthrough.narrativePedigree.wordingBody": {
+    "defaultMessage": "Network Canvas supplies the words on this stage, such as the button that saves a printable snapshot, and the disease picker. Switch this on only if you want different words.",
+    "description": "Body of the walkthrough step about changing the wording Network Canvas supplies for the stage. A snapshot is a saved picture of the family tree."
+  },
+  "protocolBuilder.walkthrough.narrativePedigree.wordingTitle": {
+    "defaultMessage": "Change the built-in wording",
+    "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.networkComposer.backgroundBody": {
+    "defaultMessage": "Draw concentric circles behind the canvas, or use an image of your own. Circles can help the interviewer place people, for example closer people nearer the middle.",
+    "description": "Body of the walkthrough step about the canvas background."
+  },
+  "protocolBuilder.walkthrough.networkComposer.backgroundTitle": {
+    "defaultMessage": "Choose the background",
+    "description": "Title of the walkthrough step about the canvas background."
+  },
+  "protocolBuilder.walkthrough.networkComposer.edgeFormBody": {
+    "defaultMessage": "Each connection type can have its own questions, shown in the side panel when one of its connections is selected.",
+    "description": "Body of the walkthrough step about the questions asked about each connection."
+  },
+  "protocolBuilder.walkthrough.networkComposer.edgeFormTitle": {
+    "defaultMessage": "Ask about each connection",
+    "description": "Title of the walkthrough step about the questions asked about each connection."
+  },
+  "protocolBuilder.walkthrough.networkComposer.edgesBody": {
+    "defaultMessage": "Add each type of connection the Draw Edge tool can create, such as friendship or work. Each type can be added once, and its label is what the interviewer picks from the Draw Edge menu.",
+    "description": "Body of the walkthrough step about connection types. Draw Edge is the name of a tool on the canvas."
+  },
+  "protocolBuilder.walkthrough.networkComposer.edgesChoiceBody": {
+    "defaultMessage": "Connections record a relationship between two people, such as who knows whom.",
+    "description": "Body of the walkthrough step asking whether the interviewer will draw connections between nodes."
+  },
+  "protocolBuilder.walkthrough.networkComposer.edgesChoiceTitle": {
+    "defaultMessage": "Will connections be drawn between people?",
+    "description": "Title of the walkthrough step asking the researcher whether the interviewer will draw connections between nodes on this stage."
+  },
+  "protocolBuilder.walkthrough.networkComposer.edgesTitle": {
+    "defaultMessage": "Choose the connections that can be drawn",
+    "description": "Title of the walkthrough step about connection types."
+  },
+  "protocolBuilder.walkthrough.networkComposer.finishBody": {
+    "defaultMessage": "Below is what the stage has so far; pick a step to go back to it. Then use **Preview** to build a small network as an interviewer would.",
+    "description": "Body of the last step of the Network Composer walkthrough. Markdown; Preview is the label of the button that opens a preview of the stage."
+  },
+  "protocolBuilder.walkthrough.networkComposer.finishTitle": {
+    "defaultMessage": "Try it out",
+    "description": "Title of the last step of the Network Composer walkthrough."
+  },
+  "protocolBuilder.walkthrough.networkComposer.groupsBody": {
+    "defaultMessage": "Pick a categorical variable to group people by, such as household. Each of its options is a group, shaded on the canvas, and the Groups tool adds people to one.",
+    "description": "Body of the walkthrough step about group hulls. Groups is the name of a tool on the canvas."
+  },
+  "protocolBuilder.walkthrough.networkComposer.groupsChoiceBody": {
+    "defaultMessage": "Groups shade people who belong together, such as a household or a team. Your answer only decides which steps come next; it does not change the stage.",
+    "description": "Body of the walkthrough step asking whether the interviewer will group people on the canvas."
+  },
+  "protocolBuilder.walkthrough.networkComposer.groupsChoiceTitle": {
+    "defaultMessage": "Will people be put into groups?",
+    "description": "Title of the walkthrough step asking the researcher whether the interviewer will group people on the canvas, for example by household."
+  },
+  "protocolBuilder.walkthrough.networkComposer.groupsTitle": {
+    "defaultMessage": "Let people be grouped",
+    "description": "Title of the walkthrough step about group hulls."
+  },
+  "protocolBuilder.walkthrough.networkComposer.introBody": {
+    "defaultMessage": "The Network Composer is a single canvas for building a whole network: adding people, grouping them and drawing the connections between them. It is made for an interviewer or researcher to drive, rather than for a participant working alone. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Network Composer walkthrough."
+  },
+  "protocolBuilder.walkthrough.networkComposer.introTitle": {
+    "defaultMessage": "Setting up a Network Composer stage",
+    "description": "Title of the first step of a guided walkthrough of the Network Composer stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.networkComposer.layoutBody": {
+    "defaultMessage": "With automatic layout on, the canvas arranges people by their connections. The interviewer can switch it on or off during the interview; this only sets how the stage starts.",
+    "description": "Body of the walkthrough step about automatic layout."
+  },
+  "protocolBuilder.walkthrough.networkComposer.layoutTitle": {
+    "defaultMessage": "Choose how the canvas starts",
+    "description": "Title of the walkthrough step about automatic layout."
+  },
+  "protocolBuilder.walkthrough.networkComposer.nodeFormBody": {
+    "defaultMessage": "Switch this on and add a question. Questions appear in the side panel when a person on the canvas is selected. Each pairs a variable with the control used to answer it, and the control is chosen here, on the stage.",
+    "description": "Body of the walkthrough step about the questions asked about each node."
+  },
+  "protocolBuilder.walkthrough.networkComposer.nodeFormChoiceBody": {
+    "defaultMessage": "For example, how often the participant sees them, or how close they are. Questions can also be asked on a later stage.",
+    "description": "Body of the walkthrough step asking whether the stage asks questions about each node."
+  },
+  "protocolBuilder.walkthrough.networkComposer.nodeFormChoiceTitle": {
+    "defaultMessage": "Will you ask questions about each person?",
+    "description": "Title of the walkthrough step asking the researcher whether the stage asks questions about each node."
+  },
+  "protocolBuilder.walkthrough.networkComposer.nodeFormTitle": {
+    "defaultMessage": "Ask about each person",
+    "description": "Title of the walkthrough step about the questions asked about each node."
+  },
+  "protocolBuilder.walkthrough.networkComposer.positionsBody": {
+    "defaultMessage": "Where each person sits on the canvas is saved in this layout variable. Use the same variable on other canvas stages and people stay where they were put.",
+    "description": "Body of the walkthrough step about the attribute storing where each node sits."
+  },
+  "protocolBuilder.walkthrough.networkComposer.positionsTitle": {
+    "defaultMessage": "Choose where positions are saved",
+    "description": "Title of the walkthrough step about the attribute storing where each node sits."
+  },
+  "protocolBuilder.walkthrough.networkComposer.quickAddBody": {
+    "defaultMessage": "The Add Node tool opens a name box, and whatever is typed in it is saved in this text variable — usually a name. Pick one, or create one here.",
+    "description": "Body of the walkthrough step about the attribute the add-node name box fills in. Add Node is the name of a tool on the canvas."
+  },
+  "protocolBuilder.walkthrough.networkComposer.quickAddTitle": {
+    "defaultMessage": "Choose where names are saved",
+    "description": "Title of the walkthrough step about the attribute the add-node name box fills in."
+  },
+  "protocolBuilder.walkthrough.networkComposer.subjectBody": {
+    "defaultMessage": "Pick the node type that is added on this canvas. A composer works with one node type. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.networkComposer.subjectTitle": {
+    "defaultMessage": "Choose who goes on the canvas",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.automaticLayoutAlt": {
+    "defaultMessage": "The same people arranged by automatic layout, with connected people drawn close together.",
+    "description": "Alternative text for a screenshot of the Network Composer with automatic layout on."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.backgroundImageAlt": {
+    "defaultMessage": "The same people over an image of four named areas: family, friends, work or study, and community.",
+    "description": "Alternative text for a screenshot of the Network Composer with an image as its background."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.canvasAlt": {
+    "defaultMessage": "The interview canvas with six people, some connected by lines, and the tool bar along its edge.",
+    "description": "Alternative text for a screenshot of the Network Composer as an interviewer sees it."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.circles": {
+    "defaultMessage": "Circles",
+    "description": "Label of the switch position that shows the canvas with a concentric-circles background."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.drawConnectionAlt": {
+    "defaultMessage": "The Draw Edge menu open, listing two kinds of connection to draw: Friendship and Works with.",
+    "description": "Alternative text for a screenshot of the Network Composer with its connection-type menu open."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.groupsAlt": {
+    "defaultMessage": "The same people with a shaded area around each group, one for family and one for work.",
+    "description": "Alternative text for a screenshot of the Network Composer with people shaded by group."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.image": {
+    "defaultMessage": "Image",
+    "description": "Label of the switch position that shows the canvas with an image background."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.noConnectionsAlt": {
+    "defaultMessage": "The same people with no connections between them, and no Draw Edge tool in the tool bar.",
+    "description": "Alternative text for a screenshot of the Network Composer with no connection types."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.nodeFormAlt": {
+    "defaultMessage": "A person selected on the canvas, with a side panel asking their age and how close they are.",
+    "description": "Alternative text for a screenshot of the Network Composer with the questions about a selected person open."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.off": {
+    "defaultMessage": "Off",
+    "description": "Label of the switch position that shows the interview with a setting turned off."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.on": {
+    "defaultMessage": "On",
+    "description": "Label of the switch position that shows the interview with a setting turned on."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.quickAddAlt": {
+    "defaultMessage": "The Add Node tool open on the canvas, with a name being typed into its name box.",
+    "description": "Alternative text for a screenshot of the Network Composer with its add-node name box open."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.withConnections": {
+    "defaultMessage": "Connections",
+    "description": "Label of the switch position that shows the interview canvas with connections drawn."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.withGroups": {
+    "defaultMessage": "Groups",
+    "description": "Label of the switch position that shows the interview canvas with people shaded by group."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.withoutConnections": {
+    "defaultMessage": "No connections",
+    "description": "Label of the switch position that shows the interview canvas with no connection types."
+  },
+  "protocolBuilder.walkthrough.networkComposer.visual.withoutGroups": {
+    "defaultMessage": "No groups",
+    "description": "Label of the switch position that shows the interview canvas without groups."
+  },
+  "protocolBuilder.walkthrough.networkComposer.wordingBody": {
+    "defaultMessage": "Network Canvas supplies the words on the canvas, such as the name box hint and the tool tooltips. They are shared by every Network Composer stage in the protocol, so a change here applies to all of them.",
+    "description": "Body of the walkthrough step about customizing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.networkComposer.wordingTitle": {
+    "defaultMessage": "Change the built-in wording",
+    "description": "Title of the walkthrough step about customizing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.no": {
+    "defaultMessage": "No",
+    "description": "An answer to a yes-or-no question in a stage walkthrough."
+  },
+  "protocolBuilder.walkthrough.oneToManyDyadCensus.filterBody": {
+    "defaultMessage": "Switch this on and add rules to include only the people who match them. Leave it off to include everyone of this type.",
+    "description": "Body of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.oneToManyDyadCensus.filterTitle": {
+    "defaultMessage": "Include only some people",
+    "description": "Title of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.oneToManyDyadCensus.introBody": {
+    "defaultMessage": "On a One-to-Many Dyad Census stage, the participant is shown one of the people they have named at a time, beside everyone else, and selects each of the others a question applies to. Each selection adds a connection between the two. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the One-to-Many Dyad Census walkthrough."
+  },
+  "protocolBuilder.walkthrough.oneToManyDyadCensus.introTitle": {
+    "defaultMessage": "Setting up a One-to-Many Dyad Census stage",
+    "description": "Title of the first step of a guided walkthrough of the One-to-Many Dyad Census stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.oneToManyDyadCensus.promptsBody": {
+    "defaultMessage": "Each prompt is one question about the person shown and the others, such as who among the others they know. Add a prompt, write its question, and pick the edge type each selection creates. You can also set the order people are shown in.",
+    "description": "Body of the walkthrough step about the prompts of a One-to-Many Dyad Census stage. An edge type is a kind of connection between two people, such as friendship."
+  },
+  "protocolBuilder.walkthrough.oneToManyDyadCensus.promptsTitle": {
+    "defaultMessage": "Write the questions",
+    "description": "Title of the walkthrough step about the prompts of a One-to-Many Dyad Census stage."
+  },
+  "protocolBuilder.walkthrough.oneToManyDyadCensus.removeBody": {
+    "defaultMessage": "Once a person has been asked about, they can be removed from the list the participant chooses from, or kept in it. Removing them means each pair is only asked about once. Pick one of the two.",
+    "description": "Body of the walkthrough step about whether a person already asked about stays in the list to choose from."
+  },
+  "protocolBuilder.walkthrough.oneToManyDyadCensus.removeTitle": {
+    "defaultMessage": "Choose what happens after each person",
+    "description": "Title of the walkthrough step about whether a person already asked about stays in the list to choose from."
+  },
+  "protocolBuilder.walkthrough.oneToManyDyadCensus.subjectBody": {
+    "defaultMessage": "Pick the node type this stage asks about. Every person of this type already in the interview is included. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.oneToManyDyadCensus.subjectTitle": {
+    "defaultMessage": "Choose who is asked about",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.completeBody": {
+    "defaultMessage": "With this on, the participant cannot move on from a prompt until every person is in a bin. With it off, they can continue with people left unplaced.",
+    "description": "Body of the walkthrough step about requiring every person to be placed in a bin."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.completeTitle": {
+    "defaultMessage": "Decide whether everyone must be placed",
+    "description": "Title of the walkthrough step about requiring every person to be placed in a bin."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.filterBody": {
+    "defaultMessage": "Switch this on and add rules to sort only the people who match them, such as only those the participant sees weekly. Leave it off to show everyone of this type.",
+    "description": "Body of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.filterTitle": {
+    "defaultMessage": "Show only some people",
+    "description": "Title of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.interactionBody": {
+    "defaultMessage": "The participant either drags each person onto a bin, or taps a bin to place the person who is selected. Leave it as it is to use dragging.",
+    "description": "Body of the walkthrough step about how the participant places people into bins."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.interactionTitle": {
+    "defaultMessage": "Choose how people are placed",
+    "description": "Title of the walkthrough step about how the participant places people into bins."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.introBody": {
+    "defaultMessage": "On an Ordinal Bin stage, the participant places the people they have named along a scale, such as how often they talk, with one bin for each point. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Ordinal Bin walkthrough. A bin is one point on the scale the participant places people on."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.introTitle": {
+    "defaultMessage": "Setting up an Ordinal Bin stage",
+    "description": "Title of the first step of a guided walkthrough of the Ordinal Bin stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.promptsBody": {
+    "defaultMessage": "Each prompt is one question, answered by placing people into bins. Add a prompt, write its question, and pick an ordinal variable: its options become the bins, shown in the order the variable lists them.",
+    "description": "Body of the walkthrough step about the prompts of an Ordinal Bin stage. An ordinal variable is one whose answers come from an ordered list of options, such as never, sometimes, often."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.promptsTitle": {
+    "defaultMessage": "Write the questions",
+    "description": "Title of the walkthrough step about the prompts of an Ordinal Bin stage."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.subjectBody": {
+    "defaultMessage": "Pick the node type the participant sorts on this stage. Every person of this type already in the interview is shown. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.subjectTitle": {
+    "defaultMessage": "Choose who is sorted",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.wordingBody": {
+    "defaultMessage": "Network Canvas supplies some of the words on this stage, such as the message shown when people are still unplaced. Words shared by every Ordinal Bin stage change for all of them.",
+    "description": "Body of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.ordinalBin.wordingTitle": {
+    "defaultMessage": "Change the built-in wording",
+    "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
+  },
+  "protocolBuilder.walkthrough.skipLogicBody": {
+    "defaultMessage": "Switch this on to show or skip this stage depending on the answers so far — for example, only show it to participants who said they have close friends.",
+    "description": "Body of the walkthrough step about skip logic."
+  },
+  "protocolBuilder.walkthrough.skipLogicTitle": {
+    "defaultMessage": "Skip the stage when it does not apply",
+    "description": "Title of the walkthrough step about skip logic."
+  },
+  "protocolBuilder.walkthrough.sociogram.backgroundBody": {
+    "defaultMessage": "Draw concentric circles behind the canvas, or use an image of your own. Circles give the participant rings to place people in, for example closer people nearer the middle.",
+    "description": "Body of the walkthrough step about the canvas background."
+  },
+  "protocolBuilder.walkthrough.sociogram.backgroundTitle": {
+    "defaultMessage": "Choose the background",
+    "description": "Title of the walkthrough step about the canvas background."
+  },
+  "protocolBuilder.walkthrough.sociogram.filterBody": {
+    "defaultMessage": "Switch this on to write rules that decide which people and connections appear on this stage, such as only the people named as close friends. Without a filter, everyone of the chosen type is shown.",
+    "description": "Body of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.sociogram.filterTitle": {
+    "defaultMessage": "Show only some people",
+    "description": "Title of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.sociogram.introBody": {
+    "defaultMessage": "On a Sociogram, the participant works with the people they have already named on a canvas: placing them, connecting the ones who know each other, or marking some of them. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Sociogram walkthrough."
+  },
+  "protocolBuilder.walkthrough.sociogram.introTitle": {
+    "defaultMessage": "Setting up a Sociogram stage",
+    "description": "Title of the first step of a guided walkthrough of the Sociogram stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.sociogram.layoutBody": {
+    "defaultMessage": "In manual mode, people wait in a tray at the bottom of the screen until the participant drags each one onto the canvas. In automatic mode, the canvas arranges them by their connections when the stage opens.",
+    "description": "Body of the walkthrough step about node layout."
+  },
+  "protocolBuilder.walkthrough.sociogram.layoutTitle": {
+    "defaultMessage": "Choose how people are arranged",
+    "description": "Title of the walkthrough step about node layout."
+  },
+  "protocolBuilder.walkthrough.sociogram.promptsBody": {
+    "defaultMessage": "Each prompt is one task on the canvas, such as “Place people who know each other close together”. Every prompt saves where people are put in a layout variable, and can also let the participant connect two people by tapping them, or mark people by tapping them. Add at least one.",
+    "description": "Body of the walkthrough step about the prompts. The quoted task is an example and may be translated."
+  },
+  "protocolBuilder.walkthrough.sociogram.promptsTitle": {
+    "defaultMessage": "Set the tasks",
+    "description": "Title of the walkthrough step about the prompts. On a Sociogram, a prompt is one task the participant is set on the canvas."
+  },
+  "protocolBuilder.walkthrough.sociogram.subjectBody": {
+    "defaultMessage": "Pick the node type shown on the canvas. Everyone of that type named earlier in the interview appears here. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.sociogram.subjectTitle": {
+    "defaultMessage": "Choose who goes on the canvas",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.tieStrengthCensus.filterBody": {
+    "defaultMessage": "Switch this on and add rules to pair only the people who match them. The number of pairs grows quickly with each person, so a filter also shortens the stage.",
+    "description": "Body of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.tieStrengthCensus.filterTitle": {
+    "defaultMessage": "Pair only some people",
+    "description": "Title of the walkthrough step about the stage filter."
+  },
+  "protocolBuilder.walkthrough.tieStrengthCensus.introBody": {
+    "defaultMessage": "On a Tie-Strength Census stage, the participant is shown every pair of the people they have named, one pair at a time, and rates how strong their relationship is, or says there is none. A rating adds a connection between the two that records it. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "description": "Body of the first step of the Tie-Strength Census walkthrough."
+  },
+  "protocolBuilder.walkthrough.tieStrengthCensus.introTitle": {
+    "defaultMessage": "Setting up a Tie-Strength Census stage",
+    "description": "Title of the first step of a guided walkthrough of the Tie-Strength Census stage editor. A stage is one step of an interview."
+  },
+  "protocolBuilder.walkthrough.tieStrengthCensus.promptsBody": {
+    "defaultMessage": "Each prompt is one question asked about every pair, such as how close the two are. Add a prompt, write its question, and pick the edge type an answer creates. Then pick an ordinal variable of that edge type, whose options are the points of the scale, and write the answer that means there is no connection.",
+    "description": "Body of the walkthrough step about the prompts of a Tie-Strength Census stage. An edge type is a kind of connection between two people, such as friendship. An ordinal variable is one whose answers come from an ordered list of options."
+  },
+  "protocolBuilder.walkthrough.tieStrengthCensus.promptsTitle": {
+    "defaultMessage": "Write the questions",
+    "description": "Title of the walkthrough step about the prompts of a Tie-Strength Census stage."
+  },
+  "protocolBuilder.walkthrough.tieStrengthCensus.subjectBody": {
+    "defaultMessage": "Pick the node type whose members are paired on this stage. Every person of this type already in the interview is included. Choosing a different type later clears the rest of the stage.",
+    "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.walkthrough.tieStrengthCensus.subjectTitle": {
+    "defaultMessage": "Choose who is paired",
+    "description": "Title of the walkthrough step about the node type."
+  },
+  "protocolBuilder.walkthrough.yes": {
+    "defaultMessage": "Yes",
+    "description": "An answer to a yes-or-no question in a stage walkthrough."
   }
 }

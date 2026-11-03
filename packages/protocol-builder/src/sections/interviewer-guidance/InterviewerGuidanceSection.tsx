@@ -51,6 +51,9 @@ const messages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const interviewerGuidanceSectionTitle = messages.title;
+
 const GUIDANCE_CAPABILITY: SectionCapability = {
   fields: ['interviewScript'],
   confirmClear: {

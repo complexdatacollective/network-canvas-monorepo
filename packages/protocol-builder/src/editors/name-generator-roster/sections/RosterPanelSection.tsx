@@ -31,6 +31,9 @@ const rosterPanelMessages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const rosterPanelSectionTitle = rosterPanelMessages.title;
+
 const PANEL_TITLE_REQUIRED = createMessageError(
   nodePanelsMessages.panelTitleRequired,
 );

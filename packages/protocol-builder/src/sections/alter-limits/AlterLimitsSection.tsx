@@ -134,6 +134,9 @@ const messages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const alterLimitsSectionTitle = messages.title;
+
 const LIMITS_CAPABILITY: SectionCapability = {
   fields: [MIN_FIELD, MAX_FIELD],
   confirmClear: {

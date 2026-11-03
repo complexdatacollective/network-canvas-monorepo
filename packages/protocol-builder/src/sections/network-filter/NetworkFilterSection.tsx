@@ -86,6 +86,9 @@ const messages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const networkFilterSectionTitle = messages.title;
+
 const FILTER_CAPABILITY: SectionCapability = {
   fields: [FILTER_FIELD],
   confirmClear: {

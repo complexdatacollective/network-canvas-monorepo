@@ -83,6 +83,9 @@ const messages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const rosterSourceSectionTitle = messages.title;
+
 const CHOOSE_A_FILE = createMessageError(messages.fieldRequired);
 
 /**

@@ -61,6 +61,9 @@ const messages = defineMessages({
   },
 });
 
+/** What the section is titled, for a host that walks a researcher through it. */
+export const canvasPermissionsSectionTitle = messages.canvasInteractionTitle;
+
 /**
  * How the canvas behaves while the participant talks over it.
  *

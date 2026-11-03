@@ -122,7 +122,7 @@ import {
 } from './inventedAttribute.ts';
 
 /** Where every interface that holds a whole form keeps its fields. */
-const FIELDS_PATH = 'form.fields';
+export const FIELDS_PATH = 'form.fields';
 const TITLE = 'form.title';
 // Where a field's caption and hint sit in its row, for the values they can
 // show (see `useDynamicValueSite`).

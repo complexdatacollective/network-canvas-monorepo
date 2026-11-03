@@ -6,7 +6,7 @@ import { REQUIRED } from '../../../form/requiredField.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { finishSessionMessages } from './finishSessionMessages.ts';
 
-const FINISHED_CONTENT_FIELD = 'finishedContent';
+export const FINISHED_CONTENT_FIELD = 'finishedContent';
 
 /**
  * The text a participant reads once the interview has finished, heading

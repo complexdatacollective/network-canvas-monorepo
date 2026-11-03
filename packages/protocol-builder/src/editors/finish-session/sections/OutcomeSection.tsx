@@ -14,7 +14,7 @@ import {
   finishSessionMessages,
 } from './finishSessionMessages.ts';
 
-const OUTCOME_FIELD = 'outcome';
+export const OUTCOME_FIELD = 'outcome';
 
 /**
  * The outcome an interview that ends at this stage is recorded with.
