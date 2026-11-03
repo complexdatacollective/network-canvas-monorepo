@@ -17,13 +17,17 @@ const SUPPLIED_HINT = 'Scroll to see more questions';
 const mountEgoForm = () =>
   renderStageEditor({ stageId: 'ego-form-1', registry: egoFormStageEditor });
 
-/** A stage editor, with the first write it sends held until `release`. */
+/**
+ * A stage editor, with the first write it sends held until `release`, and the
+ * number of writes the protocol has applied so far.
+ */
 const mountWithHeldWrite = (
   stageId: FixtureStageId,
   registry: Partial<StageEditorRegistry>,
 ) => {
   const first = Promise.withResolvers<void>();
   let held = true;
+  let applied = 0;
   const harness = renderStageEditor({
     stageId,
     registry,
@@ -37,11 +41,20 @@ const mountWithHeldWrite = (
                 await first.promise;
               }
             }),
-            () => host.handle.Submit(input),
+            () =>
+              Effect.tap(host.handle.Submit(input), () =>
+                Effect.sync(() => {
+                  applied += 1;
+                }),
+              ),
           ),
       }),
   });
-  return { harness, release: () => first.resolve() };
+  return {
+    harness,
+    release: () => first.resolve(),
+    applied: () => applied,
+  };
 };
 
 const mountEgoFormWithHeldWrite = () =>
@@ -187,6 +200,34 @@ describe('a stage whose only built-in wording is shared', () => {
       expect(section).toHaveAttribute('aria-checked', 'false'),
     );
     expect(heldHint(harness)).toEqual({ [FIXTURE_LANGUAGE]: SUPPLIED_HINT });
+  });
+
+  it('keeps a shared word put back while the change before it is still being written', async () => {
+    const { harness, release, applied } = mountEgoFormWithHeldWrite();
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Customize built-in wording' }),
+    );
+    const hint = await screen.findByRole('textbox', {
+      name: 'More questions hint',
+    });
+    await waitFor(() => expect(hint).not.toHaveAttribute('readonly'));
+
+    // The first change is held on its way while the original words are put
+    // back, which match what the protocol holds until that change lands.
+    await harness.user.clear(hint);
+    await harness.user.type(hint, 'Temporary wording');
+    await harness.user.tab();
+    await harness.user.click(hint);
+    await harness.user.clear(hint);
+    await harness.user.type(hint, SUPPLIED_HINT);
+    await harness.user.tab();
+    const before = applied();
+    release();
+
+    // Both writes land: the change, then the words put back after it.
+    await waitFor(() => expect(applied()).toBe(before + 2));
+    expect(heldHint(harness)).toEqual({ [FIXTURE_LANGUAGE]: SUPPLIED_HINT });
+    expect(hint).toHaveValue(SUPPLIED_HINT);
   });
 });
 
