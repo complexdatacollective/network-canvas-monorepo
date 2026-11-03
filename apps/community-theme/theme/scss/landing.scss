@@ -44,17 +44,18 @@
   }
 }
 
-// The headings are the shared Heading's variants, each with the leading and
-// tracking its step of the type scale carries: the page title a
-// section-heading (text-4xl, black), section titles a subheading (text-2xl,
-// black), card titles an h3 (text-xl, bold) and the panel titles an h4
-// (text-lg, bold). The scale is fluid, so they need no phone sizes.
+// The headings take the shared Heading's sizes, each with the leading and
+// tracking its step of the type scale carries: the page title an h1
+// (text-3xl) at the black weight, which keeps translated titles to four lines
+// or fewer; section titles a subheading (text-2xl, black); card titles an h3
+// (text-xl, bold); and panel titles an h4 (text-lg, bold). The scale is
+// fluid, so they need no phone sizes.
 .nc-landing__title {
   margin: 0 0 var(--space-4);
-  font-size: var(--nc-text-4xl);
+  font-size: var(--nc-text-3xl);
   font-weight: 900;
-  line-height: var(--nc-text-4xl--line-height);
-  letter-spacing: var(--nc-text-4xl--letter-spacing);
+  line-height: var(--nc-text-3xl--line-height);
+  letter-spacing: var(--nc-text-3xl--letter-spacing);
   text-wrap: balance;
 }
 
