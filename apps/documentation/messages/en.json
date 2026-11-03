@@ -122,6 +122,10 @@
     "readGuide": "Read this step in the guide",
     "replay": "Replay",
     "pause": "Pause",
-    "play": "Play"
+    "play": "Play",
+    "help": "Report a problem with this walkthrough",
+    "helpTitle": "Something not look right?",
+    "helpBody": "The services in this walkthrough change their screens from time to time. If a step doesn't match what you see, or something here is wrong, tell us on the community forum and we'll fix it.",
+    "helpLink": "Post on the community forum"
   }
 }

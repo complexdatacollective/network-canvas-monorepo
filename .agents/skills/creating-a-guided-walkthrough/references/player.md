@@ -59,6 +59,15 @@ the storyboard table columns map one-to-one onto fields.
 - **Advancing** follows the beat type (see `storyboard.md`): Continue for
   explain beats, a named confirmation for do beats, an option for choose beats.
   Nothing advances on a timer by default.
+- **Choices sit in the content**: large filled buttons inside the visual band,
+  under the picture, not in the caption or action row; the chosen one is
+  marked. A choice is the
+  step, so it should read as the step.
+- **Filled buttons only.** Every button is filled (`variant="default"`); none
+  uses the `outline` variant.
+- **Help.** A help button beside the close button explains that the screens
+  shown can change and links to the community forum for reporting a step that
+  is wrong or no longer matches.
 - **Back** always works and keeps earlier choices; changing a choice discards
   only the beats that depended on it.
 - **Chapter list** shows every chapter, which are done, and which one is

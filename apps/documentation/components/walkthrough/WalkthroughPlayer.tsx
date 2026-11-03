@@ -7,6 +7,7 @@ import {
   BookOpen,
   Check,
   ChevronDown,
+  CircleHelp,
   Pause,
   Play,
   Repeat,
@@ -23,7 +24,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { Button } from '@codaco/fresco-ui/Button';
+import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import {
   DropdownMenu,
@@ -33,6 +34,11 @@ import {
   DropdownMenuTrigger,
 } from '@codaco/fresco-ui/DropdownMenu';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@codaco/fresco-ui/Popover';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
@@ -58,6 +64,7 @@ import { isAnimated, POP, SETTLE } from './visuals/motion';
 import WalkthroughVisual from './WalkthroughVisual';
 
 const BEAT_TEXT_ELEMENTS = ['strong', 'em', 'a'];
+const COMMUNITY_URL = 'https://community.networkcanvas.com';
 
 // The /updates page sets each illustration on a pale band of one brand color.
 const BANDS: Record<Tint, string> = {
@@ -167,6 +174,36 @@ function GuideLink({
   );
 }
 
+function HelpButton() {
+  const t = useTranslations('Walkthrough');
+  return (
+    <Popover>
+      <PopoverTrigger
+        render={
+          <IconButton
+            variant="text"
+            color="dynamic"
+            icon={<CircleHelp />}
+            aria-label={t('help')}
+            title={t('help')}
+          />
+        }
+      />
+      <PopoverContent align="end" className="grid max-w-80 gap-3">
+        <Heading level="h3" margin="none" className="text-lg">
+          {t('helpTitle')}
+        </Heading>
+        <Paragraph margin="none" className="text-sm">
+          {t('helpBody')}
+        </Paragraph>
+        <NativeLink href={COMMUNITY_URL} target="_blank" rel="noreferrer">
+          {t('helpLink')}
+        </NativeLink>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function ExternalOrDocLink({ link }: { link: Link }) {
   if (link.href.startsWith('http')) {
     return (
@@ -194,6 +231,7 @@ export default function WalkthroughPlayer({
   const textId = useId();
   const primaryAction = useRef<HTMLButtonElement>(null);
   const actions = useRef<HTMLDivElement>(null);
+  const choiceGroup = useRef<HTMLDivElement>(null);
 
   const beats = useMemo(
     () => visibleBeats(walkthrough, progress.choices),
@@ -220,7 +258,8 @@ export default function WalkthroughPlayer({
     focusWasInActions.current = false;
     const target =
       primaryAction.current ??
-      actions.current?.querySelector<HTMLElement>('button, a');
+      actions.current?.querySelector<HTMLElement>('button, a') ??
+      choiceGroup.current?.querySelector<HTMLElement>('button');
     target?.focus();
   });
 
@@ -228,8 +267,9 @@ export default function WalkthroughPlayer({
   const { beat, chapter } = current;
 
   const rememberFocus = () => {
-    focusWasInActions.current =
-      actions.current?.contains(document.activeElement) ?? false;
+    focusWasInActions.current = [actions, choiceGroup].some(
+      (region) => region.current?.contains(document.activeElement) ?? false,
+    );
   };
 
   const chapterIndex = walkthrough.chapters.findIndex(
@@ -277,22 +317,7 @@ export default function WalkthroughPlayer({
   const renderActions = (shown: Beat) => {
     switch (shown.type) {
       case 'choose':
-        return shown.options.map((option, i) => (
-          <Button
-            key={option.id}
-            ref={i === 0 ? primaryAction : undefined}
-            color="primary"
-            variant={
-              progress.choices[shown.choice] === option.id
-                ? 'default'
-                : 'outline'
-            }
-            aria-pressed={progress.choices[shown.choice] === option.id}
-            onClick={() => choose(shown.choice, option.id)}
-          >
-            {option.label}
-          </Button>
-        ));
+        return null;
       case 'finish':
         return (
           <Button ref={primaryAction} color="primary" onClick={onClose}>
@@ -306,9 +331,7 @@ export default function WalkthroughPlayer({
         return (
           <>
             {shown.type === 'do' && shown.skip && (
-              <Button variant="outline" onClick={() => advance()}>
-                {shown.skip}
-              </Button>
+              <Button onClick={() => advance()}>{shown.skip}</Button>
             )}
             <Button
               ref={primaryAction}
@@ -388,7 +411,6 @@ export default function WalkthroughPlayer({
         </nav>
         <div className="border-text/10 shrink-0 border-t p-4">
           <Button
-            variant="outline"
             size="sm"
             color="dynamic"
             icon={<RotateCcw aria-hidden className="size-4" />}
@@ -405,6 +427,7 @@ export default function WalkthroughPlayer({
           <GuideLink target={guideTarget} onGuide={onGuide}>
             {t('readGuide')}
           </GuideLink>
+          <HelpButton />
           <BaseDialog.Close render={<CloseButton />} />
         </div>
         <div className="grid gap-3 @min-[56rem]:hidden">
@@ -463,6 +486,7 @@ export default function WalkthroughPlayer({
                 </DropdownMenuContent>
               </DropdownMenu>
             </ThemedRegion>
+            <HelpButton />
             <BaseDialog.Close render={<CloseButton />} />
           </div>
           <div aria-hidden className="flex gap-1.5">
@@ -482,6 +506,8 @@ export default function WalkthroughPlayer({
           className={cx(
             'relative grid min-h-0 rounded p-6 transition-colors duration-500',
             BANDS[chapter.tint],
+            beat.type === 'choose' &&
+              'grid-rows-[minmax(0,1fr)_auto] gap-6 pb-14',
           )}
         >
           <AnimatePresence mode="wait" initial={false} custom={direction}>
@@ -502,6 +528,40 @@ export default function WalkthroughPlayer({
               />
             </motion.div>
           </AnimatePresence>
+          {beat.type === 'choose' && (
+            <motion.div
+              key={beat.id}
+              ref={choiceGroup}
+              role="group"
+              aria-labelledby={textId}
+              className="mx-auto grid w-full max-w-4xl grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4"
+              variants={CAPTION_PART}
+              initial={reduceMotion ? false : 'enter'}
+              animate="center"
+            >
+              {beat.options.map((option, i) => {
+                const chosen = progress.choices[beat.choice] === option.id;
+                return (
+                  <Button
+                    key={option.id}
+                    ref={i === 0 ? primaryAction : undefined}
+                    size="xl"
+                    color="primary"
+                    icon={
+                      chosen ? (
+                        <Check aria-hidden className="size-5" />
+                      ) : undefined
+                    }
+                    aria-pressed={chosen}
+                    onClick={() => choose(beat.choice, option.id)}
+                    className="elevation-medium w-full"
+                  >
+                    {option.label}
+                  </Button>
+                );
+              })}
+            </motion.div>
+          )}
           {beat.visual.kind === 'capture' && !reduceMotion && (
             <Button
               variant="text"
@@ -600,18 +660,13 @@ export default function WalkthroughPlayer({
           >
             {index > 0 && (
               <Button
-                variant="outline"
                 icon={<ArrowLeft aria-hidden className="size-4" />}
                 onClick={back}
               >
                 {t('back')}
               </Button>
             )}
-            <div
-              role={beat.type === 'choose' ? 'group' : undefined}
-              aria-labelledby={beat.type === 'choose' ? textId : undefined}
-              className="flex flex-wrap items-center justify-end gap-3"
-            >
+            <div className="flex flex-wrap items-center justify-end gap-3">
               {renderActions(beat)}
             </div>
           </motion.div>

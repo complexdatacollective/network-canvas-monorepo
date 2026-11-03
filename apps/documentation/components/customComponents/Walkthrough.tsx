@@ -78,7 +78,6 @@ export default function Walkthrough({
     <>
       {chapter && knownChapter ? (
         <Button
-          variant="outline"
           size="sm"
           color="primary"
           icon={<CirclePlay aria-hidden className="size-4" />}
