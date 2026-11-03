@@ -13,6 +13,28 @@ const CLEARANCE = 6;
 type Point = { x: number; y: number };
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 
+// Every pair of people, and of a person and a discussion, closer than their
+// outlines and the clearance allow.
+function overlaps(layout: ReturnType<typeof layoutActivityNetwork>) {
+  const found: string[] = [];
+  for (const [i, a] of layout.people.entries()) {
+    for (const b of layout.people.slice(i + 1)) {
+      if (distance(a, b) <= 2 * LARGEST_RADIUS + CLEARANCE) {
+        found.push(`people ${a.id} and ${b.id}`);
+      }
+    }
+    for (const discussion of layout.topics) {
+      if (
+        distance(a, discussion) <=
+        LARGEST_RADIUS + TOPIC_RADIUS + CLEARANCE
+      ) {
+        found.push(`person ${a.id} and discussion ${discussion.id}`);
+      }
+    }
+  }
+  return found;
+}
+
 // Eight discussions: the team (1) answers all of them, a second regular (2)
 // most, and everyone else posts once, in the discussion they started.
 const topics = Array.from({ length: 8 }, (_, index) => ({
@@ -110,6 +132,65 @@ describe('the activity network layout', () => {
         capped.people.some((placed) => placed.id === link.personId),
       ),
     ).toBe(true);
+  });
+
+  it('spreads people who share a discussion without stacking them', () => {
+    // Five people in one discussion all prefer the same spot on the ring.
+    const crowded = layoutActivityNetwork(
+      Array.from({ length: 8 }, (_, index) => ({
+        id: 100 + index,
+        posterIds: index === 0 ? [1, 2, 3, 4, 5] : [10 + index],
+      })),
+    );
+    expect(crowded.people).toHaveLength(12);
+    expect(overlaps(crowded)).toEqual([]);
+  });
+
+  it('keeps as many people in the middle as fit there', () => {
+    // Nine people each took part all round the ring.
+    const busy = layoutActivityNetwork(
+      Array.from({ length: 8 }, (_, index) => ({
+        id: 100 + index,
+        posterIds: [1, 20 + (index % 4) * 2, 21 + (index % 4) * 2],
+      })),
+    );
+    expect(busy.people.filter((placed) => placed.hub).length).toBeLessThan(9);
+    expect(busy.people).toHaveLength(9);
+    expect(overlaps(busy)).toEqual([]);
+  });
+
+  it('keeps every drawing clear, whoever posted where', () => {
+    // A seeded spread of what the home page can pass: up to eight
+    // discussions, Discourse's five posters each, drawn from a pool where a
+    // few regulars post often.
+    let seed = 2520;
+    const random = () => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return seed / 2_147_483_648;
+    };
+    for (let run = 0; run < 400; run++) {
+      const pool = 4 + Math.floor(random() * 30);
+      const drawn = Array.from(
+        { length: 1 + Math.floor(random() * 8) },
+        (_, index) => ({
+          id: 100 + index,
+          posterIds: Array.from({ length: 1 + Math.floor(random() * 5) }, () =>
+            Math.floor(random() ** 2 * pool),
+          ),
+        }),
+      );
+      const placed = layoutActivityNetwork(drawn, {
+        width: WIDTH,
+        height: HEIGHT,
+      });
+      expect(overlaps(placed), JSON.stringify(drawn)).toEqual([]);
+      for (const node of [...placed.topics, ...placed.people]) {
+        expect(node.x).toBeGreaterThanOrEqual(LARGEST_RADIUS);
+        expect(node.x).toBeLessThanOrEqual(WIDTH - LARGEST_RADIUS);
+        expect(node.y).toBeGreaterThanOrEqual(LARGEST_RADIUS);
+        expect(node.y).toBeLessThanOrEqual(HEIGHT - LARGEST_RADIUS);
+      }
+    }
   });
 
   it('draws nothing when there are no discussions', () => {

@@ -121,10 +121,21 @@ The home page finds its categories by slug, through the settings
 cannot be found, or that the visitor cannot see, is left out.
 `documentation_url` is where the documentation tile's button points.
 
-## Dark links
+## Colour corrections
 
-The design system's dark `--link` measures 4.13:1 on the dark content surface
-and 3.49:1 on `--surface-2`, under the 4.5:1 WCAG AA asks of normal text. The
-forum lightens it (`src/scopes.ts`), for the palette and the `--nc-*` tokens
-alike, to 5:1 or more on everything links sit on; the tests hold every pair.
-The shared contrast test in `tooling/tailwind` does not check link colours.
+`src/scopes.ts` corrects, for the forum only, design-system colours that fall
+under the 4.5:1 WCAG AA asks of normal text where the forum uses them. Both the
+palette and the `--nc-*` tokens are built from it, so they agree.
+
+- **Dark links.** The design system's dark `--link` measures 4.13:1 on the
+  dark content surface and 3.49:1 on `--surface-2`. The forum lightens it to
+  5:1 or more on everything links sit on. The shared contrast test in
+  `tooling/tailwind` does not check link colours.
+- **Success and danger labels.** White on the success green (both modes) and
+  on the dark-mode red are known failures of the default theme, which the
+  Studio theme corrects. The forum takes the same corrections for its success
+  and danger buttons: a darker green in light mode, and the dark page colour
+  as the label in dark mode.
+
+The tests check every text and link pair, and every label the stylesheets set
+on a fill, in both palettes.

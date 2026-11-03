@@ -62,10 +62,14 @@ describe('design tokens', () => {
       );
     const darkTokens = declared(dark);
     const lightTokens = declared(light);
-    // Tokens a partial derives from the generated ones (the radius steps and
-    // the forum bar's colour).
+    // Tokens a hand-written partial derives from the generated ones (the
+    // radius steps and the forum bar's colour). The generated file itself is
+    // left out, or every generated token would count as derived and none
+    // would be checked per mode.
     const derived = new Set(
-      stylesheets.flatMap((file) => [...declared(file.contents.toString())]),
+      stylesheets
+        .filter((file) => file.path !== 'common/color_definitions.scss')
+        .flatMap((file) => [...declared(file.contents.toString())]),
     );
 
     const read = new Set(
@@ -75,9 +79,9 @@ describe('design tokens', () => {
         ),
       ),
     );
-    expect(read.size).toBeGreaterThan(20);
-    for (const token of read) {
-      if (derived.has(token)) continue;
+    const generated = [...read].filter((token) => !derived.has(token));
+    expect(generated.length).toBeGreaterThan(20);
+    for (const token of generated) {
       expect(lightTokens, `${token} (light)`).toContain(token);
       expect(darkTokens, `${token} (dark)`).toContain(token);
     }
@@ -145,6 +149,37 @@ describe('palettes', () => {
         .toUpperCase();
       expect(palette.secondary, name).toBe(surface);
     }
+  });
+
+  // Every label the theme sets on a fill (buttons, notices) reads a token's
+  // `-contrast` partner, so each partner the stylesheets read is checked
+  // against its fill, in both palettes.
+  it('keeps every label legible on its fill', () => {
+    const fills = new Set(
+      stylesheets.flatMap((file) =>
+        [
+          ...file.contents
+            .toString()
+            .matchAll(/var\(--nc-([a-z-]+)-contrast\)/g),
+        ].map((match) => `--${match[1]}`),
+      ),
+    );
+    expect(fills).toContain('--success');
+    expect(fills).toContain('--destructive');
+    const shortfalls: Record<string, number> = {};
+    for (const scope of Object.values(SCOPE_FOR)) {
+      for (const fill of fills) {
+        const ratio = contrastRatio(
+          toDisplayColor(scope.token(fill)),
+          toDisplayColor(scope.token(`${fill}-contrast`)),
+        );
+        if (ratio < 4.5) {
+          shortfalls[`${scope.name}: ${fill}-contrast on ${fill}`] =
+            Math.round(ratio * 100) / 100;
+        }
+      }
+    }
+    expect(shortfalls).toEqual({});
   });
 
   it('keeps text and links legible on everything they sit on', () => {
