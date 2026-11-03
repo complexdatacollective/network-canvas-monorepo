@@ -359,8 +359,11 @@ const newProtocolLanguage = `
   in, make its "Protocol languages" hold exactly "English (en)" before
   pressing "Create Protocol": remove any other language there and choose
   "English (en)" (the entry without a region). Its "Default language" is then
-  English. If an "Also add English?" dialog appears anyway, you created the
-  protocol in another language: delete it and create it again.
+  English. If an "Also add English?" dialog appears anyway, check on the
+  "Languages" page which language the protocol was created in. Another
+  language means your selection slipped: delete the protocol and create it
+  again. "English (en)" alone means the app offered English for a protocol
+  already in English: that is an app failure, so report it.
 `;
 
 // Shared operating instructions for every browser-driving agent. Slices run
