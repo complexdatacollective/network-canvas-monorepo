@@ -1,12 +1,12 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { createElement } from 'react';
 import type { ComponentType, PropsWithChildren } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
+import type * as SaveBlobModule from '@codaco/fresco-ui/utils/saveBlob';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { interviewerProductionLocales } from '~/i18n/locales';
-import type * as Download from '~/lib/files/download';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 import { renderedMessage } from '~/testUtils/renderedMessage';
 
@@ -48,7 +48,7 @@ vi.mock('~/lib/export/exportSessions', () => ({
   buildExportOptions: (args: unknown) => args,
 }));
 
-vi.mock('~/lib/files/download', () => ({
+vi.mock('@codaco/fresco-ui/utils/saveBlob', () => ({
   saveBlob: (...args: unknown[]) => saveBlob(...args),
 }));
 
@@ -153,16 +153,25 @@ describe('useSessionMutations — export flow marks exported from the save outco
   });
 
   it('opens the native picker in the current language after cancelling and switching, without rebuilding the archive', async () => {
-    const actualDownload = await vi.importActual<typeof Download>(
-      '~/lib/files/download',
+    const actualSaveBlob = await vi.importActual<typeof SaveBlobModule>(
+      '@codaco/fresco-ui/utils/saveBlob',
     );
-    saveBlob.mockImplementation(actualDownload.saveBlob);
+    saveBlob.mockImplementation(actualSaveBlob.saveBlob);
     const write = vi.fn().mockResolvedValue(undefined);
     const close = vi.fn().mockResolvedValue(undefined);
     const createWritable = vi.fn().mockResolvedValue({ write, close });
+    // The researcher spends 1.5 s in the picker before cancelling: saveBlob
+    // reads an AbortError sooner than 200 ms as a picker that never appeared,
+    // and downloads instead. The clock moves only while the picker is open.
+    let now = 0;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+    onTestFinished(() => clock.mockRestore());
     const showSaveFilePicker = vi
       .fn()
-      .mockRejectedValueOnce(new DOMException('Cancelled', 'AbortError'))
+      .mockImplementationOnce(() => {
+        now += 1500;
+        return Promise.reject(new DOMException('Cancelled', 'AbortError'));
+      })
       .mockResolvedValue({ createWritable });
     vi.stubGlobal('showSaveFilePicker', showSaveFilePicker);
     let locale = 'en';
