@@ -977,6 +977,9 @@ importers:
       '@microflash/rehype-figure':
         specifier: ^2.1.4
         version: 2.1.4
+      '@netlify/edge-functions':
+        specifier: ^4.0.3
+        version: 4.0.3
       '@tailwindcss/postcss':
         specifier: 'catalog:'
         version: 4.3.3
