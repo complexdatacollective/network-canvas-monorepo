@@ -33,6 +33,7 @@ generates it from the workspace packages:
 | Generated                       | From                                                                       |
 | ------------------------------- | -------------------------------------------------------------------------- |
 | `common/color_definitions.scss` | `@codaco/tailwind-config` theme tokens (`fresco/themes/default.css`)       |
+|                                 | and its `elevation-*` shadows (`@codaco/tailwind-config/elevation`)        |
 | palettes in `about.json`        | the same tokens, resolved to hex by `@codaco/tailwind-config/theme-colors` |
 | `scss/fonts.scss`, `assets/`    | `@codaco/tailwind-config/fonts/*.css` and their fontsource files           |
 | `locales/*.yml`                 | the shared header's messages in `@codaco/fresco-ui`, and the home page's   |

@@ -54,6 +54,10 @@ Used by `packages/ui`, `packages/art`, and `apps/documentation`. New consumers s
 
 `@codaco/tailwind-config/theme-colors` turns a theme token into the concrete colour a browser would paint, for build tools that cannot hand the CSS to a browser. `buildScopes()` returns one `Scope` per theme and mode (`default-light`, `default-dark`, and the interview and studio regions); `scope.computed('--primary')` gives the token's CSS with every `var()` substituted, and `toDisplayColor(scope.token('--primary'))` gives it as clipped sRGB. It is TypeScript source, loadable by Node's type stripping. The community forum's Discourse theme (`apps/community-theme`) uses it to write its colour palettes.
 
+### Elevation shadows outside Tailwind
+
+`@codaco/tailwind-config/elevation` exports `elevationShadow(elevation, options?)`, the `box-shadow` value the `elevation-low`, `elevation-medium` and `elevation-high` utilities apply, as plain CSS. The elevation plugin builds its utilities from it, so the two cannot drift. Like `theme-colors`, it loads under Node's type stripping. The community forum's Discourse theme writes it into `--nc-elevation-*` tokens for its buttons.
+
 ### Contrast tests
 
 `tests/theme-contrast.test.ts` resolves every colour token in `fresco/themes/*.css` for each theme and mode (with the resolver exported as `@codaco/tailwind-config/theme-colors`), then checks every fill / `-contrast` pair against WCAG 2.2 AA (4.5:1). It also checks that each ratio quoted in a theme comment still matches the colours it was measured on (`tests/recorded-ratios.ts` pairs each quote with its colours). Run it with `pnpm --filter @codaco/tailwind-config test`. Pairs that fall short today are listed, with reasons, in `KNOWN_FAILURES`; the test fails when one is added or starts passing.

@@ -1,6 +1,7 @@
 // Buttons, after the shared Button: the heading face in bold with wide
-// tracking, a low shadow that lifts on hover and presses in on click. Colours
-// come from the --d-button-* variables in variables.scss.
+// tracking, and the shared low elevation, which drops away as the button is
+// pressed in. Like the shared Button, nothing changes on hover. Colours come
+// from the --d-button-* variables in variables.scss.
 
 .btn {
   font-family: var(--nc-heading-font);
@@ -14,12 +15,7 @@
   &.btn-primary,
   &.btn-danger,
   &.btn-success {
-    box-shadow: var(--nc-shadow-sm-base);
-
-    &:not([disabled]):hover {
-      box-shadow: var(--nc-shadow-md-base);
-      translate: 0 -2px;
-    }
+    box-shadow: var(--nc-elevation-low);
 
     &:not([disabled]):active {
       box-shadow: none;
@@ -27,9 +23,10 @@
     }
   }
 
-  // The main call to action in each view is set in capitals, as the shared
-  // Button's raised variant is.
+  // The main call to action in each view is set like the shared header's
+  // "Get started": capitals in the heading face's black weight.
   &.btn-primary {
+    font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.1em;
   }
@@ -39,7 +36,6 @@
   .btn {
     transition: none;
 
-    &:not([disabled]):hover,
     &:not([disabled]):active {
       translate: none;
     }

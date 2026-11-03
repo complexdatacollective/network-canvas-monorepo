@@ -1,3 +1,4 @@
+import { elevationShadow } from '@codaco/tailwind-config/elevation';
 import { buildScopes, type Scope } from '@codaco/tailwind-config/theme-colors';
 
 /**
@@ -25,6 +26,19 @@ function tokenDeclarations(scope: Scope) {
     });
 }
 
+/**
+ * The shared `elevation-*` shadows as `--nc-elevation-*`, the values the
+ * Tailwind utilities apply. Nothing in the forum publishes a background for
+ * them to tint from, so they are the same in both colour modes, as they are
+ * in the shared header.
+ */
+function elevationDeclarations() {
+  return (['low', 'medium', 'high'] as const).map(
+    (elevation) =>
+      `  --nc-elevation-${elevation}: ${elevationShadow(elevation)};`,
+  );
+}
+
 const indent = (lines: string[]) => lines.map((line) => `  ${line}`);
 
 /**
@@ -40,8 +54,10 @@ export function colorDefinitionsScss() {
     ':root {',
     '  @if is-dark-color-scheme() {',
     ...indent(tokenDeclarations(scopes['default-dark'])),
+    ...indent(elevationDeclarations()),
     '  } @else {',
     ...indent(tokenDeclarations(scopes['default-light'])),
+    ...indent(elevationDeclarations()),
     '  }',
     '}',
     '',
