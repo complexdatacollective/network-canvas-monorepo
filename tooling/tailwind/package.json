@@ -29,6 +29,7 @@
     "access": "public"
   },
   "scripts": {
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -38,7 +39,11 @@
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
-    "typescript": "catalog:"
+    "@codaco/vitest-config": "workspace:^",
+    "@types/node": "catalog:",
+    "colorjs.io": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "tailwindcss": "catalog:"

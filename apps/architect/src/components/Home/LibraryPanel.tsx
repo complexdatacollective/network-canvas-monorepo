@@ -591,6 +591,7 @@ const PanelRow = ({
       : openItem;
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- itemProps carries Collection's option role and roving tabIndex, which the rule cannot see through the spread.
     <div
       {...itemProps}
       onClick={handleClick}
@@ -753,6 +754,7 @@ const GalleryCard = () => {
   return (
     <Surface
       ref={cardRef}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a labelled card of a link and a dismiss button: not form controls for a <fieldset>, and not worth a landmark.
       role="group"
       aria-label={intl.formatMessage(messages.protocolGallery)}
       spacing="sm"

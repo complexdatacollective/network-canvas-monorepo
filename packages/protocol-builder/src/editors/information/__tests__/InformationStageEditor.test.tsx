@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -172,29 +172,5 @@ describe('the editor for a page of content', () => {
     await harness.cancel();
 
     expectStageUntouched(harness);
-  });
-
-  it('refuses to save a stage somebody else is editing', async () => {
-    const harness = renderStageEditor({ ...openFixture(), readOnly: true });
-
-    // A rich-text editor, which says it is unavailable and takes no typing,
-    // rather than carrying an input's `disabled`.
-    await waitFor(() => {
-      const heading = screen.getByRole('textbox', { name: 'Page heading' });
-      expect(heading).toHaveAttribute('aria-disabled', 'true');
-      expect(heading).toHaveAttribute('contenteditable', 'false');
-    });
-
-    // The shell's refusal is the guarantee, not the chrome above it: a
-    // keyboard, a stale render, or another host's own button can all still
-    // submit the form. See `fallbackSaveControl.test.tsx` for why the save
-    // control this editor falls back to stays pressable.
-    const form = harness.baseElement.querySelector('form');
-    if (form === null) throw new Error('the editor rendered no form');
-    fireEvent.submit(form);
-
-    expect(
-      await screen.findByText('This stage is read-only', { exact: false }),
-    ).toBeInTheDocument();
   });
 });

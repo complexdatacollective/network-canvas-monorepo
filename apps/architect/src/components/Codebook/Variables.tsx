@@ -31,6 +31,12 @@ import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import ControlsColumn from './ControlsColumn';
 import UsageColumn from './UsageColumn';
 const messages = defineMessages({
+  tableLabel: {
+    id: 'architect.codebook.variables.tableLabel',
+    defaultMessage: 'Attributes',
+    description:
+      'Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached.',
+  },
   unknown: {
     id: 'architect.codebook.variables.unknown',
     defaultMessage: 'Unknown',
@@ -279,6 +285,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
     <div className="@container mt-7">
       <DataTable
         table={table}
+        aria-label={intl.formatMessage(messages.tableLabel)}
         showPagination={false}
         emptyText={intl.formatMessage(messages.noAttributes)}
       />

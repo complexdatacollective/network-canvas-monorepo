@@ -181,6 +181,7 @@ export const Overview: Story = {
           </UnorderedList>
           <div className="w-80">
             <ComboboxField
+              aria-label="Overview"
               name="overview"
               options={sampleOptions}
               placeholder="Select options..."
@@ -234,6 +235,7 @@ export const Sizes: Story = {
               Small (sm)
             </Paragraph>
             <ComboboxField
+              aria-label="Size sm"
               name="size-sm"
               size="sm"
               options={sampleOptions}
@@ -250,6 +252,7 @@ export const Sizes: Story = {
               Medium (md) - default
             </Paragraph>
             <ComboboxField
+              aria-label="Size md"
               name="size-md"
               size="md"
               options={sampleOptions}
@@ -266,6 +269,7 @@ export const Sizes: Story = {
               Large (lg)
             </Paragraph>
             <ComboboxField
+              aria-label="Size lg"
               name="size-lg"
               size="lg"
               options={sampleOptions}
@@ -282,6 +286,7 @@ export const Sizes: Story = {
               Extra Large (xl)
             </Paragraph>
             <ComboboxField
+              aria-label="Size xl"
               name="size-xl"
               size="xl"
               options={sampleOptions}
@@ -320,6 +325,7 @@ export const States: Story = {
             Normal
           </Paragraph>
           <ComboboxField
+            aria-label="State normal"
             name="state-normal"
             options={sampleOptions}
             placeholder="Normal state"
@@ -337,6 +343,7 @@ export const States: Story = {
             With Selection
           </Paragraph>
           <ComboboxField
+            aria-label="State selected"
             name="state-selected"
             options={sampleOptions}
             placeholder="With selection"
@@ -354,6 +361,7 @@ export const States: Story = {
             Disabled
           </Paragraph>
           <ComboboxField
+            aria-label="State disabled"
             name="state-disabled"
             options={sampleOptions}
             disabled
@@ -371,6 +379,7 @@ export const States: Story = {
             Read Only
           </Paragraph>
           <ComboboxField
+            aria-label="State readonly"
             name="state-readonly"
             options={sampleOptions}
             readOnly
@@ -388,6 +397,7 @@ export const States: Story = {
             Invalid
           </Paragraph>
           <ComboboxField
+            aria-label="State invalid"
             name="state-invalid"
             options={sampleOptions}
             aria-invalid
@@ -425,6 +435,7 @@ export const WithSearch: Story = {
           </Paragraph>
           <div className="w-80">
             <ComboboxField
+              aria-label="With search"
               name="with-search"
               options={countryOptions}
               placeholder="Search countries..."
@@ -447,6 +458,7 @@ export const WithSearch: Story = {
           </Paragraph>
           <div className="w-80">
             <ComboboxField
+              aria-label="Without search"
               name="without-search"
               options={sampleOptions}
               placeholder="Select options..."
@@ -490,6 +502,7 @@ export const WithSelectAll: Story = {
           </Paragraph>
           <div className="w-80">
             <ComboboxField
+              aria-label="With bulk actions"
               name="with-bulk-actions"
               options={participantOptions}
               placeholder="Select participants..."
@@ -512,6 +525,7 @@ export const WithSelectAll: Story = {
           </Paragraph>
           <div className="w-80">
             <ComboboxField
+              aria-label="Without bulk actions"
               name="without-bulk-actions"
               options={participantOptions}
               placeholder="Select participants..."
@@ -557,6 +571,7 @@ export const LongOptionList: Story = {
         </Paragraph>
         <div className="w-96">
           <ComboboxField
+            aria-label="Long list"
             name="long-list"
             options={longOptions}
             placeholder="Select items..."
@@ -599,6 +614,7 @@ export const UsageExamples: Story = {
           </Paragraph>
           <div className="w-80">
             <ComboboxField
+              aria-label="Participants"
               name="participants"
               options={participantOptions}
               placeholder="Select Participants..."
@@ -624,6 +640,7 @@ export const UsageExamples: Story = {
           </Paragraph>
           <div className="w-80">
             <ComboboxField
+              aria-label="Countries"
               name="countries"
               options={countryOptions}
               placeholder="Select Countries..."
@@ -670,6 +687,7 @@ export const DisabledOptions: Story = {
         </Paragraph>
         <div className="w-80">
           <ComboboxField
+            aria-label="Disabled options"
             name="disabled-options"
             options={optionsWithDisabled}
             placeholder="Select options..."
@@ -704,9 +722,10 @@ export const InsidePopover: Story = {
     return (
       <Popover defaultOpen>
         <PopoverTrigger render={<Button>Open filters</Button>} />
-        <PopoverContent className="w-md">
+        <PopoverContent aria-label="Filters" className="w-md">
           <div className="flex flex-col gap-4">
             <ComboboxField
+              aria-label="Inside popover"
               name="inside-popover"
               options={sampleOptions}
               placeholder="Select options..."

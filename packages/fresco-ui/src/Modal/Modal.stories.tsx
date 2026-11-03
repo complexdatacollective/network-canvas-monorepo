@@ -1,7 +1,14 @@
+import { Dialog } from '@base-ui/react/dialog';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { motion, MotionGlobalConfig, type MotionStyle } from 'motion/react';
+import {
+  cancelFrame,
+  frame,
+  motion,
+  MotionGlobalConfig,
+  type MotionStyle,
+} from 'motion/react';
 import { useRef, useState } from 'react';
-import { expect, fn, screen, userEvent, within } from 'storybook/test';
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import Modal from '.';
 import { AnimationProvider } from '../AnimationProvider';
@@ -456,12 +463,19 @@ function LayoutIdMorphExample() {
               className="mb-4 h-48 w-full rounded"
               style={{ boxShadow: '0 10px 20px rgba(0,0,0,0.2)' }}
             />
-            <motion.h2
-              layoutId={`${selectedItem.id}-title`}
-              className="mb-2 text-xl font-semibold"
+            {/* `Dialog.Title` is what names the popup; `ModalPopup` is a
+                `role="dialog"`, and one without a name is announced as
+                nothing. */}
+            <Dialog.Title
+              render={
+                <motion.h2
+                  layoutId={`${selectedItem.id}-title`}
+                  className="mb-2 text-xl font-semibold"
+                />
+              }
             >
               {selectedItem.title}
-            </motion.h2>
+            </Dialog.Title>
             <motion.p
               layoutId={`${selectedItem.id}-description`}
               className="mb-4 text-current/70"
@@ -493,13 +507,6 @@ export const LayoutIdMorph: Story = {
     },
   },
 };
-
-const nextFrame = () =>
-  new Promise<void>((resolve) => {
-    requestAnimationFrame(() => {
-      resolve();
-    });
-  });
 
 /** The element's opacity as drawn: its own times every ancestor's. */
 const drawnOpacity = (element: Element) => {
@@ -554,18 +561,34 @@ export const LayoutIdMorphWithAnimationsDisabled: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    await userEvent.click(
-      canvas.getByRole('button', { name: /Project Alpha/ }),
-    );
-    const popup = await screen.findByRole('dialog');
-
+    // Sample the popup once a frame, from the first frame that shows it, at
+    // the end of Motion's own frame: after Motion has written that frame's
+    // styles and before the frame is drawn. A sample taken anywhere else can
+    // read a state no frame ever shows. In the microtasks after the commit
+    // Motion writes the morph's starting point (the popup at the card's place,
+    // fully transparent) and only finishes a skipped animation in its next
+    // frame; reading straight after `findByRole` sometimes landed in between.
     const frames: { opacity: number; rect: string }[] = [];
-    for (let frame = 0; frame < 12; frame++) {
-      frames.push({
-        opacity: drawnOpacity(popup),
-        rect: JSON.stringify(popup.getBoundingClientRect()),
-      });
-      await nextFrame();
+    const sample = () => {
+      const popup =
+        canvasElement.ownerDocument.querySelector('[role="dialog"]');
+      if (popup && frames.length < 12) {
+        frames.push({
+          opacity: drawnOpacity(popup),
+          rect: JSON.stringify(popup.getBoundingClientRect()),
+        });
+      }
+    };
+    frame.postRender(sample, true);
+
+    try {
+      await userEvent.click(
+        canvas.getByRole('button', { name: /Project Alpha/ }),
+      );
+      await screen.findByRole('dialog');
+      await waitFor(() => expect(frames).toHaveLength(12));
+    } finally {
+      cancelFrame(sample);
     }
 
     const settled = frames.at(-1);

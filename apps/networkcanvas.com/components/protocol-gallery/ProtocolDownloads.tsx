@@ -56,6 +56,7 @@ function WaveGroup({
   const labelId = useId();
 
   return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a labelled set of download and preview links: not form controls for a <fieldset>.
     <div role="group" aria-labelledby={labelId} className="min-w-0">
       <Eyebrow id={labelId}>{label}</Eyebrow>
       <div className="mt-2 flex flex-wrap gap-3">

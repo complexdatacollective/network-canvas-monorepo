@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
+import { useLatest } from '../state/useLatest.ts';
 import { computeAutoNameUpdate } from './computeAutoNameUpdate.ts';
 import {
   forgetStageNameOwnership,
@@ -44,10 +45,8 @@ export function useAutoStageName(): AutoStageName {
 
   // The stable blur handler reads the latest values, not the ones it closed
   // over.
-  const liveLabelRef = useRef(liveLabel);
-  liveLabelRef.current = liveLabel;
-  const proposalRef = useRef(proposal);
-  proposalRef.current = proposal;
+  const latestLiveLabel = useLatest(liveLabel);
+  const latestProposal = useLatest(proposal);
 
   // StrictMode tears the editor down and mounts it again at once, and the form
   // empties its values in between. A record kept across that would read the
@@ -86,10 +85,11 @@ export function useAutoStageName(): AutoStageName {
 
   const onBlur = useCallback(() => {
     if (!isNewStage || readOnly) return;
-    if (liveLabelRef.current.trim() === '' && proposalRef.current) {
-      write(proposalRef.current, 'proposed');
+    const proposed = latestProposal();
+    if (latestLiveLabel().trim() === '' && proposed) {
+      write(proposed, 'proposed');
     }
-  }, [isNewStage, readOnly, write]);
+  }, [isNewStage, latestLiveLabel, latestProposal, readOnly, write]);
 
   return { onBlur };
 }

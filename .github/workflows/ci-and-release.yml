@@ -548,11 +548,11 @@ jobs:
   # two minutes or thirty.
   #
   # This job restores or (on a miss) installs and saves ONE union-keyed
-  # Playwright cache entry — every browser any of the four consumer jobs
-  # below need between them — and only main writes it; every consumer reads
-  # it with `actions/cache/restore` and never writes its own PR-scoped copy.
-  # See the comment on the first of those restores (in `test-storybook`) for
-  # the full arrangement and its trade-off.
+  # Playwright cache entry — every browser any consumer job needs between
+  # them — and only main writes it; every consumer reads it with
+  # `actions/cache/restore` and never writes its own PR-scoped copy. See the
+  # comment on that restore in .github/actions/playwright-browsers for the
+  # full arrangement and its trade-off.
   warm-playwright-cache:
     # This job is the only writer of the shared key, so if it fails there is
     # no cache until it succeeds again. Ordinarily that self-heals on the
@@ -601,7 +601,11 @@ jobs:
         # union test-storybook, interview-e2e-native, interviewer-e2e-native
         # and architect-e2e-native install between them.
         id: install
-        run: pnpm --filter @codaco/architect exec playwright install --with-deps chromium firefox webkit
+        uses: ./.github/actions/playwright-browsers
+        with:
+          browsers: chromium firefox webkit
+          package: '@codaco/architect'
+          restore-cache: 'false'
       # Same reasoning as `seed-turbo-cache`'s reporting step: this job is
       # `continue-on-error`, so a failure leaves the run green and nothing
       # else says a word. That matters more here than it looks, because the
@@ -624,6 +628,112 @@ jobs:
           if [[ "$INSTALL_OUTCOME" != "success" ]]; then
             echo "::warning::warm-playwright-cache did not warm the shared browser cache (install: $INSTALL_OUTCOME). Every e2e job on the next pull requests will install browsers itself until a later push to main succeeds."
           fi
+
+  # Writes the build cache of the two Studio images, which every pull
+  # request's `studio-stack` and `studio-egress` legs read.
+  #
+  # Only main writes it. A cache a pull request writes is readable by that
+  # pull request alone, the repository's Actions cache sits at its 10 GB
+  # ceiling (see `warm-playwright-cache`), and preparing the export cost each
+  # pull-request build about 96 seconds.
+  #
+  # And main writes it only when the part worth reading has not been written
+  # yet: when no export has succeeded for the current dependency inputs (a
+  # marker entry named after them records each one that did), or when the
+  # cache has been evicted. The
+  # Dockerfile copies the whole repository before `turbo prune`, so the
+  # application builds after the dependency install run again on every source
+  # change whatever the cache holds. What a pull request reads back is the
+  # base image, apt, and `pnpm install` from the pruned manifests, and those
+  # change only with the lockfile, a workspace manifest or the Dockerfile.
+  # `mode=max` exports the build stages too, so warming on every push would
+  # write layers no pull request reads on every merge, and push other jobs'
+  # entries out of the cache.
+  warm-studio-image-cache:
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || (github.event_name == 'workflow_dispatch'
+      && github.ref == 'refs/heads/main')
+    # Cache warming only: a failure here must not fail the push run, which
+    # also carries the release jobs.
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - name: Decide whether the dependency layers need writing
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Names the inputs of the layers a pull request reads back. A marker
+          # entry under this key is saved only after those layers export, so a
+          # failed export leaves it missing and the next push tries again,
+          # whatever that push changed.
+          MARKER: studio-image-deps-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', '.dockerignore', 'apps/studio/Dockerfile', '**/package.json') }}
+        run: |
+          set -euo pipefail
+          echo "marker=$MARKER" >> "$GITHUB_OUTPUT"
+          warm() {
+            echo "warm=true" >> "$GITHUB_OUTPUT"
+            echo "Writing the Studio image cache: $1"
+            exit 0
+          }
+          # A failed listing counts as missing, which costs one extra write
+          # rather than a pull request without a cache.
+          present() {
+            local count
+            count="$(gh cache list --ref refs/heads/main --limit 1000 --json key \
+              --jq "[.[] | select(.key | contains(\"$1\"))] | length")" \
+              && [[ "$count" != "0" ]]
+          }
+          [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]] && warm "dispatched by hand"
+          present "$MARKER" \
+            || warm "main has not exported the layers for these dependency inputs ($MARKER)"
+          # Evicted under the cache ceiling since the marker was saved.
+          for target in studio-api studio-web; do
+            present "studio-stack-$target" || warm "main holds no cache for $target"
+          done
+          echo "warm=false" >> "$GITHUB_OUTPUT"
+          echo "Main's cache already holds the layers for these dependency inputs; nothing to write"
+      - name: Select a cache-capable builder
+        if: steps.decide.outputs.warm == 'true'
+        run: docker buildx create --name studio-stack --driver docker-container --use
+      # See `studio-stack` for why the cache service is exposed this way.
+      - name: Expose the Actions cache service to the build
+        if: steps.decide.outputs.warm == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            for (const name of [
+              'ACTIONS_RUNTIME_TOKEN',
+              'ACTIONS_CACHE_URL',
+              'ACTIONS_RESULTS_URL',
+            ]) {
+              const value = process.env[name];
+              if (value) core.exportVariable(name, value);
+            }
+      - name: Build the stack images into the cache
+        if: steps.decide.outputs.warm == 'true'
+        env:
+          BUILDX_BUILDER: studio-stack
+          BUILD_CACHE_FROM: type=gha,version=2,scope=studio-stack-{target}
+          # Not `ignore-error`: an export the service refuses is this job's
+          # whole purpose failing, and the job is `continue-on-error`, so
+          # failing it says so without failing the run.
+          BUILD_CACHE_TO: type=gha,version=2,scope=studio-stack-{target},mode=max
+        run: apps/studio/stack-test/build.sh
+      - name: Record the dependency inputs the cache now holds
+        if: steps.decide.outputs.warm == 'true'
+        env:
+          MARKER: ${{ steps.decide.outputs.marker }}
+        run: echo "$MARKER" > "$RUNNER_TEMP/studio-image-deps"
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.decide.outputs.warm == 'true'
+        with:
+          path: ${{ runner.temp }}/studio-image-deps
+          key: ${{ steps.decide.outputs.marker }}
 
   seed-turbo-cache:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -750,10 +860,36 @@ jobs:
       # it. Not applied to the `@codaco/studio-api#test` run above:
       # `--continue` governs how a multi-task run treats one task's failure,
       # and a single-task run has nothing else queued behind it to protect.
+      #
+      # A suite the `test` job splits across runners (protocol-builder, in
+      # three parts) is looked up there under one cache entry per part,
+      # because turbo hashes the `--shard` argument each leg passes through.
+      # A whole-suite run here would seed an entry no leg ever reads, so those
+      # suites are left out of the main run and seeded part by part.
       - name: Run tests
         id: test
         continue-on-error: true
-        run: pnpm exec turbo run test --continue=dependencies-successful
+        run: |
+          set -uo pipefail
+          if ! split="$(node scripts/ci/test-shards.mjs split)"; then
+            exit 1
+          fi
+          excluded=()
+          while read -r pkg parts; do
+            [[ -n "$pkg" ]] && excluded+=("--filter=!$pkg")
+          done <<< "$split"
+
+          status=0
+          pnpm exec turbo run test --continue=dependencies-successful \
+            "${excluded[@]}" || status=1
+          while read -r pkg parts; do
+            [[ -n "$pkg" ]] || continue
+            for part in $(seq 1 "$parts"); do
+              pnpm exec turbo run test --filter="$pkg" \
+                -- "--shard=$part/$parts" || status=1
+            done
+          done <<< "$split"
+          exit "$status"
         env:
           SKIP_ENV_VALIDATION: 'true'
       # Surfaces a broken seed instead of letting it fail silently, and then
@@ -917,6 +1053,13 @@ jobs:
         # Through turbo so the suite is cached like every other test task; it
         # is a root task because scripts/ is not a workspace package.
         run: pnpm exec turbo run //#test:scripts
+      - name: Check repository-wide source invariants
+        id: invariants
+        continue-on-error: true
+        # Scans every package and app, so it is a root task whose inputs cover
+        # them all: a package's own test task only runs when that package (or
+        # a dependency) changed.
+        run: pnpm exec turbo run //#test:invariants
       - name: Build shared packages and release-sensitive apps
         id: build
         continue-on-error: true
@@ -965,6 +1108,7 @@ jobs:
           STUDIO_RELEASE_OUTCOME: ${{ steps.studio-release.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
+          INVARIANTS_OUTCOME: ${{ steps.invariants.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
@@ -982,6 +1126,7 @@ jobs:
             "studio-release=$STUDIO_RELEASE_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
+            "invariants=$INVARIANTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
             "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
@@ -1139,32 +1284,45 @@ jobs:
       && inputs.interview_e2e_benchmark == true)
       && needs.detect.outputs.studio == 'true'
     runs-on: ubuntu-latest
-    # A cold build of studio-api is most of this, and the GitHub Actions cache
-    # below is what keeps it off the critical path on every run after the
-    # first. Once the images exist, each variant is one up/assert/down cycle.
-    # two-api is the longest: it waits out a lock's 30 second lease with one
-    # replica stopped, then relays a save from one replica to a tab watching
-    # on the other.
+    # Three legs, each on its own runner, because the seven variants share a
+    # Compose project name, the host's ports 80 and 443, and two fixed
+    # subnets, so on one host they can only run one after another (about 5.5
+    # minutes on 2 Nov 2026). Nothing else ties one variant to another. Each
+    # leg builds the images itself, from the cache main writes, and runs its
+    # variants in turn: the reference stack with the participant walk-through;
+    # the own-proxy and two-api variants (about 140s; two-api waits out a
+    # lock's 30-second lease with one replica stopped, then relays a save
+    # from one replica to a tab watching on the other); and the four store
+    # swaps (about 100s).
+    name: studio-stack (${{ matrix.leg }})
     timeout-minutes: 40
+    strategy:
+      # Every leg's verdict is wanted: a failed swap must not cancel the
+      # reference stack and hide whether it passed.
+      fail-fast: false
+      matrix:
+        include:
+          - leg: reference
+          - leg: ingress-and-replicas
+          - leg: swapped-stores
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      # `--cache-to type=gha` needs a builder that can export a cache, and the
-      # runner's default one is the `docker` driver, which cannot — it fails
-      # the build rather than ignoring the flag. One `buildx create` rather
-      # than a third-party action: this is the whole of what that action would
-      # do here; `build.sh` calls `docker buildx build`, which follows the
-      # selected builder (`docker build` on this runner does not, and fails).
-      # `docker buildx use` alone was not enough: the first run built on the
-      # default driver and could not export the cache.
+      # `--cache-from type=gha` needs a builder that can read the Actions
+      # cache, and the runner's default one is the `docker` driver, which
+      # cannot. One `buildx create` rather than a third-party action: this is
+      # the whole of what that action would do here; `build.sh` calls `docker
+      # buildx build`, which follows the selected builder (`docker build` on
+      # this runner does not, and fails). `docker buildx use` alone was not
+      # enough: the first run built on the default driver.
       - name: Select a cache-capable builder
         run: docker buildx create --name studio-stack --driver docker-container --use
       # The `gha` cache backend authenticates with the job's runtime token, and
       # GitHub exposes that (and the cache service address) to ACTIONS, not to
       # `run:` steps — which is why `docker/build-push-action` can use the
-      # backend and a shell script cannot. Re-exporting the three variables
-      # from inside an action is what makes `build.sh` usable here unchanged,
+      # backend and a shell script cannot. Re-exporting the variables from
+      # inside an action is what makes `build.sh` usable here unchanged,
       # rather than CI building the images some other way than a developer
       # does. They are job-scoped and go no further than this job.
       - name: Expose the Actions cache service to the build
@@ -1183,81 +1341,96 @@ jobs:
         env:
           # Belt and braces with the `buildx create --use` above: buildx reads
           # this before its saved selection, so the build cannot fall back to
-          # the default driver, whose cache export the first run failed on.
+          # the default driver.
           BUILDX_BUILDER: studio-stack
-          # Scoped per target by the `{target}` placeholder, so the two images
-          # do not overwrite each other's cache manifest.
-          BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
-          # `ignore-error`: a cache export that the service refuses is a slower
-          # next run, not a broken build, and this job's verdict is about the
-          # stack rather than about the cache.
-          BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+          # Read-only: `warm-studio-image-cache` writes these scopes on main,
+          # where every pull request can read them; see that job for why a
+          # pull request does not write. `version=2` because version 1 of
+          # the cache service is retired: without it buildx asked version 1
+          # and got "Our services aren't available right now" on every
+          # import and export, so these builds never had a cache.
+          BUILD_CACHE_FROM: type=gha,version=2,scope=studio-stack-{target}
         run: apps/studio/stack-test/build.sh
 
+      # Only the participant walk-through drives a browser, from the
+      # workspace's own dependencies; the other legs run Docker and bash.
       - uses: ./.github/actions/turbo-ci-setup
+        if: matrix.leg == 'reference'
       - name: Install Playwright's Chromium
-        run: pnpm --filter @codaco/studio-web exec playwright install --with-deps chromium
+        if: matrix.leg == 'reference'
+        uses: ./.github/actions/playwright-browsers
+        with:
+          browsers: chromium
+          package: '@codaco/studio-web'
 
-      # Serial, and each variant torn down before the next: they share a
-      # Compose project name, the host's ports 80 and 443, and two fixed
-      # subnets. `down.sh` runs whatever the assertions did, so a failed
-      # variant cannot leave containers holding the network the next one needs.
+      # Within a leg, serial, and each variant torn down before the next: they
+      # share a Compose project name, the host's ports 80 and 443, and two
+      # fixed subnets. `down.sh` runs whatever the assertions did, so a failed
+      # variant cannot leave containers holding the network the next one
+      # needs.
       - name: The reference stack
+        if: matrix.leg == 'reference'
         run: |
           apps/studio/stack-test/up.sh --variant reference
           apps/studio/stack-test/assert.sh --variant reference
           apps/studio/stack-test/participants.sh --variant reference
       - name: Tear down the reference stack
-        if: always()
+        if: always() && matrix.leg == 'reference'
         run: apps/studio/stack-test/down.sh --variant reference
 
-      - name: A swapped database
-        run: |
-          apps/studio/stack-test/up.sh --variant external-postgres
-          apps/studio/stack-test/assert.sh --variant external-postgres
-      - name: Tear down the swapped database
-        if: always()
-        run: apps/studio/stack-test/down.sh --variant external-postgres
-
-      - name: A swapped object store
-        run: |
-          apps/studio/stack-test/up.sh --variant external-bucket
-          apps/studio/stack-test/assert.sh --variant external-bucket
-      - name: Tear down the swapped object store
-        if: always()
-        run: apps/studio/stack-test/down.sh --variant external-bucket
-
-      - name: A swapped object store (Azure Blob)
-        run: |
-          apps/studio/stack-test/up.sh --variant external-bucket-azure
-          apps/studio/stack-test/assert.sh --variant external-bucket-azure
-      - name: Tear down the swapped object store (Azure Blob)
-        if: always()
-        run: apps/studio/stack-test/down.sh --variant external-bucket-azure
-
-      - name: A swapped rate-limit store
-        run: |
-          apps/studio/stack-test/up.sh --variant external-redis
-          apps/studio/stack-test/assert.sh --variant external-redis
-      - name: Tear down the swapped rate-limit store
-        if: always()
-        run: apps/studio/stack-test/down.sh --variant external-redis
-
       - name: A swapped ingress
+        if: matrix.leg == 'ingress-and-replicas'
         run: |
           apps/studio/stack-test/up.sh --variant own-proxy
           apps/studio/stack-test/assert.sh --variant own-proxy
       - name: Tear down the swapped ingress
-        if: always()
+        if: always() && matrix.leg == 'ingress-and-replicas'
         run: apps/studio/stack-test/down.sh --variant own-proxy
 
       - name: Two API replicas
+        if: matrix.leg == 'ingress-and-replicas'
         run: |
           apps/studio/stack-test/up.sh --variant two-api
           apps/studio/stack-test/assert.sh --variant two-api
       - name: Tear down two API replicas
-        if: always()
+        if: always() && matrix.leg == 'ingress-and-replicas'
         run: apps/studio/stack-test/down.sh --variant two-api
+
+      - name: A swapped database
+        if: matrix.leg == 'swapped-stores'
+        run: |
+          apps/studio/stack-test/up.sh --variant external-postgres
+          apps/studio/stack-test/assert.sh --variant external-postgres
+      - name: Tear down the swapped database
+        if: always() && matrix.leg == 'swapped-stores'
+        run: apps/studio/stack-test/down.sh --variant external-postgres
+
+      - name: A swapped object store
+        if: matrix.leg == 'swapped-stores'
+        run: |
+          apps/studio/stack-test/up.sh --variant external-bucket
+          apps/studio/stack-test/assert.sh --variant external-bucket
+      - name: Tear down the swapped object store
+        if: always() && matrix.leg == 'swapped-stores'
+        run: apps/studio/stack-test/down.sh --variant external-bucket
+
+      - name: A swapped object store (Azure Blob)
+        if: matrix.leg == 'swapped-stores'
+        run: |
+          apps/studio/stack-test/up.sh --variant external-bucket-azure
+          apps/studio/stack-test/assert.sh --variant external-bucket-azure
+      - name: Tear down the swapped object store (Azure Blob)
+        if: always() && matrix.leg == 'swapped-stores'
+        run: apps/studio/stack-test/down.sh --variant external-bucket-azure
+
+      - name: A swapped rate-limit store
+        if: matrix.leg == 'swapped-stores'
+        run: |
+          apps/studio/stack-test/up.sh --variant external-redis
+          apps/studio/stack-test/assert.sh --variant external-redis
+      - name: Tear down the swapped rate-limit store
+        if: always() && matrix.leg == 'swapped-stores'
+        run: apps/studio/stack-test/down.sh --variant external-redis
 
       # The assertions print `docker compose ps` and the last 200 log lines
       # inline, which is where a reader looks first; `down.sh` writes the same
@@ -1271,7 +1444,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: studio-stack-diagnostics
+          name: studio-stack-${{ matrix.leg }}-diagnostics
           include-hidden-files: true
           path: |
             apps/studio/stack-test/.work/*-ps.txt
@@ -1318,8 +1491,8 @@ jobs:
       - name: Build the stack images
         env:
           BUILDX_BUILDER: studio-stack
-          BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
-          BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+          # Read-only, as in `studio-stack`; see there.
+          BUILD_CACHE_FROM: type=gha,version=2,scope=studio-stack-{target}
         run: apps/studio/stack-test/build.sh
 
       - name: What leaves the machine
@@ -1411,10 +1584,10 @@ jobs:
       - name: Run the upgrade lane
         env:
           BUILDX_BUILDER: studio-upgrade
-          # The same scopes `studio-stack` writes, so either job warms the
-          # other's build of the candidate images.
-          BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
-          BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+          # The same scopes `warm-studio-image-cache` writes and
+          # `studio-stack` reads, so a release run warms them too.
+          BUILD_CACHE_FROM: type=gha,version=2,scope=studio-stack-{target}
+          BUILD_CACHE_TO: type=gha,version=2,scope=studio-stack-{target},mode=max,ignore-error=true
           # Used only for run C's `docker login ghcr.io`, which happens only
           # when a release tag exists.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1469,7 +1642,7 @@ jobs:
     # wall-clock budgets still measure the test rather than the queue. scripts/ci/test-shards.mjs owns which package
     # is in which bucket, how the buckets were weighted, and the coverage
     # check that refuses a package belonging to no shard.
-    name: test (shard ${{ matrix.shard }})
+    name: test (shard ${{ matrix.shard }}${{ matrix.part && format(', part {0}', matrix.part) || '' }})
     if: >-
       github.event_name != 'merge_group'
       && github.event_name != 'push'
@@ -1485,7 +1658,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # One suite, protocol-builder, split three ways by vitest's own
+          # `--shard` (`parts: 3` in scripts/ci/test-shards.mjs; the package's
+          # vitest.sequencer.ts balances the parts by recorded duration).
           - shard: 1
+            part: 1/3
+          - shard: 1
+            part: 2/3
+          - shard: 1
+            part: 3/3
           - shard: 2
           # packages/studio-sync's conformance suite is the only workspace
           # suite outside @codaco/studio-api that needs a database, and it
@@ -1578,6 +1759,7 @@ jobs:
         env:
           DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           SHARD: ${{ matrix.shard }}
+          PART: ${{ matrix.part }}
         run: |
           # Restrict this runner to its bucket. scripts/ci/test-shards.mjs emits
           # one `--filter=!<pkg>` for every test-carrying workspace package
@@ -1610,6 +1792,16 @@ jobs:
           fi
           mapfile -t SHARD_FILTERS < "$RUNNER_TEMP/shard-filters"
           echo "Shard $SHARD excludes ${#SHARD_FILTERS[@]} packages"
+
+          # A leg that runs one part of a split suite passes the part through
+          # turbo to vitest. Turbo hashes passed-through arguments, so each
+          # part has its own cache entry; seed-turbo-cache seeds them the same
+          # way.
+          PART_ARGS=()
+          if [[ -n "$PART" ]]; then
+            PART_ARGS=(-- "--shard=$PART")
+            echo "Running part $PART of the bucket's suite"
+          fi
 
           # PR checkouts are synthetic merges. Diff against the event's base
           # SHA, then use --affected to scope the run to tasks whose declared
@@ -1706,12 +1898,12 @@ jobs:
             # @codaco/network-query and @codaco/shared-consts.
             pnpm exec turbo run test \
               --filter="...[$DIFF_BASE_SHA]" \
-              "${SHARD_FILTERS[@]}"
+              "${SHARD_FILTERS[@]}" "${PART_ARGS[@]}"
             exit 0
           fi
 
           echo "Running the full test suite for $GITHUB_EVENT_NAME"
-          pnpm exec turbo run test "${SHARD_FILTERS[@]}"
+          pnpm exec turbo run test "${SHARD_FILTERS[@]}" "${PART_ARGS[@]}"
 
   test-storybook:
     # Storybook's play functions and their assertions, executed in a real
@@ -1721,7 +1913,12 @@ jobs:
     # only check that runs every play function on every change.
     #
     # A separate job from `test` because it needs Playwright browsers, which
-    # the plain unit-test runner does not.
+    # the plain unit-test runner does not. Split into legs for the reason
+    # `test` is: the suites run one at a time on a runner (browsers starve
+    # each other on four cores), so serially the full set took 9 minutes on
+    # 30 Oct 2026. scripts/ci/test-shards.mjs (STORYBOOK_SHARDS) owns which
+    # suite runs on which leg and which browsers each leg installs.
+    name: test-storybook (shard ${{ matrix.shard }})
     if: >-
       github.event_name != 'merge_group'
       && github.event_name != 'push'
@@ -1729,67 +1926,78 @@ jobs:
       && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # fresco-ui's stories run a second time in Firefox on generated release
+      # PRs only. Every other PR gets Chromium: the Firefox pass doubled that
+      # suite, and of the defects on record it caught only one (the Likert
+      # slider, June 2026) failed in Firefox alone. A release PR bumps the
+      # version of every package it releases, which makes that package's
+      # suite and its dependents' affected, so a fresco-ui change still runs
+      # in Firefox before it ships.
+      STORYBOOK_FIREFOX: ${{ startsWith(github.head_ref, 'changeset-release/') }}
+    strategy:
+      # Every leg's verdict is wanted; see the same setting on `test`.
+      fail-fast: false
+      matrix:
+        include:
+          # fresco-ui, which adds Firefox on release PRs (STORYBOOK_FIREFOX).
+          - shard: 1
+            browsers: chromium
+            releaseBrowsers: firefox
+          - shard: 2
+            browsers: chromium
+          # Holds `fresco`, whose stories need its Prisma client and Next
+          # types generated first.
+          - shard: 3
+            browsers: chromium
+            frescoCodegen: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-          # `--affected` diffs against the PR base; on a shallow clone turbo
-          # treats every package as changed.
+          # The affected selection diffs against the PR base; on a shallow
+          # clone turbo treats every package as changed.
           fetch-depth: 0
       - uses: ./.github/actions/turbo-ci-setup
-      - name: Resolve the pinned Playwright version
-        id: pw
-        run: |
-          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
-            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
-          if [ -z "$version" ]; then
-            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-      # One union key, written only by `warm-playwright-cache` on pushes to
-      # main, restored read-only here and by the other three jobs that need
-      # Playwright browsers (interview-e2e-native, interviewer-e2e-native,
-      # architect-e2e-native): a PR-scoped copy is readable by exactly one
-      # pull request, and on 2026-09-10 fourteen of those PR-scoped copies
-      # held 5.17 GB — 53% of the repository's 10 GB cache ceiling — which
-      # evicted the turbo cache entries `test` depends on to stay fast.
-      # `actions/cache/restore` (not `actions/cache`) makes that one-way: each
-      # of these four jobs can read main's warm entry but never writes a
-      # competing copy of its own, warm or not. The deliberate trade: a job
-      # that needs fewer than all three browsers still restores the full
-      # union (this one restores a webkit binary it never launches), a few
-      # hundred MB and some seconds it would not pay from a job-scoped key —
-      # traded for never holding open a second key against the ceiling this
-      # rearrangement exists to protect.
-      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - uses: ./.github/actions/playwright-browsers
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-      - name: Install the pinned browsers
-        # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs. Firefox is for fresco-ui,
-        # the one project whose storybook suite runs both engines. This step
-        # is the fallback for a cold cache (main's warm job hasn't run yet, or
-        # missed) — a no-op when the binaries the restore above already
-        # placed are present.
-        run: pnpm --filter @codaco/interviewer exec playwright install --with-deps chromium firefox
+          browsers: >-
+            ${{ matrix.browsers }}${{ env.STORYBOOK_FIREFOX == 'true'
+            && matrix.releaseBrowsers
+            && format(' {0}', matrix.releaseBrowsers) || '' }}
+          package: '@codaco/interviewer'
       - name: Generate Fresco's Prisma client and Next types
+        if: matrix.frescoCodegen
         run: pnpm exec turbo run fresco#codegen
       - name: Run storybook tests (PRs run only affected tasks)
         env:
           DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SHARD: ${{ matrix.shard }}
         run: |
+          # Restricted to this leg's bucket the way `test` restricts a shard:
+          # one `--filter=!<pkg>` per storybook suite the leg does not own,
+          # read through a file so a failed script cannot leave the list empty
+          # and widen the leg to every suite. See `test` for the reasoning.
+          set -euo pipefail
+          if ! node scripts/ci/test-shards.mjs filters "$SHARD" storybook > "$RUNNER_TEMP/shard-filters"; then
+            echo "::error::storybook shard $SHARD could not resolve its package filters; refusing to run every suite"
+            exit 1
+          fi
+          mapfile -t SHARD_FILTERS < "$RUNNER_TEMP/shard-filters"
+
           # Same fail-closed affected selection as the `test` job: a change
           # outside the workspace package trees can alter how these run
           # without being any task's declared input, so it forces the full
-          # set. See that job for the reasoning behind each exclusion.
+          # set. See that job for the reasoning behind each exclusion, and for
+          # why the affected set is spelled `--filter="...[<base>]"`: turbo
+          # ignores every other `--filter` under `--affected`, which would run
+          # every affected suite on every leg.
           #
           # These run one at a time, from `TURBO_CONCURRENCY` at the top of
-          # this file. Each suite drives its own
-          # Chromium (and Firefox, for fresco-ui); in parallel they starve each
-          # other on a four-core runner and the timing-sensitive stories fail on
-          # a half-rendered DOM. Serially the whole set takes about 100s.
+          # this file. Each suite drives its own Chromium (and Firefox, for
+          # fresco-ui); in parallel they starve each other on a four-core
+          # runner and the timing-sensitive stories fail on a half-rendered
+          # DOM.
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
             && [[ -n "$DIFF_BASE_SHA" ]] \
             && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
@@ -1799,13 +2007,14 @@ jobs:
               ':(exclude)pnpm-lock.yaml' \
               ':(exclude)scripts/*.test.mjs' ':(exclude)*.md'; then
             echo "Running storybook test tasks affected by $DIFF_BASE_SHA..HEAD"
-            TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test:storybook \
-              --affected
+            pnpm exec turbo run test:storybook \
+              --filter="...[$DIFF_BASE_SHA]" \
+              "${SHARD_FILTERS[@]}"
             exit 0
           fi
 
-          echo "Running every storybook suite for $GITHUB_EVENT_NAME"
-          pnpm exec turbo run test:storybook
+          echo "Running every storybook suite in this shard for $GITHUB_EVENT_NAME"
+          pnpm exec turbo run test:storybook "${SHARD_FILTERS[@]}"
 
   # Refuses to merge a stale Version Packages PR. Every push to main
   # regenerates changeset-release/main, but a head generated before main's
@@ -2432,11 +2641,26 @@ jobs:
           free -h
           docker info --format '{{json .DriverStatus}}'
       - name: Run E2E tests
+        env:
+          RELEASE_BRANCH: ${{ startsWith(github.head_ref, 'changeset-release/') }}
         run: |
           # Pixel half only — the *-matrix projects run natively in
           # interview-e2e-native. Same project selector as
           # test:e2e:update-snapshots and the regeneration workflow.
-          args=(--project=chromium-visual --project=firefox-visual --project=webkit-visual)
+          #
+          # Firefox and WebKit capture only on generated release PRs (and in
+          # benchmarks, which measure the whole lane). They are two thirds of
+          # this lane's tests and about three of its minutes. In the record,
+          # every change to only their images was a regeneration after font or
+          # tooling drift, and each scenario is still captured in Chromium.
+          # A release PR always runs this lane in full (equivalence reuse
+          # reads only earlier release-branch runs), and a capture that fails
+          # there opens a baseline-update PR, so no release ships an engine's
+          # captures unchecked.
+          args=(--project=chromium-visual)
+          if [[ "$RELEASE_BRANCH" == "true" || "$E2E_BENCHMARK" == "true" ]]; then
+            args+=(--project=firefox-visual --project=webkit-visual)
+          fi
           if [[ -n "$E2E_SHARD" ]]; then
             if [[ ! "$E2E_SHARD" =~ ^[1-9][0-9]*/[1-9][0-9]*$ ]]; then
               echo "::error::Invalid Playwright shard '$E2E_SHARD' (expected N/M)"
@@ -2571,36 +2795,12 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
-      - name: Resolve the pinned Playwright version
-        id: pw
-        # The same lockfile-derived pin the Docker image tag is built from:
-        # the browser build is fixed by the resolved @playwright/test version
-        # either way, so this lane is no less deterministic about the browsers.
-        run: |
-          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
-            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
-          if [ -z "$version" ]; then
-            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-      # Restore-only, from the one union key `warm-playwright-cache` writes on
-      # pushes to main — see the comment on this same step in `test-storybook`
-      # for why (a PR-scoped write-and-save copy of this cache, multiplied
-      # across live PRs, is what forced this rearrangement in the first
-      # place). This job needs every browser the key holds, so it pays no
-      # part of the union trade the other three jobs make.
-      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restores main's shared browser cache, then installs with a time
+      # limit and retries; see the action for why.
+      - uses: ./.github/actions/playwright-browsers
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-      - name: Install the pinned browsers
-        # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs. This step is the fallback
-        # for a cold cache (main's warm job hasn't run yet, or missed) — a
-        # no-op when the binaries the restore above already placed are
-        # present.
-        run: pnpm --filter @codaco/interview exec playwright install --with-deps chromium firefox webkit
+          browsers: chromium firefox webkit
+          package: '@codaco/interview'
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
         # one for us.
@@ -2685,34 +2885,12 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
-      - name: Resolve the pinned Playwright version
-        id: pw
-        # The same lockfile-derived pin the Docker image tag is built from:
-        # the browser build is fixed by the resolved @playwright/test version
-        # either way, so this lane is no less deterministic about the browsers.
-        run: |
-          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
-            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
-          if [ -z "$version" ]; then
-            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-      # Restore-only, from the one union key `warm-playwright-cache` writes on
-      # pushes to main — see the comment on this same step in `test-storybook`
-      # for the full arrangement. This job skips firefox, so it restores a
-      # firefox binary it never launches as its share of the union trade.
-      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restores main's shared browser cache, then installs with a time
+      # limit and retries; see the action for why.
+      - uses: ./.github/actions/playwright-browsers
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-      - name: Install the pinned browsers
-        # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs. This step is the fallback
-        # for a cold cache (main's warm job hasn't run yet, or missed) — a
-        # no-op when the binaries the restore above already placed are
-        # present.
-        run: pnpm --filter @codaco/interviewer exec playwright install --with-deps chromium webkit
+          browsers: chromium webkit
+          package: '@codaco/interviewer'
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
         # one for us.
@@ -2822,40 +3000,12 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/turbo-ci-setup
-      - name: Resolve the pinned Playwright version
-        id: pw
-        # The same lockfile-derived pin the Docker image tag is built from:
-        # the browser build is fixed by the resolved @playwright/test version
-        # either way, so this lane is no less deterministic about Chromium.
-        run: |
-          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
-            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
-          if [ -z "$version" ]; then
-            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-      # Restore-only, from the one union key `warm-playwright-cache` writes on
-      # pushes to main — see the comment on this same step in `test-storybook`
-      # for the full arrangement. This job needs only chromium, so it
-      # restores the firefox and webkit binaries the key also carries and
-      # never launches: about 200 MB more than a chromium-only key, which
-      # costs one to three seconds, since this job's whole cache-hit restore
-      # has a 3.5s median. In exchange it never holds a second key against
-      # the ceiling. Across every Playwright-consuming job in the repository
-      # the union costs on the order of one runner-hour a week, against the
-      # 4.6 GB of ceiling that thirteen per-pull-request copies were holding.
-      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restores main's shared browser cache, then installs with a time
+      # limit and retries; see the action for why.
+      - uses: ./.github/actions/playwright-browsers
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-      - name: Install the pinned browsers
-        # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs. This step is the fallback
-        # for a cold cache (main's warm job hasn't run yet, or missed) — a
-        # no-op when the binaries the restore above already placed are
-        # present.
-        run: pnpm --filter @codaco/architect exec playwright install --with-deps chromium
+          browsers: chromium
+          package: '@codaco/architect'
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
         # one for us.

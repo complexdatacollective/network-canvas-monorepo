@@ -99,6 +99,10 @@
     "defaultMessage": "{totalCount, plural, one {Select the # match →} other {Select all # matching →}}",
     "description": "Visible copy in Interviewer Data View."
   },
+  "interviewer.dataView.tableLabel": {
+    "defaultMessage": "Interviews",
+    "description": "Accessible name of the table listing collected interviews, announced by screen readers when it is reached."
+  },
   "interviewer.dataViewColumns.caseID": {
     "defaultMessage": "Case ID",
     "description": "The title label in Interviewer Data View Columns."

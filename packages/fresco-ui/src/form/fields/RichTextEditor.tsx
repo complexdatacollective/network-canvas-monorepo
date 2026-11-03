@@ -1185,7 +1185,7 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
     'insertMenu'?: RichTextInsertMenu;
     'id': string;
     'name': string;
-    'aria-describedby': string;
+    'aria-describedby'?: string;
   }
 >;
 
@@ -2068,7 +2068,15 @@ export default function RichTextEditorField({
                     <Link />
                   </ToolbarButton>
                 </PopoverTrigger>
-                <PopoverContent align="start" side="bottom" className="w-80">
+                <PopoverContent
+                  align="start"
+                  side="bottom"
+                  className="w-80"
+                  // Named as its toolbar button is: "Add link" or "Edit link".
+                  aria-label={intl.formatMessage(messages.linkButton, {
+                    hasLink: String(editorState.isLink),
+                  })}
+                >
                   <form
                     className="flex flex-col gap-3"
                     onSubmit={(event) => {
@@ -2361,6 +2369,7 @@ export default function RichTextEditorField({
                     <PopoverContent
                       align="start"
                       side="bottom"
+                      aria-label={insertMenu.label}
                       anchor={triggered === null ? undefined : caretAnchorRef}
                       // Closed by a pick, the menu hands the caret to the text
                       // the item went into; opened by typing, back to the

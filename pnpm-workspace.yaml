@@ -118,6 +118,10 @@ catalog:
   # Matches the range `cva` itself depends on, so the joiner it hands `cva`'s
   # `cx` config option stays in lock-step with what `cva` was built against.
   clsx: ^2.1.1
+  # Test-only: the colour maths behind the theme contrast check in
+  # tooling/tailwind (OKLCH parsing, mixing, conversion to sRGB). Already in the
+  # lockfile at this version through sass-embedded.
+  colorjs.io: ^0.7.1
   csvtojson: ^2.0.14
   dotenv: ^18.0.8
   # Pinned to the 1.0 RC, exactly (the rc dist-tag moves): stable drizzle-kit

@@ -169,7 +169,6 @@ The drag and drop system includes comprehensive accessibility support:
 - Contextual instructions
 
 ## 🎯 ARIA Attributes
-- \`aria-grabbed\`: Indicates drag state
 - \`aria-label\`: Accessible names for items
 - \`role="button"\`: Makes items focusable
         `,
@@ -642,12 +641,12 @@ export const AriaAttributes: Story = {
       {
         id: 'aria-2',
         name: 'ARIA Test Item 2',
-        description: 'Uses aria-grabbed for drag state',
+        description: 'Announces drag start and end through the live region',
       },
       {
         id: 'aria-3',
         name: 'ARIA Test Item 3',
-        description: 'Includes aria-dropeffect information',
+        description: 'Announces the drop zone it lands in',
       },
     ];
 
@@ -679,13 +678,6 @@ export const AriaAttributes: Story = {
             </li>
             <li>
               <code>aria-label</code> - Provides accessible name
-            </li>
-            <li>
-              <code>aria-grabbed</code> - Indicates if item is being dragged
-            </li>
-            <li>
-              <code>aria-dropeffect=&quot;move&quot;</code> - Describes the drag
-              operation
             </li>
             <li>
               <code>tabIndex=&quot;0&quot;</code> - Enables keyboard navigation
@@ -737,8 +729,7 @@ export const AriaAttributes: Story = {
                     fontFamily: 'monospace',
                   }}
                 >
-                  ARIA attributes: role, aria-label, aria-grabbed,
-                  aria-dropeffect, tabIndex
+                  ARIA attributes: role, aria-label, tabIndex
                 </div>
               </div>
             ))}

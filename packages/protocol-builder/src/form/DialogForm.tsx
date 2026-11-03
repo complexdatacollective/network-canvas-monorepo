@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useImperativeHandle,
   useRef,
   useState,
 } from 'react';
@@ -390,14 +391,9 @@ function DialogFormBody({
     blocked: isSubmitting,
   });
 
-  useEffect(() => {
-    const published = requestCloseRef;
-    if (published === undefined) return undefined;
-    published.current = requestClose;
-    return () => {
-      published.current = null;
-    };
-  }, [requestClose, requestCloseRef]);
+  // Hands the owner's ref the current close route, and `null` as the dialog
+  // unmounts.
+  useImperativeHandle(requestCloseRef, () => requestClose, [requestClose]);
 
   /**
    * Fresco runs every field's own validation before this is reached, so the

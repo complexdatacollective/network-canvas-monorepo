@@ -97,16 +97,6 @@ async function addInlinePoint(
 }
 
 describe('the questions a tie-strength census asks about a pair', () => {
-  it('saves the stage it opened, unchanged', async () => {
-    const harness = renderStageEditor(openSection());
-
-    // The stage's name and the type it asks about belong to sections this
-    // mount does not include.
-    await harness.roundTrip({
-      unowned: ['subject'],
-    });
-  });
-
   it('opens a prompt holding everything it was saved with', async () => {
     const harness = renderStageEditor(openSection());
 

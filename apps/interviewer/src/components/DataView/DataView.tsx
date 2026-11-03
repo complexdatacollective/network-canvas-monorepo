@@ -21,6 +21,12 @@ import { useSessionQuery } from './useSessionQuery';
 import { useSessionSelection } from './useSessionSelection';
 
 const messages = defineMessages({
+  tableLabel: {
+    id: 'interviewer.dataView.tableLabel',
+    defaultMessage: 'Interviews',
+    description:
+      'Accessible name of the table listing collected interviews, announced by screen readers when it is reached.',
+  },
   allStrongSelectedCountStrongMatchingInterviewsAre: {
     id: 'interviewer.dataView.allStrongSelectedCountStrongMatchingInterviewsAre',
     defaultMessage:
@@ -333,6 +339,10 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
       >
         <DataTable
           table={table}
+          aria-label={intl.formatMessage(messages.tableLabel)}
+          // The selection lives in `useSessionSelection` (it can span pages
+          // that were never fetched), not in the table's `rowSelection`.
+          selectedCount={selectedCount}
           bodyScroll
           emptyText={
             !loaded

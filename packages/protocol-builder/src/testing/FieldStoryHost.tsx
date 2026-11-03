@@ -166,11 +166,15 @@ export function FieldStoryHost({
                 did nothing look identical on screen, and a play function has
                 to be able to tell them apart.
               */}
-              <p role="status" aria-label="Save status">
+              <output
+                aria-live="polite"
+                aria-label="Save status"
+                className="block"
+              >
                 {saved === null
                   ? 'Nothing saved yet.'
                   : `Saved: ${JSON.stringify(saved)}`}
-              </p>
+              </output>
             </main>
           </StageEditSession>
         </ResourceClientProvider>

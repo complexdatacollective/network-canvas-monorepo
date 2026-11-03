@@ -75,16 +75,15 @@ const CoordinateClassificationExample = () => {
         onValueChange={setLanguage}
         size="sm"
       />
-      <div
+      <section
         className="[&>div]:mb-0"
-        role="region"
         aria-label={`${languageName} coordinate classification example`}
       >
         <Pre raw={code}>
           {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- rehype-highlight language-tagging convention */}
           <code className={`language-${language}`}>{code}</code>
         </Pre>
-      </div>
+      </section>
       <span className="sr-only" aria-live="polite">
         Showing the {languageName} example.
       </span>

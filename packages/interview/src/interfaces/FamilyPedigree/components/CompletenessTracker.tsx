@@ -165,7 +165,7 @@ function CompletenessTracker({
   );
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLElement>(null);
 
   // The list shows while it is pinned, while the mouse is over the ring or
   // the list, or while keyboard focus is on either. Closing it hides it
@@ -315,9 +315,8 @@ function CompletenessTracker({
     >
       <div className="flex min-h-0 flex-col gap-3">
         {progress.checklist.length > 0 && (
-          <div
+          <section
             ref={listRef}
-            role="region"
             aria-label={progressLabel}
             tabIndex={-1}
             className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain outline-none"
@@ -389,7 +388,7 @@ function CompletenessTracker({
             {completeness.enforcement === 'recommended' && (
               <p className="text-sm opacity-80">{recommendedNote}</p>
             )}
-          </div>
+          </section>
         )}
       </div>
     </ToolbarPopover>

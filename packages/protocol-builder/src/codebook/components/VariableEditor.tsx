@@ -460,8 +460,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   // reading, so a key and the choice filed under it cannot come from two.
   const [openedRows] = useState(() => {
     const openedOptions = readEditableOptions(seededDraft.options);
+    // Numbered by position: the prefix keeps these apart from the keys
+    // `optionKeySequence` issues to later rows.
     const keys = openedOptions.map(
-      () => `initial-option-${optionKeySequence.current++}`,
+      (_option, index) => `initial-option-${index}`,
     );
     const choices: Record<string, string> = {};
     if (optionRowChoice !== undefined) {
@@ -948,9 +950,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           </Alert>
         )}
         {busy && (
-          <p role="status" className="sr-only">
+          <output aria-live="polite" className="sr-only">
             {intl.formatMessage(messages.submittingStatus)}
-          </p>
+          </output>
         )}
 
         <form

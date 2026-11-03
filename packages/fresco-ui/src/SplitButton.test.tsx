@@ -147,4 +147,53 @@ describe('SplitButton', () => {
 
     expect(screen.queryByText('More save options')).not.toBeInTheDocument();
   });
+
+  it('names its popup after the segment that opens it, unless told otherwise', async () => {
+    const { unmount } = render(
+      <SplitButton
+        popover={{ content: <div>More save options</div> }}
+        segment={defaultSegment}
+      >
+        Save
+      </SplitButton>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Open options' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Open options' }),
+    ).toBeInTheDocument();
+    unmount();
+
+    render(
+      <SplitButton
+        popover={{
+          'content': <div>More save options</div>,
+          'aria-label': 'Save options',
+        }}
+        segment={defaultSegment}
+      >
+        Save
+      </SplitButton>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Open options' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Save options' }),
+    ).toBeInTheDocument();
+  });
+
+  it('still names its popup when the segment brings its own id', async () => {
+    render(
+      <SplitButton
+        popover={{ content: <div>More save options</div> }}
+        segment={{ ...defaultSegment, id: 'save-more' }}
+      >
+        Save
+      </SplitButton>,
+    );
+    const segmentButton = screen.getByRole('button', { name: 'Open options' });
+    expect(segmentButton).toHaveAttribute('id', 'save-more');
+    await userEvent.click(segmentButton);
+    expect(
+      await screen.findByRole('dialog', { name: 'Open options' }),
+    ).toBeInTheDocument();
+  });
 });

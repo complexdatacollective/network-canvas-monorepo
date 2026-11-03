@@ -2,6 +2,7 @@ import { Info, Plus, Search, TriangleAlert } from 'lucide-react';
 import {
   useCallback,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -205,6 +206,26 @@ export type VariableSpotlightProps = Readonly<{
 }>;
 
 /**
+ * The link inside the empty window's invitation to make a first attribute.
+ *
+ * A tag inside the sentence rather than markup around a fragment of it, so a
+ * translator moves the whole clause with its link. Defined once at module
+ * level: a tag function written inline is a component defined during render.
+ */
+const firstAttributeTags = {
+  docs: (chunks: ReactNode) => (
+    <NativeLink
+      key="docs"
+      href={protocolAuthoringLinks.attributeNaming}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {chunks}
+    </NativeLink>
+  ),
+};
+
+/**
  * Chooses one attribute out of a codebook, over a search box and a keyboard
  * navigable list, and offers to create the one that is missing.
  *
@@ -267,16 +288,20 @@ export default function VariableSpotlight({
    * How many times this window has been closed, so an answer that arrives
    * after a close can tell that the question it belongs to is over.
    *
-   * Counted here, beside the reset, because every close passes through this
-   * comparison: the ones the researcher makes and the one a completed pick
-   * makes through the field.
+   * Counted as `open` settles on being false, because every close ends there:
+   * the ones the researcher makes and the one a completed pick makes through
+   * the field. A layout effect rather than the render: a ref is not written
+   * while rendering, and the count has to be in place before any answer that
+   * was already on its way can be read against it.
    */
   const dismissals = useRef(0);
+  useLayoutEffect(() => {
+    if (!open) dismissals.current += 1;
+  }, [open]);
 
   if (openBaseline !== open) {
     setOpenBaseline(open);
     if (!open) {
-      dismissals.current += 1;
       setTerm('');
       setRefusedReason(undefined);
     }
@@ -408,6 +433,7 @@ export default function VariableSpotlight({
         setCreating(undefined);
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- all three are read above; the rule cannot follow a try/finally and reports every dependency of one as unused
     [creating, onCreate, onOpenChange],
   );
 
@@ -557,18 +583,7 @@ export default function VariableSpotlight({
     if (onCreate !== undefined) {
       return {
         icon: <Info aria-hidden className="mt-1 mr-3 size-5 shrink-0" />,
-        text: intl.formatMessage(messages.firstAttribute, {
-          docs: (chunks: ReactNode) => (
-            <NativeLink
-              key="docs"
-              href={protocolAuthoringLinks.attributeNaming}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {chunks}
-            </NativeLink>
-          ),
-        }),
+        text: intl.formatMessage(messages.firstAttribute, firstAttributeTags),
       };
     }
     return {

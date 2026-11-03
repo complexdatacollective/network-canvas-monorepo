@@ -1099,6 +1099,7 @@ export default function UserManagement({
 
         <DataTable
           table={table}
+          aria-label={intl.formatMessage(messages.allUsers)}
           emptyText={intl.formatMessage(messages.noUsersCreatedYet)}
           showPagination={false}
           floatingBar={

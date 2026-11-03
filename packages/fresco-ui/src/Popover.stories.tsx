@@ -5,7 +5,12 @@ import { expect, waitFor } from 'storybook/test';
 import { Button } from './Button';
 import ComboboxField from './form/fields/Combobox/Combobox';
 import type { ComboboxOption } from './form/fields/Combobox/shared';
-import { Popover, PopoverContent, PopoverTrigger } from './Popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from './Popover';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
@@ -92,9 +97,13 @@ export const LayeredSurfaces: Story = {
         <PopoverContent className="w-[28rem]">
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-1">
-              <Heading level="h3" margin="none" className="text-lg">
+              <PopoverTitle
+                render={
+                  <Heading level="h3" margin="none" className="text-lg" />
+                }
+              >
                 Filter sessions
-              </Heading>
+              </PopoverTitle>
               <Paragraph margin="none" className="text-sm opacity-70">
                 Narrow the session list by any combination of attributes below.
                 Filters are combined with AND.
@@ -103,10 +112,15 @@ export const LayeredSurfaces: Story = {
 
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
-                <Paragraph margin="none" className="text-xs font-medium">
+                <Paragraph
+                  id="filter-participants-label"
+                  margin="none"
+                  className="text-xs font-medium"
+                >
                   Participants
                 </Paragraph>
                 <ComboboxField
+                  aria-labelledby="filter-participants-label"
                   name="participants"
                   options={participantOptions}
                   placeholder="Select participants..."
@@ -118,10 +132,15 @@ export const LayeredSurfaces: Story = {
               </div>
 
               <div className="flex flex-col gap-1">
-                <Paragraph margin="none" className="text-xs font-medium">
+                <Paragraph
+                  id="filter-countries-label"
+                  margin="none"
+                  className="text-xs font-medium"
+                >
                   Countries
                 </Paragraph>
                 <ComboboxField
+                  aria-labelledby="filter-countries-label"
                   name="countries"
                   options={countryOptions}
                   placeholder="Select countries..."
@@ -134,10 +153,15 @@ export const LayeredSurfaces: Story = {
               </div>
 
               <div className="flex flex-col gap-1">
-                <Paragraph margin="none" className="text-xs font-medium">
+                <Paragraph
+                  id="filter-languages-label"
+                  margin="none"
+                  className="text-xs font-medium"
+                >
                   Languages
                 </Paragraph>
                 <ComboboxField
+                  aria-labelledby="filter-languages-label"
                   name="languages"
                   options={languageOptions}
                   placeholder="Select languages..."
@@ -149,10 +173,15 @@ export const LayeredSurfaces: Story = {
               </div>
 
               <div className="flex flex-col gap-1">
-                <Paragraph margin="none" className="text-xs font-medium">
+                <Paragraph
+                  id="filter-tags-label"
+                  margin="none"
+                  className="text-xs font-medium"
+                >
                   Tags
                 </Paragraph>
                 <ComboboxField
+                  aria-labelledby="filter-tags-label"
                   name="tags"
                   options={tagOptions}
                   placeholder="Select tags..."
@@ -164,10 +193,15 @@ export const LayeredSurfaces: Story = {
               </div>
 
               <div className="flex flex-col gap-1">
-                <Paragraph margin="none" className="text-xs font-medium">
+                <Paragraph
+                  id="filter-statuses-label"
+                  margin="none"
+                  className="text-xs font-medium"
+                >
                   Status
                 </Paragraph>
                 <ComboboxField
+                  aria-labelledby="filter-statuses-label"
                   name="statuses"
                   options={statusOptions}
                   placeholder="Select statuses..."
@@ -221,7 +255,12 @@ export const ArrowAlignment: Story = {
       {ARROW_SIDES.map((side) => (
         <Popover defaultOpen key={side}>
           <PopoverTrigger render={<Button>{side}</Button>} />
-          <PopoverContent side={side} className="w-40">
+          {/* No heading to name the popup after, so it is named directly. */}
+          <PopoverContent
+            side={side}
+            className="w-40"
+            aria-label={`Anchored ${side}`}
+          >
             Anchored {side}
           </PopoverContent>
         </Popover>

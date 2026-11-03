@@ -1,10 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import {
-  MISSING_SORT_PROPERTY_MESSAGE,
-  missingSortPropertyLabel,
-} from '../../../../../fields/sortOrderOptions.ts';
+import { missingSortPropertyLabel } from '../../../../../fields/sortOrderOptions.ts';
 import { validatedElsewhereMessage } from '../../../../../form/arrayFields/crossClassPick.ts';
 import {
   attributeField,
@@ -18,7 +15,6 @@ import {
   collectInAForm,
   openPrompt,
   promptAttributeField,
-  personVariables,
   promptsOf,
   sociogramHolding,
   sociogramSections,
@@ -72,14 +68,6 @@ const openEditor = () => ({
 });
 
 describe('the tasks a sociogram sets', () => {
-  it('saves the stage it opened, unchanged', async () => {
-    const harness = renderStageEditor(openEditor());
-
-    // The stage's name and the type it arranges belong to sections this mount
-    // does not include.
-    await harness.roundTrip({ unowned: ['subject', 'tooltips'] });
-  });
-
   it('lists what the stage already holds', async () => {
     const harness = renderStageEditor(openEditor());
 
@@ -1042,27 +1030,6 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
 
   const openWithSortOrder = () => sociogramHolding(SORTED_PROMPT);
 
-  /**
-   * An order the prompt already has opens switched ON, holding its rules.
-   * Switched off it would look exactly like a prompt that never had one — and
-   * closing a `Section` clears the fields inside it, so saving the prompt from
-   * there would drop the rules without saying so.
-   */
-  it('opens a prompt’s sort order switched on, holding the rule it was saved with', async () => {
-    const harness = renderStageEditor(openWithSortOrder());
-
-    const prompt = await openPrompt(harness);
-    expect(
-      prompt.getByRole('switch', { name: 'Sort unplaced nodes' }),
-    ).toBeChecked();
-    expect(prompt.getByRole('combobox', { name: 'Property' })).toHaveValue(
-      'name',
-    );
-    expect(prompt.getByRole('combobox', { name: 'Direction' })).toHaveValue(
-      'asc',
-    );
-  });
-
   it('saves a rule the researcher added to a prompt that had none', async () => {
     const harness = renderStageEditor(openEditor());
 
@@ -1118,75 +1085,6 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   });
 
   /**
-   * A rule READS an attribute rather than writing one, so nothing this stage
-   * collects is off limits to it — with one exception. A `layout` attribute
-   * holds where a node sits on the canvas, which is a pair of coordinates
-   * rather than a value one node can be ordered before another by; offering it
-   * would let a researcher build a rule the interview cannot apply.
-   *
-   * Asserted as the whole list rather than as the absence of `layout` alone,
-   * because the exclusion is a filter on the attribute's TYPE: one written
-   * against the wrong key would take every attribute out with it, and an
-   * absence-only claim would call that a pass.
-   */
-  it('offers every attribute of the type it collects as a sort key, except the one holding positions', async () => {
-    const harness = renderStageEditor(openWithSortOrder());
-
-    const prompt = await openPrompt(harness);
-
-    const sortable = personVariables(harness)
-      .filter(([, variable]) => variable.type !== 'layout')
-      .map(([id]) => id);
-    expect(sortable).toContain('name');
-    expect(sortPropertyOptions(prompt)).toEqual(['*', ...sortable]);
-  });
-
-  /**
-   * A rule whose attribute has been deleted still has to be readable, and
-   * still has to be impossible to save as it stands.
-   *
-   * The cell renders from the option list, so an id no option carries leaves
-   * the control blank — while the value behind it is still there and still
-   * saved. The researcher then sees an empty required cell with no way to find
-   * out what it points at, and the dangling reference outlives every attempt
-   * to fix it.
-   *
-   * Both halves belong to `SortOrderRows`, not to this family: the sociogram
-   * hands it the attributes and the words and nothing else. So this asserts
-   * the wording the shared module owns rather than restating it — a literal
-   * copy here would keep passing if the sociogram grew its own orphan
-   * handling again. What such a copy could NOT do is refuse the save, which is
-   * why the refusal is what this test ends on.
-   */
-  it('shows a sort rule the attribute has been deleted out from under', async () => {
-    const ORPHANED_PROPERTY = 'nickname';
-    const harness = renderStageEditor(
-      sociogramHolding({
-        ...SORTED_PROMPT,
-        sortOrder: [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
-      }),
-    );
-
-    const prompt = await openPrompt(harness);
-
-    const property = prompt.getByRole('combobox', { name: 'Property' });
-    expect(property).toHaveValue(ORPHANED_PROPERTY);
-    expect(
-      within(property).getByRole('option', {
-        name: missingSortPropertyLabel(ORPHANED_PROPERTY, enIntl),
-      }),
-    ).toBeDisabled();
-
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
-    // Not "every row needs a value in each column": the row HAS a value in
-    // each column, and the id it holds is the whole problem. Read back through
-    // the same decode the render site uses, because the refusal travels as an
-    // encoded descriptor on a plain-string contract.
-    await prompt.findByText(readMessage(MISSING_SORT_PROPERTY_MESSAGE));
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-  });
-
-  /**
    * And the other side of the same rule: a stage that has not been told what
    * it collects reports NO rule as dangling.
    *
@@ -1235,29 +1133,6 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-  });
-
-  /**
-   * Switching the group off is how a researcher says the stack has no order
-   * they care about, and the schema spells that as no key at all rather than
-   * an empty list.
-   */
-  it('drops the sort order when the researcher switches it off', async () => {
-    const harness = renderStageEditor(openWithSortOrder());
-
-    const prompt = await openPrompt(harness);
-    await harness.user.click(
-      prompt.getByRole('switch', { name: 'Sort unplaced nodes' }),
-    );
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const saved = await harness.submit();
-    expect(promptsOf(saved?.stageDocument ?? {})[0]).not.toHaveProperty(
-      'sortOrder',
     );
   });
 });

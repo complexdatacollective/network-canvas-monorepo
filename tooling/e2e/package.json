@@ -1,0 +1,24 @@
+{
+  "name": "@codaco/e2e-helpers",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright helpers shared by every end-to-end suite: the accessible-name audit and the live-region announcement recorder.",
+  "files": [
+    "src/**"
+  ],
+  "type": "module",
+  "exports": {
+    "./accessible-name-audit": "./src/accessible-name-audit.ts",
+    "./announcements": "./src/announcements.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --build --noEmit"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:^",
+    "@playwright/test": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

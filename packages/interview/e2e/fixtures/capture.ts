@@ -188,8 +188,8 @@ function assertNotNativeLane(name: string): void {
 }
 
 /**
- * Shared pixel-capture pipeline used by both the legacy interview-test
- * fixture and the matrix fixture. Captures are CI-only (`enabled`).
+ * The pixel-capture pipeline the matrix fixture wires into `InterviewFixture`.
+ * Captures are CI-only (`enabled`).
  */
 export function createCaptureInterview(
   page: Page,

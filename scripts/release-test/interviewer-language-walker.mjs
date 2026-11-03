@@ -432,7 +432,7 @@ function readSession(sessionId) {
       const db = await new Promise((res, rej) => {
         const req = indexedDB.open(dbName);
         req.onsuccess = () => res(req.result);
-        req.onerror = () => rej(req.error);
+        req.addEventListener('error', () => rej(req.error));
       });
       const row = await new Promise((res, rej) => {
         const rq = db
@@ -440,7 +440,7 @@ function readSession(sessionId) {
           .objectStore('sessions')
           .get(id);
         rq.onsuccess = () => res(rq.result ?? null);
-        rq.onerror = () => rej(rq.error);
+        rq.addEventListener('error', () => rej(rq.error));
       });
       db.close();
       return {
