@@ -538,8 +538,10 @@ try {
   await expect(
     page.getByRole('listbox', { name: 'Elige un idioma', exact: true }),
   ).toBeVisible();
+  // Accessible names stay English whatever the interview language (#2468),
+  // so the icon-only settings button is still "Settings".
   await expect(
-    page.getByRole('button', { name: 'Configuración', exact: true }),
+    page.getByRole('button', { name: 'Settings', exact: true }),
   ).toBeVisible();
   await shot('stage-language-es');
   await nextStage();
