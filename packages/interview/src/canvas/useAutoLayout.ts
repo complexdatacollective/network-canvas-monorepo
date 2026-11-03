@@ -254,7 +254,13 @@ export function useAutoLayout({
       : createAutoLayoutWorker();
     workerRef.current = worker;
 
+    // A message the worker sent before it was terminated can still arrive.
+    // The layout it reports is no longer this run's to show or save: saving
+    // it could overwrite positions put back after the layout was turned off.
+    let disposed = false;
+
     worker.addEventListener('message', (event: MessageEvent) => {
+      if (disposed) return;
       const message: unknown = event.data;
       if (
         typeof message !== 'object' ||
@@ -342,6 +348,7 @@ export function useAutoLayout({
     }
 
     return () => {
+      disposed = true;
       worker.terminate();
       workerRef.current = null;
     };

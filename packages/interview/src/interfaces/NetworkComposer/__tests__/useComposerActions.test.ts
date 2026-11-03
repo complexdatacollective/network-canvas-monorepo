@@ -105,6 +105,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -144,6 +145,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -194,6 +196,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -248,6 +251,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -302,6 +306,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -351,6 +356,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -424,6 +430,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -472,6 +479,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -538,6 +546,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -603,6 +612,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -682,6 +692,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -812,6 +823,7 @@ describe('useComposerActions deleting while another change is being made', () =>
             quickAdd: QUICK_ADD_VAR,
             layoutVariable: LAYOUT_VAR,
             useEncryption: false,
+            automaticLayoutDefault: false,
             currentStep: 0,
             undoStore,
             dispatch: store.dispatch as Parameters<
@@ -863,6 +875,7 @@ describe('useComposerActions reading the network when a change is made', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -954,5 +967,42 @@ describe('useComposerActions reading the network when a change is made', () => {
 
     await settle(saving);
     expect(built).toBe(true);
+  });
+
+  it('turns the automatic layout on once however often it is asked to', async () => {
+    const before = { x: 0.1, y: 0.1 };
+    const { store, undoStore, actions, settle } = setUp([at('a', before)]);
+    const noneShown = () => new Map<string, { x: number; y: number }>();
+
+    const first = actions().setAutomaticLayout(true, noneShown);
+    const second = actions().setAutomaticLayout(true, noneShown);
+    await settle(first, second);
+
+    expect(store.getState().session.stageMetadata?.[0]).toEqual({
+      automaticLayout: true,
+    });
+    expect(undoStore.getState().past).toHaveLength(1);
+
+    // The layout saves a position of its own; one undo puts the earlier one
+    // back.
+    await act(async () => {
+      await store
+        .dispatch(
+          updateNode({
+            nodeId: 'a',
+            attributePatch: {
+              set: { [LAYOUT_VAR]: { x: 0.6, y: 0.6 } },
+              unset: [],
+            },
+            currentStep: 0,
+          }),
+        )
+        .unwrap();
+      await undoStore.getState().undo();
+    });
+    expect(store.getState().session.stageMetadata?.[0]).toEqual({
+      automaticLayout: false,
+    });
+    expect(layoutOf(store, 'a')).toEqual(before);
   });
 });
