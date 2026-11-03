@@ -174,9 +174,12 @@ export default class LandingPage extends Component {
         badge: htmlSafe(categoryBadgeHTML(category, { link: false })),
         latest,
         latestUrl: latest ? topicUrl(latest) : null,
+        // By id: Discourse reads a `category` parameter as the first
+        // category whose name or slug matches, which for a subcategory can
+        // be another category of the same name.
         actionUrl: route.posts
-          ? `/new-topic?category=${encodeURIComponent(category.slug)}`
-          : category.path,
+          ? getURL(`/new-topic?category_id=${category.id}`)
+          : category.url,
         actionClass: route.primary ? "btn-primary" : "btn-default",
       };
     });
