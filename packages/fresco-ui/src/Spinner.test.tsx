@@ -10,6 +10,7 @@ import Spinner from './Spinner';
 // counts the animations started over a stretch of time.
 const CYCLE_MS = 100;
 const starts = vi.fn();
+const stops = vi.fn();
 
 vi.mock('motion/react', async (importOriginal) => {
   const original = await importOriginal<typeof import('motion/react')>();
@@ -20,7 +21,7 @@ vi.mock('motion/react', async (importOriginal) => {
         starts();
         return new Promise((resolve) => setTimeout(resolve, CYCLE_MS));
       },
-      stop: () => undefined,
+      stop: stops,
       set: () => undefined,
       subscribe: () => () => undefined,
       mount: () => () => undefined,
@@ -33,6 +34,7 @@ let focused = true;
 beforeEach(() => {
   vi.useFakeTimers();
   starts.mockClear();
+  stops.mockClear();
   focused = true;
   vi.spyOn(document, 'hasFocus').mockImplementation(() => focused);
 });
@@ -76,4 +78,28 @@ describe('Spinner', () => {
       expect(starts.mock.calls.length).toBeGreaterThan(whenPaused);
     });
   });
+
+  // A cycle that ends on its own is left alone: stopping one part-way never
+  // settles the promise it awaits, so a hover spinner would stay marked as
+  // animating and never play again, and a once spinner would play again.
+  it.each(['once', 'hover'] as const)(
+    'leaves a %s spinner alone when its window loses and regains focus',
+    async (animationMode) => {
+      await withAnimationsEnabled(async () => {
+        render(
+          <MotionConfig reducedMotion="never">
+            <Spinner animationMode={animationMode} />
+          </MotionConfig>,
+        );
+        const startedAtMount = starts.mock.calls.length;
+
+        await emulateFocus(false);
+        await emulateFocus(true);
+        await elapse(CYCLE_MS * 3);
+
+        expect(stops).not.toHaveBeenCalled();
+        expect(starts).toHaveBeenCalledTimes(startedAtMount);
+      });
+    },
+  );
 });

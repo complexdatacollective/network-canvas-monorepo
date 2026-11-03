@@ -138,8 +138,6 @@ export default function Spinner({
   // animate" in reduced-motion mode, so we bail out entirely.
   //
   const shouldReduceMotion = useShouldSkipAnimations();
-  // An infinite spinner stops while the page is not in front of the user and
-  // starts a fresh cycle when it returns.
   const pageActive = usePageActive();
 
   const containerControls = useAnimationControls();
@@ -207,10 +205,16 @@ export default function Spinner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReduceMotion]);
 
+  // An infinite spinner stops while the page is not in front of the user and
+  // starts a fresh cycle when it returns. Only the infinite loop follows the
+  // page: a once, hover or controlled cycle ends on its own, and stopping it
+  // part-way would leave `isAnimatingRef` set with nothing to clear it.
+  const loopPaused = shouldLoop && !pageActive;
+
   // Handle automatic animation modes (infinite, once, controlled)
   useEffect(() => {
     if (shouldReduceMotion) return undefined;
-    if (shouldLoop && !pageActive) return undefined;
+    if (loopPaused) return undefined;
     // Skip if playOnMount will handle the initial animation and mode is 'once'
     if (playOnMount && animationMode === 'once') return undefined;
 
@@ -240,7 +244,7 @@ export default function Spinner({
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMode, isAnimating, shouldLoop, shouldReduceMotion, pageActive]);
+  }, [animationMode, isAnimating, shouldLoop, shouldReduceMotion, loopPaused]);
 
   // Handle hover mode - play one full cycle (skip if already animating)
   const handleHoverStart = () => {
