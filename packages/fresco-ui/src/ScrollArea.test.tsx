@@ -50,6 +50,18 @@ describe('ScrollArea keyboard reachability', () => {
     await waitFor(() => expect(viewport()).toHaveAttribute('tabindex', '0'));
   });
 
+  it('is a tab stop from the first render, before any animation frame', () => {
+    // The measurement used to wait for a requestAnimationFrame, so a region
+    // that overflowed on arrival was a scrollable region with no keyboard
+    // access until the frame ran — which is exactly what an accessibility
+    // audit straight after render (axe's `scrollable-region-focusable`) saw.
+    stubOverflow(900, 100);
+    render(<ScrollArea data-testid="viewport">long</ScrollArea>);
+
+    // No waitFor: nothing has been given a frame to run.
+    expect(viewport()).toHaveAttribute('tabindex', '0');
+  });
+
   it('is a tab stop when it overflows with fade turned off', async () => {
     // The overflow measurement used to live behind `if (!viewport || !fade) return;`,
     // so a `fade={false}` region — the interviewer's validation error list, the

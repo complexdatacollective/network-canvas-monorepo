@@ -269,6 +269,9 @@ export const AnimationModes: Story = {
           <button
             type="button"
             className="cursor-pointer border-0 bg-transparent p-0"
+            aria-label={
+              controlledAnimating ? 'Stop the spinner' : 'Start the spinner'
+            }
             onClick={() => setControlledAnimating((prev) => !prev)}
           >
             <Spinner

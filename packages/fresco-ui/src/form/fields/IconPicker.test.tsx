@@ -108,6 +108,17 @@ describe('IconPicker', () => {
     expect(screen.queryByText(/Showing [\d,]+ of/)).not.toBeInTheDocument();
   });
 
+  /** A `role="dialog"` with no name is announced as nothing. */
+  it('names the popup after the field label', () => {
+    renderPicker('Circle');
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Node icon' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Node icon' }),
+    ).toBeInTheDocument();
+  });
+
   it('shows nothing to choose when the search matches no icon', () => {
     renderPicker('');
 
@@ -127,6 +138,16 @@ describe('IconPicker standalone', () => {
     expect(
       screen.getByRole('combobox', { name: 'Node icon' }),
     ).toHaveTextContent('Circle');
+  });
+
+  it('names the popup from aria-label when no field labels it', () => {
+    render(<IconPicker aria-label="Node icon" value="Circle" />);
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Node icon' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Node icon' }),
+    ).toBeInTheDocument();
   });
 
   /**

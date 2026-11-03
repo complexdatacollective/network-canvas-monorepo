@@ -13,7 +13,12 @@ import { cx } from './utils/cva';
 function useScrolls(ref: React.RefObject<HTMLElement | null>) {
   const [scrolls, setScrolls] = React.useState(false);
 
-  React.useEffect(() => {
+  // A layout effect, and measured before anything is observed: the first
+  // answer has to be in place before the browser paints (and before anything
+  // audits the page), not whenever the observer's first callback arrives. A
+  // table that overflows on arrival was a scrolling box with no keyboard access
+  // until then.
+  React.useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return undefined;
 
@@ -22,6 +27,7 @@ function useScrolls(ref: React.RefObject<HTMLElement | null>) {
         element.scrollWidth > element.clientWidth ||
           element.scrollHeight > element.clientHeight,
       );
+    measure();
     const observer = new ResizeObserver(measure);
     // The scroller's own box is pinned by its layout; it is the table inside
     // that grows when columns widen or rows arrive.

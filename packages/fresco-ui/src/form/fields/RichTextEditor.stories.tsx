@@ -919,6 +919,16 @@ export const WithVersionsAndInsertMenu: Story = {
   },
 };
 
+/**
+ * Waits until the open insert menu's search box holds focus, as someone
+ * typing into it would. Keys pressed before then go wherever focus still is:
+ * in CI the first letter of a search has landed in the text instead.
+ */
+const searchHasFocus = async (body: ReturnType<typeof within>) => {
+  const search = await body.findByRole('combobox', { name: 'Search' });
+  await waitFor(() => expect(search).toHaveFocus());
+};
+
 const typeIntoTheInsertMenu = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   const body = within(canvasElement.ownerDocument.body);
@@ -926,16 +936,15 @@ const typeIntoTheInsertMenu = async (canvasElement: HTMLElement) => {
   await userEvent.click(editor);
 
   await userEvent.keyboard('Aged {{');
-  await body.findByRole('combobox', { name: 'Search' });
+  await searchHasFocus(body);
   await userEvent.keyboard('age{Enter}');
-  await waitFor(() =>
-    expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
-  );
-  await expect(editor).toHaveTextContent(/^Aged Age$/);
+  // Waited for as text, so a failure shows where the typing went.
+  await waitFor(() => expect(editor).toHaveTextContent(/^Aged Age$/));
+  await expect(editor.querySelector('[data-token="age"]')).not.toBeNull();
 
   // Typed where the pick left the caret: after the item.
   await userEvent.keyboard(' {{');
-  await body.findByRole('combobox', { name: 'Search' });
+  await searchHasFocus(body);
   await userEvent.keyboard('{Escape}');
   await waitFor(() => expect(editor).toHaveTextContent(/^Aged Age \{$/));
 

@@ -102,7 +102,6 @@ const meta = {
   component: TypeScaleDemo,
   parameters: {
     layout: 'fullscreen',
-    a11y: { disable: true },
     docs: {
       description: {
         component:

@@ -14,6 +14,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import type { ChoiceDialog } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { usePageActive } from '@codaco/fresco-ui/pageActivity';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type {
@@ -155,10 +156,15 @@ const Home = () => {
     sourceRef?: ProtocolSourceRef;
   } | null>(null);
   const [visibleCount, setVisibleCount] = useState(3);
+  // The map gains a station every few seconds, forever, so it only grows while
+  // the page is in front of the user. Out of sight the stations already moving
+  // settle and nothing more is drawn.
+  const pageActive = usePageActive();
   useEffect(() => {
+    if (!pageActive) return undefined;
     const id = setInterval(() => setVisibleCount((c) => c + 1), 2400);
     return () => clearInterval(id);
-  }, []);
+  }, [pageActive]);
   // The loading overlay covers async work (dispatch, asset loading) only. It
   // must be dismissed before any dialog is awaited, otherwise the spinner
   // (rendered at a high z-index) paints over the dialog and blocks its buttons.
