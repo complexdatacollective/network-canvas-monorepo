@@ -1,4 +1,3 @@
-import { JSDOM } from 'jsdom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -48,10 +47,24 @@ describe('client locale selection', () => {
   it.each(['networkcanvas.com', 'protocolgallery.networkcanvas.com'])(
     'keeps the choice in the cookie store on %s',
     (host) => {
-      const page = new JSDOM('', { url: `https://${host}/` }).window.document;
-      page.cookie = 'NEXT_LOCALE=fr; Path=/';
-      for (const cookie of getLocaleCookies('es', host)) page.cookie = cookie;
-      expect(page.cookie).toBe('NEXT_LOCALE=es');
+      // Vitest's jsdom environment exposes its JSDOM instance.
+      const { jsdom } = globalThis as unknown as {
+        jsdom: { reconfigure: (options: { url: string }) => void };
+      };
+      const before = window.location.href;
+      jsdom.reconfigure({ url: `https://${host}/` });
+      try {
+        document.cookie = 'NEXT_LOCALE=fr; Path=/';
+        for (const cookie of getLocaleCookies('es', host)) {
+          document.cookie = cookie;
+        }
+        expect(document.cookie).toBe('NEXT_LOCALE=es');
+      } finally {
+        for (const cookie of getLocaleCookies(null, host)) {
+          document.cookie = cookie;
+        }
+        jsdom.reconfigure({ url: before });
+      }
     },
   );
 
