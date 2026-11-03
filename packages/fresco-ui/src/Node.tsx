@@ -28,7 +28,6 @@ import {
   useSafeAnimate,
   useShouldSkipAnimations,
 } from './hooks/useSafeAnimate';
-import { usePageActive } from './pageActivity';
 import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 import { composeEventHandlers } from './utils/composeEventHandlers';
 import { cva, type VariantProps } from './utils/cva';
@@ -387,40 +386,6 @@ type UINodeProps = {
  *   stays transform-free — inline `transform` positioning and motion layout
  *   animations would otherwise compose incorrectly with the rotation.
  */
-const LINKING_RING_REST = '0 0 0 0.08em var(--selected)';
-
-/**
- * The ring that pulses around a node waiting to be linked. The pulse never
- * ends, so it runs only while the page is in front of the user; otherwise the
- * ring settles at rest. Its own component so that only a linking node
- * follows page activity.
- */
-function LinkingIndicator() {
-  const pageActive = usePageActive();
-
-  return (
-    <motion.span
-      className="pointer-events-none absolute inset-0 rounded-[inherit]"
-      initial={{ boxShadow: LINKING_RING_REST }}
-      animate={{
-        boxShadow: pageActive
-          ? [LINKING_RING_REST, '0 0 0 0.7em var(--selected)']
-          : LINKING_RING_REST,
-      }}
-      exit={{ opacity: 0, boxShadow: '0 0 0 0 var(--selected)' }}
-      transition={{
-        boxShadow: {
-          duration: 0.4,
-          repeat: pageActive ? Number.POSITIVE_INFINITY : 0,
-          repeatType: 'reverse',
-          ease: [0.2, 0, 0.6, 1],
-        },
-      }}
-      aria-hidden
-    />
-  );
-}
-
 export default function Node(props: UINodeProps) {
   const intl = useAppIntl();
   const {
@@ -731,7 +696,30 @@ export default function Node(props: UINodeProps) {
       >
         {/* Linking indicator - separate element so it can animate independently */}
         <AnimatePresence>
-          {linking && <LinkingIndicator key="linking" />}
+          {linking && (
+            <motion.span
+              className="pointer-events-none absolute inset-0 rounded-[inherit]"
+              initial={{
+                boxShadow: '0 0 0 0.08em var(--selected)',
+              }}
+              animate={{
+                boxShadow: [
+                  '0 0 0 0.08em var(--selected)',
+                  '0 0 0 0.7em var(--selected)',
+                ],
+              }}
+              exit={{ opacity: 0, boxShadow: '0 0 0 0 var(--selected)' }}
+              transition={{
+                boxShadow: {
+                  duration: 0.4,
+                  repeat: Number.POSITIVE_INFINITY,
+                  repeatType: 'reverse',
+                  ease: [0.2, 0, 0.6, 1],
+                },
+              }}
+              aria-hidden
+            />
+          )}
         </AnimatePresence>
         {/* Hold indicator - fills the shape over the remainder of the hold so
             the press visibly leads somewhere. Lives in the shape layer, so it

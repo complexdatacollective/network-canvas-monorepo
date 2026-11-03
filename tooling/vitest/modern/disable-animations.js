@@ -8,20 +8,6 @@ import { afterAll, vi } from 'vitest';
 MotionGlobalConfig.skipAnimations = true;
 globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 
-// jsdom reports its window unfocused until an element takes focus, where a
-// browser reports the window the user is working in as focused whatever has
-// focus inside it. Endless animations run only on a focused page
-// (`@codaco/fresco-ui/pageActivity`), so the test window stands in for the one
-// the user is working in, as Playwright's pages do. A test about an unfocused
-// window mocks `document.hasFocus` itself.
-if (typeof document !== 'undefined') {
-  Object.defineProperty(document, 'hasFocus', {
-    configurable: true,
-    writable: true,
-    value: () => true,
-  });
-}
-
 // Testing Library gives every `waitFor`/`findBy*` one second, a budget whose
 // only calibration is a developer's idle machine. CI runs the whole workspace's
 // suites concurrently on a four-core runner: Architect's jsdom project alone

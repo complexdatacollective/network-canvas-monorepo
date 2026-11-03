@@ -2,11 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 
-import {
-  isPageActive,
-  subscribeToPageActivity,
-} from '@codaco/fresco-ui/pageActivity';
-
 type DrawFunction = (
   ctx: CanvasRenderingContext2D,
   time: number,
@@ -101,27 +96,12 @@ const useCanvas = (
       requestAnimationId = requestAnimationFrame(render);
     };
 
-    // The canvas animates only while the page is in front of the user; the
-    // last frame stays on screen otherwise.
-    const start = () => {
-      requestAnimationId ??= requestAnimationFrame(render);
-    };
-    const stop = () => {
-      if (requestAnimationId !== null) {
-        cancelAnimationFrame(requestAnimationId);
-        requestAnimationId = null;
-      }
-    };
-
-    if (isPageActive()) start();
-    const unsubscribe = subscribeToPageActivity((active) => {
-      if (active) start();
-      else stop();
-    });
+    requestAnimationId = requestAnimationFrame(render);
 
     return () => {
-      unsubscribe();
-      stop();
+      if (requestAnimationId !== null) {
+        cancelAnimationFrame(requestAnimationId);
+      }
       resizeObserver.disconnect();
     };
   });

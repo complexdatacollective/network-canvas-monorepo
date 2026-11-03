@@ -2,10 +2,6 @@
 
 import { type CSSProperties, useEffect, useMemo, useRef } from 'react';
 
-import {
-  isPageActive,
-  subscribeToPageActivity,
-} from '@codaco/fresco-ui/pageActivity';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 import { defaultGradients } from '../BackgroundBlobs/BackgroundBlobs';
@@ -171,7 +167,12 @@ type BackgroundLightsProps = {
   // transparent backdrop. 'color-dodge' reproduces the additive glow of
   // BackgroundBlobs' canvas compositing; the effect shows where lights overlap.
   blendMode?: CSSProperties['mixBlendMode'];
+  // Stops the drift and leaves the lights where they are; clearing it carries
+  // on from there.
+  paused?: boolean;
 };
+
+type DriftLoop = { start: () => void; stop: () => void };
 
 const BackgroundLights = ({
   large = 2,
@@ -180,10 +181,15 @@ const BackgroundLights = ({
   speedFactor = 1,
   colors = defaultColors,
   blendMode,
+  paused = false,
 }: BackgroundLightsProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
   const reduceMotion = usePrefersReducedMotion() === true;
+  // `paused` starts and stops the running loop rather than rebuilding it, so
+  // the lights keep their positions across a pause.
+  const pausedRef = useRef(paused);
+  const driftRef = useRef<DriftLoop | null>(null);
 
   // large → big/slow, small → small/fast, matching BackgroundBlobs' layers.
   const lights = useMemo(
@@ -259,8 +265,6 @@ const BackgroundLights = ({
       return () => resizeObserver.disconnect();
     }
 
-    // The lights drift for as long as the page is in front of the user and
-    // hold still otherwise, resuming from where they stopped.
     let raf = 0;
     let last: number | null = null;
     const tick = (time: number) => {
@@ -283,30 +287,34 @@ const BackgroundLights = ({
       last = time;
       raf = requestAnimationFrame(tick);
     };
-    const start = () => {
-      if (raf !== 0) return;
-      // The first frame after a pause moves nothing, so the lights do not jump
-      // by the time they spent paused.
-      last = null;
-      raf = requestAnimationFrame(tick);
+    const drift: DriftLoop = {
+      start: () => {
+        if (raf !== 0) return;
+        // The first frame after a pause moves nothing, so the lights carry on
+        // from where they stopped.
+        last = null;
+        raf = requestAnimationFrame(tick);
+      },
+      stop: () => {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      },
     };
-    const stop = () => {
-      cancelAnimationFrame(raf);
-      raf = 0;
-    };
-
-    if (isPageActive()) start();
-    const unsubscribe = subscribeToPageActivity((active) => {
-      if (active) start();
-      else stop();
-    });
+    driftRef.current = drift;
+    if (!pausedRef.current) drift.start();
 
     return () => {
-      unsubscribe();
-      stop();
+      driftRef.current = null;
+      drift.stop();
       resizeObserver.disconnect();
     };
   }, [lights, reduceMotion]);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+    if (paused) driftRef.current?.stop();
+    else driftRef.current?.start();
+  }, [paused]);
 
   return (
     <div

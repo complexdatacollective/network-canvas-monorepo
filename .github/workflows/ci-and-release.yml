@@ -1015,10 +1015,6 @@ jobs:
         id: reduced-motion
         continue-on-error: true
         run: pnpm check:reduced-motion
-      - name: Check endless animations stop while the page is out of use
-        id: endless-animations
-        continue-on-error: true
-        run: pnpm check:endless-animations
       # Studio's ERD and README schema section are generated and committed. The
       # render is CPU-only — no database — so it belongs beside the other
       # artifact checks rather than in the server's vitest lane, where it
@@ -1108,7 +1104,6 @@ jobs:
           HYDRATION_FLAG_OUTCOME: ${{ steps.hydration-flag.outcome }}
           DIALOG_EXITS_OUTCOME: ${{ steps.dialog-exits.outcome }}
           REDUCED_MOTION_OUTCOME: ${{ steps.reduced-motion.outcome }}
-          ENDLESS_ANIMATIONS_OUTCOME: ${{ steps.endless-animations.outcome }}
           STUDIO_SCHEMA_DOCS_OUTCOME: ${{ steps.studio-schema-docs.outcome }}
           STUDIO_RELEASE_OUTCOME: ${{ steps.studio-release.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
@@ -1127,7 +1122,6 @@ jobs:
             "hydration-flag=$HYDRATION_FLAG_OUTCOME" \
             "dialog-exits=$DIALOG_EXITS_OUTCOME" \
             "reduced-motion=$REDUCED_MOTION_OUTCOME" \
-            "endless-animations=$ENDLESS_ANIMATIONS_OUTCOME" \
             "studio-schema-docs=$STUDIO_SCHEMA_DOCS_OUTCOME" \
             "studio-release=$STUDIO_RELEASE_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \

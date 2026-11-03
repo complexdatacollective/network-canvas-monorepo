@@ -3,7 +3,6 @@
 import { MotionConfig, MotionGlobalConfig } from 'motion/react';
 import { type ReactNode, useContext, useMemo } from 'react';
 
-import { usePauseEndlessAnimationsWhileInactive } from './pageActivity';
 import {
   ReducedMotionContext,
   type ReducedMotionSetting,
@@ -59,10 +58,9 @@ function isAutomatedVisualHost(): boolean {
  * Motion owns JavaScript-driven animation while Base UI waits for CSS
  * animations before completing popup transitions. The provider also owns the
  * reduced-motion decision for everything beneath it, Motion or not (see
- * `./reducedMotion`), and pauses endless CSS and Web Animations API animations
- * while the page is not in front of the user (see `./pageActivity`). Automated
- * hosts need both systems disabled together; setting only one still leaves
- * timing-dependent work behind.
+ * `./reducedMotion`). Automated hosts need both
+ * systems disabled together; setting only one still leaves timing-dependent
+ * work behind.
  */
 export function AnimationProvider({
   children,
@@ -96,9 +94,6 @@ export function AnimationProvider({
   const setting = enclosing.provided ? enclosing.setting : reducedMotion;
   const scope = useMemo(() => ({ setting, provided: true }), [setting]);
   useReducedMotionRootAttribute(setting, !enclosing.provided);
-  // Once per document, like the reduced-motion policy: a nested provider
-  // would only pause the same animations again.
-  usePauseEndlessAnimationsWhileInactive(!enclosing.provided);
 
   return (
     <ReducedMotionContext.Provider value={scope}>

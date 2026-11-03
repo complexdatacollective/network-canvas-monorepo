@@ -29,7 +29,6 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
-import { usePageActive } from '@codaco/fresco-ui/pageActivity';
 import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -318,11 +317,35 @@ const EgoFormInner = (props: EgoFormProps) => {
               onClick={scrollToBottom}
               className="flex items-center gap-2"
             >
-              <NudgeChevron />
+              <motion.div
+                aria-hidden="true"
+                animate={{
+                  y: [0, 7, 0, 7, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  ease: 'easeInOut',
+                  repeat: Number.POSITIVE_INFINITY,
+                }}
+              >
+                <ChevronDown size="24" />
+              </motion.div>
               <span className="sr-only">
                 <AppMessage message={interfaceMessages.scrollForQuestions} />
               </span>
-              <NudgeChevron />
+              <motion.div
+                aria-hidden="true"
+                animate={{
+                  y: [0, 7, 0, 7, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  ease: 'easeInOut',
+                  repeat: Number.POSITIVE_INFINITY,
+                }}
+              >
+                <ChevronDown size="24" />
+              </motion.div>
             </button>
           </MotionSurface>
         )}
@@ -330,25 +353,6 @@ const EgoFormInner = (props: EgoFormProps) => {
     </div>
   );
 };
-
-// Bobs to point at the questions below for as long as the page is in front of
-// the participant; the bobbing never ends, so it rests otherwise.
-function NudgeChevron() {
-  const pageActive = usePageActive();
-  return (
-    <motion.div
-      aria-hidden="true"
-      animate={{ y: pageActive ? [0, 7, 0, 7, 0] : 0 }}
-      transition={{
-        duration: 2,
-        ease: 'easeInOut',
-        repeat: pageActive ? Number.POSITIVE_INFINITY : 0,
-      }}
-    >
-      <ChevronDown size="24" />
-    </motion.div>
-  );
-}
 
 const EgoForm = (props: EgoFormProps) => {
   return (
