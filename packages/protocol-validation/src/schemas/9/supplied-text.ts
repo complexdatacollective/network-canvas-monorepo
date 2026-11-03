@@ -25,11 +25,23 @@ export const SUPPLIED_LANGUAGES: readonly LocaleTag[] = [
 ];
 
 /**
+ * Whether Network Canvas has its own wording in `locale` exactly. A protocol
+ * whose default language it has none in holds that wording only as the
+ * researcher writes it.
+ */
+export const hasSuppliedWording = (locale: LocaleTag): boolean => {
+  const canonical = canonicalizeLocale(locale);
+  return canonical !== undefined && SUPPLIED_LANGUAGES.includes(canonical);
+};
+
+/**
  * The entry of a table of text Network Canvas supplies, keyed by language,
  * for a protocol language, or `undefined` when it has none. Only the exact
  * language is read: text written into a protocol is recorded under that
- * language, so neither British English nor Catalan is given another
- * language's words unasked (see `suppliedBaseLanguage`).
+ * language, so neither Mexican Spanish nor Catalan is given another
+ * language's words, and no language is given English in place of its own.
+ * A regional variant can have its base language added beside it instead
+ * (see `suppliedBaseLanguage`), which the interview falls back to.
  */
 export const suppliedTextFor = <Text>(
   table: Readonly<Record<string, Text>>,
@@ -40,11 +52,14 @@ export const suppliedTextFor = <Text>(
 };
 
 /**
- * The supplied language a regional variant can start from, which the
- * researcher may choose to have its wording copied in and then adapted: the
- * tag's shorter forms (RFC 4647 lookup), so `es-MX` and `en-GB` start from
- * `es` and `en`, and for Chinese its script, so `zh-TW` starts from `zh-Hant`.
- * `undefined` for a supplied language itself, or one with no such base.
+ * The supplied language a regional variant belongs to, which a researcher
+ * adding the variant may also add, so that the variant falls back to
+ * Network Canvas's wording in it for any text it lacks: the tag's shorter
+ * forms (RFC 4647 lookup), so `es-MX` and `en-GB` belong to `es` and `en`,
+ * and for Chinese its script, so `zh-TW` belongs to `zh-Hant`. `undefined`
+ * for a supplied language itself, or one with no such base. A language that
+ * is only close to a supplied one (Galician to Spanish) has none: falling
+ * back to it would show the participant another language.
  */
 export const suppliedBaseLanguage = (
   locale: LocaleTag,
@@ -63,23 +78,6 @@ export const suppliedBaseLanguage = (
 };
 
 /**
- * Languages the researcher chose to start from Network Canvas's wording in
- * another language (see `suppliedBaseLanguage`), keyed by the language that
- * starts from it, as a protocol records them (`localization.startFrom`).
- */
-export type StartFrom = NonNullable<LocalizationDeclaration['startFrom']>;
-
-/**
- * The language whose supplied wording Network Canvas writes in a protocol
- * language: the language it starts from, when the researcher chose one, else
- * the language itself.
- */
-export const suppliedLanguageOf = (
-  localization: LocalizationDeclaration,
-  locale: LocaleTag,
-): LocaleTag => localization.startFrom?.[locale] ?? locale;
-
-/**
  * A change to a protocol's languages: the declaration before and after it,
  * and, when a language's tag was corrected, the tag each language now has.
  * A language missing from `after` was removed.
@@ -91,13 +89,24 @@ export type LanguageChange = Readonly<{
 }>;
 
 /**
- * The text Network Canvas writes in a protocol language, which may depend on
- * whether that language is the default, or `undefined` when it writes none.
+ * The text Network Canvas writes in a protocol language, or `undefined` when
+ * it writes none there.
  */
-export type SuppliedTextIn = (
-  locale: LocaleTag,
-  isDefault: boolean,
-) => string | undefined;
+export type SuppliedTextIn = (locale: LocaleTag) => string | undefined;
+
+/**
+ * Whether a text Network Canvas supplies is still its own: the researcher has
+ * not changed it in the protocol's default language. Where Network Canvas
+ * writes nothing in that language, it is still its own while the researcher
+ * has written nothing there either.
+ */
+export const isStillSupplied = (
+  value: LocalizedString,
+  supplied: SuppliedTextIn,
+  defaultLocale: LocaleTag,
+): boolean =>
+  (Object.hasOwn(value, defaultLocale) ? value[defaultLocale] : undefined) ===
+  supplied(defaultLocale);
 
 /**
  * One text Network Canvas supplies, as it reads after a change to the
@@ -111,34 +120,22 @@ export type SuppliedTextIn = (
 export const suppliedTextAfterLanguageChange = (
   value: LocalizedString,
   supplied: SuppliedTextIn,
-  { before, after, renamed = {} }: LanguageChange,
+  { after, renamed = {} }: LanguageChange,
 ): LocalizedString => {
   const next: Record<LocaleTag, string> = {};
   for (const [locale, text] of Object.entries(value)) {
     const target = renamed[locale] ?? locale;
     if (!after.locales.includes(target)) continue;
-    if (
-      text !==
-      supplied(
-        suppliedLanguageOf(before, locale),
-        locale === before.defaultLocale,
-      )
-    ) {
+    if (text !== supplied(locale)) {
       next[target] = text;
       continue;
     }
-    const replacement = supplied(
-      suppliedLanguageOf(after, target),
-      target === after.defaultLocale,
-    );
+    const replacement = supplied(target);
     if (replacement !== undefined) next[target] = replacement;
   }
   for (const locale of after.locales) {
     if (next[locale] !== undefined) continue;
-    const text = supplied(
-      suppliedLanguageOf(after, locale),
-      locale === after.defaultLocale,
-    );
+    const text = supplied(locale);
     if (text !== undefined) next[locale] = text;
   }
   return next;

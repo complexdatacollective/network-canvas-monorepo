@@ -17,7 +17,6 @@ import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   dynamicMessageParts,
   type DynamicValueState,
-  isSuppliedEnglishMessage,
   type LocaleMetadata,
   type LocaleTag,
   type LocalizationDeclaration,
@@ -42,6 +41,29 @@ import {
   type LocalizedMessageFormatter,
   type LocalizedMessageValues,
 } from './messageFormatter';
+
+/**
+ * `resolveLocalizedString`, reading text with no translation in any of the
+ * protocol's languages as empty rather than as an error. Only a protocol still
+ * being written holds such text: wording Network Canvas supplies, in a
+ * language it has none in, before the researcher writes it, which Architect
+ * previews. A protocol like that cannot be downloaded, so no participant
+ * meets it.
+ */
+const resolveText = (
+  value: LocalizedString,
+  localization: LocalizationDeclaration,
+  resolutionOrder: readonly [LocaleTag, ...string[]],
+): ResolvedLocalizedString =>
+  localization.locales.some((locale) => Object.hasOwn(value, locale))
+    ? resolveLocalizedString(value, localization, resolutionOrder)
+    : {
+        text: '',
+        locale: resolutionOrder[0],
+        selectedLocale: resolutionOrder[0],
+        usedFallback: true,
+        matchedBy: 'any',
+      };
 
 type ProtocolLocalizationState = Readonly<{
   locale: LocaleTag;
@@ -285,20 +307,12 @@ export function useResolveLocalizedStringIn(): (
   const intl = useAppIntl();
   return useCallback(
     (value: LocalizedString, sources: DynamicValueSources | null) => {
-      const resolved = resolveLocalizedString(
-        value,
-        localization,
-        resolutionOrder,
-      );
+      const resolved = resolveText(value, localization, resolutionOrder);
       if (sources !== null) {
         const formatters: DynamicValueFormatters = {
           format: contentFormatFor(locale),
           resolveLabel: (label) => {
-            const option = resolveLocalizedString(
-              label,
-              localization,
-              resolutionOrder,
-            );
+            const option = resolveText(label, localization, resolutionOrder);
             // An option's label is markdown; a value is only ever text.
             return getMarkdownLabelText(format(option.locale, option.text));
           },
@@ -359,11 +373,7 @@ export function useResolveLocalizedMessage(): (
     useProtocolLocalizationState();
   return useCallback(
     (value: LocalizedString, values: LocalizedMessageValues) => {
-      const resolved = resolveLocalizedString(
-        value,
-        localization,
-        resolutionOrder,
-      );
+      const resolved = resolveText(value, localization, resolutionOrder);
       return {
         ...resolved,
         text: format(resolved.locale, resolved.text, values),
@@ -383,20 +393,16 @@ export type LocalizedMessagePartValues = Readonly<
 >;
 
 /**
- * A message held in `heldIn`, with each value it shows kept apart from
+ * A message held in `locale`, with each value it shows kept apart from
  * its words, so that it can be marked out as a value the interview filled
  * in. A select or plural is decided by the value it is on; a number a plural
  * shows is written as the language writes numbers, among the words.
  */
 export const localizedMessageParts = (
   message: string,
-  heldIn: LocaleTag,
+  locale: LocaleTag,
   values: LocalizedMessagePartValues,
 ): readonly DynamicTextPart[] => {
-  // Network Canvas's English wording, held under a language it supplies no
-  // wording in, still chooses its plural and joins its lists by English rules
-  // (as `createLocalizedMessageFormatter` does).
-  const locale = isSuppliedEnglishMessage(message) ? 'en' : heldIn;
   const stateOf = (name: string): DynamicValueState => {
     const shown = values[name];
     if (shown === undefined) return { missing: true };
@@ -440,7 +446,7 @@ export function useResolveLocalizedMessageParts(): (
   const { localization, resolutionOrder } = useProtocolLocalizationState();
   return useCallback(
     (value: LocalizedString, values: LocalizedMessagePartValues) => {
-      const { text, locale } = resolveLocalizedString(
+      const { text, locale } = resolveText(
         value,
         localization,
         resolutionOrder,

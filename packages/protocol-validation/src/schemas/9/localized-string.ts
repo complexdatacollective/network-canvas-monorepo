@@ -16,7 +16,6 @@ import {
 } from '../../localization/messageArguments.ts';
 import { findMessageSyntaxProblem } from '../../localization/messageSyntax.ts';
 import type { DynamicValueSite } from './dynamic-values.ts';
-import { suppliedBaseLanguage } from './supplied-text.ts';
 
 const LOCALIZED_STRING = 'localizedString' as const;
 
@@ -38,6 +37,14 @@ type LocalizedStringDescriptor = Readonly<{
    * (see `DynamicValueSite`); absent for text that may not.
    */
   dynamicValues?: DynamicValueSite;
+  /**
+   * Text that may have no translation at all, even in a protocol leaving its
+   * editor, because something else decides whether it needs one (the finish
+   * stage's screens; see `findFinishStageTextProblems`). Any other text must
+   * have one, unless it is wording Network Canvas supplies, which a protocol
+   * being written may hold empty (see `findEmptyTextProblems`).
+   */
+  mayBeEmpty?: true;
 }>;
 
 /**
@@ -76,11 +83,6 @@ export const ProtocolLocalizationSchema = z
     locales: z
       .array(LocaleTagSchema)
       .min(1, { message: 'A protocol must declare at least one language.' }),
-    // Languages the researcher chose to start from Network Canvas's wording in
-    // their base language (Mexican Spanish from Spanish), keyed by the
-    // language that starts from it: wording Network Canvas supplies later is
-    // written in them from that language too.
-    startFrom: z.record(LocaleTagSchema, LocaleTagSchema).optional(),
   })
   .superRefine((localization, ctx) => {
     const seen = new Set<LocaleTag>();
@@ -95,28 +97,6 @@ export const ProtocolLocalizationSchema = z
       }
       seen.add(key);
     });
-
-    for (const [locale, base] of Object.entries(localization.startFrom ?? {})) {
-      if (!localization.locales.includes(locale)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `Language "${locale}" starts from another language's wording, but is not one of the protocol's languages.`,
-          path: ['startFrom', locale],
-        });
-        continue;
-      }
-      const expected = suppliedBaseLanguage(locale);
-      if (base !== expected) {
-        ctx.addIssue({
-          code: 'custom',
-          message:
-            expected === undefined
-              ? `Language "${locale}" cannot start from another language's wording: Network Canvas supplies none it is a variant of.`
-              : `Language "${locale}" can only start from the wording of "${expected}".`,
-          path: ['startFrom', locale],
-        });
-      }
-    }
 
     if (!localization.locales.includes(localization.defaultLocale)) {
       ctx.addIssue({
@@ -165,7 +145,6 @@ export const nonBlankText = () =>
 const localizedTranslations = (
   content: z.ZodString,
   findProblem: (message: string) => string | undefined,
-  mayBeEmpty: boolean,
 ) =>
   z
     .record(
@@ -175,15 +154,10 @@ const localizedTranslations = (
         if (problem) ctx.addIssue({ code: 'custom', message: problem });
       }),
     )
+    // Whether the text may have no translation at all depends on where it
+    // sits, which only the protocol can see (`findEmptyTextProblems`).
     .superRefine((value, ctx) => {
-      const locales = Object.keys(value);
-      if (locales.length === 0 && !mayBeEmpty) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Text must have at least one translation.',
-        });
-      }
-      for (const locale of locales) {
+      for (const locale of Object.keys(value)) {
         const problem = findLocaleTagProblem(locale);
         if (problem) {
           ctx.addIssue({ code: 'custom', message: problem, path: [locale] });
@@ -224,10 +198,12 @@ export const localizedString = (
     dynamicValues === undefined
       ? findMessageSyntaxProblem
       : findDynamicMessageSyntaxProblem,
-    mayBeEmpty,
   ).meta({
-    [LOCALIZED_STRING]:
-      dynamicValues === undefined ? { format } : { format, dynamicValues },
+    [LOCALIZED_STRING]: {
+      format,
+      ...(dynamicValues === undefined ? {} : { dynamicValues }),
+      ...(mayBeEmpty ? { mayBeEmpty: true } : {}),
+    },
   });
 
 const describeMissingPlacement = (
@@ -267,10 +243,8 @@ export const localizedMessage = (
   if (plurals.length > 1) {
     throw new Error('A localized message can declare at most one plural.');
   }
-  return localizedTranslations(
-    content,
-    (message) => findMessageArgumentProblem(message, declaration),
-    false,
+  return localizedTranslations(content, (message) =>
+    findMessageArgumentProblem(message, declaration),
   )
     .superRefine((value, ctx) => {
       for (const [locale, message] of Object.entries(value)) {
@@ -304,7 +278,8 @@ const isLocalizedStringDescriptor = (
   (!('dynamicValues' in value) ||
     value.dynamicValues === 'stageText' ||
     value.dynamicValues === 'prompt' ||
-    value.dynamicValues === 'formField');
+    value.dynamicValues === 'formField') &&
+  (!('mayBeEmpty' in value) || value.mayBeEmpty === true);
 
 export const getLocalizedStringDescriptor = (
   schema: z.ZodType,

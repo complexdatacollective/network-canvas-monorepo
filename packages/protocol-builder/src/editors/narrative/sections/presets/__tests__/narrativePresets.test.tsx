@@ -44,7 +44,9 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     expect(harness.outline()).toEqual([
       { title: 'Visualization presets', state: 'Finished' },
       { title: 'Narrative behaviors', state: 'Finished' },
-      { title: 'Customize built-in wording', state: 'Switched off' },
+      // The fixture's American English has no built-in wording, so the
+      // researcher's own is always shown.
+      { title: 'Customize built-in wording', state: 'Finished' },
     ]);
     expect(screen.getByText('Default layout')).toBeInTheDocument();
   });

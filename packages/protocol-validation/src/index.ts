@@ -45,6 +45,7 @@ import {
   validateNames,
 } from './utils/validateExternalData.ts';
 import validateProtocol, {
+  BUILT_IN_WORDING_MISSING,
   FINISH_STAGE_TEXT_MISSING,
   formatProtocolValidationIssues,
   ProtocolValidationError,
@@ -253,8 +254,8 @@ export {
 } from './schemas/9/family-pedigree-option-labels.ts';
 // How text Network Canvas supplies follows a change to a protocol's languages.
 export {
+  hasSuppliedWording,
   type LanguageChange,
-  type StartFrom,
   suppliedBaseLanguage,
 } from './schemas/9/supplied-text.ts';
 // The arguments of the Narrative Pedigree's snapshot titles, which the stage
@@ -267,7 +268,6 @@ export {
 // stage by Architect when it is made and when a language is added.
 export {
   inapplicableStageSettings,
-  isSuppliedEnglishMessage,
   missingSuppliedStageText,
   type SuppliedStageText,
   suppliedStageText,
@@ -302,6 +302,10 @@ export {
   type FinishStageTextField,
   type FinishStageTextProblem,
 } from './schemas/9/finish-stage-text.ts';
+export {
+  type BuiltInWordingProblem,
+  findBuiltInWordingProblems,
+} from './schemas/9/built-in-wording.ts';
 export {
   findTimelineStructureProblems,
   isFinishSessionStage,
@@ -373,6 +377,7 @@ export {
   type ExtractedAssets,
   extractProtocol,
   extractProtocolFromZip,
+  BUILT_IN_WORDING_MISSING,
   FINISH_STAGE_TEXT_MISSING,
   findCollidingAttributeNames,
   formatProtocolValidationIssues,

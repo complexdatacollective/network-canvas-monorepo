@@ -9,13 +9,6 @@ export type LocaleTag = string;
 export type LocalizationDeclaration = Readonly<{
   defaultLocale: LocaleTag;
   locales: readonly LocaleTag[];
-  /**
-   * Languages the researcher chose to start from Network Canvas's wording in
-   * another language, keyed by the language that starts from it (Mexican
-   * Spanish from Spanish): wording Network Canvas supplies later, such as a
-   * new stage's, is written in them from that language too.
-   */
-  startFrom?: Readonly<Record<LocaleTag, LocaleTag>>;
 }>;
 
 export function canonicalizeLocale(value: string): LocaleTag | undefined {

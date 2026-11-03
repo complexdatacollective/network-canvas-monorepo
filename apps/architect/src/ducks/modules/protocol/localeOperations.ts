@@ -16,9 +16,6 @@ import {
   defaultFinishSessionTextAfterLanguageChange,
   interfaceTextAfterLanguageChange,
   type LanguageChange,
-  type LocalizationDeclaration,
-  type StartFrom,
-  suppliedBaseLanguage,
   suppliedOptionLabelsAfterLanguageChange,
   suppliedStageTextAfterLanguageChange,
 } from '@codaco/protocol-validation';
@@ -177,24 +174,6 @@ export const stageAfterLanguageChange = <
 };
 
 /**
- * A protocol's language declaration, recording only the languages that start
- * from another's wording (`startFrom`) that it still declares, and no
- * `startFrom` at all when none does.
- */
-const declaration = (
-  defaultLocale: LocaleTag,
-  locales: readonly LocaleTag[],
-  startFrom: StartFrom = {},
-): LocalizationDeclaration => {
-  const kept = Object.fromEntries(
-    Object.entries(startFrom).filter(([locale]) => locales.includes(locale)),
-  );
-  return Object.keys(kept).length === 0
-    ? { defaultLocale, locales }
-    : { defaultLocale, locales, startFrom: kept };
-};
-
-/**
  * The protocol after a change to its languages. `rewritten` is the protocol
  * with every translation already moved or removed as the change says; each
  * text Network Canvas supplies that the researcher has not changed in the
@@ -209,11 +188,9 @@ const withLanguageChange = (
   change: LanguageChange,
 ): CurrentProtocol => {
   return createNextState(rewritten, (draft) => {
-    const { defaultLocale, locales, startFrom } = change.after;
     draft.localization = {
-      defaultLocale,
-      locales: [...locales],
-      ...(startFrom === undefined ? {} : { startFrom: { ...startFrom } }),
+      defaultLocale: change.after.defaultLocale,
+      locales: [...change.after.locales],
     };
     for (const binding of findInterfaceOwnedOptionBindings(original)) {
       const set = binding.optionSet;
@@ -266,36 +243,26 @@ const withLanguageChange = (
  * `withLanguageChange`): a finish stage's closing text, the labels of the
  * answers a Family Pedigree asks for, and stage settings such as a roster's
  * panel title. Each gets its supplied text in every new language it is
- * supplied in exactly, and a regional variant the researcher chose to start
- * from its language (`startFrom`, keyed by the tag as given) gets that
- * language's. Everything else shows as a missing translation until it is
+ * supplied in. Everything else shows as a missing translation until it is
  * written.
  */
 export const addLocales = (
   protocol: CurrentProtocol,
   tags: readonly string[],
-  startFrom: StartFrom = {},
 ): LocaleOperationResult => {
   const added: LocaleTag[] = [];
-  const startingFrom: Record<LocaleTag, LocaleTag> = {};
   for (const tag of tags) {
     const resolved = resolveNewLocale(protocol, tag);
     if (!resolved.ok) return fail(resolved.reason);
     if (added.includes(resolved.locale)) return fail('already-declared');
     added.push(resolved.locale);
-    const base = startFrom[tag];
-    if (base !== undefined) startingFrom[resolved.locale] = base;
   }
   const before = protocol.localization;
-  const locales = [...before.locales, ...added];
   return {
     ok: true,
     protocol: withLanguageChange(protocol, protocol, {
       before,
-      after: declaration(before.defaultLocale, locales, {
-        ...before.startFrom,
-        ...startingFrom,
-      }),
+      after: { ...before, locales: [...before.locales, ...added] },
     }),
   };
 };
@@ -363,11 +330,10 @@ export const removeLocale = (
       rewriteLocalizedStrings(protocol, withoutLocale(locale)),
       {
         before,
-        after: declaration(
-          before.defaultLocale,
-          before.locales.filter((declared) => declared !== locale),
-          before.startFrom,
-        ),
+        after: {
+          ...before,
+          locales: before.locales.filter((declared) => declared !== locale),
+        },
       },
     ),
   };
@@ -477,25 +443,6 @@ export const setLocalizedStrings = (
 };
 
 /**
- * What a language recorded as another keeps of Network Canvas's wording:
- * recording Spanish text, or Argentinian Spanish text that started from
- * Spanish, as Mexican Spanish keeps the Spanish wording rather than deleting
- * it, since the text is already in that language. Any other language starts
- * from nothing, as the researcher never chose that.
- */
-export const changedLanguageStartFrom = (
-  before: LocalizationDeclaration,
-  from: LocaleTag,
-  to: LocaleTag,
-): StartFrom => {
-  const base = suppliedBaseLanguage(to);
-  return base !== undefined &&
-    (from === base || before.startFrom?.[from] === base)
-    ? { [to]: base }
-    : {};
-};
-
-/**
  * Says that the text recorded as `from` is really written in `tag`: the
  * declaration entry and every translation move to the new tag together, and
  * the default follows when it is `from`. Nothing the researcher wrote is
@@ -515,7 +462,6 @@ export const changeLocale = (
   if (!resolved.ok) return fail(resolved.reason);
   const to = resolved.locale;
   const before = protocol.localization;
-  const { [from]: _changed, ...kept } = before.startFrom ?? {};
   return {
     ok: true,
     protocol: withLanguageChange(
@@ -523,11 +469,13 @@ export const changeLocale = (
       rewriteLocalizedStrings(protocol, movedLocale(from, to)),
       {
         before,
-        after: declaration(
-          before.defaultLocale === from ? to : before.defaultLocale,
-          before.locales.map((declared) => (declared === from ? to : declared)),
-          { ...kept, ...changedLanguageStartFrom(before, from, to) },
-        ),
+        after: {
+          defaultLocale:
+            before.defaultLocale === from ? to : before.defaultLocale,
+          locales: before.locales.map((declared) =>
+            declared === from ? to : declared,
+          ),
+        },
         renamed: { [from]: to },
       },
     ),

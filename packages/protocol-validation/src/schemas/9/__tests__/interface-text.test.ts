@@ -72,17 +72,19 @@ describe('the interface text a protocol holds', () => {
 
     expect(text.messages?.stageError?.['en-GB']).toContain('study organiser');
     expect(text.messages?.stageError?.en).toContain('study organizer');
-    expect(text.navigation?.exitInterview?.['en-GB']).toBe('Exit interview');
+    // Where the spelling is the same, only English holds it, and British
+    // English falls back to it.
+    expect(text.navigation?.exitInterview).toEqual({ en: 'Exit interview' });
   });
 
-  it('writes English in a default language Network Canvas supplies no words in, and nothing in another', () => {
+  it('writes nothing in a language Network Canvas supplies no words in, even the default', () => {
     const text = interfaceTextFor(
       protocolWith({
         localization: { defaultLocale: 'hu', locales: ['hu', 'ka'] },
       }),
     );
 
-    expect(text.navigation?.back).toEqual({ hu: 'Back' });
+    expect(text.navigation?.back).toEqual({});
   });
 
   it('holds the passphrase text only while the protocol encrypts an attribute', () => {

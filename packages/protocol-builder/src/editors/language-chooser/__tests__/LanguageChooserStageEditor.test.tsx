@@ -38,8 +38,16 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
   ),
 }));
 
-/** The all-interfaces fixture is written in this one language. */
-const FIXTURE_LANGUAGE = 'en-US';
+/**
+ * The language these stages are written in: one Network Canvas has built-in
+ * wording in, so a new stage starts with its heading.
+ */
+const FIXTURE_LANGUAGE = 'en';
+
+const ENGLISH: ProtocolLocalization = {
+  defaultLocale: FIXTURE_LANGUAGE,
+  locales: [FIXTURE_LANGUAGE],
+};
 
 // Declared out of alphabetical order, which the list does not follow.
 const THREE_LANGUAGES: ProtocolLocalization = {
@@ -130,7 +138,10 @@ describe('the editor for the stage where a participant chooses a language', () =
   });
 
   it('saves the heading the researcher writes', async () => {
-    const harness = renderStageEditor(openStage());
+    const harness = renderStageEditor({
+      ...openStage(),
+      localization: ENGLISH,
+    });
     const user = userEvent.setup();
     // Off over the supplied wording of a single language.
     await user.click(
@@ -157,6 +168,7 @@ describe('the editor for the stage where a participant chooses a language', () =
     const harness = renderStageEditor({
       create: { type: 'LanguageChooser', position: 0 },
       editor: mountedAs(languageChooserStageEditor.LanguageChooser),
+      localization: ENGLISH,
     });
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     const proposed = stageNameInput().value;
@@ -169,5 +181,21 @@ describe('the editor for the stage where a participant chooses a language', () =
       label: { [FIXTURE_LANGUAGE]: escapeMessageText(proposed) },
       title: { [FIXTURE_LANGUAGE]: 'Choose a language' },
     });
+  });
+
+  it('starts a new stage without a heading in a language Network Canvas has no wording in', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'LanguageChooser', position: 0 },
+      editor: mountedAs(languageChooserStageEditor.LanguageChooser),
+      localization: { defaultLocale: 'en-US', locales: ['en-US'] },
+    });
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+
+    const saved = await harness.submit();
+    // Built-in wording may hold no text while the protocol is being written;
+    // the researcher writes it before the protocol can be downloaded.
+    expect(saved?.stageDocument).toEqual(
+      expect.objectContaining({ title: {} }),
+    );
   });
 });

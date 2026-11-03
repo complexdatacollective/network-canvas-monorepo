@@ -24,7 +24,10 @@ import {
   headingTagBelow,
   useEnclosingHeadingLevel,
 } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
-import type { StageType } from '@codaco/protocol-validation';
+import {
+  hasSuppliedWording,
+  type StageType,
+} from '@codaco/protocol-validation';
 
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { stageAnswerAt } from '../../form/stageFormHooks.ts';
@@ -70,6 +73,10 @@ type StageWordingSectionProps = Readonly<{
  * the shared words already hold wording of the researcher's own, and whenever
  * the protocol has more than one language, so a translation still to be
  * written is in view.
+ *
+ * Not optional while the default language is one Network Canvas has no
+ * wording in: there is nothing to put back, and the researcher writes that
+ * wording before the protocol can be downloaded, so it is always shown.
  */
 export default function StageWordingSection({
   stageType,
@@ -195,6 +202,10 @@ export default function StageWordingSection({
 
   if (paths.length === 0 && shared.length === 0) return null;
 
+  const writtenByResearcher =
+    localization !== undefined &&
+    !hasSuppliedWording(localization.defaultLocale);
+
   return (
     <BuilderSection
       // Mounted again once the languages are known, so it reads `startOn`
@@ -202,7 +213,9 @@ export default function StageWordingSection({
       key={decided ? 'decided' : 'pending'}
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
-      optional={{ startOn, switchOff, owns: paths }}
+      optional={
+        writtenByResearcher ? undefined : { startOn, switchOff, owns: paths }
+      }
     >
       {shared.length === 0 ? (
         children

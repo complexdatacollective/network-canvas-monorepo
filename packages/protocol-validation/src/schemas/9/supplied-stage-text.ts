@@ -2,7 +2,6 @@ import type {
   LocaleTag,
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
-import { INTERFACE_TEXT_WORDING } from './interface-text.ts';
 import type { LocalizedString } from './localized-string.ts';
 import { BIN_SUPPLIED_TEXT } from './stage-wording/bins.ts';
 import { FAMILY_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/family-pedigree.ts';
@@ -16,8 +15,8 @@ import { NARRATIVE_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/narrative-pedi
 import { NARRATIVE_SUPPLIED_TEXT } from './stage-wording/narrative.ts';
 import type { SuppliedStageSetting } from './supplied-stage-setting.ts';
 import {
+  isStillSupplied,
   type LanguageChange,
-  suppliedLanguageOf,
   suppliedTextAfterLanguageChange,
   suppliedTextFor,
 } from './supplied-text.ts';
@@ -49,21 +48,26 @@ const settingsOf = (stageType: string): readonly SuppliedStageSetting[] =>
   SUPPLIED_STAGE_TEXT[stageType] ?? [];
 
 /**
+ * Where in a stage of `stageType` each setting whose wording Network Canvas
+ * supplies sits.
+ */
+export const suppliedStageSettingPaths = (
+  stageType: string,
+): readonly (readonly string[])[] =>
+  settingsOf(stageType).map(({ path }) => path);
+
+/**
  * The message Network Canvas writes for a setting in a protocol language:
- * its supplied wording there, or, in the default language when it supplies
- * none, the English wording, because every supplied setting is required (or,
- * for an optional one, wanted) and a stage must hold it in some language.
- * That is the rule for the Family Pedigree's option labels too
- * (`writtenOptionLabel`), and what the schema 8 to 9 migration has always
- * recorded.
+ * its wording in exactly that language, and none in any other. That is the
+ * rule for all its wording (the interface text and the Family Pedigree's
+ * option labels too). A setting with no wording in the default language must
+ * be written there before the protocol leaves its editor
+ * (`findBuiltInWordingProblems`).
  */
 const writtenIn = (
   setting: SuppliedStageSetting,
   locale: LocaleTag,
-  isDefault: boolean,
-): string | undefined =>
-  suppliedTextFor(setting.message, locale) ??
-  (isDefault ? setting.message.en : undefined);
+): string | undefined => suppliedTextFor(setting.message, locale);
 
 const valueAt = (value: unknown, path: readonly string[]): unknown =>
   path.reduce<unknown>(
@@ -92,11 +96,7 @@ export const suppliedStageText = (
   settingsOf(stageType).map((setting) => {
     const value: Record<LocaleTag, string> = {};
     for (const locale of localization.locales) {
-      const text = writtenIn(
-        setting,
-        suppliedLanguageOf(localization, locale),
-        locale === localization.defaultLocale,
-      );
+      const text = writtenIn(setting, locale);
       if (text !== undefined) value[locale] = text;
     }
     return { path: setting.path, value };
@@ -118,26 +118,13 @@ export const suppliedStageTextAfterLanguageChange = (
     if (typeof current !== 'object' || current === null) return [];
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a supplied setting's path holds a language-to-text map in a stage; an entry that is not text never equals the supplied wording below
     const held = current as LocalizedString;
-    const { defaultLocale } = change.before;
-    const text = held[defaultLocale];
-    if (
-      text === undefined ||
-      text !==
-        writtenIn(
-          setting,
-          suppliedLanguageOf(change.before, defaultLocale),
-          true,
-        )
-    )
+    const supplied = (locale: LocaleTag) => writtenIn(setting, locale);
+    if (!isStillSupplied(held, supplied, change.before.defaultLocale))
       return [];
     return [
       {
         path: setting.path,
-        value: suppliedTextAfterLanguageChange(
-          held,
-          (locale, isDefault) => writtenIn(setting, locale, isDefault),
-          change,
-        ),
+        value: suppliedTextAfterLanguageChange(held, supplied, change),
       },
     ];
   });
@@ -231,26 +218,4 @@ export const suppliedStageSettingApplies = (
   );
   if (setting === undefined) return false;
   return setting.when === undefined || setting.when(stage);
-};
-
-let suppliedEnglish: ReadonlySet<string> | undefined;
-
-/**
- * Whether `message` is wording Network Canvas supplies in English, for a
- * stage setting or for the protocol's interface text. A protocol whose
- * default language Network Canvas supplies no wording in holds the English
- * under that language, so the interview formats such a message by English
- * plural rules wherever it is held: by Japanese rules, "{count, plural, one
- * {# item} other {# items}}" would read "1 items".
- */
-export const isSuppliedEnglishMessage = (message: string): boolean => {
-  suppliedEnglish ??= new Set(
-    [
-      ...Object.values(SUPPLIED_STAGE_TEXT).flat(),
-      ...INTERFACE_TEXT_WORDING,
-    ].flatMap(({ message: wording }) =>
-      wording.en === undefined ? [] : [wording.en],
-    ),
-  );
-  return suppliedEnglish.has(message);
 };

@@ -643,5 +643,9 @@ describe('a maximal stage of each interface', () => {
       // empty `unowned` is the whole claim about the outline.
       await harness.roundTrip({ unowned });
     },
+    // Editing every key of the largest interface (Family Pedigree, with its
+    // whole wording list) takes about 20 seconds on its own, the project's
+    // default limit, so a busy machine timed it out.
+    60_000,
   );
 });

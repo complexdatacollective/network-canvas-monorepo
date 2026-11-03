@@ -21,7 +21,7 @@ import type {
   ExtractedAsset,
 } from '@codaco/protocol-validation';
 import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
-import { useStartFromBaseOffer } from '~/components/Localization/useStartFromBaseOffer';
+import { useBaseLanguageOffer } from '~/components/Localization/useBaseLanguageOffer';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavLink from '~/components/ProjectNav/NavLink';
 import NavShell from '~/components/ProjectNav/NavShell';
@@ -145,7 +145,7 @@ const Home = () => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
-  const offerStartFromBase = useStartFromBaseOffer();
+  const offerBaseLanguage = useBaseLanguageOffer();
   const [isLoading, setIsLoading] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<{
@@ -181,24 +181,19 @@ const Home = () => {
       setShowNewDialog(false);
       void (async () => {
         // Asked before the loading overlay, which would cover the question.
-        const startFrom = await offerStartFromBase(
-          values.localization.locales,
-          values.localization.defaultLocale,
-        );
+        const { defaultLocale, locales } = values.localization;
+        const bases = await offerBaseLanguage(locales, [], defaultLocale);
         await runAction(async () => {
           await dispatch(
             createNetcanvas({
               ...values,
-              localization:
-                Object.keys(startFrom).length === 0
-                  ? values.localization
-                  : { ...values.localization, startFrom },
+              localization: { defaultLocale, locales: [...locales, ...bases] },
             }),
           );
         });
       })();
     },
-    [dispatch, offerStartFromBase, runAction],
+    [dispatch, offerBaseLanguage, runAction],
   );
   const handleOpenLocalFile = useCallback(
     async (file: File) => {

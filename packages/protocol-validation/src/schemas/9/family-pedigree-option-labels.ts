@@ -12,9 +12,9 @@ import {
 } from './family-pedigree-values.ts';
 import type { LocalizedString } from './localized-string.ts';
 import {
+  isStillSupplied,
   type LanguageChange,
   suppliedTextAfterLanguageChange,
-  suppliedLanguageOf,
   suppliedTextFor,
 } from './supplied-text.ts';
 
@@ -247,24 +247,10 @@ export const suppliedOptionLabel = (
 };
 
 /**
- * The label Network Canvas writes for one value of a set in a protocol
- * language: the language's supplied label, or, in the default language of a
- * protocol whose default Network Canvas supplies no labels in, the English
- * one, since participants choose from these answers and a protocol needs one
- * in its default language. `undefined` where it writes none.
- */
-const writtenOptionLabel = (
-  set: SuppliedOptionLabelSet,
-  value: string,
-  locale: LocaleTag,
-  isDefault: boolean,
-): string | undefined =>
-  suppliedOptionLabel(set, value, locale) ??
-  (isDefault ? suppliedOptionLabel(set, value, 'en') : undefined);
-
-/**
  * The label Network Canvas writes for one value of a set in each of the
- * protocol's languages (see `writtenOptionLabel`).
+ * protocol's languages: its label in exactly that language, and none in any
+ * other. A label with no wording in the default language must be written
+ * there before the protocol leaves its editor (`findBuiltInWordingProblems`).
  */
 export const suppliedOptionLabels = (
   set: SuppliedOptionLabelSet,
@@ -273,12 +259,7 @@ export const suppliedOptionLabels = (
 ): LocalizedString => {
   const label: Record<LocaleTag, string> = {};
   for (const locale of localization.locales) {
-    const text = writtenOptionLabel(
-      set,
-      value,
-      suppliedLanguageOf(localization, locale),
-      locale === localization.defaultLocale,
-    );
+    const text = suppliedOptionLabel(set, value, locale);
     if (text !== undefined) label[locale] = text;
   }
   return label;
@@ -294,27 +275,23 @@ const labelOf = (option: LabelledOption): LocalizedString =>
 
 /**
  * Whether every option's label in the protocol's default language is still
- * exactly the label Network Canvas wrote there: the researcher has not
- * reworded any of them.
+ * exactly the label Network Canvas wrote there (none, where it supplies none
+ * in that language): the researcher has not reworded any of them.
  */
 export const hasSuppliedOptionLabels = (
   set: SuppliedOptionLabelSet,
   options: readonly LabelledOption[],
   localization: LocalizationDeclaration,
 ): boolean =>
-  options.every((option) => {
-    const { defaultLocale } = localization;
-    const text =
-      typeof option.value === 'string'
-        ? writtenOptionLabel(
-            set,
-            option.value,
-            suppliedLanguageOf(localization, defaultLocale),
-            true,
-          )
-        : undefined;
-    return text !== undefined && labelOf(option)[defaultLocale] === text;
-  });
+  options.every(
+    (option) =>
+      typeof option.value === 'string' &&
+      isStillSupplied(
+        labelOf(option),
+        (locale) => suppliedOptionLabel(set, String(option.value), locale),
+        localization.defaultLocale,
+      ),
+  );
 
 /**
  * The options as Network Canvas labels them after a change to the protocol's
@@ -337,8 +314,7 @@ export const suppliedOptionLabelsAfterLanguageChange = <
       ...option,
       label: suppliedTextAfterLanguageChange(
         labelOf(option),
-        (locale, isDefault) =>
-          writtenOptionLabel(set, value, locale, isDefault),
+        (locale) => suppliedOptionLabel(set, value, locale),
         change,
       ),
     };

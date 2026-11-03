@@ -10,12 +10,20 @@ import type { StageEditorRegistry } from '../../../stage-editor-contract.ts';
 import type { FixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 
-const FIXTURE_LANGUAGE = 'en-US';
+/**
+ * The protocol's one language: one Network Canvas has built-in wording in, so
+ * its wording can be customized and put back.
+ */
+const FIXTURE_LANGUAGE = 'en';
 const SETTINGS = sectionId({ kind: 'settings' });
 const SUPPLIED_HINT = 'Scroll to see more questions';
 
 const mountEgoForm = () =>
-  renderStageEditor({ stageId: 'ego-form-1', registry: egoFormStageEditor });
+  renderStageEditor({
+    stageId: 'ego-form-1',
+    registry: egoFormStageEditor,
+    fixtureLanguage: FIXTURE_LANGUAGE,
+  });
 
 /**
  * A stage editor, with the first write it sends held until `release`, and the
@@ -31,6 +39,7 @@ const mountWithHeldWrite = (
   const harness = renderStageEditor({
     stageId,
     registry,
+    fixtureLanguage: FIXTURE_LANGUAGE,
     adapter: (host) =>
       host.adapterWith({
         Submit: (input) =>
@@ -273,5 +282,23 @@ describe('a stage whose shared wording comes in several groups', () => {
         heldWord(harness, 'familyPedigree', 'pointerToolDescription'),
       ).toEqual({ [FIXTURE_LANGUAGE]: 'Choose a relative' });
     });
+  });
+});
+
+/**
+ * A default language Network Canvas has no wording in (the fixture's
+ * American English) has nothing to put back: the researcher writes that
+ * wording, so it is shown without a switch.
+ */
+describe('a protocol whose default language has no built-in wording', () => {
+  it('shows the wording to write, with no switch to turn it off', async () => {
+    renderStageEditor({ stageId: 'ego-form-1', registry: egoFormStageEditor });
+
+    expect(
+      await screen.findByRole('textbox', { name: 'More questions hint' }),
+    ).toHaveValue(SUPPLIED_HINT);
+    expect(
+      screen.queryByRole('switch', { name: 'Customize built-in wording' }),
+    ).not.toBeInTheDocument();
   });
 });

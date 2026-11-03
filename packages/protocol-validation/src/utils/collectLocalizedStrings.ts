@@ -19,6 +19,8 @@ export type LocalizedStringHit = Readonly<{
   arguments?: MessageArguments;
   /** Where text that may show dynamic values sits; absent where it may not. */
   dynamicValues?: DynamicValueSite;
+  /** The text may have no translation at all (see `localizedString`). */
+  mayBeEmpty?: true;
 }>;
 
 export type LocalizedStringSite = Readonly<{
@@ -29,6 +31,8 @@ export type LocalizedStringSite = Readonly<{
   arguments?: MessageArguments;
   /** Where text that may show dynamic values sits; absent where it may not. */
   dynamicValues?: DynamicValueSite;
+  /** The text may have no translation at all (see `localizedString`). */
+  mayBeEmpty?: true;
   /** The tagged declaration, shared by every site it describes. */
   schema: z.ZodType;
   /** The owning object lets the field be left out. */
@@ -181,6 +185,7 @@ const walk = (
         ...(descriptor.dynamicValues === undefined
           ? {}
           : { dynamicValues: descriptor.dynamicValues }),
+        ...(descriptor.mayBeEmpty === true ? { mayBeEmpty: true } : {}),
         schema: node,
         ...context,
       },
@@ -280,6 +285,7 @@ export const collectLocalizedStringsFromSchema = (
             ...(site.dynamicValues === undefined
               ? {}
               : { dynamicValues: site.dynamicValues }),
+            ...(site.mayBeEmpty === true ? { mayBeEmpty: true } : {}),
           },
         ]
       : [],

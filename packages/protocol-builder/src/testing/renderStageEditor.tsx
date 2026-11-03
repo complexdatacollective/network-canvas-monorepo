@@ -70,6 +70,7 @@ import {
   fixtureAssetManifest,
   fixtureLocalization,
   fixtureProtocolSections,
+  inFixtureLanguage,
   type FixtureStageId,
   loadFixtureStage,
 } from './protocolFixture.ts';
@@ -525,6 +526,14 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      */
     localization?: ProtocolLocalization;
     /**
+     * Record the fixture's text in this language rather than American
+     * English, and declare it the protocol's one language unless
+     * `localization` says otherwise: for a test of Network Canvas's own
+     * wording, which it has in `en` but not in `en-US` (see
+     * `inFixtureLanguage`).
+     */
+    fixtureLanguage?: string;
+    /**
      * Read the editor in this language.
      *
      * Left out, NO provider is mounted at all, `useAppIntl()` falls back to a
@@ -666,7 +675,15 @@ export function renderStageEditor<T extends StageType = StageType>(
 ): StageEditorHarness {
   assertOneMountingMode(options);
   assertOneStageSource(options);
-  const seeded = seedFrom(options);
+  const localization =
+    options.localization ??
+    (options.fixtureLanguage === undefined
+      ? undefined
+      : {
+          defaultLocale: options.fixtureLanguage,
+          locales: [options.fixtureLanguage],
+        });
+  const seeded = seedFrom(options, localization);
   const stageSectionId = sectionId({ kind: 'stage', stageId: seeded.id });
   const assetManifest: Record<string, unknown> = {
     ...fixtureAssetManifest(),
@@ -674,7 +691,12 @@ export function renderStageEditor<T extends StageType = StageType>(
   };
 
   const host = createInMemoryHost({
-    sections: seededSections(seeded, assetManifest, options.localization),
+    sections: seededSections(
+      seeded,
+      assetManifest,
+      localization,
+      options.fixtureLanguage,
+    ),
     assetContent: fixtureAssetContentFor(assetManifest, options.assetBytes),
     principal: HARNESS_PRINCIPAL,
   });
@@ -1132,6 +1154,7 @@ function NamedEditorUnderTest<T extends StageType>({
  */
 function seedFrom<T extends StageType>(
   options: RenderStageEditorOptions<T>,
+  localization: ProtocolLocalization | undefined,
 ): SeededStage {
   if (options.create !== undefined) {
     const { type, position, fields } = options.create;
@@ -1143,7 +1166,7 @@ function seedFrom<T extends StageType>(
       // languages, not a blank document and not a schema default. The editor
       // seeds these itself; they are written here only to compare a save to.
       fields: {
-        ...newStageFields(type, options.localization ?? fixtureLocalization()),
+        ...newStageFields(type, localization ?? fixtureLocalization()),
         ...fields,
       },
       creation: { position, fields: { ...fields } },
@@ -1158,7 +1181,10 @@ function seedFrom<T extends StageType>(
       'renderStageEditor needs a stage: pass `stageId` to open one from the all-interfaces protocol, `stage` to build one, or `create` to open a new one.',
     );
   }
-  return loadFixtureStage(options.stageId);
+  const stage = loadFixtureStage(options.stageId);
+  return options.fixtureLanguage === undefined
+    ? stage
+    : inFixtureLanguage(stage, options.fixtureLanguage);
 }
 
 /** A codebook patch as the sections it changes, `null` for the ones it removes. */
@@ -1190,8 +1216,12 @@ function seededSections(
   seeded: SeededStage,
   assetManifest: Readonly<Record<string, unknown>>,
   localization: ProtocolLocalization | undefined,
+  fixtureLanguage: string | undefined,
 ): Record<string, SectionDoc> {
-  const base = fixtureProtocolSections();
+  const base =
+    fixtureLanguage === undefined
+      ? fixtureProtocolSections()
+      : inFixtureLanguage(fixtureProtocolSections(), fixtureLanguage);
   const sections: Record<string, SectionDoc> = { ...base };
   if (localization !== undefined) {
     const settings = sectionId({ kind: 'settings' });

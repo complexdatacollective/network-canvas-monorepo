@@ -27,7 +27,6 @@ import {
   movedLocale,
   setTranslation,
   withoutLocale,
-  changedLanguageStartFrom,
 } from '../localeOperations';
 
 const NODE_TYPE = 'person';
@@ -264,41 +263,6 @@ describe('addLocales', () => {
       expect(Object.keys(finish?.label ?? {})).not.toContain('ja');
       expect(protocol.stages[0]).toEqual(withSuppliedFinish().stages[0]);
       expect((await validateProtocol(protocol)).success).toBe(true);
-    });
-
-    it('gives a regional variant nothing unless the researcher starts it from its language', async () => {
-      const untouched = protocolOf(addLocales(withSuppliedFinish(), ['es-MX']));
-      expect(Object.keys(untouched.stages.at(-1)?.label ?? {})).not.toContain(
-        'es-MX',
-      );
-      const started = protocolOf(
-        addLocales(withSuppliedFinish(), ['es-MX'], { 'es-MX': 'es' }),
-      );
-      expect(started.stages.at(-1)).toMatchObject({
-        content: {
-          'en': DEFAULT_FINISH_SESSION_TEXT.en.content,
-          'es-MX': DEFAULT_FINISH_SESSION_TEXT.es.content,
-        },
-      });
-      expect(untouched.localization.startFrom).toBeUndefined();
-      expect(started.localization.startFrom).toEqual({ 'es-MX': 'es' });
-      expect((await validateProtocol(started)).success).toBe(true);
-    });
-
-    it('forgets that a language started from another when it is removed', () => {
-      const started = protocolOf(
-        addLocales(withSuppliedFinish(), ['es-MX', 'fr-CA'], {
-          'es-MX': 'es',
-          'fr-CA': 'fr',
-        }),
-      );
-      expect(
-        protocolOf(removeLocale(started, 'es-MX')).localization.startFrom,
-      ).toEqual({ 'fr-CA': 'fr' });
-      const removedBoth = protocolOf(
-        removeLocale(protocolOf(removeLocale(started, 'es-MX')), 'fr-CA'),
-      );
-      expect(removedBoth.localization).not.toHaveProperty('startFrom');
     });
 
     it('stays untranslated once the researcher has rewritten it', () => {
@@ -712,36 +676,6 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
     expect((await validateProtocol(protocol)).success).toBe(true);
   });
 
-  it('keeps the supplied text of a language recorded as its regional variant', () => {
-    const english = { defaultLocale: 'en', locales: ['en'] };
-    const argentinian = {
-      defaultLocale: 'en',
-      locales: ['en', 'es-AR'],
-      startFrom: { 'es-AR': 'es' },
-    };
-    expect(changedLanguageStartFrom(english, 'en', 'en-GB')).toEqual({
-      'en-GB': 'en',
-    });
-    expect(changedLanguageStartFrom(argentinian, 'es-AR', 'es-MX')).toEqual({
-      'es-MX': 'es',
-    });
-    expect(
-      changedLanguageStartFrom(
-        { defaultLocale: 'en', locales: ['en', 'es-AR'] },
-        'es-AR',
-        'es-MX',
-      ),
-    ).toEqual({});
-    expect(changedLanguageStartFrom(english, 'en', 'de-AT')).toEqual({});
-    expect(changedLanguageStartFrom(english, 'en', 'de')).toEqual({});
-    const spanish = protocolOf(addLocales(withSuppliedFinish(), ['es']));
-    const protocol = protocolOf(changeLocale(spanish, 'es', 'es-MX'));
-    expect(protocol.localization.startFrom).toEqual({ 'es-MX': 'es' });
-    expect(protocol.stages.at(-1)).toMatchObject({
-      content: { 'es-MX': DEFAULT_FINISH_SESSION_TEXT.es.content },
-    });
-  });
-
   it('moves unchanged with its language once the researcher has rewritten it', () => {
     const reworded = withPedigree((value) =>
       value === 'intersex'
@@ -759,20 +693,18 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
     );
   });
 
-  it('gives a new default language with no supplied labels the English ones, so a language added later is still filled in', () => {
+  it('leaves a new default language with no built-in labels without them, and still fills in a language added later', () => {
     const withHungarian = protocolOf(addLocales(withPedigree(), ['hu']));
     const huDefault = protocolOf(setDefaultLocale(withHungarian, 'hu'));
     expect(labelsOf(huDefault, 'node', 'relative', 'sex')).toEqual(
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
         en: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
-        hu: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
       })),
     );
     const withGerman = protocolOf(addLocales(huDefault, ['de']));
     expect(labelsOf(withGerman, 'node', 'relative', 'sex')).toEqual(
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
         en: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
-        hu: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
         de: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'de'),
       })),
     );
@@ -824,16 +756,17 @@ describe('a roster stage’s supplied panel title', () => {
     ).toEqual({ en: 'Services' });
   });
 
-  // A panel title is required, so a language Network Canvas has no wording
-  // for keeps the English text rather than being left with none.
-  it('stays in English when the protocol’s only language is corrected to one it is not supplied in', () => {
+  // Network Canvas writes its wording only in a language it has it in, so
+  // the researcher writes this one; until then the protocol can't be
+  // downloaded.
+  it('is left for the researcher to write when the protocol’s only language is corrected to one Network Canvas has no wording in', () => {
     expect(
       panelTitleOf(
         protocolOf(
           changeLocale(withRoster({ en: 'Available to add' }), 'en', 'hu'),
         ),
       ),
-    ).toEqual({ hu: 'Available to add' });
+    ).toEqual({});
   });
 });
 

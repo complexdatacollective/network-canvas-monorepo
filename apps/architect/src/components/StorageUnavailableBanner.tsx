@@ -14,9 +14,9 @@ import { getStorageUnavailable } from '~/ducks/modules/app';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 
 import {
-  FinishStageTextRefusal,
-  FinishStageTextRefusalTitle,
-} from './FinishStageTextAlert';
+  DefaultLanguageTextRefusal,
+  DefaultLanguageTextRefusalTitle,
+} from './DefaultLanguageTextAlert';
 const messages = defineMessages({
   thisProtocolIsnTBeingSavedOn: {
     id: 'architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn',
@@ -91,12 +91,12 @@ const StorageUnavailableBanner = () => {
             void dispatch(exportNetcanvas())
               .unwrap()
               .then((result) => {
-                if (result.status === 'missing-finish-stage-text') {
+                if (result.status === 'missing-default-language-text') {
                   void openDialog({
                     type: 'acknowledge',
                     intent: 'destructive',
-                    title: createElement(FinishStageTextRefusalTitle),
-                    description: createElement(FinishStageTextRefusal, {
+                    title: createElement(DefaultLanguageTextRefusalTitle),
+                    description: createElement(DefaultLanguageTextRefusal, {
                       problem: result.problem,
                     }),
                     actions: {

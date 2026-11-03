@@ -99,52 +99,14 @@ describe('ProtocolLocalizationSchema', () => {
     ]);
   });
 
-  describe('languages that start from another’s wording', () => {
-    it('accepts a regional variant starting from its base language', () => {
-      expect(
-        issuesOf(ProtocolLocalizationSchema, {
-          defaultLocale: 'en',
-          locales: ['en', 'es-MX', 'zh-TW'],
-          startFrom: { 'es-MX': 'es', 'zh-TW': 'zh-Hant' },
-        }),
-      ).toEqual([]);
-    });
-
-    it('rejects a base that is not the language’s own', () => {
-      expect(
-        issuesOf(ProtocolLocalizationSchema, {
-          defaultLocale: 'en',
-          locales: ['en', 'es-MX', 'ca'],
-          startFrom: { 'es-MX': 'pt-BR', 'ca': 'es' },
-        }),
-      ).toEqual([
-        {
-          message: 'Language "es-MX" can only start from the wording of "es".',
-          path: ['startFrom', 'es-MX'],
-        },
-        {
-          message:
-            'Language "ca" cannot start from another language\'s wording: Network Canvas supplies none it is a variant of.',
-          path: ['startFrom', 'ca'],
-        },
-      ]);
-    });
-
-    it('rejects a language the protocol does not declare', () => {
-      expect(
-        issuesOf(ProtocolLocalizationSchema, {
-          defaultLocale: 'en',
-          locales: ['en'],
-          startFrom: { 'es-MX': 'es' },
-        }),
-      ).toEqual([
-        {
-          message:
-            'Language "es-MX" starts from another language\'s wording, but is not one of the protocol\'s languages.',
-          path: ['startFrom', 'es-MX'],
-        },
-      ]);
-    });
+  it('records nothing about where a language’s built-in wording comes from', () => {
+    expect(
+      issuesOf(ProtocolLocalizationSchema, {
+        defaultLocale: 'en',
+        locales: ['en', 'es-MX'],
+        startFrom: { 'es-MX': 'es' },
+      }).map(({ path }) => path),
+    ).toEqual([[]]);
   });
 
   it('rejects a language declared twice at the repeat', () => {
@@ -215,10 +177,11 @@ describe('localizedString', () => {
     expect(required.safeParse('Hello').success).toBe(false);
   });
 
-  it('rejects an object with no translation', () => {
-    expect(issuesOf(required, {})).toEqual([
-      { message: 'Text must have at least one translation.', path: [] },
-    ]);
+  // Whether text may have no translation depends on where it sits, which
+  // only the protocol can see: wording Network Canvas supplies may, until the
+  // researcher writes it (see `findEmptyTextPaths`).
+  it('leaves an object with no translation to the protocol', () => {
+    expect(issuesOf(required, {})).toEqual([]);
   });
 
   it("applies the owning field's rule to every translation", () => {

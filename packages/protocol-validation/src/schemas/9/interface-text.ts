@@ -39,9 +39,9 @@ import { showsAtRiskStatuses } from './stage-wording/narrative-pedigree.ts';
 import { hasEdgeTypes, hasGroups } from './stage-wording/network-composer.ts';
 import { requireSuppliedPlacements } from './supplied-stage-setting.ts';
 import {
+  isStillSupplied,
   type LanguageChange,
   suppliedTextAfterLanguageChange,
-  suppliedLanguageOf,
   suppliedTextFor,
 } from './supplied-text.ts';
 
@@ -568,12 +568,6 @@ export const interfaceTextArguments = (
   return entries[key]?.arguments;
 };
 
-/** Every interface text entry Network Canvas supplies wording for. */
-export const INTERFACE_TEXT_WORDING: readonly InterfaceTextEntry[] =
-  GROUP_NAMES.flatMap((group) =>
-    Object.values<InterfaceTextEntry>(INTERFACE_TEXT_GROUPS[group].entries),
-  );
-
 /**
  * Where the protocol holds each interface text, and the messages of the
  * interview's (or a shared package's) catalog it stands in for: what the
@@ -593,17 +587,14 @@ export const INTERFACE_TEXT_MESSAGES: readonly Readonly<{
 
 /**
  * The text Network Canvas writes for an entry in a protocol language: its
- * supplied wording there, or, in the default language when it supplies none,
- * the English wording, since every entry the protocol holds is required (the
- * rule for every supplied setting; see `supplied-stage-text.ts`).
+ * wording in exactly that language, and none in any other. An entry with no
+ * wording in the default language must be written there before the protocol
+ * leaves its editor (`findBuiltInWordingProblems`).
  */
 const writtenIn = (
   entry: InterfaceTextEntry,
   locale: LocaleTag,
-  isDefault: boolean,
-): string | undefined =>
-  suppliedTextFor(entry.message, locale) ??
-  (isDefault ? entry.message.en : undefined);
+): string | undefined => suppliedTextFor(entry.message, locale);
 
 const suppliedValue = (
   entry: InterfaceTextEntry,
@@ -611,11 +602,7 @@ const suppliedValue = (
 ): LocalizedString => {
   const value: Record<LocaleTag, string> = {};
   for (const locale of localization.locales) {
-    const text = writtenIn(
-      entry,
-      suppliedLanguageOf(localization, locale),
-      locale === localization.defaultLocale,
-    );
+    const text = writtenIn(entry, locale);
     if (text !== undefined) value[locale] = text;
   }
   return value;
@@ -709,14 +696,10 @@ export const interfaceTextAfterLanguageChange = (
     Object.entries(INTERFACE_TEXT_GROUPS[group].entries).flatMap(
       ([key, entry]: [string, InterfaceTextEntry]) => {
         const value = text[group]?.[key];
+        const supplied = (locale: LocaleTag) => writtenIn(entry, locale);
         if (
-          value?.[defaultLocale] === undefined ||
-          value[defaultLocale] !==
-            writtenIn(
-              entry,
-              suppliedLanguageOf(change.before, defaultLocale),
-              true,
-            )
+          value === undefined ||
+          !isStillSupplied(value, supplied, defaultLocale)
         ) {
           return [];
         }
@@ -724,11 +707,7 @@ export const interfaceTextAfterLanguageChange = (
           {
             group,
             key,
-            value: suppliedTextAfterLanguageChange(
-              value,
-              (locale, isDefault) => writtenIn(entry, locale, isDefault),
-              change,
-            ),
+            value: suppliedTextAfterLanguageChange(value, supplied, change),
           },
         ];
       },

@@ -283,19 +283,17 @@ describe('a new stage given nothing but a name', () => {
   });
 
   /**
-   * The wording is supplied in the protocol's languages, and a panel title is
-   * required, so a default language Network Canvas has no wording for holds
-   * the English text, for the researcher to translate.
+   * The wording is supplied only in the protocol's languages Network Canvas
+   * has it in exactly, so a default language it has no wording for is left
+   * for the researcher to write.
    */
-  it('writes a roster’s panel title in the protocol’s languages, in English in a default language with no supplied wording', () => {
+  it('writes a roster’s panel title only in the protocol’s languages Network Canvas has it in', () => {
     expect(
       newStageFields('NameGeneratorRoster', {
         defaultLocale: 'hu',
         locales: ['hu', 'fr', 'ja'],
-      }),
-    ).toMatchObject({
-      panelTitle: { hu: 'Available to add', fr: 'Éléments disponibles' },
-    });
+      }).panelTitle,
+    ).toEqual({ fr: 'Éléments disponibles' });
   });
 
   it.each(STAGE_TYPES)('still needs the listed properties on %s', (type) => {

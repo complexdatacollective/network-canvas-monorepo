@@ -8,7 +8,8 @@ import { memoryLocation } from 'wouter/memory-location';
 
 import { createDefaultFinishSessionStage } from '@codaco/protocol-validation';
 
-import FinishStageTextAlert from '../FinishStageTextAlert';
+import DefaultLanguageTextAlert from '../DefaultLanguageTextAlert';
+import { translationTableHref } from '../Localization/translationTableLinks';
 
 const japanese = { defaultLocale: 'ja', locales: ['ja'] };
 
@@ -24,6 +25,14 @@ const newJapaneseProtocol = {
   ],
 };
 
+// Network Canvas has no built-in wording in Japanese, so the researcher writes
+// the finish stage's button and messages too.
+const builtInWording = {
+  finishLabel: { ja: '終了' },
+  finishConfirmation: { ja: 'インタビューを終了しますか?' },
+  finishFailed: { ja: 'インタビューを終了できませんでした。' },
+};
+
 const written = {
   ...newJapaneseProtocol,
   stages: [
@@ -31,6 +40,7 @@ const written = {
       ...newJapaneseProtocol.stages[0],
       content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
       finishedContent: { ja: '# 終了しました' },
+      ...builtInWording,
     },
   ],
 };
@@ -56,14 +66,14 @@ const renderAlert = (present: unknown) => {
       <Router hook={location.hook}>{children}</Router>
     </Provider>
   );
-  render(<FinishStageTextAlert />, { wrapper });
+  render(<DefaultLanguageTextAlert />, { wrapper });
   return { store, location };
 };
 
 const TITLE = 'This protocol can’t be downloaded yet';
 const EDIT_LINK = { name: 'Edit the stage that ends the interview' };
 
-describe('<FinishStageTextAlert />', () => {
+describe('<DefaultLanguageTextAlert />', () => {
   it('explains that a new protocol without closing text cannot be downloaded', () => {
     renderAlert(newJapaneseProtocol);
 
@@ -133,11 +143,37 @@ describe('<FinishStageTextAlert />', () => {
           ...newJapaneseProtocol.stages[0],
           mode: 'automatic',
           finishedContent: { ja: '# 終了しました' },
+          ...builtInWording,
         },
       ],
     });
 
     expect(screen.queryByText(TITLE)).not.toBeInTheDocument();
+  });
+
+  it('then explains that the built-in wording has none in the default language, and links to it', () => {
+    const { location } = renderAlert({
+      ...written,
+      stages: [{ ...written.stages[0], finishLabel: {} }],
+    });
+
+    expect(screen.getByText(TITLE)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Network Canvas has no built-in wording, such as button labels and messages, in Japanese. Translate it into Japanese, or make a language that has built-in wording the default. The protocol can’t be downloaded until then.',
+      ),
+    ).toBeInTheDocument();
+    const link = screen.getByRole('link', {
+      name: 'Show the wording to translate',
+    });
+    expect(link).toHaveAttribute(
+      'href',
+      translationTableHref({ kind: 'language', locale: 'ja' }),
+    );
+    fireEvent.click(link);
+    expect(location.history?.at(-1)).toBe(
+      translationTableHref({ kind: 'language', locale: 'ja' }),
+    );
   });
 
   it('counts only the default language', () => {

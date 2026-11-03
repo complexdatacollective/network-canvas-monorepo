@@ -72,19 +72,19 @@ describe('supplied Family Pedigree option labels', () => {
     ).toEqual({ en: 'Female', fr: 'Féminin' });
   });
 
-  it('falls back to English in a default language Network Canvas supplies no labels in', () => {
+  it('writes no English in a default language Network Canvas supplies no labels in', () => {
     expect(
       suppliedOptionLabels('pedigreeRelationship', 'donor', {
         defaultLocale: 'hu',
         locales: ['hu'],
       }),
-    ).toEqual({ hu: 'Egg or sperm donor' });
+    ).toEqual({});
     expect(
       suppliedOptionLabels('pedigreeRelationship', 'donor', {
         defaultLocale: 'hu',
         locales: ['hu', 'de'],
       }),
-    ).toEqual({ hu: 'Egg or sperm donor', de: 'Eizell- oder Samenspender/in' });
+    ).toEqual({ de: 'Eizell- oder Samenspender/in' });
   });
 
   const SET = 'pedigreeSexAssignedAtBirth';
@@ -123,13 +123,13 @@ describe('supplied Family Pedigree option labels', () => {
     ).toEqual(labelsIn({ en: 'en', es: 'es' }));
   });
 
-  it('fills in a new language while a default language with no supplied labels still has the English ones', () => {
+  it('fills in a new language while a default language with no supplied labels is still unwritten', () => {
     expect(
       relabelled(optionsFor(hungarian), {
         before: hungarian,
         after: { defaultLocale: 'hu', locales: ['hu', 'de'] },
       }),
-    ).toEqual(labelsIn({ hu: 'en', de: 'de' }));
+    ).toEqual(labelsIn({ de: 'de' }));
   });
 
   it('fills in a new language in a protocol created with an unsupported default and a supported language', () => {
@@ -139,7 +139,16 @@ describe('supplied Family Pedigree option labels', () => {
         before: mixed,
         after: { defaultLocale: 'hu', locales: ['hu', 'en', 'de'] },
       }),
-    ).toEqual(labelsIn({ hu: 'en', en: 'en', de: 'de' }));
+    ).toEqual(labelsIn({ en: 'en', de: 'de' }));
+  });
+
+  it('leaves the labels to the researcher once they write them in an unsupported default language', () => {
+    const mixed = { defaultLocale: 'hu', locales: ['hu', 'en'] };
+    const options = optionsFor(mixed).map((option) => ({
+      ...option,
+      label: { ...option.label, hu: `${option.value} (hu)` },
+    }));
+    expect(hasSuppliedOptionLabels(SET, options, mixed)).toBe(false);
   });
 
   it('gives a corrected language its own labels, as when an English protocol migrated from schema 8 is really German', () => {
@@ -152,35 +161,24 @@ describe('supplied Family Pedigree option labels', () => {
     ).toEqual(labelsIn({ de: 'de' }));
   });
 
-  it('keeps English in a corrected default language Network Canvas supplies no labels in', () => {
+  it('removes the English labels from a language corrected to one Network Canvas supplies no labels in', () => {
     expect(
       relabelled(optionsFor(english), {
         before: english,
         after: hungarian,
         renamed: { en: 'hu' },
       }),
-    ).toEqual(labelsIn({ hu: 'en' }));
+    ).toEqual(labelsIn({}));
   });
 
-  it('follows a new default language: English fallback only while a language is the default', () => {
+  it('keeps each language’s own labels when the default language changes', () => {
     const both = { defaultLocale: 'en', locales: ['en', 'hu'] };
     const options = optionsFor(both);
-    const toHungarian = relabelled(options, {
-      before: both,
-      after: { defaultLocale: 'hu', locales: ['en', 'hu'] },
-    });
-    expect(toHungarian).toEqual(labelsIn({ en: 'en', hu: 'en' }));
     expect(
-      relabelled(
-        options.map((option, index) => ({
-          ...option,
-          label: toHungarian![index]!,
-        })),
-        {
-          before: { defaultLocale: 'hu', locales: ['en', 'hu'] },
-          after: both,
-        },
-      ),
+      relabelled(options, {
+        before: both,
+        after: { defaultLocale: 'hu', locales: ['en', 'hu'] },
+      }),
     ).toEqual(labelsIn({ en: 'en' }));
   });
 

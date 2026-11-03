@@ -343,6 +343,14 @@
     "defaultMessage": "Return to start screen",
     "description": "The aria-label text in components / Brand."
   },
+  "architect.builtInWording.missingInDefaultLanguage": {
+    "defaultMessage": "Network Canvas has no built-in wording, such as button labels and messages, in {language}. Translate it into {language}, or make a language that has built-in wording the default. The protocol can’t be downloaded until then.",
+    "description": "Shown while the protocol’s default language is one Network Canvas has no built-in wording in (for example Mexican Spanish or Japanese), so the wording Network Canvas supplies (button labels, messages and similar) has no text in it. The researcher can translate that wording into the language in the translation table, or make another of the protocol’s languages that Network Canvas has wording in (for example Spanish) the default. language is the name of the default language, for example “Spanish (Mexico)”."
+  },
+  "architect.builtInWording.showMissing": {
+    "defaultMessage": "Show the wording to translate",
+    "description": "Link in the notice about built-in wording missing in the protocol’s default language. It opens the translation table showing only the text that has no translation in that language."
+  },
   "architect.chrome.codebook.controlsColumn.deleteAttribute": {
     "defaultMessage": "Delete attribute",
     "description": "Researcher-facing explanatory text in components / Codebook / ControlsColumn."
@@ -1061,7 +1069,7 @@
   },
   "architect.finishStageText.cannotBeDownloadedYet": {
     "defaultMessage": "This protocol can’t be downloaded yet",
-    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language."
+    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, or while Network Canvas’s built-in wording has no text in that language."
   },
   "architect.finishStageText.editFinishStage": {
     "defaultMessage": "Edit the stage that ends the interview",
@@ -1699,6 +1707,22 @@
     "defaultMessage": "{stages, plural, one {# stage} other {# stages}} · {nodes, plural, one {# node type} other {# node types}} · {edges, plural, one {# edge type} other {# edge types}}",
     "description": "Researcher-facing Architect control or feedback."
   },
+  "architect.localization.addBaseLanguage.cancel": {
+    "defaultMessage": "Don’t add {base}",
+    "description": "Button that declines the offer: the regional variant the researcher chose is still added (or the protocol still created in it), without also adding the language it belongs to. base is that language (for example Spanish)."
+  },
+  "architect.localization.addBaseLanguage.confirm": {
+    "defaultMessage": "Add {base}",
+    "description": "Button that also adds the language a regional variant belongs to, as another of the protocol’s languages. base is that language (for example Spanish)."
+  },
+  "architect.localization.addBaseLanguage.description": {
+    "defaultMessage": "Network Canvas has built-in wording, such as button labels and the closing screen, in {base} but not in {language}. If you also add {base}, participants using {language} see the {base} wording wherever you haven’t written your own.{isDefault, select, true { Because {language} is the default language, the protocol can’t be downloaded until its built-in wording is translated into {language}, or {base} is made the default.} other {}}",
+    "description": "Explanation in the question asked when a regional variant of a language Network Canvas has built-in wording in is added to a protocol. language is the added language (for example Mexican Spanish); base is the language it is a variant of (for example Spanish). Adding the base language as a second language lets the interview show its built-in wording in place of any the researcher has not written for the variant. isDefault is true when the added language is the protocol’s default language, whose text must be complete before the protocol can be downloaded."
+  },
+  "architect.localization.addBaseLanguage.title": {
+    "defaultMessage": "Also add {base}?",
+    "description": "Title of the question asked when the researcher adds a language to a protocol that Network Canvas has no built-in wording in, but that is a regional variant of a language it has wording in. base is that language (for example Spanish, when the added language is Mexican Spanish)."
+  },
   "architect.localization.languageActions.addDescription": {
     "defaultMessage": "Participants can take the interview in any of the protocol’s languages. Until you translate the wording into a new language, participants who use it see the closest translation available instead.",
     "description": "Explanation in the dialog that adds languages to a protocol."
@@ -1870,22 +1894,6 @@
   "architect.localization.localizationAlert.showMissing": {
     "defaultMessage": "Show missing translations",
     "description": "Link in the note about missing translations on the stage list. It opens the translation table showing only the localized strings with a translation missing."
-  },
-  "architect.localization.startFromBase.cancel": {
-    "defaultMessage": "Don’t copy",
-    "description": "Button that adds a language without copying the built-in wording of its base language."
-  },
-  "architect.localization.startFromBase.confirm": {
-    "defaultMessage": "Copy {base} wording",
-    "description": "Button that starts an added language from a copy of the built-in wording in its base language. base is that base language (for example Spanish)."
-  },
-  "architect.localization.startFromBase.description": {
-    "defaultMessage": "Network Canvas has built-in wording, such as button labels and the closing screen, in {base} but not in {language}. You can start with a copy of the {base} wording and adapt it to {language}. Participants see it exactly as written, so review it before you use the protocol. {isDefault, select, true {If you don’t copy it, this wording starts in English.} other {If you don’t copy it, this wording starts untranslated in {language}.}}",
-    "description": "Explanation in the question asked when a language is added that Network Canvas has no built-in wording in, but whose base language it has. language is the added language; base is the language it could start from; isDefault is true when the added language is the protocol’s default language, whose wording falls back to English."
-  },
-  "architect.localization.startFromBase.title": {
-    "defaultMessage": "Start {language} from {base}?",
-    "description": "Title of the question asked when a language is added to a protocol that Network Canvas has no built-in wording in, but whose base language it has. language is the added language (for example Mexican Spanish); base is the language it could start from (for example Spanish)."
   },
   "architect.localization.textPlaces.edgeType": {
     "defaultMessage": "Edge type",

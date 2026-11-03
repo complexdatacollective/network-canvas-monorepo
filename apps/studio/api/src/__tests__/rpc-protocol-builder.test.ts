@@ -26,7 +26,7 @@ import {
   ASSETS,
   callerOf,
   EDIT,
-  enUS,
+  inEnglish,
   formFields,
   GRACE,
   setupProtocolBuilderSuite,
@@ -149,7 +149,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId,
           document: Redacted.make({
             ...Redacted.value(before.document),
-            label: enUS('Renamed without the lock'),
+            label: inEnglish('Renamed without the lock'),
           }),
           revision: before.revision,
         }),
@@ -200,7 +200,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     if (held.lock !== 'held') throw new Error('the section was already taken');
     const document = Redacted.make({
       ...Redacted.value(held.document),
-      label: enUS('Renamed by its holder'),
+      label: inEnglish('Renamed by its holder'),
     });
     const written = await call(
       ADA,
@@ -219,7 +219,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('GetSection', { protocolId, sectionId }),
     );
     expect(Redacted.value(read.document).label).toEqual(
-      enUS('Renamed by its holder'),
+      inEnglish('Renamed by its holder'),
     );
     expect(read.revision.sequence).toBe(written.revision.sequence);
 
@@ -249,8 +249,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: enUS('Created by the host'),
-          title: enUS('Created by the host'),
+          label: inEnglish('Created by the host'),
+          title: inEnglish('Created by the host'),
           items: [],
         }),
         position: 1,
@@ -301,8 +301,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: enUS('Created past the end'),
-          title: enUS('Created past the end'),
+          label: inEnglish('Created past the end'),
+          title: inEnglish('Created past the end'),
           items: [],
         }),
         position: orderBefore.length + 5,
@@ -399,14 +399,14 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       Redacted.make({
         type: 'FinishSession',
         mode: 'confirmation',
-        label: enUS(label),
-        content: enUS(`# ${label}\n\nThank you.`),
-        finishedContent: enUS(
+        label: inEnglish(label),
+        content: inEnglish(`# ${label}\n\nThank you.`),
+        finishedContent: inEnglish(
           '# Interview Finished\n\nThank you for participating!',
         ),
-        finishLabel: enUS('Finish'),
-        finishConfirmation: enUS('Finish this interview?'),
-        finishFailed: enUS('The interview could not be finished.'),
+        finishLabel: inEnglish('Finish'),
+        finishConfirmation: inEnglish('Finish this interview?'),
+        finishFailed: inEnglish('The interview could not be finished.'),
         outcome: 'ineligible',
       });
     const before = await call(
@@ -477,8 +477,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       rewrite: (document: Readonly<Record<string, unknown>>) => ({
         id: document.id,
         type: 'Information',
-        label: enUS('No longer the end'),
-        title: enUS('No longer the end'),
+        label: inEnglish('No longer the end'),
+        title: inEnglish('No longer the end'),
         items: [],
       }),
     },
@@ -489,14 +489,14 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         id: document.id,
         type: 'FinishSession',
         mode: 'confirmation',
-        label: enUS('A second end'),
-        content: enUS('# A second end\n\nThank you.'),
-        finishedContent: enUS(
+        label: inEnglish('A second end'),
+        content: inEnglish('# A second end\n\nThank you.'),
+        finishedContent: inEnglish(
           '# Interview Finished\n\nThank you for participating!',
         ),
-        finishLabel: enUS('Finish'),
-        finishConfirmation: enUS('Finish this interview?'),
-        finishFailed: enUS('The interview could not be finished.'),
+        finishLabel: inEnglish('Finish'),
+        finishConfirmation: inEnglish('Finish this interview?'),
+        finishFailed: inEnglish('The interview could not be finished.'),
         outcome: 'completed',
       }),
     },
@@ -830,7 +830,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             sectionId: stage.sectionId,
             document: Redacted.make({
               ...Redacted.value(held.document),
-              label: enUS('Renamed'),
+              label: inEnglish('Renamed'),
             }),
             revision: held.revision,
             promote: {
@@ -884,8 +884,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label: enUS('Never registered'),
-              title: enUS('Never registered'),
+              label: inEnglish('Never registered'),
+              title: inEnglish('Never registered'),
               items: [],
             }),
           }),
@@ -928,8 +928,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     if (staged.status !== 'ok') throw new Error('staging failed');
     const document = Redacted.make({
       type: 'Information',
-      label: enUS('Made once'),
-      title: enUS('Made once'),
+      label: inEnglish('Made once'),
+      title: inEnglish('Made once'),
       items: [],
     });
     const promote = {
@@ -987,7 +987,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       sectionId: stage.sectionId,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: enUS('Saved without a promotion'),
+        label: inEnglish('Saved without a promotion'),
       }),
       revision: held.revision,
     };
@@ -1003,8 +1003,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       kind: 'stage' as const,
       document: Redacted.make({
         type: 'Information',
-        label: enUS('Made without a promotion'),
-        title: enUS('Made without a promotion'),
+        label: inEnglish('Made without a promotion'),
+        title: inEnglish('Made without a promotion'),
         items: [],
       }),
     };
@@ -1041,7 +1041,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       sectionId: stage.sectionId,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: enUS('Saved before the restart'),
+        label: inEnglish('Saved before the restart'),
       }),
       revision: held.revision,
     };
@@ -1156,7 +1156,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Renamed, and hashed as itself'),
+          label: inEnglish('Renamed, and hashed as itself'),
         }),
         revision: held.revision,
       }),
@@ -1423,7 +1423,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       sectionId,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: enUS('Renamed before the removal'),
+        label: inEnglish('Renamed before the removal'),
       }),
       revision: held.revision,
     });
@@ -1447,8 +1447,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       kind: 'stage',
       document: Redacted.make({
         type: 'Information',
-        label: enUS(label),
-        title: enUS(label),
+        label: inEnglish(label),
+        title: inEnglish(label),
         items: [],
       }),
     });

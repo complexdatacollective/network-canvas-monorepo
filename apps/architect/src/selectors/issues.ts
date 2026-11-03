@@ -5,7 +5,6 @@ import {
   collectLocalizedStrings,
   type CurrentProtocol,
   type DynamicValueSite,
-  findFinishStageTextProblems,
   findVariableRoleConflicts,
   type LocaleTag,
   type LocalizedString,
@@ -18,6 +17,7 @@ import {
   RETIRED_MAPBOX_TOKEN_IDS,
   TESTING_MAPBOX_TOKEN,
 } from '~/templates/testingMapboxToken';
+import { findDefaultLanguageTextProblem } from '~/utils/defaultLanguageText';
 
 import { getAllVariablesByUUID } from './codebook';
 import { getIsUsed } from './codebook/isUsed';
@@ -32,8 +32,9 @@ import { getAssetManifest, getCodebook, getProtocol } from './protocol';
  *  - Unused resources (assets in the manifest that are never referenced)
  *  - Unused variables (codebook variables that are never referenced)
  *  - Missing translations (text with no translation in a protocol language)
- *  - A finish stage without its heading or text in the default language,
- *    which unlike the rest stops the protocol being downloaded
+ *  - A finish stage without its heading or text in the default language, or
+ *    built-in wording without text there, which unlike the rest stops the
+ *    protocol being downloaded
  *  - Several languages but no stage where participants choose one
  */
 
@@ -152,16 +153,9 @@ export const getHasVariableRoleConflicts = createSelector(
   (conflicts) => conflicts.length > 0,
 );
 
-/**
- * The finish stage's heading or text missing in the protocol's default
- * language. A new protocol in a language Network Canvas supplies no closing
- * text for starts like this, and a researcher can clear the text later. The
- * protocol can be edited and saved, but not downloaded (`bundleProtocol`).
- */
-export const getFinishStageTextProblem = createSelector(
+export const getDefaultLanguageTextProblem = createSelector(
   [getProtocol],
-  (protocol) =>
-    (protocol ? findFinishStageTextProblems(protocol) : [])[0] ?? null,
+  (protocol) => (protocol ? findDefaultLanguageTextProblem(protocol) : null),
 );
 
 /**
