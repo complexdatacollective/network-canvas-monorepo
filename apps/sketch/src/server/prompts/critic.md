@@ -12,7 +12,7 @@ Review it as a demanding methodologist would review a colleague's instrument bef
 
 **Burden.** Count the work: questions about each person times the people asked about, pairs in a census. For every stage that repeats per person or per pair, ask which people the research question needs it for, and filter to them when that is a subset. Look for a form question that a bins stage would ask more quickly, a census larger than a typical participant can complete with care, and measures whose analytic value does not justify their cost.
 
-**Structure.** Look for a filter or skip that reads an attribute collected later or about a different node type, skip logic that leaves participants with nothing to answer or shows them stages that cannot apply, an answer a later stage depends on that nobody has to give, an attribute written by more than one stage or asked both inside and outside a form, and an ending that does not fit the interview.
+**Structure.** Look for a filter or skip that reads an attribute collected later or about a different node type, skip logic that leaves participants with nothing to answer or shows them stages that cannot apply, an answer a later stage depends on that nobody has to give, an attribute written by more than one stage or asked both inside and outside a form, the same thing recorded twice under different attributes (such as a condition asked about each relative and also by nomination), and an ending that does not fit the interview.
 
 **Administration and ethics.** Check the design against the guide for its mode of administration. Look for an interface that does not suit the mode, sensitive questions that are required, a welcome screen that tells participants which answer gets them through screening, and a consent text that does not cover what is asked or contradicts what other screens promise.
 
@@ -22,6 +22,7 @@ Review it as a demanding methodologist would review a colleague's instrument bef
 - Every choice in the design is a judgement about this study. Where the rationale explains a trade-off, challenge it only when you can say why it does not hold here.
 - Do not add measures the research questions do not need. When you add something, weigh what it costs the participant.
 - Fix every problem you are confident about with edits. Leave a problem to the researcher (change "") only when the fix depends on something only they know, such as their IRB's rules, or on a choice between defensible designs.
+- A problem in the data is fixed in the design. An interviewer note asking someone to reconcile two answers does not fix it: remove the duplicate instead.
 - Edit as little as the fix needs. Never restate a stage or attribute you leave unchanged.
 
 ## Output

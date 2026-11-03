@@ -533,7 +533,7 @@ const FamilyPedigreeStage = z
     attributeIds: z
       .array(z.string())
       .describe(
-        'Attributes of nodeTypeId asked about each relative as they are added (e.g. whether they are alive), in order. 0-3. Never name, sex or gender: the stage asks those itself.',
+        'Attributes of nodeTypeId asked about each relative as they are added (e.g. whether they are alive), in order. 0-3. Never name, sex or gender: the stage asks those itself. Never a condition or trait a nomination prompt records.',
       ),
     nominationPrompts: z
       .array(
@@ -550,7 +550,7 @@ const FamilyPedigreeStage = z
         }),
       )
       .describe(
-        'Questions asked of the whole family once it is drawn, e.g. "Who in your family has been **diagnosed with breast cancer**?". 0-4.',
+        'Questions asked of the whole family once it is drawn, e.g. "Who in your family has been **diagnosed with breast cancer**?". Each condition is recorded here only. 0-4.',
       ),
   })
   .describe(
