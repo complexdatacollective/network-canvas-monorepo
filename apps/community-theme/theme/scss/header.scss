@@ -1,0 +1,30 @@
+// The shared Network Canvas header sits above Discourse's own header, which
+// becomes the forum's bar: the "Community" title, search, sign-in and the
+// user menu. The shared header scrolls away; Discourse's bar stays pinned.
+
+.above-site-header-outlet nc-site-navigation {
+  display: block;
+}
+
+.d-header {
+  border-bottom: 2px solid var(--nc-outline);
+}
+
+.d-header .title a {
+  color: var(--nc-text);
+  text-decoration: none;
+}
+
+// Search, the forum menu and notifications, in the text colour the shared
+// header's controls use rather than Discourse's muted grey.
+.d-header-icons .icon .d-icon {
+  color: var(--nc-text);
+}
+
+.nc-community-title {
+  font-family: var(--nc-heading-font);
+  font-size: var(--font-up-2);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}

@@ -1,0 +1,47 @@
+// Buttons, after the shared Button: the heading face in bold with wide
+// tracking, a low shadow that lifts on hover and presses in on click. Colours
+// come from the --d-button-* variables in variables.scss.
+
+.btn {
+  font-family: var(--nc-heading-font);
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  transition:
+    box-shadow 0.15s,
+    translate 0.15s;
+
+  &.btn-default,
+  &.btn-primary,
+  &.btn-danger,
+  &.btn-success {
+    box-shadow: var(--nc-shadow-sm-base);
+
+    &:not([disabled]):hover {
+      box-shadow: var(--nc-shadow-md-base);
+      translate: 0 -2px;
+    }
+
+    &:not([disabled]):active {
+      box-shadow: none;
+      translate: 0 2px;
+    }
+  }
+
+  // The main call to action in each view is set in capitals, as the shared
+  // Button's raised variant is.
+  &.btn-primary {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+
+    &:not([disabled]):hover,
+    &:not([disabled]):active {
+      translate: none;
+    }
+  }
+}

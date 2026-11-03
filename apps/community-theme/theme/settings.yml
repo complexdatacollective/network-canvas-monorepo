@@ -1,0 +1,3 @@
+site_navigation_script_url:
+  type: string
+  default: 'https://cdn.jsdelivr.net/npm/@codaco/site-navigation-element@1/dist/element.js'

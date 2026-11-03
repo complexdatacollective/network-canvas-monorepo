@@ -887,6 +887,36 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.106.1)(sass@1.106.1)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))
 
+  apps/community-theme:
+    devDependencies:
+      '@codaco/fresco-ui':
+        specifier: workspace:^
+        version: link:../../packages/fresco-ui
+      '@codaco/shared-consts':
+        specifier: workspace:^
+        version: link:../../packages/shared-consts
+      '@codaco/tailwind-config':
+        specifier: workspace:^
+        version: link:../../tooling/tailwind
+      '@codaco/tsconfig':
+        specifier: workspace:^
+        version: link:../../tooling/typescript
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      jszip:
+        specifier: 'catalog:'
+        version: 3.10.2
+      postcss:
+        specifier: ^8.5.31
+        version: 8.5.31
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.106.1)(sass@1.106.1)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))
+
   apps/documentation:
     dependencies:
       '@base-ui/react':
@@ -3449,6 +3479,9 @@ importers:
       '@fontsource-variable/nunito':
         specifier: 'catalog:'
         version: 5.3.0
+      colorjs.io:
+        specifier: 'catalog:'
+        version: 0.7.1
       motion:
         specifier: 'catalog:'
         version: 14.6.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -3465,9 +3498,6 @@ importers:
       '@types/node':
         specifier: ^24.19.2
         version: 24.19.2
-      colorjs.io:
-        specifier: 'catalog:'
-        version: 0.7.1
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -32902,7 +32932,7 @@ snapshots:
 
   unzip-crx-3@0.2.0:
     dependencies:
-      jszip: 3.10.1
+      jszip: 3.10.2
       mkdirp: 0.5.6
       yaku: 0.16.7
 

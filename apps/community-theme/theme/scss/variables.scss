@@ -1,0 +1,95 @@
+// Discourse's design variables, set from the Network Canvas tokens that the
+// generated color_definitions.scss declares as --nc-*. Most of Discourse is
+// drawn from these variables, so setting them restyles it without selectors
+// of our own; the other partials cover only what the variables cannot reach.
+//
+// The --nc-* tokens switch with the colour palette, so nothing here needs a
+// dark-mode branch.
+
+:root {
+  // The shared radius scale (tooling/tailwind/fresco/theme.css) multiplies
+  // one base radius. Only the steps the forum uses are restated here.
+  --nc-radius-xs: calc(var(--nc-radius-base) * 0.25);
+  --nc-radius-sm: calc(var(--nc-radius-base) * 0.5);
+
+  // Discourse derives its muted text and border shades from the palette by
+  // lightening the text colour in HSL, which turns the Network Canvas navy
+  // into a saturated violet that reads as a link. Mixing in OKLab, as the
+  // shared theme derives its own shades, keeps them a muted navy. The steps
+  // follow Discourse's (very-low is nearly the surface, very-high nearly the
+  // text), except that medium, the colour of dates and counts, is mixed to
+  // stay at 4.5:1 or more on the content surface.
+  --primary-very-low: color-mix(in oklab, var(--nc-text) 5%, var(--nc-surface));
+  --primary-low: color-mix(in oklab, var(--nc-text) 12%, var(--nc-surface));
+  --primary-low-mid: color-mix(in oklab, var(--nc-text) 35%, var(--nc-surface));
+  --primary-medium: color-mix(in oklab, var(--nc-text) 64%, var(--nc-surface));
+  --primary-high: color-mix(in oklab, var(--nc-text) 75%, var(--nc-surface));
+  --primary-very-high: color-mix(
+    in oklab,
+    var(--nc-text) 88%,
+    var(--nc-surface)
+  );
+
+  --font-family: var(--nc-body-font);
+  --heading-font-family: var(--nc-heading-font);
+
+  --d-border-radius: var(--nc-radius-xs);
+  --d-border-radius-large: var(--nc-radius-sm);
+  --d-button-border-radius: var(--nc-radius-base);
+  --d-input-border-radius: var(--nc-radius-sm);
+  --d-nav-pill-border-radius: var(--nc-radius-base);
+  --d-tag-border-radius: var(--nc-radius-xs);
+
+  // Content sits on white surfaces over the tinted page, as on the website.
+  --d-content-background: var(--nc-surface);
+  --d-link-color: var(--nc-link);
+
+  --d-input-bg-color: var(--nc-input);
+  --d-input-text-color: var(--nc-input-contrast);
+  --d-input-border: 2px solid var(--nc-outline);
+  --d-input-focused-color: var(--nc-accent);
+
+  // Buttons: the shared Button's default (neutral) and primary colours.
+  --d-button-border: 0 solid transparent;
+  --d-button-default-bg-color: var(--nc-neutral);
+  --d-button-default-bg-color--hover: var(--nc-neutral);
+  --d-button-default-text-color: var(--nc-neutral-contrast);
+  --d-button-default-text-color--hover: var(--nc-neutral-contrast);
+  --d-button-default-icon-color: var(--nc-neutral-contrast);
+  --d-button-default-icon-color--hover: var(--nc-neutral-contrast);
+
+  --d-button-primary-bg-color: var(--nc-primary);
+  --d-button-primary-bg-color--hover: var(--nc-primary);
+  --d-button-primary-text-color: var(--nc-primary-contrast);
+  --d-button-primary-text-color--hover: var(--nc-primary-contrast);
+  --d-button-primary-icon-color: var(--nc-primary-contrast);
+  --d-button-primary-icon-color--hover: var(--nc-primary-contrast);
+
+  --d-button-danger-bg-color: var(--nc-destructive);
+  --d-button-danger-bg-color--hover: var(--nc-destructive);
+  --d-button-danger-text-color: var(--nc-destructive-contrast);
+  --d-button-danger-text-color--hover: var(--nc-destructive-contrast);
+  --d-button-danger-icon-color: var(--nc-destructive-contrast);
+  --d-button-danger-icon-color--hover: var(--nc-destructive-contrast);
+
+  --d-button-success-bg-color: var(--nc-success);
+  --d-button-success-bg-color--hover: var(--nc-success);
+  --d-button-success-text-color: var(--nc-success-contrast);
+  --d-button-success-text-color--hover: var(--nc-success-contrast);
+  --d-button-success-icon-color: var(--nc-success-contrast);
+  --d-button-success-icon-color--hover: var(--nc-success-contrast);
+
+  --d-button-flat-text-color: var(--nc-link);
+  --d-button-transparent-text-color--hover: var(--nc-link);
+  --d-button-transparent-icon-color--hover: var(--nc-link);
+
+  // Navigation pills (Latest, Top, Categories) and the topic list.
+  --d-nav-color: var(--nc-text);
+  --d-nav-color--hover: var(--nc-link);
+  --d-nav-color--active: var(--nc-link);
+  --d-nav-border-color--active: var(--nc-link);
+  --d-topic-list-header-text-color: var(--nc-text);
+
+  // The page header sits flat on the page, as the shared header does.
+  --shadow-header: none;
+}
