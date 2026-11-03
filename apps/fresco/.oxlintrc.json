@@ -49,9 +49,19 @@
             "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
           },
           {
+            "name": "motion/react",
+            "importNames": ["usePageInView"],
+            "message": "Use usePageActive from @codaco/fresco-ui/pageActivity. Motion's hook reads only tab visibility, so a window left open but unfocused keeps animating."
+          },
+          {
             "name": "framer-motion",
             "importNames": ["useReducedMotion"],
             "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+          },
+          {
+            "name": "framer-motion",
+            "importNames": ["usePageInView"],
+            "message": "Use usePageActive from @codaco/fresco-ui/pageActivity. Motion's hook reads only tab visibility, so a window left open but unfocused keeps animating."
           }
         ]
       }
@@ -121,9 +131,19 @@
                 "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
               },
               {
+                "name": "motion/react",
+                "importNames": ["usePageInView"],
+                "message": "Use usePageActive from @codaco/fresco-ui/pageActivity. Motion's hook reads only tab visibility, so a window left open but unfocused keeps animating."
+              },
+              {
                 "name": "framer-motion",
                 "importNames": ["useReducedMotion"],
                 "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+              },
+              {
+                "name": "framer-motion",
+                "importNames": ["usePageInView"],
+                "message": "Use usePageActive from @codaco/fresco-ui/pageActivity. Motion's hook reads only tab visibility, so a window left open but unfocused keeps animating."
               },
               {
                 "name": "zod",
@@ -158,9 +178,19 @@
                 "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
               },
               {
+                "name": "motion/react",
+                "importNames": ["usePageInView"],
+                "message": "Use usePageActive from @codaco/fresco-ui/pageActivity. Motion's hook reads only tab visibility, so a window left open but unfocused keeps animating."
+              },
+              {
                 "name": "framer-motion",
                 "importNames": ["useReducedMotion"],
                 "message": "Use usePrefersReducedMotion from @codaco/fresco-ui/reducedMotion. Motion's hook reads only the operating system and ignores AnimationProvider's reducedMotion setting."
+              },
+              {
+                "name": "framer-motion",
+                "importNames": ["usePageInView"],
+                "message": "Use usePageActive from @codaco/fresco-ui/pageActivity. Motion's hook reads only tab visibility, so a window left open but unfocused keeps animating."
               }
             ]
           }

@@ -15,6 +15,7 @@
     "check:changesets": "node scripts/release/check-changeset-app-isolation.mjs",
     "check:compat-protocols": "node packages/protocols/scripts/check-compat-packages.mjs",
     "check:dialog-exits": "node scripts/buildtime/check-dialog-exit-animations.mjs",
+    "check:endless-animations": "node scripts/buildtime/check-endless-animations.mjs",
     "check:hydration-flag": "node scripts/buildtime/check-hydration-flag.mjs",
     "check:mapbox-tokens": "node scripts/buildtime/check-mapbox-tokens.mjs",
     "check:reduced-motion": "node scripts/buildtime/check-reduced-motion.mjs",

@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MotionConfig } from 'motion/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
@@ -28,6 +28,35 @@ describe('NodeDropAnimation', () => {
       expect(first).not.toBe('');
       await waitFor(() => expect(moving()).not.toBe(first));
     });
+  });
+
+  it('shows a still frame while its window is not focused, and animates when it returns', async () => {
+    let focused = false;
+    const hasFocus = vi
+      .spyOn(document, 'hasFocus')
+      .mockImplementation(() => focused);
+    try {
+      await withAnimationsEnabled(async () => {
+        render(
+          <MotionConfig reducedMotion="never">
+            <NodeDropAnimation />
+          </MotionConfig>,
+        );
+        expect(screen.getByTestId('node-drop-animation')).toHaveAttribute(
+          'data-still',
+        );
+
+        await act(async () => {
+          focused = true;
+          window.dispatchEvent(new Event('focus'));
+        });
+        expect(screen.getByTestId('node-drop-animation')).not.toHaveAttribute(
+          'data-still',
+        );
+      });
+    } finally {
+      hasFocus.mockRestore();
+    }
   });
 
   it('shows a still frame when motion is reduced', () => {

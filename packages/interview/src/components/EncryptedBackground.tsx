@@ -3,6 +3,8 @@
 import isChromatic from 'chromatic/isChromatic';
 import { useEffect, useRef, useState } from 'react';
 
+import { usePageActive } from '@codaco/fresco-ui/pageActivity';
+
 type Stream = {
   id: number;
   word: string;
@@ -273,6 +275,7 @@ const EncryptionBackground = ({
 
   const animationFrameRef = useRef<number>(undefined);
   const lastUpdateTimeRef = useRef<number>(0);
+  const pageActive = usePageActive();
 
   useEffect(() => {
     // Chromatic gets the deterministic seed above and no animation loop, so
@@ -280,6 +283,10 @@ const EncryptionBackground = ({
     if (isChromatic()) {
       return undefined;
     }
+    // The streams fall for as long as the page is in front of the user and
+    // hold still otherwise; the clock restarts when the loop does, so they
+    // resume without a jump.
+    if (!pageActive) return undefined;
 
     const updateStreams = (currentTime: number) => {
       const timeDelta = currentTime - lastUpdateTimeRef.current;
@@ -376,7 +383,7 @@ const EncryptionBackground = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [thresholdPosition]);
+  }, [thresholdPosition, pageActive]);
 
   return (
     <div

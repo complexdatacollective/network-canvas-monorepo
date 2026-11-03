@@ -2,6 +2,10 @@
 
 import { type CSSProperties, useEffect, useMemo, useRef } from 'react';
 
+import {
+  isPageActive,
+  subscribeToPageActivity,
+} from '@codaco/fresco-ui/pageActivity';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 import { defaultGradients } from '../BackgroundBlobs/BackgroundBlobs';
@@ -255,6 +259,8 @@ const BackgroundLights = ({
       return () => resizeObserver.disconnect();
     }
 
+    // The lights drift for as long as the page is in front of the user and
+    // hold still otherwise, resuming from where they stopped.
     let raf = 0;
     let last: number | null = null;
     const tick = (time: number) => {
@@ -277,10 +283,27 @@ const BackgroundLights = ({
       last = time;
       raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
+    const start = () => {
+      if (raf !== 0) return;
+      // The first frame after a pause moves nothing, so the lights do not jump
+      // by the time they spent paused.
+      last = null;
+      raf = requestAnimationFrame(tick);
+    };
+    const stop = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    };
+
+    if (isPageActive()) start();
+    const unsubscribe = subscribeToPageActivity((active) => {
+      if (active) start();
+      else stop();
+    });
 
     return () => {
-      cancelAnimationFrame(raf);
+      unsubscribe();
+      stop();
       resizeObserver.disconnect();
     };
   }, [lights, reduceMotion]);

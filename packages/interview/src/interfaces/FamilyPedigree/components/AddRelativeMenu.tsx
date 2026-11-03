@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { MotionButton } from '@codaco/fresco-ui/Button';
+import { usePageActive } from '@codaco/fresco-ui/pageActivity';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -111,6 +112,10 @@ export default function AddRelativeMenu({
   // Drawn at the anchor's size and zoomed as it is, so the buttons sit
   // around the symbol exactly as they would inside the family.
   const placed = useRef<HTMLDivElement>(null);
+  // Following the anchor is per-frame work with no end, so it runs only while
+  // the page is in front of the participant; the menu is placed again the
+  // moment the page returns.
+  const pageActive = usePageActive();
   useLayoutEffect(() => {
     const element = placed.current;
     if (!element || !layer || !anchor) return undefined;
@@ -130,11 +135,11 @@ export default function AddRelativeMenu({
         element.style.height = `${height}px`;
         element.style.transform = transform;
       }
-      frame = requestAnimationFrame(place);
+      if (pageActive) frame = requestAnimationFrame(place);
     };
     place();
     return () => cancelAnimationFrame(frame);
-  }, [layer, anchor]);
+  }, [layer, anchor, pageActive]);
 
   if (!layer || !anchor) return null;
 

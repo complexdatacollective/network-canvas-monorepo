@@ -4,6 +4,7 @@ import { type Easing, motion } from 'motion/react';
 import { useId } from 'react';
 
 import { useShouldSkipAnimations } from './hooks/useSafeAnimate';
+import { usePageActive } from './pageActivity';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const DURATION = 3.4;
@@ -192,14 +193,17 @@ type NodeDropAnimationProps = {
  * dropped. Use it on an empty drop target to show that people can be dropped
  * there. It takes its colours from the surrounding text colour and the
  * theme's accent, and is hidden from assistive technology, so pair it with
- * text that says what to do. With reduced motion it shows a still frame of
- * the node held in the lit zone.
+ * text that says what to do. With reduced motion, and while the page is not in
+ * front of the user, it shows a still frame of the node held in the lit zone.
  */
 export default function NodeDropAnimation({
   size,
   className,
 }: NodeDropAnimationProps) {
   const skipAnimations = useShouldSkipAnimations();
+  // The loop never ends, so it plays only while the page is in front of the
+  // user.
+  const pageActive = usePageActive();
   // The node and pointer fade in through the top edge as they arrive.
   const id = useId().replace(/[^a-zA-Z0-9-]/g, '');
   const fadeId = `node-drop-fade-${id}`;
@@ -212,7 +216,7 @@ export default function NodeDropAnimation({
     'className': cx(nodeDropVariants({ size }), className),
   } as const;
 
-  if (skipAnimations) {
+  if (skipAnimations || !pageActive) {
     return (
       <svg {...svgProps} data-still="">
         <Zone filled />

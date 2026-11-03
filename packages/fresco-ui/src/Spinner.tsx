@@ -4,6 +4,7 @@ import { motion, useAnimationControls } from 'motion/react';
 import { useEffect, useRef } from 'react';
 
 import { useShouldSkipAnimations } from './hooks/useSafeAnimate';
+import { usePageActive } from './pageActivity';
 import { type CSSVariablesStyle } from './utils/cssVariables';
 import { cva, cx, type VariantProps } from './utils/cva';
 
@@ -137,6 +138,9 @@ export default function Spinner({
   // animate" in reduced-motion mode, so we bail out entirely.
   //
   const shouldReduceMotion = useShouldSkipAnimations();
+  // An infinite spinner stops while the page is not in front of the user and
+  // starts a fresh cycle when it returns.
+  const pageActive = usePageActive();
 
   const containerControls = useAnimationControls();
   const halfCircleControls = [
@@ -206,6 +210,7 @@ export default function Spinner({
   // Handle automatic animation modes (infinite, once, controlled)
   useEffect(() => {
     if (shouldReduceMotion) return undefined;
+    if (shouldLoop && !pageActive) return undefined;
     // Skip if playOnMount will handle the initial animation and mode is 'once'
     if (playOnMount && animationMode === 'once') return undefined;
 
@@ -235,7 +240,7 @@ export default function Spinner({
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationMode, isAnimating, shouldLoop, shouldReduceMotion]);
+  }, [animationMode, isAnimating, shouldLoop, shouldReduceMotion, pageActive]);
 
   // Handle hover mode - play one full cycle (skip if already animating)
   const handleHoverStart = () => {

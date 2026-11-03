@@ -5,6 +5,7 @@ import { type ReactNode, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import { surfaceVariants } from '../../../layout/Surface';
+import { usePageActive } from '../../../pageActivity';
 import { usePortalContainer } from '../../../PortalContainer';
 import { usePrefersReducedMotion } from '../../../reducedMotion';
 import { cx } from '../../../utils/cva';
@@ -28,6 +29,10 @@ export default function ScaleValuePopover({
   const container = usePortalContainer();
   const reduceMotion = usePrefersReducedMotion();
   const positionerRef = useRef<HTMLDivElement>(null);
+  // Following the thumb is per-frame work with no end, so it runs only while
+  // the page is in front of the user; the bubble is placed again the moment
+  // the page returns.
+  const pageActive = usePageActive();
 
   useLayoutEffect(() => {
     if (!visible || !anchor) return undefined;
@@ -49,11 +54,11 @@ export default function ScaleValuePopover({
         positioner.style.left = `${rect.left + rect.width / 2 - originX}px`;
         positioner.style.top = `${rect.top - originY}px`;
       }
-      frame = requestAnimationFrame(track);
+      if (pageActive) frame = requestAnimationFrame(track);
     };
     track();
     return () => cancelAnimationFrame(frame);
-  }, [visible, anchor]);
+  }, [visible, anchor, pageActive]);
 
   const target =
     container ?? (typeof document === 'undefined' ? null : document.body);

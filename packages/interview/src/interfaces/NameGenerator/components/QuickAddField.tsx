@@ -18,6 +18,7 @@ import {
   type NodeColorSequence,
   truncateNodeLabel,
 } from '@codaco/fresco-ui/Node';
+import { usePageActive } from '@codaco/fresco-ui/pageActivity';
 import {
   Tooltip,
   TooltipContent,
@@ -92,6 +93,25 @@ type QuickAddFieldProps = {
    */
   validationContext?: ValidationContext;
 } & Partial<ValidationPropsCatalogue>;
+
+// One of three dots that bounce in turn while the field waits for a name. The
+// bounce never ends, so it runs only while the page is in front of the
+// participant.
+function WaitingDot({ index }: { index: number }) {
+  const pageActive = usePageActive();
+  return (
+    <motion.div
+      className="size-2.5 rounded-full bg-white"
+      animate={{ y: pageActive ? [0, -6, 0] : 0 }}
+      transition={{
+        duration: 0.6,
+        repeat: pageActive ? Number.POSITIVE_INFINITY : 0,
+        delay: index * 0.15,
+        ease: 'easeInOut',
+      }}
+    />
+  );
+}
 
 export default function QuickAddField({
   placeholder,
@@ -397,17 +417,7 @@ export default function QuickAddField({
                     ) : (
                       <div className="flex items-center gap-1.5">
                         {[0, 1, 2].map((i) => (
-                          <motion.div
-                            key={i}
-                            className="size-2.5 rounded-full bg-white"
-                            animate={{ y: [0, -6, 0] }}
-                            transition={{
-                              duration: 0.6,
-                              repeat: Number.POSITIVE_INFINITY,
-                              delay: i * 0.15,
-                              ease: 'easeInOut',
-                            }}
-                          />
+                          <WaitingDot key={i} index={i} />
                         ))}
                       </div>
                     )}
