@@ -230,8 +230,9 @@ function toYaml(value: { [key: string]: YamlValue }, depth = 0): string[] {
  * The theme's translations for each language the Network Canvas sites are
  * translated into, keyed by Discourse locale. The forum's title is the shared
  * header's own "Community" label, so the forum and the header say the same
- * word in every language; the landing page's copy comes from the app-i18n
- * catalogs in `locales/`.
+ * word in every language, and the site's links in the forum's menu
+ * (`site.*`, lib/site-links.js) carry the header's labels for them; the
+ * landing page's copy comes from the app-i18n catalogs in `locales/`.
  */
 export function themeStrings() {
   return Object.entries(SITE_LOCALES).map(([discourseLocale, siteLocale]) => {
@@ -240,8 +241,23 @@ export function themeStrings() {
         `${discourseLocale} maps to unknown site locale ${siteLocale}`,
       );
     }
+    const header = siteNavigationMessages[siteLocale];
     const strings: { [key: string]: YamlValue } = {
-      community: siteNavigationMessages[siteLocale].community,
+      community: header.community,
+      site: {
+        home: header.home,
+        documentation: header.documentation,
+        updates: header.updates,
+        protocolGallery: header.protocolGallery,
+        getStarted: header.getStarted,
+        software: header.software,
+        softwareLinks: Object.fromEntries(
+          Object.entries(header.softwareLinks).map(([id, { name }]) => [
+            id,
+            name,
+          ]),
+        ),
+      },
       ...nest(landingMessages(siteLocale), siteLocale),
     };
     if (discourseLocale === 'en') strings.theme_metadata = THEME_METADATA;

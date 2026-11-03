@@ -51,9 +51,13 @@
     "defaultMessage": "Visit the documentation",
     "description": "Link to the Network Canvas documentation website."
   },
-  "communityTheme.landing.docs.text": {
-    "defaultMessage": "Looking for step-by-step guides? The documentation covers building protocols, running interviews and exporting data.",
-    "description": "Note under the category cards pointing to the Network Canvas documentation website."
+  "communityTheme.landing.docs.body": {
+    "defaultMessage": "The documentation covers building protocols, running interviews and exporting data.",
+    "description": "Text under that heading saying what the Network Canvas documentation website covers."
+  },
+  "communityTheme.landing.docs.title": {
+    "defaultMessage": "Looking for step-by-step guides?",
+    "description": "Heading of the card under the category cards that points to the Network Canvas documentation website."
   },
   "communityTheme.landing.hero.lead": {
     "defaultMessage": "Ask a question, suggest an improvement, or talk about network research with people who use Network Canvas in their studies.",

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import { siteNavigationMessages } from '@codaco/fresco-ui/navigation/SiteNavigation.messages';
@@ -7,7 +9,6 @@ import {
   toScriptMatchingTag,
 } from '@codaco/shared-consts';
 import {
-  buildScopes,
   contrastRatio,
   parseColor,
   type Scope,
@@ -15,12 +16,17 @@ import {
 } from '@codaco/tailwind-config/theme-colors';
 
 import {
+  SOFTWARE_LINKS,
+  siteLinks,
+} from '../../theme/javascripts/discourse/lib/site-links.js';
+import {
   SITE_LOCALES,
   siteLocaleFor,
 } from '../../theme/javascripts/discourse/lib/site-locale.js';
 import { themeStrings, toDiscourseMessage } from '../locales.ts';
 import landingCatalog from '../locales/en.json';
 import { PALETTE_NAMES } from '../palette.ts';
+import { forumScopes } from '../scopes.ts';
 import { buildTheme } from '../theme.ts';
 
 const files = buildTheme();
@@ -56,7 +62,8 @@ describe('design tokens', () => {
       );
     const darkTokens = declared(dark);
     const lightTokens = declared(light);
-    // Tokens a partial derives from the generated ones (the radius steps).
+    // Tokens a partial derives from the generated ones (the radius steps and
+    // the forum bar's colour).
     const derived = new Set(
       stylesheets.flatMap((file) => [...declared(file.contents.toString())]),
     );
@@ -101,30 +108,26 @@ describe('palettes', () => {
   });
 
   // Text and links over what they sit on, at WCAG AA for normal text: the
-  // content sheet, menus and dialogs (secondary), the header bar, and the
-  // page around the sheet (--background), where the sidebar's links sit.
+  // content sheet, menus and dialogs (secondary), the header bar, the page
+  // around the sheet (--background), where the sidebar's links sit, and the
+  // tint of hovered rows and the home page's tiles (--surface-2). The shared
+  // contrast test (tooling/tailwind) does not check link pairs, and the
+  // design system's dark link falls short on three of these, so the forum
+  // lightens it (scopes.ts).
   const PAIRS = [
     ['primary', 'secondary'],
     ['tertiary', 'secondary'],
     ['header_primary', 'header_background'],
     ['primary', '--background'],
     ['tertiary', '--background'],
+    ['primary', '--surface-2'],
+    ['tertiary', '--surface-2'],
   ] as const;
 
-  // The dark palette's link colour is the design system's own dark --link,
-  // which falls short of 4.5:1 on the dark surface and background; the
-  // shared contrast test (tooling/tailwind) does not check link pairs. Each
-  // is pinned to its measured ratio, so a change to either colour fails here
-  // and gets looked at.
-  const KNOWN_SHORTFALLS: Record<string, number> = {
-    'Network Canvas Dark: tertiary on secondary': 4.13,
-    'Network Canvas Dark: tertiary on --background': 4.31,
-  };
-
-  const scopes = buildScopes();
+  const scopes = forumScopes();
   const SCOPE_FOR: Record<string, Scope> = {
-    [PALETTE_NAMES.light]: scopes['default-light'],
-    [PALETTE_NAMES.dark]: scopes['default-dark'],
+    [PALETTE_NAMES.light]: scopes.light,
+    [PALETTE_NAMES.dark]: scopes.dark,
   };
 
   it('paints content in the colour of the sheet it sits on', () => {
@@ -159,7 +162,7 @@ describe('palettes', () => {
         if (ratio < 4.5) shortfalls[pair] = Math.round(ratio * 100) / 100;
       }
     }
-    expect(shortfalls).toEqual(KNOWN_SHORTFALLS);
+    expect(shortfalls).toEqual({});
   });
 
   it.each(['medium', 'high', 'very-high'])(
@@ -390,5 +393,72 @@ describe('languages', () => {
     expect(() =>
       toDiscourseMessage('{kind, select, a {A} other {B}}', 'select'),
     ).toThrow(/plain text/);
+  });
+});
+
+// Where the shared header is hidden (header.scss), the forum's menu carries
+// its links (lib/site-links.js). The theme cannot import the header at
+// runtime, so it repeats the header's addresses, which are held here to the
+// header's source.
+describe("the forum menu's links to the site", () => {
+  const header = readFileSync(
+    new URL(
+      '../../../../packages/fresco-ui/src/navigation/SiteNavigation.tsx',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const destinations = new Map(
+    [
+      ...(
+        /const destinations = \{([\s\S]*?)\} as const;/.exec(header)?.[1] ?? ''
+      ).matchAll(/(\w+):\s*'([^']+)'/g),
+    ].map((match) => [match[1], match[2]]),
+  );
+
+  it('links each piece of software where the shared header does', () => {
+    expect(destinations.size).toBeGreaterThan(5);
+    for (const { name, href } of SOFTWARE_LINKS) {
+      expect(href, name).toBe(destinations.get(name));
+    }
+  });
+
+  it('links the site’s pages where the shared header does', () => {
+    const links = Object.fromEntries(
+      siteLinks('de').map(({ name, href }) => [name, href]),
+    );
+    const website = destinations.get('networkCanvas');
+    expect(links.home).toBe(website);
+    expect(links.documentation).toBe(destinations.get('documentation'));
+    expect(links['protocol-gallery']).toBe(destinations.get('protocolGallery'));
+    // The header builds these two from the website's address for a site
+    // other than the website itself.
+    expect(header).toContain('`/${locale}/updates/`');
+    expect(links.updates).toBe(`${website}de/updates/`);
+    expect(header).toContain(
+      "appendPath(destinations.networkCanvas, '/download')",
+    );
+    expect(links['get-started']).toBe(`${website}download`);
+  });
+
+  it('labels every link with the shared header’s words, in every language', () => {
+    for (const { discourseLocale, strings } of themeStrings()) {
+      const site = strings.site;
+      if (typeof site !== 'object')
+        throw new Error(`${discourseLocale}: no site strings`);
+      for (const { label } of siteLinks('en-US')) {
+        expect(site[label], `${discourseLocale}: ${label}`).toEqual(
+          expect.any(String),
+        );
+      }
+      const software = site.softwareLinks;
+      if (typeof software !== 'object')
+        throw new Error(`${discourseLocale}: no software names`);
+      for (const { name } of SOFTWARE_LINKS) {
+        expect(software[name], `${discourseLocale}: ${name}`).toEqual(
+          expect.any(String),
+        );
+      }
+    }
   });
 });

@@ -1,8 +1,9 @@
 import {
-  buildScopes,
   type Scope,
   toDisplayColor,
 } from '@codaco/tailwind-config/theme-colors';
+
+import { forumScopes } from './scopes.ts';
 
 /**
  * Discourse's colour palette slots, each filled from the Network Canvas token
@@ -71,9 +72,9 @@ function paletteFor(scope: Scope): DiscoursePalette {
 
 /** The light and dark palettes, keyed by the names Discourse shows. */
 export function discoursePalettes(): Record<string, DiscoursePalette> {
-  const scopes = buildScopes();
+  const scopes = forumScopes();
   return {
-    [PALETTE_NAMES.light]: paletteFor(scopes['default-light']),
-    [PALETTE_NAMES.dark]: paletteFor(scopes['default-dark']),
+    [PALETTE_NAMES.light]: paletteFor(scopes.light),
+    [PALETTE_NAMES.dark]: paletteFor(scopes.dark),
   };
 }

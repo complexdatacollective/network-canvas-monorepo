@@ -273,7 +273,9 @@ export default class LandingPage extends Component {
                 </div>
                 <div class="nc-route__body">
                   <h3 class="nc-route__title">
-                    {{i18n (themePrefix route.title)}}
+                    <a href={{route.category.url}}>
+                      {{i18n (themePrefix route.title)}}
+                    </a>
                   </h3>
                   <p class="nc-route__text">
                     {{i18n (themePrefix route.body)}}
@@ -332,13 +334,19 @@ export default class LandingPage extends Component {
             />
           </section>
         {{/if}}
-        <aside class="nc-landing__tile nc-landing__tile--docs">
+        <aside
+          class="nc-landing__tile nc-landing__tile--docs"
+          aria-labelledby="nc-landing-docs"
+        >
           <div class="nc-landing__icon">
             <DocsIcon />
           </div>
-          <p class="nc-landing__tile-body">
-            {{i18n (themePrefix "landing.docs.text")}}
-          </p>
+          <div class="nc-landing__tile-body">
+            <h2 id="nc-landing-docs" class="nc-landing__tile-title">
+              {{i18n (themePrefix "landing.docs.title")}}
+            </h2>
+            <p>{{i18n (themePrefix "landing.docs.body")}}</p>
+          </div>
           <a class="btn btn-default" href={{settings.documentation_url}}>
             {{i18n (themePrefix "landing.docs.action")}}
           </a>

@@ -124,12 +124,18 @@ export const landingMessages = defineMessages({
     description:
       'Small label above the title of the newest topic in a category, on that category’s card.',
   },
-  docsText: {
-    id: 'communityTheme.landing.docs.text',
-    defaultMessage:
-      'Looking for step-by-step guides? The documentation covers building protocols, running interviews and exporting data.',
+  docsTitle: {
+    id: 'communityTheme.landing.docs.title',
+    defaultMessage: 'Looking for step-by-step guides?',
     description:
-      'Note under the category cards pointing to the Network Canvas documentation website.',
+      'Heading of the card under the category cards that points to the Network Canvas documentation website.',
+  },
+  docsBody: {
+    id: 'communityTheme.landing.docs.body',
+    defaultMessage:
+      'The documentation covers building protocols, running interviews and exporting data.',
+    description:
+      'Text under that heading saying what the Network Canvas documentation website covers.',
   },
   docsAction: {
     id: 'communityTheme.landing.docs.action',

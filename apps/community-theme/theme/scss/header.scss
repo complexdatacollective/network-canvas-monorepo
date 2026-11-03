@@ -1,18 +1,24 @@
 // The shared Network Canvas header sits above Discourse's own header, which
 // becomes the forum's bar: the "Community" title, search, sign-in and the
 // user menu. The shared header scrolls away; Discourse's bar stays pinned.
+//
+// The bar is a slim band a step darker than the page and ruled off from the
+// header above, with a smaller title and quieter controls, so it reads as
+// the forum's toolbar under the site's menu rather than a second menu of the
+// same weight.
+
+:root {
+  --nc-forum-bar: color-mix(in oklab, var(--nc-text) 4%, var(--nc-background));
+}
 
 .d-header {
-  border-bottom: 2px solid var(--nc-outline);
+  height: 3.5rem;
+  border-block: 1px solid color-mix(in oklab, var(--nc-text) 9%, transparent);
+  background-color: var(--nc-forum-bar);
+  box-shadow: none;
 }
 
-// The home page has no sheet for the rule to set the bar apart from.
-body.nc-landing-page .d-header {
-  border-bottom-color: transparent;
-}
-
-// Beside Sign up, Log in is a text button and comes first, so the bar has one
-// filled action, as the shared header above it has.
+// Beside Sign up, Log in is a text button and comes first.
 .d-header .auth-buttons:has(.sign-up-button) .login-button {
   --d-button-primary-bg-color: transparent;
   --d-button-primary-bg-color--hover: color-mix(
@@ -29,21 +35,108 @@ body.nc-landing-page .d-header {
   box-shadow: none;
 }
 
+// Sign up takes the default button's colours: the shared header's "Get
+// started" is the one filled button at the top of the page.
+.d-header .auth-buttons .sign-up-button {
+  --d-button-primary-bg-color: var(--d-button-default-bg-color);
+  --d-button-primary-bg-color--hover: var(--d-button-default-bg-color--hover);
+  --d-button-primary-text-color: var(--d-button-default-text-color);
+  --d-button-primary-text-color--hover: var(
+    --d-button-default-text-color--hover
+  );
+}
+
 .d-header .title a {
   color: var(--nc-text);
   text-decoration: none;
 }
 
 // Search, the forum menu and notifications, in the text colour the shared
-// header's controls use rather than Discourse's muted grey.
+// header's controls use rather than Discourse's muted grey, a step smaller
+// than Discourse's to suit the slimmer bar.
 .d-header-icons .icon .d-icon {
   color: var(--nc-text);
+  font-size: var(--font-up-1);
 }
 
 .nc-community-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   font-family: var(--nc-heading-font);
-  font-size: var(--font-up-2);
+  font-size: var(--nc-text-lg);
   font-weight: 900;
   letter-spacing: -0.01em;
   white-space: nowrap;
+}
+
+.nc-community-title__mark {
+  flex: none;
+  width: 1.375em;
+  height: 1.375em;
+  fill: none;
+  stroke: var(--nc-accent);
+  stroke-linejoin: round;
+  stroke-width: 2.25;
+}
+
+.nc-site-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-right: var(--space-3);
+  padding-right: var(--space-3);
+  border-right: 1px solid color-mix(in oklab, var(--nc-text) 15%, transparent);
+
+  svg {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+// Below 65rem the shared header folds its links into a menu of its own (at
+// 64rem of its width, which is the window's less any scrollbar), which would
+// put a second menu button above the forum's. There the forum's bar is the
+// page's only header: the Network Canvas mark (components/site-mark.gjs)
+// leads it in place of the bubble, and the site's links are at the foot of
+// the forum's menu (components/site-menu.gjs). Wider, the mark and those
+// links go.
+@media (width < 65rem) {
+  nc-site-navigation,
+  .nc-community-title__mark {
+    display: none;
+  }
+
+  .d-header {
+    border-top: 0;
+  }
+}
+
+@media (width >= 65rem) {
+  .nc-site-mark,
+  .nc-site-menu {
+    display: none;
+  }
+}
+
+// On a phone, "Log in" in some languages ("Iniciar sesión") leaves no room
+// for the forum's name, so the button shows only its icon, like search and
+// the menu beside it; its label stays as its accessible name.
+@media (width < 40rem) {
+  .d-header .auth-buttons .btn.login-button {
+    padding-inline: var(--space-2);
+
+    .d-button-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .d-icon {
+      font-size: var(--font-up-1);
+    }
+  }
 }

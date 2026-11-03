@@ -13,7 +13,8 @@ html {
 }
 
 // Discourse paints its full-page log-in, sign-up and account screens, header
-// included, in the content colour; they keep the tinted page here too.
+// included, in the content colour; they keep the tinted page and the
+// forum's bar (header.scss) here too.
 body:is(
   .login-page,
   .signup-page,
@@ -24,7 +25,7 @@ body:is(
   background-color: var(--nc-background);
 
   .d-header {
-    background-color: var(--nc-background);
+    background-color: var(--nc-forum-bar);
   }
 }
 

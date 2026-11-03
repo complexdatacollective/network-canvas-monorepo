@@ -9,8 +9,12 @@ site header above Discourse's own.
 
 - **Shared header.** Renders `<nc-site-navigation>` from
   `@codaco/site-navigation-element` above Discourse's header, in the forum's
-  language and colour mode. Discourse's header becomes the forum's bar, titled
-  "Community" in the visitor's language (the shared header's own word for it).
+  language and colour mode. Discourse's header becomes the forum's bar: a slim
+  band titled "Community" in the visitor's language (the shared header's own
+  word for it), with sign-in, search and the forum's menu. Below 65rem, where
+  the shared header would fold into a second menu, it is hidden: the bar leads
+  with the Network Canvas mark, and the site's links (in the shared header's
+  words) end the forum's menu.
 - **Design tokens.** Every token of the default Network Canvas theme is
   declared as `--nc-*` (light and dark), and Discourse's variables are set from
   them: fonts, its text sizes, radii, buttons, inputs, links and its muted
@@ -21,9 +25,10 @@ site header above Discourse's own.
   the apps load.
 - **Home page.** Replaces the forum's front page (`/`; the topic list moves to
   `/latest`) with a page that sends people to the right category. It shows a
-  card for each of help, feature requests, general discussion and
-  announcements, with that category's newest topic. It also shows the latest
-  discussions, a small network of who posted in them, and the forum's totals.
+  card for each of help, feature requests and general discussion, with that
+  category's newest topic, then the announcements and the documentation. It
+  also shows the latest discussions, a small network of who posted in them,
+  and the forum's totals.
   Its illustrations are inline SVG drawn in the websites' style.
 
 ## Where things come from
@@ -108,12 +113,12 @@ The home page finds its categories by slug, through the settings
 `help_category`, `ideas_category`, `conversation_category` and
 `news_category`; the defaults are the current forum's. A card whose category
 cannot be found, or that the visitor cannot see, is left out.
-`documentation_url` is where the note under the cards points.
+`documentation_url` is where the documentation tile's button points.
 
-## Known shortfall
+## Dark links
 
-The dark palette's link colour is the design system's own dark `--link`, which
-measures 4.31:1 on the dark page and 4.13:1 on the dark content surface,
-under the 4.5:1 WCAG AA asks of normal text. The test pins both ratios so a
-change to either colour is noticed. The shared contrast test in
-`tooling/tailwind` does not check link colours.
+The design system's dark `--link` measures 4.13:1 on the dark content surface
+and 3.49:1 on `--surface-2`, under the 4.5:1 WCAG AA asks of normal text. The
+forum lightens it (`src/scopes.ts`), for the palette and the `--nc-*` tokens
+alike, to 5:1 or more on everything links sit on; the tests hold every pair.
+The shared contrast test in `tooling/tailwind` does not check link colours.

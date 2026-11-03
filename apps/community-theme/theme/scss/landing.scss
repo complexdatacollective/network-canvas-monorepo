@@ -264,6 +264,8 @@
   }
 }
 
+// Each title links to its category's topics, in the heading's colour; the
+// underline on hover and focus shows it is a link.
 .nc-route__title {
   margin: 0;
   font-size: var(--nc-text-xl);
@@ -271,6 +273,19 @@
   line-height: var(--nc-text-xl--line-height);
   letter-spacing: var(--nc-text-xl--letter-spacing);
   text-wrap: balance;
+
+  a {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      color: inherit;
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 0.15em;
+    }
+  }
 }
 
 .nc-route__text {
@@ -338,25 +353,29 @@
 }
 
 // The announcements and the documentation: flat tiles on the tint of the
-// page, under the cards that take posts. Their text is the darker muted step
-// and their only links are buttons, because the link colour falls short on
-// this tint in the dark palette.
+// page under the cards that take posts, one to a row, each laid out as a card
+// is: its drawing, its title and text, and its button. Like the cards, the
+// tiles share their list's columns, so the two buttons line up at the width
+// of the longer label; on a narrow page the button drops below the text.
+// Their text is the darker muted step.
 .nc-landing__tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
-  gap: var(--space-6);
+  grid-template-columns: auto minmax(0, 1fr) max-content;
+  gap: var(--space-4) var(--space-5);
   margin-top: calc(var(--nc-spacing-base) * 14);
 
   @container nc-landing (width < 44rem) {
+    grid-template-columns: auto minmax(0, 1fr);
     margin-top: var(--space-10);
   }
 }
 
 .nc-landing__tile {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: var(--space-4) var(--space-5);
+  row-gap: var(--space-4);
   padding: var(--space-6) var(--space-7);
   border-radius: var(--nc-radius-base);
   background: var(--nc-surface-2);
@@ -366,13 +385,22 @@
     height: 3.5rem;
   }
 
+  > .btn {
+    white-space: nowrap;
+  }
+
   @container nc-landing (width < 44rem) {
     padding: var(--space-5);
+
+    > .btn {
+      grid-column: 2;
+      justify-self: start;
+      white-space: normal;
+    }
   }
 }
 
 .nc-landing__tile-body {
-  flex: 1 1 14rem;
   min-width: 0;
   margin: 0;
   color: var(--nc-text);
