@@ -18,6 +18,8 @@ import {
   SITE_LOCALES,
   siteLocaleFor,
 } from '../../theme/javascripts/discourse/lib/site-locale.js';
+import { themeStrings, toDiscourseMessage } from '../locales.ts';
+import landingCatalog from '../locales/en.json';
 import { PALETTE_NAMES } from '../palette.ts';
 import { buildTheme } from '../theme.ts';
 
@@ -232,17 +234,73 @@ describe('languages', () => {
     },
   );
 
-  it('translates every theme string the JavaScript asks for', () => {
-    const english = text('locales/en.yml');
-    const keys = files
-      .filter((file) => file.path.startsWith('javascripts/'))
-      .flatMap((file) =>
-        // `themePrefix("key")` in JavaScript, `(themePrefix "key")` in a template.
-        [
-          ...file.contents.toString().matchAll(/themePrefix[(\s]+"([^"]+)"/g),
-        ].map((match) => match[1]),
+  const english = themeStrings().find(
+    ({ discourseLocale }) => discourseLocale === 'en',
+  )?.strings;
+  const lookUp = (key: string) =>
+    key
+      .split('.')
+      .reduce<unknown>(
+        (branch, segment) =>
+          typeof branch === 'object' && branch !== null
+            ? Object.fromEntries(Object.entries(branch))[segment]
+            : undefined,
+        english,
       );
-    expect(keys.length).toBeGreaterThan(0);
-    for (const key of keys) expect(english).toContain(`\n  ${key}: `);
+  // `themePrefix("key")` in JavaScript, `(themePrefix "key")` in a template,
+  // and the landing page's keys, which its routes table spells out in full.
+  const askedFor = new Set(
+    files
+      .filter((file) => file.path.startsWith('javascripts/'))
+      .flatMap((file) => [
+        ...file.contents
+          .toString()
+          .matchAll(/themePrefix[(\s]+"([^"]+)"|"(landing\.[\w.]+)"/g),
+      ])
+      .map((match) => match[1] ?? match[2]),
+  );
+
+  it('translates every theme string the JavaScript asks for', () => {
+    expect(askedFor.size).toBeGreaterThan(30);
+    for (const key of askedFor) {
+      expect(lookUp(key ?? ''), key).toBeDefined();
+    }
+  });
+
+  it('uses every landing page message it ships', () => {
+    const shipped = Object.keys(landingCatalog).map((id) =>
+      id.replace(/^communityTheme\./, ''),
+    );
+    expect(shipped.filter((key) => !askedFor.has(key))).toEqual([]);
+  });
+
+  it('turns ICU plurals and arguments into Discourse translations', () => {
+    expect(
+      toDiscourseMessage(
+        '{count, plural, one {# reply} few {# odpowiedzi} other {# replies}}',
+        'replies',
+      ),
+    ).toEqual({
+      one: '%{count} reply',
+      few: '%{count} odpowiedzi',
+      other: '%{count} replies',
+    });
+    expect(toDiscourseMessage('Hello {name}', 'greeting')).toBe(
+      'Hello %{name}',
+    );
+    expect(() =>
+      toDiscourseMessage('{n, plural, one {#} other {#}}', 'notCount'),
+    ).toThrow(/count/);
+    // Discourse chooses a form by CLDR category only, so an exact match would
+    // be shipped and never shown.
+    expect(() =>
+      toDiscourseMessage(
+        '{count, plural, =0 {None} one {#} other {#}}',
+        'exact',
+      ),
+    ).toThrow(/=0/);
+    expect(() =>
+      toDiscourseMessage('{kind, select, a {A} other {B}}', 'select'),
+    ).toThrow(/plain text/);
   });
 });

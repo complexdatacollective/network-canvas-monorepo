@@ -18,6 +18,12 @@ site header above Discourse's own.
   filled from the same tokens.
 - **Fonts.** Ships Nunito and Inclusive Sans as theme assets, the same files
   the apps load.
+- **Home page.** Replaces the forum's front page (`/`; the topic list moves to
+  `/latest`) with a page that sends people to the right category. It shows a
+  card for each of help, feature requests, general discussion and
+  announcements, with that category's newest topic. It also shows the latest
+  discussions, a small network of who posted in them, and the forum's totals.
+  Its illustrations are inline SVG drawn in the websites' style.
 
 ## Where things come from
 
@@ -29,7 +35,8 @@ generates it from the workspace packages:
 | `common/color_definitions.scss` | `@codaco/tailwind-config` theme tokens (`fresco/themes/default.css`)       |
 | palettes in `about.json`        | the same tokens, resolved to hex by `@codaco/tailwind-config/theme-colors` |
 | `scss/fonts.scss`, `assets/`    | `@codaco/tailwind-config/fonts/*.css` and their fontsource files           |
-| `locales/*.yml`                 | the shared header's messages in `@codaco/fresco-ui`                        |
+| `locales/*.yml`                 | the shared header's messages in `@codaco/fresco-ui`, and the home page's   |
+|                                 | app-i18n catalogs in `src/locales/`                                        |
 
 Everything else in [`theme/`](theme) is written by hand: the SCSS partials that
 map the tokens onto Discourse (`theme/scss/`) and the header components
@@ -49,8 +56,25 @@ pnpm --filter @codaco/community-theme build
 This writes `dist/network-canvas/` (the theme as a folder) and
 `dist/network-canvas.zip`. `pnpm --filter @codaco/community-theme test` checks
 that every `--nc-*` token the stylesheets read is generated in both modes,
-that text, links and muted text stay legible on what they sit on, and that
-every font face and translation the theme uses is shipped.
+that text, links and muted text stay legible on what they sit on, that every
+font face and translation the theme uses is shipped, and that the home page's
+network keeps people and discussions apart.
+
+## Home page copy
+
+The home page's English lives in
+[`src/landing.messages.ts`](src/landing.messages.ts) as app-i18n message
+descriptors, like the apps' copy. After changing it, run
+`pnpm --filter @codaco/community-theme i18n:extract` to regenerate
+`src/locales/en.json`. A translation goes in `src/locales/<tag>.json` and is
+stamped with `i18n:stamp`, as in the apps. A language with no catalog shows
+English.
+
+The build turns each message into a Discourse translation, and Discourse
+supports less than ICU: plain text, `{arguments}`, and a message that is a
+single `{count, plural, …}` using the language's own plural categories. An
+exact match such as `=0` has no Discourse equivalent, so the build refuses
+it.
 
 ## Installing on the forum
 
@@ -76,6 +100,12 @@ can watch `dist/network-canvas/` and upload each change: rebuild after editing
 The theme setting `site_navigation_script_url` says where the shared header's
 script loads from. The default follows every 1.x release on jsDelivr; set an
 exact version to pin it.
+
+The home page finds its categories by slug, through the settings
+`help_category`, `ideas_category`, `conversation_category` and
+`news_category`; the defaults are the current forum's. A card whose category
+cannot be found, or that the visitor cannot see, is left out.
+`documentation_url` is where the note under the cards points.
 
 ## Known shortfall
 

@@ -1,0 +1,428 @@
+@use 'lib/viewport';
+
+// The forum's home page (javascripts/discourse/components/landing): a hero
+// with search, a card for each place to post, and recent activity. It sits on
+// the content sheet like every other page.
+
+.nc-landing {
+  display: grid;
+  gap: var(--space-12);
+  padding-block: var(--space-2) var(--space-4);
+
+  @include viewport.until(md) {
+    gap: var(--space-8);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--nc-heading-font);
+    color: var(--nc-text);
+  }
+}
+
+.nc-landing__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-8);
+
+  .nc-illustration--hero {
+    width: 100%;
+    max-width: 30rem;
+    justify-self: center;
+  }
+
+  @include viewport.until(md) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+
+    .nc-illustration--hero {
+      order: -1;
+      max-width: 17rem;
+    }
+  }
+}
+
+.nc-landing__title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-up-6);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+
+  @include viewport.until(md) {
+    font-size: var(--font-up-4);
+  }
+}
+
+.nc-landing__lead {
+  margin: 0;
+  max-width: 34em;
+  font-size: var(--font-up-1);
+  color: var(--primary-high);
+  text-wrap: pretty;
+}
+
+.nc-landing__news {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  margin-bottom: var(--space-5);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--nc-accent) 12%, var(--nc-surface));
+  color: var(--nc-text);
+  font-size: var(--font-down-1);
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    background: color-mix(in oklab, var(--nc-accent) 20%, var(--nc-surface));
+    color: var(--nc-text);
+  }
+
+  .d-icon {
+    flex: none;
+    color: var(--nc-accent);
+  }
+}
+
+.nc-landing__news-label {
+  flex: none;
+  padding: 0.15em 0.75em;
+  border-radius: 999px;
+  background: var(--nc-accent);
+  color: var(--nc-accent-contrast);
+  font-family: var(--nc-heading-font);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nc-landing__news-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Discourse's welcome-banner search, borrowed for its results panel and
+// styles; only its spacing is the page's own.
+.nc-landing__search.welcome-banner__wrap {
+  margin-top: var(--space-6);
+  padding: 0;
+
+  .search-menu {
+    max-width: 34rem;
+    margin-inline: 0;
+  }
+}
+
+.nc-landing__heading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-up-4);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.nc-landing__section-lead {
+  margin: 0 0 var(--space-6);
+  color: var(--primary-high);
+}
+
+.nc-landing__subheading {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-up-1);
+  font-weight: 700;
+}
+
+.nc-landing__route-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nc-route-card {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--nc-radius-sm);
+  background: var(--nc-surface-1);
+
+  @include viewport.until(sm) {
+    padding: var(--space-4);
+  }
+}
+
+.nc-route-card__icon {
+  flex: none;
+
+  .nc-illustration {
+    width: 4rem;
+    height: 4rem;
+
+    @include viewport.until(sm) {
+      width: 3rem;
+      height: 3rem;
+    }
+  }
+}
+
+.nc-route-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.nc-route-card__title {
+  margin: 0;
+  font-size: var(--font-up-2);
+  font-weight: 900;
+}
+
+.nc-route-card__category {
+  font-size: var(--font-down-1);
+}
+
+.nc-route-card__text {
+  margin: 0;
+  color: var(--primary-high);
+}
+
+.nc-route-card__latest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-down-1);
+
+  a {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: var(--nc-text);
+  }
+}
+
+.nc-route-card__latest-label {
+  font-family: var(--nc-heading-font);
+  font-size: var(--font-down-2);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary-medium);
+}
+
+.nc-route-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+.nc-route-card__browse,
+.nc-landing__more {
+  font-family: var(--nc-heading-font);
+  font-weight: 700;
+}
+
+.nc-route-card__browse {
+  font-size: var(--font-down-1);
+}
+
+.nc-landing__docs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 2px dashed var(--nc-outline);
+  border-radius: var(--nc-radius-sm);
+
+  .nc-illustration {
+    flex: none;
+    width: 3rem;
+    height: 3rem;
+  }
+
+  p {
+    flex: 1 1 18rem;
+    margin: 0;
+  }
+}
+
+.nc-landing__activity-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-8);
+
+  @include viewport.until(lg) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.nc-latest-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nc-latest-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--primary-low);
+
+  .avatar {
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
+.nc-latest-list__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.nc-latest-list__title {
+  font-family: var(--nc-heading-font);
+  font-weight: 700;
+  color: var(--nc-text);
+}
+
+.nc-latest-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--font-down-1);
+  color: var(--primary-medium);
+}
+
+.nc-latest-list__placeholder {
+  height: 3.5rem;
+  margin-block: var(--space-3);
+  border-radius: var(--nc-radius-xs);
+  background: var(--primary-very-low);
+}
+
+.nc-landing__more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.nc-landing__aside {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.nc-landing__panel {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--nc-radius-sm);
+  background: var(--nc-surface-1);
+
+  figcaption {
+    margin-top: var(--space-2);
+    font-size: var(--font-down-1);
+    color: var(--primary-medium);
+  }
+}
+
+.nc-activity-network {
+  display: block;
+  width: 100%;
+  height: auto;
+
+  line {
+    stroke: var(--primary-low-mid);
+    stroke-width: 2;
+  }
+
+  .nc-activity-network__topics circle {
+    fill: var(--nc-accent);
+    stroke: var(--nc-text);
+    stroke-width: 3;
+  }
+
+  .nc-activity-network__ring {
+    fill: var(--nc-surface);
+    stroke: var(--nc-text);
+    stroke-width: 2.5;
+  }
+
+  .is-hub .nc-activity-network__ring {
+    stroke: var(--nc-accent);
+    stroke-width: 3.5;
+  }
+}
+
+.nc-landing__stats dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+
+  div {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  dt {
+    font-size: var(--font-down-1);
+    color: var(--primary-medium);
+  }
+
+  dd {
+    margin: 0;
+    font-family: var(--nc-heading-font);
+    font-size: var(--font-up-4);
+    font-weight: 900;
+    line-height: 1.1;
+    color: var(--nc-text);
+  }
+}
+
+.nc-landing__unavailable {
+  margin: 0;
+  color: var(--primary-high);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nc-activity-network {
+    animation: nc-landing-appear 0.6s ease-out both;
+  }
+
+  .nc-latest-list__placeholder {
+    animation: nc-landing-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes nc-landing-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes nc-landing-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
