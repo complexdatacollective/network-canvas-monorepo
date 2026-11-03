@@ -165,19 +165,87 @@ describe('palettes', () => {
     expect(shortfalls).toEqual({});
   });
 
-  it.each(['medium', 'high', 'very-high'])(
-    'keeps --primary-%s, a muted text colour, legible on the content surface',
-    (step) => {
-      const declaration = new RegExp(`--primary-${step}: ([^;]+);`).exec(
-        text('scss/variables.scss'),
-      );
-      if (!declaration?.[1])
-        throw new Error(`No --primary-${step} in variables.scss`);
-      // The theme reads the tokens as --nc-*; the scopes name them unprefixed.
-      const expression = declaration[1].replaceAll('var(--nc-', 'var(--');
+  // The shades Discourse derives from the palette's text colour by lightening
+  // it in HSL (color_transformations.scss), which the theme replaces with
+  // OKLab mixes of its tokens (variables.scss). Left to Discourse, a shade
+  // turns violet and, in a dark palette, a light-or-dark pair turns too faint
+  // to read.
+  const DISCOURSE_SHADES = [
+    'very-low',
+    'low',
+    'low-mid',
+    'medium',
+    'high',
+    'very-high',
+    '50',
+    '100',
+    '200',
+    '300',
+    '400',
+    '500',
+    '600',
+    '700',
+    '800',
+    '900',
+    'med-or-secondary-med',
+    'med-or-secondary-high',
+    'high-or-secondary-low',
+    'low-mid-or-secondary-high',
+    'low-mid-or-secondary-low',
+  ].map((shade) => `--primary-${shade}`);
+
+  // Those Discourse sets text in (`color:` in its stylesheets); the rest are
+  // borders, fills and decoration. The wiki date is a fixed colour of
+  // Discourse's that the theme also sets.
+  const TEXT_SHADES = [
+    'medium',
+    'high',
+    'very-high',
+    '500',
+    '600',
+    '700',
+    '800',
+    '900',
+    'med-or-secondary-med',
+    'med-or-secondary-high',
+    'high-or-secondary-low',
+    'low-mid-or-secondary-high',
+  ]
+    .map((shade) => `--primary-${shade}`)
+    .concat('--wiki');
+
+  const shadeDeclarations = new Map(
+    [
+      ...text('scss/variables.scss').matchAll(
+        /(--(?:primary-[\w-]+|wiki)): ([^;]+);/g,
+      ),
+    ].map(([, name = '', value = '']) => [name, value]),
+  );
+
+  // A shade's CSS with the shades it reads substituted, in the scopes'
+  // unprefixed token names (the theme reads the tokens as --nc-*).
+  function shadeExpression(name: string): string {
+    const declaration = shadeDeclarations.get(name);
+    if (!declaration) throw new Error(`No ${name} in variables.scss`);
+    return declaration
+      .replaceAll(/var\((--primary-[\w-]+)\)/g, (_, shade: string) =>
+        shadeExpression(shade),
+      )
+      .replaceAll('var(--nc-', 'var(--');
+  }
+
+  it("replaces every shade Discourse derives from the palette's text colour", () => {
+    expect(
+      DISCOURSE_SHADES.filter((shade) => !shadeDeclarations.has(shade)),
+    ).toEqual([]);
+  });
+
+  it.each(TEXT_SHADES)(
+    'keeps %s, a muted text colour, legible on the content surface',
+    (shade) => {
       for (const scope of Object.values(SCOPE_FOR)) {
         const ratio = contrastRatio(
-          toDisplayColor(scope.color(expression)),
+          toDisplayColor(scope.color(shadeExpression(shade))),
           toDisplayColor(scope.token('--surface')),
         );
         expect(ratio, scope.name).toBeGreaterThanOrEqual(4.5);

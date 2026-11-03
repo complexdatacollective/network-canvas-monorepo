@@ -30,6 +30,37 @@
     var(--nc-surface)
   );
 
+  // Discourse derives two more families the same way. Its numbered scale
+  // (--primary-50 to --primary-900), which newer components read, takes the
+  // steps above where Discourse equates them and mixes the rest between.
+  // Discourse sets text in 500 and above, so 500 is the medium step, the
+  // lightest that stays legible; the lower steps are borders and fills.
+  --primary-50: var(--primary-very-low);
+  --primary-100: color-mix(in oklab, var(--nc-text) 8%, var(--nc-surface));
+  --primary-200: var(--primary-low);
+  --primary-300: color-mix(in oklab, var(--nc-text) 24%, var(--nc-surface));
+  --primary-400: var(--primary-low-mid);
+  --primary-500: var(--primary-medium);
+  --primary-600: var(--primary-medium);
+  --primary-700: color-mix(in oklab, var(--nc-text) 70%, var(--nc-surface));
+  --primary-800: var(--primary-high);
+  --primary-900: var(--primary-very-high);
+
+  // Its light-or-dark pairs take a step above in a light palette and a shade
+  // of the background, too faint to read, in a dark one. Mixed from the
+  // tokens, the steps above work in both, so each pair is its light step,
+  // and the one Discourse sets dates in is raised to the medium step.
+  --primary-med-or-secondary-med: var(--primary-medium);
+  --primary-med-or-secondary-high: var(--primary-medium);
+  --primary-high-or-secondary-low: var(--primary-high);
+  --primary-low-mid-or-secondary-high: var(--primary-medium);
+  --primary-low-mid-or-secondary-low: var(--primary-low-mid);
+
+  // The date of a wiki post's last edit, a fixed green in Discourse, under
+  // 4.5:1 on a dark surface. The shared success colour mixed towards the
+  // text reads in both palettes.
+  --wiki: color-mix(in oklab, var(--nc-success) 55%, var(--nc-text));
+
   --font-family: var(--nc-body-font);
   --heading-font-family: var(--nc-heading-font);
 

@@ -19,6 +19,12 @@ site header above Discourse's own.
   declared as `--nc-*` (light and dark), and Discourse's variables are set from
   them: fonts, its text sizes, radii, buttons, inputs, links and its muted
   text shades. Buttons and notices follow the shared Button and Alert.
+- **Legibility.** Every shade Discourse derives from the text colour (its
+  named steps, numbered scale and light-or-dark pairs) is mixed in OKLab from
+  the tokens, and each one Discourse sets text in reads at 4.5:1 or more in
+  both palettes. As in Discourse's own WCAG palettes, placeholders and the
+  view-count heatmap take the muted step. Links in running text are
+  underlined, since the link colour alone is too close to the text's.
 - **Palettes.** Ships "Network Canvas" and "Network Canvas Dark" palettes,
   filled from the same tokens.
 - **Fonts.** Ships Nunito and Inclusive Sans as theme assets, the same files
@@ -64,8 +70,8 @@ pnpm --filter @codaco/community-theme build
 This writes `dist/network-canvas/` (the theme as a folder) and
 `dist/network-canvas.zip`. `pnpm --filter @codaco/community-theme test` checks
 that every `--nc-*` token the stylesheets read is generated in both modes,
-that text, links and muted text stay legible on what they sit on (notices
-included), that every font face and translation the theme uses is shipped,
+that text, links and every muted shade Discourse sets text in stay legible
+on what they sit on (notices included), that every font face and translation the theme uses is shipped,
 and that the home page's network keeps people and discussions apart.
 
 ## Home page copy

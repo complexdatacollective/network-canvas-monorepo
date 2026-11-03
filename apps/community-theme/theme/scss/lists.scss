@@ -17,3 +17,21 @@
 .topic-list .topic-list-data.num {
   font-family: var(--nc-heading-font);
 }
+
+// Discourse colours a popular topic's view count in fixed oranges, under
+// 4.5:1 on both palettes' surfaces. As in Discourse's own WCAG palettes, the
+// counts take the muted step instead; the most-viewed stay bold.
+.heatmap-high,
+.heatmap-high a,
+.heatmap-high .d-icon,
+.heatmap-high .d-button-label,
+.heatmap-med,
+.heatmap-med a,
+.heatmap-med .d-icon,
+.heatmap-med .d-button-label,
+.heatmap-low,
+.heatmap-low a,
+.heatmap-low .d-icon,
+.heatmap-low .d-button-label {
+  color: var(--primary-medium) !important;
+}

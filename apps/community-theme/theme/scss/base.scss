@@ -21,6 +21,32 @@ a {
   text-underline-offset: 0.2em;
 }
 
+// A link in running text is underlined. The forum's link colour is close to
+// its text colour, so colour alone does not mark it (WCAG 1.4.1). Running
+// text is a post's paragraphs, lists and tables, and the sentences of
+// Discourse's own pages. Links that stand on their own (menus, lists of
+// links, titles, mentions and hashtags) keep Discourse's look.
+#main-outlet p > a:not([class]),
+.more-topics__browse-more a:not([class]),
+.cooked
+  :is(p, li, dd, td, blockquote)
+  a:not(.mention, .hashtag-cooked, .lightbox) {
+  text-decoration-line: underline;
+}
+
+// Placeholders are text, so they take the lightest legible muted step, as
+// Discourse's own WCAG palettes set them. Browsers' default grey, and the
+// lighter steps some of Discourse's fields and its rich editor use, fall
+// short of 4.5:1.
+::placeholder {
+  color: var(--primary-medium) !important;
+  opacity: 1;
+}
+
+.ProseMirror p[data-placeholder]::before {
+  color: var(--primary-medium);
+}
+
 // The shared focus ring: a 2px outline in the current colour, held clear of
 // the control.
 :focus-visible {
