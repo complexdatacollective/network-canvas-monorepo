@@ -213,32 +213,6 @@ export function fixtureProtocolSections(): Record<string, SectionDoc> {
   return sections;
 }
 
-/** The one language the fixture protocol is written in. */
-const FIXTURE_TEXT_LANGUAGE = 'en-US';
-
-/**
- * `value` with the text the fixture records in its own language recorded in
- * `language` instead, at any depth: the fixture as a researcher would have
- * written it in that language.
- *
- * The fixture is written in American English, which Network Canvas has no
- * built-in wording in, so its built-in wording is all the researcher's own. A
- * test of how Network Canvas's own wording behaves needs the protocol in a
- * language it has wording in, such as `en`.
- */
-export function inFixtureLanguage<T>(value: T, language: string): T;
-export function inFixtureLanguage(value: unknown, language: string): unknown {
-  if (Array.isArray(value))
-    return value.map((item) => inFixtureLanguage(item, language));
-  if (!isRecord(value)) return value;
-  return Object.fromEntries(
-    Object.entries(value).map(([key, item]) => [
-      key === FIXTURE_TEXT_LANGUAGE ? language : key,
-      inFixtureLanguage(item, language),
-    ]),
-  );
-}
-
 /** The languages the fixture protocol declares. */
 export function fixtureLocalization(): ProtocolLocalization {
   const localization = protocolLocalizationOf(

@@ -22,10 +22,7 @@ import {
   inventAttribute,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
-import {
-  inFixtureLanguage,
-  loadFixtureStage,
-} from '../../../testing/protocolFixture.ts';
+import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -62,21 +59,6 @@ const openNewStage = () =>
   renderStageEditor({
     create: { type: 'FamilyPedigree', position: 0 },
     editor: familyPedigreeEditor,
-  });
-
-/**
- * The language a new stage is created in when a test compares it with every
- * word Network Canvas supplies: one it has built-in wording in, unlike the
- * fixture's American English, where a new stage's wording starts empty for
- * the researcher to write.
- */
-const SUPPLIED_LANGUAGE = 'en';
-
-const openNewStageInSuppliedLanguage = () =>
-  renderStageEditor({
-    create: { type: 'FamilyPedigree', position: 0 },
-    editor: familyPedigreeEditor,
-    fixtureLanguage: SUPPLIED_LANGUAGE,
   });
 
 /**
@@ -226,7 +208,7 @@ describe('the family pedigree stage editor', () => {
    * is one the protocol schema accepts as a Family Pedigree stage.
    */
   it('saves a new stage the schema accepts once its slots are bound', async () => {
-    const harness = openNewStageInSuppliedLanguage();
+    const harness = openNewStage();
 
     await harness.user.click(
       await screen.findByRole('radio', { name: 'family member' }),
@@ -251,18 +233,18 @@ describe('the family pedigree stage editor', () => {
       id: expect.any(String),
       type: 'FamilyPedigree',
       // Named for the person type and the interface until the researcher says otherwise.
-      label: { [SUPPLIED_LANGUAGE]: expect.any(String) },
+      label: { 'en-US': expect.any(String) },
       subject: { entity: 'node', type: 'family_member' },
-      prompt: { [SUPPLIED_LANGUAGE]: PROMPT_TEXT },
+      prompt: { 'en-US': PROMPT_TEXT },
       // Every word the stage shows. The gender identity label among them is
       // written by the save: the stage gained it when the attribute was
       // bound, with its wording group closed.
-      wording: inFixtureLanguage(EVERY_PEDIGREE_WORD, SUPPLIED_LANGUAGE),
+      wording: EVERY_PEDIGREE_WORD,
       nodeConfiguration: {
         nameAttribute: 'fm_name',
         // The name question a new stage starts with, in the protocol's
         // language.
-        nameField: inFixtureLanguage(FIXTURE_NAME_FIELD, SUPPLIED_LANGUAGE),
+        nameField: FIXTURE_NAME_FIELD,
         genderIdentity: {
           attribute: FRESH_GENDER_ID,
           // The attribute's options are the interface's defaults, so binding
@@ -491,11 +473,7 @@ describe('the attribute slots', () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
       editor: familyPedigreeEditor,
-      fixtureLanguage: SUPPLIED_LANGUAGE,
-      localization: {
-        defaultLocale: SUPPLIED_LANGUAGE,
-        locales: [SUPPLIED_LANGUAGE, 'es', 'hu'],
-      },
+      localization: { defaultLocale: 'en-US', locales: ['en-US', 'es', 'hu'] },
     });
     await harness.opened();
 
@@ -519,12 +497,12 @@ describe('the attribute slots', () => {
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
         value,
         label: {
-          [SUPPLIED_LANGUAGE]: suppliedOptionLabel(
+          'en-US': suppliedOptionLabel(
             'pedigreeSexAssignedAtBirth',
             value,
-            SUPPLIED_LANGUAGE,
+            'en',
           ),
-          es: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'es'),
+          'es': suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'es'),
         },
       })),
     );
@@ -727,7 +705,7 @@ describe('asking about gender identity', () => {
   });
 
   it('saves a stage the schema accepts with no gender identity at all', async () => {
-    const harness = openNewStageInSuppliedLanguage();
+    const harness = openNewStage();
 
     await harness.user.click(
       await screen.findByRole('radio', { name: 'family member' }),
@@ -754,7 +732,7 @@ describe('asking about gender identity', () => {
 
     expect(nodeConfigurationOf(request?.stageDocument)).toEqual({
       nameAttribute: 'fm_name',
-      nameField: inFixtureLanguage(FIXTURE_NAME_FIELD, SUPPLIED_LANGUAGE),
+      nameField: FIXTURE_NAME_FIELD,
       sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
       egoAttribute: 'is_ego',
     });
@@ -1650,12 +1628,13 @@ describe('the participant wording', () => {
   it('opens with the stage’s own wording closed and none of its fields on screen', async () => {
     const harness = openFixture();
     await harness.opened();
+    const section = await screen.findByRole('switch', {
+      name: 'Customize built-in wording',
+    });
+    if (section.getAttribute('aria-checked') !== 'true') {
+      await harness.user.click(section);
+    }
 
-    // The fixture's American English has no built-in wording, so the section
-    // is always on, with the stage's own part closed.
-    expect(
-      screen.queryByRole('switch', { name: 'Customize built-in wording' }),
-    ).toBeNull();
     expect(await part()).toHaveAttribute('aria-expanded', 'false');
     expect(
       screen.queryByText('Carrier question', { selector: FIELD_LABEL }),

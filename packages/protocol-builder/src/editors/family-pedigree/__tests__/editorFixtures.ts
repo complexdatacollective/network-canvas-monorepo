@@ -38,20 +38,11 @@ export async function openStageWording(
   harness: Readonly<{ user: UserEvent }>,
 ): Promise<void> {
   // The section starts switched off over a single language's supplied
-  // wording; its parts are on screen once it is on. Over a default language
-  // Network Canvas has no wording in (the fixture's American English) it has
-  // no switch: the researcher writes that wording, so it is always on.
-  const section = await waitFor(() => {
-    const toggle = screen.queryByRole('switch', {
-      name: 'Customize built-in wording',
-    });
-    const part = screen.queryByRole('button', {
-      name: 'Specific to this stage',
-    });
-    expect(toggle ?? part).not.toBeNull();
-    return toggle;
+  // wording; its parts are on screen once it is on.
+  const section = await screen.findByRole('switch', {
+    name: 'Customize built-in wording',
   });
-  if (section !== null && section.getAttribute('aria-checked') !== 'true') {
+  if (section.getAttribute('aria-checked') !== 'true') {
     await harness.user.click(section);
   }
   await openStageWordingPart(harness);

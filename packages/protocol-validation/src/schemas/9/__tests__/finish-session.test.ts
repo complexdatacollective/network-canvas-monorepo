@@ -314,15 +314,17 @@ describe('supplied finish text', () => {
   });
 
   it.each([
-    ['en-US', 'en'],
     ['en-GB', 'en'],
+    ['en-AU', 'en'],
     ['es-MX', 'es'],
-    ['zh-TW', 'zh-Hant'],
+    ['es-419', 'es'],
+    ['fr-CA', 'fr'],
     ['zh-HK', 'zh-Hant'],
-    ['zh-CN', 'zh-Hans'],
+    ['zh-Hans-SG', 'zh-Hans'],
     ['de-AT', 'de'],
+    ['de-CH', 'de'],
   ])(
-    'has none for the regional variant %s, which can start from %s',
+    'has none for the regional variant %s, which can add %s',
     (locale, base) => {
       expect(defaultFinishSessionText(locale)).toBeUndefined();
       expect(hasSuppliedWording(locale)).toBe(false);
@@ -330,7 +332,30 @@ describe('supplied finish text', () => {
     },
   );
 
-  it.each(['pt', 'pt-PT', 'ca', 'gl', 'ja', 'und'])(
+  // Network Canvas's English is American English, its Spanish is Spain's and
+  // so on: the region CLDR takes each language to mean when none is given.
+  it.each([
+    ['en-US', 'en'],
+    ['es-ES', 'es'],
+    ['fr-FR', 'fr'],
+    ['de-DE', 'de'],
+    ['nl-NL', 'nl'],
+    ['pt', 'pt-BR'],
+    ['zh-CN', 'zh-Hans'],
+    ['zh', 'zh-Hans'],
+    ['zh-TW', 'zh-Hant'],
+    ['zh-Hant-TW', 'zh-Hant'],
+  ])('is %s’s own in the language’s default region, %s', (locale, supplied) => {
+    expect(defaultFinishSessionText(locale)).toEqual(
+      DEFAULT_FINISH_SESSION_TEXT[
+        supplied as keyof typeof DEFAULT_FINISH_SESSION_TEXT
+      ],
+    );
+    expect(hasSuppliedWording(locale)).toBe(true);
+    expect(suppliedBaseLanguage(locale)).toBeUndefined();
+  });
+
+  it.each(['pt-PT', 'ca', 'gl', 'ja', 'und'])(
     'has none for %s, rather than a neighbouring language',
     (locale) => {
       expect(defaultFinishSessionText(locale)).toBeUndefined();

@@ -25,12 +25,9 @@ const stageNameInput = (): HTMLElement =>
  */
 describe('creating a roster name generator', () => {
   it('saves the new stage once it has a data file and a question to ask', async () => {
-    // In a language Network Canvas has built-in wording in, so the stage
-    // starts with its panel title.
     const harness = renderStageEditor({
       create: { type: 'NameGeneratorRoster', position: ROSTER_INDEX },
       registry: nameGeneratorRosterStageEditor,
-      fixtureLanguage: 'en',
     });
 
     await waitFor(() =>
@@ -72,12 +69,12 @@ describe('creating a roster name generator', () => {
       dataSource: 'roster_data',
       // The heading over the people it offers, which the researcher was never
       // asked for: Network Canvas supplies it in the protocol's language.
-      panelTitle: { en: 'Available to add' },
+      panelTitle: { 'en-US': 'Available to add' },
     });
     expect(request?.stageDocument.prompts).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        text: { en: 'Select people from the roster' },
+        text: { 'en-US': 'Select people from the roster' },
       },
     ]);
     // A roster whose cards, order and search were never configured saves none

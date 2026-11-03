@@ -73,6 +73,15 @@ describe('the offer to also add a regional variant’s language', () => {
   });
 
   it('offers the script Network Canvas has wording in for a Chinese region', async () => {
-    await expect(offer()(['zh-TW'], ['en'])).resolves.toEqual(['zh-Hant']);
+    await expect(offer()(['zh-HK'], ['en'])).resolves.toEqual(['zh-Hant']);
+  });
+
+  // Network Canvas's English is American English, its Traditional Chinese is
+  // Taiwan's, and so on: the region CLDR takes each language to mean.
+  it('does not ask for the region Network Canvas’s own wording is written for', async () => {
+    await expect(
+      offer()(['en-US', 'es-ES', 'zh-TW'], ['en-GB']),
+    ).resolves.toEqual([]);
+    expect(confirmMock).not.toHaveBeenCalled();
   });
 });

@@ -38,16 +38,8 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
   ),
 }));
 
-/**
- * The language these stages are written in: one Network Canvas has built-in
- * wording in, so a new stage starts with its heading.
- */
-const FIXTURE_LANGUAGE = 'en';
-
-const ENGLISH: ProtocolLocalization = {
-  defaultLocale: FIXTURE_LANGUAGE,
-  locales: [FIXTURE_LANGUAGE],
-};
+/** The all-interfaces fixture is written in this one language. */
+const FIXTURE_LANGUAGE = 'en-US';
 
 // Declared out of alphabetical order, which the list does not follow.
 const THREE_LANGUAGES: ProtocolLocalization = {
@@ -138,10 +130,7 @@ describe('the editor for the stage where a participant chooses a language', () =
   });
 
   it('saves the heading the researcher writes', async () => {
-    const harness = renderStageEditor({
-      ...openStage(),
-      localization: ENGLISH,
-    });
+    const harness = renderStageEditor(openStage());
     const user = userEvent.setup();
     // Off over the supplied wording of a single language.
     await user.click(
@@ -168,7 +157,6 @@ describe('the editor for the stage where a participant chooses a language', () =
     const harness = renderStageEditor({
       create: { type: 'LanguageChooser', position: 0 },
       editor: mountedAs(languageChooserStageEditor.LanguageChooser),
-      localization: ENGLISH,
     });
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     const proposed = stageNameInput().value;
@@ -187,7 +175,7 @@ describe('the editor for the stage where a participant chooses a language', () =
     const harness = renderStageEditor({
       create: { type: 'LanguageChooser', position: 0 },
       editor: mountedAs(languageChooserStageEditor.LanguageChooser),
-      localization: { defaultLocale: 'en-US', locales: ['en-US'] },
+      localization: { defaultLocale: 'en-GB', locales: ['en-GB'] },
     });
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
 

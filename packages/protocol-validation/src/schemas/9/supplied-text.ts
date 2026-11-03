@@ -24,21 +24,60 @@ export const SUPPLIED_LANGUAGES: readonly LocaleTag[] = [
   'zh-Hant',
 ];
 
+/** A tag with its likely script and region filled in, by CLDR's data. */
+const withLikelySubtags = (tag: LocaleTag): string | undefined => {
+  try {
+    return new Intl.Locale(tag).maximize().toString();
+  } catch {
+    return undefined;
+  }
+};
+
+const SUPPLIED_LIKELY: ReadonlyMap<string, LocaleTag> = new Map(
+  SUPPLIED_LANGUAGES.flatMap((language) => {
+    const likely = withLikelySubtags(language);
+    return likely === undefined ? [] : [[likely, language] as const];
+  }),
+);
+
 /**
- * Whether Network Canvas has its own wording in `locale` exactly. A protocol
- * whose default language it has none in holds that wording only as the
- * researcher writes it.
+ * The language Network Canvas has its own wording in that `locale` is, or
+ * `undefined` when it is none of them. Each of those languages is written
+ * for the region CLDR takes it to mean when none is given: its English is
+ * American English and its Spanish is Spain's, so `en-US` is `en`, `es-ES`
+ * is `es`, `zh-TW` is `zh-Hant` and `pt` is `pt-BR`. Another region of one
+ * (`en-GB`, `es-MX`) is not: it can have that language added beside it
+ * instead (see `suppliedBaseLanguage`).
  */
-export const hasSuppliedWording = (locale: LocaleTag): boolean => {
+const suppliedLanguageOf = (locale: LocaleTag): LocaleTag | undefined => {
   const canonical = canonicalizeLocale(locale);
-  return canonical !== undefined && SUPPLIED_LANGUAGES.includes(canonical);
+  if (canonical === undefined) return undefined;
+  if (SUPPLIED_LANGUAGES.includes(canonical)) return canonical;
+  const likely = withLikelySubtags(canonical);
+  const supplied =
+    likely === undefined ? undefined : SUPPLIED_LIKELY.get(likely);
+  // CLDR fills in a language too (`und` is taken to be English): only the
+  // script and region may be filled in.
+  return supplied !== undefined &&
+    new Intl.Locale(supplied).language === new Intl.Locale(canonical).language
+    ? supplied
+    : undefined;
 };
 
 /**
+ * Whether Network Canvas has its own wording in `locale` (see
+ * `suppliedLanguageOf`). A protocol whose default language it has none in
+ * holds that wording only as the researcher writes it.
+ */
+export const hasSuppliedWording = (locale: LocaleTag): boolean =>
+  suppliedLanguageOf(locale) !== undefined;
+
+/**
  * The entry of a table of text Network Canvas supplies, keyed by language,
- * for a protocol language, or `undefined` when it has none. Only the exact
- * language is read: text written into a protocol is recorded under that
- * language, so neither Mexican Spanish nor Catalan is given another
+ * for a protocol language, or `undefined` when it has none. Only the same
+ * language is read (`suppliedLanguageOf`, or an exact key the table has
+ * beyond those languages): text written into a protocol is recorded under
+ * that language, so neither Mexican Spanish nor Catalan is given another
  * language's words, and no language is given English in place of its own.
  * A regional variant can have its base language added beside it instead
  * (see `suppliedBaseLanguage`), which the interview falls back to.
@@ -48,7 +87,10 @@ export const suppliedTextFor = <Text>(
   locale: LocaleTag,
 ): Text | undefined => {
   const canonical = canonicalizeLocale(locale);
-  return canonical === undefined ? undefined : table[canonical];
+  if (canonical === undefined) return undefined;
+  if (Object.hasOwn(table, canonical)) return table[canonical];
+  const supplied = suppliedLanguageOf(canonical);
+  return supplied === undefined ? undefined : table[supplied];
 };
 
 /**
@@ -65,7 +107,7 @@ export const suppliedBaseLanguage = (
   locale: LocaleTag,
 ): LocaleTag | undefined => {
   const canonical = canonicalizeLocale(locale);
-  if (canonical === undefined || SUPPLIED_LANGUAGES.includes(canonical))
+  if (canonical === undefined || hasSuppliedWording(canonical))
     return undefined;
   for (const tag of [canonical, toScriptMatchingTag(canonical)]) {
     const subtags = tag.split('-');

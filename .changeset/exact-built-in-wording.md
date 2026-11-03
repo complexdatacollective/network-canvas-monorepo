@@ -9,15 +9,19 @@ fresco: patch
 ---
 
 Network Canvas now writes its built-in wording, such as button labels and the
-closing screen, only into a language it has that wording in exactly. Adding
+closing screen, only into a language it has that wording in. Adding
 Mexican Spanish to a protocol no longer fills it with Spanish wording, and a
 default language Network Canvas has no wording in no longer gets English
 wording recorded as that language.
 
-- `suppliedTextFor` matches a language exactly. `SUPPLIED_LANGUAGES` lists the
-  languages Network Canvas has wording in, `hasSuppliedWording(locale)` says
-  whether a language is one of them, and `suppliedBaseLanguage(locale)` gives
-  the one a regional variant belongs to (es-MX to es, zh-TW to zh-Hant).
+- `suppliedTextFor` matches the same language only. `SUPPLIED_LANGUAGES` lists
+  the languages Network Canvas has wording in, and each is written for the
+  region CLDR assumes for it (its English is American English, its Spanish is
+  Spain's, its Traditional Chinese is Taiwan's), so `en-US`, `es-ES`, `zh-TW`
+  and `pt` count as `en`, `es`, `zh-Hant` and `pt-BR`.
+  `hasSuppliedWording(locale)` says whether a language is one of them, and
+  `suppliedBaseLanguage(locale)` gives the one a variant for another region
+  belongs to (es-MX to es, en-GB to en, zh-HK to zh-Hant).
 - Built-in wording may hold no text while a protocol is being written. A
   protocol leaving its editor (`validateProtocol` without `draft`) must hold it
   in its default language: each text without it is a
@@ -40,6 +44,5 @@ wording recorded as that language.
   "Customize built-in wording" section is always shown, with no switch:
   there is no Network Canvas wording to put back, and the researcher writes
   it.
-- The Sample Protocol, the templates and the development protocol are written
-  in English (`en`) rather than American English, so stages added to them
-  start with Network Canvas's wording.
+- The Sample Protocol, the templates and the development protocol are tagged
+  English (`en`) rather than American English (`en-US`).

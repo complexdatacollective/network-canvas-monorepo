@@ -794,13 +794,15 @@ row's Remove control.
       'decline-base',
       'no-close-offer',
       'built-in-notice',
+      'default-region',
       'cleanup',
     ],
     checklist: `
 Network Canvas writes its own wording (button labels, the finish stage's
 name, closing and finished text, and other messages) into a protocol only in
-a language it has that wording in exactly: Spanish, but not Mexican Spanish;
-English, but not American English. When a researcher adds, or creates a
+a language it has that wording in: Spanish (and Spain's Spanish), but not
+Mexican Spanish; English (and American English, which its English is), but
+not British English. When a researcher adds, or creates a
 protocol in, a regional variant of one of those languages, Architect asks
 whether to also add that language ("Also add Spanish?"). Added, the base
 language holds Network Canvas's wording and the interview shows it wherever
@@ -861,7 +863,17 @@ the exact spelling.
    listing only Galician rows that need translating (the finish button
    among them). Close it with "Cancel", then set the "Default language"
    back to Spanish and confirm the warning is gone.
-9. "cleanup": Delete your protocol from the start screen.`,
+9. "default-region": Network Canvas's English is American English, so
+   American English counts as English. Press "Add languages", choose
+   American English ("en-US") and add it. Confirm no "Also add English?"
+   dialog opens and the list gains only an American English row, which
+   shows no "Missing translations" badge for the built-in wording (its
+   count may still be short of Spanish's for your own text). Set the
+   "Default language" select to American English, go to the stages and
+   confirm the finish stage is named "Finish Interview" and no "This
+   protocol can’t be downloaded yet" warning is shown. Set the "Default
+   language" back to Spanish.
+10. "cleanup": Delete your protocol from the start screen.`,
   },
   {
     key: 'send-to-interviewer',

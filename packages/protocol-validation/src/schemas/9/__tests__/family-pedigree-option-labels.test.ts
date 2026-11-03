@@ -45,7 +45,7 @@ describe('supplied Family Pedigree option labels', () => {
     },
   );
 
-  it('serves only the exact language, not a regional variant or a neighbouring language', () => {
+  it('serves only the same language, not a regional variant or a neighbouring language', () => {
     expect(suppliedOptionLabel('pedigreeRelationship', 'donor', 'de')).toBe(
       'Eizell- oder Samenspender/in',
     );
@@ -53,8 +53,14 @@ describe('supplied Family Pedigree option labels', () => {
       suppliedOptionLabel('pedigreeRelationship', 'donor', 'de-AT'),
     ).toBeUndefined();
     expect(
-      suppliedOptionLabel('pedigreeSexAssignedAtBirth', 'male', 'zh-TW'),
+      suppliedOptionLabel('pedigreeSexAssignedAtBirth', 'male', 'zh-HK'),
     ).toBeUndefined();
+    // Network Canvas's Traditional Chinese is Taiwan's.
+    expect(
+      suppliedOptionLabel('pedigreeSexAssignedAtBirth', 'male', 'zh-TW'),
+    ).toBe(
+      suppliedOptionLabel('pedigreeSexAssignedAtBirth', 'male', 'zh-Hant'),
+    );
     expect(
       suppliedOptionLabel('pedigreeSexAssignedAtBirth', 'female', 'pt-PT'),
     ).toBeUndefined();

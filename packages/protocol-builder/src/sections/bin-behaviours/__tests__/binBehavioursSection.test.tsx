@@ -38,11 +38,8 @@ const showStageWording = async (
 describe.each(CASES)(
   'how the participant places nodes on $stageId',
   ({ stageId, BinWording }) => {
-    // In a language Network Canvas has built-in wording in, so the notice
-    // starts with its words.
     const open = () => ({
       stageId,
-      fixtureLanguage: 'en',
       sections: (
         <>
           <BinBehaviours />
@@ -120,7 +117,7 @@ describe.each(CASES)(
         requireCompletePlacement: true,
       });
       expect(request?.stageDocument.unplacedNodesNotice).toEqual({
-        en: 'You must place every item before you can continue.',
+        'en-US': 'You must place every item before you can continue.',
       });
     });
 

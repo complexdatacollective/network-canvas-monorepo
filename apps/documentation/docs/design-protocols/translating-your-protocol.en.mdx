@@ -73,7 +73,7 @@ The **Create New Protocol** dialog asks for the **Protocol languages**, the lang
 
 ![The Create New Protocol dialog, with English and Spanish chosen as protocol languages and English as the default language.](/assets/img/architect/new-protocol-dialog.png)
 
-A protocol created from a template is already written in a language, so Architect does not ask. The templates supplied with Architect are written in American English (`en-US`), and the Transnational Networks template is also written in Hungarian and Spanish.
+A protocol created from a template is already written in a language, so Architect does not ask. The templates supplied with Architect are written in English (`en`), and the Transnational Networks template is also written in Hungarian and Spanish.
 
 ### The Languages page
 
@@ -105,7 +105,9 @@ The exception is wording that Network Canvas supplies (see [Words Network Canvas
 - the [stage wording](#stage-wording) of the other stages that have it
 - the [interview text](#interview-text)
 
-Network Canvas adds its wording only to a language that is exactly one of these. A regional variant of one of them, such as Mexican Spanish (`es-MX`), and a language for which Network Canvas supplies no wording, such as Japanese (`ja`), start without it, and their participants see it in another of the protocol's languages until it is translated.
+Each of these languages is written for one region: the one assumed when a language is named without a region. Network Canvas's English is American English, its Spanish is the Spanish of Spain, its French is the French of France, its Traditional Chinese is the Chinese of Taiwan, and so on. A language counts as one of these when it is the language itself or the language in that region, so American English (`en-US`) gets the English wording and Spanish as spoken in Spain (`es-ES`) gets the Spanish wording.
+
+Network Canvas adds its wording only to a language that is one of these. A regional variant written for another region, such as Mexican Spanish (`es-MX`) or British English (`en-GB`), and a language for which Network Canvas supplies no wording, such as Japanese (`ja`), start without it, and their participants see it in another of the protocol's languages until it is translated.
 
 When a regional variant of one of these languages is added, or a protocol is created in one, Architect asks whether to also add the language it is a variant of: for Mexican Spanish, it asks "Also add Spanish?". The added language holds Network Canvas's wording, and participants using the variant see that wording wherever the variant has no text of its own (see [The default language and which translation participants see](#the-default-language-and-which-translation-participants-see)). The added language is never made the default. A language that is merely close to one of these, such as Galician to Spanish, is not offered one, because its participants would then read a different language.
 
@@ -118,7 +120,7 @@ The default language must hold all of the supplied wording before the protocol c
 
 Until then, each stage's **Customize built-in wording** section is always shown, with no switch to turn it off, so the wording can be written in the stage editor as well as in the translation table.
 
-This applies to regional varieties of English too: Network Canvas supplies its wording in English, not in American or British English. A protocol whose default language is English gets the supplied wording; one whose default language is American English does not.
+This applies to regional varieties of English too. A protocol whose default language is English or American English gets the supplied wording; one whose default language is British or Australian English does not, and Architect offers to also add English.
 
 For example, a protocol created in Mexican Spanish, with Spanish also added when Architect asks, starts with Mexican Spanish as its default language and the supplied wording in Spanish only. Either Spanish is made the default, so that participants using Mexican Spanish see the Spanish wording wherever no Mexican Spanish text has been written, or the whole of the supplied wording is translated into Mexican Spanish.
 

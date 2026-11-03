@@ -69,14 +69,15 @@ refused popup is a failure, not a pass.
   the finish stage has no Polish text), removing Polish, and previewing the
   finish stage in French with the preview's language select.
 - `base-languages` (Playwright) — Network Canvas's wording goes only into a
-  language it has exactly. Creates a protocol in Mexican Spanish and accepts
+  language it has (or that language's default region, so en-US counts as en). Creates a protocol in Mexican Spanish and accepts
   "Also add Spanish?" (Spanish arrives complete and not the default; Mexican
   Spanish has none of the wording, so the protocol can't be downloaded),
   makes Spanish the default, previews the finish stage in Mexican Spanish
   and sees Spanish, declines "Also add German?" for Austrian German, adds
   Galician with no offer, and, with Galician the default and its finish text
   written, sees the "no built-in wording" warning and its "Show the wording
-  to translate" link.
+  to translate" link. Last, adds American English with no offer and, made
+  the default, it has the English wording and no download warning.
 - `dynamic-values` (Playwright) — creates an ego attribute, inserts it and
   "Today’s date" into an Information stage through the insert ("piped text")
   menu, checks the menu's groups, the "If known" / "If not known" versions and
