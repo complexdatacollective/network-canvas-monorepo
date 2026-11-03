@@ -211,7 +211,8 @@
     "./utils/composeEventHandlers": "./src/utils/composeEventHandlers.ts",
     "./utils/cva": "./src/utils/cva.ts",
     "./utils/finalFocus": "./src/utils/finalFocus.ts",
-    "./utils/foldText": "./src/utils/foldText.ts"
+    "./utils/foldText": "./src/utils/foldText.ts",
+    "./utils/saveBlob": "./src/utils/saveBlob.ts"
   },
   "publishConfig": {
     "exports": {
@@ -995,6 +996,10 @@
       "./utils/foldText": {
         "types": "./dist/utils/foldText.d.ts",
         "default": "./dist/utils/foldText.js"
+      },
+      "./utils/saveBlob": {
+        "types": "./dist/utils/saveBlob.d.ts",
+        "default": "./dist/utils/saveBlob.js"
       }
     },
     "access": "public"

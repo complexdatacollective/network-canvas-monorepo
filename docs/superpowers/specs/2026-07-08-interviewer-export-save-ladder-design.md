@@ -1,8 +1,10 @@
 # Interviewer export: deterministic save ladder, no confirmation dialog
 
 **Date:** 2026-07-08
-**Status:** Approved; amended 2026-08-13
+**Status:** Approved; amended 2026-08-13 and 2026-11-03
 **Scope:** `apps/interviewer` only. Follow-up to PR #893 (issue #889).
+Since 2026-11-03 the ladder lives in `@codaco/fresco-ui/utils/saveBlob` and
+also serves the Background Creator.
 
 > **Amendment (2026-08-13):** rung 2 is handheld-only. Desktop Safari
 > advertises file sharing, so the ladder sent macOS researchers to the OS
@@ -12,6 +14,22 @@
 > Firefox both take rung 3 and the file downloads directly. Rung 2 and the
 > "Behavior by platform" table below have been rewritten to match; the rungs
 > themselves are otherwise unchanged from the approved design.
+
+> **Amendment (2026-11-03):** a picker that never appeared is not a cancel.
+> A Chromium build with no file dialog to show (an embedded browser such as
+> Claude desktop's browser pane, or headless Chrome) rejects
+> `showSaveFilePicker` with the same `AbortError` a person's cancel produces,
+> but within one round trip to the browser process (13–24 ms measured), and
+> the ladder read that as "not saved", so "Save…" did nothing. An
+> `AbortError` sooner than 200 ms now falls through to rung 3; a later one is
+> still a final "no". The Background Creator had ported this ladder on
+> 2026-07-17 and missed the 2026-08-13 amendment, so both copies were merged
+> into `@codaco/fresco-ui/utils/saveBlob`, which takes the picker's file type
+> (`{ description, mimeType, extension }`) from the caller instead of
+> hard-coding ZIP. The handheld check that `src/lib/platform.ts` held moved
+> into that module, and the `Window.showSaveFilePicker` declaration moved
+> from `src/global.d.ts` into it as module-local types. Rung 1 below has been
+> updated to match.
 
 ## Problem
 
@@ -43,6 +61,8 @@ picker (`suggestedName`, `.zip` / `application/zip` type hint), then
 - Picker cancelled (`AbortError`) → **not saved**, no fallthrough. The
   researcher declined; offering a second save mechanism would recreate the
   nagging this design removes.
+- Picker rejected with `AbortError` within 200 ms → no picker was shown (the
+  2026-11-03 amendment) → fall through to rung 3.
 - Write failure after a successful pick (disk full, permissions) → fall
   through to rung 3 so the export can still land somewhere.
 
@@ -104,8 +124,10 @@ ladder surfaces through the existing catch in `handleShareReady`
 
 ## Testing
 
-- `download.test.ts`: picker success / picker cancel / write-failure
-  fallthrough; share success / cancel / failure fallthrough (picker absent);
+- `download.test.ts` (since 2026-11-03, fresco-ui's
+  `src/utils/__tests__/saveBlob.test.ts`): picker success / picker cancel /
+  picker that never appeared / write-failure fallthrough; share success /
+  cancel / failure fallthrough (picker absent);
   anchor rung when neither API exists; the handheld gate (desktop Safari
   downloads despite `canShare` returning true, iPhone/Android/iPadOS share —
   iPadOS in both its Mac-like desktop mode and its self-identifying mobile
