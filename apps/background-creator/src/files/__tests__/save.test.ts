@@ -20,6 +20,49 @@ function stubAnchorDownload() {
   return { createObjectURL, click, anchor };
 }
 
+// The share rung is handheld-only, so every navigator stub that offers Web
+// Share has to declare which kind of device it is. iPhone/Android are
+// recognised by user agent; iPadOS in its default desktop mode reports itself
+// as a Mac with a touchscreen, and names itself in every other mode.
+const DEVICES = {
+  iphone: {
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',
+    platform: 'iPhone',
+    maxTouchPoints: 5,
+  },
+  ipad: {
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+    platform: 'MacIntel',
+    maxTouchPoints: 5,
+  },
+  ipadMobileMode: {
+    userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_6 like Mac OS X) Mobile/15E148',
+    platform: 'iPad',
+    maxTouchPoints: 5,
+  },
+  android: {
+    userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8)',
+    platform: 'Linux armv81',
+    maxTouchPoints: 5,
+  },
+  mac: {
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+    platform: 'MacIntel',
+    maxTouchPoints: 0,
+  },
+} as const;
+
+function stubNavigator({
+  device = 'mac',
+  ...rest
+}: {
+  device?: keyof typeof DEVICES;
+  share?: unknown;
+  canShare?: unknown;
+}) {
+  vi.stubGlobal('navigator', { ...DEVICES[device], ...rest });
+}
+
 function stubSavePicker() {
   const write = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn().mockResolvedValue(undefined);
@@ -27,6 +70,22 @@ function stubSavePicker() {
   const showSaveFilePicker = vi.fn().mockResolvedValue({ createWritable });
   vi.stubGlobal('showSaveFilePicker', showSaveFilePicker);
   return { showSaveFilePicker, createWritable, write, close };
+}
+
+// The picker's AbortError means "cancelled" only when it took a person's time
+// to arrive; saveBlob reads the clock either side of the picker call.
+function stubPickerDuration(ms: number) {
+  vi.spyOn(performance, 'now').mockReturnValueOnce(0).mockReturnValueOnce(ms);
+}
+
+function stubAbortingPicker() {
+  const showSaveFilePicker = vi
+    .fn()
+    .mockRejectedValue(
+      new DOMException('The user aborted a request.', 'AbortError'),
+    );
+  vi.stubGlobal('showSaveFilePicker', showSaveFilePicker);
+  return showSaveFilePicker;
 }
 
 describe('saveBlob (rung 1: File System Access picker)', () => {
@@ -38,7 +97,7 @@ describe('saveBlob (rung 1: File System Access picker)', () => {
   it('writes through the Save-As picker and reports saved', async () => {
     const picker = stubSavePicker();
     const share = vi.fn();
-    vi.stubGlobal('navigator', { share, canShare: () => true });
+    stubNavigator({ device: 'ipad', share, canShare: () => true });
 
     const result = await saveBlob(makeBlob(), 'background.svg', SVG_FILETYPE);
 
@@ -62,7 +121,7 @@ describe('saveBlob (rung 1: File System Access picker)', () => {
 
   it('builds the picker types/accept map from the given filetype', async () => {
     const picker = stubSavePicker();
-    vi.stubGlobal('navigator', {});
+    stubNavigator({});
 
     await saveBlob(makeBlob(), 'assign_zones.py', PYTHON_FILETYPE);
 
@@ -79,12 +138,10 @@ describe('saveBlob (rung 1: File System Access picker)', () => {
   });
 
   it('reports not saved when the picker is cancelled, with no fallthrough', async () => {
-    const showSaveFilePicker = vi
-      .fn()
-      .mockRejectedValue(new DOMException('The user aborted', 'AbortError'));
-    vi.stubGlobal('showSaveFilePicker', showSaveFilePicker);
+    stubAbortingPicker();
+    stubPickerDuration(1500);
     const share = vi.fn();
-    vi.stubGlobal('navigator', { share, canShare: () => true });
+    stubNavigator({ device: 'ipad', share, canShare: () => true });
     const { createObjectURL } = stubAnchorDownload();
 
     const result = await saveBlob(makeBlob(), 'background.svg', SVG_FILETYPE);
@@ -94,6 +151,22 @@ describe('saveBlob (rung 1: File System Access picker)', () => {
     expect(share).not.toHaveBeenCalled();
     expect(createObjectURL).not.toHaveBeenCalled();
     expect(result).toEqual({ saved: false });
+  });
+
+  it('downloads instead when the picker aborts before it could have been shown', async () => {
+    // An embedded or headless Chromium has no file dialog: it rejects with
+    // AbortError within one round trip, and the click must still save.
+    stubAbortingPicker();
+    stubPickerDuration(20);
+    stubNavigator({});
+    const { createObjectURL, click, anchor } = stubAnchorDownload();
+
+    const result = await saveBlob(makeBlob(), 'background.svg', SVG_FILETYPE);
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(anchor.download).toBe('background.svg');
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ saved: true });
   });
 
   it('falls through to the anchor download when the write fails after picking', async () => {
@@ -106,7 +179,7 @@ describe('saveBlob (rung 1: File System Access picker)', () => {
       'showSaveFilePicker',
       vi.fn().mockResolvedValue({ createWritable }),
     );
-    vi.stubGlobal('navigator', {});
+    stubNavigator({});
     const { createObjectURL, click } = stubAnchorDownload();
 
     const result = await saveBlob(makeBlob(), 'background.svg', SVG_FILETYPE);
@@ -121,7 +194,7 @@ describe('saveBlob (rung 1: File System Access picker)', () => {
       'showSaveFilePicker',
       vi.fn().mockRejectedValue(new DOMException('denied', 'SecurityError')),
     );
-    vi.stubGlobal('navigator', {});
+    stubNavigator({});
     const { createObjectURL } = stubAnchorDownload();
 
     const result = await saveBlob(makeBlob(), 'background.svg', SVG_FILETYPE);
@@ -140,7 +213,7 @@ describe('saveBlob (rung 2: Web Share, no picker available)', () => {
   it('shares via navigator.share when files can be shared', async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     const canShare = vi.fn().mockReturnValue(true);
-    vi.stubGlobal('navigator', { share, canShare });
+    stubNavigator({ device: 'iphone', share, canShare });
 
     const result = await saveBlob(makeBlob(), 'background.svg', SVG_FILETYPE);
 
@@ -161,7 +234,7 @@ describe('saveBlob (rung 2: Web Share, no picker available)', () => {
       name: 'AbortError',
     });
     const share = vi.fn().mockRejectedValue(abort);
-    vi.stubGlobal('navigator', { share, canShare: () => true });
+    stubNavigator({ device: 'iphone', share, canShare: () => true });
 
     const result = await saveBlob(makeBlob(), 'background.svg', SVG_FILETYPE);
 
@@ -174,7 +247,7 @@ describe('saveBlob (rung 2: Web Share, no picker available)', () => {
       .mockRejectedValue(
         new DOMException('Permission denied', 'NotAllowedError'),
       );
-    vi.stubGlobal('navigator', { share, canShare: () => true });
+    stubNavigator({ device: 'ipad', share, canShare: () => true });
     const { createObjectURL, click } = stubAnchorDownload();
 
     const result = await saveBlob(makeBlob(), 'background.svg', SVG_FILETYPE);
@@ -186,6 +259,47 @@ describe('saveBlob (rung 2: Web Share, no picker available)', () => {
   });
 });
 
+describe('the share rung is handheld-only', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('downloads directly in desktop Safari despite canShare reporting true', async () => {
+    const share = vi.fn();
+    const canShare = vi.fn().mockReturnValue(true);
+    stubNavigator({ device: 'mac', share, canShare });
+    const { createObjectURL, click, anchor } = stubAnchorDownload();
+
+    const result = await saveBlob(makeBlob(), 'background.svg', SVG_FILETYPE);
+
+    expect(share).not.toHaveBeenCalled();
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(anchor.download).toBe('background.svg');
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ saved: true });
+  });
+
+  it.each([
+    [
+      'iPadOS in desktop mode, which reports the same platform as a Mac',
+      'ipad',
+    ],
+    ['an iPad that is not in desktop mode', 'ipadMobileMode'],
+    ['Android', 'android'],
+  ] as const)('shares on %s', async (_label, device) => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    stubNavigator({ device, share, canShare: () => true });
+    const { createObjectURL } = stubAnchorDownload();
+
+    const result = await saveBlob(makeBlob(), 'background.svg', SVG_FILETYPE);
+
+    expect(share).toHaveBeenCalledTimes(1);
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(result).toEqual({ saved: true });
+  });
+});
+
 describe('saveBlob (rung 3: anchor download, no picker or share)', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -193,7 +307,7 @@ describe('saveBlob (rung 3: anchor download, no picker or share)', () => {
   });
 
   it('fires the object-URL download and reports saved optimistically', async () => {
-    vi.stubGlobal('navigator', {});
+    stubNavigator({});
     const { createObjectURL, click, anchor } = stubAnchorDownload();
 
     const result = await saveBlob(makeBlob(), 'background.svg', SVG_FILETYPE);
@@ -207,7 +321,7 @@ describe('saveBlob (rung 3: anchor download, no picker or share)', () => {
   });
 
   it('uses the R filetype for R script exports', async () => {
-    vi.stubGlobal('navigator', {});
+    stubNavigator({});
     const { anchor } = stubAnchorDownload();
 
     const result = await saveBlob(

@@ -48,20 +48,33 @@ type WindowWithSaveFilePicker = Window & {
 
 const windowWithSaveFilePicker: WindowWithSaveFilePicker = window;
 
+// A Chromium build with no file dialog to show — an embedded browser such as
+// an Electron app's web view, or headless Chrome — rejects the picker with the
+// same AbortError a person's cancel produces, but within one round trip to the
+// browser process (14–24 ms measured). A person has to see the native panel
+// appear before they can dismiss it, and visual reaction time alone is about
+// 200 ms, so an AbortError sooner than this means the picker never appeared.
+// Treating it as a cancel would leave the click doing nothing at all.
+const PICKER_NEVER_SHOWN_MS = 200;
+
 // Ported from apps/interviewer/src/lib/files/download.ts's saveBlob capability
-// ladder (see the 2026-07-08 export-save-ladder spec), generalized to accept
-// caller-supplied file type metadata instead of a hard-coded ZIP type.
+// ladder (see the 2026-07-08 export-save-ladder spec and its 2026-08-13
+// amendment), generalized to accept caller-supplied file type metadata instead
+// of a hard-coded ZIP type.
 //
 // Saves a Blob via the most reliable mechanism the platform offers. Must be
 // called from within a user gesture. Rungs, in order:
 // 1. File System Access Save-As picker (desktop Chromium) — the only path
 //    that can confirm the bytes reached disk. A cancelled picker is a final
-//    "no"; a failure after picking falls through to the anchor download.
-// 2. Web Share (iOS/Android, desktop Safari) — the share sheet resolving is
-//    an OS-confirmed handoff. canShare() can overpromise (#889), so any
-//    failure other than the user cancelling falls through.
+//    "no"; a picker that never appeared, or a failure after picking, falls
+//    through to the anchor download.
+// 2. Web Share (iOS/iPadOS/Android only) — the share sheet resolving is an
+//    OS-confirmed handoff, and on a handheld it is the only way to put the
+//    file somewhere the person can reach. canShare() can overpromise (#889),
+//    so any failure other than the user cancelling falls through.
 // 3. Object-URL <a download> — hands the file to the browser's own download
 //    UI. The outcome is unobservable, so saved is reported optimistically.
+//    This is the desktop-Safari and desktop-Firefox rung.
 export async function saveBlob(
   blob: Blob,
   suggestedName: string,
@@ -69,6 +82,7 @@ export async function saveBlob(
 ): Promise<SaveResult> {
   if (typeof windowWithSaveFilePicker.showSaveFilePicker === 'function') {
     let handle: FileSystemFileHandle;
+    const pickerOpenedAt = performance.now();
     try {
       handle = await windowWithSaveFilePicker.showSaveFilePicker({
         suggestedName,
@@ -80,7 +94,9 @@ export async function saveBlob(
         ],
       });
     } catch (cause) {
-      if (isAbortError(cause)) return { saved: false };
+      const pickerNeverShown =
+        performance.now() - pickerOpenedAt < PICKER_NEVER_SHOWN_MS;
+      if (isAbortError(cause) && !pickerNeverShown) return { saved: false };
       return downloadViaObjectUrl(blob, suggestedName);
     }
     try {
@@ -94,7 +110,7 @@ export async function saveBlob(
   }
 
   const file = new File([blob], suggestedName, { type: blob.type });
-  if (navigator.canShare?.({ files: [file] })) {
+  if (canShareFile(file)) {
     try {
       await navigator.share({ files: [file], title: suggestedName });
       return { saved: true };
@@ -104,6 +120,33 @@ export async function saveBlob(
   }
 
   return downloadViaObjectUrl(blob, suggestedName);
+}
+
+function canShareFile(file: File): boolean {
+  // Desktop Safari advertises file sharing, but a desktop browser already has
+  // a downloads folder and a downloads UI: "Download SVG" there opened the
+  // macOS share sheet and asked for a destination app instead of saving the
+  // file. The share rung exists for handheld platforms, where no such
+  // download destination is reachable.
+  if (!isHandheldPlatform()) return false;
+  return navigator.canShare?.({ files: [file] }) ?? false;
+}
+
+// Mirrors apps/interviewer/src/lib/platform.ts. Whether this is a handheld OS
+// (iOS, iPadOS, Android), where the browser has no download manager or
+// user-reachable file system.
+function isHandheldPlatform(): boolean {
+  const ua = typeof navigator.userAgent === 'string' ? navigator.userAgent : '';
+  // iPadOS names itself whenever it is not in desktop mode (Request Mobile
+  // Website, iPadOS 12 and earlier, in-app web views).
+  if (/Android|iPhone|iPod|iPad/i.test(ua)) return true;
+  // In its default desktop mode, iPadOS 13+ presents itself as a Mac. A real
+  // Mac has no touchscreen, so maxTouchPoints separates them.
+  return (
+    typeof navigator.platform === 'string' &&
+    navigator.platform.startsWith('Mac') &&
+    navigator.maxTouchPoints > 0
+  );
 }
 
 function downloadViaObjectUrl(blob: Blob, suggestedName: string): SaveResult {
