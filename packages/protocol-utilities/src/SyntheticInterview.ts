@@ -2711,7 +2711,7 @@ export class SyntheticInterview {
     const taken = new Set(this.stages.map((stage) => stage.id));
     let id = 'finish';
     for (let suffix = 2; taken.has(id); suffix += 1) id = `finish-${suffix}`;
-    const fields = defaultFinishSessionFields(this.localization.locales);
+    const fields = defaultFinishSessionFields(this.localization);
     const { defaultLocale } = this.localization;
     for (const field of ['label', 'content', 'finishedContent'] as const) {
       if (fields[field][defaultLocale] === undefined) {

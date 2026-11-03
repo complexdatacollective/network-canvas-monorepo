@@ -1871,6 +1871,22 @@
     "defaultMessage": "Show missing translations",
     "description": "Link in the note about missing translations on the stage list. It opens the translation table showing only the localized strings with a translation missing."
   },
+  "architect.localization.startFromBase.cancel": {
+    "defaultMessage": "Don’t copy",
+    "description": "Button that adds a language without copying the built-in wording of its base language."
+  },
+  "architect.localization.startFromBase.confirm": {
+    "defaultMessage": "Copy {base} wording",
+    "description": "Button that starts an added language from a copy of the built-in wording in its base language. base is that base language (for example Spanish)."
+  },
+  "architect.localization.startFromBase.description": {
+    "defaultMessage": "Network Canvas has built-in wording, such as button labels and the closing screen, in {base} but not in {language}. You can start with a copy of the {base} wording and adapt it to {language}. Participants see it exactly as written, so review it before you use the protocol. {isDefault, select, true {If you don’t copy it, this wording starts in English.} other {If you don’t copy it, this wording starts untranslated in {language}.}}",
+    "description": "Explanation in the question asked when a language is added that Network Canvas has no built-in wording in, but whose base language it has. language is the added language; base is the language it could start from; isDefault is true when the added language is the protocol’s default language, whose wording falls back to English."
+  },
+  "architect.localization.startFromBase.title": {
+    "defaultMessage": "Start {language} from {base}?",
+    "description": "Title of the question asked when a language is added to a protocol that Network Canvas has no built-in wording in, but whose base language it has. language is the added language (for example Mexican Spanish); base is the language it could start from (for example Spanish)."
+  },
   "architect.localization.textPlaces.edgeType": {
     "defaultMessage": "Edge type",
     "description": "Kind of codebook entry that holds a group of texts in the translation table, before the entry’s name: an edge type."

@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
-
 import {
   migrateProtocol,
   migrateProtocolWithSessions,
@@ -20,6 +18,7 @@ import {
 import { findFinishStageTextProblems } from '../finish-stage-text.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { finishSessionStage } from '../stages/finish-session.ts';
+import { SUPPLIED_LANGUAGES, suppliedBaseLanguage } from '../supplied-text.ts';
 import { findTimelineStructureProblems } from '../timeline-structure.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
@@ -302,42 +301,41 @@ describe('v8 to v9 migration', () => {
 });
 
 describe('supplied finish text', () => {
-  it('is supplied in every language the apps ship in, and no other', () => {
-    for (const { locale } of ecosystemLocales) {
-      expect(defaultFinishSessionText(locale)).toBeDefined();
-    }
-    const shipped = ecosystemLocales.map(({ locale }) => locale);
-    for (const locale of Object.keys(DEFAULT_FINISH_SESSION_TEXT)) {
-      expect(shipped).toContain(locale);
-    }
+  it('is supplied in exactly the languages Network Canvas supplies wording in', () => {
+    expect(Object.keys(DEFAULT_FINISH_SESSION_TEXT).toSorted()).toEqual(
+      [...SUPPLIED_LANGUAGES].toSorted(),
+    );
     expect(defaultFinishSessionText('hu')).toBeUndefined();
   });
 
-  it('serves a regional variant from its language', () => {
-    expect(defaultFinishSessionText('en-US')).toBe(
-      DEFAULT_FINISH_SESSION_TEXT.en,
-    );
-    expect(defaultFinishSessionText('en-GB')).toBe(
-      DEFAULT_FINISH_SESSION_TEXT.en,
-    );
-    expect(defaultFinishSessionText('es-MX')).toBe(
-      DEFAULT_FINISH_SESSION_TEXT.es,
-    );
-  });
-
-  it('serves Chinese by script', () => {
-    expect(defaultFinishSessionText('zh-TW')).toBe(
-      DEFAULT_FINISH_SESSION_TEXT['zh-Hant'],
-    );
-    expect(defaultFinishSessionText('zh-CN')).toBe(
-      DEFAULT_FINISH_SESSION_TEXT['zh-Hans'],
-    );
-  });
+  it.each([
+    ['en-US', 'en'],
+    ['en-GB', 'en'],
+    ['es-MX', 'es'],
+    ['zh-TW', 'zh-Hant'],
+    ['zh-HK', 'zh-Hant'],
+    ['zh-CN', 'zh-Hans'],
+    ['de-AT', 'de'],
+  ])(
+    'has none for the regional variant %s, which can start from %s',
+    (locale, base) => {
+      expect(defaultFinishSessionText(locale)).toBeUndefined();
+      expect(suppliedBaseLanguage(locale)).toBe(base);
+    },
+  );
 
   it.each(['pt', 'pt-PT', 'ca', 'gl', 'ja', 'und'])(
     'has none for %s, rather than a neighbouring language',
     (locale) => {
       expect(defaultFinishSessionText(locale)).toBeUndefined();
+      expect(suppliedBaseLanguage(locale)).toBeUndefined();
+    },
+  );
+
+  it.each(SUPPLIED_LANGUAGES)(
+    'offers %s no other language to start from',
+    (locale) => {
+      expect(suppliedBaseLanguage(locale)).toBeUndefined();
     },
   );
 
@@ -345,7 +343,11 @@ describe('supplied finish text', () => {
     expect(
       createDefaultFinishSessionStage({
         id: 'end',
-        localization: { defaultLocale: 'en-US', locales: ['en-US', 'ja'] },
+        localization: {
+          defaultLocale: 'en-US',
+          locales: ['en-US', 'ja'],
+          startFrom: { 'en-US': 'en' },
+        },
       }),
     ).toEqual({
       id: 'end',
@@ -408,6 +410,26 @@ describe('supplied finish text', () => {
           ...stage.finishedContent,
           fr: DEFAULT_FINISH_SESSION_TEXT.fr.finishedContent,
         },
+      });
+    });
+
+    it('leaves a regional variant untranslated unless it starts from its language', () => {
+      const addingMexicanSpanish = {
+        before: english,
+        after: { defaultLocale: 'en', locales: ['en', 'es-MX'] },
+      };
+      expect(afterChange(stage, addingMexicanSpanish)).toEqual(stage);
+      expect(
+        afterChange(stage, {
+          ...addingMexicanSpanish,
+          after: {
+            ...addingMexicanSpanish.after,
+            startFrom: { 'es-MX': 'es' },
+          },
+        }).content,
+      ).toEqual({
+        ...stage.content,
+        'es-MX': DEFAULT_FINISH_SESSION_TEXT.es.content,
       });
     });
 

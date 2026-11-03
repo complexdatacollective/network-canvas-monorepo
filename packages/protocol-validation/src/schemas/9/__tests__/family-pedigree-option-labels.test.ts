@@ -45,13 +45,16 @@ describe('supplied Family Pedigree option labels', () => {
     },
   );
 
-  it('serves a regional variant from its language, and nothing to a neighbouring language', () => {
-    expect(suppliedOptionLabel('pedigreeRelationship', 'donor', 'de-AT')).toBe(
+  it('serves only the exact language, not a regional variant or a neighbouring language', () => {
+    expect(suppliedOptionLabel('pedigreeRelationship', 'donor', 'de')).toBe(
       'Eizell- oder Samenspender/in',
     );
     expect(
+      suppliedOptionLabel('pedigreeRelationship', 'donor', 'de-AT'),
+    ).toBeUndefined();
+    expect(
       suppliedOptionLabel('pedigreeSexAssignedAtBirth', 'male', 'zh-TW'),
-    ).toBe('男性');
+    ).toBeUndefined();
     expect(
       suppliedOptionLabel('pedigreeSexAssignedAtBirth', 'female', 'pt-PT'),
     ).toBeUndefined();
@@ -111,7 +114,7 @@ describe('supplied Family Pedigree option labels', () => {
 
   it('fills in a new language while the default-language labels are still the supplied ones', () => {
     const options = optionsFor(english);
-    expect(hasSuppliedOptionLabels(SET, options, 'en')).toBe(true);
+    expect(hasSuppliedOptionLabels(SET, options, english)).toBe(true);
     expect(
       relabelled(options, {
         before: english,

@@ -41,6 +41,7 @@ import { requireSuppliedPlacements } from './supplied-stage-setting.ts';
 import {
   type LanguageChange,
   suppliedTextAfterLanguageChange,
+  suppliedLanguageOf,
   suppliedTextFor,
 } from './supplied-text.ts';
 
@@ -612,7 +613,7 @@ const suppliedValue = (
   for (const locale of localization.locales) {
     const text = writtenIn(
       entry,
-      locale,
+      suppliedLanguageOf(localization, locale),
       locale === localization.defaultLocale,
     );
     if (text !== undefined) value[locale] = text;
@@ -710,7 +711,12 @@ export const interfaceTextAfterLanguageChange = (
         const value = text[group]?.[key];
         if (
           value?.[defaultLocale] === undefined ||
-          value[defaultLocale] !== writtenIn(entry, defaultLocale, true)
+          value[defaultLocale] !==
+            writtenIn(
+              entry,
+              suppliedLanguageOf(change.before, defaultLocale),
+              true,
+            )
         ) {
           return [];
         }

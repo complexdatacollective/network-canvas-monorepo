@@ -99,6 +99,54 @@ describe('ProtocolLocalizationSchema', () => {
     ]);
   });
 
+  describe('languages that start from another’s wording', () => {
+    it('accepts a regional variant starting from its base language', () => {
+      expect(
+        issuesOf(ProtocolLocalizationSchema, {
+          defaultLocale: 'en',
+          locales: ['en', 'es-MX', 'zh-TW'],
+          startFrom: { 'es-MX': 'es', 'zh-TW': 'zh-Hant' },
+        }),
+      ).toEqual([]);
+    });
+
+    it('rejects a base that is not the language’s own', () => {
+      expect(
+        issuesOf(ProtocolLocalizationSchema, {
+          defaultLocale: 'en',
+          locales: ['en', 'es-MX', 'ca'],
+          startFrom: { 'es-MX': 'pt-BR', 'ca': 'es' },
+        }),
+      ).toEqual([
+        {
+          message: 'Language "es-MX" can only start from the wording of "es".',
+          path: ['startFrom', 'es-MX'],
+        },
+        {
+          message:
+            'Language "ca" cannot start from another language\'s wording: Network Canvas supplies none it is a variant of.',
+          path: ['startFrom', 'ca'],
+        },
+      ]);
+    });
+
+    it('rejects a language the protocol does not declare', () => {
+      expect(
+        issuesOf(ProtocolLocalizationSchema, {
+          defaultLocale: 'en',
+          locales: ['en'],
+          startFrom: { 'es-MX': 'es' },
+        }),
+      ).toEqual([
+        {
+          message:
+            'Language "es-MX" starts from another language\'s wording, but is not one of the protocol\'s languages.',
+          path: ['startFrom', 'es-MX'],
+        },
+      ]);
+    });
+  });
+
   it('rejects a language declared twice at the repeat', () => {
     expect(
       issuesOf(ProtocolLocalizationSchema, {

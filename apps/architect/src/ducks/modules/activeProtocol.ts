@@ -10,6 +10,7 @@ import { navigate } from 'wouter/use-browser-location';
 import {
   type CurrentProtocol,
   type LocalizedString,
+  type StartFrom,
   withInterfaceText,
 } from '@codaco/protocol-validation';
 import type { AppDispatch, RootState } from '~/ducks/store';
@@ -87,10 +88,13 @@ const activeProtocolSlice = createSlice({
     },
     addProtocolLocales: (
       state,
-      action: PayloadAction<{ locales: readonly string[] }>,
+      action: PayloadAction<{
+        locales: readonly string[];
+        startFrom?: StartFrom;
+      }>,
     ) =>
       applyLocaleOperation(state, (protocol) =>
-        addLocales(protocol, action.payload.locales),
+        addLocales(protocol, action.payload.locales, action.payload.startFrom),
       ),
     removeProtocolLocale: (state, action: PayloadAction<{ locale: string }>) =>
       applyLocaleOperation(state, (protocol) =>

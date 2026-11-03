@@ -14,6 +14,7 @@ import type { LocalizedString } from './localized-string.ts';
 import {
   type LanguageChange,
   suppliedTextAfterLanguageChange,
+  suppliedLanguageOf,
   suppliedTextFor,
 } from './supplied-text.ts';
 
@@ -275,7 +276,7 @@ export const suppliedOptionLabels = (
     const text = writtenOptionLabel(
       set,
       value,
-      locale,
+      suppliedLanguageOf(localization, locale),
       locale === localization.defaultLocale,
     );
     if (text !== undefined) label[locale] = text;
@@ -299,12 +300,18 @@ const labelOf = (option: LabelledOption): LocalizedString =>
 export const hasSuppliedOptionLabels = (
   set: SuppliedOptionLabelSet,
   options: readonly LabelledOption[],
-  defaultLocale: LocaleTag,
+  localization: LocalizationDeclaration,
 ): boolean =>
   options.every((option) => {
+    const { defaultLocale } = localization;
     const text =
       typeof option.value === 'string'
-        ? writtenOptionLabel(set, option.value, defaultLocale, true)
+        ? writtenOptionLabel(
+            set,
+            option.value,
+            suppliedLanguageOf(localization, defaultLocale),
+            true,
+          )
         : undefined;
     return text !== undefined && labelOf(option)[defaultLocale] === text;
   });
@@ -322,8 +329,7 @@ export const suppliedOptionLabelsAfterLanguageChange = <
   options: readonly Option[],
   change: LanguageChange,
 ): Option[] | undefined => {
-  if (!hasSuppliedOptionLabels(set, options, change.before.defaultLocale))
-    return undefined;
+  if (!hasSuppliedOptionLabels(set, options, change.before)) return undefined;
   return options.map((option) => {
     const { value } = option;
     if (typeof value !== 'string') return option;

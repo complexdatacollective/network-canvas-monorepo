@@ -11,6 +11,7 @@ import type {
 import { suppliedStageText } from './supplied-stage-text.ts';
 import {
   type LanguageChange,
+  suppliedLanguageOf,
   suppliedTextAfterLanguageChange,
   suppliedTextFor,
 } from './supplied-text.ts';
@@ -35,8 +36,9 @@ export type FinishSessionText = Readonly<{
  * time.
  *
  * Each translation was checked by blind back-translation and adversarial
- * comparison (#2131; the finished-screen text when it was added). A regional variant is served by its language
- * (`suppliedTextFor`), so British English reads the `en` text.
+ * comparison (#2131; the finished-screen text when it was added). Only the
+ * exact language is served (`suppliedTextFor`); British English starts from
+ * the `en` text only when the researcher chooses to (`StartFrom`).
  */
 export const DEFAULT_FINISH_SESSION_TEXT = {
   'en': {
@@ -118,19 +120,23 @@ const FINISH_SESSION_TEXT_FIELDS = [
 
 /**
  * The finish stage's text fields with the supplied text for every one of the
- * given languages that has it. A language without supplied text is left out,
- * and reported as untranslated like any other missing translation.
+ * protocol's languages that has it, or whose base language does when the
+ * researcher chose to start from it (`localization.startFrom`). A language
+ * without supplied text is left out, and reported as untranslated like any
+ * other missing translation.
  */
 export const defaultFinishSessionFields = (
-  locales: readonly LocaleTag[],
+  localization: LocalizationDeclaration,
 ): Record<FinishSessionTextField, LocalizedString> => {
   const fields: Record<FinishSessionTextField, Record<LocaleTag, string>> = {
     label: {},
     content: {},
     finishedContent: {},
   };
-  for (const locale of locales) {
-    const text = defaultFinishSessionText(locale);
+  for (const locale of localization.locales) {
+    const text = defaultFinishSessionText(
+      suppliedLanguageOf(localization, locale),
+    );
     if (text === undefined) continue;
     for (const field of FINISH_SESSION_TEXT_FIELDS) {
       fields[field][locale] = text[field];
@@ -183,7 +189,7 @@ export const createDefaultFinishSessionStage = ({
   id,
   type: 'FinishSession',
   mode,
-  ...defaultFinishSessionFields(localization.locales),
+  ...defaultFinishSessionFields(localization),
   ...suppliedFinishSessionSettings(localization),
   outcome,
 });
@@ -215,9 +221,10 @@ type FinishSessionScreens = Pick<
 const holdsSuppliedText = (
   stage: Pick<FinishSessionStage, FinishSessionTextField>,
   locale: LocaleTag,
+  suppliedIn: LocaleTag,
   fields: readonly FinishSessionTextField[],
 ): boolean => {
-  const text = defaultFinishSessionText(locale);
+  const text = defaultFinishSessionText(suppliedIn);
   if (text === undefined) return false;
   return fields.every((field) => stage[field]?.[locale] === text[field]);
 };
@@ -229,12 +236,16 @@ const holdsSuppliedText = (
  * Architect only fills in a newly added language when this holds for the
  * default language, because supplied text beside a researcher's own wording
  * would say something else. The stage's label is a name, not something the
- * participant reads, so renaming it does not count.
+ * participant reads, so renaming it does not count. A language that starts
+ * from another's wording holds that language's text (`suppliedIn`; see
+ * `suppliedLanguageOf`).
  */
 export const hasDefaultFinishSessionText = (
   stage: FinishSessionScreens,
   locale: LocaleTag,
-): boolean => holdsSuppliedText(stage, locale, shownTextFields(stage.mode));
+  suppliedIn: LocaleTag = locale,
+): boolean =>
+  holdsSuppliedText(stage, locale, suppliedIn, shownTextFields(stage.mode));
 
 /**
  * The finish stage's text as Network Canvas writes it after a change to the
@@ -249,9 +260,10 @@ export const defaultFinishSessionTextAfterLanguageChange = (
   change: LanguageChange,
 ): Partial<Record<FinishSessionTextField, LocalizedString>> => {
   const { defaultLocale } = change.before;
-  if (!hasDefaultFinishSessionText(stage, defaultLocale)) return {};
+  const suppliedIn = suppliedLanguageOf(change.before, defaultLocale);
+  if (!hasDefaultFinishSessionText(stage, defaultLocale, suppliedIn)) return {};
   const fields = [...PARTICIPANT_TEXT_FIELDS, 'label' as const].filter(
-    (field) => holdsSuppliedText(stage, defaultLocale, [field]),
+    (field) => holdsSuppliedText(stage, defaultLocale, suppliedIn, [field]),
   );
   return Object.fromEntries(
     fields.map((field) => [

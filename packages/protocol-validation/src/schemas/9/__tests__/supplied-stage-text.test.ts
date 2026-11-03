@@ -50,6 +50,68 @@ describe('the roster panel title Network Canvas supplies', () => {
     ]);
   });
 
+  describe('in a language that starts from its base language', () => {
+    const mexican = {
+      defaultLocale: 'en',
+      locales: ['en', 'es-MX'],
+      startFrom: { 'es-MX': 'es' },
+    };
+
+    it('is written from the base language in a stage added later', () => {
+      expect(
+        suppliedStageText('NameGeneratorRoster', mexican).filter(
+          panelTitleOnly,
+        ),
+      ).toEqual([
+        {
+          path: ['panelTitle'],
+          value: {
+            'en': 'Available to add',
+            'es-MX': 'Disponibles para añadir',
+          },
+        },
+      ]);
+    });
+
+    it('is left untranslated there unless the protocol records the choice', () => {
+      expect(
+        suppliedStageText('NameGeneratorRoster', {
+          defaultLocale: 'en',
+          locales: ['en', 'es-MX'],
+        }).filter(panelTitleOnly),
+      ).toEqual([{ path: ['panelTitle'], value: { en: 'Available to add' } }]);
+    });
+
+    it('is still Network Canvas’s when it is the default language', () => {
+      const roster = {
+        type: 'NameGeneratorRoster',
+        panelTitle: { 'es-MX': 'Disponibles para añadir' },
+      };
+      expect(
+        suppliedStageTextAfterLanguageChange(roster, {
+          before: {
+            defaultLocale: 'es-MX',
+            locales: ['es-MX'],
+            startFrom: { 'es-MX': 'es' },
+          },
+          after: {
+            defaultLocale: 'es-MX',
+            locales: ['es-MX', 'fr'],
+            startFrom: { 'es-MX': 'es' },
+          },
+        }),
+      ).toEqual([
+        {
+          path: ['panelTitle'],
+          value: {
+            'es-MX': 'Disponibles para añadir',
+            'fr': 'Éléments disponibles',
+          },
+        },
+      ]);
+    });
+  });
+
   it('is supplied for no other stage', () => {
     expect(
       suppliedStageText('NameGenerator', english).filter(panelTitleOnly),

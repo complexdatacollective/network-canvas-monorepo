@@ -252,7 +252,11 @@ export {
   suppliedOptionLabelsAfterLanguageChange,
 } from './schemas/9/family-pedigree-option-labels.ts';
 // How text Network Canvas supplies follows a change to a protocol's languages.
-export { type LanguageChange } from './schemas/9/supplied-text.ts';
+export {
+  type LanguageChange,
+  type StartFrom,
+  suppliedBaseLanguage,
+} from './schemas/9/supplied-text.ts';
 // The arguments of the Narrative Pedigree's snapshot titles, which the stage
 // editor offers the same placeholders as the schema declares.
 export {

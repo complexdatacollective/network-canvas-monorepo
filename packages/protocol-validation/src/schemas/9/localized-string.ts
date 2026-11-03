@@ -16,6 +16,7 @@ import {
 } from '../../localization/messageArguments.ts';
 import { findMessageSyntaxProblem } from '../../localization/messageSyntax.ts';
 import type { DynamicValueSite } from './dynamic-values.ts';
+import { suppliedBaseLanguage } from './supplied-text.ts';
 
 const LOCALIZED_STRING = 'localizedString' as const;
 
@@ -75,6 +76,11 @@ export const ProtocolLocalizationSchema = z
     locales: z
       .array(LocaleTagSchema)
       .min(1, { message: 'A protocol must declare at least one language.' }),
+    // Languages the researcher chose to start from Network Canvas's wording in
+    // their base language (Mexican Spanish from Spanish), keyed by the
+    // language that starts from it: wording Network Canvas supplies later is
+    // written in them from that language too.
+    startFrom: z.record(LocaleTagSchema, LocaleTagSchema).optional(),
   })
   .superRefine((localization, ctx) => {
     const seen = new Set<LocaleTag>();
@@ -89,6 +95,28 @@ export const ProtocolLocalizationSchema = z
       }
       seen.add(key);
     });
+
+    for (const [locale, base] of Object.entries(localization.startFrom ?? {})) {
+      if (!localization.locales.includes(locale)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Language "${locale}" starts from another language's wording, but is not one of the protocol's languages.`,
+          path: ['startFrom', locale],
+        });
+        continue;
+      }
+      const expected = suppliedBaseLanguage(locale);
+      if (base !== expected) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            expected === undefined
+              ? `Language "${locale}" cannot start from another language's wording: Network Canvas supplies none it is a variant of.`
+              : `Language "${locale}" can only start from the wording of "${expected}".`,
+          path: ['startFrom', locale],
+        });
+      }
+    }
 
     if (!localization.locales.includes(localization.defaultLocale)) {
       ctx.addIssue({

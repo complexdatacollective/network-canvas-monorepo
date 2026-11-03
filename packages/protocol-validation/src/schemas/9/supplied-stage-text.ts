@@ -17,6 +17,7 @@ import { NARRATIVE_SUPPLIED_TEXT } from './stage-wording/narrative.ts';
 import type { SuppliedStageSetting } from './supplied-stage-setting.ts';
 import {
   type LanguageChange,
+  suppliedLanguageOf,
   suppliedTextAfterLanguageChange,
   suppliedTextFor,
 } from './supplied-text.ts';
@@ -93,7 +94,7 @@ export const suppliedStageText = (
     for (const locale of localization.locales) {
       const text = writtenIn(
         setting,
-        locale,
+        suppliedLanguageOf(localization, locale),
         locale === localization.defaultLocale,
       );
       if (text !== undefined) value[locale] = text;
@@ -119,7 +120,15 @@ export const suppliedStageTextAfterLanguageChange = (
     const held = current as LocalizedString;
     const { defaultLocale } = change.before;
     const text = held[defaultLocale];
-    if (text === undefined || text !== writtenIn(setting, defaultLocale, true))
+    if (
+      text === undefined ||
+      text !==
+        writtenIn(
+          setting,
+          suppliedLanguageOf(change.before, defaultLocale),
+          true,
+        )
+    )
       return [];
     return [
       {

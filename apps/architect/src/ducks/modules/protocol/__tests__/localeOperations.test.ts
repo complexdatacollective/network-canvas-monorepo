@@ -27,6 +27,7 @@ import {
   movedLocale,
   setTranslation,
   withoutLocale,
+  changedLanguageStartFrom,
 } from '../localeOperations';
 
 const NODE_TYPE = 'person';
@@ -263,6 +264,41 @@ describe('addLocales', () => {
       expect(Object.keys(finish?.label ?? {})).not.toContain('ja');
       expect(protocol.stages[0]).toEqual(withSuppliedFinish().stages[0]);
       expect((await validateProtocol(protocol)).success).toBe(true);
+    });
+
+    it('gives a regional variant nothing unless the researcher starts it from its language', async () => {
+      const untouched = protocolOf(addLocales(withSuppliedFinish(), ['es-MX']));
+      expect(Object.keys(untouched.stages.at(-1)?.label ?? {})).not.toContain(
+        'es-MX',
+      );
+      const started = protocolOf(
+        addLocales(withSuppliedFinish(), ['es-MX'], { 'es-MX': 'es' }),
+      );
+      expect(started.stages.at(-1)).toMatchObject({
+        content: {
+          'en': DEFAULT_FINISH_SESSION_TEXT.en.content,
+          'es-MX': DEFAULT_FINISH_SESSION_TEXT.es.content,
+        },
+      });
+      expect(untouched.localization.startFrom).toBeUndefined();
+      expect(started.localization.startFrom).toEqual({ 'es-MX': 'es' });
+      expect((await validateProtocol(started)).success).toBe(true);
+    });
+
+    it('forgets that a language started from another when it is removed', () => {
+      const started = protocolOf(
+        addLocales(withSuppliedFinish(), ['es-MX', 'fr-CA'], {
+          'es-MX': 'es',
+          'fr-CA': 'fr',
+        }),
+      );
+      expect(
+        protocolOf(removeLocale(started, 'es-MX')).localization.startFrom,
+      ).toEqual({ 'fr-CA': 'fr' });
+      const removedBoth = protocolOf(
+        removeLocale(protocolOf(removeLocale(started, 'es-MX')), 'fr-CA'),
+      );
+      expect(removedBoth.localization).not.toHaveProperty('startFrom');
     });
 
     it('stays untranslated once the researcher has rewritten it', () => {
@@ -674,6 +710,36 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
       })),
     );
     expect((await validateProtocol(protocol)).success).toBe(true);
+  });
+
+  it('keeps the supplied text of a language recorded as its regional variant', () => {
+    const english = { defaultLocale: 'en', locales: ['en'] };
+    const argentinian = {
+      defaultLocale: 'en',
+      locales: ['en', 'es-AR'],
+      startFrom: { 'es-AR': 'es' },
+    };
+    expect(changedLanguageStartFrom(english, 'en', 'en-GB')).toEqual({
+      'en-GB': 'en',
+    });
+    expect(changedLanguageStartFrom(argentinian, 'es-AR', 'es-MX')).toEqual({
+      'es-MX': 'es',
+    });
+    expect(
+      changedLanguageStartFrom(
+        { defaultLocale: 'en', locales: ['en', 'es-AR'] },
+        'es-AR',
+        'es-MX',
+      ),
+    ).toEqual({});
+    expect(changedLanguageStartFrom(english, 'en', 'de-AT')).toEqual({});
+    expect(changedLanguageStartFrom(english, 'en', 'de')).toEqual({});
+    const spanish = protocolOf(addLocales(withSuppliedFinish(), ['es']));
+    const protocol = protocolOf(changeLocale(spanish, 'es', 'es-MX'));
+    expect(protocol.localization.startFrom).toEqual({ 'es-MX': 'es' });
+    expect(protocol.stages.at(-1)).toMatchObject({
+      content: { 'es-MX': DEFAULT_FINISH_SESSION_TEXT.es.content },
+    });
   });
 
   it('moves unchanged with its language once the researcher has rewritten it', () => {
