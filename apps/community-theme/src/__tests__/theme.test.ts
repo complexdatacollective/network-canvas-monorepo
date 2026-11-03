@@ -98,24 +98,25 @@ describe('palettes', () => {
     }
   });
 
-  // Text and links over what they sit on: the page, the header bar and the
-  // white content sheet (--surface), at WCAG AA for normal text.
+  // Text and links over what they sit on, at WCAG AA for normal text: the
+  // content sheet, menus and dialogs (secondary), the header bar, and the
+  // page around the sheet (--background), where the sidebar's links sit.
   const PAIRS = [
     ['primary', 'secondary'],
     ['tertiary', 'secondary'],
     ['header_primary', 'header_background'],
-    ['primary', '--surface'],
-    ['tertiary', '--surface'],
+    ['primary', '--background'],
+    ['tertiary', '--background'],
   ] as const;
 
   // The dark palette's link colour is the design system's own dark --link,
-  // which falls short of 4.5:1 on the dark background and surface; the
+  // which falls short of 4.5:1 on the dark surface and background; the
   // shared contrast test (tooling/tailwind) does not check link pairs. Each
   // is pinned to its measured ratio, so a change to either colour fails here
   // and gets looked at.
   const KNOWN_SHORTFALLS: Record<string, number> = {
-    'Network Canvas Dark: tertiary on secondary': 4.3,
-    'Network Canvas Dark: tertiary on --surface': 4.13,
+    'Network Canvas Dark: tertiary on secondary': 4.13,
+    'Network Canvas Dark: tertiary on --background': 4.31,
   };
 
   const scopes = buildScopes();
@@ -123,6 +124,23 @@ describe('palettes', () => {
     [PALETTE_NAMES.light]: scopes['default-light'],
     [PALETTE_NAMES.dark]: scopes['default-dark'],
   };
+
+  it('paints content in the colour of the sheet it sits on', () => {
+    // Discourse paints topic rows, menus and dialogs with secondary; the
+    // theme's content sheet is --surface.
+    expect(text('scss/layout.scss')).toMatch(
+      /#main-outlet \{[^}]*background: var\(--nc-surface\);/,
+    );
+    for (const [name, palette] of Object.entries(schemes)) {
+      const scope = SCOPE_FOR[name];
+      if (!scope) throw new Error(`No scope for the ${name} palette`);
+      const surface = toDisplayColor(scope.token('--surface'))
+        .toString({ format: 'hex', collapse: false })
+        .slice(1)
+        .toUpperCase();
+      expect(palette.secondary, name).toBe(surface);
+    }
+  });
 
   it('keeps text and links legible on everything they sit on', () => {
     const shortfalls: Record<string, number> = {};

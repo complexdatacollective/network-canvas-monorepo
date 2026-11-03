@@ -11,7 +11,10 @@ import {
  * slots when it compiles a stylesheet, so they must be concrete colours rather
  * than the token CSS the rest of the theme uses.
  *
- * - `primary` is Discourse's text colour and `secondary` its page background.
+ * - `primary` is Discourse's text colour. `secondary` is the background it
+ *   paints content with (topic rows, menus, dialogs, the composer), so it
+ *   takes the surface colour of the theme's content sheet; the theme paints
+ *   the tinted page around the sheet itself.
  * - `tertiary` colours links and accents; primary buttons are restyled to the
  *   Network Canvas primary in the theme's stylesheet.
  * - `selected` and `hover` are the backgrounds of selected and hovered rows in
@@ -19,7 +22,7 @@ import {
  */
 const DISCOURSE_SLOTS = {
   primary: 'var(--text)',
-  secondary: 'var(--background)',
+  secondary: 'var(--surface)',
   tertiary: 'var(--link)',
   quaternary: 'var(--accent)',
   header_background: 'var(--background)',

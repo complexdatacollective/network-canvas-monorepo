@@ -2,10 +2,6 @@
 // becomes the forum's bar: the "Community" title, search, sign-in and the
 // user menu. The shared header scrolls away; Discourse's bar stays pinned.
 
-.above-site-header-outlet nc-site-navigation {
-  display: block;
-}
-
 .d-header {
   border-bottom: 2px solid var(--nc-outline);
 }

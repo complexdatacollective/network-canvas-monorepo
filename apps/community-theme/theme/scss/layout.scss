@@ -3,8 +3,33 @@
 // The forum's content sits on one white sheet over the tinted page, with the
 // shared radius and shadow, like the cards on the website. Phones get a
 // smaller radius and less padding.
+//
+// The palette's secondary colour, which Discourse paints the page with, is
+// the sheet's surface colour, so the page and the sidebar beside the sheet
+// are painted here.
+
+html {
+  background-color: var(--nc-background);
+}
+
+// Discourse paints its full-page log-in, sign-up and account screens, header
+// included, in the content colour; they keep the tinted page here too.
+body:is(
+  .login-page,
+  .signup-page,
+  .invite-page,
+  .password-reset-page,
+  .activate-account-page
+) {
+  background-color: var(--nc-background);
+
+  .d-header {
+    background-color: var(--nc-background);
+  }
+}
 
 :root {
+  --d-sidebar-background: var(--nc-background);
   --main-outlet-padding-x: var(--space-3);
 
   @include viewport.from(md) {

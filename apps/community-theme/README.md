@@ -57,8 +57,10 @@ every font face and translation the theme uses is shipped.
 1. Admin → Appearance → Themes → Install → From your device, and upload
    `dist/network-canvas.zip`. Updating an installed theme is the same upload.
 2. Attach the components the current theme uses (DiscoTOC, Discourse Clickable
-   Topic) to the new theme. Leave out Custom Header Links: the shared header
-   replaces it.
+   Topic, Discourse Loading Slider, Modern Category + Group Boxes) to the new
+   theme. Leave out Custom Header Links, which the shared header replaces, and
+   the Google font component, whose fonts and sizes would override the
+   theme's.
 3. Preview the theme, then make it the default.
 4. Under Admin → Appearance → Color palettes, set "Network Canvas" as the
    default light palette. To offer dark mode, set "Network Canvas Dark" as the
@@ -78,7 +80,7 @@ exact version to pin it.
 ## Known shortfall
 
 The dark palette's link colour is the design system's own dark `--link`, which
-measures 4.30:1 on the dark background and 4.13:1 on the dark content surface,
+measures 4.31:1 on the dark page and 4.13:1 on the dark content surface,
 under the 4.5:1 WCAG AA asks of normal text. The test pins both ratios so a
 change to either colour is noticed. The shared contrast test in
 `tooling/tailwind` does not check link colours.
