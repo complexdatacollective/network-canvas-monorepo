@@ -58,6 +58,7 @@ const entities: Record<string, string> = {
 const approximateRenderedText = (markdown: string) =>
   markdown
     .replace(/<[^>]*>/g, '')
+    .replace(/</g, '')
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/^[ \t]*(?:#{1,6}|>|[-+*]|\d+[.)])[ \t]+/gm, '')
     .replace(/(\*{1,3}|_{1,3}|~{1,2}|`+)(\S(?:.*?\S)?)\1/g, '$2')
