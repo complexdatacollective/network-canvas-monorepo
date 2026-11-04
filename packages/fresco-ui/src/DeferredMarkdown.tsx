@@ -50,15 +50,24 @@ const entities: Record<string, string> = {
   '#39': "'",
 };
 
+/** `text` with every HTML tag removed, including tags that removing one forms. */
+const withoutTags = (text: string) => {
+  let current = text;
+  let previous;
+  do {
+    previous = current;
+    current = current.replace(/<[^>]*>/g, '');
+  } while (current !== previous);
+  return current;
+};
+
 /**
  * An approximation of the rendered text, for the moment before the renderer
  * arrives: shown transparent, it holds the text's space and gives assistive
  * technology a name without exposing markdown syntax.
  */
 const approximateRenderedText = (markdown: string) =>
-  markdown
-    .replace(/<[^>]*>/g, '')
-    .replace(/</g, '')
+  withoutTags(markdown)
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/^[ \t]*(?:#{1,6}|>|[-+*]|\d+[.)])[ \t]+/gm, '')
     .replace(/(\*{1,3}|_{1,3}|~{1,2}|`+)(\S(?:.*?\S)?)\1/g, '$2')
