@@ -105,9 +105,10 @@ const { mapInstance, mapEvents, MapConstructor } = vi.hoisted(() => {
   };
 });
 
-vi.mock('mapbox-gl/esm', () => ({
-  Map: MapConstructor,
-}));
+// The library is downloaded once a map is wanted; each test settles that
+// download before it looks at the map.
+const { loadMapbox } = vi.hoisted(() => ({ loadMapbox: vi.fn() }));
+vi.mock('../loadMapbox', () => ({ loadMapbox }));
 
 vi.mock('../../../contract/context', () => ({
   useContractFlags: () => ({ isE2E: false }),
@@ -123,6 +124,7 @@ vi.mock('react-redux', () => ({
   useSelector: (selector: (state: unknown) => unknown) => selector({}),
 }));
 
+import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 // The hook under test (imported after mocks are declared)
@@ -178,6 +180,12 @@ const flushRaf = () => {
   rafCallbacks = [];
   for (const cb of callbacks) cb(0);
 };
+
+// Lets the mapbox-gl download, and the map built once it arrives, complete.
+const settle = () =>
+  act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 
 const baseMapOptions = {
   center: [0, 0],
@@ -259,6 +267,8 @@ beforeEach(() => {
   mapInstance.remove.mockClear();
   mapInstance.setLanguage.mockClear();
   MapConstructor.mockClear();
+  loadMapbox.mockReset();
+  loadMapbox.mockResolvedValue({ Map: MapConstructor });
   cancelRaf.mockClear();
   vi.stubGlobal('ResizeObserver', MockResizeObserver);
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -273,16 +283,18 @@ afterEach(() => {
 });
 
 describe('useMapbox resize handling', () => {
-  it('observes the map container once the map is initialised', () => {
+  it('observes the map container once the map is initialised', async () => {
     render(withProtocolLocale('en', ENGLISH_ONLY));
+    await settle();
 
     expect(MapConstructor).toHaveBeenCalledTimes(1);
     expect(observerInstances).toHaveLength(1);
     expect(observerInstances[0]!.observeSpy).toHaveBeenCalled();
   });
 
-  it('resizes the map (on the next frame) when the container resizes', () => {
+  it('resizes the map (on the next frame) when the container resizes', async () => {
     render(withProtocolLocale('en', ENGLISH_ONLY));
+    await settle();
 
     act(() => {
       triggerResize();
@@ -297,8 +309,9 @@ describe('useMapbox resize handling', () => {
     expect(mapInstance.resize).toHaveBeenCalledTimes(1);
   });
 
-  it('coalesces multiple resize callbacks into a single resize per frame', () => {
+  it('coalesces multiple resize callbacks into a single resize per frame', async () => {
     render(withProtocolLocale('en', ENGLISH_ONLY));
+    await settle();
 
     act(() => {
       triggerResize();
@@ -312,8 +325,9 @@ describe('useMapbox resize handling', () => {
     expect(mapInstance.resize).toHaveBeenCalledTimes(1);
   });
 
-  it('disconnects the observer and cancels a pending frame on cleanup', () => {
+  it('disconnects the observer and cancels a pending frame on cleanup', async () => {
     const { unmount } = render(withProtocolLocale('en', ENGLISH_ONLY));
+    await settle();
 
     // Schedule a frame without flushing it, so cleanup has something to cancel.
     act(() => {
@@ -332,7 +346,7 @@ describe('useMapbox resize handling', () => {
 // The map's own control names are read by screen readers only, so they are
 // English whatever language the protocol is read in.
 describe('useMapbox control names', () => {
-  it('names the map in English when the protocol is read in another language', () => {
+  it('names the map in English when the protocol is read in another language', async () => {
     render(
       <InterviewI18nProvider>
         <TestProtocolLocalization
@@ -342,6 +356,7 @@ describe('useMapbox control names', () => {
         </TestProtocolLocalization>
       </InterviewI18nProvider>,
     );
+    await settle();
     expect(mapInstance.getCanvas()).toHaveAccessibleName('Map');
   });
 });
@@ -358,13 +373,14 @@ describe('useMapbox highlighted area', () => {
   const highlights = (value: string) =>
     ['selection', ['==', 'id', value]] as const;
 
-  it('stops highlighting once no readable location is saved for the person shown', () => {
+  it('stops highlighting once no readable location is saved for the person shown', async () => {
     const { rerender } = render(
       <EnglishHarness
         mapOptions={baseMapOptions}
         initialSelectionValue="tract-a"
       />,
     );
+    await settle();
     act(() => {
       mapEvents.fire('load');
     });
@@ -373,11 +389,12 @@ describe('useMapbox highlighted area', () => {
     );
 
     rerender(<EnglishHarness mapOptions={baseMapOptions} />);
+    await settle();
 
     expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
   });
 
-  it('never restores an earlier location while tiles are still loading', () => {
+  it('never restores an earlier location while tiles are still loading', async () => {
     // Mapbox reports its style as not loaded while any tile is loading.
     mapInstance.isStyleLoaded.mockReturnValue(false);
     const { rerender } = render(
@@ -386,6 +403,7 @@ describe('useMapbox highlighted area', () => {
         initialSelectionValue="tract-a"
       />,
     );
+    await settle();
     act(() => {
       mapEvents.fire('load');
       mapEvents.fire('styledata');
@@ -395,6 +413,7 @@ describe('useMapbox highlighted area', () => {
     );
 
     rerender(<EnglishHarness mapOptions={baseMapOptions} />);
+    await settle();
     expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
 
     act(() => {
@@ -403,7 +422,7 @@ describe('useMapbox highlighted area', () => {
     expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
   });
 
-  it('highlights a picked area only once the pick is saved', () => {
+  it('highlights a picked area only once the pick is saved', async () => {
     const onSelectionChange = vi.fn();
     const { rerender } = render(
       <EnglishHarness
@@ -411,6 +430,7 @@ describe('useMapbox highlighted area', () => {
         onSelectionChange={onSelectionChange}
       />,
     );
+    await settle();
     act(() => {
       mapEvents.fire('load');
     });
@@ -433,19 +453,21 @@ describe('useMapbox highlighted area', () => {
         onSelectionChange={onSelectionChange}
       />,
     );
+    await settle();
 
     expect(mapInstance.setFilter).toHaveBeenLastCalledWith(
       ...highlights('tract-b'),
     );
   });
 
-  it('highlights the saved location again once the map is rebuilt', () => {
+  it('highlights the saved location again once the map is rebuilt', async () => {
     const { rerender } = render(
       <EnglishHarness
         mapOptions={baseMapOptions}
         initialSelectionValue="tract-a"
       />,
     );
+    await settle();
     act(() => {
       mapEvents.fire('load');
     });
@@ -456,6 +478,7 @@ describe('useMapbox highlighted area', () => {
         initialSelectionValue="tract-a"
       />,
     );
+    await settle();
     expect(MapConstructor).toHaveBeenCalledTimes(2);
 
     act(() => {
@@ -473,44 +496,51 @@ describe('useMapbox protocol language', () => {
   const constructedWith = () =>
     MapConstructor.mock.calls[0]?.[0] as unknown as { language?: string };
 
-  it('labels the map in the protocol language from the first tiles', () => {
+  it('labels the map in the protocol language from the first tiles', async () => {
     render(withProtocolLocale('hu'));
+    await settle();
 
     expect(constructedWith().language).toBe('hu');
   });
 
-  it('cuts a regional protocol language to the language Mapbox lists', () => {
+  it('cuts a regional protocol language to the language Mapbox lists', async () => {
     render(withProtocolLocale('pt-BR'));
+    await settle();
 
     expect(constructedWith().language).toBe('pt');
   });
 
-  it('keeps the script of a Chinese protocol language', () => {
+  it('keeps the script of a Chinese protocol language', async () => {
     render(withProtocolLocale('zh-TW'));
+    await settle();
 
     expect(constructedWith().language).toBe('zh-Hant');
   });
 
-  it('sets no language when Mapbox has none, so labels show local names', () => {
+  it('sets no language when Mapbox has none, so labels show local names', async () => {
     render(withProtocolLocale('sw'));
+    await settle();
 
     expect(constructedWith()).not.toHaveProperty('language');
   });
 
-  it('follows the protocol language', () => {
+  it('follows the protocol language', async () => {
     render(
       <InterviewI18nProvider>{withProtocolLocale('hu')}</InterviewI18nProvider>,
     );
+    await settle();
 
     expect(constructedWith().language).toBe('hu');
   });
 
-  it('changes the live map language without recreating the map', () => {
+  it('changes the live map language without recreating the map', async () => {
     const { rerender } = render(withProtocolLocale('en'));
+    await settle();
     expect(constructedWith().language).toBe('en');
     expect(mapInstance.setLanguage).not.toHaveBeenCalled();
 
     rerender(withProtocolLocale('hu'));
+    await settle();
 
     expect(mapInstance.setLanguage).toHaveBeenCalledTimes(1);
     expect(mapInstance.setLanguage).toHaveBeenLastCalledWith('hu');
@@ -518,29 +548,34 @@ describe('useMapbox protocol language', () => {
     expect(mapInstance.remove).not.toHaveBeenCalled();
   });
 
-  it('removes the map language when the new protocol language has no labels', () => {
+  it('removes the map language when the new protocol language has no labels', async () => {
     const { rerender } = render(withProtocolLocale('hu'));
+    await settle();
 
     rerender(withProtocolLocale('sw'));
+    await settle();
 
     expect(mapInstance.setLanguage).toHaveBeenLastCalledWith(undefined);
     expect(MapConstructor).toHaveBeenCalledTimes(1);
   });
 
-  it('does not touch the map when another protocol language maps to the same Mapbox language', () => {
+  it('does not touch the map when another protocol language maps to the same Mapbox language', async () => {
     const { rerender } = render(withProtocolLocale('pt-BR'));
+    await settle();
     expect(constructedWith().language).toBe('pt');
 
     rerender(withProtocolLocale('pt-PT'));
+    await settle();
 
     expect(mapInstance.setLanguage).not.toHaveBeenCalled();
     expect(MapConstructor).toHaveBeenCalledTimes(1);
   });
 
-  it('labels the map in Tagalog for a Filipino protocol language', () => {
+  it('labels the map in Tagalog for a Filipino protocol language', async () => {
     // A protocol's locales are canonical, so Tagalog arrives as `fil`; Mapbox
     // spells it `tl`.
     render(withProtocolLocale('fil'));
+    await settle();
 
     expect(constructedWith().language).toBe('tl');
   });
@@ -570,13 +605,14 @@ describe('useMapbox highlighted area', () => {
   const highlights = (value: string) =>
     ['selection', ['==', 'id', value]] as const;
 
-  it('stops highlighting a saved location once it can no longer be read', () => {
+  it('stops highlighting a saved location once it can no longer be read', async () => {
     const { rerender } = renderInEnglish(
       <TestHarness
         mapOptions={baseMapOptions}
         initialSelectionValue="tract-a"
       />,
     );
+    await settle();
     act(() => {
       mapEvents.fire('load');
     });
@@ -585,11 +621,12 @@ describe('useMapbox highlighted area', () => {
     );
 
     rerender(<TestHarness mapOptions={baseMapOptions} />);
+    await settle();
 
     expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
   });
 
-  it('follows the saved location while tiles are still loading', () => {
+  it('follows the saved location while tiles are still loading', async () => {
     // Mapbox reports its style as not loaded while any tile is loading.
     mapInstance.isStyleLoaded.mockReturnValue(false);
     const { rerender } = renderInEnglish(
@@ -598,6 +635,7 @@ describe('useMapbox highlighted area', () => {
         initialSelectionValue="tract-a"
       />,
     );
+    await settle();
     act(() => {
       mapEvents.fire('load');
       mapEvents.fire('styledata');
@@ -607,6 +645,7 @@ describe('useMapbox highlighted area', () => {
     );
 
     rerender(<TestHarness mapOptions={baseMapOptions} />);
+    await settle();
     expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
 
     act(() => {
@@ -615,7 +654,7 @@ describe('useMapbox highlighted area', () => {
     expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
   });
 
-  it('highlights a picked area only once the pick is saved', () => {
+  it('highlights a picked area only once the pick is saved', async () => {
     const onSelectionChange = vi.fn();
     const { rerender } = renderInEnglish(
       <TestHarness
@@ -623,6 +662,7 @@ describe('useMapbox highlighted area', () => {
         onSelectionChange={onSelectionChange}
       />,
     );
+    await settle();
     act(() => {
       mapEvents.fire('load');
     });
@@ -645,19 +685,21 @@ describe('useMapbox highlighted area', () => {
         onSelectionChange={onSelectionChange}
       />,
     );
+    await settle();
 
     expect(mapInstance.setFilter).toHaveBeenLastCalledWith(
       ...highlights('tract-b'),
     );
   });
 
-  it('highlights the saved location again once the map is rebuilt', () => {
+  it('highlights the saved location again once the map is rebuilt', async () => {
     const { rerender } = renderInEnglish(
       <TestHarness
         mapOptions={baseMapOptions}
         initialSelectionValue="tract-a"
       />,
     );
+    await settle();
     act(() => {
       mapEvents.fire('load');
     });
@@ -668,6 +710,7 @@ describe('useMapbox highlighted area', () => {
         initialSelectionValue="tract-a"
       />,
     );
+    await settle();
     expect(MapConstructor).toHaveBeenCalledTimes(2);
 
     act(() => {
@@ -716,10 +759,11 @@ describe('useMapbox readiness', () => {
     ready: element.dataset.ready,
   });
 
-  it('hands over the map once it has loaded, and is ready once it is idle', () => {
+  it('hands over the map once it has loaded, and is ready once it is idle', async () => {
     const { getByTestId } = renderInEnglish(
       <ReadinessHarness mapOptions={baseMapOptions} />,
     );
+    await settle();
     expect(state(getByTestId('map'))).toEqual({
       hasMap: 'false',
       ready: 'false',
@@ -742,10 +786,11 @@ describe('useMapbox readiness', () => {
     });
   });
 
-  it('starts again from nothing when the map is rebuilt', () => {
+  it('starts again from nothing when the map is rebuilt', async () => {
     const { getByTestId, rerender } = renderInEnglish(
       <ReadinessHarness mapOptions={baseMapOptions} />,
     );
+    await settle();
     act(() => {
       mapEvents.fire('load');
       mapEvents.fire('idle');
@@ -757,6 +802,7 @@ describe('useMapbox readiness', () => {
         mapOptions={{ ...baseMapOptions, targetFeatureProperty: 'name' }}
       />,
     );
+    await settle();
     expect(MapConstructor).toHaveBeenCalledTimes(2);
     expect(state(getByTestId('map'))).toEqual({
       hasMap: 'false',
@@ -771,5 +817,101 @@ describe('useMapbox readiness', () => {
       hasMap: 'true',
       ready: 'true',
     });
+  });
+});
+
+describe('useMapbox library download', () => {
+  const captureException = vi.fn();
+  const tracker = { track: vi.fn(), captureException };
+
+  function DownloadHarness({ mapOptions }: { mapOptions: ExtendedMapOptions }) {
+    const { mapContainerRef, mapError } = useMapbox({
+      mapOptions,
+      dataSourceAssetId: null,
+      dataSourceUrl: null,
+      onSelectionChange: ignoreSelection,
+    });
+    return (
+      <div
+        data-testid="map"
+        ref={mapContainerRef}
+        data-error={mapError?.message ?? ''}
+      />
+    );
+  }
+
+  function InAnalytics({ children }: { children: ReactNode }) {
+    return (
+      <AnalyticsContext.Provider value={tracker}>
+        <InEnglish>{children}</InEnglish>
+      </AnalyticsContext.Provider>
+    );
+  }
+
+  // Holds the library back until the returned function is called.
+  const holdLibrary = () => {
+    let arrive: (() => void) | undefined;
+    loadMapbox.mockReturnValue(
+      new Promise((resolve) => {
+        arrive = () => resolve({ Map: MapConstructor });
+      }),
+    );
+    return () => arrive?.();
+  };
+
+  beforeEach(() => {
+    captureException.mockClear();
+  });
+
+  it('builds no map when the stage is left before the library arrives', async () => {
+    const arrive = holdLibrary();
+    const { unmount } = render(
+      <DownloadHarness mapOptions={baseMapOptions} />,
+      { wrapper: InAnalytics },
+    );
+    expect(loadMapbox).toHaveBeenCalled();
+
+    unmount();
+    arrive();
+    await settle();
+
+    expect(MapConstructor).not.toHaveBeenCalled();
+    expect(observerInstances).toHaveLength(0);
+    expect(captureException).not.toHaveBeenCalled();
+  });
+
+  it('builds only the map for the latest inputs when they change before the library arrives', async () => {
+    const arrive = holdLibrary();
+    const { rerender } = render(
+      <DownloadHarness mapOptions={baseMapOptions} />,
+      { wrapper: InAnalytics },
+    );
+    rerender(
+      <DownloadHarness
+        mapOptions={{ ...baseMapOptions, targetFeatureProperty: 'name' }}
+      />,
+    );
+
+    arrive();
+    await settle();
+
+    expect(MapConstructor).toHaveBeenCalledTimes(1);
+    expect(observerInstances).toHaveLength(1);
+  });
+
+  it('reports a library that fails to download and shows the map as unavailable', async () => {
+    const failure = new Error('Failed to fetch dynamically imported module');
+    loadMapbox.mockRejectedValue(failure);
+    const { getByTestId } = render(
+      <DownloadHarness mapOptions={baseMapOptions} />,
+      { wrapper: InAnalytics },
+    );
+    await settle();
+
+    expect(MapConstructor).not.toHaveBeenCalled();
+    expect(captureException).toHaveBeenCalledWith(failure, {
+      feature: 'geospatial-map-init',
+    });
+    expect(getByTestId('map').dataset.error).toBe(failure.message);
   });
 });

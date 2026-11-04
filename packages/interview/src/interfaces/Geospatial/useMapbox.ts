@@ -5,6 +5,7 @@ import type { MapMouseEvent } from 'mapbox-gl/esm';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { ColorReference, MapOptions } from '@codaco/protocol-validation';
 
+import { loadMapbox } from './loadMapbox';
 import { getMapLanguage } from './mapboxLanguage';
 import { getMapboxLocale, updateMapboxControlLocale } from './mapboxLocale';
 
@@ -13,7 +14,7 @@ export type ExtendedMapOptions = MapOptions & {
   allowSearch?: boolean;
 };
 
-import * as mapboxgl from 'mapbox-gl/esm';
+import type * as mapboxgl from 'mapbox-gl/esm';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -293,7 +294,13 @@ export const useMapbox = ({
   }, []);
 
   useEffect(() => {
-    if (!mapContainerRef.current || !center || !accessToken) return undefined;
+    const container = mapContainerRef.current;
+    if (!container) return undefined;
+    // Begun before the remaining inputs are checked, so the library downloads
+    // while the data source is still being resolved.
+    const mapboxModule = loadMapbox();
+    mapboxModule.catch(() => undefined);
+    if (!center || !accessToken) return undefined;
     if (dataSourceAssetId && !dataSourceUrl) return undefined;
 
     // Records progress on the build these inputs began, and on no other.
@@ -301,274 +308,304 @@ export const useMapbox = ({
       setBuild((current) =>
         current.inputs === inputs ? { ...current, ...progress } : current,
       );
-
-    try {
-      appliedMapLanguageRef.current = mapLanguageRef.current;
-      mapRef.current = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        center,
-        zoom: initialZoom,
-        style,
-        accessToken,
-        locale: getMapboxLocale(intlRef.current),
-        // Omitted when Mapbox has no labels in the language, so each label
-        // shows in its place's own language.
-        ...(mapLanguageRef.current === undefined
-          ? {}
-          : { language: mapLanguageRef.current }),
-      });
-    } catch (err) {
-      // mapbox-gl's Map constructor throws synchronously when the environment
-      // can't host a map — most commonly "Failed to initialize WebGL" on
-      // devices/browsers without working WebGL (hardware acceleration off,
-      // locked-down or virtualised browsers). Without this guard the throw
-      // escapes the passive-effect flush and is caught by StageErrorBoundary,
-      // crashing the entire stage with an opaque stack. Capture the real
-      // error and surface a contained fallback instead.
+    const reportError = (err: unknown) => {
       const error = err instanceof Error ? err : new Error(String(err));
       captureException(error, { feature: 'geospatial-map-init' });
       update({ error });
-      return undefined;
-    }
-
-    // Expose the current map instance to e2e tests. The data-map-idle
-    // attribute is a necessary but insufficient signal on webkit for
-    // "geojson layer is painted"; tests that need stronger stabilisation
-    // can query the live map (isSourceLoaded, queryRenderedFeatures)
-    // through this handle. Not written in production builds.
-    if (isE2E && typeof window !== 'undefined') {
-      window.__e2eMap = mapRef.current;
-    }
-
-    const handleMapLoad = () => {
-      if (mapRef.current) {
-        mapRef.current.addSource('geojson-data', {
-          type: 'geojson',
-          data: dataSourceUrl ?? undefined,
-          promoteId: targetFeatureProperty,
-        });
-      }
-
-      // Read CSS variables and convert to RGB format for Mapbox GL compatibility
-      // (Mapbox doesn't support oklch colors used in the theme)
-      const styles = getComputedStyle(document.documentElement);
-      const colorVar = resolveProtocolThemeVariable(color);
-      const rawColor = styles.getPropertyValue(colorVar).trim();
-      const ncColor = rawColor
-        ? convertCssColorToHex(rawColor)
-        : DEFAULT_FALLBACK;
-
-      mapRef.current?.addLayer({
-        id: 'outline',
-        type: 'line',
-        source: 'geojson-data',
-        paint: {
-          'line-color': ncColor,
-          'line-width': MAP_CONSTS.LINE_WIDTH,
-        },
-      });
-
-      // add the fill layer that can be selected
-      mapRef.current?.addLayer({
-        id: 'layerToSelect',
-        type: 'fill',
-        source: 'geojson-data',
-        paint: {
-          'fill-color': ncColor, // must have a color to be used even when transparent
-          'fill-opacity': 0,
-        },
-      });
-      mapRef.current?.addLayer({
-        id: 'selection',
-        type: 'fill',
-        source: 'geojson-data',
-        paint: {
-          'fill-color': ncColor,
-          'fill-opacity': MAP_CONSTS.FILL_OPACITY,
-        },
-        filter: ['==', targetFeatureProperty ?? '', ''],
-      });
-      // hover layer
-      mapRef.current?.addLayer({
-        id: 'hover',
-        type: 'fill',
-        source: 'geojson-data',
-        paint: {
-          'fill-color': ncColor,
-          'fill-opacity': [
-            'case',
-            ['boolean', ['feature-state', 'hover'], false],
-            MAP_CONSTS.HOVER_OPACITY,
-            0, // non-hovered features
-          ],
-        },
-      });
-
-      // Transit color - use project secondary color
-      const transitColor =
-        convertCssColorToHex(styles.getPropertyValue('--secondary').trim()) ||
-        '#7c3aed';
-
-      // Add transit layers from mapbox-streets-v8 vector tileset
-      // Check if source already exists (some map styles include this tileset)
-      if (!mapRef.current?.getSource(TRANSIT_SOURCE_ID)) {
-        mapRef.current?.addSource(TRANSIT_SOURCE_ID, {
-          type: 'vector',
-          url: 'mapbox://mapbox.mapbox-streets-v8',
-        });
-      }
-
-      // Transit lines - rail classes from the road source-layer
-      mapRef.current?.addLayer({
-        'id': 'transit-lines',
-        'type': 'line',
-        'source': TRANSIT_SOURCE_ID,
-        'source-layer': 'road',
-        'filter': ['in', 'class', 'major_rail', 'minor_rail', 'service_rail'],
-        'paint': {
-          'line-color': transitColor,
-          'line-width': MAP_CONSTS.LINE_WIDTH,
-          'line-opacity': 0.8,
-        },
-        'layout': {
-          visibility: showTransit ? 'visible' : 'none',
-        },
-      });
-
-      // Transit stations - circles from transit_stop_label source-layer
-      mapRef.current?.addLayer({
-        'id': 'transit-stations',
-        'type': 'circle',
-        'source': TRANSIT_SOURCE_ID,
-        'source-layer': 'transit_stop_label',
-        'filter': ['==', 'stop_type', 'station'],
-        'paint': {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 14, 8],
-          'circle-color': transitColor,
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 1.5,
-        },
-        'layout': {
-          visibility: showTransit ? 'visible' : 'none',
-        },
-      });
-
-      // Transit labels - station names from transit_stop_label source-layer
-      mapRef.current?.addLayer({
-        'id': 'transit-labels',
-        'type': 'symbol',
-        'source': TRANSIT_SOURCE_ID,
-        'source-layer': 'transit_stop_label',
-        'filter': ['==', 'stop_type', 'station'],
-        'layout': {
-          'text-field': ['get', 'name'],
-          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
-          'text-size': 12,
-          'text-offset': [0, 1.2],
-          'text-anchor': 'top',
-          'visibility': showTransit ? 'visible' : 'none',
-        },
-        'paint': {
-          'text-color': transitColor,
-          'text-halo-color': '#ffffff',
-          'text-halo-width': 1.5,
-        },
-      });
-
-      // Set loaded AFTER all layers are added to avoid race conditions
-      update({ loaded: true, map: mapRef.current });
     };
 
-    const handleMapStyleLoad = () => {
-      // ensure map is loaded before adding layers
-      // necessary to prevent "style not loaded" errors
-      if (mapRef?.current?.isStyleLoaded()) {
-        handleMapLoad();
-      } else {
-        mapRef?.current?.once('styledata', handleMapLoad);
-      }
-    };
-
-    mapRef.current.on('load', handleMapStyleLoad);
-
-    // Track zoom level changes for testing
-    mapRef.current.on('zoomend', () => {
-      const zoom = mapRef.current?.getZoom();
-      if (zoom !== undefined) {
-        setZoomLevel(zoom);
-      }
-    });
-
-    // Only declare a layer ready inside the `idle` handler. `idle` fires
-    // AFTER mapbox has finished painting everything pending, so at that
-    // moment we can trust both that the source has loaded AND that its
-    // features have been painted to tiles that are now visible.
-    //
-    // Checking from `sourcedata` (or any pre-idle event) is racy:
-    // `isSourceLoaded` can return true before the source's features
-    // have been rendered, which would flip our flag prematurely and let
-    // a screenshot capture before the paint arrives — exactly the
-    // symptom observed on webkit where the geojson outline was missing
-    // from the actual snapshot despite data-map-idle="true".
-    const checkLayerReadiness = () => {
-      const map = mapRef.current;
-      if (!map) return;
-
-      if (
-        dataSourceAssetId &&
-        map.getSource('geojson-data') &&
-        map.isSourceLoaded('geojson-data')
-      ) {
-        update({ geoJsonLoaded: true });
-      }
-
-      if (
-        showTransit &&
-        map.getSource(TRANSIT_SOURCE_ID) &&
-        map.isSourceLoaded(TRANSIT_SOURCE_ID)
-      ) {
-        update({ transitLoaded: true });
-      }
-    };
-
-    mapRef.current.on('idle', () => {
-      update({ idle: true });
-      checkLayerReadiness();
-    });
-    mapRef.current.on('movestart', () => {
-      update({ idle: false });
-    });
-
-    // Keep the Mapbox canvas in sync with its container. The interview shell
-    // resizes the stage area whenever the browser window is resized or the
-    // navigation flips between portrait and landscape orientation. We don't
-    // ship Mapbox's stylesheet (which would absolutely-position the canvas), so
-    // the canvas participates in normal layout flow: a stale, oversized canvas
-    // forces the stage wider than the viewport and pushes the navigation bar
-    // off-screen. Resizing the map on every container size change keeps the
-    // canvas matched to the available space.
-    //
-    // ResizeObserver can fire several times during a single layout pass, so we
-    // coalesce the work into one resize per animation frame to avoid redundant
-    // map re-layout and ResizeObserver loop-limit warnings.
-    const container = mapContainerRef.current;
+    let cancelled = false;
+    let builtMap: mapboxgl.Map | null = null;
     let resizeObserver: ResizeObserver | undefined;
     let resizeFrame: number | null = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(() => {
-        if (resizeFrame !== null) return;
-        resizeFrame = requestAnimationFrame(() => {
-          resizeFrame = null;
-          mapRef.current?.resize();
+
+    const buildMap = (mapbox: typeof mapboxgl) => {
+      try {
+        appliedMapLanguageRef.current = mapLanguageRef.current;
+        builtMap = new mapbox.Map({
+          container,
+          center,
+          zoom: initialZoom,
+          style,
+          accessToken,
+          locale: getMapboxLocale(intlRef.current),
+          // Omitted when Mapbox has no labels in the language, so each label
+          // shows in its place's own language.
+          ...(mapLanguageRef.current === undefined
+            ? {}
+            : { language: mapLanguageRef.current }),
         });
+        mapRef.current = builtMap;
+      } catch (err) {
+        // mapbox-gl's Map constructor throws synchronously when the environment
+        // can't host a map — most commonly "Failed to initialize WebGL" on
+        // devices/browsers without working WebGL (hardware acceleration off,
+        // locked-down or virtualised browsers). Without this guard the throw
+        // would go unhandled, leaving an empty map with no explanation.
+        // Capture the real error and surface a contained fallback instead.
+        reportError(err);
+        return;
+      }
+
+      // Expose the current map instance to e2e tests. The data-map-idle
+      // attribute is a necessary but insufficient signal on webkit for
+      // "geojson layer is painted"; tests that need stronger stabilisation
+      // can query the live map (isSourceLoaded, queryRenderedFeatures)
+      // through this handle. Not written in production builds.
+      if (isE2E && typeof window !== 'undefined') {
+        window.__e2eMap = mapRef.current;
+      }
+
+      const handleMapLoad = () => {
+        if (mapRef.current) {
+          mapRef.current.addSource('geojson-data', {
+            type: 'geojson',
+            data: dataSourceUrl ?? undefined,
+            promoteId: targetFeatureProperty,
+          });
+        }
+
+        // Read CSS variables and convert to RGB format for Mapbox GL compatibility
+        // (Mapbox doesn't support oklch colors used in the theme)
+        const styles = getComputedStyle(document.documentElement);
+        const colorVar = resolveProtocolThemeVariable(color);
+        const rawColor = styles.getPropertyValue(colorVar).trim();
+        const ncColor = rawColor
+          ? convertCssColorToHex(rawColor)
+          : DEFAULT_FALLBACK;
+
+        mapRef.current?.addLayer({
+          id: 'outline',
+          type: 'line',
+          source: 'geojson-data',
+          paint: {
+            'line-color': ncColor,
+            'line-width': MAP_CONSTS.LINE_WIDTH,
+          },
+        });
+
+        // add the fill layer that can be selected
+        mapRef.current?.addLayer({
+          id: 'layerToSelect',
+          type: 'fill',
+          source: 'geojson-data',
+          paint: {
+            'fill-color': ncColor, // must have a color to be used even when transparent
+            'fill-opacity': 0,
+          },
+        });
+        mapRef.current?.addLayer({
+          id: 'selection',
+          type: 'fill',
+          source: 'geojson-data',
+          paint: {
+            'fill-color': ncColor,
+            'fill-opacity': MAP_CONSTS.FILL_OPACITY,
+          },
+          filter: ['==', targetFeatureProperty ?? '', ''],
+        });
+        // hover layer
+        mapRef.current?.addLayer({
+          id: 'hover',
+          type: 'fill',
+          source: 'geojson-data',
+          paint: {
+            'fill-color': ncColor,
+            'fill-opacity': [
+              'case',
+              ['boolean', ['feature-state', 'hover'], false],
+              MAP_CONSTS.HOVER_OPACITY,
+              0, // non-hovered features
+            ],
+          },
+        });
+
+        // Transit color - use project secondary color
+        const transitColor =
+          convertCssColorToHex(styles.getPropertyValue('--secondary').trim()) ||
+          '#7c3aed';
+
+        // Add transit layers from mapbox-streets-v8 vector tileset
+        // Check if source already exists (some map styles include this tileset)
+        if (!mapRef.current?.getSource(TRANSIT_SOURCE_ID)) {
+          mapRef.current?.addSource(TRANSIT_SOURCE_ID, {
+            type: 'vector',
+            url: 'mapbox://mapbox.mapbox-streets-v8',
+          });
+        }
+
+        // Transit lines - rail classes from the road source-layer
+        mapRef.current?.addLayer({
+          'id': 'transit-lines',
+          'type': 'line',
+          'source': TRANSIT_SOURCE_ID,
+          'source-layer': 'road',
+          'filter': ['in', 'class', 'major_rail', 'minor_rail', 'service_rail'],
+          'paint': {
+            'line-color': transitColor,
+            'line-width': MAP_CONSTS.LINE_WIDTH,
+            'line-opacity': 0.8,
+          },
+          'layout': {
+            visibility: showTransit ? 'visible' : 'none',
+          },
+        });
+
+        // Transit stations - circles from transit_stop_label source-layer
+        mapRef.current?.addLayer({
+          'id': 'transit-stations',
+          'type': 'circle',
+          'source': TRANSIT_SOURCE_ID,
+          'source-layer': 'transit_stop_label',
+          'filter': ['==', 'stop_type', 'station'],
+          'paint': {
+            'circle-radius': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              10,
+              4,
+              14,
+              8,
+            ],
+            'circle-color': transitColor,
+            'circle-stroke-color': '#ffffff',
+            'circle-stroke-width': 1.5,
+          },
+          'layout': {
+            visibility: showTransit ? 'visible' : 'none',
+          },
+        });
+
+        // Transit labels - station names from transit_stop_label source-layer
+        mapRef.current?.addLayer({
+          'id': 'transit-labels',
+          'type': 'symbol',
+          'source': TRANSIT_SOURCE_ID,
+          'source-layer': 'transit_stop_label',
+          'filter': ['==', 'stop_type', 'station'],
+          'layout': {
+            'text-field': ['get', 'name'],
+            'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+            'text-size': 12,
+            'text-offset': [0, 1.2],
+            'text-anchor': 'top',
+            'visibility': showTransit ? 'visible' : 'none',
+          },
+          'paint': {
+            'text-color': transitColor,
+            'text-halo-color': '#ffffff',
+            'text-halo-width': 1.5,
+          },
+        });
+
+        // Set loaded AFTER all layers are added to avoid race conditions
+        update({ loaded: true, map: mapRef.current });
+      };
+
+      const handleMapStyleLoad = () => {
+        // ensure map is loaded before adding layers
+        // necessary to prevent "style not loaded" errors
+        if (mapRef?.current?.isStyleLoaded()) {
+          handleMapLoad();
+        } else {
+          mapRef?.current?.once('styledata', handleMapLoad);
+        }
+      };
+
+      mapRef.current.on('load', handleMapStyleLoad);
+
+      // Track zoom level changes for testing
+      mapRef.current.on('zoomend', () => {
+        const zoom = mapRef.current?.getZoom();
+        if (zoom !== undefined) {
+          setZoomLevel(zoom);
+        }
       });
-      resizeObserver.observe(container);
-    }
+
+      // Only declare a layer ready inside the `idle` handler. `idle` fires
+      // AFTER mapbox has finished painting everything pending, so at that
+      // moment we can trust both that the source has loaded AND that its
+      // features have been painted to tiles that are now visible.
+      //
+      // Checking from `sourcedata` (or any pre-idle event) is racy:
+      // `isSourceLoaded` can return true before the source's features
+      // have been rendered, which would flip our flag prematurely and let
+      // a screenshot capture before the paint arrives — exactly the
+      // symptom observed on webkit where the geojson outline was missing
+      // from the actual snapshot despite data-map-idle="true".
+      const checkLayerReadiness = () => {
+        const map = mapRef.current;
+        if (!map) return;
+
+        if (
+          dataSourceAssetId &&
+          map.getSource('geojson-data') &&
+          map.isSourceLoaded('geojson-data')
+        ) {
+          update({ geoJsonLoaded: true });
+        }
+
+        if (
+          showTransit &&
+          map.getSource(TRANSIT_SOURCE_ID) &&
+          map.isSourceLoaded(TRANSIT_SOURCE_ID)
+        ) {
+          update({ transitLoaded: true });
+        }
+      };
+
+      mapRef.current.on('idle', () => {
+        update({ idle: true });
+        checkLayerReadiness();
+      });
+      mapRef.current.on('movestart', () => {
+        update({ idle: false });
+      });
+
+      // Keep the Mapbox canvas in sync with its container. The interview shell
+      // resizes the stage area whenever the browser window is resized or the
+      // navigation flips between portrait and landscape orientation. We don't
+      // ship Mapbox's stylesheet (which would absolutely-position the canvas), so
+      // the canvas participates in normal layout flow: a stale, oversized canvas
+      // forces the stage wider than the viewport and pushes the navigation bar
+      // off-screen. Resizing the map on every container size change keeps the
+      // canvas matched to the available space.
+      //
+      // ResizeObserver can fire several times during a single layout pass, so we
+      // coalesce the work into one resize per animation frame to avoid redundant
+      // map re-layout and ResizeObserver loop-limit warnings.
+      if (typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(() => {
+          if (resizeFrame !== null) return;
+          resizeFrame = requestAnimationFrame(() => {
+            resizeFrame = null;
+            mapRef.current?.resize();
+          });
+        });
+        resizeObserver.observe(container);
+      }
+    };
+
+    void (async () => {
+      let mapbox: typeof mapboxgl;
+      try {
+        mapbox = await mapboxModule;
+      } catch (err) {
+        if (!cancelled) reportError(err);
+        return;
+      }
+      if (!cancelled) buildMap(mapbox);
+    })();
 
     return () => {
+      cancelled = true;
       if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
       resizeObserver?.disconnect();
-      mapRef.current?.remove();
+      if (builtMap) {
+        builtMap.remove();
+        if (mapRef.current === builtMap) mapRef.current = null;
+      }
     };
     // `inputs` changes exactly when one of the values after it does.
   }, [
