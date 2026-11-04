@@ -20,7 +20,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.alterForm.introBody',
     defaultMessage:
-      'A Per Alter Form asks the same questions about each person the participant has already named, one person at a time. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'A Per Alter Form asks the same questions about each person the participant has already named, one person at a time. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description: 'Body of the first step of the Per Alter Form walkthrough.',
   },
   subjectTitle: {

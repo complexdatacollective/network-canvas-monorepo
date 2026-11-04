@@ -20,7 +20,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.nameGenerator.introBody',
     defaultMessage:
-      'On a Name Generator, the participant answers a question by adding people, filling in a short form for each one. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On a Name Generator, the participant answers a question by adding people, filling in a short form for each one. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description: 'Body of the first step of the Name Generator walkthrough.',
   },
   subjectTitle: {

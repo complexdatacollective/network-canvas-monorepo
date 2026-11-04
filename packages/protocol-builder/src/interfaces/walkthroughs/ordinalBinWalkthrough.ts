@@ -23,7 +23,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.ordinalBin.introBody',
     defaultMessage:
-      'On an Ordinal Bin stage, the participant places the people they have named along a scale, such as how often they talk, with one bin for each point. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On an Ordinal Bin stage, the participant places the people they have named along a scale, such as how often the participant talks to each of them, with one bin for each point. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description:
       'Body of the first step of the Ordinal Bin walkthrough. A bin is one point on the scale the participant places people on.',
   },
@@ -47,7 +47,7 @@ const messages = defineMessages({
   filterBody: {
     id: 'protocolBuilder.walkthrough.ordinalBin.filterBody',
     defaultMessage:
-      'Switch this on and add rules to sort only the people who match them, such as only those the participant sees weekly. Leave it off to show everyone of this type.',
+      'Switch this on and add rules to sort only the people who match them, such as only those the participant sees weekly. Leave it off to sort everyone of this type.',
     description: 'Body of the walkthrough step about the stage filter.',
   },
   promptsTitle: {
@@ -72,7 +72,7 @@ const messages = defineMessages({
   interactionBody: {
     id: 'protocolBuilder.walkthrough.ordinalBin.interactionBody',
     defaultMessage:
-      'The participant either drags each person onto a bin, or taps a bin to place the person who is selected. Leave it as it is to use dragging.',
+      'Choose how the participant places people: by dragging each person onto a bin, or by selecting a person and then tapping a bin. Dragging is used unless you change it.',
     description:
       'Body of the walkthrough step about how the participant places people into bins.',
   },
@@ -98,7 +98,7 @@ const messages = defineMessages({
   wordingBody: {
     id: 'protocolBuilder.walkthrough.ordinalBin.wordingBody',
     defaultMessage:
-      'Network Canvas supplies some of the words on this stage, such as the message shown when people are still unplaced. Words shared by every Ordinal Bin stage change for all of them.',
+      'Network Canvas supplies some of the words on this stage, such as the message shown when people are still unplaced. Some of these words are shared by every Ordinal Bin stage in the protocol, so changing one of those here changes it on all of them.',
     description:
       'Body of the walkthrough step about changing the wording Network Canvas supplies for the stage.',
   },

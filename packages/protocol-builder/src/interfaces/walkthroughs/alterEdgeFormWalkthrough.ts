@@ -20,7 +20,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.alterEdgeForm.introBody',
     defaultMessage:
-      'A Per Alter Edge Form asks the same questions about each connection the participant has already recorded, one connection at a time. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'A Per Alter Edge Form asks the same questions about each connection the participant has already recorded, one connection at a time. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description:
       'Body of the first step of the Per Alter Edge Form walkthrough.',
   },

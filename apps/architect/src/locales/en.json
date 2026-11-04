@@ -3328,7 +3328,7 @@
     "description": "Accessible name of the list, on the last walkthrough step, of the settings the walkthrough asked for and whether each is set."
   },
   "architect.stageEditor.walkthrough.visualSwitch": {
-    "defaultMessage": "Show the interview",
+    "defaultMessage": "Screenshot to show",
     "description": "Accessible name of the buttons that switch a walkthrough screenshot between the interview with a setting and without it."
   },
   "architect.storageUnavailableBanner.downloadFailed": {

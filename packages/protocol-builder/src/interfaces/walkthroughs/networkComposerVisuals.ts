@@ -37,7 +37,7 @@ const messages = defineMessages({
   nodeFormAlt: {
     id: 'protocolBuilder.walkthrough.networkComposer.visual.nodeFormAlt',
     defaultMessage:
-      'A person selected on the canvas, with a side panel asking their age and how close they are.',
+      'A person selected on the canvas, with a side panel asking their age and how close the participant feels to them.',
     description:
       'Alternative text for a screenshot of the Network Composer with the questions about a selected person open.',
   },

@@ -23,7 +23,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.nameGeneratorRoster.introBody',
     defaultMessage:
-      'On this stage, the participant answers a question by picking people from a list that comes from a data file, such as everyone in a class. Nobody is typed in. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On this stage, the participant answers a question by picking people from a list that comes from a data file, such as everyone in a class. Nobody is typed in. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description:
       'Body of the first step of the roster Name Generator walkthrough.',
   },
@@ -35,7 +35,7 @@ const messages = defineMessages({
   subjectBody: {
     id: 'protocolBuilder.walkthrough.nameGeneratorRoster.subjectBody',
     defaultMessage:
-      'Pick the node type that people picked from the list become, such as a person. Choosing a different type later clears the rest of the stage.',
+      'Pick the node type that each name chosen from the list is added as, such as Person. Choosing a different type later clears the rest of the stage.',
     description:
       'Body of the walkthrough step about the node type. A node is one member of the network a participant describes.',
   },

@@ -28,7 +28,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.familyPedigree.introBody',
     defaultMessage:
-      'On this stage the participant draws their family tree, starting from themselves and adding parents, siblings, partners and children. Most settings choose where the stage records what it learns about each person and relationship. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On this stage the participant draws their family tree, starting from themselves and adding parents, siblings, partners and children. Most settings choose where the stage records what it learns about each person and relationship. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description: 'Body of the first step of the Family Pedigree walkthrough.',
   },
   subjectTitle: {
@@ -189,7 +189,8 @@ const messages = defineMessages({
   },
   completenessChoiceTitle: {
     id: 'protocolBuilder.walkthrough.familyPedigree.completenessChoiceTitle',
-    defaultMessage: 'Should participants record a minimum part of the family?',
+    defaultMessage:
+      'Should participants have to record a minimum set of relatives?',
     description:
       'Title of the walkthrough step asking the researcher whether the stage checks that enough of the family has been drawn before the participant continues.',
   },
@@ -209,7 +210,7 @@ const messages = defineMessages({
   completenessBody: {
     id: 'protocolBuilder.walkthrough.familyPedigree.completenessBody',
     defaultMessage:
-      'Switch this on and choose how far the family must reach, and whether that is required or only recommended. A checklist shows the participant what is missing. Pick an attribute for answers such as “no siblings”.',
+      'Switch this on and choose which relatives the family should include, and whether that is required or only recommended. A checklist shows the participant what is missing. Pick an attribute to store answers such as “no siblings”.',
     description:
       'Body of the walkthrough step about how much of the family must be drawn.',
   },

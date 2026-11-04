@@ -16,7 +16,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.narrativePedigree.introBody',
     defaultMessage:
-      'This stage shows the family a participant drew on an earlier Family Pedigree stage, marked with the conditions recorded about each person. It asks no new questions: the family is there to explore and talk through. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'This stage shows the family a participant drew on an earlier Family Pedigree stage, marked with the diseases recorded about each person. It asks no new questions: the family is there to explore and talk through. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description:
       'Body of the first step of the Narrative Pedigree walkthrough. Family Pedigree is the name of another stage type.',
   },

@@ -20,7 +20,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.anonymisation.introBody',
     defaultMessage:
-      'This stage asks the participant to choose a passphrase, which then protects the identifying details you pick, such as names. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'This stage asks the participant to choose a passphrase, which then protects the identifying details you pick, such as names. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description:
       'Body of the first step of the Anonymisation walkthrough. A passphrase is a secret the participant chooses; it encrypts some of their answers.',
   },

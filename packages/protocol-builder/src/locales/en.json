@@ -8400,7 +8400,7 @@
     "description": "Title of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.alterEdgeForm.introBody": {
-    "defaultMessage": "A Per Alter Edge Form asks the same questions about each connection the participant has already recorded, one connection at a time. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "A Per Alter Edge Form asks the same questions about each connection the participant has already recorded, one connection at a time. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Per Alter Edge Form walkthrough."
   },
   "protocolBuilder.walkthrough.alterEdgeForm.introTitle": {
@@ -8432,7 +8432,7 @@
     "description": "Title of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.alterForm.introBody": {
-    "defaultMessage": "A Per Alter Form asks the same questions about each person the participant has already named, one person at a time. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "A Per Alter Form asks the same questions about each person the participant has already named, one person at a time. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Per Alter Form walkthrough."
   },
   "protocolBuilder.walkthrough.alterForm.introTitle": {
@@ -8464,7 +8464,7 @@
     "description": "Title of the walkthrough step about the text a participant reads before choosing a passphrase."
   },
   "protocolBuilder.walkthrough.anonymisation.introBody": {
-    "defaultMessage": "This stage asks the participant to choose a passphrase, which then protects the identifying details you pick, such as names. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "This stage asks the participant to choose a passphrase, which then protects the identifying details you pick, such as names. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Anonymisation walkthrough. A passphrase is a secret the participant chooses; it encrypts some of their answers."
   },
   "protocolBuilder.walkthrough.anonymisation.introTitle": {
@@ -8488,7 +8488,7 @@
     "description": "Title of the walkthrough step about requiring every person to be placed in a bin."
   },
   "protocolBuilder.walkthrough.categoricalBin.filterBody": {
-    "defaultMessage": "Switch this on and add rules to sort only the people who match them, such as only those the participant sees weekly. Leave it off to show everyone of this type.",
+    "defaultMessage": "Switch this on and add rules to sort only the people who match them, such as only those the participant sees weekly. Leave it off to sort everyone of this type.",
     "description": "Body of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.categoricalBin.filterTitle": {
@@ -8496,7 +8496,7 @@
     "description": "Title of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.categoricalBin.interactionBody": {
-    "defaultMessage": "The participant either drags each person onto a bin, or taps a bin to place the person who is selected. Leave it as it is to use dragging.",
+    "defaultMessage": "Choose how the participant places people: by dragging each person onto a bin, or by selecting a person and then tapping a bin. Dragging is used unless you change it.",
     "description": "Body of the walkthrough step about how the participant places people into bins."
   },
   "protocolBuilder.walkthrough.categoricalBin.interactionTitle": {
@@ -8504,7 +8504,7 @@
     "description": "Title of the walkthrough step about how the participant places people into bins."
   },
   "protocolBuilder.walkthrough.categoricalBin.introBody": {
-    "defaultMessage": "On a Categorical Bin stage, the participant sorts the people they have named into bins, one bin for each option of a question, such as where they met. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On a Categorical Bin stage, the participant sorts the people they have named into bins, one bin for each option of a question, such as where the participant met each person. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Categorical Bin walkthrough. A bin is one of the groups the participant sorts people into."
   },
   "protocolBuilder.walkthrough.categoricalBin.introTitle": {
@@ -8528,7 +8528,7 @@
     "description": "Title of the walkthrough step about the node type."
   },
   "protocolBuilder.walkthrough.categoricalBin.wordingBody": {
-    "defaultMessage": "Network Canvas supplies some of the words on this stage, such as the message shown when people are still unplaced. Words shared by every Categorical Bin stage change for all of them.",
+    "defaultMessage": "Network Canvas supplies some of the words on this stage, such as the message shown when people are still unplaced. Some of these words are shared by every Categorical Bin stage in the protocol, so changing one of those here changes it on all of them.",
     "description": "Body of the walkthrough step about changing the wording Network Canvas supplies for the stage."
   },
   "protocolBuilder.walkthrough.categoricalBin.wordingTitle": {
@@ -8544,7 +8544,7 @@
     "description": "Title of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.dyadCensus.introBody": {
-    "defaultMessage": "On a Dyad Census stage, the participant is shown every pair of the people they have named, one pair at a time, and answers yes or no for each. A yes adds a connection between the two. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On a Dyad Census stage, the participant is shown every pair of the people they have named, one pair at a time, and answers yes or no for each. A yes adds a connection between the two. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Dyad Census walkthrough."
   },
   "protocolBuilder.walkthrough.dyadCensus.introTitle": {
@@ -8584,7 +8584,7 @@
     "description": "Title of the walkthrough step about the heading shown above the questions."
   },
   "protocolBuilder.walkthrough.egoForm.introBody": {
-    "defaultMessage": "An Ego Form asks the participant questions about themselves, such as their age or where they live. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "An Ego Form asks the participant questions about themselves, such as their age or where they live. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Ego Form walkthrough. Ego is the participant being interviewed."
   },
   "protocolBuilder.walkthrough.egoForm.introTitle": {
@@ -8608,7 +8608,7 @@
     "description": "Title of the walkthrough step about the wording Network Canvas supplies for the stage."
   },
   "protocolBuilder.walkthrough.familyPedigree.completenessBody": {
-    "defaultMessage": "Switch this on and choose how far the family must reach, and whether that is required or only recommended. A checklist shows the participant what is missing. Pick an attribute for answers such as “no siblings”.",
+    "defaultMessage": "Switch this on and choose which relatives the family should include, and whether that is required or only recommended. A checklist shows the participant what is missing. Pick an attribute to store answers such as “no siblings”.",
     "description": "Body of the walkthrough step about how much of the family must be drawn."
   },
   "protocolBuilder.walkthrough.familyPedigree.completenessChoiceBody": {
@@ -8616,7 +8616,7 @@
     "description": "Body of the walkthrough step asking whether the stage checks that enough of the family has been drawn."
   },
   "protocolBuilder.walkthrough.familyPedigree.completenessChoiceTitle": {
-    "defaultMessage": "Should participants record a minimum part of the family?",
+    "defaultMessage": "Should participants have to record a minimum set of relatives?",
     "description": "Title of the walkthrough step asking the researcher whether the stage checks that enough of the family has been drawn before the participant continues."
   },
   "protocolBuilder.walkthrough.familyPedigree.completenessTitle": {
@@ -8664,7 +8664,7 @@
     "description": "Title of the walkthrough step about asking each family member’s gender identity."
   },
   "protocolBuilder.walkthrough.familyPedigree.introBody": {
-    "defaultMessage": "On this stage the participant draws their family tree, starting from themselves and adding parents, siblings, partners and children. Most settings choose where the stage records what it learns about each person and relationship. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On this stage the participant draws their family tree, starting from themselves and adding parents, siblings, partners and children. Most settings choose where the stage records what it learns about each person and relationship. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Family Pedigree walkthrough."
   },
   "protocolBuilder.walkthrough.familyPedigree.introTitle": {
@@ -8788,7 +8788,7 @@
     "description": "Title of the walkthrough step about whether participants confirm that they are finished."
   },
   "protocolBuilder.walkthrough.finishSession.outcomeBody": {
-    "defaultMessage": "The outcome is saved with every interview that ends here and included in data exports, so endings can be told apart later. Participants never see it.",
+    "defaultMessage": "The outcome you choose here is saved with every interview that ends here and included in data exports, so endings can be told apart later. Participants never see it.",
     "description": "Body of the walkthrough step about the outcome."
   },
   "protocolBuilder.walkthrough.finishSession.outcomeTitle": {
@@ -8824,7 +8824,7 @@
     "description": "Title of the walkthrough step about the map style, highlight and extra map features."
   },
   "protocolBuilder.walkthrough.geospatial.filterBody": {
-    "defaultMessage": "Switch this on to show only some people of that type, chosen by rules about their answers so far. Left off, everyone of that type is shown.",
+    "defaultMessage": "Switch this on to show only some people of that type, chosen by rules about what has been recorded about them so far. Left off, everyone of that type is shown.",
     "description": "Body of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.geospatial.filterTitle": {
@@ -8832,7 +8832,7 @@
     "description": "Title of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.geospatial.introBody": {
-    "defaultMessage": "On this stage the participant answers each prompt by choosing an area on a map, for each person in their network. The map comes from Mapbox, drawn with a key and a file of areas that you provide. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On this stage the participant answers each prompt by choosing an area on a map, for each person in their network. The map comes from Mapbox, using a Mapbox access key and a file of areas that you provide. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Geospatial walkthrough. Mapbox is the name of the map provider and stays untranslated."
   },
   "protocolBuilder.walkthrough.geospatial.introTitle": {
@@ -8924,7 +8924,7 @@
     "description": "Alternative text for the picture on the first step of a stage walkthrough: a screenshot of the kind of stage being edited, taken from a real interview."
   },
   "protocolBuilder.walkthrough.languageChooser.headingBody": {
-    "defaultMessage": "Network Canvas supplies a heading shown above the languages, and it switches to the chosen language as soon as the participant picks one. Switch this section on only if you want different words.",
+    "defaultMessage": "Network Canvas supplies a heading shown above the languages, and it switches to the chosen language as soon as the participant picks one. Switch this on only if you want different words.",
     "description": "Body of the walkthrough step about the heading shown above the languages a participant chooses between."
   },
   "protocolBuilder.walkthrough.languageChooser.headingTitle": {
@@ -8932,7 +8932,7 @@
     "description": "Title of the walkthrough step about the heading shown above the languages a participant chooses between."
   },
   "protocolBuilder.walkthrough.languageChooser.introBody": {
-    "defaultMessage": "On this stage the participant picks the language the rest of their interview is shown in. There is little to set up: the choices come from the protocol itself. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On this stage the participant picks the language the rest of their interview is shown in. There is little to set up: the choices come from the protocol itself. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Language Chooser walkthrough."
   },
   "protocolBuilder.walkthrough.languageChooser.introTitle": {
@@ -8956,7 +8956,7 @@
     "description": "Title of the walkthrough step about the form filled in for each node."
   },
   "protocolBuilder.walkthrough.nameGenerator.introBody": {
-    "defaultMessage": "On a Name Generator, the participant answers a question by adding people, filling in a short form for each one. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On a Name Generator, the participant answers a question by adding people, filling in a short form for each one. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Name Generator walkthrough."
   },
   "protocolBuilder.walkthrough.nameGenerator.introTitle": {
@@ -9004,7 +9004,7 @@
     "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
   },
   "protocolBuilder.walkthrough.nameGeneratorQuickAdd.introBody": {
-    "defaultMessage": "On this stage, the participant answers a question by typing names into a single box, one at a time. Each name adds a person straight away, with no form to fill in. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On this stage, the participant answers a question by typing names into a single box, one at a time. Each name adds a person straight away, with no form to fill in. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the quick-add Name Generator walkthrough."
   },
   "protocolBuilder.walkthrough.nameGeneratorQuickAdd.introTitle": {
@@ -9068,7 +9068,7 @@
     "description": "Title of the walkthrough step about the extra details shown on each card in the list."
   },
   "protocolBuilder.walkthrough.nameGeneratorRoster.introBody": {
-    "defaultMessage": "On this stage, the participant answers a question by picking people from a list that comes from a data file, such as everyone in a class. Nobody is typed in. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On this stage, the participant answers a question by picking people from a list that comes from a data file, such as everyone in a class. Nobody is typed in. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the roster Name Generator walkthrough."
   },
   "protocolBuilder.walkthrough.nameGeneratorRoster.introTitle": {
@@ -9124,7 +9124,7 @@
     "description": "Title of the walkthrough step about the data file the roster lists people from."
   },
   "protocolBuilder.walkthrough.nameGeneratorRoster.subjectBody": {
-    "defaultMessage": "Pick the node type that people picked from the list become, such as a person. Choosing a different type later clears the rest of the stage.",
+    "defaultMessage": "Pick the node type that each name chosen from the list is added as, such as Person. Choosing a different type later clears the rest of the stage.",
     "description": "Body of the walkthrough step about the node type. A node is one member of the network a participant describes."
   },
   "protocolBuilder.walkthrough.nameGeneratorRoster.subjectTitle": {
@@ -9140,7 +9140,7 @@
     "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
   },
   "protocolBuilder.walkthrough.narrative.backgroundBody": {
-    "defaultMessage": "Draw concentric circles behind the canvas, or use an image of your own. People are shown where they were placed on earlier stages, on top of this background.",
+    "defaultMessage": "Show concentric circles behind the canvas, or use an image of your own. People are shown where they were placed on earlier stages, on top of this background.",
     "description": "Body of the walkthrough step about the canvas background."
   },
   "protocolBuilder.walkthrough.narrative.backgroundTitle": {
@@ -9156,7 +9156,7 @@
     "description": "Title of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.narrative.introBody": {
-    "defaultMessage": "A Narrative stage shows the participant the network they have already built, so they can talk about it. Nothing new is collected: the canvas switches between saved views of the network while the participant tells its story. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "A Narrative stage shows the participant the network they have already built, so they can talk about it. Nothing new is collected: the canvas switches between saved views of the network while the participant tells its story. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Narrative walkthrough."
   },
   "protocolBuilder.walkthrough.narrative.introTitle": {
@@ -9212,7 +9212,7 @@
     "description": "Title of the walkthrough step about the conditions drawn onto the family tree."
   },
   "protocolBuilder.walkthrough.narrativePedigree.introBody": {
-    "defaultMessage": "This stage shows the family a participant drew on an earlier Family Pedigree stage, marked with the conditions recorded about each person. It asks no new questions: the family is there to explore and talk through. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "This stage shows the family a participant drew on an earlier Family Pedigree stage, marked with the diseases recorded about each person. It asks no new questions: the family is there to explore and talk through. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Narrative Pedigree walkthrough. Family Pedigree is the name of another stage type."
   },
   "protocolBuilder.walkthrough.narrativePedigree.introTitle": {
@@ -9236,7 +9236,7 @@
     "description": "Title of the walkthrough step about changing the wording Network Canvas supplies for the stage."
   },
   "protocolBuilder.walkthrough.networkComposer.backgroundBody": {
-    "defaultMessage": "Draw concentric circles behind the canvas, or use an image of your own. Circles can help the interviewer place people, for example closer people nearer the middle.",
+    "defaultMessage": "Show concentric circles behind the canvas, or use an image of your own. Circles can help the interviewer place people, for example closer people nearer the middle.",
     "description": "Body of the walkthrough step about the canvas background."
   },
   "protocolBuilder.walkthrough.networkComposer.backgroundTitle": {
@@ -9292,7 +9292,7 @@
     "description": "Title of the walkthrough step about group hulls."
   },
   "protocolBuilder.walkthrough.networkComposer.introBody": {
-    "defaultMessage": "The Network Composer is a single canvas for building a whole network: adding people, grouping them and drawing the connections between them. It is made for an interviewer or researcher to drive, rather than for a participant working alone. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "The Network Composer is a single canvas for building a whole network: adding people, grouping them and drawing the connections between them. It is made for an interviewer or researcher to drive, rather than for a participant working alone. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Network Composer walkthrough."
   },
   "protocolBuilder.walkthrough.networkComposer.introTitle": {
@@ -9308,11 +9308,11 @@
     "description": "Title of the walkthrough step about automatic layout."
   },
   "protocolBuilder.walkthrough.networkComposer.nodeFormBody": {
-    "defaultMessage": "Switch this on and add a question. Questions appear in the side panel when a person on the canvas is selected. Each pairs a variable with the control used to answer it, and the control is chosen here, on the stage.",
+    "defaultMessage": "Switch this on and add a question. Questions appear in the side panel when a person on the canvas is selected. Each one pairs a variable with the control used to answer it, and you choose that control here, for this stage.",
     "description": "Body of the walkthrough step about the questions asked about each node."
   },
   "protocolBuilder.walkthrough.networkComposer.nodeFormChoiceBody": {
-    "defaultMessage": "For example, how often the participant sees them, or how close they are. Questions can also be asked on a later stage.",
+    "defaultMessage": "For example, how often the participant sees them, or how close the participant feels to them. Questions can also be asked on a later stage.",
     "description": "Body of the walkthrough step asking whether the stage asks questions about each node."
   },
   "protocolBuilder.walkthrough.networkComposer.nodeFormChoiceTitle": {
@@ -9380,7 +9380,7 @@
     "description": "Alternative text for a screenshot of the Network Composer with no connection types."
   },
   "protocolBuilder.walkthrough.networkComposer.visual.nodeFormAlt": {
-    "defaultMessage": "A person selected on the canvas, with a side panel asking their age and how close they are.",
+    "defaultMessage": "A person selected on the canvas, with a side panel asking their age and how close the participant feels to them.",
     "description": "Alternative text for a screenshot of the Network Composer with the questions about a selected person open."
   },
   "protocolBuilder.walkthrough.networkComposer.visual.off": {
@@ -9432,7 +9432,7 @@
     "description": "Title of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.oneToManyDyadCensus.introBody": {
-    "defaultMessage": "On a One-to-Many Dyad Census stage, the participant is shown one of the people they have named at a time, beside everyone else, and selects each of the others a question applies to. Each selection adds a connection between the two. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On a One-to-Many Dyad Census stage, the participant is shown one of the people they have named at a time, beside everyone else, and selects each of the others a question applies to. Each selection adds a connection between the two. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the One-to-Many Dyad Census walkthrough."
   },
   "protocolBuilder.walkthrough.oneToManyDyadCensus.introTitle": {
@@ -9472,7 +9472,7 @@
     "description": "Title of the walkthrough step about requiring every person to be placed in a bin."
   },
   "protocolBuilder.walkthrough.ordinalBin.filterBody": {
-    "defaultMessage": "Switch this on and add rules to sort only the people who match them, such as only those the participant sees weekly. Leave it off to show everyone of this type.",
+    "defaultMessage": "Switch this on and add rules to sort only the people who match them, such as only those the participant sees weekly. Leave it off to sort everyone of this type.",
     "description": "Body of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.ordinalBin.filterTitle": {
@@ -9480,7 +9480,7 @@
     "description": "Title of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.ordinalBin.interactionBody": {
-    "defaultMessage": "The participant either drags each person onto a bin, or taps a bin to place the person who is selected. Leave it as it is to use dragging.",
+    "defaultMessage": "Choose how the participant places people: by dragging each person onto a bin, or by selecting a person and then tapping a bin. Dragging is used unless you change it.",
     "description": "Body of the walkthrough step about how the participant places people into bins."
   },
   "protocolBuilder.walkthrough.ordinalBin.interactionTitle": {
@@ -9488,7 +9488,7 @@
     "description": "Title of the walkthrough step about how the participant places people into bins."
   },
   "protocolBuilder.walkthrough.ordinalBin.introBody": {
-    "defaultMessage": "On an Ordinal Bin stage, the participant places the people they have named along a scale, such as how often they talk, with one bin for each point. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On an Ordinal Bin stage, the participant places the people they have named along a scale, such as how often the participant talks to each of them, with one bin for each point. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Ordinal Bin walkthrough. A bin is one point on the scale the participant places people on."
   },
   "protocolBuilder.walkthrough.ordinalBin.introTitle": {
@@ -9512,7 +9512,7 @@
     "description": "Title of the walkthrough step about the node type."
   },
   "protocolBuilder.walkthrough.ordinalBin.wordingBody": {
-    "defaultMessage": "Network Canvas supplies some of the words on this stage, such as the message shown when people are still unplaced. Words shared by every Ordinal Bin stage change for all of them.",
+    "defaultMessage": "Network Canvas supplies some of the words on this stage, such as the message shown when people are still unplaced. Some of these words are shared by every Ordinal Bin stage in the protocol, so changing one of those here changes it on all of them.",
     "description": "Body of the walkthrough step about changing the wording Network Canvas supplies for the stage."
   },
   "protocolBuilder.walkthrough.ordinalBin.wordingTitle": {
@@ -9528,7 +9528,7 @@
     "description": "Title of the walkthrough step about skip logic."
   },
   "protocolBuilder.walkthrough.sociogram.backgroundBody": {
-    "defaultMessage": "Draw concentric circles behind the canvas, or use an image of your own. Circles give the participant rings to place people in, for example closer people nearer the middle.",
+    "defaultMessage": "Show concentric circles behind the canvas, or use an image of your own. Circles give the participant rings to place people in, for example closer people nearer the middle.",
     "description": "Body of the walkthrough step about the canvas background."
   },
   "protocolBuilder.walkthrough.sociogram.backgroundTitle": {
@@ -9544,7 +9544,7 @@
     "description": "Title of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.sociogram.introBody": {
-    "defaultMessage": "On a Sociogram, the participant works with the people they have already named on a canvas: placing them, connecting the ones who know each other, or marking some of them. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On a Sociogram, the participant works with the people they have already named on a canvas: placing them, connecting the ones who know each other, or marking some of them. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Sociogram walkthrough."
   },
   "protocolBuilder.walkthrough.sociogram.introTitle": {
@@ -9584,7 +9584,7 @@
     "description": "Title of the walkthrough step about the stage filter."
   },
   "protocolBuilder.walkthrough.tieStrengthCensus.introBody": {
-    "defaultMessage": "On a Tie-Strength Census stage, the participant is shown every pair of the people they have named, one pair at a time, and rates how strong their relationship is, or says there is none. A rating adds a connection between the two that records it. This walkthrough visits each setting in order. You can keep editing while it is open.",
+    "defaultMessage": "On a Tie-Strength Census stage, the participant is shown every pair of the people they have named, one pair at a time, and rates how strong their relationship is, or says there is none. Each rating, other than none, adds a connection between the two people that stores the rating. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.",
     "description": "Body of the first step of the Tie-Strength Census walkthrough."
   },
   "protocolBuilder.walkthrough.tieStrengthCensus.introTitle": {

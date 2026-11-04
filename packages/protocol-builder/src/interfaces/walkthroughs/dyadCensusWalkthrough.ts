@@ -17,7 +17,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.dyadCensus.introBody',
     defaultMessage:
-      'On a Dyad Census stage, the participant is shown every pair of the people they have named, one pair at a time, and answers yes or no for each. A yes adds a connection between the two. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On a Dyad Census stage, the participant is shown every pair of the people they have named, one pair at a time, and answers yes or no for each. A yes adds a connection between the two. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description: 'Body of the first step of the Dyad Census walkthrough.',
   },
   subjectTitle: {

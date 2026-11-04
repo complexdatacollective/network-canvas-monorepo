@@ -23,7 +23,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.categoricalBin.introBody',
     defaultMessage:
-      'On a Categorical Bin stage, the participant sorts the people they have named into bins, one bin for each option of a question, such as where they met. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On a Categorical Bin stage, the participant sorts the people they have named into bins, one bin for each option of a question, such as where the participant met each person. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description:
       'Body of the first step of the Categorical Bin walkthrough. A bin is one of the groups the participant sorts people into.',
   },
@@ -47,7 +47,7 @@ const messages = defineMessages({
   filterBody: {
     id: 'protocolBuilder.walkthrough.categoricalBin.filterBody',
     defaultMessage:
-      'Switch this on and add rules to sort only the people who match them, such as only those the participant sees weekly. Leave it off to show everyone of this type.',
+      'Switch this on and add rules to sort only the people who match them, such as only those the participant sees weekly. Leave it off to sort everyone of this type.',
     description: 'Body of the walkthrough step about the stage filter.',
   },
   promptsTitle: {
@@ -72,7 +72,7 @@ const messages = defineMessages({
   interactionBody: {
     id: 'protocolBuilder.walkthrough.categoricalBin.interactionBody',
     defaultMessage:
-      'The participant either drags each person onto a bin, or taps a bin to place the person who is selected. Leave it as it is to use dragging.',
+      'Choose how the participant places people: by dragging each person onto a bin, or by selecting a person and then tapping a bin. Dragging is used unless you change it.',
     description:
       'Body of the walkthrough step about how the participant places people into bins.',
   },
@@ -98,7 +98,7 @@ const messages = defineMessages({
   wordingBody: {
     id: 'protocolBuilder.walkthrough.categoricalBin.wordingBody',
     defaultMessage:
-      'Network Canvas supplies some of the words on this stage, such as the message shown when people are still unplaced. Words shared by every Categorical Bin stage change for all of them.',
+      'Network Canvas supplies some of the words on this stage, such as the message shown when people are still unplaced. Some of these words are shared by every Categorical Bin stage in the protocol, so changing one of those here changes it on all of them.',
     description:
       'Body of the walkthrough step about changing the wording Network Canvas supplies for the stage.',
   },

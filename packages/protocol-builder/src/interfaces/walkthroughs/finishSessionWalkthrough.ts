@@ -89,7 +89,7 @@ const messages = defineMessages({
   outcomeBody: {
     id: 'protocolBuilder.walkthrough.finishSession.outcomeBody',
     defaultMessage:
-      'The outcome is saved with every interview that ends here and included in data exports, so endings can be told apart later. Participants never see it.',
+      'The outcome you choose here is saved with every interview that ends here and included in data exports, so endings can be told apart later. Participants never see it.',
     description: 'Body of the walkthrough step about the outcome.',
   },
 });

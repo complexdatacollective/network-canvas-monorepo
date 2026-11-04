@@ -29,7 +29,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.egoForm.introBody',
     defaultMessage:
-      'An Ego Form asks the participant questions about themselves, such as their age or where they live. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'An Ego Form asks the participant questions about themselves, such as their age or where they live. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description:
       'Body of the first step of the Ego Form walkthrough. Ego is the participant being interviewed.',
   },

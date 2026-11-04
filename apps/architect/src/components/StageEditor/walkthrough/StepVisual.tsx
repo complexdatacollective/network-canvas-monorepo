@@ -8,7 +8,7 @@ import type { StageWalkthroughFrame } from '@codaco/protocol-builder/interfaces/
 const messages = defineMessages({
   switchLabel: {
     id: 'architect.stageEditor.walkthrough.visualSwitch',
-    defaultMessage: 'Show the interview',
+    defaultMessage: 'Screenshot to show',
     description:
       'Accessible name of the buttons that switch a walkthrough screenshot between the interview with a setting and without it.',
   },

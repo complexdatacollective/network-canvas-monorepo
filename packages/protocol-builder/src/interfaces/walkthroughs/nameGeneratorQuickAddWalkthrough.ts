@@ -20,7 +20,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.nameGeneratorQuickAdd.introBody',
     defaultMessage:
-      'On this stage, the participant answers a question by typing names into a single box, one at a time. Each name adds a person straight away, with no form to fill in. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On this stage, the participant answers a question by typing names into a single box, one at a time. Each name adds a person straight away, with no form to fill in. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description:
       'Body of the first step of the quick-add Name Generator walkthrough.',
   },

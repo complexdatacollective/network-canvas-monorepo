@@ -18,7 +18,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.oneToManyDyadCensus.introBody',
     defaultMessage:
-      'On a One-to-Many Dyad Census stage, the participant is shown one of the people they have named at a time, beside everyone else, and selects each of the others a question applies to. Each selection adds a connection between the two. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On a One-to-Many Dyad Census stage, the participant is shown one of the people they have named at a time, beside everyone else, and selects each of the others a question applies to. Each selection adds a connection between the two. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description:
       'Body of the first step of the One-to-Many Dyad Census walkthrough.',
   },

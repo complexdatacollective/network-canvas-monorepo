@@ -17,7 +17,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.tieStrengthCensus.introBody',
     defaultMessage:
-      'On a Tie-Strength Census stage, the participant is shown every pair of the people they have named, one pair at a time, and rates how strong their relationship is, or says there is none. A rating adds a connection between the two that records it. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On a Tie-Strength Census stage, the participant is shown every pair of the people they have named, one pair at a time, and rates how strong their relationship is, or says there is none. Each rating, other than none, adds a connection between the two people that stores the rating. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description:
       'Body of the first step of the Tie-Strength Census walkthrough.',
   },

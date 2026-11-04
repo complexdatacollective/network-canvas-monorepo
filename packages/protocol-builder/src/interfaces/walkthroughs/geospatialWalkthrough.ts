@@ -23,7 +23,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.geospatial.introBody',
     defaultMessage:
-      'On this stage the participant answers each prompt by choosing an area on a map, for each person in their network. The map comes from Mapbox, drawn with a key and a file of areas that you provide. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On this stage the participant answers each prompt by choosing an area on a map, for each person in their network. The map comes from Mapbox, using a Mapbox access key and a file of areas that you provide. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description:
       'Body of the first step of the Geospatial walkthrough. Mapbox is the name of the map provider and stays untranslated.',
   },
@@ -47,7 +47,7 @@ const messages = defineMessages({
   filterBody: {
     id: 'protocolBuilder.walkthrough.geospatial.filterBody',
     defaultMessage:
-      'Switch this on to show only some people of that type, chosen by rules about their answers so far. Left off, everyone of that type is shown.',
+      'Switch this on to show only some people of that type, chosen by rules about what has been recorded about them so far. Left off, everyone of that type is shown.',
     description: 'Body of the walkthrough step about the stage filter.',
   },
   accessTitle: {

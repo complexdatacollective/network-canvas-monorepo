@@ -15,7 +15,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.languageChooser.introBody',
     defaultMessage:
-      'On this stage the participant picks the language the rest of their interview is shown in. There is little to set up: the choices come from the protocol itself. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On this stage the participant picks the language the rest of their interview is shown in. There is little to set up: the choices come from the protocol itself. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description: 'Body of the first step of the Language Chooser walkthrough.',
   },
   headingTitle: {
@@ -27,7 +27,7 @@ const messages = defineMessages({
   headingBody: {
     id: 'protocolBuilder.walkthrough.languageChooser.headingBody',
     defaultMessage:
-      'Network Canvas supplies a heading shown above the languages, and it switches to the chosen language as soon as the participant picks one. Switch this section on only if you want different words.',
+      'Network Canvas supplies a heading shown above the languages, and it switches to the chosen language as soon as the participant picks one. Switch this on only if you want different words.',
     description:
       'Body of the walkthrough step about the heading shown above the languages a participant chooses between.',
   },

@@ -20,7 +20,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.narrative.introBody',
     defaultMessage:
-      'A Narrative stage shows the participant the network they have already built, so they can talk about it. Nothing new is collected: the canvas switches between saved views of the network while the participant tells its story. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'A Narrative stage shows the participant the network they have already built, so they can talk about it. Nothing new is collected: the canvas switches between saved views of the network while the participant tells its story. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description: 'Body of the first step of the Narrative walkthrough.',
   },
   subjectTitle: {
@@ -67,7 +67,7 @@ const messages = defineMessages({
   backgroundBody: {
     id: 'protocolBuilder.walkthrough.narrative.backgroundBody',
     defaultMessage:
-      'Draw concentric circles behind the canvas, or use an image of your own. People are shown where they were placed on earlier stages, on top of this background.',
+      'Show concentric circles behind the canvas, or use an image of your own. People are shown where they were placed on earlier stages, on top of this background.',
     description: 'Body of the walkthrough step about the canvas background.',
   },
   permissionsTitle: {

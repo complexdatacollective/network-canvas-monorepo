@@ -32,7 +32,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.networkComposer.introBody',
     defaultMessage:
-      'The Network Composer is a single canvas for building a whole network: adding people, grouping them and drawing the connections between them. It is made for an interviewer or researcher to drive, rather than for a participant working alone. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'The Network Composer is a single canvas for building a whole network: adding people, grouping them and drawing the connections between them. It is made for an interviewer or researcher to drive, rather than for a participant working alone. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description: 'Body of the first step of the Network Composer walkthrough.',
   },
   subjectTitle: {
@@ -118,7 +118,7 @@ const messages = defineMessages({
   nodeFormChoiceBody: {
     id: 'protocolBuilder.walkthrough.networkComposer.nodeFormChoiceBody',
     defaultMessage:
-      'For example, how often the participant sees them, or how close they are. Questions can also be asked on a later stage.',
+      'For example, how often the participant sees them, or how close the participant feels to them. Questions can also be asked on a later stage.',
     description:
       'Body of the walkthrough step asking whether the stage asks questions about each node.',
   },
@@ -144,7 +144,7 @@ const messages = defineMessages({
   nodeFormBody: {
     id: 'protocolBuilder.walkthrough.networkComposer.nodeFormBody',
     defaultMessage:
-      'Switch this on and add a question. Questions appear in the side panel when a person on the canvas is selected. Each pairs a variable with the control used to answer it, and the control is chosen here, on the stage.',
+      'Switch this on and add a question. Questions appear in the side panel when a person on the canvas is selected. Each one pairs a variable with the control used to answer it, and you choose that control here, for this stage.',
     description:
       'Body of the walkthrough step about the questions asked about each node.',
   },
@@ -194,7 +194,7 @@ const messages = defineMessages({
   backgroundBody: {
     id: 'protocolBuilder.walkthrough.networkComposer.backgroundBody',
     defaultMessage:
-      'Draw concentric circles behind the canvas, or use an image of your own. Circles can help the interviewer place people, for example closer people nearer the middle.',
+      'Show concentric circles behind the canvas, or use an image of your own. Circles can help the interviewer place people, for example closer people nearer the middle.',
     description: 'Body of the walkthrough step about the canvas background.',
   },
   finishTitle: {

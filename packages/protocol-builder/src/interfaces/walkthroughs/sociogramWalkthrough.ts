@@ -19,7 +19,7 @@ const messages = defineMessages({
   introBody: {
     id: 'protocolBuilder.walkthrough.sociogram.introBody',
     defaultMessage:
-      'On a Sociogram, the participant works with the people they have already named on a canvas: placing them, connecting the ones who know each other, or marking some of them. This walkthrough visits each setting in order. You can keep editing while it is open.',
+      'On a Sociogram, the participant works with the people they have already named on a canvas: placing them, connecting the ones who know each other, or marking some of them. This walkthrough visits each setting in order. You can keep editing while the walkthrough is open.',
     description: 'Body of the first step of the Sociogram walkthrough.',
   },
   subjectTitle: {
@@ -66,7 +66,7 @@ const messages = defineMessages({
   backgroundBody: {
     id: 'protocolBuilder.walkthrough.sociogram.backgroundBody',
     defaultMessage:
-      'Draw concentric circles behind the canvas, or use an image of your own. Circles give the participant rings to place people in, for example closer people nearer the middle.',
+      'Show concentric circles behind the canvas, or use an image of your own. Circles give the participant rings to place people in, for example closer people nearer the middle.',
     description: 'Body of the walkthrough step about the canvas background.',
   },
   layoutTitle: {
