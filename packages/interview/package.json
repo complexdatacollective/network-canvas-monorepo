@@ -92,6 +92,7 @@
     "zustand": "catalog:"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
     "@chromatic-com/storybook": "catalog:",
     "@codaco/development-protocol": "workspace:^",
     "@codaco/e2e-helpers": "workspace:^",
@@ -112,6 +113,7 @@
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@testing-library/user-event": "^14.6.8",
+    "@types/babel__core": "^7.20.5",
     "@types/concaveman": "^1.1.6",
     "@types/d3-force": "^3.0.10",
     "@types/geojson": "^7946.0.16",
@@ -122,6 +124,7 @@
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
+    "babel-plugin-react-compiler": "^1.0.0",
     "chalk": "^6.0.1",
     "chromatic": "catalog:",
     "effect": "catalog:",

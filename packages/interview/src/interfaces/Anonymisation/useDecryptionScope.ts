@@ -17,10 +17,15 @@ import {
 /** The decryption scope of this interview's key, while one is in force. */
 export function useDecryptionScope() {
   const store = useStore<RootState>();
-  // Subscribed so that a component re-renders when the key in force changes.
-  useSelector(getEncryptionKeyId);
-  // oxlint-disable-next-line typescript/unbound-method -- the scope registry is keyed by this exact function, so it cannot be wrapped; Redux's getState does not read `this`
-  return getDecryptionScope(store.getState);
+  // The key's id is read as an input, not only subscribed to: a host built
+  // with the React Compiler (Fresco) reuses this result until an input
+  // changes, and `store.getState` never does, so the scope would stay as it
+  // was on the first render, before the passphrase was entered.
+  const keyId = useSelector(getEncryptionKeyId);
+  return keyId === null
+    ? undefined
+    : // oxlint-disable-next-line typescript/unbound-method -- the scope registry is keyed by this exact function, so it cannot be wrapped; Redux's getState does not read `this`
+      getDecryptionScope(store.getState);
 }
 
 /**
