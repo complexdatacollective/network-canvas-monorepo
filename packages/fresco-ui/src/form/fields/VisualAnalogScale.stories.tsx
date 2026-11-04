@@ -198,7 +198,9 @@ export const LocalizedLabels: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const min = canvas.getByText('ليس على الإطلاق');
+    const min = await canvas.findByText('ليس على الإطلاق', {
+      selector: 'strong',
+    });
     await expect(min.tagName).toBe('STRONG');
     await expect(min.closest('[lang]')).toHaveAttribute('lang', 'ar');
     await expect(getComputedStyle(min).direction).toBe('rtl');

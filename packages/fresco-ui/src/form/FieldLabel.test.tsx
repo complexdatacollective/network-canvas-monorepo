@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { FieldLabel } from './FieldLabel';
@@ -8,10 +8,13 @@ describe('FieldLabel', () => {
     vi.restoreAllMocks();
   });
 
-  it('opens markdown links externally', () => {
+  it('opens markdown links externally', async () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
 
-    render(<FieldLabel>Visit [docs](https://example.com)</FieldLabel>);
+    await act(async () => {
+      render(<FieldLabel>Visit [docs](https://example.com)</FieldLabel>);
+    });
+    await screen.findByRole('link', { name: 'docs' }, { timeout: 10_000 });
 
     fireEvent.click(screen.getByRole('link', { name: 'docs' }));
 

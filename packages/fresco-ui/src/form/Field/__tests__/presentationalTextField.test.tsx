@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { PresentationalText } from '../../../PresentationalText';
@@ -24,9 +24,16 @@ const spanish = (text: string): PresentationalText => ({
 const renderInForm = (field: React.ReactNode) =>
   render(<Form onSubmit={() => ({ success: true })}>{field}</Form>);
 
+const renderMarkdownInForm = async (field: React.ReactNode, text: string) => {
+  await act(async () => {
+    renderInForm(field);
+  });
+  await screen.findByText(text, {}, { timeout: 10_000 });
+};
+
 describe('Field with PresentationalText copy', () => {
-  it('marks the label element with the text’s language and direction, keeping its Markdown and the control’s name', () => {
-    renderInForm(
+  it('marks the label element with the text’s language and direction, keeping its Markdown and the control’s name', async () => {
+    await renderMarkdownInForm(
       <Field
         name="relationship"
         label={arabic('ما **علاقتك** بهذا الشخص؟')}
@@ -36,6 +43,7 @@ describe('Field with PresentationalText copy', () => {
           { value: 'family', label: arabic('عائلة') },
         ]}
       />,
+      'علاقتك',
     );
 
     const group = screen.getByRole('radiogroup', {
@@ -51,14 +59,15 @@ describe('Field with PresentationalText copy', () => {
     expect(screen.getByText('علاقتك').closest('label')).toBe(label);
   });
 
-  it('marks the hint with its own language, apart from the label', () => {
-    renderInForm(
+  it('marks the hint with its own language, apart from the label', async () => {
+    await renderMarkdownInForm(
       <Field
         name="nickname"
         label={arabic('اللقب')}
         hint={spanish('Escribe el nombre **que usas**')}
         component={InputField}
       />,
+      'que usas',
     );
 
     const input = screen.getByRole('textbox', { name: 'اللقب' });
@@ -101,14 +110,15 @@ describe('Field with PresentationalText copy', () => {
     );
   });
 
-  it('leaves plain-string copy in the page’s language', () => {
-    renderInForm(
+  it('leaves plain-string copy in the page’s language', async () => {
+    await renderMarkdownInForm(
       <Field
         name="nickname"
         label="Nickname"
         hint="The name you **go by**"
         component={InputField}
       />,
+      'go by',
     );
 
     expect(screen.getByText('Nickname').closest('[lang]')).toBeNull();

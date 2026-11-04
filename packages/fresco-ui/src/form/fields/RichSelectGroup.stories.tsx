@@ -191,7 +191,9 @@ export const LocalizedLabels: Story = {
     const canvas = within(canvasElement);
     await document.fonts.ready;
 
-    const close = canvas.getByText('قريب جدا');
+    const close = await canvas.findByText('قريب جدا', {
+      selector: 'strong',
+    });
     await expect(close.tagName).toBe('STRONG');
     await expect(close.closest('[lang]')).toHaveAttribute('lang', 'ar');
     await expect(getComputedStyle(close).direction).toBe('rtl');

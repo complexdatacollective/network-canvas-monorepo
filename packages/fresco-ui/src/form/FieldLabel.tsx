@@ -1,15 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGemoji from 'remark-gemoji';
 
+import { DeferredFieldLabelMarkdown } from '../DeferredMarkdown';
 import { Label as UILabel } from '../Label';
-import { NativeLink } from '../NativeLink';
-
-const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong', 'ul', 'ol', 'li', 'a'];
 
 /**
  * Hack for `>` characters that already exist in some protocols
@@ -22,35 +16,6 @@ const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong', 'ul', 'ol', 'li', 'a'];
  */
 const escapeAngleBracket = (value = '') =>
   value.replace(/>/g, '&gt;').replace(/<br&gt;/g, '<br>');
-
-const openExternal = (href: string) => (event: React.MouseEvent) => {
-  event.preventDefault();
-  window.open(href, '_blank', 'noopener,noreferrer');
-};
-
-const externalLinkRenderer = ({
-  href,
-  children,
-}: {
-  href?: string;
-  children?: React.ReactNode;
-}) =>
-  href ? (
-    <NativeLink
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={openExternal(href)}
-    >
-      {children}
-    </NativeLink>
-  ) : (
-    <>{children}</>
-  );
-
-const defaultMarkdownRenderers = {
-  a: externalLinkRenderer,
-};
 
 type FieldLabelProps = React.ComponentPropsWithoutRef<typeof UILabel> & {
   required?: boolean;
@@ -68,15 +33,9 @@ const FieldLabel = React.forwardRef<HTMLLabelElement, FieldLabelProps>(
     return (
       <UILabel ref={ref} {...props}>
         {typeof processedChildren === 'string' ? (
-          <ReactMarkdown
-            allowedElements={ALLOWED_MARKDOWN_LABEL_TAGS}
-            components={defaultMarkdownRenderers}
-            remarkPlugins={[remarkGemoji]}
-            rehypePlugins={[rehypeRaw, rehypeSanitize]}
-            unwrapDisallowed
-          >
+          <DeferredFieldLabelMarkdown>
             {processedChildren}
-          </ReactMarkdown>
+          </DeferredFieldLabelMarkdown>
         ) : (
           processedChildren
         )}

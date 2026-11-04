@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod/mini';
@@ -189,17 +195,20 @@ describe('Field hint content', () => {
     expect(hint?.textContent).toBe('Read our documentation.');
   });
 
-  it('still renders a hint written as markdown', () => {
-    render(
-      <Form onSubmit={() => ({ success: true })}>
-        <Field
-          name="name"
-          label="Name"
-          component={InputField}
-          hint="As it appears on your **ID**"
-        />
-      </Form>,
-    );
+  it('still renders a hint written as markdown', async () => {
+    await act(async () => {
+      render(
+        <Form onSubmit={() => ({ success: true })}>
+          <Field
+            name="name"
+            label="Name"
+            component={InputField}
+            hint="As it appears on your **ID**"
+          />
+        </Form>,
+      );
+    });
+    await screen.findByText('ID', {}, { timeout: 10_000 });
 
     const control = screen.getByRole('textbox', { name: 'Name' });
     const hint = document.getElementById(`${control.id}-hint`);

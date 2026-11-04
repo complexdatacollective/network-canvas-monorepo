@@ -13,6 +13,7 @@ import rehypeSanitize from 'rehype-sanitize';
 import remarkGemoji from 'remark-gemoji';
 import remarkGfm from 'remark-gfm';
 
+import { registerMarkdownRenderers } from './DeferredMarkdown';
 import { NativeLink } from './NativeLink';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
@@ -212,5 +213,25 @@ const RenderMarkdown = ({
 
   return markdownContent;
 };
+
+const fieldLabelMarkdownRenderers = {
+  a: externalLinkRenderer,
+} satisfies Components;
+
+const fieldLabelRemarkPlugins = [remarkGemoji];
+
+const FieldLabelMarkdown = ({ children }: { children?: string | null }) => (
+  <ReactMarkdown
+    allowedElements={ALLOWED_MARKDOWN_LABEL_TAGS}
+    components={fieldLabelMarkdownRenderers}
+    remarkPlugins={fieldLabelRemarkPlugins}
+    rehypePlugins={DEFAULT_MARKDOWN_REHYPE_PLUGINS}
+    unwrapDisallowed
+  >
+    {children}
+  </ReactMarkdown>
+);
+
+registerMarkdownRenderers({ RenderMarkdown, FieldLabelMarkdown });
 
 export { getMarkdownAttributeValues, getMarkdownLabelText, RenderMarkdown };

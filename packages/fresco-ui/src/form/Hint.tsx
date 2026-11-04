@@ -1,12 +1,12 @@
 import { type ReactNode } from 'react';
 
+import { DeferredMarkdown } from '../DeferredMarkdown';
 import {
   isPresentationalText,
   type PresentationalText,
   presentationalTextProps,
   presentationalTextValue,
 } from '../PresentationalText';
-import { RenderMarkdown } from '../RenderMarkdown';
 
 /**
  * A hint written as a plain string is researcher- or author-supplied markdown,
@@ -25,12 +25,13 @@ import { RenderMarkdown } from '../RenderMarkdown';
  * together.
  */
 const hintPart = (part: ReactNode | PresentationalText): ReactNode => {
-  if (typeof part === 'string') return <RenderMarkdown>{part}</RenderMarkdown>;
+  if (typeof part === 'string')
+    return <DeferredMarkdown>{part}</DeferredMarkdown>;
   if (isPresentationalText(part)) {
     return (
-      <RenderMarkdown render={<span {...presentationalTextProps(part)} />}>
+      <DeferredMarkdown render={<span {...presentationalTextProps(part)} />}>
         {presentationalTextValue(part)}
-      </RenderMarkdown>
+      </DeferredMarkdown>
     );
   }
   return part;

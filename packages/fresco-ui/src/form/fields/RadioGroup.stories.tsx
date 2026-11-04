@@ -292,7 +292,9 @@ export const LocalizedLabels: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const friend = canvas.getByText('صديق');
+    const friend = await canvas.findByText('صديق', {
+      selector: 'strong',
+    });
     await expect(friend.tagName).toBe('STRONG');
     await expect(friend.closest('[lang]')).toHaveAttribute('lang', 'ar');
     await expect(getComputedStyle(friend).direction).toBe('rtl');

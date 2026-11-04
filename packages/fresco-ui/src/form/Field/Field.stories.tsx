@@ -501,6 +501,9 @@ export const LocalizedLabelAndHint: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    await canvas.findByText('لقبك', { selector: 'strong' });
+    await canvas.findByText('usas', { selector: 'em' });
+
     const input = canvas.getByRole('textbox', { name: 'ما لقبك؟' });
     await expect(input).toBeInTheDocument();
     const label = canvas.getByText('لقبك').closest('label');

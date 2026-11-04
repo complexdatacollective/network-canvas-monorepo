@@ -7,7 +7,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button } from '../../Button';
-import OptionLabel from '../../OptionLabel';
+import OptionLabel from '../../DeferredOptionLabel';
 import {
   type PresentationalText,
   presentationalTextProps,

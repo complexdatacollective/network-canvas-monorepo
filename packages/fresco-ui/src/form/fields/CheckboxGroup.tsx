@@ -2,7 +2,7 @@
 
 import { type ReactNode, useId } from 'react';
 
-import OptionLabel from '../../OptionLabel';
+import OptionLabel from '../../DeferredOptionLabel';
 import { type PresentationalText } from '../../PresentationalText';
 import {
   controlLabelVariants,

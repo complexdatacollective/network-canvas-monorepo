@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import Hint from './Hint';
@@ -7,8 +7,11 @@ import Hint from './Hint';
 const hintElement = () => document.getElementById('hint');
 
 describe('Hint', () => {
-  it('renders children when no hint is given, as markdown', () => {
-    render(<Hint id="hint">Read the **manual**</Hint>);
+  it('renders children when no hint is given, as markdown', async () => {
+    await act(async () => {
+      render(<Hint id="hint">Read the **manual**</Hint>);
+    });
+    await screen.findByText('manual', {}, { timeout: 10_000 });
 
     expect(hintElement()).toHaveTextContent('Read the manual');
     expect(screen.getByText('manual').tagName).toBe('STRONG');

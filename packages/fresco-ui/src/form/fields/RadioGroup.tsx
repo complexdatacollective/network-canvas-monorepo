@@ -5,7 +5,7 @@ import { RadioGroup, type RadioGroupProps } from '@base-ui/react/radio-group';
 import { motion } from 'motion/react';
 import { type ReactNode, useId } from 'react';
 
-import OptionLabel from '../../OptionLabel';
+import OptionLabel from '../../DeferredOptionLabel';
 import {
   isPresentationalText,
   type PresentationalText,

@@ -7,12 +7,12 @@ import { useRef, useState } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { DeferredMarkdown } from '../../DeferredMarkdown';
 import {
   type PresentationalText,
   presentationalTextProps,
   presentationalTextValue,
 } from '../../PresentationalText';
-import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
   sliderControlVariants,
@@ -287,9 +287,9 @@ export default function VisualAnalogScaleField(
                 )}
                 {...presentationalTextProps(minLabel)}
               >
-                <RenderMarkdown>
+                <DeferredMarkdown>
                   {presentationalTextValue(minLabel)}
-                </RenderMarkdown>
+                </DeferredMarkdown>
               </div>
             )}
             {maxLabel && (
@@ -300,9 +300,9 @@ export default function VisualAnalogScaleField(
                 )}
                 {...presentationalTextProps(maxLabel)}
               >
-                <RenderMarkdown>
+                <DeferredMarkdown>
                   {presentationalTextValue(maxLabel)}
-                </RenderMarkdown>
+                </DeferredMarkdown>
               </div>
             )}
           </div>

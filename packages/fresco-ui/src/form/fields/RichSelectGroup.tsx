@@ -3,14 +3,14 @@
 import { motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
+import { DeferredMarkdown } from '../../DeferredMarkdown';
+import OptionLabel from '../../DeferredOptionLabel';
 import { Label } from '../../Label';
-import OptionLabel from '../../OptionLabel';
 import {
   type PresentationalText,
   presentationalTextProps,
   presentationalTextValue,
 } from '../../PresentationalText';
-import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlVariants,
   groupSpacingVariants,
@@ -508,9 +508,9 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
               className={descriptionVariants({ size })}
               {...presentationalTextProps(option.description)}
             >
-              <RenderMarkdown>
+              <DeferredMarkdown>
                 {presentationalTextValue(option.description)}
-              </RenderMarkdown>
+              </DeferredMarkdown>
             </span>
           )}
         </motion.button>
