@@ -119,6 +119,12 @@ export default defineConfig({
             '@codaco/protocol-validation > csvtojson',
             '@codaco/protocol-validation > jszip',
             'd3-force',
+            // fresco-ui's Icon loads each Lucide icon with a dynamic import, which
+            // the scanner never follows.
+            'lucide-react/dynamicIconImports',
+            // useMapbox loads it with a dynamic import, which the scanner never
+            // follows.
+            'mapbox-gl/esm',
             'zod',
             'zod/mini',
             'zustand/middleware/immer',

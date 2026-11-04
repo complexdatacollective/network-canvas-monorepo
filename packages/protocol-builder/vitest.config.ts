@@ -143,6 +143,9 @@ export default defineConfig({
             '@codaco/protocol-validation > jszip',
             'es-toolkit/compat',
             'lucide-react',
+            // fresco-ui's Icon loads each Lucide icon with a dynamic import, which
+            // the scanner never follows.
+            'lucide-react/dynamicIconImports',
             'motion/react',
             'remark-parse',
             'unified',

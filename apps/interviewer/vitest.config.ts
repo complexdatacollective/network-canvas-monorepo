@@ -153,6 +153,9 @@ export default defineConfig({
             '@codaco/protocol-validation > csvtojson',
             'chromatic/isChromatic',
             'jszip',
+            // fresco-ui's Icon loads each Lucide icon with a dynamic import, which
+            // the scanner never follows.
+            'lucide-react/dynamicIconImports',
             // Reached through @codaco/interview: OnlineStatusProvider imports
             // its package entry, which pulls in Shell → analytics →
             // resolveClient's lazy import of the no-external build. Resolvable

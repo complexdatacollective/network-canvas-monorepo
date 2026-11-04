@@ -155,9 +155,15 @@ export default defineConfig({
             '@codaco/interview > concaveman',
             '@codaco/interview > html-to-image',
             '@codaco/interview > intl-messageformat',
+            // useMapbox loads it with a dynamic import, which the scanner never
+            // follows.
+            '@codaco/interview > mapbox-gl/esm',
             '@codaco/interview > ohash',
             '@reduxjs/toolkit > immer',
             '@tanstack/react-table',
+            // fresco-ui's Icon loads each Lucide icon with a dynamic import, which
+            // the scanner never follows.
+            'lucide-react/dynamicIconImports',
             'clsx',
             'cva',
             'cva/config',

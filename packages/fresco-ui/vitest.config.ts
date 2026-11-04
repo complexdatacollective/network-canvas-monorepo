@@ -29,7 +29,9 @@ export default defineConfig({
   // here keeps Playwright's connection from being torn down by a mid-test
   // page reload when Vite re-bundles on demand.
   optimizeDeps: {
-    include: ['fuse.js'],
+    // Icon loads each Lucide icon with a dynamic import, which the scanner
+    // never follows.
+    include: ['fuse.js', 'lucide-react/dynamicIconImports'],
   },
   test: {
     globals: true,
