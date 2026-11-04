@@ -1,7 +1,6 @@
 'use client';
 
 import { queue, type QueueObject } from 'async';
-import { hashProtocol as hashLegacyProtocol } from 'fresco-schema-8/protocol-validation';
 import { useCallback, useLayoutEffect, useRef } from 'react';
 
 import {
@@ -13,17 +12,6 @@ import {
 import { AppErrorMessage, AppMessage } from '@codaco/app-i18n/react';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { useToast } from '@codaco/fresco-ui/Toast';
-import {
-  CURRENT_SCHEMA_VERSION,
-  createNetcanvasReader,
-  getProtocolFileErrorKind,
-  hashProtocol,
-  isProtocolFileFault,
-  loadNetcanvasArchive,
-  missingAssetsError,
-  toReportableProtocolError,
-} from '@codaco/protocol-validation';
-import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
 import { ensureError } from '@codaco/shared-consts';
 import {
   cleanupUploadedFiles,
@@ -42,12 +30,7 @@ import {
   captureClientEvent,
   captureClientException,
 } from '~/lib/posthog-client';
-import {
-  validateImportedProtocol,
-  type ProtocolValidationError,
-} from '~/lib/protocol/validateImportedProtocol';
-import { validateImportedLegacyProtocol } from '~/lib/schema-8/validateImportedProtocol';
-import { LEGACY_SCHEMA_VERSION } from '~/lib/schema-8/version';
+import { type ProtocolValidationError } from '~/lib/protocol/validateImportedProtocol';
 import { type AssetInsertType } from '~/schemas/protocol';
 import { DatabaseError } from '~/utils/databaseError';
 import {
@@ -167,6 +150,9 @@ function getValidationErrorMessage(
     }
   }
 }
+
+const loadImportPipeline = () =>
+  import('~/lib/protocol/protocolImportPipeline');
 
 type ImportJob = { file: File; toastId: string };
 
@@ -322,25 +308,15 @@ export const useProtocolImport = () => {
       // Phase: Parsing
       updateToastPhase(toastId, 'parsing');
       const fileArrayBuffer = await fileAsArrayBuffer(file, createMessageError);
+      const pipeline = await loadImportPipeline();
+      const { reader, protocolJson } =
+        await pipeline.readProtocolArchive(fileArrayBuffer);
 
-      // One reader for the whole archive: it holds a single inflation budget
-      // across both reads below, so a deflate bomb split between
-      // `protocol.json` and the media cannot spend the allowance twice.
-      const zip = await loadNetcanvasArchive(new Uint8Array(fileArrayBuffer));
-      const reader = createNetcanvasReader(zip);
-      const protocolJson = await reader.readProtocol();
-
-      // Fresco never upgrades a protocol to the current schema. A schema 8
-      // protocol is stored as it is and runs in the schema 8 interview Fresco
-      // bundles; a schema 7 protocol is brought up to schema 8 on the way, as
-      // Fresco 4 did.
       updateToastPhase(toastId, 'validating');
-      const validationResult =
-        protocolJson.schemaVersion <= LEGACY_SCHEMA_VERSION
-          ? await validateImportedLegacyProtocol(protocolJson, {
-              name: protocolName,
-            })
-          : await validateImportedProtocol(protocolJson);
+      const validationResult = await pipeline.validateProtocolForImport(
+        protocolJson,
+        protocolName,
+      );
 
       if (!validationResult.success) {
         const errorMessage = getValidationErrorMessage(validationResult);
@@ -355,10 +331,7 @@ export const useProtocolImport = () => {
 
       // Phase: Checking duplicates
       updateToastPhase(toastId, 'checking-duplicates');
-      const protocolHash =
-        validatedProtocol.schemaVersion === CURRENT_SCHEMA_VERSION
-          ? hashProtocol(validatedProtocol)
-          : hashLegacyProtocol(validatedProtocol);
+      const protocolHash = pipeline.hashImportedProtocol(validatedProtocol);
       const exists = await getProtocolByHash(protocolHash);
       if (exists) {
         updateToastPhase(toastId, 'error', {
@@ -380,17 +353,7 @@ export const useProtocolImport = () => {
       // values are the only ones that describe entries in this zip; the
       // validated document supplies what gets stored against them.
       updateToastPhase(toastId, 'extracting-assets');
-      const { assets: extractedAssets, missingAssets } =
-        await reader.readAssets();
-
-      // Extraction reports a manifest entry with no file rather than refusing,
-      // leaving the policy to the host. Fresco serves these resources to
-      // participants, so an incomplete protocol must not be installed: a
-      // missing stimulus would surface mid-interview, to the one person who
-      // can do nothing about it.
-      if (missingAssets.length > 0) {
-        throw missingAssetsError(missingAssets);
-      }
+      const extractedAssets = await pipeline.readProtocolAssets(reader);
 
       const { fileAssets, apikeyAssets } = partitionProtocolAssets(
         validatedProtocol,
@@ -509,27 +472,22 @@ export const useProtocolImport = () => {
       return;
     } catch (e) {
       const error = ensureError(e);
-      const protocolFileError = describeProtocolFileErrorMessage(error);
-      // Every protocol the import refuses is recorded by its kind, a fixed
-      // vocabulary that holds nothing from the file, so refusals can be
-      // counted by cause.
-      //
-      // A file the researcher chose being damaged or truncated is an answer
-      // about that file, not a defect in Fresco, so it stops there: sending
-      // it to exception tracking would bury the failures that are defects,
-      // and the message carries researcher-authored resource names.
-      // `isProtocolFileFault` draws that line.
-      const refusalKind = getProtocolFileErrorKind(error);
+      // If the pipeline itself failed to load, nothing it could classify was
+      // thrown, so the error is reported as an operational failure.
+      const { refusalKind, protocolFileError, reportableError } =
+        await loadImportPipeline().then(
+          (pipeline) => pipeline.classifyImportError(error),
+          () => ({
+            refusalKind: null,
+            protocolFileError: null,
+            reportableError: error,
+          }),
+        );
       if (refusalKind !== null) {
         captureClientEvent('ProtocolImportFailed', { reason: refusalKind });
       }
-      //
-      // A classified error is sent as a copy that keeps its name and stack
-      // but not its message, which can quote the researcher's protocol.
-      if (!isProtocolFileFault(error)) {
-        captureClientException(
-          refusalKind === null ? error : toReportableProtocolError(error),
-        );
+      if (reportableError) {
+        captureClientException(reportableError);
       }
 
       // Best-effort cleanup of any blobs uploaded before the failure, so a
