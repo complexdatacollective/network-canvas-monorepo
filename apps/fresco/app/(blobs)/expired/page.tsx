@@ -9,7 +9,6 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { resetAppSettings } from '~/actions/reset';
 import { containerClasses } from '~/components/ContainerClasses';
 import SubmitButton from '~/components/SubmitButton';
-import { env } from '~/env';
 
 const messages = defineMessages({
   installationExpired: {
@@ -53,7 +52,7 @@ export default function Page() {
       <Paragraph>
         {intl.formatMessage(messages.pleaseRedeployANewInstanceOfFresco)}
       </Paragraph>
-      {env.NODE_ENV === 'development' && (
+      {process.env.NODE_ENV === 'development' && (
         <form action={resetAppSettings}>
           <SubmitButton
             className="mt-6 h-auto min-h-12 py-2 text-center text-wrap"

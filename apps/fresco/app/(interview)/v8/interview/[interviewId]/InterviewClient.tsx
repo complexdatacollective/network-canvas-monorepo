@@ -21,7 +21,6 @@ import {
   useState,
 } from 'react';
 
-import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
 import { useFrescoLocale } from '~/i18n/FrescoI18nProvider';
 import { frescoCatalogSource } from '~/src/locales/catalogs';
@@ -150,7 +149,7 @@ export default function InterviewClient({
 
   const flags = useMemo(
     () => ({
-      isDevelopment: env.NODE_ENV === 'development',
+      isDevelopment: process.env.NODE_ENV === 'development',
     }),
     [],
   );

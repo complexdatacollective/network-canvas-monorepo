@@ -12,7 +12,6 @@ import {
   type InterviewPayload,
   type StepChangeHandler,
 } from '@codaco/interview';
-import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
 
 import {
@@ -128,7 +127,7 @@ export default function InterviewClient({
 
   const flags = useMemo(
     () => ({
-      isDevelopment: env.NODE_ENV === 'development',
+      isDevelopment: process.env.NODE_ENV === 'development',
     }),
     [],
   );
