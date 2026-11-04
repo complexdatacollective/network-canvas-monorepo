@@ -1,8 +1,7 @@
-import Papa from 'papaparse';
-
 export default async function parseCSV<T>(csvFile: File): Promise<T[]> {
+  const { parse } = await import('papaparse');
   return new Promise((resolve, reject) => {
-    Papa.parse<T>(csvFile, {
+    parse<T>(csvFile, {
       skipEmptyLines: true,
       header: true,
       error: (error) => {

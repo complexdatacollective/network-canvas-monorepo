@@ -50,10 +50,10 @@ describe('useExportParticipants', () => {
     URL.revokeObjectURL = vi.fn();
   });
 
-  it('builds interview URLs the onboard route understands', () => {
+  it('builds interview URLs the onboard route understands', async () => {
     const { result } = renderHook(() => useExportParticipants([protocol]));
 
-    result.current([participant]);
+    await result.current([participant]);
 
     expect(unparse).toHaveBeenCalledTimes(1);
     const rows = unparse.mock.calls[0]?.[0];

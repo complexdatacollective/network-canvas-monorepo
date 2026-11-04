@@ -231,7 +231,7 @@ const ParticipantsTableInner = ({
         });
         return;
       }
-      exportParticipants(result.data);
+      await exportParticipants(result.data);
     });
   };
 
@@ -259,7 +259,7 @@ const ParticipantsTableInner = ({
         });
         return;
       }
-      exportParticipants(result.data);
+      await exportParticipants(result.data);
     });
   };
 

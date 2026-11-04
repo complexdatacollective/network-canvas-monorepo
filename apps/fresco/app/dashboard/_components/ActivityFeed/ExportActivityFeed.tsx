@@ -1,7 +1,6 @@
 'use client';
 
 import { FileUp } from 'lucide-react';
-import { unparse } from 'papaparse';
 import { useTransition } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -60,6 +59,7 @@ export default function ExportActivityFeed() {
           details: activity.message,
         }));
 
+        const { unparse } = await import('papaparse');
         const csv = unparse(csvData, { header: true });
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);

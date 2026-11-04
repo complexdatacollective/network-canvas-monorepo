@@ -1,6 +1,5 @@
 'use client';
 
-import { unparse } from 'papaparse';
 import { useCallback } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -42,7 +41,7 @@ export function useExportParticipants(protocols: ProtocolWithInterviews[]) {
   const { add } = useToast();
 
   return useCallback(
-    (participants: ParticipantExportRow[]) => {
+    async (participants: ParticipantExportRow[]) => {
       try {
         const csvData = participants.map((participant) => {
           const row: Record<string, string> = {
@@ -64,6 +63,7 @@ export function useExportParticipants(protocols: ProtocolWithInterviews[]) {
           return row;
         });
 
+        const { unparse } = await import('papaparse');
         const csv = unparse(csvData, { header: true });
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);

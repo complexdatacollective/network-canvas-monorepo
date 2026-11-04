@@ -1,7 +1,6 @@
 'use client';
 
 import { Download } from 'lucide-react';
-import { unparse } from 'papaparse';
 import { useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -74,7 +73,7 @@ function ExportCSVInterviewURLs({
   const [isExporting, setIsExporting] = useState(false);
   const { add } = useToast();
 
-  const handleExport = () => {
+  const handleExport = async () => {
     try {
       setIsExporting(true);
       if (!protocol?.id) return;
@@ -84,6 +83,7 @@ function ExportCSVInterviewURLs({
         interview_url: `${window.location.origin}/interview/${interview.id}`,
       }));
 
+      const { unparse } = await import('papaparse');
       const csv = unparse(csvData, { header: true });
 
       // Create a download link
