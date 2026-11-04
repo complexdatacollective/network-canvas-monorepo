@@ -2,14 +2,19 @@ import { useSyncExternalStore } from 'react';
 
 type WalkthroughState = Readonly<{
   open: boolean;
-  stepIndex: number;
+  /**
+   * The step the walkthrough was last sent to, by id, or undefined for the
+   * first one. An id rather than a position: which steps are shown changes as
+   * the stage is edited, and a position would then name a different step.
+   */
+  stepId: string | undefined;
   /** The option picked for each question answered, by question id. */
   choices: Readonly<Record<string, string>>;
 }>;
 
 const CLOSED: WalkthroughState = Object.freeze({
   open: false,
-  stepIndex: 0,
+  stepId: undefined,
   choices: Object.freeze({}),
 });
 
@@ -47,20 +52,24 @@ export function openWalkthrough(launcher: HTMLElement | null) {
   set({ ...CLOSED, open: true });
 }
 
-export function goToWalkthroughStep(stepIndex: number) {
-  set({ ...state, stepIndex });
+export function goToWalkthroughStep(stepId: string) {
+  set({ ...state, stepId });
 }
 
-/** Records an answer and moves on to the step after the question. */
+/**
+ * Records an answer and moves on to the step after the question. The step
+ * after it may be one the answer hides; the panel then moves on to the next
+ * step that is shown.
+ */
 export function chooseInWalkthrough(
   choice: string,
   option: string,
-  nextStepIndex: number,
+  nextStepId: string,
 ) {
   set({
     ...state,
     choices: { ...state.choices, [choice]: option },
-    stepIndex: nextStepIndex,
+    stepId: nextStepId,
   });
 }
 

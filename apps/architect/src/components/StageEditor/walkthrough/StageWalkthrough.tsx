@@ -12,11 +12,9 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useSelector } from 'react-redux';
 
-import {
-  defineMessages,
-  type MessageDescriptor,
-} from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { Button } from '@codaco/fresco-ui/Button';
@@ -34,18 +32,22 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { stageWalkthrough } from '@codaco/protocol-builder/interfaces/walkthroughs/stageWalkthroughs';
 import type {
   StageWalkthroughChoice,
-  StageWalkthroughCondition,
+  StageWalkthroughContext,
   StageWalkthroughStep,
 } from '@codaco/protocol-builder/interfaces/walkthroughs/walkthroughTypes';
-import type {
-  StageSection,
-  StageSectionsStore,
-} from '@codaco/protocol-builder/stage-editor-contract';
+import type { StageSectionsStore } from '@codaco/protocol-builder/stage-editor-contract';
 import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
 import type { Stage } from '@codaco/protocol-validation';
+import { getLocalization } from '~/selectors/protocol';
 
 import { useStageDraft } from '../stageDraftBeacon';
 import StepVisual from './StepVisual';
+import {
+  isDone,
+  resolveStepIndex,
+  visibleSteps,
+  type VisibleStep,
+} from './walkthroughSteps';
 import {
   chooseInWalkthrough,
   closeWalkthrough,
@@ -143,65 +145,6 @@ export default function StageWalkthrough({
   );
 }
 
-type VisibleStep = Readonly<{
-  step: StageWalkthroughStep;
-  sectionId: string | undefined;
-}>;
-
-/**
- * The steps for the sections this stage is showing, each with the section it
- * points at. Steps for sections the stage is not showing are left out, so the
- * count the researcher reads is the count they will step through.
- *
- * Matched in order, because two sections can share a title — a composer has
- * "Editable attributes" for its nodes and again for its connections — and
- * the steps follow the editor's order: each step's section is the first with
- * its title at or after the previous step's.
- */
-function visibleSteps(
-  steps: readonly StageWalkthroughStep[],
-  entries: readonly StageSection[],
-  choices: Readonly<Record<string, string>>,
-  format: (title: MessageDescriptor) => string,
-): VisibleStep[] {
-  const visible: VisibleStep[] = [];
-  let cursor = 0;
-  for (const step of steps) {
-    if (!meets(step.when, choices)) continue;
-    if (step.target === undefined) {
-      visible.push({ step, sectionId: undefined });
-      continue;
-    }
-    const title = format(step.target.section);
-    const found = entries.findIndex(
-      (entry, position) => position >= cursor && entry.title === title,
-    );
-    if (found === -1) continue;
-    cursor = found;
-    visible.push({ step, sectionId: entries[found]?.id });
-  }
-  return visible;
-}
-
-/**
- * Whether a step's conditions hold. A question left unanswered hides nothing:
- * skipping it shows every step that depended on it.
- */
-function meets(
-  when: StageWalkthroughCondition | undefined,
-  choices: Readonly<Record<string, string>>,
-) {
-  if (when === undefined) return true;
-  return Object.entries(when).every(
-    ([choice, option]) =>
-      choices[choice] === undefined || choices[choice] === option,
-  );
-}
-
-function isDone(step: StageWalkthroughStep, stage: Stage | undefined) {
-  return stage !== undefined && step.done?.(stage) === true;
-}
-
 /**
  * In the sidebar it stays put beside the form while the form scrolls, as the
  * section list does. Below the two-column breakpoint the sidebar is a row
@@ -226,8 +169,16 @@ function WalkthroughPanel({
   const headingId = useId();
   const statusId = useId();
   const nextRef = useRef<HTMLButtonElement>(null);
-  const { stepIndex, choices } = useWalkthroughState();
+  const { stepId, choices } = useWalkthroughState();
   const stage = useStageDraft((beacon) => beacon.stage);
+  // From the protocol Architect holds, which always declares its languages:
+  // the editor's own localization context is unset until it has read them,
+  // and every required step would read as not done meanwhile.
+  const defaultLocale = useSelector(getLocalization)?.defaultLocale;
+  const context = useMemo(
+    () => (defaultLocale === undefined ? undefined : { defaultLocale }),
+    [defaultLocale],
+  );
   const entries = useSyncExternalStore(
     sections.subscribe,
     sections.getSnapshot,
@@ -242,7 +193,7 @@ function WalkthroughPanel({
     [choices, entries, intl, steps],
   );
 
-  const index = Math.min(stepIndex, visible.length - 1);
+  const index = resolveStepIndex(visible, steps, stepId);
   const current = visible[index];
   const isFirst = index === 0;
   const isLast = index === visible.length - 1;
@@ -253,6 +204,20 @@ function WalkthroughPanel({
   useEffect(() => {
     nextRef.current?.focus({ preventScroll: true });
   }, []);
+
+  // Moving between steps can remove the control that had focus: a Yes/No
+  // answer, a checklist row, or Back on reaching the first step. Focus would
+  // then fall to the page, so it goes to Next instead. Only when it has
+  // fallen: a researcher editing the form while the step changes keeps their
+  // place.
+  const currentId = current?.step.id;
+  useEffect(() => {
+    if (currentId === undefined) return;
+    const focused = document.activeElement;
+    if (focused === null || focused === document.body) {
+      nextRef.current?.focus({ preventScroll: true });
+    }
+  }, [currentId]);
 
   useEffect(() => {
     target?.scrollIntoView({
@@ -266,7 +231,9 @@ function WalkthroughPanel({
   // A step the stage needs holds the researcher until it is done. Optional
   // steps, and questions, can always be passed.
   const blocked =
-    step.done !== undefined && step.optional !== true && !isDone(step, stage);
+    step.done !== undefined &&
+    step.optional !== true &&
+    !isDone(step, stage, context);
 
   return (
     <>
@@ -325,7 +292,7 @@ function WalkthroughPanel({
             {intl.formatMessage(step.body)}
           </RenderMarkdown>
           {step.done !== undefined && (
-            <DoneStatus id={statusId} done={isDone(step, stage)} />
+            <DoneStatus id={statusId} done={isDone(step, stage, context)} />
           )}
         </div>
         {step.choose !== undefined && (
@@ -335,7 +302,11 @@ function WalkthroughPanel({
             labelledBy={headingId}
             onPick={(option) =>
               step.choose !== undefined &&
-              chooseInWalkthrough(step.choose.id, option, index + 1)
+              chooseInWalkthrough(
+                step.choose.id,
+                option,
+                steps[steps.indexOf(step) + 1]?.id ?? step.id,
+              )
             }
           />
         )}
@@ -343,7 +314,8 @@ function WalkthroughPanel({
           <Summary
             visible={visible}
             stage={stage}
-            onPick={(i) => goToWalkthroughStep(i)}
+            context={context}
+            onPick={(id) => goToWalkthroughStep(id)}
           />
         )}
         <div className="flex items-center justify-end gap-2">
@@ -351,7 +323,11 @@ function WalkthroughPanel({
             <Button
               variant="text"
               size="sm"
-              onClick={() => goToWalkthroughStep(index - 1)}
+              onClick={() => {
+                const previous = visible[index - 1];
+                if (previous !== undefined)
+                  goToWalkthroughStep(previous.step.id);
+              }}
             >
               {intl.formatMessage(messages.back)}
             </Button>
@@ -370,7 +346,11 @@ function WalkthroughPanel({
             onClick={() => {
               if (blocked) return;
               if (isLast) closeWalkthrough();
-              else goToWalkthroughStep(index + 1);
+              else {
+                const following = visible[index + 1];
+                if (following !== undefined)
+                  goToWalkthroughStep(following.step.id);
+              }
             }}
           >
             {intl.formatMessage(isLast ? messages.finish : messages.next)}
@@ -434,15 +414,17 @@ function DoneStatus({ id, done }: Readonly<{ id: string; done: boolean }>) {
 function Summary({
   visible,
   stage,
+  context,
   onPick,
 }: Readonly<{
   visible: readonly VisibleStep[];
   stage: Stage | undefined;
-  onPick: (index: number) => void;
+  context: StageWalkthroughContext | undefined;
+  onPick: (stepId: string) => void;
 }>) {
   const intl = useAppIntl();
-  const rows = visible.flatMap(({ step }, position) =>
-    step.done === undefined ? [] : [{ step, position }],
+  const rows = visible.flatMap(({ step }) =>
+    step.done === undefined ? [] : [step],
   );
   if (rows.length === 0) return null;
   return (
@@ -450,14 +432,14 @@ function Summary({
       aria-label={intl.formatMessage(messages.summary)}
       className="m-0 flex list-none flex-col gap-1 p-0"
     >
-      {rows.map(({ step, position }) => {
-        const done = isDone(step, stage);
+      {rows.map((step) => {
+        const done = isDone(step, stage, context);
         const Icon = done ? Check : Circle;
         return (
           <li key={step.id}>
             <button
               type="button"
-              onClick={() => onPick(position)}
+              onClick={() => onPick(step.id)}
               className="focusable flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-start text-sm hover:bg-current/5"
             >
               <Icon

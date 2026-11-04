@@ -118,7 +118,8 @@ export const finishSessionWalkthrough: StageWalkthrough = [
       section: finishSessionMessages.closingTitle,
       field: CONTENT_FIELD,
     },
-    done: (stage) => hasText(finishSession(stage)?.content),
+    done: (stage, { defaultLocale }) =>
+      hasText(finishSession(stage)?.content, defaultLocale),
   },
   {
     id: 'finished',
@@ -128,7 +129,8 @@ export const finishSessionWalkthrough: StageWalkthrough = [
       section: finishSessionMessages.finishedTitle,
       field: FINISHED_CONTENT_FIELD,
     },
-    done: (stage) => hasText(finishSession(stage)?.finishedContent),
+    done: (stage, { defaultLocale }) =>
+      hasText(finishSession(stage)?.finishedContent, defaultLocale),
   },
   {
     id: 'wording',

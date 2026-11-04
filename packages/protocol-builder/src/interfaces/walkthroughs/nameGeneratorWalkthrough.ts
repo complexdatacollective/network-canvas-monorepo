@@ -7,7 +7,12 @@ import { nodePanelsMessages } from '../../sections/panels/NodePanelsSection.tsx'
 import { promptsSectionMessages } from '../../sections/PromptsSection.tsx';
 import { nodeSubjectSectionTitle } from '../../sections/subject-picker/SubjectSection.tsx';
 import { stageWordingMessages } from '../../sections/supplied-wording/stageWordingMessages.ts';
-import { closingSteps, introStep, stageOfType } from './walkthroughCommon.ts';
+import {
+  closingSteps,
+  hasText,
+  introStep,
+  stageOfType,
+} from './walkthroughCommon.ts';
 import type { StageWalkthrough } from './walkthroughTypes.ts';
 
 const messages = defineMessages({
@@ -114,7 +119,13 @@ export const nameGeneratorWalkthrough: StageWalkthrough = [
     title: messages.formTitle,
     body: messages.formBody,
     target: { section: formFieldsMessages.title },
-    done: (stage) => (nameGenerator(stage)?.form?.fields?.length ?? 0) > 0,
+    // The form's title is required as well as its fields (`FormSchema`).
+    done: (stage, { defaultLocale }) => {
+      const form = nameGenerator(stage)?.form;
+      return (
+        hasText(form?.title, defaultLocale) && (form?.fields?.length ?? 0) > 0
+      );
+    },
   },
   {
     id: 'prompts',

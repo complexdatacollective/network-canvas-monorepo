@@ -65,7 +65,8 @@ export const informationWalkthrough: StageWalkthrough = [
     title: messages.headingTitle,
     body: messages.headingBody,
     target: { section: pageContentMessages.pageTitle, field: TITLE_FIELD },
-    done: (stage) => hasText(information(stage)?.title),
+    done: (stage, { defaultLocale }) =>
+      hasText(information(stage)?.title, defaultLocale),
   },
   {
     id: 'items',

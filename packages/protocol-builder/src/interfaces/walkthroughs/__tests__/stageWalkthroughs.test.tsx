@@ -13,6 +13,8 @@ import { enIntl } from '../../../testing/i18n.ts';
 import type { FixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { stageWalkthrough } from '../stageWalkthroughs.ts';
+import { hasText } from '../walkthroughCommon.ts';
+import type { StageWalkthroughStep } from '../walkthroughTypes.ts';
 
 vi.mock('../../../fields/RichTextField.tsx', () => ({
   default: ({
@@ -75,6 +77,8 @@ const HIDDEN_ON_FIXTURE: Partial<Record<StageType, readonly string[]>> = {
 
 const fixtureStages: readonly Stage[] =
   CurrentProtocolSchema.parse(allInterfaces).stages;
+
+const CONTEXT = { defaultLocale: allInterfaces.localization.defaultLocale };
 
 function fixtureStage(stageId: string): Stage {
   const stage = fixtureStages.find((candidate) => candidate.id === stageId);
@@ -144,10 +148,64 @@ describe('stage walkthroughs', () => {
             step.done !== undefined &&
             step.optional !== true &&
             step.when === undefined &&
-            !step.done(stage),
+            !step.done(stage, CONTEXT),
         )
         .map((step) => step.id);
       expect(stuck).toEqual([]);
     },
   );
+});
+
+function stepOf(type: StageType, id: string): StageWalkthroughStep {
+  const step = walkthroughFor(type).find((candidate) => candidate.id === id);
+  if (step?.done === undefined) throw new Error(`No checked step ${id}`);
+  return step;
+}
+
+/**
+ * Saving requires a stage's text in the protocol's default language, so a
+ * step must not report done on text written only in another one — or a
+ * researcher passes it and then cannot save.
+ */
+describe('required text in walkthrough steps', () => {
+  const { defaultLocale } = CONTEXT;
+
+  it('counts only the default language', () => {
+    expect(hasText({ [defaultLocale]: 'Hello' }, defaultLocale)).toBe(true);
+    expect(
+      hasText({ [defaultLocale]: '  ', fr: 'Bonjour' }, defaultLocale),
+    ).toBe(false);
+    expect(hasText({ fr: 'Bonjour' }, defaultLocale)).toBe(false);
+  });
+
+  it('holds the finish screen until its default-language text is written', () => {
+    const stage = fixtureStage(FIXTURE_STAGES.FinishSession);
+    const translatedOnly = {
+      ...stage,
+      content: { [defaultLocale]: '', fr: 'Fin' },
+      finishedContent: { [defaultLocale]: '', fr: 'Merci' },
+    } as Stage;
+    expect(stepOf('FinishSession', 'closing').done?.(stage, CONTEXT)).toBe(
+      true,
+    );
+    expect(
+      stepOf('FinishSession', 'closing').done?.(translatedOnly, CONTEXT),
+    ).toBe(false);
+    expect(
+      stepOf('FinishSession', 'finished').done?.(translatedOnly, CONTEXT),
+    ).toBe(false);
+  });
+
+  it('holds the name generator form until it has a title as well as fields', () => {
+    const stage = fixtureStage(FIXTURE_STAGES.NameGenerator);
+    const form = stage.type === 'NameGenerator' ? stage.form : undefined;
+    const untitled = {
+      ...stage,
+      form: { ...form, title: { [defaultLocale]: '' } },
+    } as Stage;
+    expect(stepOf('NameGenerator', 'form').done?.(stage, CONTEXT)).toBe(true);
+    expect(stepOf('NameGenerator', 'form').done?.(untitled, CONTEXT)).toBe(
+      false,
+    );
+  });
 });

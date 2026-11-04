@@ -97,7 +97,8 @@ export const egoFormWalkthrough: StageWalkthrough = [
     title: messages.headingTitle,
     body: messages.headingBody,
     target: { section: introductionMessages.title, field: TITLE_FIELD },
-    done: (stage) => hasText(egoForm(stage)?.introductionPanel?.title),
+    done: (stage, { defaultLocale }) =>
+      hasText(egoForm(stage)?.introductionPanel?.title, defaultLocale),
   },
   {
     id: 'text',

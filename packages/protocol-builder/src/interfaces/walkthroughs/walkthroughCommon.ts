@@ -91,16 +91,15 @@ function isStageOf<T extends StageType>(
 }
 
 /**
- * Whether a translated text has words in any language. Lenient on purpose: a
- * check that wanted the default language could hold Next on a stage whose
- * text is written, just not in that one.
+ * Whether a translated text has words in the protocol's default language,
+ * which is where saving requires them: text written only in another language
+ * still leaves the stage unsaveable.
  */
 export function hasText(
   translations: Readonly<Record<string, string>> | undefined,
+  defaultLocale: string,
 ): boolean {
-  return Object.values(translations ?? {}).some(
-    (message) => !isBlankMessage(message),
-  );
+  return !isBlankMessage(translations?.[defaultLocale] ?? '');
 }
 
 /** The interface's own screenshot, as the stage-type picker shows it. */

@@ -78,7 +78,8 @@ export const anonymisationWalkthrough: StageWalkthrough = [
     title: messages.explanationTitle,
     body: messages.explanationBody,
     target: { section: anonymisationMessages.explanationTitle },
-    done: (stage) => hasText(anonymisation(stage)?.explanationText),
+    done: (stage, { defaultLocale }) =>
+      hasText(anonymisation(stage)?.explanationText, defaultLocale),
   },
   {
     id: 'rules',

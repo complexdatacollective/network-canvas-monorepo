@@ -276,7 +276,8 @@ export const familyPedigreeWalkthrough: StageWalkthrough = [
     title: messages.promptTitle,
     body: messages.promptBody,
     target: { section: pedigree.promptTitle },
-    done: (stage) => hasText(familyPedigree(stage)?.prompt),
+    done: (stage, { defaultLocale }) =>
+      hasText(familyPedigree(stage)?.prompt, defaultLocale),
   },
   {
     id: 'name',

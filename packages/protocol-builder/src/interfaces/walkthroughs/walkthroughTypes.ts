@@ -51,10 +51,17 @@ export type StageWalkthroughStep = Readonly<{
   visual?: readonly StageWalkthroughFrame[];
   when?: StageWalkthroughCondition;
   /**
-   * Whether the stage on screen already has what this step asks for. Read
-   * from the live draft, so the step reports done as soon as it is.
+   * Whether the stage on screen already has what this step asks for, as far
+   * as saving it is concerned. Read from the live draft, so the step reports
+   * done as soon as it is.
    */
-  done?: (stage: Stage) => boolean;
+  done?: (stage: Stage, context: StageWalkthroughContext) => boolean;
+}>;
+
+/** What a step's `done` needs beyond the stage itself. */
+export type StageWalkthroughContext = Readonly<{
+  /** The protocol's default language, where required text must be written. */
+  defaultLocale: string;
 }>;
 
 export type StageWalkthrough = readonly StageWalkthroughStep[];
