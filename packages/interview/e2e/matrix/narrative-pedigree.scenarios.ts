@@ -9,6 +9,7 @@ import type {
 import type { ProtocolPayload } from '../../src/contract/types.js';
 import { expect } from '../fixtures/matrix-test.js';
 import { buildSyntheticPayload } from '../helpers/synthetic-payload.js';
+import { expectCanvasFollowsFingers } from './pedigree-touch.js';
 import type { InterfaceScenarios } from './types.js';
 
 type Seed = {
@@ -470,6 +471,20 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         // Read-only invariant: nothing the participant did mutated the network.
         const after = await protocol.getNetworkState(interview.interviewId);
         expect(after).toEqual(before);
+      },
+    },
+    {
+      // On a touch screen, two fingers pinch the family larger and smaller,
+      // and one finger drags it.
+      id: 'touch-gestures',
+      covers: ['touchGestures'],
+      chromiumOnly: true,
+      touch: true,
+      currentStep: 1,
+      seedNetwork: true,
+      build: buildAdScenario,
+      run: async ({ page }) => {
+        await expectCanvasFollowsFingers(page, member(page, 'You'));
       },
     },
     {

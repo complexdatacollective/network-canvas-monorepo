@@ -25,6 +25,12 @@ export type ScenarioDefinition = {
   visual?: true;
   /** chromium-only functional cells (e.g. Geospatial map visuals) */
   chromiumOnly?: true;
+  /**
+   * open the interview in a context with a touch screen (`hasTouch`), so the
+   * page sees one from the moment it loads; the scenario drives it with
+   * helpers/touch.ts, which is chromium-only, so it needs `chromiumOnly`
+   */
+  touch?: true;
   /** mark test.slow() (e.g. Geospatial, crypto-heavy Anonymisation) */
   slow?: true;
   /** returns a fully-configured builder */

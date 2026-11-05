@@ -17,6 +17,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
+import { expectCanvasFollowsFingers } from './pedigree-touch.js';
 import type {
   InterfaceScenarios,
   ScenarioContext,
@@ -1983,6 +1984,27 @@ function sexChangeGivesWay(): ScenarioDefinition {
       const [julieToAri] = linksBetween(network, julie?.[PK], ari?.[PK]);
       expect(julieToAri?.[ATTR][fp.kind]).toEqual(['biological']);
       expect(julieToAri?.[ATTR][fp.gestationalCarrier]).toBeUndefined();
+    },
+  };
+}
+
+/**
+ * On a touch screen, two fingers pinch the family larger and smaller, and
+ * one finger drags it.
+ */
+function touchGestures(): ScenarioDefinition {
+  const scaffolded = scaffold();
+  seedDescribedParents(scaffolded);
+
+  return {
+    id: 'touch-gestures',
+    covers: ['touchGestures'],
+    chromiumOnly: true,
+    touch: true,
+    seedNetwork: true,
+    build: () => scaffolded.synth,
+    run: async ({ page }) => {
+      await expectCanvasFollowsFingers(page, member(page, 'You'));
     },
   };
 }
@@ -4174,6 +4196,7 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     nominationPrompts(),
     sexChangeGivesWay(),
     connectAndDisconnect(),
+    touchGestures(),
     relationshipKindsDrawn(),
     relationshipToParticipantRecorded(),
     wordingConnectAndDisconnect(),
