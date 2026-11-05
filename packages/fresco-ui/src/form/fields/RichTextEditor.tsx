@@ -1110,7 +1110,7 @@ const editorContentVariants = cva({
         'w-full px-6',
         '[--editable-min-h:calc(var(--spacing)*10+var(--spacing)*2*2+1px)]',
         'min-h-(--editable-min-h)',
-        '[&>.tiptap]:grid [&>.tiptap]:min-h-(--editable-min-h) [&>.tiptap]:content-center [&>.tiptap]:py-3.5',
+        '[&>.tiptap]:grid [&>.tiptap]:min-h-(--editable-min-h) [&>.tiptap]:grid-cols-1 [&>.tiptap]:content-center [&>.tiptap]:py-3.5',
       ),
       false: cx(multilineContentVariants(), '[&>.tiptap]:min-h-[120px]'),
     },
