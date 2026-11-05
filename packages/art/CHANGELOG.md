@@ -1,5 +1,19 @@
 # @codaco/art
 
+## 0.2.0
+
+### Minor Changes
+
+- 26d832e: Architect and Interviewer use much less battery when left open in the background. The animations on their start screens — the timeline on Architect's, and on Interviewer's the drifting lights in the background and the pulsing dot on the resume button — now pause whenever the app's window is not the one you are using, and carry on from where they stopped when you come back. Before, they kept running at full speed in any window still on screen, which is why macOS reported the installed apps as using significant energy. In `@codaco/fresco-ui`, the new `usePageActive` hook (`@codaco/fresco-ui/pageActivity`) says whether the page is in front of the user, and in `@codaco/art`, `BackgroundLights` takes a `paused` prop.
+
+### Patch Changes
+
+- c34db26: Node labels are easier to read. The node colors are adjusted, most of them darker, so their white labels stand out: all eight node colors now meet the WCAG AA contrast ratio of 4.5:1 for text, and the lighter half of each node stands out at 3:1 against the interview background. Nodes keep their two-tone diagonal.
+
+  The node colors in the default and interview themes (`--node-1` to `--node-8`) are now derived from the brand colors rather than equal to them. The brand color Neon Coral is slightly lighter and less saturated, and Mustard, Neon Carrot, Sea Serpent, Kiwi and Paradise Pink shift in hue, so edge, ordinal and categorical colors, the destructive and warning colors, the loading spinner, Background Creator's color swatches, and generated background patterns built from them change color slightly too.
+
+  In Architect, a read-only shape picker now tells assistive technology that its shapes are unavailable, matching the read-only type picker.
+
 ## 0.1.5
 
 ### Patch Changes
