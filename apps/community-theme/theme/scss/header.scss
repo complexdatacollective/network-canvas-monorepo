@@ -48,7 +48,12 @@
   );
 }
 
+// The title's link is a flex box so it is as tall as the title: as an inline
+// box its line left room for descenders under the title, and the bar, which
+// centres the link, set the title 3px high.
 .d-header .title a {
+  display: flex;
+  align-items: center;
   color: var(--nc-text);
   text-decoration: none;
 }

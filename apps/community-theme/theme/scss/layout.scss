@@ -121,4 +121,11 @@ body.nc-landing-page {
     background: none;
     box-shadow: none;
   }
+
+  // A site notice (read-only mode, email turned off) comes above the page,
+  // so it takes the same gap from the bar. Discourse renders the notices'
+  // wrapper empty when there are none.
+  .global-notice:has(.alert) {
+    margin-top: var(--space-8);
+  }
 }

@@ -23,16 +23,19 @@
 }
 
 // The heading and the categories side by side; the categories take the
-// wider share, since choosing one is what the page is for. Below 66rem they
-// stack, the illustration goes (it carries nothing the heading does not), and
-// the first card starts on a phone's first screen.
+// wider share, since choosing one is what the page is for. They sit side by
+// side only where the categories' column is wide enough for a card's three
+// columns (44rem, the route list's own breakpoint below): with this split
+// and gap, a page of 74rem. Narrower, they stack, the illustration goes (it
+// carries nothing the heading does not), and the first card starts on a
+// phone's first screen.
 .nc-landing__top {
   display: grid;
   grid-template-columns: minmax(0, 4.5fr) minmax(0, 7.5fr);
   align-items: start;
   gap: calc(var(--nc-spacing-base) * 14);
 
-  @container nc-landing (width < 66rem) {
+  @container nc-landing (width < 74rem) {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-8);
   }
@@ -44,7 +47,7 @@
     max-width: 21rem;
     margin-top: var(--space-8);
 
-    @container nc-landing (width < 66rem) {
+    @container nc-landing (width < 74rem) {
       display: none;
     }
   }
@@ -366,13 +369,16 @@
 }
 
 // The announcements and the documentation: two tiles side by side under the
-// cards that take posts. They are drawn on the content surface, as the cards
-// are, since that is what the default button is drawn for, but flat, so they
-// read a step quieter. Each has its drawing beside its title and text, and
-// its button at the foot, so the two buttons line up however long the text
-// above them runs. Where each tile is wide enough, the button moves beside
-// the text instead; where the column is too narrow for two tiles, they
-// stack, and the button takes the tile's whole width so its label fits.
+// cards that take posts. They are raised like the cards but muted, on the
+// tint a step darker than the page, so they read as a step quieter. Their
+// default button is drawn from the tile's colour, as the shared one is drawn
+// from white: a step towards the text colour, so it sits on the tint as the
+// shared button sits on a card. Each has its drawing beside its title and
+// text, and its button at the foot, so the two buttons line up however long
+// the text above them runs. Where each tile is wide enough, the button moves
+// beside the text instead; where the column is too narrow for two tiles,
+// they stack, and the button takes the tile's whole width so its label fits.
+// Their text is the darker muted step.
 .nc-landing__tiles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -386,15 +392,19 @@
 }
 
 .nc-landing__tile {
+  --d-button-default-bg-color: color-mix(
+    in oklab,
+    var(--nc-text) 8%,
+    var(--nc-surface-2)
+  );
+  --d-button-default-bg-color--hover: var(--d-button-default-bg-color);
+
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: 1fr auto;
   gap: var(--space-4) var(--space-5);
   padding: var(--space-6) var(--space-7);
-  border: 1px solid color-mix(in oklab, var(--nc-text) 8%, transparent);
-  border-radius: var(--nc-radius-base);
-  background: var(--nc-surface);
-  color: var(--nc-surface-contrast);
+  background: var(--nc-surface-2);
 
   .nc-landing__icon {
     grid-row: 1 / -1;

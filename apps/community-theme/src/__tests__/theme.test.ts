@@ -115,7 +115,7 @@ describe('palettes', () => {
   // Text and links over what they sit on, at WCAG AA for normal text: the
   // content sheet, menus and dialogs (secondary), the header bar, the page
   // around the sheet (--background), where the sidebar's links sit, and the
-  // tint of hovered rows (--surface-2). The shared
+  // tint of hovered rows and the home page's tiles (--surface-2). The shared
   // contrast test (tooling/tailwind) does not check link pairs, and the
   // design system's dark link falls short on three of these, so the forum
   // lightens it (scopes.ts).
@@ -335,6 +335,39 @@ describe('palettes', () => {
         page,
       );
       expect(ratio, scope.name).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  // The home page's tiles are --surface-2, with their text in the darker
+  // muted step and their default button drawn from the tile's colour
+  // (landing.scss); the button keeps the shared default button's label.
+  it('keeps the home page tiles legible on --surface-2', () => {
+    const shade = /--primary-high: ([^;]+);/.exec(text('scss/variables.scss'));
+    const fill = /--d-button-default-bg-color: (color-mix\([^;]+\));/.exec(
+      text('scss/landing.scss'),
+    );
+    if (!shade?.[1] || !fill?.[1]) {
+      throw new Error('No --primary-high or tile button colour');
+    }
+    const local = (css: string) =>
+      css
+        .replaceAll('var(--nc-', 'var(--')
+        .replace(/\s+/g, ' ')
+        .replaceAll('( ', '(')
+        .replaceAll(' )', ')');
+    for (const scope of Object.values(SCOPE_FOR)) {
+      const tile = toDisplayColor(scope.token('--surface-2'));
+      expect(
+        contrastRatio(toDisplayColor(scope.color(local(shade[1]))), tile),
+        `${scope.name} text`,
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrastRatio(
+          toDisplayColor(scope.token('--neutral-contrast')),
+          toDisplayColor(scope.color(local(fill[1]))),
+        ),
+        `${scope.name} button label`,
+      ).toBeGreaterThanOrEqual(4.5);
     }
   });
 

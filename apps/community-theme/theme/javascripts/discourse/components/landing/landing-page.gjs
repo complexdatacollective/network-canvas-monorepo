@@ -328,7 +328,7 @@ export default class LandingPage extends Component {
       <div class="nc-landing__tiles">
         {{#if this.newsRoute}}
           <section
-            class="nc-landing__tile nc-landing__tile--news"
+            class="nc-landing__card nc-landing__tile nc-landing__tile--news"
             aria-labelledby="nc-landing-news"
           >
             <div class="nc-landing__icon">
@@ -348,7 +348,7 @@ export default class LandingPage extends Component {
           </section>
         {{/if}}
         <aside
-          class="nc-landing__tile nc-landing__tile--docs"
+          class="nc-landing__card nc-landing__tile nc-landing__tile--docs"
           aria-labelledby="nc-landing-docs"
         >
           <div class="nc-landing__icon">
