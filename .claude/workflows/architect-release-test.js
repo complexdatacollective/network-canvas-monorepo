@@ -1660,6 +1660,22 @@ ${analysis.assets.map((a) => `   - "${a.name}" (${a.type}): ${a.path}`).join('\n
 4. Leave the protocol saved and return to the start screen.
 Report protocolName exactly as created, and one assets entry per asset.`;
 
+// A stage's "Customize built-in wording" switch starts on only when the
+// stage holds wording that differs from Network Canvas's own (or the protocol
+// has several languages): switched off means "Network Canvas's wording". The
+// sample protocol stores wording equal to that built-in wording on several
+// stages, so its builders reopened those stages, found the switch off, and
+// reported the wording as dropped on save when the export held it.
+const builtInWordingNote = `
+A stage's "Customize built-in wording" ("Customise" when the app is in
+British English) switch reopens off whenever the stage's wording is exactly
+Network Canvas's own, because off means "Network Canvas's wording". So where
+the specification's wording for a stage equals the built-in wording, the
+switch reading off on reopening is expected and is not lost wording: turn it
+on and confirm the fields show the specified text, and do not report the
+stage partial on the switch's state alone.
+`;
+
 const buildPrompt = (
   analysis,
   protocolName,
@@ -1698,7 +1714,7 @@ new "Finish Screen" stage.
 2. Add each stage below in order after the stages already built, configuring
    everything its plan describes through the stage editor, and save it.
    Reopen each saved stage once to confirm your settings persisted.
-${batch.map((s) => `\n### Stage ${s.index}: "${s.label}" (${s.type})\n${s.buildPlan}`).join('\n')}
+${builtInWordingNote}${batch.map((s) => `\n### Stage ${s.index}: "${s.label}" (${s.type})\n${s.buildPlan}`).join('\n')}
 
 3. Return to the start screen with everything saved.
 Report one stages entry per stage above: "built" when everything in its plan
@@ -1776,7 +1792,7 @@ library to match the specification — deleting a duplicate resource from
 this protocol's library is a fix, but never re-upload one the library
 already holds. Save, reopen to confirm each change persisted, and return to
 the start screen.
-${worklist}
+${builtInWordingNote}${worklist}
 Report one stages entry per stage you touched, with the canonical index, and
 describe any protocol, codebook or resource fixes in tooling_notes.`;
 
