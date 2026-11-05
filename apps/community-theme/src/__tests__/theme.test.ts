@@ -550,6 +550,46 @@ describe('languages', () => {
 // The header is the shared header's own element, so the theme repeats only
 // where the forum's logo goes beside a docked topic title, which is held here
 // to the header's source.
+describe('the shared header', () => {
+  it('loads a release of the element with the layouts the forum uses, and every later one in its major', () => {
+    const url = /site_navigation_script_url:[^]*?default: '([^']+)'/.exec(
+      text('settings.yml'),
+    )?.[1];
+    const range = /site-navigation-element@\^(\d+)\.(\d+)\.(\d+)\//.exec(
+      url ?? '',
+    );
+    if (!range) throw new Error(`Expected a caret range in ${url}`);
+    const manifest: unknown = JSON.parse(
+      readFileSync(
+        new URL(
+          '../../../../packages/site-navigation-element/package.json',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    );
+    if (
+      typeof manifest !== 'object' ||
+      manifest === null ||
+      !('version' in manifest) ||
+      typeof manifest.version !== 'string'
+    ) {
+      throw new Error('The element has no version');
+    }
+    const lowest = range.slice(1, 4).map(Number);
+    const current = manifest.version.split('.').map(Number);
+    const order = (a: number[], b: number[]) =>
+      a.reduce((found, part, index) => found || part - (b[index] ?? 0), 0);
+
+    // 1.3.0 is the first release with the embedded and menu layouts.
+    expect(order(lowest, [1, 3, 0])).toBeGreaterThanOrEqual(0);
+    // The range admits the element's own version, so the forum follows its
+    // releases instead of staying on an older major.
+    expect(current[0]).toBe(lowest[0]);
+    expect(order(current, lowest)).toBeGreaterThanOrEqual(0);
+  });
+});
+
 describe("the forum's logo", () => {
   it('goes to the website, as the shared header’s does', () => {
     const header = readFileSync(

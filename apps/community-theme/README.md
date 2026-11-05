@@ -116,9 +116,9 @@ can watch `dist/network-canvas/` and upload each change: rebuild after editing
 `theme/`, and the CLI picks up the new files.
 
 The theme setting `site_navigation_script_url` says where the shared header's
-script loads from. The default follows every 1.x release on jsDelivr from
-1.3.0, the first with the layouts the forum uses; set an exact version to pin
-it.
+script loads from. The default asks jsDelivr for `^1.3.0`: 1.3.0, the first
+version with the layouts the forum uses, then every later 1.x release. Set an
+exact version to pin it.
 
 The home page finds its categories by slug, through the settings
 `help_category`, `ideas_category`, `conversation_category` and

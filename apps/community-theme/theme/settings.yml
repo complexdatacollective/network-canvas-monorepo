@@ -1,6 +1,6 @@
 site_navigation_script_url:
   type: string
-  default: 'https://cdn.jsdelivr.net/npm/@codaco/site-navigation-element@1/dist/element.js'
+  default: 'https://cdn.jsdelivr.net/npm/@codaco/site-navigation-element@^1.3.0/dist/element.js'
 help_category:
   type: string
   default: 'help-support'

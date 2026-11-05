@@ -19,7 +19,7 @@ const THEME_METADATA = {
   settings: {
     site_navigation_script_url: {
       description:
-        'Where the shared site header is loaded from. The default follows every 1.x release of @codaco/site-navigation-element; pin an exact version here to stop it updating.',
+        'Where the shared site header is loaded from. The default loads @codaco/site-navigation-element 1.3.0, the first version with the layouts the forum uses, and follows every later 1.x release; pin an exact version here to stop it updating.',
     },
     help_category: {
       description:
