@@ -72,6 +72,8 @@ const design = (over: Json) => ({
     itemsPerPerson: 4,
     minutes: 20,
   },
+  language: 'en',
+  endings: [],
   includeConsent: false,
   consentText: '',
   egoAttributes: [],
@@ -756,6 +758,8 @@ describe('compiler review fixes', () => {
           itemsPerPerson: 4,
           minutes: 20,
         },
+        language: 'en',
+        endings: [],
         includeConsent: true,
         consentText: 'Do you agree?',
         stages: [

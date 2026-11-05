@@ -1,4 +1,5 @@
 {
+  "language": "en",
   "summary": "First-year university students map the friendships they have formed during their first semester. The study links the drinking of a student's friends to the student's own drinking (AUDIT-C) and wellbeing (WHO-5).",
   "stages": [
     {
@@ -8,6 +9,14 @@
       "title": "introduction title",
       "text": "introduction text: what taking part involves",
       "draft": "This study asks about the friends you have made since starting university, about drinking alcohol, and about how you have been feeling. It takes about 20 minutes. Your answers are confidential, and you can stop at any time."
+    },
+    {
+      "stageKey": "consent_declined",
+      "kind": "ending for declined consent",
+      "purpose": "Shown when the participant does not agree to take part",
+      "title": "none: return \"\"",
+      "text": "screen body (Markdown): a \"# \" heading, then that the interview has ended and nothing more will be asked",
+      "draft": "# Thank you\n\nYou chose not to take part, so the interview has ended. Nothing more will be asked."
     },
     {
       "stageKey": "welcome",

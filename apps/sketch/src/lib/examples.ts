@@ -1,5 +1,7 @@
 // Example studies offered on the start page.
 
+import type { Administration } from './study.ts';
+
 export type Example = {
   id: string;
   label: string;
@@ -7,6 +9,7 @@ export type Example = {
   questions: string[];
   population: string;
   synopsis: string;
+  administration: Administration;
 };
 
 export const EXAMPLES: Example[] = [
@@ -23,6 +26,7 @@ export const EXAMPLES: Example[] = [
       'First-year undergraduates aged 18 to 21 at a large public university, recruited from residence halls.',
     synopsis:
       'A cross-sectional egocentric network survey administered in week 10 of the first semester. Alcohol use is measured with the AUDIT-C and wellbeing with the WHO-5. Perceived alter drinking and the social settings in which students socialise are secondary measures.',
+    administration: 'self_administered',
   },
   {
     id: 'aging',
@@ -36,6 +40,7 @@ export const EXAMPLES: Example[] = [
       'Adults aged 70 and over who moved into an assisted living facility within the past six months.',
     synopsis:
       'Interviewer-administered personal network interviews. Participants describe who provides practical, emotional and informational support, and where each person lives.',
+    administration: 'face_to_face',
   },
   {
     id: 'prep',
@@ -49,6 +54,7 @@ export const EXAMPLES: Example[] = [
       'Young men who have sex with men, aged 18 to 29, recruited through community organisations.',
     synopsis:
       'The reference period is the past six months. Data are collected by computer-assisted self-interview.',
+    administration: 'self_administered',
   },
   {
     id: 'ward',
@@ -61,5 +67,6 @@ export const EXAMPLES: Example[] = [
     population: 'All registered and enrolled nurses on one acute medical ward.',
     synopsis:
       'A sociocentric study. A staff roster is available, so participants select colleagues from a list rather than recalling names.',
+    administration: 'self_administered',
   },
 ];
