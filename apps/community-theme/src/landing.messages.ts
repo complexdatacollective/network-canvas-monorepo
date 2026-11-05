@@ -96,9 +96,9 @@ export const landingMessages = defineMessages({
   },
   newsTitle: {
     id: 'communityTheme.landing.routes.news.title',
-    defaultMessage: 'Hear what’s new',
+    defaultMessage: 'What’s new?',
     description:
-      'Heading of the card for the announcements category, where only the Network Canvas team posts.',
+      'Heading of the tile for the announcements category, where only the Network Canvas team posts: the latest releases, tutorials and news, read on the forum by researchers who use the software. It sits beside the tile headed “Looking for step-by-step guides?”, and its text and “Read the news” button follow it.',
   },
   newsBody: {
     id: 'communityTheme.landing.routes.news.body',

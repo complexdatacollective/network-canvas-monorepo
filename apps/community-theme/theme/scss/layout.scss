@@ -67,7 +67,7 @@ body:is(
 // (Discourse gives the header a padding variable of its own), so its title
 // lines up with the page's edge.
 //
-// Behind it, three soft glows of the illustrations' colours tint the page:
+// Behind the content, three soft glows of the illustrations' colours tint the page:
 // blue at the top right, coral at the left and mustard at the right. They
 // are fainter in the dark palette (--nc-glow-strength), where the same tint
 // shows far more against the dark page. The shared header paints the plain
@@ -80,6 +80,7 @@ body.nc-landing-page {
   --d-header-padding-x: var(--d-wrap-padding-x);
   --d-sidebar-background: transparent;
   --main-outlet-padding-x: 0;
+  --main-outlet-padding-top: 0;
 
   background:
     radial-gradient(
@@ -111,7 +112,11 @@ body.nc-landing-page {
     ),
     var(--nc-background);
 
+  // With no sheet, the sheet's margin and inner padding above the content
+  // would only push the page down; its own padding sets the gap under the
+  // bar.
   #main-outlet {
+    margin-block-start: 0;
     border-radius: 0;
     background: none;
     box-shadow: none;
