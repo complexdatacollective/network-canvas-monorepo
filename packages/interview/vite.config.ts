@@ -197,7 +197,9 @@ export default defineConfig({
     interfaceImagesNoInlinePlugin(),
     inlineWorkerPlugin(),
     isLibraryBuild && clientDirective.plugin,
-    react(),
+    // Storybook runs the React Compiler as Fresco does (see vitest.config.ts);
+    // the published build stays uncompiled, for each host to compile its way.
+    react({ compiler: !isLibraryBuild }),
     isLibraryBuild &&
       dts({
         entryRoot: 'src',

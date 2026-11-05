@@ -24,15 +24,17 @@ import {
  * layout (font size, zoom). The measurement latches true both when the content
  * is scrolled to the bottom and when it does not overflow at all.
  *
- * The measurement lives in an effect (not the sentinel callback ref) because
- * refs attach child-first: the container ref is still null while the sentinel
- * callback runs. It re-measures on the container's `scroll`, on container
- * resize, and on content resize (so a content-height change that leaves the
- * user at the bottom without a scroll — e.g. an error message clearing — is
- * still caught). The IntersectionObserver is kept as a secondary signal, and
- * re-measures on its non-intersecting callbacks; it is the sole signal when no
- * `rootRef` is provided. The sentinel callback resets the latch when the
- * sentinel detaches, so a fresh DOM instance (e.g. a new slide) starts false.
+ * The measurement and the IntersectionObserver both live in effects, not in
+ * the sentinel callback ref, because refs attach child-first: the container
+ * ref is still null while the sentinel callback runs, and an observer built
+ * there would watch the viewport instead of the container. The measurement
+ * re-runs on the container's `scroll`, on container resize, and on content
+ * resize (so a content-height change that leaves the user at the bottom
+ * without a scroll — e.g. an error message clearing — is still caught). The
+ * IntersectionObserver is kept as a secondary signal, and re-measures on its
+ * non-intersecting callbacks; it is the sole signal when no `rootRef` is
+ * provided. The sentinel callback resets the latch when the sentinel
+ * detaches, so a fresh DOM instance (e.g. a new slide) starts false.
  *
  * While `paused`, nothing is measured and the state stays as it is: the
  * content may not be laid out at its full height yet (a card still resizing
@@ -44,7 +46,6 @@ export function useScrolledToBottom(
   { paused = false }: { paused?: boolean } = {},
 ) {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
 
   // Read through a ref, so that pausing does not replace the sentinel
   // callback, which would detach the sentinel and reset the state.
@@ -53,8 +54,7 @@ export function useScrolledToBottom(
     pausedRef.current = paused;
   }, [paused]);
 
-  // Reads rootRef.current lazily: it is null while the child-first sentinel
-  // callback runs, but populated by the time any of these callbacks fire.
+  // Reads rootRef.current lazily, when one of the observers below reports.
   // 1px of slack absorbs sub-pixel scroll rounding.
   const checkAtBottom = useCallback(() => {
     if (pausedRef.current) return;
@@ -64,34 +64,33 @@ export function useScrolledToBottom(
     }
   }, [rootRef]);
 
-  const sentinelRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      observerRef.current?.disconnect();
-      observerRef.current = null;
+  // The sentinel is held as state so the observer is built in an effect, once
+  // the container's ref has been attached too.
+  const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null);
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    setSentinel(node);
+    if (!node) setHasScrolledToBottom(false);
+  }, []);
 
-      if (!node) {
-        setHasScrolledToBottom(false);
-        return;
-      }
+  useEffect(() => {
+    if (!sentinel) return undefined;
 
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (pausedRef.current) return;
-          if (entries[0]?.isIntersecting) {
-            setHasScrolledToBottom(true);
-          } else {
-            // The sentinel moved (content reflow) but the exact edge may not
-            // register as intersecting — fall back to the direct measurement.
-            checkAtBottom();
-          }
-        },
-        { root: rootRef?.current ?? null },
-      );
-      observer.observe(node);
-      observerRef.current = observer;
-    },
-    [rootRef, checkAtBottom],
-  );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (pausedRef.current) return;
+        if (entries[0]?.isIntersecting) {
+          setHasScrolledToBottom(true);
+        } else {
+          // The sentinel moved (content reflow) but the exact edge may not
+          // register as intersecting — fall back to the direct measurement.
+          checkAtBottom();
+        }
+      },
+      { root: rootRef?.current ?? null },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [sentinel, rootRef, checkAtBottom]);
 
   useEffect(() => {
     const root = rootRef?.current;
@@ -112,12 +111,6 @@ export function useScrolledToBottom(
       resizeObserver.disconnect();
     };
   }, [rootRef, checkAtBottom, paused]);
-
-  useEffect(() => {
-    return () => {
-      observerRef.current?.disconnect();
-    };
-  }, []);
 
   return { hasScrolledToBottom, sentinelRef };
 }

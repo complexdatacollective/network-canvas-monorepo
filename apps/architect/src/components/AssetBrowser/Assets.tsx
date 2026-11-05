@@ -106,6 +106,8 @@ type AssetType = {
   type: AssetTypeValue;
 };
 
+const assetName = (asset: AssetType) => asset.name;
+
 type AssetsProps = {
   type?: string | null;
   assets?: AssetType[];
@@ -221,7 +223,7 @@ const Assets = ({
         aria-label={intl.formatMessage(messages.resourceLibrary)}
         items={assets}
         keyExtractor={(asset) => asset.id}
-        textValueExtractor={(asset) => asset.name}
+        textValueExtractor={assetName}
         layout={layout}
         renderItem={renderItem}
         selectionMode="single"

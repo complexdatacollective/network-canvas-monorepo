@@ -1,4 +1,5 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, render, renderHook } from '@testing-library/react';
+import { useRef } from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { useScrolledToBottom } from '../useScrolledToBottom';
@@ -434,5 +435,27 @@ describe('useScrolledToBottom', () => {
     rerender({ paused: true });
     expect(result.current.sentinelRef).toBe(sentinelRef);
     expect(result.current.hasScrolledToBottom).toBe(true);
+  });
+
+  test('watches the sentinel against the scroll container that encloses it', () => {
+    // As in the forms: the container is rendered around the sentinel, so its
+    // ref is attached only after the sentinel's. An observer built before then
+    // would watch the viewport instead.
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    function Form() {
+      const scrollAreaRef = useRef<HTMLDivElement>(null);
+      const { sentinelRef } = useScrolledToBottom(scrollAreaRef);
+      return (
+        <div ref={scrollAreaRef} data-testid="scroll-area">
+          <div ref={sentinelRef} />
+        </div>
+      );
+    }
+
+    const { getByTestId } = render(<Form />);
+
+    expect(latest()?.root).toBe(getByTestId('scroll-area'));
   });
 });

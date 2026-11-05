@@ -1,6 +1,12 @@
 'use client';
 
-import { type RefObject, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 /**
  * `scrollHeight` and `clientHeight` are each one rounding of a fractional
@@ -108,8 +114,9 @@ type UseFitTextOptions = {
   steps: readonly string[];
   /**
    * The fixed-size element the text has to fit inside, observed for resizes.
-   * This must not be the text element itself: fitting changes that element's
-   * own size, which would retrigger the observer indefinitely.
+   * It may be rendered by a parent component. This must not be the text
+   * element itself: fitting changes that element's own size, which would
+   * retrigger the observer indefinitely.
    */
   containerRef: RefObject<HTMLElement | null>;
   /** Primitive whose change forces a re-fit (e.g. the rendered text). */
@@ -153,9 +160,13 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
     fittedWatch: UseFitTextOptions['watch'];
   }>({ stepIndex: 0, isTruncated: false, fittedWatch: undefined });
 
+  // Fits the current text, for whatever later finds the room has changed. A
+  // fit left behind by an earlier text has been cancelled, so it does nothing.
+  const refitRef = useRef<(() => void) | null>(null);
+
+  // Measured before paint, so the first frame already shows the fitted size.
   useLayoutEffect(() => {
     const element = ref.current;
-    const container = containerRef.current;
 
     if (!enabled || !element || steps.length === 0) {
       setState((previous) =>
@@ -190,34 +201,40 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
     };
 
     fit();
+    refitRef.current = fit;
 
     // Web fonts change glyph metrics after first paint, so a label measured
     // against the fallback font can fit — or stop fitting — once they load.
     void document.fonts?.ready.then(fit);
 
-    // ResizeObserver only notices the fixed box. Fluid type tokens can change
-    // with the viewport while that box stays the same size, so the text still
-    // needs measuring on a viewport resize.
+    // The container's ResizeObserver only notices the fixed box. Fluid type
+    // tokens can change with the viewport while that box stays the same size,
+    // so the text still needs measuring on a viewport resize.
     window.addEventListener('resize', fit);
 
-    const cleanup = () => {
+    return () => {
       cancelled = true;
       pending.delete(fitter);
       window.removeEventListener('resize', fit);
     };
+  }, [steps, watch, enabled]);
 
-    if (typeof ResizeObserver === 'undefined' || !container) {
-      return cleanup;
+  // The container is watched from a passive effect, not from the layout effect
+  // above: React attaches a ref only after every layout effect beneath it has
+  // run, so a container a parent renders — a bin around its label — is still
+  // null there on mount. Text that never hears its box shrink keeps a size it
+  // no longer fits. By the time passive effects run, every ref is attached, and
+  // the observer's first report measures the box as it is then.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!enabled || !container || typeof ResizeObserver === 'undefined') {
+      return undefined;
     }
 
-    const observer = new ResizeObserver(fit);
+    const observer = new ResizeObserver(() => refitRef.current?.());
     observer.observe(container);
-
-    return () => {
-      cleanup();
-      observer.disconnect();
-    };
-  }, [steps, containerRef, watch, enabled]);
+    return () => observer.disconnect();
+  }, [containerRef, enabled]);
 
   return {
     ref,

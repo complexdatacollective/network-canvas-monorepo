@@ -19,6 +19,10 @@ import { decryptValue, type EncryptedBytes } from './encryptionFormat';
  * so plaintext cannot outlive the key that produced it or be served to an
  * interview that has not unlocked it. Nothing here is ever put in Redux state
  * or persisted.
+ *
+ * Each outcome recorded replaces the scope in force with a copy that shares
+ * its key and plaintext, so whatever was computed from the previous copy (a
+ * render, or a memoized value) knows to read it again.
  */
 export type DecryptionScope = {
   readonly id: string;
@@ -60,11 +64,46 @@ export type StoredEncryptedAttribute =
 // Keyed by the store's `getState`, which Redux hands unchanged to middleware
 // and thunks, so a write made inside a thunk reaches the same scope.
 const scopes = new WeakMap<GetKeyState, DecryptionScope>();
+// Told each time the scope in force records an outcome.
+const listeners = new WeakMap<GetKeyState, Set<() => void>>();
+// The store each scope belongs to, shared by every copy of it.
+const owners = new WeakMap<DecryptionScope['outcomes'], GetKeyState>();
 
 function discard(getState: GetKeyState, scope: DecryptionScope) {
-  if (scopes.get(getState) === scope) scopes.delete(getState);
+  if (scopes.get(getState)?.id === scope.id) scopes.delete(getState);
   scope.outcomes.clear();
   scope.pending.clear();
+}
+
+/** Puts a fresh copy of `scope` in force, if it still is, and says so. */
+function republish(scope: DecryptionScope) {
+  const getState = owners.get(scope.outcomes);
+  if (!getState) return;
+  const current = scopes.get(getState);
+  if (current?.id !== scope.id) return;
+  scopes.set(getState, { ...current });
+  for (const listener of listeners.get(getState) ?? []) listener();
+}
+
+/**
+ * Calls `listener` whenever the scope in force in `store` may have changed: a
+ * key put in force or discarded, or an outcome recorded.
+ */
+export function subscribeToDecryptionScope(
+  store: {
+    getState: GetKeyState;
+    subscribe: (listener: () => void) => () => void;
+  },
+  listener: () => void,
+): () => void {
+  const own = listeners.get(store.getState) ?? new Set();
+  listeners.set(store.getState, own);
+  own.add(listener);
+  const unsubscribe = store.subscribe(listener);
+  return () => {
+    own.delete(listener);
+    unsubscribe();
+  };
 }
 
 /**
@@ -85,6 +124,7 @@ export function createDecryptionScope(
     pending: new Map(),
   };
   scopes.set(getState, scope);
+  owners.set(scope.outcomes, getState);
   return scope;
 }
 
@@ -195,6 +235,7 @@ export function rememberEncryptedWrite(
       plaintext: value,
     });
   }
+  republish(scope);
 }
 
 export function readCachedOutcome(
@@ -230,6 +271,7 @@ export function decryptInScope(
     if (scope.pending.get(key) === settled) {
       scope.pending.delete(key);
       scope.outcomes.set(key, outcome);
+      republish(scope);
     }
     return outcome;
   });
