@@ -21,6 +21,7 @@ import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
+import { PageBackgroundVisibilityProvider } from '~/components/ui/pageBackgroundVisibility';
 import {
   getLocaleDirection,
   siteAppCatalogSource,
@@ -146,7 +147,9 @@ export default async function LocaleLayout({
                   manageDocument={false}
                   timeZone="UTC"
                 >
-                  {children}
+                  <PageBackgroundVisibilityProvider>
+                    {children}
+                  </PageBackgroundVisibilityProvider>
                 </AppI18nProvider>
               </NextIntlClientProvider>
             </ThemeProvider>

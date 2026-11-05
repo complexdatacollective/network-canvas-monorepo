@@ -80,17 +80,15 @@
   },
   "Grants": {
     "heading": "Förderprojekte mit Network Canvas",
-    "introduction": "Wir sind stolz darauf, dass Network Canvas in einer Reihe von Projekten aktiv eingesetzt wird, die in den Vereinigten Staaten mit Bundesmitteln gefördert werden – über vielfältige Forschungskontexte, Institutionen und Fördereinrichtungen hinweg.",
-    "previous": "Vorheriges Förderprojekt",
-    "next": "Nächstes Förderprojekt",
-    "show": "Förderprojekt {number} anzeigen"
+    "introduction": "Wir sind stolz darauf, dass Network Canvas in einer Reihe von Projekten aktiv eingesetzt wird, die in den Vereinigten Staaten mit Bundesmitteln gefördert werden – über vielfältige Forschungskontexte, Institutionen und Fördereinrichtungen hinweg."
   },
   "Publications": {
     "heading": "Aktuelle Publikationen mit Network Canvas",
-    "carouselLabel": "Karussell mit aktuellen Publikationen",
-    "introduction": "Hier finden Sie die 16 neuesten Publikationen, in denen Network Canvas eingesetzt wurde. Durchsuchen Sie auch die <all>vollständige Liste der Publikationen</all>.",
-    "submission": "Wenn Sie Ihre Publikation hier vorstellen möchten, teilen Sie uns dies bitte in diesem <thread>Thread</thread> auf unserer Community-Website mit.",
-    "thread": "Thread"
+    "introduction": "Network Canvas hat Forschung in verschiedenen Disziplinen unterstützt, innerhalb eines entstehenden Netzwerks von Autorinnen und Autoren. Die <strong>{count}</strong> neuesten Publikationen werden hier aufgeführt. Diese Liste wird automatisch aktualisiert, wenn wir neue Publikationen finden, in denen die Software verwendet wird.",
+    "viewAll": "Alle {count, plural, one {# Publikation} other {# Publikationen}} von {authors, plural, one {# Autorin oder Autor} other {# Autorinnen und Autoren}} ansehen",
+    "legendPublication": "Publikation",
+    "legendAuthor": "Autorin oder Autor",
+    "relatedLabel": "Publikationen, die mindestens eine Autorin oder einen Autor mit dieser Publikation gemeinsam haben"
   },
   "PublicationsPage": {
     "metadata": {

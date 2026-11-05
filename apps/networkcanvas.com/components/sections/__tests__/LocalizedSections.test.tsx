@@ -2,6 +2,7 @@ import { cleanup, screen, within } from '@testing-library/react';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { principles } from '~/lib/content';
 import type { Publication, TeamMember } from '~/lib/siteContent';
 import { renderWithIntl } from '~/test/renderWithIntl';
 
@@ -67,9 +68,17 @@ const publications: Publication[] = [
     id: 'publication',
     title: 'Localized fixture publication',
     source: 'Example Journal',
-    authors: 'Example Researcher',
+    authors: 'Example Researcher, Second Researcher',
     href: 'https://example.com/publication',
     year: '2024',
+  },
+  {
+    id: 'earlier-publication',
+    title: 'Earlier fixture publication',
+    source: 'Example Journal',
+    authors: 'Example Researcher, Third Researcher',
+    href: 'https://example.com/earlier-publication',
+    year: '2023',
   },
 ];
 
@@ -97,44 +106,31 @@ describe('localized home sections', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders each design principle as a wide illustrated card link', () => {
+  it('links each Spanish design principle title to its documentation', () => {
     renderWithIntl(<DesignPrinciples />, 'es');
 
-    const heading = screen.getByRole('heading', {
-      name: 'Flexibilidad ontológica',
-      level: 3,
+    const section = screen.getByRole('region', {
+      name: 'Principios de diseño',
     });
-    const card = heading.closest<HTMLElement>('.relative');
+    const titles = [
+      'Flexibilidad ontológica',
+      'Presencial y con asistencia de una persona entrevistadora',
+      'Énfasis en el diseño',
+      'Flujo de trabajo integral',
+      'Desarrollo de código abierto impulsado por la comunidad',
+    ];
+    expect(principles).toHaveLength(titles.length);
 
-    if (!card) {
-      throw new Error('Expected the principle heading to be inside a card');
+    const headings = within(section).getAllByRole('heading', { level: 3 });
+    expect(headings.map((heading) => heading.textContent)).toEqual(titles);
+    for (const [index, principle] of principles.entries()) {
+      expect(
+        within(headings[index]!).getByRole('link', { name: titles[index] }),
+      ).toHaveAttribute('href', principle.href);
     }
-
-    expect(heading.closest('a')).not.toBeInTheDocument();
-    expect(
-      within(card).getByRole('link', { name: 'Flexibilidad ontológica' }),
-    ).toHaveAttribute(
-      'href',
-      'https://documentation.networkcanvas.com/en/get-started/project-information/project-overview#ontological-flexibility',
-    );
-    expect(card.querySelector('img')).toHaveAttribute(
-      'src',
-      expect.stringContaining(
-        '/images/illustrations/design-principles/ontological-flexibility.svg',
-      ),
-    );
-    expect(card.querySelector('img')).toHaveAttribute('alt', '');
-    expect(card.querySelector('img')?.parentElement).not.toHaveClass(
-      'bg-surface-2/55',
-      'p-4',
-    );
-    expect(heading.closest('.max-w-\\[1400px\\]')).toBeInTheDocument();
-    expect(card.parentElement).toHaveClass('tablet-landscape:col-span-2');
-    expect(card).toHaveAttribute('data-scroll-linked', 'true');
-    expect(card.parentElement).not.toHaveClass('laptop:col-span-3');
-    expect(heading.parentElement).toHaveClass('tablet-portrait:col-span-2');
-    expect(heading.parentElement).not.toHaveClass('laptop:col-span-3');
-    expect(screen.getAllByRole('link')).toHaveLength(5);
+    // The titles are the section's only links: the scene beside the cards is
+    // decoration.
+    expect(within(section).getAllByRole('link')).toHaveLength(titles.length);
   });
 
   it('renders Spanish rich text and calls to action', () => {
@@ -169,46 +165,29 @@ describe('localized home sections', () => {
       screen.getByRole('button', { name: 'Unirse a la lista' }),
     ).toBeInTheDocument();
 
-    const publicationCard = screen
-      .getByRole('heading', { name: 'Localized fixture publication' })
-      .closest('a');
-    expect(publicationCard).toHaveClass(
-      'bg-surface-3/55',
-      'text-surface-3-contrast',
-      'backdrop-blur-md',
-    );
     const publicationHeading = screen.getByRole('heading', {
       name: 'Publicaciones recientes que utilizan Network Canvas',
       level: 2,
     });
-    const publicationTrack = screen.getByTestId('publication-rail-track');
-
     expect(publicationHeading).toHaveAttribute(
       'id',
       'recent-publications-heading',
     );
-    expect(publicationHeading.closest('section')).toHaveAttribute(
-      'data-publication-rail-mode',
-      'scrollable',
-    );
-    expect(publicationTrack).toHaveClass(
-      'grid',
-      'w-max',
-      'grid-flow-col',
-      'grid-rows-2',
-    );
-    expect(publicationTrack).toContainElement(publicationCard);
-    expect(publicationTrack).not.toContainElement(publicationHeading);
     expect(
-      screen.getByRole('region', {
-        name: 'Carrusel de publicaciones recientes',
+      screen
+        .getByRole('heading', { name: 'Localized fixture publication' })
+        .closest('a'),
+    ).toHaveAttribute('href', 'https://example.com/publication');
+    const publicationSection = publicationHeading.closest('section');
+    if (!publicationSection) throw new Error('Expected a publications section');
+    expect(
+      within(publicationSection).getByText('2', { selector: 'strong' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('link', {
+        name: 'Ver todas las 2 publicaciones, con 3 personas autoras',
       }),
-    ).toContainElement(publicationTrack);
-    expect(publicationCard?.parentElement).toHaveClass(
-      'w-64',
-      'tablet-portrait:w-96',
-      'tablet-landscape:w-112',
-      'snap-start',
-    );
+    ).toHaveAttribute('href', '/publications');
+    expect(screen.getByText('Persona autora')).toBeInTheDocument();
   });
 });

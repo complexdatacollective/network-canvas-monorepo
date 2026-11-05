@@ -80,17 +80,15 @@
   },
   "Grants": {
     "heading": "Grants Using Network Canvas",
-    "introduction": "We are proud to say Network Canvas is being actively used in a number of federally funded grants in the United States, across a diverse set of research contexts, institutions, and funding bodies.",
-    "previous": "Previous grant",
-    "next": "Next grant",
-    "show": "Show grant {number}"
+    "introduction": "We are proud to say Network Canvas is being actively used in a number of federally funded grants in the United States, across a diverse set of research contexts, institutions, and funding bodies."
   },
   "Publications": {
     "heading": "Recent Publications Using Network Canvas",
-    "carouselLabel": "Recent publications carousel",
-    "introduction": "The following are the 16 most recent publications utilizing Network Canvas. Browse the <all>full list of publications</all>.",
-    "submission": "If you would like to feature your publication, please let us know by posting in our community site <thread>thread</thread>.",
-    "thread": "thread"
+    "introduction": "Network Canvas has facilitated research across a variety of disciplines, among an emerging network of authors. The <strong>{count}</strong> most recent publications are shown here. This list is automatically updated when we find new publications that use the software.",
+    "viewAll": "View all {count, plural, one {# publication} other {# publications}}, with {authors, plural, one {# author} other {# authors}}",
+    "legendPublication": "Publication",
+    "legendAuthor": "Author",
+    "relatedLabel": "Publications that share an author with this one"
   },
   "PublicationsPage": {
     "metadata": {
