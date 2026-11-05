@@ -1,5 +1,35 @@
 # @codaco/tailwind-config
 
+## 1.6.0
+
+### Minor Changes
+
+- c34db26: Node labels are easier to read. The node colors are adjusted, most of them darker, so their white labels stand out: all eight node colors now meet the WCAG AA contrast ratio of 4.5:1 for text, and the lighter half of each node stands out at 3:1 against the interview background. Nodes keep their two-tone diagonal.
+
+  The node colors in the default and interview themes (`--node-1` to `--node-8`) are now derived from the brand colors rather than equal to them. The brand color Neon Coral is slightly lighter and less saturated, and Mustard, Neon Carrot, Sea Serpent, Kiwi and Paradise Pink shift in hue, so edge, ordinal and categorical colors, the destructive and warning colors, the loading spinner, Background Creator's color swatches, and generated background patterns built from them change color slightly too.
+
+  In Architect, a read-only shape picker now tells assistive technology that its shapes are unavailable, matching the read-only type picker.
+
+- 92cf293: Reduced motion now follows `AnimationProvider`'s `reducedMotion` setting everywhere, not only in Motion components. `@codaco/fresco-ui/reducedMotion` adds `usePrefersReducedMotion()` (use it instead of Motion's `useReducedMotion()`, which reads only the operating system) and `prefersReducedMotion(node)` for code outside React. The provider marks the document root with `data-reduced-motion` when it overrides the system, and `@codaco/tailwind-config`'s `motion-reduce:` / `motion-safe:` variants and its global reduced-motion rule follow that mark. With the default setting nothing changes: motion follows the operating system's preference as before.
+- ad201b2: Every kind of stage now has one colour and one icon, the same in every app. Stages that do similar work share a colour family: naming people in coral reds, describing them in blues, sorting them in oranges, mapping in teal, finding ties in purples, reflecting in sea greens, and the screens that collect no network data in greys. Every colour carries a white icon at the WCAG AA contrast ratio of 4.5:1. Eight interfaces get new icons drawn in Lucide's style: Ego Form, Per Alter Form, Per Alter Edge Form, Sociogram, Network Composer, Narrative, Dyad Census and Tie-Strength Census.
+
+  **Architect**
+
+  - The protocol timeline on the start screen draws each stage in its new colour and icon. Information stages are a lighter grey instead of charcoal.
+  - Each stage in that timeline now carries the name of the interface it really uses, under a title that says what happens on the stage. Previously some stages showed the wrong type, such as a Sociogram labelled "Connections". The stage labels also have more padding and tighter, clearer type.
+
+  **Tailwind config (`@codaco/tailwind-config`)**
+
+  - Adds `interfaces.css`, which `fresco.css` loads, with `--interface-<stage-type>` and `--interface-<stage-type>-contrast` tokens for each stage type and `--color-interface-*` aliases for Tailwind utilities. An app that keeps its own theme instead of `fresco.css` imports `colors.css` and then `interfaces.css`.
+
+  **Fresco UI (`@codaco/fresco-ui`)**
+
+  - **Breaking:** `STAGE_TYPES` in `stages/stageTypes` replaces `STAGE_TYPE_COLORS` and `STAGE_TYPE_ICONS`, mapping each stage type to its colour token and icon. `stageTypeColorStyle` now returns the stage type's `--interface-*` tokens instead of a palette colour, and `stageTypeIcon` returns the new icons. `StageBar` draws its segments in the new colours.
+
+### Patch Changes
+
+- ed8fef3: The elevation and inset-surface plugins no longer copy non-colour values into `--scoped-text`, `--scoped-bg` or `--inset-bg`. Font sizes such as `text-[12px]`, background sizes such as `bg-[length:200%_100%]`, gradients and `url()` images used to land in those variables, where elevation shadows, Badge text and inset shadows read them as colours. Colour classes, including `var()` values such as `bg-(--edge-color)`, behave as before.
+
 ## 1.5.1
 
 ### Patch Changes
