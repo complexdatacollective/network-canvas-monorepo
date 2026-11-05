@@ -123,7 +123,10 @@ export default class LandingPage extends Component {
     // Each card's newest topic comes from its own category's topic list.
     // `/categories.json` leaves topics out under some category-page styles,
     // and subcategories out when it is paged or not asked for them, so a
-    // card could lose its topic to a site setting.
+    // card could lose its topic to a site setting. A category's list is asked
+    // for newest first, like the news: without an order, Discourse sorts it
+    // by the category's own setting (views, likes, oldest first), and the
+    // card would show that category's most-viewed topic as its newest.
     const cardCategories = ROUTES.filter((route) => route.posts)
       .map((route) => categoryFor(route.setting))
       .filter(Boolean);
@@ -137,7 +140,7 @@ export default class LandingPage extends Component {
         : Promise.resolve(null),
       ...cardCategories.map((category) =>
         ajax(`${category.path}/l/latest.json`, {
-          data: { no_definitions: true },
+          data: { order: "created", no_definitions: true },
         })
       ),
     ]);
