@@ -18,8 +18,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [
-    // Compiled, as the app is built.
-    react({ compiler: true }),
+    react(),
     arrayBufferAssetPlugin(),
     // Registers the `virtual:pwa-register/react` module id so components
     // importing `useRegisterSW` can be loaded under test — vitest.config.ts

@@ -159,9 +159,7 @@ export function createRendererConfig({
     },
     plugins: [
       ...appI18n(),
-      // Fresco compiles with the React Compiler too, so every host runs the same
-      // code (oxc-transform-react, the compiler's Rust port).
-      react({ compiler: true }),
+      react(),
       tailwindcss(),
       injectCspMeta(),
       arrayBufferAssetPlugin(),

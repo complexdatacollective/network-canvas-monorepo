@@ -126,7 +126,7 @@
     "chromatic": "catalog:",
     "effect": "catalog:",
     "jsdom": "catalog:",
-    "oxc-transform-react": "catalog:",
+    "oxc-transform-react": "^0.152.0",
     "playwright": "catalog:",
     "storybook": "catalog:",
     "superjson": "^2.2.6",

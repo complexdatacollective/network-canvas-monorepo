@@ -16,8 +16,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [
-    // Compiled, as the app is built.
-    react({ compiler: true }),
+    react(),
     // Register the virtual service-worker module for unit tests that import
     // AppUpdateProvider. The service worker is not built under Vitest.
     VitePWA({ registerType: 'prompt', injectRegister: false }),

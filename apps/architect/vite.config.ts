@@ -129,9 +129,7 @@ export default defineConfig(({ command, mode }) => {
         repoRoot,
         enabled: env.VITE_PROTOCOL_SOURCE_AUTHORING === 'true',
       }),
-      // Fresco compiles with the React Compiler too, so every host runs the same
-      // code (oxc-transform-react, the compiler's Rust port).
-      react({ compiler: true }),
+      react(),
       tailwindcss(),
       // `vite preview` applies no _redirects, so its SPA fallback would
       // answer a /v8/ deep link with this app's shell; this serves Architect
