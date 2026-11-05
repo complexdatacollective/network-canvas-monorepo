@@ -80,17 +80,15 @@
   },
   "Grants": {
     "heading": "使用 Network Canvas 的资助项目",
-    "introduction": "我们很自豪地宣布，Network Canvas 正被美国多个联邦资助项目积极使用，涵盖多样化的研究情境、机构和资助方。",
-    "previous": "上一个资助项目",
-    "next": "下一个资助项目",
-    "show": "显示资助项目 {number}"
+    "introduction": "我们很自豪地宣布，Network Canvas 正被美国多个联邦资助项目积极使用，涵盖多样化的研究情境、机构和资助方。"
   },
   "Publications": {
     "heading": "使用 Network Canvas 的近期出版物",
-    "carouselLabel": "近期出版物轮播",
-    "introduction": "以下是使用 Network Canvas 的 16 篇最新出版物。浏览<all>完整出版物列表</all>。",
-    "submission": "如果您希望在此展示您的出版物，请在我们社区网站的<thread>讨论帖</thread>中留言告知我们。",
-    "thread": "讨论帖"
+    "introduction": "Network Canvas 支持了不同学科的研究，这些研究的作者之间正在形成一个网络。此处展示最新的 <strong>{count}</strong> 篇出版物。每当我们发现使用该软件的新出版物，此列表都会自动更新。",
+    "viewAll": "查看全部 {count, plural, other {# 篇出版物}}，共 {authors, plural, other {# 位作者}}",
+    "legendPublication": "出版物",
+    "legendAuthor": "作者",
+    "relatedLabel": "与此出版物有共同作者的其他出版物"
   },
   "PublicationsPage": {
     "metadata": {

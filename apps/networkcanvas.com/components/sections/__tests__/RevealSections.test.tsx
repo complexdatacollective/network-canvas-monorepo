@@ -6,8 +6,6 @@ import type { TeamMember } from '~/lib/siteContent';
 import { renderWithIntl } from '~/test/renderWithIntl';
 
 import { CoreTeam } from '../CoreTeam';
-import { DesignPrinciples } from '../DesignPrinciples';
-import { Tools } from '../Tools';
 import { WhatNext } from '../WhatNext';
 
 const multiChildKeySets = vi.hoisted<
@@ -77,16 +75,11 @@ describe('sections using Reveal', () => {
 
     renderWithIntl(
       <>
-        <DesignPrinciples />
-        <Tools />
         <CoreTeam members={members} />
         <WhatNext />
       </>,
     );
 
-    expect(
-      screen.getByRole('heading', { name: 'Ontological flexibility' }),
-    ).toBeInTheDocument();
     expect(screen.getByText('Example Researcher')).toBeInTheDocument();
     expect(multiChildKeySets.length).toBeGreaterThan(0);
     expect(

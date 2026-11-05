@@ -80,17 +80,15 @@
   },
   "Grants": {
     "heading": "Progetti finanziati che usano Network Canvas",
-    "introduction": "È per noi motivo di orgoglio che Network Canvas venga usato attivamente in numerosi progetti finanziati a livello federale negli Stati Uniti, in contesti di ricerca, istituzioni ed enti finanziatori molto diversi tra loro.",
-    "previous": "Progetto precedente",
-    "next": "Progetto successivo",
-    "show": "Mostra il progetto {number}"
+    "introduction": "È per noi motivo di orgoglio che Network Canvas venga usato attivamente in numerosi progetti finanziati a livello federale negli Stati Uniti, in contesti di ricerca, istituzioni ed enti finanziatori molto diversi tra loro."
   },
   "Publications": {
     "heading": "Pubblicazioni recenti che usano Network Canvas",
-    "carouselLabel": "Carosello delle pubblicazioni recenti",
-    "introduction": "Ecco le 16 pubblicazioni più recenti che usano Network Canvas. Consulta <all>l’elenco completo delle pubblicazioni</all>.",
-    "submission": "Se vuoi segnalare una tua pubblicazione, faccelo sapere scrivendo nella <thread>discussione</thread> del nostro sito della comunità.",
-    "thread": "discussione"
+    "introduction": "Network Canvas ha facilitato ricerche in un’ampia varietà di discipline, all’interno di una rete emergente di persone autrici. Qui sono mostrate le <strong>{count}</strong> pubblicazioni più recenti. Questo elenco si aggiorna automaticamente quando troviamo nuove pubblicazioni che usano il software.",
+    "viewAll": "Vedi tutte le {count, plural, one {# pubblicazione} other {# pubblicazioni}}, con {authors, plural, one {# persona autrice} other {# persone autrici}}",
+    "legendPublication": "Pubblicazione",
+    "legendAuthor": "Persona autrice",
+    "relatedLabel": "Pubblicazioni che hanno almeno una persona autrice in comune con questa pubblicazione"
   },
   "PublicationsPage": {
     "metadata": {

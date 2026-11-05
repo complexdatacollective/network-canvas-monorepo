@@ -80,17 +80,15 @@
   },
   "Grants": {
     "heading": "Subsidies waarin Network Canvas wordt gebruikt",
-    "introduction": "We zijn er trots op dat Network Canvas actief wordt gebruikt in een aantal federaal gefinancierde subsidieprojecten in de Verenigde Staten, binnen uiteenlopende onderzoekscontexten, instellingen en financiers.",
-    "previous": "Vorige subsidie",
-    "next": "Volgende subsidie",
-    "show": "Subsidie {number} tonen"
+    "introduction": "We zijn er trots op dat Network Canvas actief wordt gebruikt in een aantal federaal gefinancierde subsidieprojecten in de Verenigde Staten, binnen uiteenlopende onderzoekscontexten, instellingen en financiers."
   },
   "Publications": {
     "heading": "Recente publicaties met Network Canvas",
-    "carouselLabel": "Carrousel met recente publicaties",
-    "introduction": "Hieronder vind je de 16 meest recente publicaties waarin Network Canvas is gebruikt. Bekijk de <all>volledige lijst met publicaties</all>.",
-    "submission": "Wil je jouw publicatie hier laten zien? Laat het ons weten in de <thread>discussie</thread> op onze communitysite.",
-    "thread": "discussie"
+    "introduction": "Network Canvas heeft onderzoek in uiteenlopende disciplines ondersteund, binnen een opkomend netwerk van auteurs. Hier worden de <strong>{count}</strong> meest recente publicaties getoond. Deze lijst wordt automatisch bijgewerkt wanneer we nieuwe publicaties vinden waarin de software wordt gebruikt.",
+    "viewAll": "Bekijk alle {count, plural, one {# publicatie} other {# publicaties}}, met {authors, plural, one {# auteur} other {# auteurs}}",
+    "legendPublication": "Publicatie",
+    "legendAuthor": "Auteur",
+    "relatedLabel": "Publicaties die een auteur delen met deze publicatie"
   },
   "PublicationsPage": {
     "metadata": {
