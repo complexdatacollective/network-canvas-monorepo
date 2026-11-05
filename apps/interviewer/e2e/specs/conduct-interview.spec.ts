@@ -80,7 +80,8 @@ async function placeNodeOnCanvas(
 }
 
 function getEdgeCount(page: Page): Promise<number> {
-  return page.locator('svg line[visibility="visible"]').count();
+  // A tie whose endpoints are not both placed is marked hidden.
+  return page.locator('svg line:not([visibility="hidden"])').count();
 }
 
 // Reads the stored session's network node count straight from IndexedDB.

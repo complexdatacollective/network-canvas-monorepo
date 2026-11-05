@@ -23,6 +23,7 @@ import {
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import CanvasNode, { type NodeActivationDetails } from './CanvasNode';
 import EdgeLayer from './EdgeLayer';
+import { LayoutPendingIndicator, useLayoutReveal } from './layoutReveal';
 import type { CanvasStoreApi } from './useCanvasStore';
 
 /** Which interaction, if any, makes a node a toggle for the current prompt. */
@@ -106,6 +107,7 @@ export default function Canvas({
   const canvasRef = useRef<HTMLDivElement>(null);
   const lastPointerPosRef = useRef<{ x: number; y: number } | null>(null);
   const dndStore = useDndStoreApi();
+  const layoutPending = useLayoutReveal(canvasRef, store);
 
   // Track canvas dimensions so the store can compute boundary margins
   useEffect(() => {
@@ -178,14 +180,16 @@ export default function Canvas({
   return (
     <div
       ref={mergedRef}
-      className="relative size-full"
+      className="relative size-full aria-busy:[&>:not([data-canvas-backdrop])]:invisible"
       role="application"
       aria-label={dropProps['aria-label']}
       data-zone-id={dropProps['data-zone-id']}
       tabIndex={dropProps.tabIndex}
+      aria-busy={layoutPending || undefined}
     >
       {/* Background layer */}
       <div
+        data-canvas-backdrop
         className={cx(
           'absolute inset-0 flex items-center justify-center overflow-hidden',
           backgroundClassName,
@@ -193,6 +197,8 @@ export default function Canvas({
       >
         {background}
       </div>
+
+      {layoutPending && <LayoutPendingIndicator />}
 
       {/* Underlays (convex hulls) */}
       {underlays}
