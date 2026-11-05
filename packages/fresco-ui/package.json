@@ -191,6 +191,7 @@
     "./navigation/SiteFooter": "./src/navigation/SiteFooter.tsx",
     "./navigation/SiteNavigation": "./src/navigation/SiteNavigation.tsx",
     "./navigation/SiteNavigation.constants": "./src/navigation/SiteNavigation.constants.ts",
+    "./navigation/SiteNavigation.messages": "./src/navigation/SiteNavigation.messages.ts",
     "./navigation/TeamAndStudySwitcher": "./src/navigation/TeamAndStudySwitcher.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
     "./stages/StageBar": "./src/stages/StageBar.tsx",
@@ -915,6 +916,10 @@
       "./navigation/SiteNavigation.constants": {
         "types": "./dist/navigation/SiteNavigation.constants.d.ts",
         "default": "./dist/navigation/SiteNavigation.constants.js"
+      },
+      "./navigation/SiteNavigation.messages": {
+        "types": "./dist/navigation/SiteNavigation.messages.d.ts",
+        "default": "./dist/navigation/SiteNavigation.messages.js"
       },
       "./navigation/TeamAndStudySwitcher": {
         "types": "./dist/navigation/TeamAndStudySwitcher.d.ts",

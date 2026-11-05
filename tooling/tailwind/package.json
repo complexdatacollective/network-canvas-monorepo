@@ -23,9 +23,20 @@
     "./colors.css": "./shared/colors.css",
     "./interfaces.css": "./shared/interfaces.css",
     "./fonts/inclusive-sans.css": "./shared/fonts/inclusive-sans.css",
-    "./fonts/nunito.css": "./shared/fonts/nunito.css"
+    "./fonts/nunito.css": "./shared/fonts/nunito.css",
+    "./theme-colors": "./shared/theme-colors.ts",
+    "./elevation": "./shared/plugins/elevation/shadows.ts",
+    "./type-scale": "./shared/type-scale.ts"
   },
   "publishConfig": {
+    "exports": {
+      "./fresco.css": "./fresco/fresco.css",
+      "./studio.css": "./fresco/studio.css",
+      "./colors.css": "./shared/colors.css",
+      "./interfaces.css": "./shared/interfaces.css",
+      "./fonts/inclusive-sans.css": "./shared/fonts/inclusive-sans.css",
+      "./fonts/nunito.css": "./shared/fonts/nunito.css"
+    },
     "access": "public"
   },
   "scripts": {

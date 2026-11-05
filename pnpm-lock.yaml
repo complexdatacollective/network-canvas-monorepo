@@ -893,6 +893,42 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.106.1)(sass@1.106.1)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))
 
+  apps/community-theme:
+    devDependencies:
+      '@codaco/app-i18n':
+        specifier: workspace:^
+        version: link:../../packages/app-i18n
+      '@codaco/fresco-ui':
+        specifier: workspace:^
+        version: link:../../packages/fresco-ui
+      '@codaco/shared-consts':
+        specifier: workspace:^
+        version: link:../../packages/shared-consts
+      '@codaco/tailwind-config':
+        specifier: workspace:^
+        version: link:../../tooling/tailwind
+      '@codaco/tsconfig':
+        specifier: workspace:^
+        version: link:../../tooling/typescript
+      '@formatjs/icu-messageformat-parser':
+        specifier: 'catalog:'
+        version: 3.5.22
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      jszip:
+        specifier: 'catalog:'
+        version: 3.10.2
+      postcss:
+        specifier: ^8.5.31
+        version: 8.5.31
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.106.1)(sass@1.106.1)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))
+
   apps/documentation:
     dependencies:
       '@base-ui/react':
@@ -5761,9 +5797,6 @@ packages:
 
   '@formatjs/icu-messageformat-parser@3.5.20':
     resolution: {integrity: sha512-DUzCb2iskGDKvLU7P+nz/rjpmN59luoTRbWHFFNYNnZTxWCKvwPI94rNll99TGZaI6XoTbDF0QGegk21GFrQZQ==}
-
-  '@formatjs/icu-messageformat-parser@3.5.21':
-    resolution: {integrity: sha512-Vnl7IOSyMRaP4Pjv48etkT2nlcIwzh4QWIa3hewzGlZZPBbft+TbMir4MijpDViOLN/1hvkGC10oYMuilsG+fw==}
 
   '@formatjs/icu-messageformat-parser@3.5.22':
     resolution: {integrity: sha512-YuwN+dDKgssfuYwtOyGQD0CSn7K46g9cv1Fp0VgKpjZDDFvv8b8crzP990IcJhRPWHhKzCGsbUSJVIguyyFA5A==}
@@ -19803,7 +19836,7 @@ snapshots:
     dependencies:
       '@codaco/shared-consts': 6.2.0
       '@formatjs/cli-lib': 10.0.8
-      '@formatjs/icu-messageformat-parser': 3.5.21
+      '@formatjs/icu-messageformat-parser': 3.5.22
       '@formatjs/intl-localematcher': 0.9.0
       '@formatjs/unplugin': 1.2.12(esbuild@0.28.2)(rolldown@1.2.15)(rollup@4.62.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.106.1)(sass@1.106.1)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))(webpack@5.105.2(@swc/core@1.16.13(@swc/helpers@0.5.23))(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.31)(uglify-js@3.19.3))
       react: 19.3.1
@@ -20860,10 +20893,6 @@ snapshots:
       '@formatjs/icu-skeleton-parser': 2.1.11
 
   '@formatjs/icu-messageformat-parser@3.5.20':
-    dependencies:
-      '@formatjs/icu-skeleton-parser': 2.1.12
-
-  '@formatjs/icu-messageformat-parser@3.5.21':
     dependencies:
       '@formatjs/icu-skeleton-parser': 2.1.12
 
@@ -27886,7 +27915,7 @@ snapshots:
 
   icu-minify@4.14.9:
     dependencies:
-      '@formatjs/icu-messageformat-parser': 3.5.21
+      '@formatjs/icu-messageformat-parser': 3.5.22
 
   idb@7.1.1: {}
 
@@ -33133,7 +33162,7 @@ snapshots:
 
   unzip-crx-3@0.2.0:
     dependencies:
-      jszip: 3.10.1
+      jszip: 3.10.2
       mkdirp: 0.5.6
       yaku: 0.16.7
 

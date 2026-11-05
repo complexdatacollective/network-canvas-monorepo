@@ -149,6 +149,9 @@ export const TEST_SHARDS = [
       { name: '@codaco/e2e-helpers', seconds: 4 },
       // Pure Node suite over the theme CSS (one file, well under a second).
       { name: '@codaco/tailwind-config', seconds: 2 },
+      // Pure Node suite over the forum theme's build and catalogs (three
+      // files, under half a second locally), estimated like the entries above.
+      { name: '@codaco/community-theme', seconds: 3 },
     ],
   },
   {

@@ -13,7 +13,7 @@
  * `var()` to read the live tokens, or write out a colour the comment describes
  * ("neat sea green", "the mixture at 78%") that is no longer in the file.
  */
-import type { ScopeName } from './theme-colors.ts';
+import type { ScopeName } from '../shared/theme-colors.ts';
 
 export type Backdrop =
   | string

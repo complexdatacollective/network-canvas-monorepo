@@ -7,7 +7,7 @@ The package ships **two parallel surfaces** for the same design system, because 
 - **Tailwind v4 (Fresco design system)** — preferred for new code. Distributed as a set of CSS partials built around `@theme`, `@plugin`, and per-theme variable layers.
 - **Tailwind v3 presets** — `base.ts`, `fresco.ts`, and `globals.css`, retained for apps and packages that have not yet migrated.
 
-All exports are explicit; the `exports` field in `package.json` is the public API surface.
+All exports are explicit; the published ones (`publishConfig.exports` in `package.json`) are the public API surface.
 
 ## Tailwind v4 surface
 
@@ -50,6 +50,22 @@ One rule governs every theme file: a `var()` inside a custom property resolves a
 
 Used by `packages/ui`, `packages/art`, and `apps/documentation`. New consumers should prefer the v4 surface unless they are explicitly maintaining a v3 codebase.
 
+### Helpers for build tools in this repository
+
+Three exports, `theme-colors`, `elevation` and `type-scale`, give build tools the design system's values outside Tailwind. They are TypeScript source for this repository's workspace and are not published: Node will not strip types from a file under `node_modules`, so `publishConfig.exports` leaves them out of the npm package. `tests/published-exports.test.ts` keeps it equal to `exports` less those three.
+
+### Resolving tokens to colours
+
+`@codaco/tailwind-config/theme-colors` turns a theme token into the concrete colour a browser would paint, for build tools that cannot hand the CSS to a browser. `buildScopes()` returns one `Scope` per theme and mode (`default-light`, `default-dark`, and the interview and studio regions); `scope.computed('--primary')` gives the token's CSS with every `var()` substituted, and `toDisplayColor(scope.token('--primary'))` gives it as clipped sRGB. The community forum's Discourse theme (`apps/community-theme`) uses it to write its colour palettes.
+
+### Elevation shadows outside Tailwind
+
+`@codaco/tailwind-config/elevation` exports `elevationShadow(elevation, options?)`, the `box-shadow` value the `elevation-low`, `elevation-medium` and `elevation-high` utilities apply, as plain CSS. The elevation plugin builds its utilities from it, so the two cannot drift. The community forum's Discourse theme writes it into `--nc-elevation-*` tokens for its buttons.
+
+### Type scale outside Tailwind
+
+`@codaco/tailwind-config/type-scale` exports `typeScale()`, every step of the `text-*` scale (`2xs` to `6xl`) read from the `@theme` block in `fresco/theme.css`: its font size, and the line height and letter spacing the utility applies with it. Sizes keep their `var(--theme-root-size)` and `var(--theme-vw, 1vw)` terms, so the consumer declares those. The community forum's Discourse theme sets Discourse's type steps from it.
+
 ### Contrast tests
 
-`tests/theme-contrast.test.ts` resolves every colour token in `fresco/themes/*.css` for each theme and mode, then checks every fill / `-contrast` pair against WCAG 2.2 AA (4.5:1). It also checks that each ratio quoted in a theme comment still matches the colours it was measured on (`tests/recorded-ratios.ts` pairs each quote with its colours). Run it with `pnpm --filter @codaco/tailwind-config test`. Pairs that fall short today are listed, with reasons, in `KNOWN_FAILURES`; the test fails when one is added or starts passing.
+`tests/theme-contrast.test.ts` resolves every colour token in `fresco/themes/*.css` for each theme and mode (with the resolver exported as `@codaco/tailwind-config/theme-colors`), then checks every fill / `-contrast` pair against WCAG 2.2 AA (4.5:1). It also checks that each ratio quoted in a theme comment still matches the colours it was measured on (`tests/recorded-ratios.ts` pairs each quote with its colours). Run it with `pnpm --filter @codaco/tailwind-config test`. Pairs that fall short today are listed, with reasons, in `KNOWN_FAILURES`; the test fails when one is added or starts passing.
