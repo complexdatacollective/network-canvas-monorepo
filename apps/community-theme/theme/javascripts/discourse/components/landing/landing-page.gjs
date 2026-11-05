@@ -120,8 +120,14 @@ export default class LandingPage extends Component {
 
   async load() {
     const newsCategory = categoryFor("news_category");
-    const [categories, latest, about, news] = await Promise.allSettled([
-      ajax("/categories.json"),
+    // Each card's newest topic comes from its own category's topic list.
+    // `/categories.json` leaves topics out under some category-page styles,
+    // and subcategories out when it is paged or not asked for them, so a
+    // card could lose its topic to a site setting.
+    const cardCategories = ROUTES.filter((route) => route.posts)
+      .map((route) => categoryFor(route.setting))
+      .filter(Boolean);
+    const [latest, about, news, ...cardTopics] = await Promise.allSettled([
       ajax("/latest.json", { data: { no_definitions: true } }),
       ajax("/about.json"),
       newsCategory
@@ -129,17 +135,21 @@ export default class LandingPage extends Component {
             data: { order: "created", no_definitions: true },
           })
         : Promise.resolve(null),
+      ...cardCategories.map((category) =>
+        ajax(`${category.path}/l/latest.json`, {
+          data: { no_definitions: true },
+        })
+      ),
     ]);
     if (isDestroying(this)) {
       return;
     }
 
     this.featured = new Map(
-      (value(categories)?.category_list?.categories ?? []).map((category) => [
-        category.id,
-        (category.topics ?? []).find((topic) => !topic.pinned) ??
-          category.topics?.[0],
-      ])
+      cardCategories.map((category, index) => {
+        const topics = value(cardTopics[index])?.topic_list?.topics ?? [];
+        return [category.id, topics.find((topic) => !topic.pinned) ?? topics[0]];
+      })
     );
 
     const latestList = value(latest);
