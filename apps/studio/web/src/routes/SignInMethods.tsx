@@ -260,7 +260,6 @@ export function SocialSignIn({
         {providers.map((provider) => (
           <Button
             key={provider}
-            variant="outline"
             disabled={pending !== null}
             aria-busy={pending === provider}
             icon={

@@ -92,7 +92,7 @@ The story controls map these states to their native or ARIA props while allowing
   argTypes: {
     variant: {
       control: 'select',
-      options: ['default', 'outline', 'text', 'link', 'dashed', 'icon'],
+      options: ['default', 'text', 'link', 'dashed', 'icon'],
     },
     color: {
       control: 'select',
@@ -159,11 +159,6 @@ export const Variants: Story = {
           icon={<Plus />}
           aria-label="Add (Default)"
         />
-        <IconButton
-          variant="outline"
-          icon={<Plus />}
-          aria-label="Add (Outline)"
-        />
         <IconButton variant="text" icon={<Plus />} aria-label="Add (Text)" />
         <IconButton variant="text" icon={<Plus />} aria-label="Add (Text)" />
         <IconButton
@@ -214,19 +209,14 @@ export const DifferentIcons: Story = {
       <div className="flex gap-4">
         <IconButton icon={<Plus />} aria-label="Add" />
         <IconButton icon={<Edit />} aria-label="Edit" color="primary" />
-        <IconButton
-          icon={<Trash />}
-          aria-label="Delete"
-          color="destructive"
-          variant="outline"
-        />
+        <IconButton icon={<Trash />} aria-label="Delete" color="destructive" />
         <IconButton icon={<Search />} aria-label="Search" variant="text" />
         <IconButton icon={<Settings />} aria-label="Settings" />
       </div>
       <div className="flex gap-4">
         <IconButton icon={<Download />} aria-label="Download" color="info" />
         <IconButton icon={<Upload />} aria-label="Upload" color="success" />
-        <IconButton icon={<Share />} aria-label="Share" variant="outline" />
+        <IconButton icon={<Share />} aria-label="Share" />
         <IconButton icon={<Heart />} aria-label="Like" color="destructive" />
         <IconButton icon={<Star />} aria-label="Favorite" color="warning" />
       </div>
@@ -255,13 +245,10 @@ export const States: ControlledStory = {
 
 export const ColorVariantCombinations: Story = {
   render: () => (
-    <div className="grid grid-cols-[auto_repeat(5,1fr)] gap-4">
+    <div className="grid grid-cols-[auto_repeat(4,1fr)] gap-4">
       <span className="text-sm font-medium" />
       <span className="text-center text-xs font-medium text-current/70">
         Default
-      </span>
-      <span className="text-center text-xs font-medium text-current/70">
-        Outline
       </span>
       <span className="text-center text-xs font-medium text-current/70">
         Text
@@ -280,12 +267,6 @@ export const ColorVariantCombinations: Story = {
             color={color}
             icon={<Plus />}
             aria-label={`${color} default`}
-          />
-          <IconButton
-            variant="outline"
-            color={color}
-            icon={<Plus />}
-            aria-label={`${color} outline`}
           />
           <IconButton
             variant="text"
@@ -363,7 +344,6 @@ export const UseCases: Story = {
             icon={<Trash />}
             aria-label="Delete"
             color="destructive"
-            variant="outline"
             size="sm"
           />
           <IconButton

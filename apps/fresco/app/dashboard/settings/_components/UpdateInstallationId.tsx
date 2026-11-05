@@ -69,7 +69,6 @@ export default function UpdateInstallationId({
           aria-label={intl.formatMessage(messages.regenerate)}
           disabled={readOnly ?? isRegenerating}
           onClick={handleRegenerate}
-          variant="outline"
           size="sm"
         >
           {isRegenerating ? (

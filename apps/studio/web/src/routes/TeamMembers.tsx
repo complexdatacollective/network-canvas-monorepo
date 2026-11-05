@@ -528,7 +528,6 @@ export default function TeamMembers({ teamId }: { teamId: string }) {
           <Button
             className="mt-4"
             size="sm"
-            variant="outline"
             disabled={retrying}
             onClick={() => void retryTeamAccess()}
           >
@@ -804,7 +803,6 @@ function TeamManagement(props: {
               <Button
                 className="mt-3"
                 size="sm"
-                variant="outline"
                 disabled={refreshingTeamDetails}
                 onClick={() => void retryTeamRefresh()}
               >

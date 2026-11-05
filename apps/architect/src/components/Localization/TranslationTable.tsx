@@ -733,7 +733,6 @@ const TranslationTable = ({
               render={
                 <Button
                   size="sm"
-                  variant="outline"
                   icon={<Columns3 aria-hidden />}
                   className="px-3"
                 />

@@ -316,7 +316,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
                 {intl.formatMessage(messages.joinTeam)}
               </Button>
               <Button
-                variant="outline"
+                variant="text"
                 disabled={accepting || switchingAccount}
                 aria-busy={switchingAccount}
                 onClick={() => void switchAccount()}

@@ -361,7 +361,6 @@ export function PropertiesPanel(): ReactElement {
             </legend>
             <div className="flex items-center gap-2">
               <IconButton
-                variant="outline"
                 size="sm"
                 aria-label="Send backward"
                 title="Send backward"
@@ -369,7 +368,6 @@ export function PropertiesPanel(): ReactElement {
                 onClick={() => reorderSelected('backward')}
               />
               <IconButton
-                variant="outline"
                 size="sm"
                 aria-label="Bring forward"
                 title="Bring forward"
@@ -380,7 +378,6 @@ export function PropertiesPanel(): ReactElement {
           </fieldset>
           <ElementControls element={element} />
           <Button
-            variant="outline"
             color="destructive"
             size="sm"
             icon={<Trash2 />}
