@@ -56,25 +56,41 @@ export async function installScenario(
 
 export function defineScenarioTests(suite: InterfaceScenarios): void {
   for (const scenario of suite.scenarios) {
-    const tags = scenario.smoke ? ' @smoke' : '';
-    matrixTest(
-      `${suite.interfaceType}: ${scenario.id}${tags}`,
-      async ({ page, interview, stage, protocol, ariaSnapshot }) => {
-        if (scenario.chromiumOnly) {
-          matrixTest.skip(
-            !matrixTest.info().project.name.startsWith('chromium'),
-            'chromium-only scenario',
-          );
-        }
-        if (scenario.slow) {
-          matrixTest.slow();
-        }
-        const ctx: ScenarioContext = { page, interview, stage, protocol };
-        await installScenario(scenario, ctx);
-        await ariaSnapshot('initial');
-        await scenario.run(ctx);
-        await ariaSnapshot('final');
-      },
-    );
+    if (scenario.touch) {
+      // A context's touch screen is fixed when it is created, so a touch
+      // scenario gets a context of its own.
+      matrixTest.describe(() => {
+        matrixTest.use({ hasTouch: true });
+        defineScenarioTest(suite, scenario);
+      });
+    } else {
+      defineScenarioTest(suite, scenario);
+    }
   }
+}
+
+function defineScenarioTest(
+  suite: InterfaceScenarios,
+  scenario: ScenarioDefinition,
+): void {
+  const tags = scenario.smoke ? ' @smoke' : '';
+  matrixTest(
+    `${suite.interfaceType}: ${scenario.id}${tags}`,
+    async ({ page, interview, stage, protocol, ariaSnapshot }) => {
+      if (scenario.chromiumOnly) {
+        matrixTest.skip(
+          !matrixTest.info().project.name.startsWith('chromium'),
+          'chromium-only scenario',
+        );
+      }
+      if (scenario.slow) {
+        matrixTest.slow();
+      }
+      const ctx: ScenarioContext = { page, interview, stage, protocol };
+      await installScenario(scenario, ctx);
+      await ariaSnapshot('initial');
+      await scenario.run(ctx);
+      await ariaSnapshot('final');
+    },
+  );
 }
