@@ -22,6 +22,18 @@ function createSociogramInterview(seed: number) {
   return { si, nt, layoutVar, highlightVar, et };
 }
 
+// People reach an automatic layout from a name generator without a position,
+// so the layout is computed from scratch, as it is in an interview.
+function leaveUnplaced(
+  si: SyntheticInterview,
+  layoutVariable: string,
+  count: number,
+) {
+  for (let index = 0; index < count; index += 1) {
+    si.unsetNodeAttribute(index, layoutVariable);
+  }
+}
+
 function SociogramStoryWrapper({
   buildFn,
 }: {
@@ -271,6 +283,7 @@ const buildAutomaticLayout = () => {
     initialNodes: { count: 8 },
     behaviours: { automaticLayout: true },
   });
+  leaveUnplaced(si, layoutVar.id, 8);
   stage.addPrompt({
     layout: { layoutVariable: layoutVar.id },
     edges: { create: et.id, display: [et.id] },
@@ -376,6 +389,7 @@ const buildAutomaticLayoutLarge = () => {
     initialNodes: { count: 20 },
     behaviours: { automaticLayout: true },
   });
+  leaveUnplaced(si, layoutVar.id, 20);
   stage.addPrompt({
     layout: { layoutVariable: layoutVar.id },
     edges: { create: et.id, display: [et.id] },
