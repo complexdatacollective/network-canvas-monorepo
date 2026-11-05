@@ -31,13 +31,7 @@ function AppErrorFallback() {
           <Button color="primary" onClick={() => window.location.reload()}>
             Reload page
           </Button>
-          <Button
-            color="primary"
-            variant="outline"
-            onClick={() => window.location.assign('/')}
-          >
-            Home page
-          </Button>
+          <Button onClick={() => window.location.assign('/')}>Home page</Button>
         </div>
       </div>
     </main>
