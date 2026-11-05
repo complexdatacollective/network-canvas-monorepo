@@ -1,5 +1,6 @@
 import type { ChangeEvent, FocusEvent, KeyboardEvent } from 'react';
 
+import useSelectOnFocus from '@codaco/fresco-ui/hooks/useSelectOnFocus';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -46,6 +47,12 @@ type HeadingInputProps = {
   'onChange'?: (value: string) => void;
   /** Blur hook for auto-naming; the form's own blur handling is on the container. */
   'onFieldBlur'?: () => void;
+  /**
+   * Asked as the control gains focus: whether to select the whole name, so
+   * that typing replaces it rather than landing inside it. For a name nobody
+   * chose — `useStandingStageNameProposal().isStanding`.
+   */
+  'selectOnFocus'?: () => boolean;
   'placeholder'?: string;
   /**
    * Hard cap on typed characters. Not `maxLength`: that name belongs to
@@ -100,6 +107,7 @@ const StageNameInput = ({
   value = '',
   onChange,
   onFieldBlur,
+  selectOnFocus,
   placeholder,
   characterLimit,
   disabled = false,
@@ -120,6 +128,10 @@ const StageNameInput = ({
   const handleBlur = (_event: FocusEvent<HTMLTextAreaElement>) => {
     onFieldBlur?.();
   };
+
+  // Typing replaces a proposed name rather than landing inside it.
+  const selectOnFocusHandlers =
+    useSelectOnFocus<HTMLTextAreaElement>(selectOnFocus);
 
   return (
     /*
@@ -150,6 +162,7 @@ const StageNameInput = ({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
+        {...selectOnFocusHandlers}
         rows={1}
         // The value is one line and Enter never adds another; without this a
         // screen reader describes an Enter that does not exist.

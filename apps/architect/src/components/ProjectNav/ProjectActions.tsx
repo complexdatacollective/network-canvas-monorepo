@@ -270,6 +270,7 @@ const ProjectActions = ({
     } finally {
       setIsExporting(false);
     }
+    // oxlint-disable-next-line react/memo-dependencies -- every listed value is read; the rule cannot follow a try/finally and reports each dependency of one as unused
   }, [activeProtocolId, dispatch, mode, openDialog]);
   const handleDownload = useSingleFlight(runDownload);
 
@@ -296,6 +297,7 @@ const ProjectActions = ({
     } finally {
       setIsSending(false);
     }
+    // oxlint-disable-next-line react/memo-dependencies -- every listed value is read; the rule cannot follow a try/finally and reports each dependency of one as unused
   }, [activeProtocolId, mode, openDialog, protocol]);
   const handleSend = useSingleFlight(runSend);
 

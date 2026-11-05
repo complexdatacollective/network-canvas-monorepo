@@ -1048,6 +1048,6 @@ export function handleMessage(data: Message) {
   }
 }
 
-self.onmessage = ({ data }: { data: Message }) => {
+self.addEventListener('message', ({ data }: MessageEvent<Message>) => {
   handleMessage(data);
-};
+});

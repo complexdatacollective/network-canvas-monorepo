@@ -1,7 +1,12 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { hasDirtyNestedDraft, useNestedDraft } from '../nestedDraftRegistry';
+import {
+  hasDirtyNestedDraft,
+  hasOpenNestedEditor,
+  registerStageDialogDraft,
+  useNestedDraft,
+} from '../nestedDraftRegistry';
 
 const fireBeforeUnload = () => {
   const event = new Event('beforeunload', { cancelable: true });
@@ -51,6 +56,30 @@ describe('nested draft registry', () => {
     dirty.unmount();
     expect(hasDirtyNestedDraft()).toBe(false);
     clean.unmount();
+  });
+
+  /**
+   * The stage editor's own dialogs are drawn by protocol-builder. A row being
+   * written in one is work leaving would lose, but the dialog is not one of
+   * Architect's nested editors: the stage editor around it is what the lock
+   * already treats as open.
+   */
+  it('counts a stage dialog draft as unsaved work, not as an open editor', () => {
+    let dirty = false;
+    const forget = registerStageDialogDraft(() => dirty);
+
+    expect(hasOpenNestedEditor()).toBe(false);
+    expect(hasDirtyNestedDraft()).toBe(false);
+    expect(fireBeforeUnload().defaultPrevented).toBe(false);
+
+    dirty = true;
+    expect(hasDirtyNestedDraft()).toBe(true);
+    expect(fireBeforeUnload().defaultPrevented).toBe(true);
+    expect(hasOpenNestedEditor()).toBe(false);
+
+    forget();
+    expect(hasDirtyNestedDraft()).toBe(false);
+    expect(fireBeforeUnload().defaultPrevented).toBe(false);
   });
 
   it('guards a refresh while a dirty editor is open, and only then', () => {

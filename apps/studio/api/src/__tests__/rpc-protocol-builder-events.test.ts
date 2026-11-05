@@ -13,7 +13,7 @@ import { testDb } from './support/database.ts';
 import {
   ADA,
   callerOf,
-  enUS,
+  inEnglish,
   GRACE,
   holdingEvents,
   latch,
@@ -57,8 +57,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: enUS('Watched write'),
-          title: enUS('Watched write'),
+          label: inEnglish('Watched write'),
+          title: inEnglish('Watched write'),
           items: [],
         }),
       }),
@@ -215,8 +215,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: enUS('Past the bound'),
-          title: enUS('Past the bound'),
+          label: inEnglish('Past the bound'),
+          title: inEnglish('Past the bound'),
           items: [],
         }),
       }),
@@ -270,7 +270,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             sectionId,
             document: Redacted.make({
               ...Redacted.value(held.document),
-              label: enUS('Written as the tab closed'),
+              label: inEnglish('Written as the tab closed'),
             }),
             revision: held.revision,
           }),
@@ -325,8 +325,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label: enUS('Created as the tab closed'),
-              title: enUS('Created as the tab closed'),
+              label: inEnglish('Created as the tab closed'),
+              title: inEnglish('Created as the tab closed'),
               items: [],
             }),
           }),

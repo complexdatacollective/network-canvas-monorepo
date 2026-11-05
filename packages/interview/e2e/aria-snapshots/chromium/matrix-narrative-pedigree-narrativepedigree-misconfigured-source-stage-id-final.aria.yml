@@ -1,5 +1,4 @@
 - main:
-  - img "Error"
   - heading "There was an error" [level=1]
   - paragraph: There was an error with the interview software, and this task could not be displayed.
   - paragraph: Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.

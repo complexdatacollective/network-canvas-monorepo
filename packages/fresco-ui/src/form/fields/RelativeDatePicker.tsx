@@ -63,6 +63,8 @@ export default function RelativeDatePickerField(
       className={cx('outline-input-contrast', className)}
       disabled={disabled}
       readOnly={readOnly}
+      aria-label={rest['aria-label']}
+      aria-labelledby={rest['aria-labelledby']}
       aria-invalid={rest['aria-invalid']}
       aria-describedby={rest['aria-describedby']}
       aria-required={rest['aria-required']}

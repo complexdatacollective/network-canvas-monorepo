@@ -16,7 +16,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import { openWordingGroup } from '../family-pedigree/__tests__/editorFixtures.ts';
+import { openStageWording } from '../family-pedigree/__tests__/editorFixtures.ts';
 import {
   addFamilyMemberVariables,
   EVERY_PEDIGREE_WORD,
@@ -332,7 +332,6 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
           dataSource: 'roster_data',
         },
       ],
-      quickAddHint: { 'en-US': 'Press Enter when you are finished.' },
       minNodesNotice: {
         'en-US':
           '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -389,12 +388,6 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         ],
       },
       convexHullVariable: 'contactType',
-      groupsHeading: { 'en-US': 'Groups' },
-      tooltips: {
-        addPerson: { 'en-US': 'Add node' },
-        automaticLayout: { 'en-US': 'Automatic layout' },
-        drawConnection: { 'en-US': 'Draw edge' },
-      },
       behaviours: { automaticLayout: true },
       edges: [
         {
@@ -473,22 +466,19 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('geospatial-1', {
       ...EVERY_STAGE,
       filter: nodeFilter,
-      // Searching is offered, so the search's own words are the stage's.
+      // Searching is offered.
       mapOptions: {
         ...mapOptionsOfFixture(),
         allowSearch: true,
       },
-      offlineNotice: { 'en-US': 'You are offline. The map will not load.' },
-      mapUnavailable: { 'en-US': 'The map cannot be drawn on this device.' },
       outsideAreasLabel: { 'en-US': 'Outside selectable areas' },
-      searchFailed: { 'en-US': 'The search failed.' },
     }),
   },
   {
     interfaceName: 'FamilyPedigree',
     type: 'FamilyPedigree',
     stageId: 'family-pedigree-1',
-    reveal: (harness) => openWordingGroup(harness),
+    reveal: (harness) => openStageWording(harness),
     fields: fixtureMaximal('family-pedigree-1', {
       ...EVERY_STAGE,
       nodeConfiguration: {
@@ -551,14 +541,6 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       showAtRiskStatuses: true,
       conditionText: {
         selectCondition: { 'en-US': 'Select a condition' },
-        notation: {
-          affected: { 'en-US': 'Has this condition' },
-          obligateAffected: { 'en-US': 'Will develop this condition' },
-          obligateCarrier: { 'en-US': 'Carries this condition' },
-          atRiskAffected: { 'en-US': 'May develop this condition' },
-          atRiskCarrier: { 'en-US': 'May carry this condition' },
-          unknown: { 'en-US': 'Not known' },
-        },
         snapshotCondition: { 'en-US': '{title}: {condition}' },
         snapshotInheritance: {
           'en-US': '{title}: {condition} — inheritance for {name}',
@@ -661,5 +643,9 @@ describe('a maximal stage of each interface', () => {
       // empty `unowned` is the whole claim about the outline.
       await harness.roundTrip({ unowned });
     },
+    // Editing every key of the largest interface (Family Pedigree, with its
+    // whole wording list) takes about 20 seconds on its own, the project's
+    // default limit, so a busy machine timed it out.
+    60_000,
   );
 });

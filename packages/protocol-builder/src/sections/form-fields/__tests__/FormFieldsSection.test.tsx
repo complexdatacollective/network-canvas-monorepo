@@ -1,4 +1,11 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import {
+  type BoundFunctions,
+  type queries,
+  act,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { Effect } from 'effect';
 import { useEffect, useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -71,7 +78,7 @@ const en = (text: string) => ({ 'en-US': text });
  * reached through the shared picker helpers, which find it by the mark the
  * spotlight puts on its own popup.
  */
-type RowDialog = ReturnType<typeof within> & { element: HTMLElement };
+type RowDialog = BoundFunctions<typeof queries> & { element: HTMLElement };
 
 const rowDialog = (element: HTMLElement): RowDialog =>
   Object.assign(within(element), { element });
@@ -1101,7 +1108,26 @@ const STAMPED_PROMPTS = STAMPING_NAME_GENERATOR.fields.prompts;
 const UNSTAMPED_PROMPTS = UNSTAMPED_NAME_GENERATOR.fields.prompts;
 
 /** Lets a test bind or unbind the slot from outside, past the row dialog. */
-type SlotBinder = { bind?: () => void; unbind?: () => void };
+type SlotBinder = {
+  /** The control reports how to bind and unbind, once it is mounted. */
+  offer: (binds: { bind: () => void; unbind: () => void }) => void;
+  bind: () => void;
+  unbind: () => void;
+};
+
+const makeSlotBinder = (): SlotBinder => {
+  let held: { bind: () => void; unbind: () => void } = {
+    bind: () => undefined,
+    unbind: () => undefined,
+  };
+  return {
+    offer: (binds) => {
+      held = binds;
+    },
+    bind: () => held.bind(),
+    unbind: () => held.unbind(),
+  };
+};
 
 /**
  * The stage's prompts, as a control of the stage form.
@@ -1122,8 +1148,10 @@ function PromptsControl({
   handle: SlotBinder;
 }>) {
   useEffect(() => {
-    handle.bind = () => onChange?.(STAMPED_PROMPTS);
-    handle.unbind = () => onChange?.(UNSTAMPED_PROMPTS);
+    handle.offer({
+      bind: () => onChange?.(STAMPED_PROMPTS),
+      unbind: () => onChange?.(UNSTAMPED_PROMPTS),
+    });
   }, [handle, onChange]);
 
   return null;
@@ -1180,7 +1208,7 @@ function FormBesideItsSlots({ handle }: Readonly<{ handle: SlotBinder }>) {
  */
 describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
   it('stops being offered the moment the slot is bound', async () => {
-    const handle: SlotBinder = {};
+    const handle = makeSlotBinder();
     const harness = renderStageEditor({
       stage: UNSTAMPED_NAME_GENERATOR,
       sections: <FormBesideItsSlots handle={handle} />,
@@ -1196,7 +1224,7 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
-    act(() => handle.bind?.());
+    act(() => handle.bind());
 
     const after = await openField(harness, 'Create new form field');
     const offered = await offeredAttributes(
@@ -1220,7 +1248,7 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
    * close it and open it again.
    */
   it('is offered again once the slot the stage saved is unbound', async () => {
-    const handle: SlotBinder = {};
+    const handle = makeSlotBinder();
     const harness = renderStageEditor({
       stage: STAMPING_NAME_GENERATOR,
       sections: <FormBesideItsSlots handle={handle} />,
@@ -1235,7 +1263,7 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
-    act(() => handle.unbind?.());
+    act(() => handle.unbind());
 
     const after = await openField(harness, 'Create new form field');
     expect(
@@ -1262,7 +1290,7 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
    * to be told which of their own two edits contradicts the other.
    */
   it('refuses a row that was picked before the slot was bound, and says where', async () => {
-    const handle: SlotBinder = {};
+    const handle = makeSlotBinder();
     const harness = renderStageEditor({
       stage: UNSTAMPED_NAME_GENERATOR,
       sections: <FormBesideItsSlots handle={handle} />,
@@ -1275,7 +1303,7 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
       'Are they flagged?',
     );
 
-    act(() => handle.bind?.());
+    act(() => handle.bind());
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
 
     expect(
@@ -1294,7 +1322,7 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
    * contradiction the picker exists to prevent.
    */
   it('is offered and accepted while the section reads only the saved protocol', async () => {
-    const handle: SlotBinder = {};
+    const handle = makeSlotBinder();
     const harness = renderStageEditor({
       stage: UNSTAMPED_NAME_GENERATOR,
       sections: (
@@ -1306,7 +1334,7 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
     });
     await screen.findByRole('button', { name: 'Create new form field' });
 
-    act(() => handle.bind?.());
+    act(() => handle.bind());
 
     const dialog = await openField(harness, 'Create new form field');
     expect(

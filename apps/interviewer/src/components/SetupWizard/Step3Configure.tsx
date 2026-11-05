@@ -109,22 +109,23 @@ function ReadOnlySummary({
       wizard.setStepData({ enrolmentCommitted: false });
       onChange();
     };
-    void authApi
-      .status()
-      .then((status) => {
+    const reconcile = async () => {
+      try {
+        const status = await authApi.status();
         if (cancelled) return;
         if (status.configured && status.mode === method) {
           setReconciled(true);
           return;
         }
         forceReEnrolment();
-      })
-      .catch(() => {
+      } catch {
         // Fail safe: a rejected status() must not strand the wizard with Next
         // permanently disabled — treat it like a mismatch and re-enrol.
         if (cancelled) return;
         forceReEnrolment();
-      });
+      }
+    };
+    void reconcile();
     return () => {
       cancelled = true;
     };

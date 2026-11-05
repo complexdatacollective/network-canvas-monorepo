@@ -53,7 +53,7 @@ const withAssetUrl = <P extends WithAssetUrlProps>(
         }
       };
 
-      loadAsset();
+      void loadAsset();
 
       return () => {
         isMounted = false;

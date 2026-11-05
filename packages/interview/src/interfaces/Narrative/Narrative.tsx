@@ -3,6 +3,7 @@
 import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Node from '@codaco/fresco-ui/Node';
 import {
   entityAttributesProperty,
@@ -25,6 +26,7 @@ import {
 } from '../../selectors/session';
 import type { StageProps } from '../../types';
 import { compareCodeUnits } from '../../utils/compareCodeUnits';
+import { interfaceMessages } from '../messages';
 import Annotations, { type AnnotationsHandle } from './Annotations';
 import BehavioursPanel, { type DrawingWords } from './BehavioursPanel';
 import PresetSwitcher from './PresetSwitcher';
@@ -32,43 +34,27 @@ import PresetSwitcher from './PresetSwitcher';
 type NarrativeProps = StageProps<'Narrative'>;
 
 const Narrative = ({ stage }: NarrativeProps) => {
+  const intl = useAppIntl();
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
 
-  // The stage's own words (`stage-wording/narrative.ts`). The drawing tools'
-  // words are given only when the stage holds all of them.
-  const enableDrawing = useOptionalLocalizedText(stage.tooltips?.enableDrawing);
-  const disableDrawing = useOptionalLocalizedText(
-    stage.tooltips?.disableDrawing,
-  );
-  const freezeAnnotations = useOptionalLocalizedText(
-    stage.tooltips?.freezeAnnotations,
-  );
-  const unfreezeAnnotations = useOptionalLocalizedText(
-    stage.tooltips?.unfreezeAnnotations,
-  );
-  const resetAnnotations = useOptionalLocalizedText(
-    stage.tooltips?.resetAnnotations,
-  );
+  // The stage's own words (`stage-wording/narrative.ts`).
   const headings = {
     attributes: useOptionalLocalizedText(stage.attributesHeading),
     links: useOptionalLocalizedText(stage.linksHeading),
     groups: useOptionalLocalizedText(stage.groupsHeading),
   };
-  const drawingWords: DrawingWords | undefined =
-    enableDrawing !== undefined &&
-    disableDrawing !== undefined &&
-    freezeAnnotations !== undefined &&
-    unfreezeAnnotations !== undefined &&
-    resetAnnotations !== undefined
-      ? {
-          enableDrawing,
-          disableDrawing,
-          freezeAnnotations,
-          unfreezeAnnotations,
-          resetAnnotations,
-        }
-      : undefined;
+  // The drawing tools, shown while the stage's drawing is on, are worded
+  // alike on every Narrative (the protocol's interface text).
+  const drawingWords: DrawingWords | undefined = stage.behaviours?.freeDraw
+    ? {
+        toggleDrawing: intl.formatMessage(interfaceMessages.toggleDrawing),
+        toggleFreezing: intl.formatMessage(interfaceMessages.toggleFreezing),
+        resetAnnotations: intl.formatMessage(
+          interfaceMessages.resetAnnotations,
+        ),
+      }
+    : undefined;
   const interfaceRef = useRef<HTMLDivElement>(null);
 
   const [presetIndex, setPresetIndex] = useState(0);
@@ -303,7 +289,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
 
   return (
     <div
-      className={`interface relative h-full overflow-hidden${
+      className={`interface h-full overflow-hidden${
         stageBackground.image === undefined ? '' : ' p-0'
       }`}
       ref={interfaceRef}

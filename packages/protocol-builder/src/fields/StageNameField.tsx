@@ -16,6 +16,12 @@ export type StageNameFieldProps = Readonly<{
    * not get half of it by rendering this.
    */
   onBlur?: () => void;
+  /**
+   * `useStandingStageNameProposal().isStanding`, for a host that proposes
+   * names: a proposed name is selected as the control gains focus, so typing
+   * replaces it.
+   */
+  selectOnFocus?: () => boolean;
 }>;
 
 /**
@@ -35,6 +41,7 @@ export type StageNameFieldProps = Readonly<{
 export default function StageNameField({
   className,
   onBlur,
+  selectOnFocus,
 }: StageNameFieldProps) {
   const { id, label, error, translations, containerProps, fieldProps } =
     useStageNameField();
@@ -45,7 +52,11 @@ export default function StageNameField({
       <FieldLabel id={elementIds.label} htmlFor={id} className="sr-only">
         {label}
       </FieldLabel>
-      <StageNameInput {...fieldProps} onFieldBlur={onBlur} />
+      <StageNameInput
+        {...fieldProps}
+        onFieldBlur={onBlur}
+        selectOnFocus={selectOnFocus}
+      />
       <EditingLanguageSwitcher values={[translations]} className="mt-1" />
       {/*
         Mounted whether or not it holds anything: the control already describes

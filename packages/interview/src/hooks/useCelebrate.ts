@@ -135,10 +135,12 @@ export function useCelebrate(
       ).finished;
     });
 
-    void Promise.all(particles).then(() => {
+    const removeWhenDone = async () => {
+      await Promise.all(particles);
       container.remove();
       containersRef.current.delete(container);
-    });
+    };
+    void removeWhenDone();
   }, [ref]);
 
   return celebrate;

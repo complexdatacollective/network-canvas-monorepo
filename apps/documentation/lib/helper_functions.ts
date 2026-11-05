@@ -5,13 +5,13 @@ import { join, sep } from 'node:path';
 import type matter from 'gray-matter';
 
 import type {
-  Locale,
   MetadataFile,
   SidebarFolder,
   SidebarPage,
   SidebarSection,
 } from '~/app/types';
 import { MetadataFileSchema } from '~/app/types';
+import type { Locale } from '~/lib/i18n/locales';
 
 // Path (relative to apps/documentation/) where markdown source files live.
 // Change here to relocate; consumers should import this rather than hard-coding.

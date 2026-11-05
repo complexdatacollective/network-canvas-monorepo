@@ -9,7 +9,6 @@ type GetFn = (options: CredentialRequestOptions) => Promise<Credential | null>;
 
 function installNavigator(create: CreateFn, get: GetFn): void {
   vi.stubGlobal('navigator', {
-    ...navigator,
     credentials: { create, get },
   });
 }

@@ -100,6 +100,7 @@ export function PublicationRail({
         cancelAnimationFrame(measurementFrameRef.current);
       }
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a publication added or removed changes how far the rail travels without resizing either observed box, so the count is a trigger to measure again
   }, [publications.length]);
 
   const isFlowing =

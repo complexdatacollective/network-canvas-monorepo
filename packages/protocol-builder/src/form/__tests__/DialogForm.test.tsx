@@ -11,6 +11,7 @@ import Form from '@codaco/fresco-ui/form/Form';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
+import { DialogDraftRegistrarContext } from '../dialogDraftRegistrar.ts';
 import DialogForm, {
   type DialogFormErrors,
   type DialogFormProps,
@@ -476,6 +477,42 @@ describe('DialogForm', () => {
     expect(
       screen.queryByRole('button', { name: 'Keep editing' }),
     ).not.toBeInTheDocument();
+  });
+
+  /**
+   * Leaving the page is not a dismissal, so the host is told about the draft
+   * and asks on its own way out.
+   */
+  it('tells the host about its draft while it is open', async () => {
+    const user = userEvent.setup();
+    const drafts = new Set<() => boolean>();
+    const register = (hasDraft: () => boolean) => {
+      drafts.add(hasDraft);
+      return () => {
+        drafts.delete(hasDraft);
+      };
+    };
+    const anyDraft = () => [...drafts].some((hasDraft) => hasDraft());
+
+    render(
+      <DialogDraftRegistrarContext.Provider value={register}>
+        <DialogProvider>
+          <Editor />
+        </DialogProvider>
+      </DialogDraftRegistrarContext.Provider>,
+    );
+
+    expect(drafts.size).toBe(1);
+    expect(anyDraft()).toBe(false);
+
+    await user.type(ruleLabel(), 'Half typed');
+    expect(anyDraft()).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(screen.getByRole('button', { name: 'Discard changes' }));
+
+    // Closed, though still mounted: nothing is left to ask about.
+    await waitFor(() => expect(drafts.size).toBe(0));
   });
 
   it('ignores a second submit while the first is still saving', async () => {

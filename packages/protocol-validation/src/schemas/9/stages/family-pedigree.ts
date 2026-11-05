@@ -21,7 +21,6 @@ import {
 } from '../localized-string.ts';
 import {
   asksGenderIdentity,
-  choosesFraming,
   FAMILY_PEDIGREE_SUPPLIED_TEXT,
 } from '../stage-wording/family-pedigree.ts';
 import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
@@ -634,10 +633,12 @@ const argumentWording = (key: WordingWithArguments) =>
  * The words the interface shows a participant on this stage, which Network
  * Canvas supplies (`stage-wording/family-pedigree.ts`). A key is named for
  * the message's id in the interface's catalog, so the translations keep the
- * names their messages were written with.
+ * names their messages were written with. The tools, their hints and the
+ * framing question, which every Family Pedigree shows alike, are interface
+ * text (`interface-text-wording.ts`).
  *
- * The framing words, the gender identity question and the note on a question
- * limited to one sex at birth are shown only in some configurations: they are
+ * The gender identity question and the note on a question limited to one sex
+ * at birth are shown only in some configurations: they are
  * optional here, and required by the stage while their configuration is on
  * (see `CONFIGURED_WORDING`).
  */
@@ -659,17 +660,13 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   childKindLabel: plainWording(),
   childKindSocial: argumentWording('childKindSocial'),
   childKindSurrogate: argumentWording('childKindSurrogate'),
-  connectHint: plainWording(),
   connectParent: argumentWording('connectParent'),
   connectPartners: argumentWording('connectPartners'),
   connectQuestion: argumentWording('connectQuestion'),
   disconnectConfirmDescription: plainWording(),
   disconnectConfirmTitle: argumentWording('disconnectConfirmTitle'),
-  disconnectHint: plainWording(),
   disconnectStandIn: argumentWording('disconnectStandIn'),
   disconnectWouldCutOff: argumentWording('disconnectWouldCutOff'),
-  framingChoiceDescription: plainWording().optional(),
-  framingChoiceTitle: plainWording().optional(),
   genderIdentityLabel: plainWording().optional(),
   generatedLabelOf: argumentWording('generatedLabelOf'),
   geneticParentReplaced: argumentWording('geneticParentReplaced'),
@@ -724,11 +721,9 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   ),
   zygosityFraternal: plainWording(),
   zygosityIdentical: plainWording(),
-  you: plainWording(),
-  connectTool: plainWording(),
-  disconnectTool: plainWording(),
-  framingControlLabel: plainWording().optional(),
-  pointerTool: plainWording(),
+  // The participant's own label, which may show their answers from earlier
+  // in the interview, such as the name an Ego Form asked for.
+  you: localizedString(nonBlankText(), 'plain', { dynamicValues: 'stageText' }),
 });
 
 export type FamilyPedigreeWording = z.infer<typeof FamilyPedigreeWordingSchema>;
@@ -740,21 +735,6 @@ export type FamilyPedigreeWording = z.infer<typeof FamilyPedigreeWordingSchema>;
  * keeps the words.
  */
 const CONFIGURED_WORDING = [
-  {
-    key: 'framingChoiceTitle',
-    applies: choosesFraming,
-    requiredWhen: 'participants choose the words',
-  },
-  {
-    key: 'framingChoiceDescription',
-    applies: choosesFraming,
-    requiredWhen: 'participants choose the words',
-  },
-  {
-    key: 'framingControlLabel',
-    applies: choosesFraming,
-    requiredWhen: 'participants choose the words',
-  },
   {
     key: 'genderIdentityLabel',
     applies: asksGenderIdentity,

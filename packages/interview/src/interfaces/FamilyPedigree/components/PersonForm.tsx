@@ -2765,6 +2765,7 @@ function ParentFields({
     ]);
   });
   const takenOverKey = takenOver.join('\u0000');
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- keyed on which siblings are taken over, not on the array, which is new each render; the effect event reads the latest
   useEffect(() => keepTakenOverChosen(), [takenOverKey]);
 
   return (

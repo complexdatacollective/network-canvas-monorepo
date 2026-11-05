@@ -211,11 +211,11 @@ export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
     if (!scope || decrypted) return undefined;
 
     let current = true;
-    void Promise.all(values.map((value) => decryptInScope(scope, value))).then(
-      () => {
-        if (current) rerender();
-      },
-    );
+    const rerenderWhenDecrypted = async () => {
+      await Promise.all(values.map((value) => decryptInScope(scope, value)));
+      if (current) rerender();
+    };
+    void rerenderWhenDecrypted();
     return () => {
       current = false;
     };

@@ -35,7 +35,7 @@ const isNameCharacter = (character: string) => {
 };
 
 const isNmtoken = (value: string) =>
-  value.length > 0 && [...value].every(isNameCharacter);
+  value.length > 0 && Array.from(value).every(isNameCharacter);
 
 describe('toGraphMLAttrName', () => {
   it.each([

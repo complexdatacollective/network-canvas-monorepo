@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, spyOn, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fn, spyOn, userEvent, waitFor, within } from 'storybook/test';
 
-import { AppI18nProvider } from '@codaco/app-i18n/react';
-
-import { interviewCatalogSource } from '../i18n/catalog';
-import { interviewLocales } from '../i18n/locales';
+import { InterviewI18nProvider } from '../i18n/InterviewI18nProvider';
+import {
+  suppliedInterfaceText,
+  TestProtocolLocalization,
+} from '../interfaces/__tests__/TestProtocolLocalization';
 import StageErrorBoundary from './StageErrorBoundary';
 
 function CrashingTask(): never {
@@ -25,10 +26,12 @@ const meta: Meta<typeof StageErrorBoundary> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const writeText = fn(async (_text: string) => undefined);
+
 /** The screen a participant sees when a task crashes. */
 export const Default: Story = {
   beforeEach() {
-    spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+    spyOn(navigator.clipboard, 'writeText').mockImplementation(writeText);
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -41,46 +44,41 @@ export const Default: Story = {
 
     await waitFor(() => expect(button).toHaveTextContent('Copied'));
     await expect(canvas.getByRole('status')).toHaveTextContent('Copied');
-    await expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+    await expect(writeText).toHaveBeenCalledWith(
       expect.stringContaining('Failed to initialize WebGL'),
     );
   },
 };
 
-/** The same screen in every language the interview ships. */
+const supplied = {
+  defaultLocale: 'en',
+  locales: ['en', 'de', 'es', 'fr', 'it', 'nl', 'pt-BR', 'zh-Hans', 'zh-Hant'],
+};
+const interfaceText = suppliedInterfaceText(supplied);
+
+/**
+ * The same screen in every language Network Canvas supplies the protocol's
+ * interface text in.
+ */
 export const AllLanguages: Story = {
   parameters: {
     layout: 'padded',
   },
-  loaders: [
-    async () => ({
-      catalogs: await Promise.all(
-        interviewLocales.map(async ({ locale }) => ({
-          locale,
-          messages: await interviewCatalogSource.load(locale),
-        })),
-      ),
-    }),
-  ],
-  render: (args, { loaded }) => {
-    const { catalogs } = loaded as {
-      catalogs: { locale: string; messages: Record<string, string> }[];
-    };
-    return (
-      <div className="flex flex-col gap-8">
-        {catalogs.map(({ locale, messages }) => (
-          <div key={locale} lang={locale}>
-            <AppI18nProvider
+  render: (args) => (
+    <div className="flex flex-col gap-8">
+      {supplied.locales.map((locale) => (
+        <div key={locale} lang={locale}>
+          <InterviewI18nProvider>
+            <TestProtocolLocalization
+              localization={supplied}
               locale={locale}
-              locales={interviewLocales}
-              messages={messages}
-              manageDocument={false}
+              interfaceText={interfaceText}
             >
               <StageErrorBoundary>{args.children}</StageErrorBoundary>
-            </AppI18nProvider>
-          </div>
-        ))}
-      </div>
-    );
-  },
+            </TestProtocolLocalization>
+          </InterviewI18nProvider>
+        </div>
+      ))}
+    </div>
+  ),
 };

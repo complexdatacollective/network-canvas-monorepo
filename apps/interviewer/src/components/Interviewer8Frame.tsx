@@ -183,6 +183,7 @@ export function Interviewer8Frame({
 
   return (
     <div className="bg-background flex h-full w-full flex-col pt-[env(safe-area-inset-top)] landscape:pr-[env(safe-area-inset-right)] landscape:pl-[env(safe-area-inset-left)]">
+      {/* oxlint-disable-next-line react/iframe-missing-sandbox -- Interviewer 8 is this origin's own app and needs scripts and same-origin storage, so any sandbox would have to grant both, which the rule rejects as no sandbox at all */}
       <iframe
         ref={frameRef}
         src={src}

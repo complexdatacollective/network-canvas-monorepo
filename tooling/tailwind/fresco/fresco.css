@@ -26,6 +26,9 @@
 /* Tailwind v4 @theme block defining the Fresco design system token surface. */
 @import './theme.css';
 
+/* Stage-type (interface) colours, shared with apps that keep their own theme. */
+@import '../shared/interfaces.css';
+
 /* `motion-reduce:` / `motion-safe:` and the global reduced-motion rule, keyed
    off the preference `AnimationProvider` resolves. */
 @import './reduced-motion.css';

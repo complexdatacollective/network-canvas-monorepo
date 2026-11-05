@@ -276,7 +276,10 @@ so neither variant can pass by recording nothing. The capture is kept as
 ## Adding a variant
 
 Add a `variants/<name>.yml` override, add the name to `VARIANTS` in `lib.sh`,
-and add the four script invocations to the `studio-stack` job. The last part is
+and add the four script invocations to the `studio-stack` job, gated to one of
+its legs (`if: matrix.leg == '<leg>'`, and `always() && …` on the teardown).
+The job runs its legs on separate runners, because variants on one host share
+ports, subnets and a Compose project and can only take turns. The last part is
 not optional and not left to memory:
 `scripts/ci/ci-workflow.test.mjs` reads this directory and fails if no job
 runs a variant, so a variant that exists but is not run in CI is a red test

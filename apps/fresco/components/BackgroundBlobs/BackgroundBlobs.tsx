@@ -234,6 +234,7 @@ class NCBlob {
     // Save before translating so we can restore afterwards - important!
     ctx.save();
     ctx.translate(this.positionX, this.positionY);
+    // oxlint-disable-next-line unicorn/no-array-fill-with-reference-type -- CanvasRenderingContext2D.fill paints a path; it is not Array.prototype.fill
     ctx.fill(p);
     ctx.restore();
   }

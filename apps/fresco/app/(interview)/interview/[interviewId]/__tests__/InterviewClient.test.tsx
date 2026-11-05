@@ -3,7 +3,6 @@ import type * as Nuqs from 'nuqs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { InterviewPayload, SyncHandler } from '@codaco/interview';
-import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { createInitialNetwork } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 
@@ -57,8 +56,6 @@ const payload: InterviewPayload = {
   },
 };
 
-const catalog = await loadInterviewCatalog('en');
-
 function clientFor(view: InterviewView) {
   return (
     <InterviewClient
@@ -70,7 +67,6 @@ function clientFor(view: InterviewView) {
       installationId="test-installation"
       disableAnalytics
       view={view}
-      catalog={catalog}
     />
   );
 }
@@ -164,7 +160,9 @@ describe('InterviewClient', () => {
     rerender(clientFor('active'));
     await writeThrough(handlers);
 
-    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+    const rawBody = fetchMock.mock.calls[0]?.[1]?.body;
+    if (typeof rawBody !== 'string') throw new Error('Expected a JSON body');
+    const body = JSON.parse(rawBody) as {
       currentStep: number;
     };
     expect(body.currentStep).toBe(5);

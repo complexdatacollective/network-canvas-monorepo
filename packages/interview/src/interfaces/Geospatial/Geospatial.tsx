@@ -138,13 +138,10 @@ export default function GeospatialInterface({
 
   const { isE2E } = useContractFlags();
   const useStub = isE2E && isMapboxStubBrowser();
-  const { text: mapUnavailable } = useLocalizedString(stage.mapUnavailable);
+  const mapUnavailable = intl.formatMessage(interfaceMessages.mapUnavailable);
   const { text: outsideAreasLabel } = useLocalizedString(
     stage.outsideAreasLabel,
   );
-  // The stage words a failed search while the map has a search
-  // (`allowSearch`); the protocol's interface text words the rest of it.
-  const searchFailed = stage.searchFailed;
 
   const [navState, setNavState] = useState<{
     activeIndex: number;
@@ -530,13 +527,12 @@ export default function GeospatialInterface({
           </div>
         )}
 
-        {mapOptions.allowSearch && searchFailed && (
+        {mapOptions.allowSearch && (
           <Suspense fallback={null}>
             {useStub ? (
               <GeospatialStubSearch className="absolute top-4 left-4 z-20" />
             ) : (
               <GeospatialSearch
-                searchFailed={searchFailed}
                 accessToken={accessToken}
                 map={map}
                 proximity={mapOptions.center}

@@ -26,7 +26,11 @@ import {
 } from '@codaco/studio-contract/schema/participant';
 
 import { createAppRouter } from '../../router.tsx';
-import { installFetchStub, requestUrl } from '../../test/fetchStub.ts';
+import {
+  installFetchStub,
+  requestBodyText,
+  requestUrl,
+} from '../../test/fetchStub.ts';
 import {
   installParticipantHarness,
   type ParticipantHandlers,
@@ -356,6 +360,33 @@ describe('the interview session', () => {
     });
   });
 
+  it('records the screen a participant has moved to when it saves their place', async () => {
+    const harness = installParticipantHarness({
+      ...readsSession(0),
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision, applied: true }),
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
+    });
+
+    renderAt(`/session/${SESSION}`);
+
+    // Moving on is a change of screen only: no answer changes, so the save
+    // that records it carries the screen the participant is now on.
+    fireEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: 'Next Step' },
+        { timeout: 15_000 },
+      ),
+    );
+    await waitFor(() => {
+      expect(harness.calls).toContainEqual({
+        tag: 'participant.sync',
+        payload: expect.objectContaining({ stageIndex: 1, stageId: 'finish' }),
+      });
+    });
+  });
+
   it('sends a session address that is not a session token back to the link', async () => {
     const harness = installParticipantHarness({});
 
@@ -516,7 +547,7 @@ const answerStatusAndLogs: typeof globalThis.fetch = async (input, init) => {
   if (new URL(requestUrl(input), window.location.href).pathname === LOG_PATH) {
     return new Response(null, { status: 204 });
   }
-  const request = String(init?.body ?? '').split('\n')[0] ?? '';
+  const request = requestBodyText(init).split('\n')[0] ?? '';
   const { id } = Schema.decodeUnknownSync(
     Schema.fromJsonString(
       Schema.Struct({ id: Schema.Union([Schema.String, Schema.Number]) }),
@@ -561,8 +592,8 @@ describe('participant logs', () => {
     expect(new Headers(init?.headers).get(PARTICIPANT_SESSION_HEADER)).toBe(
       SESSION,
     );
-    expect(String(init?.body)).toContain('Participant connection lost');
-    expect(String(init?.body)).toContain('"stringValue":"Information"');
+    expect(requestBodyText(init)).toContain('Participant connection lost');
+    expect(requestBodyText(init)).toContain('"stringValue":"Information"');
     window.dispatchEvent(new Event('online'));
   });
 
@@ -591,8 +622,8 @@ describe('participant logs', () => {
       timeout: 3000,
     });
     const [[, init]] = logPosts() as [Parameters<typeof globalThis.fetch>];
-    expect(String(init?.body)).toContain('Asset failed to load');
-    expect(String(init?.body)).toContain('"stringValue":"media"');
+    expect(requestBodyText(init)).toContain('Asset failed to load');
+    expect(requestBodyText(init)).toContain('"stringValue":"media"');
   });
 
   it('sends nothing when the session has telemetry off', async () => {
@@ -631,7 +662,7 @@ describe('participant logs', () => {
     expect(new Headers(init?.headers).get(PARTICIPANT_SESSION_HEADER)).toBe(
       SESSION,
     );
-    expect(String(init?.body)).toContain('Interview session failed to load');
-    expect(String(init?.body)).toContain('"stringValue":"session_ended"');
+    expect(requestBodyText(init)).toContain('Interview session failed to load');
+    expect(requestBodyText(init)).toContain('"stringValue":"session_ended"');
   });
 });

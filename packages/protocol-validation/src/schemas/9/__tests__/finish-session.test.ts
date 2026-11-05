@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
-
 import {
   migrateProtocol,
   migrateProtocolWithSessions,
 } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
+  BUILT_IN_WORDING_MISSING,
   FINISH_STAGE_TEXT_MISSING,
 } from '../../../validation/validate-protocol.ts';
 import {
@@ -20,6 +19,11 @@ import {
 import { findFinishStageTextProblems } from '../finish-stage-text.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { finishSessionStage } from '../stages/finish-session.ts';
+import {
+  hasSuppliedWording,
+  SUPPLIED_LANGUAGES,
+  suppliedBaseLanguage,
+} from '../supplied-text.ts';
 import { findTimelineStructureProblems } from '../timeline-structure.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
@@ -302,42 +306,69 @@ describe('v8 to v9 migration', () => {
 });
 
 describe('supplied finish text', () => {
-  it('is supplied in every language the apps ship in, and no other', () => {
-    for (const { locale } of ecosystemLocales) {
-      expect(defaultFinishSessionText(locale)).toBeDefined();
-    }
-    const shipped = ecosystemLocales.map(({ locale }) => locale);
-    for (const locale of Object.keys(DEFAULT_FINISH_SESSION_TEXT)) {
-      expect(shipped).toContain(locale);
-    }
+  it('is supplied in exactly the languages Network Canvas supplies wording in', () => {
+    expect(Object.keys(DEFAULT_FINISH_SESSION_TEXT).toSorted()).toEqual(
+      [...SUPPLIED_LANGUAGES].toSorted(),
+    );
     expect(defaultFinishSessionText('hu')).toBeUndefined();
   });
 
-  it('serves a regional variant from its language', () => {
-    expect(defaultFinishSessionText('en-US')).toBe(
-      DEFAULT_FINISH_SESSION_TEXT.en,
+  it.each([
+    ['en-GB', 'en'],
+    ['en-AU', 'en'],
+    ['es-MX', 'es'],
+    ['es-419', 'es'],
+    ['fr-CA', 'fr'],
+    ['zh-HK', 'zh-Hant'],
+    ['zh-Hans-SG', 'zh-Hans'],
+    ['de-AT', 'de'],
+    ['de-CH', 'de'],
+  ])(
+    'has none for the regional variant %s, which can add %s',
+    (locale, base) => {
+      expect(defaultFinishSessionText(locale)).toBeUndefined();
+      expect(hasSuppliedWording(locale)).toBe(false);
+      expect(suppliedBaseLanguage(locale)).toBe(base);
+    },
+  );
+
+  // Network Canvas's English is American English, its Spanish is Spain's and
+  // so on: the region CLDR takes each language to mean when none is given.
+  it.each([
+    ['en-US', 'en'],
+    ['es-ES', 'es'],
+    ['fr-FR', 'fr'],
+    ['de-DE', 'de'],
+    ['nl-NL', 'nl'],
+    ['pt', 'pt-BR'],
+    ['zh-CN', 'zh-Hans'],
+    ['zh', 'zh-Hans'],
+    ['zh-TW', 'zh-Hant'],
+    ['zh-Hant-TW', 'zh-Hant'],
+  ])('is %s’s own in the language’s default region, %s', (locale, supplied) => {
+    expect(defaultFinishSessionText(locale)).toEqual(
+      DEFAULT_FINISH_SESSION_TEXT[
+        supplied as keyof typeof DEFAULT_FINISH_SESSION_TEXT
+      ],
     );
-    expect(defaultFinishSessionText('en-GB')).toBe(
-      DEFAULT_FINISH_SESSION_TEXT.en,
-    );
-    expect(defaultFinishSessionText('es-MX')).toBe(
-      DEFAULT_FINISH_SESSION_TEXT.es,
-    );
+    expect(hasSuppliedWording(locale)).toBe(true);
+    expect(suppliedBaseLanguage(locale)).toBeUndefined();
   });
 
-  it('serves Chinese by script', () => {
-    expect(defaultFinishSessionText('zh-TW')).toBe(
-      DEFAULT_FINISH_SESSION_TEXT['zh-Hant'],
-    );
-    expect(defaultFinishSessionText('zh-CN')).toBe(
-      DEFAULT_FINISH_SESSION_TEXT['zh-Hans'],
-    );
-  });
-
-  it.each(['pt', 'pt-PT', 'ca', 'gl', 'ja', 'und'])(
+  it.each(['pt-PT', 'ca', 'gl', 'ja', 'und'])(
     'has none for %s, rather than a neighbouring language',
     (locale) => {
       expect(defaultFinishSessionText(locale)).toBeUndefined();
+      expect(hasSuppliedWording(locale)).toBe(false);
+      expect(suppliedBaseLanguage(locale)).toBeUndefined();
+    },
+  );
+
+  it.each(SUPPLIED_LANGUAGES)(
+    'offers %s no other language to start from',
+    (locale) => {
+      expect(hasSuppliedWording(locale)).toBe(true);
+      expect(suppliedBaseLanguage(locale)).toBeUndefined();
     },
   );
 
@@ -345,19 +376,39 @@ describe('supplied finish text', () => {
     expect(
       createDefaultFinishSessionStage({
         id: 'end',
-        localization: { defaultLocale: 'en-US', locales: ['en-US', 'ja'] },
+        localization: { defaultLocale: 'en', locales: ['en', 'ja'] },
       }),
     ).toEqual({
       id: 'end',
       type: 'FinishSession',
       mode: 'confirmation',
-      label: { 'en-US': DEFAULT_FINISH_SESSION_TEXT.en.label },
-      content: { 'en-US': DEFAULT_FINISH_SESSION_TEXT.en.content },
-      finishedContent: {
-        'en-US': DEFAULT_FINISH_SESSION_TEXT.en.finishedContent,
-      },
+      label: { en: DEFAULT_FINISH_SESSION_TEXT.en.label },
+      content: { en: DEFAULT_FINISH_SESSION_TEXT.en.content },
+      finishedContent: { en: DEFAULT_FINISH_SESSION_TEXT.en.finishedContent },
       // Network Canvas words the settings in no Japanese.
-      ...englishSettings('en-US'),
+      ...englishSettings('en'),
+      outcome: 'completed',
+    });
+  });
+
+  it('writes no English into a default language Network Canvas has no wording in', () => {
+    expect(
+      createDefaultFinishSessionStage({
+        id: 'end',
+        localization: { defaultLocale: 'es-MX', locales: ['es-MX', 'es'] },
+      }),
+    ).toEqual({
+      id: 'end',
+      type: 'FinishSession',
+      mode: 'confirmation',
+      label: { es: DEFAULT_FINISH_SESSION_TEXT.es.label },
+      content: { es: DEFAULT_FINISH_SESSION_TEXT.es.content },
+      finishedContent: { es: DEFAULT_FINISH_SESSION_TEXT.es.finishedContent },
+      finishLabel: { es: 'Finalizar' },
+      finishConfirmation: {
+        es: expect.any(String),
+      },
+      finishFailed: { es: expect.any(String) },
       outcome: 'completed',
     });
   });
@@ -409,6 +460,32 @@ describe('supplied finish text', () => {
           fr: DEFAULT_FINISH_SESSION_TEXT.fr.finishedContent,
         },
       });
+    });
+
+    it('leaves a regional variant untranslated, to fall back to its language', () => {
+      const addingMexicanSpanish = {
+        before: english,
+        after: { defaultLocale: 'en', locales: ['en', 'es-MX', 'es'] },
+      };
+      expect(afterChange(stage, addingMexicanSpanish).content).toEqual({
+        ...stage.content,
+        es: DEFAULT_FINISH_SESSION_TEXT.es.content,
+      });
+    });
+
+    it('fills a default language Network Canvas has no text in once a language it has text in becomes the default', () => {
+      const mexican = { defaultLocale: 'es-MX', locales: ['es-MX', 'es'] };
+      const unwritten = createDefaultFinishSessionStage({
+        id: 'end',
+        localization: mexican,
+      });
+      expect(hasDefaultFinishSessionText(unwritten, 'es-MX')).toBe(true);
+      expect(
+        afterChange(unwritten, {
+          before: mexican,
+          after: { defaultLocale: 'es', locales: ['es-MX', 'es'] },
+        }).content,
+      ).toEqual({ es: DEFAULT_FINISH_SESSION_TEXT.es.content });
     });
 
     it('leaves the new language untranslated once the researcher has changed any of the text', () => {
@@ -524,9 +601,9 @@ describe('closing text missing in the default language', () => {
     ],
   });
 
-  // The settings are required, so they fall back to English in the default
-  // language, as every supplied setting does.
-  it('creates the stage with no closing text, rather than text in another language', () => {
+  // Network Canvas writes its wording only in a language it has it in, so
+  // the settings are left for the researcher to write too.
+  it('creates the stage with no text, rather than text in another language', () => {
     expect(
       createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
     ).toEqual({
@@ -536,7 +613,9 @@ describe('closing text missing in the default language', () => {
       label: {},
       content: {},
       finishedContent: {},
-      ...englishSettings('ja'),
+      finishLabel: {},
+      finishConfirmation: {},
+      finishFailed: {},
       outcome: 'completed',
     });
   });
@@ -548,9 +627,15 @@ describe('closing text missing in the default language', () => {
     ).toBe(true);
   });
 
-  it('is reported as missing closing and finished text, not as a schema error', async () => {
+  it('is reported as missing closing and finished text and built-in wording, not as a schema error', async () => {
     const result = await validateProtocol(japaneseProtocol());
     expect(result.success).toBe(false);
+    const builtIn = (setting: string) => ({
+      code: BUILT_IN_WORDING_MISSING,
+      path: ['stages', 0, setting, 'ja'],
+      message:
+        "Network Canvas has no built-in wording in the protocol's default language (ja), so this text must be written in it, or a language Network Canvas has wording in made the default.",
+    });
     expect(result.error?.issues).toEqual([
       {
         code: FINISH_STAGE_TEXT_MISSING,
@@ -564,6 +649,9 @@ describe('closing text missing in the default language', () => {
         message:
           "The stage that ends the interview has no finished text in the protocol's default language (ja).",
       },
+      builtIn('finishLabel'),
+      builtIn('finishConfirmation'),
+      builtIn('finishFailed'),
     ]);
   });
 

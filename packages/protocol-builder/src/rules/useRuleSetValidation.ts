@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { z } from 'zod/mini';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -7,6 +7,7 @@ import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import { useLatest } from '../state/useLatest.ts';
 import {
   ruleSetAllowsEncryptedAttributes,
   type RuleSetVariant,
@@ -53,50 +54,48 @@ export function useRuleSetValidation(
   // validation props, and a function does not survive that serialisation: a
   // rule rebuilt each render would serialise identically every time and pin
   // the first closure — and its first codebook — forever. One entry for the
-  // field's lifetime, reading the current codebook through a ref, keeps the
-  // verdict live without ever re-registering the field.
-  const codebookRef = useRef(codebook);
-  codebookRef.current = codebook;
-  // Read through a ref for the same reason, so that the one registered
-  // validation reads the set this field is for rather than the one it was for
-  // when the field registered.
-  const targetsRef = useRef(targets);
-  targetsRef.current = targets;
-  const allowEncryptedRef = useRef(allowEncryptedAttributes);
-  allowEncryptedRef.current = allowEncryptedAttributes;
-  // And the reader's own formatter, for the same reason: the one registered
-  // validation has to state its verdict in the language the researcher is
-  // reading right now, not the one they were reading when the field
-  // registered.
-  const intlRef = useRef(intl);
-  intlRef.current = intl;
-  const validation = useRef<CustomFieldValidation | undefined>(undefined);
-  validation.current ??= {
-    // The rules are not a shape that can be summarised as an up-front
-    // constraint, and no rule-set field asks for validation hints.
-    hint: '',
-    schema: () =>
-      z.unknown().check(
-        z.superRefine((fieldValue, ctx) => {
-          const message = ruleSetValidationMessage(
-            fieldValue,
-            codebookRef.current,
-            targetsRef.current,
-            {
-              intl: intlRef.current,
-              allowEncryptedAttributes: allowEncryptedRef.current,
-            },
-          );
-          if (message === undefined) return;
-          ctx.addIssue({
-            code: 'custom',
-            input: fieldValue,
-            message,
-            path: [],
-          });
-        }),
-      ),
-  };
+  // field's lifetime, reading the current codebook through a getter, keeps the
+  // verdict live without ever re-registering the field. The set this field is
+  // for and the reader's own formatter are read the same way, so that the one
+  // registered validation judges the set this field is for now and states its
+  // verdict in the language the researcher is reading right now, not the ones
+  // it was registered with.
+  const judgeAgainst = useLatest({
+    codebook,
+    targets,
+    allowEncryptedAttributes,
+    intl,
+  });
+  const validation = useMemo<CustomFieldValidation>(
+    () => ({
+      // The rules are not a shape that can be summarised as an up-front
+      // constraint, and no rule-set field asks for validation hints.
+      hint: '',
+      schema: () =>
+        z.unknown().check(
+          z.superRefine((fieldValue, ctx) => {
+            const current = judgeAgainst();
+            const message = ruleSetValidationMessage(
+              fieldValue,
+              current.codebook,
+              current.targets,
+              {
+                intl: current.intl,
+                allowEncryptedAttributes: current.allowEncryptedAttributes,
+              },
+            );
+            if (message === undefined) return;
+            ctx.addIssue({
+              code: 'custom',
+              input: fieldValue,
+              message,
+              path: [],
+            });
+          }),
+        ),
+    }),
+    [judgeAgainst],
+  );
 
   const message = ruleSetValidationMessage(value, codebook, targets, {
     intl,
@@ -120,5 +119,5 @@ export function useRuleSetValidation(
     void state.validateField(name);
   }, [message, name, storeApi]);
 
-  return validation.current;
+  return validation;
 }

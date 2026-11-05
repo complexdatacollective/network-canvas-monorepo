@@ -303,6 +303,7 @@ const Option = ({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegated: Escape from any of the option's fields finishes editing; the fields keep their own semantics.
     <div
       className={cx(
         'flex flex-col gap-4',

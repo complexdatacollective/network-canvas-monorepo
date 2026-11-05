@@ -5,11 +5,22 @@ import { expect, matrixTest } from '../../fixtures/matrix-test.js';
 import { buildSyntheticPayload } from '../../helpers/synthetic-payload.js';
 
 matrixTest(
-  "built-in language follows the browser's languages offline without changing protocol or responses @smoke",
+  "the interview shows one of the protocol's languages, chosen from the browser's languages, offline and without changing protocol or responses @smoke",
   async ({ page, protocol, context }, testInfo) => {
     const synth = new SyntheticInterview();
-    const authoredTitle = 'Una pregunta escrita por el estudio';
-    const authoredLabel = 'Tu respuesta original';
+    synth.setLocalization({ defaultLocale: 'en-US', locales: ['en-US', 'es'] });
+    const title = {
+      'en-US': 'A question the study wrote',
+      'es': 'Una pregunta escrita por el estudio',
+    };
+    const label = {
+      'en-US': 'Your original answer',
+      'es': 'Tu respuesta original',
+    };
+    const required = {
+      'en-US': 'You must answer this question before continuing.',
+      'es': 'Debes responder a esta pregunta antes de continuar.',
+    };
     const answer = 'Málaga & <respuesta>';
     const field = synth.addEgoVariable({
       name: 'originalAnswer',
@@ -19,12 +30,12 @@ matrixTest(
     });
     const stage = synth.addStage('EgoForm', {
       label: 'Authored screen label',
-      introductionPanel: { title: authoredTitle },
+      introductionPanel: { title },
     });
     stage.addFormField({
       variable: field.id,
       component: 'Text',
-      prompt: authoredLabel,
+      prompt: label,
     });
     const built = buildSyntheticPayload(synth, {
       protocolName: 'Literal protocol name',
@@ -37,33 +48,34 @@ matrixTest(
     await page.goto(`/?interviewId=${interviewId}&step=0`);
     await page.evaluate(() => {
       document.documentElement.lang = 'fr';
-      window.__test.setRequestedLocales(['es-MX']);
+      // French comes first but the protocol has no French, so the interview
+      // takes the next of the browser's languages it has, for all its text.
+      window.__test.setRequestedLocales(['fr-FR', 'es']);
     });
-    // The Shell carries the protocol's language (SyntheticInterview declares
-    // en-US only); the built-in text alone follows the browser.
     const main = page.locator('main[data-theme-interview]');
-    await expect(main).toHaveAttribute('lang', 'en-US');
-    await expect(
-      page.getByRole('heading', { name: authoredTitle }),
-    ).toBeVisible();
-    const input = page.getByRole('textbox', {
-      name: authoredLabel,
-      exact: true,
-    });
+    await expect(main).toHaveAttribute('lang', 'es');
+    await expect(page.getByRole('heading', { name: title.es })).toBeVisible();
+    const input = page.getByRole('textbox', { name: label.es, exact: true });
     await expect(input).toBeVisible();
-    await page.getByRole('button', { name: 'Siguiente paso' }).click();
-    // The required-answer message is interface text the protocol holds, so it
-    // stays in the protocol's language while the controls follow the browser.
-    await expect(
-      page.getByText('You must answer this question before continuing.', {
-        exact: true,
-      }),
-    ).toBeVisible();
+    await page.getByRole('button', { name: 'Next Step' }).click();
+    // The required-answer message is the protocol's interface text, so it is
+    // shown in the same language as the question.
+    await expect(page.getByText(required.es, { exact: true })).toBeVisible();
     await expect(input).toBeFocused();
     await page.evaluate(() => window.__test.setRequestedLocales(['en-GB']));
-    await expect(page.getByRole('button', { name: 'Next step' })).toBeVisible();
-    await input.fill(answer);
-    const handle = await input.elementHandle();
+    await expect(main).toHaveAttribute('lang', 'en-US');
+    await expect(
+      page.getByRole('heading', { name: title['en-US'] }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(required['en-US'], { exact: true }),
+    ).toBeVisible();
+    const englishInput = page.getByRole('textbox', {
+      name: label['en-US'],
+      exact: true,
+    });
+    await englishInput.fill(answer);
+    const handle = await englishInput.elementHandle();
     if (!handle) throw new Error('The authored input is missing');
     const before = await page.evaluate(() => {
       const state = window.__interviewStore?.getState();
@@ -73,10 +85,8 @@ matrixTest(
     });
     await context.setOffline(true);
     await page.evaluate(() => window.__test.setRequestedLocales(['es']));
-    await expect(
-      page.getByRole('button', { name: 'Siguiente paso' }),
-    ).toBeVisible();
-    await expect(main).toHaveAttribute('lang', 'en-US');
+    await expect(main).toHaveAttribute('lang', 'es');
+    await expect(page.getByRole('heading', { name: title.es })).toBeVisible();
     await expect(input).toHaveValue(answer);
     expect(await handle.evaluate((element) => element.isConnected)).toBe(true);
     const after = await page.evaluate(() => {
@@ -88,17 +98,12 @@ matrixTest(
     expect(after).toEqual(before);
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
     await page.screenshot({
-      path: testInfo.outputPath('spanish-built-in-controls.png'),
+      path: testInfo.outputPath('spanish-interview.png'),
       fullPage: true,
     });
-    await page.getByRole('button', { name: 'Siguiente paso' }).click();
-    // The finish stage's heading and its Finish button are the protocol's own
-    // text, in the protocol's language, so neither follows the browser.
+    await page.getByRole('button', { name: 'Next Step' }).click();
     await expect(
-      page.getByRole('heading', { name: 'Finish Interview', exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: 'Finish', exact: true }),
+      page.getByRole('heading', { name: 'Finalizar entrevista', exact: true }),
     ).toBeVisible();
     await expect
       .poll(async () => {
@@ -107,12 +112,13 @@ matrixTest(
         return network.ego[entityAttributesProperty][field.id];
       })
       .toBe(answer);
+    // A browser language that cannot be read leaves the protocol's default.
     await page.evaluate(() =>
       window.__test.setRequestedLocales(['malformed_locale']),
     );
-    await expect(
-      page.getByRole('button', { name: 'Finish', exact: true }),
-    ).toBeVisible();
     await expect(main).toHaveAttribute('lang', 'en-US');
+    await expect(
+      page.getByRole('heading', { name: 'Finish Interview', exact: true }),
+    ).toBeVisible();
   },
 );

@@ -1,5 +1,5 @@
 import { act, waitFor, within } from '@testing-library/react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -39,9 +39,37 @@ const LABEL = 'Attribute that marks a person';
  * late reads it here rather than through a window that has moved on.
  */
 type Capture = {
-  createOption?: (variableName: string) => Promise<CreateOptionOutcome>;
   created: string[];
-  stopWriting?: () => void;
+  /** The slot reports its picker's `onCreateOption` here, after each commit. */
+  offerCreateOption: (
+    createOption:
+      | ((variableName: string) => Promise<CreateOptionOutcome>)
+      | undefined,
+  ) => void;
+  /** The form wrapper reports how to make the form read-only. */
+  offerStopWriting: (stopWriting: () => void) => void;
+  createOption: () =>
+    | ((variableName: string) => Promise<CreateOptionOutcome>)
+    | undefined;
+  stopWriting: () => void;
+};
+
+const makeCapture = (): Capture => {
+  let createOption:
+    | ((variableName: string) => Promise<CreateOptionOutcome>)
+    | undefined;
+  let stopWriting: () => void = () => undefined;
+  return {
+    created: [],
+    offerCreateOption: (offered) => {
+      createOption = offered;
+    },
+    offerStopWriting: (offered) => {
+      stopWriting = offered;
+    },
+    createOption: () => createOption,
+    stopWriting: () => stopWriting(),
+  };
 };
 
 /**
@@ -73,7 +101,9 @@ function BooleanSlot({ capture }: Readonly<{ capture?: Capture }>) {
       storeApi.getState().setFieldValue(SLOT, variableId);
     },
   });
-  if (capture !== undefined) capture.createOption = createProps.onCreateOption;
+  useLayoutEffect(() => {
+    capture?.offerCreateOption(createProps.onCreateOption);
+  });
 
   return (
     <Section title="What marks a person">
@@ -108,7 +138,9 @@ function UntilTheFormIsReadOnly({
 }: Readonly<{ capture: Capture; children: ReactNode }>) {
   const context = useStageEditorForm();
   const [readOnly, setReadOnly] = useState(false);
-  capture.stopWriting = () => setReadOnly(true);
+  useLayoutEffect(() => {
+    capture.offerStopWriting(() => setReadOnly(true));
+  }, [capture]);
   const value = useMemo(() => ({ ...context, readOnly }), [context, readOnly]);
   return (
     <StageEditorFormContext value={value}>{children}</StageEditorFormContext>
@@ -198,7 +230,7 @@ describe('a slot whose attribute a name finishes', () => {
    * (`useCreateVariableEditor`).
    */
   it('does not fill the slot when the form stopped being writable mid-write', async () => {
-    const capture: Capture = { created: [] };
+    const capture = makeCapture();
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
       sections: (
@@ -210,12 +242,12 @@ describe('a slot whose attribute a name finishes', () => {
     await harness.opened();
     const release = holdCodebookWrites(harness);
 
-    const createOption = capture.createOption;
+    const createOption = capture.createOption();
     expect(createOption).toBeDefined();
     const pending = createOption?.('is_participant');
 
     act(() => {
-      capture.stopWriting?.();
+      capture.stopWriting();
     });
 
     release();

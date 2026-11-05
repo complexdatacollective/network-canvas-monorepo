@@ -192,7 +192,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
     return sortedTargets.filter(
       (node) => !considered.has(node[entityPrimaryKeyProperty]),
     );
-  }, [sortedTargets, focalPeople, removeAfterConsideration]);
+  }, [sortedTargets, focalPeople, removeAfterConsideration, currentStep]);
 
   const renderItem = useCallback(
     (node: NcNode, itemProps: ItemProps) => {

@@ -76,9 +76,10 @@ export const useNestedDraftDialog = ({
       return;
     }
 
-    void confirmDiscardNestedDraft(openDialog).then((confirmed) => {
-      if (confirmed) onClose();
-    });
+    const confirmThenClose = async () => {
+      if (await confirmDiscardNestedDraft(openDialog)) onClose();
+    };
+    void confirmThenClose();
   }, [isDirty, isSubmitting, onClose, openDialog]);
 
   return { isSubmitting, requestClose };

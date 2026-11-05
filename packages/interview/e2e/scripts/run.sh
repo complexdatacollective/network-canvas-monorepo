@@ -60,6 +60,10 @@ if [ -z "$PW_VERSION" ]; then
   echo "Error: could not determine @playwright/test version from pnpm-lock.yaml" >&2
   exit 1
 fi
+# The tag is not immutable: Playwright republishes it when the image moves to a
+# newer Node.js, and Node 26 no longer bundles corepack. The container installs
+# corepack under /usr/local (clear of the image's own /usr/bin/yarn) when the
+# image lacks it, so pnpm stays the packageManager pin.
 IMAGE="mcr.microsoft.com/playwright:v${PW_VERSION}-noble"
 
 if ! docker info >/dev/null 2>&1; then
@@ -100,6 +104,7 @@ docker run --rm --init --name "$CONTAINER_NAME" \
   -w /workspace \
   "${IMAGE}" \
   sh -c "set -e \
+    && (command -v corepack >/dev/null 2>&1 || npm install --global --prefix /usr/local corepack@0.36.0) \
     && corepack enable \
     && pnpm install --filter '@codaco/interview...' --frozen-lockfile \
     && pnpm turbo build --filter @codaco/interview \

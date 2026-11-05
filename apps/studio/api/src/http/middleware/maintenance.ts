@@ -14,6 +14,7 @@ import {
 } from '../../platform/maintenance-state.ts';
 import { SchemaStatus } from '../../platform/schema-gate.ts';
 import type { CheckVerdict, HealthCheck } from '../health.ts';
+import { isProbe } from '../probes.ts';
 
 // Triggers are checked flag, lock, schema, starting, and each stops the walk:
 // the order keeps the schema read, which a migration's DDL holds, out of a
@@ -160,17 +161,6 @@ export const maintenanceCheck = (
     }),
   );
 
-/**
- * Matched on the path alone and exactly: exempting one path too many would
- * serve a surface through the window.
- */
-const EXEMPT: ReadonlySet<string> = new Set(['/healthz', '/readyz']);
-
-const pathOf = (url: string): string => {
-  const query = url.indexOf('?');
-  return query === -1 ? url : url.slice(0, query);
-};
-
 const MAINTENANCE_RESPONSE = HttpServerResponse.jsonUnsafe(
   {
     type: MAINTENANCE_PROBLEM_TYPE,
@@ -198,7 +188,7 @@ export const MaintenanceGate: Layer.Layer<
     return (httpEffect) =>
       Effect.gen(function* () {
         const request = yield* HttpServerRequest.HttpServerRequest;
-        if (EXEMPT.has(pathOf(request.url))) return yield* httpEffect;
+        if (isProbe(request.url)) return yield* httpEffect;
         const closure = yield* triggers.closure;
         if (Option.isNone(closure)) return yield* httpEffect;
         return MAINTENANCE_RESPONSE;

@@ -61,10 +61,11 @@ describe('useFormValue', () => {
 
     function ValueProbe() {
       const values = useFormValue(['__proto__'], 'opaque');
+      const own: unknown = Reflect.get(values, '__proto__');
       return (
         <>
           <output>{String(Object.hasOwn(values, '__proto__'))}</output>
-          <output>{String(Reflect.get(values, '__proto__'))}</output>
+          <output>{typeof own === 'string' ? own : 'not a string'}</output>
           <output>
             {String(Object.getPrototypeOf(values) === Object.prototype)}
           </output>

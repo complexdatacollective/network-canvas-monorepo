@@ -469,9 +469,11 @@ export default function EverythingBar({
     if (row.kind !== 'item') {
       const RowIcon = row.kind === 'show-more' ? Ellipsis : TriangleAlert;
       return (
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- keys reach the option through the combobox input's aria-activedescendant; the option itself is never focused.
         <div
           key={row.key}
           id={optionId(row.key)}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an ARIA combobox option; a native <option> cannot hold the icon and label layout.
           role="option"
           aria-selected={highlighted}
           tabIndex={-1}
@@ -612,6 +614,7 @@ export default function EverythingBar({
             <header className="shrink-0 px-4 pt-4 pb-2">
               <InputField
                 ref={inputRef}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- InputField renders an <input>; the role makes it the ARIA combobox for the results list.
                 role="combobox"
                 aria-expanded
                 aria-controls={listId}
@@ -637,61 +640,68 @@ export default function EverythingBar({
             {/* No edge fade: the highlighted row can sit against either
                 edge, and a mask would dim the one thing the list is drawing
                 attention to. */}
+            {/* The scrolling viewport IS the listbox. Focus never leaves the
+                search input — the arrow keys move `aria-activedescendant` and
+                the highlighted row scrolls into view — so the list is not a
+                tab stop of its own, and it is the combobox's popup, which is
+                how an audit knows the region needs no keyboard access of its
+                own. */}
             <ScrollArea
               fade={false}
               tabIndex={-1}
-              viewportClassName="px-2 pb-2"
+              id={listId}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- the combobox's results popup; <select> and <datalist> cannot hold grouped, rich results.
+              role="listbox"
+              aria-label={labels.results}
+              viewportClassName={cx('px-2', hasRows ? 'pb-2' : 'py-0')}
             >
-              <div
-                id={listId}
-                role="listbox"
-                aria-label={labels.results}
-                className="flex flex-col"
-              >
-                {results.sections.map((section) => {
-                  const headingId = `${baseId}-section-${section.id}`;
-                  const heading =
-                    section.id === 'recents'
-                      ? labels.recents
-                      : section.id === 'other'
-                        ? null
-                        : labels.groups[section.id];
+              {results.sections.map((section) => {
+                const headingId = `${baseId}-section-${section.id}`;
+                const heading =
+                  section.id === 'recents'
+                    ? labels.recents
+                    : section.id === 'other'
+                      ? null
+                      : labels.groups[section.id];
 
-                  if (heading === null) {
-                    return (
-                      <Fragment key={section.id}>
-                        {section.rows.map(renderRow)}
-                      </Fragment>
-                    );
-                  }
-
+                if (heading === null) {
                   return (
-                    <div
-                      key={section.id}
-                      role="group"
-                      aria-labelledby={headingId}
-                      className="flex flex-col pb-1"
-                    >
-                      <div
-                        id={headingId}
-                        role="presentation"
-                        className="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-current/60 uppercase"
-                      >
-                        {heading}
-                      </div>
+                    <Fragment key={section.id}>
                       {section.rows.map(renderRow)}
-                    </div>
+                    </Fragment>
                   );
-                })}
-              </div>
-              {!hasRows && !results.isEmptyQuery ? (
-                <p className={messageRowVariants}>{labels.noResults}</p>
-              ) : null}
-            </ScrollArea>
+                }
 
-            <div role="status" aria-live="polite" className="sr-only">
+                return (
+                  <div
+                    key={section.id}
+                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an option group inside the ARIA listbox, where a <fieldset> is not allowed.
+                    role="group"
+                    aria-labelledby={headingId}
+                    className="flex flex-col pb-1"
+                  >
+                    <div
+                      id={headingId}
+                      role="presentation"
+                      className="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-current/60 uppercase"
+                    >
+                      {heading}
+                    </div>
+                    {section.rows.map(renderRow)}
+                  </div>
+                );
+              })}
+            </ScrollArea>
+            {/* Outside the listbox, which may hold only options and groups. */}
+            {!hasRows && !results.isEmptyQuery ? (
+              <p className={cx(messageRowVariants, 'mx-2 mb-2')}>
+                {labels.noResults}
+              </p>
+            ) : null}
+
+            <output aria-live="polite" className="sr-only">
               {announcement}
-            </div>
+            </output>
 
             <footer className="flex shrink-0 flex-wrap items-center gap-4 border-t border-current/10 px-4 py-2 text-xs text-current/60">
               <span className="flex items-center gap-1.5">

@@ -13,6 +13,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../../generateNetwork.ts';
+import { describeValue } from '../describeValue.ts';
 import { SyntheticDataConstraintError } from '../error.ts';
 
 const TODAY = '2026-07-27';
@@ -113,13 +114,6 @@ function composerStage(options: {
     quickAdd: asEntityAttributeReference('name'),
     layoutVariable: asEntityAttributeReference('layout'),
     background: { concentricCircles: 1 },
-    addNamePlaceholder: { 'en-US': 'Type a name' },
-    overtakenEditNotice: { 'en-US': 'Your edit has not been saved.' },
-    tooltips: {
-      addPerson: { 'en-US': 'Add node' },
-      automaticLayout: { 'en-US': 'Automatic layout' },
-      drawConnection: { 'en-US': 'Draw edge' },
-    },
     ...(options.nodeFields !== undefined
       ? { nodeForm: { fields: options.nodeFields.map(referencedField) } }
       : {}),
@@ -338,8 +332,8 @@ describe('NetworkComposer field renderings', () => {
       expect(typeof value).toBe('string');
       // The RelativeDatePicker default span: 180 days back from today, none
       // forward.
-      expect(String(value) >= '2026-01-28').toBe(true);
-      expect(String(value) <= TODAY).toBe(true);
+      expect(describeValue(value) >= '2026-01-28').toBe(true);
+      expect(describeValue(value) <= TODAY).toBe(true);
     }
   });
 
@@ -586,8 +580,8 @@ describe('NetworkComposer field renderings', () => {
     });
 
     for (const value of valuesOf(network.nodes, 'born')) {
-      expect(String(value) >= '2010-01-01').toBe(true);
-      expect(String(value) <= '2020-12-31').toBe(true);
+      expect(describeValue(value) >= '2010-01-01').toBe(true);
+      expect(describeValue(value) <= '2020-12-31').toBe(true);
     }
   });
 

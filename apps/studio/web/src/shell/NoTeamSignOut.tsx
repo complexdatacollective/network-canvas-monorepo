@@ -43,12 +43,7 @@ export default function NoTeamSignOut() {
           {intl.formatMessage(SIGN_OUT_FAILURE_MESSAGE)}
         </Alert>
       )}
-      <Button
-        className="self-start"
-        size="sm"
-        variant="outline"
-        onClick={signOut}
-      >
+      <Button className="self-start" size="sm" onClick={signOut}>
         {intl.formatMessage(messages.signOut)}
       </Button>
     </div>

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { Cause, Context, Effect, Exit, Option, Redacted } from 'effect';
+import { Cause, Context, Effect, Exit, Option, Redacted, Struct } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -213,10 +213,9 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
       listAs({ principal: RESEARCHER }, randomUUID()),
       'ProtocolNotFound',
     );
-    expect({ ...foreign, protocolId: '' }).toEqual({
-      ...missing,
-      protocolId: '',
-    });
+    expect(Struct.omit(foreign, ['protocolId'])).toEqual(
+      Struct.omit(missing, ['protocolId']),
+    );
     expect(Object.keys(foreign).toSorted()).toEqual(
       Object.keys(missing).toSorted(),
     );

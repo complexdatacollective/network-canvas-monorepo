@@ -6,7 +6,7 @@ import {
   Table2,
   Trash2,
 } from 'lucide-react';
-import { type MouseEvent, useId, useMemo, useRef } from 'react';
+import { useId, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
 
@@ -14,7 +14,6 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
@@ -29,8 +28,6 @@ import {
   type LocaleTag,
   sortByLanguageName,
 } from '@codaco/protocol-validation';
-import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
-import { promptDiscardDraft } from '~/hooks/useProtocolNavGuard';
 import {
   getLocalizationCoverage,
   type LocaleCoverage,
@@ -198,7 +195,6 @@ type ProtocolLanguagesProps = {
  */
 export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
   const intl = useAppIntl();
-  const { openDialog } = useDialog();
   const [, setLocation] = useLocation();
   const protocol = useSelector(getProtocol);
   const coverage = useSelector(getLocalizationCoverage);
@@ -229,26 +225,9 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
 
   if (!protocol) return null;
 
-  // The translation table opens over the Languages page, so going to it from
-  // the stage editor leaves the stage, and unsaved changes to it are confirmed
-  // first, as Back confirms them. From the Languages page itself, its entry in
-  // the history says so, and closing it goes back.
-  const tableLinkState = draft === undefined ? openedFromLanguagesState : null;
-  const guardLeavingStage =
-    (href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
-      if (draft === undefined || !readStageDraft().dirty) return;
-      event.preventDefault();
-      void promptDiscardDraft(openDialog, () => setLocation(href), true);
-    };
-  const tableHref = translationTableHref();
-  const openTableOn = (locale: LocaleTag) => {
-    const href = translationTableHref(undefined, locale);
-    if (draft !== undefined && readStageDraft().dirty) {
-      void promptDiscardDraft(openDialog, () => setLocation(href), true);
-      return;
-    }
-    setLocation(href, { state: tableLinkState });
-  };
+  // The translation table belongs to the Languages page, so the stage editor
+  // does not offer it.
+  const showTable = draft === undefined;
 
   return (
     <>
@@ -282,7 +261,14 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
               strandedCount={
                 removalImpacts.get(locale)?.strandedStrings.length ?? 0
               }
-              onEdit={() => openTableOn(locale)}
+              onEdit={
+                showTable
+                  ? () =>
+                      setLocation(translationTableHref(undefined, locale), {
+                        state: openedFromLanguagesState,
+                      })
+                  : undefined
+              }
               onChange={(returnFocus) => changeLanguage(locale, returnFocus)}
               onRemove={(returnFocus) => removeLanguage(locale, returnFocus)}
             />
@@ -293,15 +279,16 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
         {/* Shown with a single language too: the table is where the
             protocol's own words for the interface, such as its error
             message, are edited. */}
-        <Button asChild color="primary" icon={<Table2 aria-hidden />}>
-          <Link
-            href={tableHref}
-            state={tableLinkState}
-            onClick={guardLeavingStage(tableHref)}
-          >
-            {intl.formatMessage(messages.openTable)}
-          </Link>
-        </Button>
+        {showTable && (
+          <Button asChild color="primary" icon={<Table2 aria-hidden />}>
+            <Link
+              href={translationTableHref()}
+              state={openedFromLanguagesState}
+            >
+              {intl.formatMessage(messages.openTable)}
+            </Link>
+          </Button>
+        )}
         <Button
           ref={addButtonRef}
           icon={<Plus aria-hidden />}
@@ -318,7 +305,8 @@ type LanguageRowProps = {
   entry: LocaleCoverage;
   total: number;
   strandedCount: number;
-  onEdit: () => void;
+  /** Opens the translation table on this language, where it is offered. */
+  onEdit?: () => void;
   onChange: (returnFocus: ReturnFocus) => Promise<void>;
   onRemove: (returnFocus: ReturnFocus) => Promise<void>;
 };
@@ -403,24 +391,26 @@ const LanguageRow = ({
           </div>
         )}
       </div>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <IconButton
-              variant="text"
-              color="dynamic"
-              aria-label={intl.formatMessage(messages.editTranslations, {
-                language,
-              })}
-              icon={<Pencil aria-hidden />}
-              onClick={onEdit}
-            />
-          }
-        />
-        <TooltipContent side="left" className="max-w-64">
-          {intl.formatMessage(messages.editTranslations, { language })}
-        </TooltipContent>
-      </Tooltip>
+      {onEdit && (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <IconButton
+                variant="text"
+                color="dynamic"
+                aria-label={intl.formatMessage(messages.editTranslations, {
+                  language,
+                })}
+                icon={<Pencil aria-hidden />}
+                onClick={onEdit}
+              />
+            }
+          />
+          <TooltipContent side="left" className="max-w-64">
+            {intl.formatMessage(messages.editTranslations, { language })}
+          </TooltipContent>
+        </Tooltip>
+      )}
       <Tooltip>
         <TooltipTrigger
           render={

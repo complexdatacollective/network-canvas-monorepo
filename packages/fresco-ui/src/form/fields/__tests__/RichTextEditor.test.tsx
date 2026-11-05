@@ -190,6 +190,10 @@ describe('RichTextEditorField', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add link' }));
     const url = await screen.findByLabelText('Link URL');
+    // The panel is a dialog, named as the button that opened it.
+    expect(screen.getByRole('dialog', { name: 'Add link' })).toContainElement(
+      url,
+    );
     await user.type(url, 'https://example.com');
 
     rerender(field(true));
@@ -441,6 +445,40 @@ describe('RichTextEditorField', () => {
 
     await screen.findByRole('textbox', { name: 'Biography' });
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  // The release test found a blank line under a last line made a heading, and
+  // it was saved with the text.
+  it('adds no empty line under a last line made a heading', async () => {
+    const onChange = vi.fn();
+    render(
+      <RichTextEditorField
+        id="explanation"
+        name="explanation"
+        aria-describedby="explanation-hint"
+        aria-label="Explanation"
+        changeMode="input"
+        value={documentWithText}
+        onChange={onChange}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Explanation' });
+    await userEvent.click(editor);
+    await userEvent.click(screen.getByRole('button', { name: 'Heading 1' }));
+
+    const heading = {
+      type: 'heading',
+      attrs: { level: 1 },
+      content: [{ type: 'text', text: 'Existing content' }],
+    };
+    await waitFor(() => {
+      expect(onChange).toHaveBeenLastCalledWith({
+        type: 'doc',
+        content: [heading],
+      });
+    });
+    expect(editor.querySelectorAll('p')).toHaveLength(0);
   });
 
   // Every form disables its fields while it submits, so an emission here made
@@ -1121,6 +1159,10 @@ describe('undo and redo of values and versions', () => {
 
     await user.click(editor);
     await user.click(screen.getByRole('button', { name: 'Insert a value' }));
+    // The menu is a dialog, named as the button that opened it.
+    expect(
+      await screen.findByRole('dialog', { name: 'Insert a value' }),
+    ).toBeInTheDocument();
     await user.click(await screen.findByRole('option', { name: /Name/ }));
     await waitFor(() =>
       expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
@@ -2061,7 +2103,7 @@ describe('a RichTextEditorField with tokens', () => {
         name="item"
         aria-describedby="item-hint"
         aria-label="List item"
-        compact
+        singleLine
         changeMode="input"
         toolbarOptions={{ bold: false, italic: false, history: false }}
         tokens={TOKENS}
@@ -2234,7 +2276,7 @@ describe('a RichTextEditorField with tokens', () => {
       'name': 'item',
       'aria-describedby': 'item-hint',
       'aria-label': 'List item',
-      'compact': true,
+      'singleLine': true,
       'changeMode': 'input',
       'value': lineOf({ type: 'text', text: 'Add ' }, token('name')),
       onChange,

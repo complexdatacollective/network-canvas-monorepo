@@ -15,6 +15,7 @@ import {
   ToolbarSeparator,
   type ToolbarButtonProps,
 } from '@codaco/fresco-ui/SegmentedToolbar';
+import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
 import type { StageProblemsStore } from '@codaco/protocol-builder/stage-editor-contract';
 import { useIssuesToolbarControl } from '~/components/Issues';
 import { useStageDraft } from '~/components/StageEditor/stageDraftBeacon';
@@ -182,6 +183,9 @@ export const StageEditorToolbar = ({
   const [previewOptionsOpen, setPreviewOptionsOpen] = useState(false);
   const isSubmitting = useFormStore((state) => state.isSubmitting);
   const hasUnsavedChanges = useStageDraft((beacon) => beacon.dirty);
+  // A new stage is always something to save — saving it is what adds it —
+  // even while it holds nothing the researcher would lose by cancelling.
+  const isNewStage = useStageEditorForm().creation !== undefined;
   // A tab demoted while it was in the stage editor keeps that editor (see
   // ProtocolRouteGuard) so the draft is not thrown away, but it must not be
   // able to commit: this is the one action that claims to make work durable,
@@ -205,7 +209,7 @@ export const StageEditorToolbar = ({
           <ToolbarButton icon={<X />} onClick={onCancel}>
             {intl.formatMessage(commonMessages.cancel)}
           </ToolbarButton>
-          {hasUnsavedChanges ? (
+          {hasUnsavedChanges || isNewStage ? (
             <FinishedEditingControl
               key="finished-editing"
               formId={formId}
@@ -255,6 +259,7 @@ export const StageEditorToolbar = ({
       canCommit,
       formId,
       hasUnsavedChanges,
+      isNewStage,
       isOpeningPreview,
       isStageInvalid,
       isSubmitting,

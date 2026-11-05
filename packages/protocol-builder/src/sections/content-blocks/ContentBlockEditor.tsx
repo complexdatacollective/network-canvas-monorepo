@@ -260,11 +260,11 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
       {/* Mounted for the whole dialog rather than beside its first message: a
           live region that appears at the same moment as its text is not
           announced. */}
-      <span role="status" aria-live="polite" className="sr-only">
+      <output aria-live="polite" className="sr-only">
         {announced === undefined
           ? ''
           : contentKindAnnouncement(announced, intl)}
-      </span>
+      </output>
       <Field<typeof RadioGroupField>
         name="type"
         component={RadioGroupField}

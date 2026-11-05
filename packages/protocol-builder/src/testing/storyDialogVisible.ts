@@ -47,8 +47,8 @@ export const storyDialogVisible = async (
 ): Promise<void> => {
   await awaitPassiveEffects();
   await nextFrame();
-  await waitFor(() => {
-    expect(drawnOpacity(dialog)).toBe(1);
-    expect(dialog.getAnimations({ subtree: true })).toHaveLength(0);
+  await waitFor(async () => {
+    await expect(drawnOpacity(dialog)).toBe(1);
+    await expect(dialog.getAnimations({ subtree: true })).toHaveLength(0);
   });
 };

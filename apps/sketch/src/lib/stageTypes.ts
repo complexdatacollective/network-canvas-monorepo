@@ -1,38 +1,59 @@
-// How each protocol stage type is named and coloured on the Ready and
-// Compare screens. Class names are written out in full so Tailwind sees them.
+// How each protocol stage type is named and drawn on the Ready and Compare
+// screens. The colours and icons are the shared stage-type map from fresco-ui;
+// the names are Sketch's own plain-language ones.
+import type { CSSProperties } from 'react';
 
-type StageTypeStyle = { label: string; swatch: string };
+import {
+  isStageType,
+  stageTypeColorStyle,
+  stageTypeIcon,
+} from '@codaco/fresco-ui/stages/stageTypes';
+import type { StageType } from '@codaco/protocol-validation';
 
-const INFO = 'bg-cerulean text-on-light';
-const EGO = 'bg-slate-blue text-white';
-const NAMES = 'bg-neon-coral text-white';
-const ROSTER = 'bg-sea-green text-on-light';
-const FORM = 'bg-mustard text-on-light';
-const BIN = 'bg-tangerine text-on-light';
-const MAP = 'bg-purple-pizazz text-white';
-const CENSUS = 'bg-barbie-pink text-white';
-
-const STAGE_TYPES: Record<string, StageTypeStyle> = {
-  Information: { label: 'Information', swatch: INFO },
-  EgoForm: { label: 'Ego form', swatch: EGO },
-  NameGenerator: { label: 'Name generator, form', swatch: NAMES },
-  NameGeneratorQuickAdd: { label: 'Name generator', swatch: NAMES },
-  NameGeneratorRoster: { label: 'Name generator, roster', swatch: ROSTER },
-  AlterForm: { label: 'Per-alter form', swatch: FORM },
-  AlterEdgeForm: { label: 'Per-tie form', swatch: FORM },
-  OrdinalBin: { label: 'Ordinal bin', swatch: BIN },
-  CategoricalBin: { label: 'Categorical bin', swatch: BIN },
-  Sociogram: { label: 'Sociogram', swatch: MAP },
-  Narrative: { label: 'Narrative', swatch: MAP },
-  NetworkComposer: { label: 'Network composer', swatch: MAP },
-  DyadCensus: { label: 'Dyad census', swatch: CENSUS },
-  OneToManyDyadCensus: { label: 'One-to-many dyad census', swatch: CENSUS },
-  TieStrengthCensus: { label: 'Tie strength census', swatch: CENSUS },
-  Geospatial: { label: 'Map', swatch: ROSTER },
+type StageTypeStyle = {
+  label: string;
+  /** The stage type's background and foreground, as an inline style. */
+  swatch: CSSProperties;
+  /** The stage type's icon, or null for a type this build does not know. */
+  icon: ReturnType<typeof stageTypeIcon> | null;
 };
 
-export const stageTypeStyle = (type: string): StageTypeStyle =>
-  STAGE_TYPES[type] ?? {
-    label: type.replace(/([a-z])([A-Z])/g, '$1 $2'),
-    swatch: EGO,
+const LABELS: Partial<Record<StageType, string>> = {
+  Information: 'Information',
+  EgoForm: 'Ego form',
+  NameGenerator: 'Name generator, form',
+  NameGeneratorQuickAdd: 'Name generator',
+  NameGeneratorRoster: 'Name generator, roster',
+  AlterForm: 'Per-alter form',
+  AlterEdgeForm: 'Per-tie form',
+  OrdinalBin: 'Ordinal bin',
+  CategoricalBin: 'Categorical bin',
+  Sociogram: 'Sociogram',
+  Narrative: 'Narrative',
+  NetworkComposer: 'Network composer',
+  DyadCensus: 'Dyad census',
+  OneToManyDyadCensus: 'One-to-many dyad census',
+  TieStrengthCensus: 'Tie strength census',
+  Geospatial: 'Map',
+};
+
+const splitWords = (type: string) => type.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+// A stage type a newer schema added: drawn in the brand's neutral charcoal so
+// it still reads as a stage, without claiming a group's colour.
+const UNKNOWN_SWATCH: CSSProperties = {
+  backgroundColor: 'oklch(var(--charcoal))',
+  color: 'oklch(var(--white))',
+};
+
+export const stageTypeStyle = (type: string): StageTypeStyle => {
+  if (!isStageType(type)) {
+    return { label: splitWords(type), swatch: UNKNOWN_SWATCH, icon: null };
+  }
+  const { color, contrast } = stageTypeColorStyle(type);
+  return {
+    label: LABELS[type] ?? splitWords(type),
+    swatch: { backgroundColor: color, color: contrast },
+    icon: stageTypeIcon(type),
   };
+};

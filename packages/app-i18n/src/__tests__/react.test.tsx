@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, within } from '@testing-library/react';
-import { Suspense, useEffect } from 'react';
+import { type ReactNode, Suspense, useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { commonMessages } from '../common.ts';
@@ -61,6 +61,10 @@ function Count(props: { count: number }) {
   const intl = useAppIntl();
   return <p>{intl.formatMessage(messages.count, { count: props.count })}</p>;
 }
+
+// Rich-text chunk formatter, at module scope so it keeps one identity across
+// renders.
+const renderGuideLink = (chunks: ReactNode[]) => <a href="/guide">{chunks}</a>;
 
 describe('useAppIntl without a provider', () => {
   it('renders English defaults, plurals included', () => {
@@ -329,11 +333,7 @@ describe('AppI18nProvider', () => {
     function Guide() {
       const intl = useAppIntl();
       return (
-        <p>
-          {intl.formatMessage(messages.guide, {
-            link: (chunks) => <a href="/guide">{chunks}</a>,
-          })}
-        </p>
+        <p>{intl.formatMessage(messages.guide, { link: renderGuideLink })}</p>
       );
     }
     const view = render(

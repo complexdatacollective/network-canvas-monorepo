@@ -1,4 +1,10 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import {
+  type BoundFunctions,
+  type queries,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -46,7 +52,7 @@ const englishOf = (value: unknown) => translationText(value, 'en-US');
  * top of a row editor, so "the dialog" is ambiguous while its window is up:
  * the window is the one that is not this element.
  */
-type OpenDialog = ReturnType<typeof within> & { element: HTMLElement };
+type OpenDialog = BoundFunctions<typeof queries> & { element: HTMLElement };
 
 /** The two names the attribute picker's trigger goes by, before and after. */
 const isPickerTrigger = (name: string) =>

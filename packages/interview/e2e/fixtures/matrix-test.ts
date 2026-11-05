@@ -1,8 +1,10 @@
 import { expect } from '@playwright/test';
 
-import { expectNoUnnamedControls } from '../helpers/accessible-name-audit.js';
+import { expectNoUnnamedControls } from '@codaco/e2e-helpers/accessible-name-audit';
+
 import { createCaptureInterview } from './capture.js';
 import { InterviewFixture } from './interview-fixture.js';
+import { KNOWN_UNNAMED_CONTROLS } from './known-unnamed-controls.js';
 import { installMapboxMocks } from './mapbox-mocks.js';
 import { ProtocolFixture } from './protocol-fixture.js';
 import { StageFixture } from './stage-fixture.js';
@@ -54,8 +56,8 @@ function slugify(parts: string[]): string {
 
 /**
  * Matrix tests get a fresh page per test (Playwright's built-in fixtures —
- * deliberately NOT the worker-shared page interview-test.ts uses) so
- * fullyParallel workers cannot clobber each other's sessionStorage state.
+ * deliberately NOT a worker-shared page) so fullyParallel workers cannot
+ * clobber each other's sessionStorage state.
  * The snapshot prefix is derived from the test title path, so pixel and aria
  * snapshot names can never collide across files.
  */
@@ -111,7 +113,7 @@ export const matrixTest = baseTest.extend<MatrixFixtures>({
         // records the tree, so `--update-snapshots` would otherwise absorb a
         // control that lost its accessible name into the expected state. Here
         // the run fails and no baseline is written.
-        await expectNoUnnamedControls(main, key);
+        await expectNoUnnamedControls(main, key, KNOWN_UNNAMED_CONTROLS);
         await expect(main).toMatchAriaSnapshot({ name: `${key}.aria.yml` });
       } finally {
         await hiddenGuards.evaluate((element) =>

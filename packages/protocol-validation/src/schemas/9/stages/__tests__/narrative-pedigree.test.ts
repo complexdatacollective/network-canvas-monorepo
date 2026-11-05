@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
@@ -391,13 +391,15 @@ describe('NarrativePedigree protocol-level cross-references', () => {
   // laptop and invalid on another's.
   const withTurkishHostLocale = (run: () => void) => {
     const original = String.prototype.toLocaleLowerCase;
-    String.prototype.toLocaleLowerCase = function (this: string) {
-      return original.call(this, 'tr');
-    };
+    const patched = vi
+      .spyOn(String.prototype, 'toLocaleLowerCase')
+      .mockImplementation(function (this: string) {
+        return original.call(this, 'tr');
+      });
     try {
       run();
     } finally {
-      String.prototype.toLocaleLowerCase = original;
+      patched.mockRestore();
     }
   };
 

@@ -13,6 +13,14 @@ export const requestUrl = (
   return input instanceof URL ? input.href : input.url;
 };
 
+// The text of a request body a test double was handed.
+export const requestBodyText = (init: RequestInit | undefined): string => {
+  const body = init?.body;
+  if (typeof body === 'string') return body;
+  if (ArrayBuffer.isView(body)) return new TextDecoder().decode(body);
+  return '';
+};
+
 const notAnswered: typeof globalThis.fetch = (input) =>
   Promise.reject(
     new Error(

@@ -209,7 +209,7 @@ export default function Spinner({
     // Skip if playOnMount will handle the initial animation and mode is 'once'
     if (playOnMount && animationMode === 'once') return undefined;
 
-    let isMounted = true;
+    const unmounted = new AbortController();
 
     const shouldAnimate =
       animationMode === 'infinite' ||
@@ -217,7 +217,7 @@ export default function Spinner({
       (isControlled && isAnimating);
 
     const loop = async () => {
-      while (isMounted && shouldAnimate) {
+      while (!unmounted.signal.aborted) {
         await runCycle();
         if (!shouldLoop) break;
       }
@@ -228,7 +228,7 @@ export default function Spinner({
     }
 
     return () => {
-      isMounted = false;
+      unmounted.abort();
       containerControls.stop();
       halfCircleControls.forEach((ctrl) => {
         ctrl.stop();

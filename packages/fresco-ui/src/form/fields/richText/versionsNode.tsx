@@ -390,13 +390,16 @@ function VersionsView({
     <NodeViewWrapper
       ref={wrapperRef}
       as="span"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- the element sits inline in a line of text, where a <fieldset> cannot.
       role="group"
       aria-label={attributes.label}
       data-versions-element=""
       data-expanded={expanded || undefined}
       className="mx-0.5"
     >
+      {/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus, jsx-a11y/click-events-have-key-events -- an atom in the editor's line: the caret reaches it as a node selection and the editor's Enter and Space shortcuts open it (openOrEnter), so it is not a tab stop of its own. */}
       <span
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- see above: a <button> would be a tab stop inside the editable line.
         role="button"
         aria-expanded={expanded}
         aria-controls={versionsId}

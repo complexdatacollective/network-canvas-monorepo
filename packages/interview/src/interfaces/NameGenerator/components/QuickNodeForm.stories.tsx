@@ -123,7 +123,7 @@ const meta: Meta<typeof QuickNodeForm> = {
     layout: 'centered',
   },
   args: {
-    hint: { en: 'Press Enter when you are finished.' },
+    placeholder: { en: 'Type a name, then press Enter' },
   },
   argTypes: {
     disabled: {

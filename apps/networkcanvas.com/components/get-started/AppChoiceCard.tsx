@@ -81,7 +81,6 @@ function PlatformActions({ app }: { app: ClassicApp }) {
             <Button
               key={platform.id}
               asChild
-              variant="outline"
               color="dynamic"
               className="bg-surface/70 hover:bg-surface rounded-full"
             >

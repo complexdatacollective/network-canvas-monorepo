@@ -1,7 +1,8 @@
 import { assert, describe, it } from '@effect/vitest';
 import { Deferred, Effect, Fiber, MutableRef, Option } from 'effect';
 
-import { windowedReading } from '../maintenance-state.ts';
+import { observe } from '../../__tests__/support/observe.ts';
+import { cachedReading, windowedReading } from '../maintenance-state.ts';
 
 describe('a windowed reading', () => {
   it.effect(
@@ -39,4 +40,47 @@ describe('a windowed reading', () => {
         assert.strictEqual(MutableRef.get(reads), 1);
       }),
   );
+});
+
+describe('a reading polled every second', () => {
+  const read = Effect.as(Effect.withSpan(Effect.void, 'db.read'), 'fresh');
+
+  it.effect('takes a cached reading without sampling its read', () => {
+    const observed = observe();
+    return Effect.gen(function* () {
+      const reading = yield* cachedReading({
+        name: 'the test value',
+        read,
+        initial: 'initial',
+      });
+      assert.strictEqual(yield* reading, 'fresh');
+      const names = observed.spans.map((span) => span.name);
+      assert.includeMembers(names, ['db.read']);
+      assert.deepStrictEqual(
+        observed.spans.filter((span) => span.sampled),
+        [],
+      );
+    }).pipe(Effect.provide(observed.layer));
+  });
+
+  it.effect('takes a windowed reading without sampling its read', () => {
+    const observed = observe();
+    return Effect.gen(function* () {
+      const reading = yield* windowedReading({
+        name: 'the test value',
+        read,
+        initial: 'initial',
+        window: Effect.succeed(1),
+      });
+      assert.deepStrictEqual(yield* reading, Option.some('fresh'));
+      assert.includeMembers(
+        observed.spans.map((span) => span.name),
+        ['db.read'],
+      );
+      assert.deepStrictEqual(
+        observed.spans.filter((span) => span.sampled),
+        [],
+      );
+    }).pipe(Effect.provide(observed.layer));
+  });
 });

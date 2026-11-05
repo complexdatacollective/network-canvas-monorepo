@@ -116,6 +116,81 @@ export const interfaceMessages = defineMessages({
     description:
       'Placeholder in the network-composer name field; pressing Enter adds the named item.',
   },
+  quickAddHint: {
+    id: 'interview.interfaces.quickAddHint',
+    defaultMessage: 'Press Enter when you are finished.',
+    description:
+      'Line shown under the quick-add name field after it has been open a while, telling the participant how to add what they typed.',
+  },
+  overtakenEditNotice: {
+    id: 'interview.interfaces.overtakenEditNotice',
+    defaultMessage:
+      'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
+    description:
+      'Warning in the network-composer side panel when an undo or redo changed an answer the interviewer was in the middle of editing.',
+  },
+  composerGroups: {
+    id: 'interview.interfaces.composerGroups',
+    defaultMessage: 'Groups',
+    description:
+      'Heading over the groups in the network-composer side panel, and the name of the tool that puts nodes in groups.',
+  },
+  composerAddNode: {
+    id: 'interview.interfaces.composerAddNode',
+    defaultMessage: 'Add node',
+    description:
+      'Accessible name and tooltip of the network-composer tool that adds a node.',
+  },
+  composerAutomaticLayout: {
+    id: 'interview.interfaces.composerAutomaticLayout',
+    defaultMessage: 'Automatic layout',
+    description:
+      'Accessible name and tooltip of the network-composer toggle that lays the nodes out automatically.',
+  },
+  composerDrawEdge: {
+    id: 'interview.interfaces.composerDrawEdge',
+    defaultMessage: 'Draw edge',
+    description:
+      'Accessible name and tooltip of the network-composer tool that draws an edge between two nodes.',
+  },
+  toggleDrawing: {
+    id: 'interview.interfaces.toggleDrawing',
+    defaultMessage: 'Toggle drawing',
+    description:
+      'Accessible name and tooltip of the Narrative button that turns drawing on the canvas on and off.',
+  },
+  toggleFreezing: {
+    id: 'interview.interfaces.toggleFreezing',
+    defaultMessage: 'Toggle freezing annotations',
+    description:
+      'Accessible name and tooltip of the Narrative button that freezes what has been drawn so it stays put, and unfreezes it.',
+  },
+  resetAnnotations: {
+    id: 'interview.interfaces.resetAnnotations',
+    defaultMessage: 'Reset annotations',
+    description:
+      'Accessible name and tooltip of the Narrative button that clears everything drawn on the canvas.',
+  },
+  mapOffline: {
+    id: 'interview.interfaces.mapOffline',
+    defaultMessage:
+      'You are offline — the map will not load until you reconnect.',
+    description:
+      'Notice over a Geospatial map while the device is offline and the map cannot load.',
+  },
+  mapUnavailable: {
+    id: 'interview.interfaces.mapUnavailable',
+    defaultMessage:
+      'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+    description:
+      'Explanation shown when a Geospatial map cannot be drawn at all.',
+  },
+  searchFailed: {
+    id: 'interview.interfaces.searchFailed',
+    defaultMessage: 'Search could not be completed. Try again in a moment.',
+    description:
+      'Notice under the Geospatial map search when a search could not run.',
+  },
   resizePanel: {
     id: 'interview.interfaces.resizePanel',
     defaultMessage: 'Resize panel',

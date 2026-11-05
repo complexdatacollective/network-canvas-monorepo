@@ -527,7 +527,7 @@ test('the web SBOM marks what its bundle carries as runtime, and the rest of its
 
 test('each image attests a reference to its SBOM, small enough for the public transparency log', () => {
   const sbom = JSON.stringify({
-    components: Array(50_000).fill({ name: 'x' }),
+    components: Array.from({ length: 50_000 }, () => ({ name: 'x' })),
   });
   const reference = sbomReference({
     repository: 'complexdatacollective/network-canvas-monorepo',

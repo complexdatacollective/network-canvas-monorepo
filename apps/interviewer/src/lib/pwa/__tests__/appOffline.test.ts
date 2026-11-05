@@ -18,7 +18,6 @@ const stubRegistration = (
 ) => {
   const getRegistration = vi.fn(() => Promise.resolve(registration));
   vi.stubGlobal('navigator', {
-    ...navigator,
     serviceWorker: { getRegistration },
   });
   return getRegistration;

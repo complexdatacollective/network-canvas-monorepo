@@ -239,6 +239,7 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
 				    pattern and exposes the same aria-value* properties to AT. */}
         <button
           type="button"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- the handle is dragged between the panels; an <input type="range"> cannot take that pointer drag or be styled as the divider.
           role="slider"
           aria-orientation={orientation}
           aria-valuenow={Math.round(activeBasis)}

@@ -87,6 +87,10 @@ const nodesOf = (
         });
         break;
       }
+      case TYPE.number:
+      case TYPE.date:
+      case TYPE.time:
+      case TYPE.tag:
       default:
         // Number, date and time formats, and tags, which protocol text never
         // parses (tags stay text).

@@ -81,7 +81,7 @@ const messages = defineMessages({
     defaultMessage: 'Passkey',
     description: 'Researcher-facing SignUpForm: Passkey',
   },
-  useBiometricsOrYourDeviceSecurityTo: {
+  passkeyDescription: {
     id: 'fresco.SignUpForm.useBiometricsOrYourDeviceSecurityTo',
     defaultMessage:
       'Use biometrics or your device security to sign in. No password to remember — the most secure option.',
@@ -261,9 +261,7 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
             {
               label: intl.formatMessage(messages.passkey),
               value: 'passkey',
-              description: intl.formatMessage(
-                messages.useBiometricsOrYourDeviceSecurityTo,
-              ),
+              description: intl.formatMessage(messages.passkeyDescription),
             },
             {
               label: intl.formatMessage(messages.password),

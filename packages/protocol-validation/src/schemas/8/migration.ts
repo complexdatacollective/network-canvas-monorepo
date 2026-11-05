@@ -8,6 +8,11 @@ import {
   OrdinalColorSequence,
 } from '../9/color-reference.ts';
 import { duplicateFormFieldIndices } from '../9/common/forms.ts';
+import {
+  DATE_RESOLUTION,
+  isIsoDate,
+  isValidDateAtResolution,
+} from '../9/variables/date-resolution.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from '../9/variables/types.ts';
 import {
   type ContradictionClass,
@@ -17,9 +22,6 @@ import {
 } from '../9/variables/validation-contradictions.ts';
 import { VARIABLE_REFERENCE_VALIDATIONS } from '../9/variables/validation.ts';
 import {
-  DATE_RESOLUTION,
-  isIsoDate,
-  isValidDateAtResolution,
   VARIABLE_TYPE_COMPONENTS,
   VARIABLE_TYPE_VALIDATIONS,
 } from '../9/variables/variable.ts';

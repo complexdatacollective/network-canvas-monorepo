@@ -315,15 +315,15 @@ const Fallback = ({
 const ProblemNote = ({ id, children }: { id: string; children: string }) => {
   const intl = useAppIntl();
   return (
-    <p
+    <output
       id={id}
-      role="status"
+      aria-live="polite"
       lang={intl.locale}
       dir="auto"
-      className="text-destructive-ink px-3 pb-2 text-sm"
+      className="text-destructive-ink block px-3 pb-2 text-sm"
     >
       {children}
-    </p>
+    </output>
   );
 };
 
@@ -466,7 +466,7 @@ const isEditableCaretAt = (editable: HTMLElement, edge: 'start' | 'end') => {
 const CELL_EDITOR_CLASSES = cx(
   'min-w-0 overflow-visible rounded-none border-0 bg-transparent text-current',
   '[&>:first-child]:min-h-0 [&>:first-child]:px-3 [&>:first-child]:py-2',
-  '[&_.tiptap.ProseMirror]:min-h-0',
+  '[&_.tiptap.ProseMirror]:min-h-0 [&>:first-child>.tiptap]:py-0',
   '[&_.tiptap_:is(h1,h2,h3,h4)]:mt-0 [&_.tiptap_:is(h1,h2,h3,h4)]:mb-2 [&_.tiptap_:is(h1,h2,h3,h4)]:font-[inherit] [&_.tiptap_:is(h1,h2,h3,h4)]:text-base [&_.tiptap_:is(h1,h2,h3,h4)]:font-semibold',
   '[&_[role=toolbar]]:sticky [&_[role=toolbar]]:top-(--translation-table-sticky-top) [&_[role=toolbar]]:z-1 [&_[role=toolbar]]:mx-0.5 [&_[role=toolbar]]:mt-0.5 [&_[role=toolbar]]:w-auto [&_[role=toolbar]]:min-w-0 [&_[role=toolbar]]:flex-wrap [&_[role=toolbar]]:gap-0.5 [&_[role=toolbar]]:px-1 [&_[role=toolbar]]:py-1',
   '[&_[role=toolbar]_[role=separator]]:mx-1',
@@ -617,6 +617,7 @@ const CellOpener = ({
     type="button"
     aria-labelledby={labelledBy}
     aria-describedby={describedBy}
+    // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- the closed cell's opener stands in for the editor it opens; screen readers still say "invalid entry" for it, which the description alone does not.
     aria-invalid={invalid}
     data-row={rowIndex}
     data-col={colIndex}
@@ -964,7 +965,6 @@ const DynamicCell = ({
               readOnly={false}
               markdown={markdown}
               singleLine={!markdown || singleLine}
-              compact={false}
               message={message}
               onMessageChange={(next) => draft.change(next ?? '')}
               original={original}

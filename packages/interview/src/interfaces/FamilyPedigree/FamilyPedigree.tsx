@@ -221,7 +221,7 @@ type PanelState = {
   /** Opened from the list of what is still needed to add the person's
    * siblings or children: answering that they have some goes on to adding
    * one. */
-  then?: 'sibling' | 'child';
+  addAfterwards?: 'sibling' | 'child';
 } | null;
 
 /** How long the mouse rests on someone before their add menu opens. */
@@ -1604,7 +1604,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
   };
 
-  const openEdit = async (personId: string, then?: 'sibling' | 'child') => {
+  const openEdit = async (
+    personId: string,
+    addAfterwards?: 'sibling' | 'child',
+  ) => {
     if (detailsLocked) {
       askForPassphrase();
       return;
@@ -1626,6 +1629,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           node,
           formFields.map((field) => field.variable),
           personVariables,
+          // oxlint-disable-next-line typescript/unbound-method -- the scope registry is keyed by this exact function, so it cannot be wrapped; Redux's getState does not read `this`
           getDecryptionScope(store.getState),
         )
       : undefined;
@@ -1652,7 +1656,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         person,
         unavailable,
       },
-      ...(then ? { then } : {}),
+      ...(addAfterwards ? { addAfterwards } : {}),
     });
   };
 
@@ -2341,13 +2345,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       // Said to have the siblings or children the list asked for, the
       // participant goes on to adding one, to the person as the family now
       // stores them, with the answers just saved.
-      const then = panel.then;
+      const addAfterwards = panel.addAfterwards;
       if (
-        then &&
-        answers[then === 'sibling' ? 'siblings' : 'children'] === 'yes'
+        addAfterwards &&
+        answers[addAfterwards === 'sibling' ? 'siblings' : 'children'] === 'yes'
       ) {
         const person = latestFamily().byId.get(mode.person.id);
-        if (person) openAddPanel(then, person);
+        if (person) openAddPanel(addAfterwards, person);
       }
       return { success: true };
     }
@@ -2851,6 +2855,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // other stages have; the prompt floats over its top, on a fade so people
     // passing beneath it stay legible.
     <PedigreeWordsProvider value={words}>
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegated: hover, menu dismissal and the undo/redo shortcut catch events from the people and controls inside, which keep their own semantics. */}
       <div
         className="relative flex h-full w-full flex-col"
         onPointerDown={handleStagePointerDown}
@@ -2996,6 +3001,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               }}
             />
           </PedigreeViewport>
+          {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegated: + and − zoom while focus is on any of the toolbar's own buttons. */}
           <div
             ref={toolbarAreaRef}
             className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
@@ -3027,10 +3033,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 data-testid="pedigree-connect-hint"
               >
                 {showPiped(connectNotice ?? undefined) ??
-                  text(
+                  intl.formatMessage(
                     tool === 'connect'
-                      ? wording.connectHint
-                      : wording.disconnectHint,
+                      ? messages.connectHint
+                      : messages.disconnectHint,
                   )}
               </p>
             )}
@@ -3077,10 +3083,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   >
                     <ToolbarIconButton
                       value="pointer"
-                      aria-label={text(wording.pointerTool)}
+                      aria-label={intl.formatMessage(messages.pointerTool)}
                       tooltip={
                         <ToolTip
-                          name={text(wording.pointerTool)}
+                          name={intl.formatMessage(messages.pointerTool)}
                           description={intl.formatMessage(
                             messages.pointerToolDescription,
                           )}
@@ -3091,10 +3097,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     />
                     <ToolbarIconButton
                       value="connect"
-                      aria-label={text(wording.connectTool)}
+                      aria-label={intl.formatMessage(messages.connectTool)}
                       tooltip={
                         <ToolTip
-                          name={text(wording.connectTool)}
+                          name={intl.formatMessage(messages.connectTool)}
                           description={intl.formatMessage(
                             messages.connectToolDescription,
                           )}
@@ -3105,10 +3111,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     />
                     <ToolbarIconButton
                       value="disconnect"
-                      aria-label={text(wording.disconnectTool)}
+                      aria-label={intl.formatMessage(messages.disconnectTool)}
                       tooltip={
                         <ToolTip
-                          name={text(wording.disconnectTool)}
+                          name={intl.formatMessage(messages.disconnectTool)}
                           description={intl.formatMessage(
                             messages.disconnectToolDescription,
                           )}

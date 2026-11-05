@@ -106,9 +106,7 @@ const DrawerHost = ({
         Study overview
       </h1>
       <Button onClick={() => setOpen(true)}>{OPEN_LABEL}</Button>
-      <Button variant="outline" color="secondary">
-        Return to start screen
-      </Button>
+      <Button color="secondary">Return to start screen</Button>
       <p className="text-text/70 text-sm">
         Committed location: <code>{location}</code>
       </p>

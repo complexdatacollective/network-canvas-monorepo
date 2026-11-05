@@ -1,4 +1,10 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import {
+  type BoundFunctions,
+  type queries,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -50,7 +56,7 @@ type Harness = ReturnType<typeof renderStageEditor>;
  * top of this one, so "the dialog" is ambiguous while its window is up: the
  * window is the one that is not this element.
  */
-type OpenDialog = ReturnType<typeof within> & { element: HTMLElement };
+type OpenDialog = BoundFunctions<typeof queries> & { element: HTMLElement };
 
 const openPrompt = async (
   harness: Harness,

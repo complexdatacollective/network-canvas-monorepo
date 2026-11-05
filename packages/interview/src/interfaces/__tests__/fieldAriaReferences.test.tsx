@@ -47,7 +47,7 @@ import AddNodeInput from '../NetworkComposer/AddNodeInput';
 import { TestProtocolLocalization } from './TestProtocolLocalization';
 
 /** The stage's own line beside the quick-add field. */
-const QUICK_ADD_HINT = { en: 'Press Enter when you are finished.' };
+const QUICK_ADD_HINT = 'Press Enter when you are finished.';
 
 /**
  * Both of these components spread `useField`'s `fieldProps` onto markup of

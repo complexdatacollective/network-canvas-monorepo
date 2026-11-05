@@ -140,7 +140,11 @@ const variants = {
   },
 } as const;
 
+// `not-sr-only` resets white-space along with the rest of `sr-only`, so the
+// label that appears on a landscape tablet states `whitespace-nowrap` under the
+// same variant to keep it on one line.
 const compactLabelClassName =
+  // oxlint-disable-next-line tailwindcss/no-conflicting-classes -- tablet-landscape:whitespace-nowrap deliberately overrides the white-space that tablet-landscape:not-sr-only resets
   'tablet-landscape:not-sr-only sr-only tablet-landscape:whitespace-nowrap';
 const statusTriggerClassName =
   'focusable inline-flex cursor-help items-center gap-1.5 rounded-sm';
@@ -188,11 +192,12 @@ function StatusChipPopover({
 }) {
   const [open, setOpen] = useState(false);
   const triggerId = useId();
-  const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   // True between pointerdown and pointerup on the trigger, which is the window
   // the focus it causes lands in — how focus from a press is told apart from
-  // focus from tabbing on.
+  // focus from tabbing on. Safari does not focus a button on a press, so
+  // there the click alone opens the popover.
   const pressing = useRef(false);
   // Set when a press's own focus opened the popover, and consumed by that same
   // press's click. Never set by keyboard focus.
@@ -226,12 +231,11 @@ function StatusChipPopover({
       <PopoverTrigger
         id={triggerId}
         openOnHover
-        nativeButton={false}
         render={
-          <span
+          <button
+            type="button"
             ref={triggerRef}
             id={triggerId}
-            tabIndex={0}
             data-testid={testId}
             className={className}
             onPointerDown={() => {
@@ -258,7 +262,7 @@ function StatusChipPopover({
               }
             }}
             onClick={(
-              event: React.MouseEvent<HTMLSpanElement> & {
+              event: React.MouseEvent<HTMLButtonElement> & {
                 preventBaseUIHandler?: () => void;
               },
             ) => {
@@ -272,7 +276,7 @@ function StatusChipPopover({
             }}
           >
             {chip}
-          </span>
+          </button>
         }
       />
       <PopoverContent
@@ -573,6 +577,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
     return () => {
       active = false;
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a change of security mode is the trigger to read durability again, as above; its value is not needed
   }, [mode]);
 
   return (

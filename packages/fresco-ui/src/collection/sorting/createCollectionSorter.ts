@@ -169,7 +169,12 @@ const numberFunction =
  * its argument as text, so this is what it always parsed; a missing value, or
  * anything that is not a date, is NaN and sorts last.
  */
-const parseDate = (value: unknown): number => Date.parse(String(value ?? ''));
+const parseDate = (value: unknown): number =>
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  value instanceof Date
+    ? Date.parse(String(value))
+    : NaN;
 
 /**
  * Date comparison sort function.

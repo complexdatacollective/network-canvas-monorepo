@@ -499,7 +499,9 @@ headless Playwright: protocol management, a
 complete interview conducted entirely offline (the committed release-smoke
 walker over the fourteen-stage, two-language schema 9 fixture protocol,
 proving the precache serves the whole engine without network and that the
-schema 9 runtime works offline), session and data management, export in every
+schema 9 runtime works offline), a schema 8 protocol conducted online and
+offline in the Interviewer 8 bundled at `/v8/`, session and data management,
+export in every
 format combination, device-lock enrolment through revocation, service-worker
 and offline behaviour, and settings. Each journey runs in its own isolated
 browser profile; every reported failure is independently re-examined by a

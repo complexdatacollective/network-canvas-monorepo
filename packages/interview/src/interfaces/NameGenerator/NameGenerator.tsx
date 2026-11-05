@@ -58,12 +58,12 @@ const NameGenerator = (props: NameGeneratorProps) => {
   const { behaviours, type, panels, minNodesNotice, maxNodesNotice } = stage;
 
   let quickAdd: string | null = null;
-  let quickAddHint: LocalizedString | null = null;
+  let addNamePlaceholder: LocalizedString | null = null;
   let form: Form | null = null;
 
   if (type === 'NameGeneratorQuickAdd') {
     quickAdd = stage.quickAdd;
-    quickAddHint = stage.quickAddHint;
+    addNamePlaceholder = stage.addNamePlaceholder;
   }
 
   if (type === 'NameGenerator') {
@@ -270,7 +270,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
 
   return (
     <>
-      <div className="interface min-h-0" ref={interfaceRef}>
+      <div className="interface" ref={interfaceRef}>
         <Prompts />
         {panels ? (
           <ResizableFlexPanel
@@ -332,7 +332,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
           <QuickNodeForm
             disabled={maxNodesReached || encryptionLocked}
             targetVariable={quickAdd!}
-            hint={quickAddHint!}
+            placeholder={addNamePlaceholder!}
             addNode={addNode}
           />
         )}

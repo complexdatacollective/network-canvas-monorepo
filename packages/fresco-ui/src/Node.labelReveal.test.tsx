@@ -146,7 +146,7 @@ describe('Node label reveal', () => {
 
   it('is suppressed during a keyboard drag', async () => {
     await renderNode(
-      <Node label={CLIPPED_LABEL} onClick={vi.fn()} aria-grabbed={true} />,
+      <Node label={CLIPPED_LABEL} onClick={vi.fn()} data-dragging />,
     );
 
     await pressAndHold(node(CLIPPED_LABEL));
@@ -243,11 +243,9 @@ describe('Node label reveal', () => {
     await user.tab();
     await waitFor(() => expect(getPopup()).not.toBeNull());
 
-    // Grabbing for a keyboard drag doesn't move focus, so nothing else would
+    // Starting a keyboard drag doesn't move focus, so nothing else would
     // close a popup that focus opened.
-    rerender(
-      <Node label={CLIPPED_LABEL} onClick={vi.fn()} aria-grabbed={true} />,
-    );
+    rerender(<Node label={CLIPPED_LABEL} onClick={vi.fn()} data-dragging />);
 
     await waitFor(() => expect(getPopup()).toBeNull());
   });
@@ -275,7 +273,7 @@ describe('Node label reveal', () => {
     await settle(PAST_HOLD);
     await waitFor(() => expect(getPopup()).not.toBeNull());
 
-    // A pointer drag sets no aria-grabbed, so nothing else would take the
+    // A pointer drag sets no data-dragging, so nothing else would take the
     // label down: it would trail the node and outlast the drop.
     fireEvent.pointerMove(window, { clientX: 200, clientY: 100 });
 

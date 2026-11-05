@@ -56,11 +56,11 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import Table from '~/components/Assets/Table';
-import ExternalLink from '~/components/ExternalLink';
 import {
-  FinishStageTextRefusal,
-  FinishStageTextRefusalTitle,
-} from '~/components/FinishStageTextAlert';
+  DefaultLanguageTextRefusal,
+  DefaultLanguageTextRefusalTitle,
+} from '~/components/DefaultLanguageTextAlert';
+import ExternalLink from '~/components/ExternalLink';
 import { APP_SCHEMA_VERSION } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
@@ -73,7 +73,7 @@ import { getProtocolAssetCount } from '~/utils/assetUtils';
 import {
   downloadLegacyProtocolAsNetcanvas,
   downloadProtocolAsNetcanvas,
-  MissingFinishStageTextError,
+  MissingDefaultLanguageTextError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
 import { beginExport } from '~/utils/criticalOperation';
@@ -591,6 +591,7 @@ const PanelRow = ({
       : openItem;
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- itemProps carries Collection's option role and roving tabIndex, which the rule cannot see through the spread.
     <div
       {...itemProps}
       onClick={handleClick}
@@ -753,6 +754,7 @@ const GalleryCard = () => {
   return (
     <Surface
       ref={cardRef}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a labelled card of a link and a dismiss button: not form controls for a <fieldset>, and not worth a landmark.
       role="group"
       aria-label={intl.formatMessage(messages.protocolGallery)}
       spacing="sm"
@@ -891,12 +893,12 @@ const LibraryPanel = ({
       } catch (error) {
         // Nor one whose finish stage has no heading or text in its default
         // language: no host would import it.
-        if (error instanceof MissingFinishStageTextError) {
+        if (error instanceof MissingDefaultLanguageTextError) {
           void openDialog({
             type: 'acknowledge',
             intent: 'destructive',
-            title: createElement(FinishStageTextRefusalTitle),
-            description: createElement(FinishStageTextRefusal, {
+            title: createElement(DefaultLanguageTextRefusalTitle),
+            description: createElement(DefaultLanguageTextRefusal, {
               problem: error.problem,
             }),
             actions: {

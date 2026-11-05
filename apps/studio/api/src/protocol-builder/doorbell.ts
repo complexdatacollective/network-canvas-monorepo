@@ -198,13 +198,14 @@ const connectValkey = Effect.fnUntraced(function* (options: {
         const epoch = MutableRef.incrementAndGet(connection);
         redis.subscribe(channel).then(
           () => {
-            if (!isCurrent(epoch)) return;
+            if (!isCurrent(epoch)) return undefined;
             MutableRef.set(refusals, 0);
             MutableRef.set(subscribed, true);
             if (MutableRef.getAndSet(outage, false)) {
               run(Effect.logInfo('Protocol-builder doorbell resubscribed.'));
             }
             hub.offer(RESYNC);
+            return undefined;
           },
           (error: unknown) => {
             if (!isCurrent(epoch)) return;

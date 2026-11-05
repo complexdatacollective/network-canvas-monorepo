@@ -287,6 +287,19 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   const { adapter, protocolId } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
   const [access, setAccess] = useState<SectionAccess>('pending');
+  // Nothing has been answered for a section yet, whatever the last one this
+  // editor was pointed at said. Reset during the render that sees the editor
+  // pointed somewhere else, rather than from the effect that acquires: an
+  // effect would draw one frame of the new section under the old one's access.
+  const [acquiringFor, setAcquiringFor] = useState({ adapter, protocolId, id });
+  if (
+    acquiringFor.adapter !== adapter ||
+    acquiringFor.protocolId !== protocolId ||
+    acquiringFor.id !== id
+  ) {
+    setAcquiringFor({ adapter, protocolId, id });
+    setAccess('pending');
+  }
   // A fault the acquire's success handler threw, which is a bug in this hook
   // rather than anything the host did. Re-thrown from render below, where the
   // nearest error boundary takes it, because the alternative is telling the
@@ -328,9 +341,6 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     wanted.current = id;
     // The save an id was kept for was of the section this editor is leaving.
     saveKey.forget();
-    // Nothing has been answered for this section yet, whatever the last one
-    // this editor was pointed at said.
-    setAccess('pending');
     void adapter.rpcCall('AcquireLock', { protocolId, sectionId: id }).then(
       (result) => {
         if (acquisition.current !== mine) {
@@ -343,13 +353,13 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           if (wanted.current !== id && result.lock === 'held') {
             void attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
           }
-          return;
+          return undefined;
         }
         if (released.current) {
           // Acquired after unmount: hand it straight back rather than holding a
           // lock no editor is behind.
           void attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
-          return;
+          return undefined;
         }
         try {
           // Written only once this acquire is known to be the one this editor
@@ -381,6 +391,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         } catch (error: unknown) {
           setHandlerFault({ error });
         }
+        return undefined;
       },
       // The acquire's own rejection, as the second argument rather than a
       // `then` chained after the success handler: chained, it would also catch

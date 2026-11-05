@@ -12,7 +12,7 @@ import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtoco
 // belong to the protocol's text.
 function German({ children }: { children: React.ReactNode }) {
   return (
-    <InterviewI18nProvider requestedLocale="en">
+    <InterviewI18nProvider>
       <TestProtocolLocalization
         localization={{ defaultLocale: 'de', locales: ['de'] }}
       >

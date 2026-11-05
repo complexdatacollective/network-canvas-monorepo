@@ -185,7 +185,7 @@ export const useProtocolImport = () => {
     toastRef.current = { add, update, close };
   });
 
-  const addImportToast = (toastId: string, fileName: string) => {
+  const addImportToast = useCallback((toastId: string, fileName: string) => {
     toastRef.current.add({
       id: toastId,
       title: fileName,
@@ -193,7 +193,7 @@ export const useProtocolImport = () => {
       icon: <Spinner size="xs" />,
       timeout: 0,
     });
-  };
+  }, []);
 
   const updateToastPhase = (
     toastId: string,
@@ -265,43 +265,46 @@ export const useProtocolImport = () => {
   // discard a queue on every render to keep the first one.
   const jobQueue = useRef<QueueObject<ImportJob> | null>(null);
 
-  const importProtocols = useCallback((files: File[]) => {
-    files.forEach((file) => {
-      const sizeError = getProtocolSizeError(file, createMessageError);
-      if (sizeError) {
-        toastRef.current.add({
-          id: generateJobId(),
-          variant: 'destructive',
-          title: file.name,
-          description: <AppErrorMessage error={sizeError} />,
-          timeout: 0,
+  const importProtocols = useCallback(
+    (files: File[]) => {
+      files.forEach((file) => {
+        const sizeError = getProtocolSizeError(file, createMessageError);
+        if (sizeError) {
+          toastRef.current.add({
+            id: generateJobId(),
+            variant: 'destructive',
+            title: file.name,
+            description: <AppErrorMessage error={sizeError} />,
+            timeout: 0,
+          });
+          return;
+        }
+
+        const jobAlreadyExists = activeJobs.current.has(file.name);
+
+        if (jobAlreadyExists) {
+          // eslint-disable-next-line no-console
+          console.warn(`Skipping duplicate job: ${file.name}`);
+          return;
+        }
+
+        activeJobs.current.add(file.name);
+
+        const toastId = generateJobId();
+        addImportToast(toastId, file.name);
+
+        jobQueue.current ??= queue(
+          async (job: ImportJob) => processJobRef.current?.(job),
+          2,
+        );
+        jobQueue.current.push({ file, toastId }).catch((error) => {
+          // eslint-disable-next-line no-console
+          console.log('jobQueue error', error);
         });
-        return;
-      }
-
-      const jobAlreadyExists = activeJobs.current.has(file.name);
-
-      if (jobAlreadyExists) {
-        // eslint-disable-next-line no-console
-        console.warn(`Skipping duplicate job: ${file.name}`);
-        return;
-      }
-
-      activeJobs.current.add(file.name);
-
-      const toastId = generateJobId();
-      addImportToast(toastId, file.name);
-
-      jobQueue.current ??= queue(
-        async (job: ImportJob) => processJobRef.current?.(job),
-        2,
-      );
-      jobQueue.current.push({ file, toastId }).catch((error) => {
-        // eslint-disable-next-line no-console
-        console.log('jobQueue error', error);
       });
-    });
-  }, []);
+    },
+    [addImportToast],
+  );
 
   const processJob = async ({ file, toastId }: ImportJob) => {
     const fileName = file.name;

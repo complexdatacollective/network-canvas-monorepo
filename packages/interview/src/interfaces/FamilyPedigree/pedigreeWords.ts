@@ -24,6 +24,7 @@ import type { LocalizedMessageValues } from '../../localization/messageFormatter
 import {
   type LocalizedMessagePartValues,
   useContentLocale,
+  useLocalizedString,
   useResolveLocalizedMessage,
   useResolveLocalizedMessageParts,
 } from '../../localization/ProtocolLocalizationProvider';
@@ -98,6 +99,10 @@ export type PedigreeWords = Readonly<{
   wording: FamilyPedigreeWording;
   text: PedigreeText;
   piped: PedigreePiped;
+  /** What the participant is called, as the stage words it: its dynamic
+   * values (an ego attribute, such as their name from an earlier form) are
+   * written in. */
+  you: string;
   /** The language the stage's kinship words are shown in, which decides how
    * one is written inside a label ("Ana’s parent"). */
   locale: string;
@@ -125,9 +130,10 @@ export function usePedigreeWordsOf(
   const text = usePedigreeText();
   const piped = usePedigreePiped();
   const locale = useKinshipLocale(wording);
+  const { text: you } = useLocalizedString(wording.you);
   return useMemo(
-    () => ({ wording, text, piped, locale }),
-    [wording, text, piped, locale],
+    () => ({ wording, text, piped, you, locale }),
+    [wording, text, piped, you, locale],
   );
 }
 

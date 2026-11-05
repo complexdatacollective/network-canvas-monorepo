@@ -222,7 +222,7 @@ function renderStage(mode: Mode, nodes: NcNode[] = defaultNodes()) {
   let dndStore: StoreApi<DndStore> | null = null;
 
   const view = render(
-    <InterviewI18nProvider requestedLocale="en">
+    <InterviewI18nProvider>
       <TestProtocolLocalization>
         <Provider store={store}>
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
@@ -346,7 +346,10 @@ describe('CategoricalBin in select mode (#1652)', () => {
       const { getDndStore } = renderStage(mode);
       await screen.findByRole('button', { name: /Family/ });
 
-      expect(document.querySelector('[aria-grabbed]') !== null).toBe(present);
+      // A drag source announces itself with the grab cursor at rest.
+      expect(document.querySelector('[style*="cursor: grab"]') !== null).toBe(
+        present,
+      );
 
       startDragOf(getDndStore, person('a', 'Ann'));
       const canDrop = () =>

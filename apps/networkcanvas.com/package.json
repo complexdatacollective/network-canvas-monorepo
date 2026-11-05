@@ -1,6 +1,6 @@
 {
   "name": "networkcanvas.com",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -23,7 +23,6 @@
     "@codaco/tailwind-config": "workspace:^",
     "@fontsource-variable/inclusive-sans": "catalog:",
     "@fontsource-variable/nunito": "catalog:",
-    "@formatjs/intl-localematcher": "catalog:",
     "@posthog/nextjs-config": "catalog:",
     "@posthog/react": "catalog:",
     "csvtojson": "catalog:",

@@ -1392,7 +1392,7 @@ export const egoFormScenarios: InterfaceScenarios = {
           synth.getNetwork().ego[entityAttributesProperty][prePopNameVarId];
         if (typeof seeded !== 'string' || seeded === '') {
           throw new Error(
-            `Expected the generated network to answer ego variable "${prePopNameVarId}", got ${String(seeded)}`,
+            `Expected the generated network to answer ego variable "${prePopNameVarId}", got ${JSON.stringify(seeded)}`,
           );
         }
         prePopSeededName = seeded;

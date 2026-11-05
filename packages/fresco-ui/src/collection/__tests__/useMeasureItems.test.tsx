@@ -90,10 +90,11 @@ function Parent({
     versionStore.subscribe,
     versionStore.getVersion,
   );
-  const collection = useMemo(() => {
-    void version; // referenced so each bump rebuilds the collection identity
-    return makeCollection(IDS);
-  }, [version]);
+  // Each bump builds a new collection identity, built for that version.
+  const { collection } = useMemo(
+    () => ({ version, collection: makeCollection(IDS) }),
+    [version],
+  );
   const layout = useMemo(() => new ListLayout<Item>(), []);
   // Updating the store from a layout effect IS the thing under test: it is the
   // only way to land the second identity change in the commit that is

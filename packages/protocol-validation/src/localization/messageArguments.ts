@@ -198,6 +198,10 @@ const findElementsProblem = (
         }
         break;
       }
+      case TYPE.number:
+      case TYPE.date:
+      case TYPE.time:
+      case TYPE.tag:
       default:
         return 'This text cannot format numbers, dates or times, or contain tags.';
     }

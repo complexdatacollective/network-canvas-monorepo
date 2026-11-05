@@ -129,12 +129,13 @@ export async function loadCatalog(
   locale: string,
   ...packages: readonly CatalogLoaders[]
 ): Promise<CatalogMessages> {
-  const modules = await Promise.all(
-    packages.map((loaders) => loaders[locale]?.()),
+  const catalogs = await Promise.all(
+    packages.map(async (loaders) => {
+      const module = await loaders[locale]?.();
+      return module?.default ?? NO_CATALOG;
+    }),
   );
-  return mergeCatalogs(
-    ...modules.map((module) => module?.default ?? NO_CATALOG),
-  );
+  return mergeCatalogs(...catalogs);
 }
 
 /**

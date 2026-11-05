@@ -1,3 +1,22 @@
+// The locale edge functions' import maps reach only this file of the
+// package, and they choose the site's language, so the one locale system is
+// re-exported here for them.
+export * from './locale-negotiation.ts';
+export * from './locale-preference.ts';
+
+import type { LocalePreferenceCookie } from './locale-preference.ts';
+
+/**
+ * The language chosen on any Network Canvas website (networkcanvas.com, the
+ * protocol gallery, the documentation, Sketch): one choice for them all, kept
+ * for the whole networkcanvas.com domain.
+ */
+export const siteLocalePreferenceCookie = {
+  name: 'NEXT_LOCALE',
+  maxAge: 31_536_000,
+  domain: 'networkcanvas.com',
+} as const satisfies LocalePreferenceCookie;
+
 export type SiteLocaleDefinition = {
   locale: string;
   nativeName: string;
@@ -80,12 +99,9 @@ export function isSiteLocale(value: string): value is SiteLocale {
 }
 
 /**
- * Best fit weighs region as well as script. A Hong Kong browser typically sends
- * "zh-HK, zh": best fit scores zh-HK against zh-Hant (which implies Taiwan) as a
- * regional mismatch, and the bare "zh" behind it then wins zh-Hans. Chinese is
- * therefore matched by script alone: a Chinese tag becomes `zh-<likely script>`
- * (zh-HK and zh-MO → zh-Hant; zh and zh-SG → zh-Hans). Any other tag, or one
- * Intl cannot parse, is returned as given.
+ * A Chinese tag as `zh-<likely script>` (zh-HK and zh-MO → zh-Hant; zh and
+ * zh-SG → zh-Hans), for matching Chinese by script alone. Any other tag, or
+ * one Intl cannot parse, is returned as given.
  *
  * It lives in this module because the locale edge function's import map can
  * reach only this file of the package.

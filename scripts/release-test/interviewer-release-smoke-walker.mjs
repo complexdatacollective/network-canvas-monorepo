@@ -538,8 +538,10 @@ try {
   await expect(
     page.getByRole('listbox', { name: 'Elige un idioma', exact: true }),
   ).toBeVisible();
+  // Accessible names stay English whatever the interview language (#2468),
+  // so the icon-only settings button is still "Settings".
   await expect(
-    page.getByRole('button', { name: 'Configuración', exact: true }),
+    page.getByRole('button', { name: 'Settings', exact: true }),
   ).toBeVisible();
   await shot('stage-language-es');
   await nextStage();
@@ -945,13 +947,13 @@ try {
     const db = await new Promise((res, rej) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
+      req.addEventListener('error', () => rej(req.error));
     });
     const sessions = await new Promise((res, rej) => {
       const tx = db.transaction('sessions', 'readonly');
       const rq = tx.objectStore('sessions').getAll();
       rq.onsuccess = () => res(rq.result);
-      rq.onerror = () => rej(rq.error);
+      rq.addEventListener('error', () => rej(rq.error));
     });
     db.close();
     const s = sessions[0];

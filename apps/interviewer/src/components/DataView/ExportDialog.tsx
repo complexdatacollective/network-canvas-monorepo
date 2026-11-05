@@ -12,10 +12,10 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { saveAction, type SaveAction } from '@codaco/fresco-ui/utils/saveBlob';
 import { exportStageMessages } from '@codaco/network-exporters/messages';
 import { ExternalLink } from '~/components/ExternalLink';
 import { APP_VERSION } from '~/lib/appVersion';
-import { saveAction, type SaveAction } from '~/lib/files/download';
 
 import { ExportWarningAlerts } from './ExportWarnings';
 import type { ExportFlow } from './useSessionMutations';

@@ -128,7 +128,7 @@ const messages = defineMessages({
 
 type InterviewRow = GetInterviewsQuery[number];
 
-export const InterviewColumns = (
+export const getInterviewColumns = (
   intl: IntlShape,
   filterOptions: InterviewFilterOptions,
 ): StrictColumnDef<InterviewRow>[] => {

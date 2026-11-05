@@ -40,15 +40,25 @@
 // representative journeys of the deployed app — it certifies that a release
 // candidate basically works, end to end, on real deployed bits. It is NOT
 // an exhaustive behaviour suite; per-feature coverage belongs to the app's
-// unit and Playwright e2e suites. Two journeys run committed walkers:
+// unit and Playwright e2e suites. Five journeys run committed walkers:
 // conduct-offline (scripts/release-test/interviewer-release-smoke-walker.mjs — the
 // fourteen-stage schema 9 release-smoke fixture protocol conducted ENTIRELY
 // OFFLINE;
 // interfaces are imported eagerly into one engine chunk, so broader
 // stage-type coverage adds no deployment risk coverage and belongs to the
-// e2e and Storybook suites) and security-vault
+// e2e and Storybook suites), security-vault
 // (scripts/release-test/interviewer-security-vault-walker.mjs — the full vault
-// lifecycle, cutting a ~90-minute agent-scripted journey to ~5 minutes). Documented harness limits (each has been evaluated and
+// lifecycle, cutting a ~90-minute agent-scripted journey to ~5 minutes), and
+// schema8-interviewer8 (scripts/release-test/interviewer-schema8-walker.mjs —
+// a schema 8 fixture conducted in the bundled Interviewer 8 at /v8/, online
+// and offline; the e2e suite only has a stub page there),
+// language-negotiation (scripts/release-test/interviewer-language-walker.mjs —
+// the browser's best language for the app and for an interview, each until
+// its own choice is made), and offline-readiness
+// (scripts/release-test/interviewer-offline-readiness-walker.mjs — the
+// app-wide offline status held to its word: protocols imported from files
+// while offline, schema 9 and 8, conducted, reviewed and exported offline,
+// and a protocol that needs the internet). Documented harness limits (each has been evaluated and
 // declined with reasons in PR #1471/#1502 review threads):
 // native OS dialogs (showSaveFilePicker) and OS file-handler launches do
 // not exist in headless automation; biometric/WebAuthn needs virtual-
@@ -461,8 +471,11 @@ const journeyModel = {
   'session-management': 'sonnet',
   'data-export': 'sonnet',
   'security-vault': 'sonnet',
+  'schema8-interviewer8': 'sonnet',
   'pwa-offline': 'sonnet',
   'settings-and-chrome': 'sonnet',
+  'language-negotiation': 'sonnet',
+  'offline-readiness': 'sonnet',
 };
 
 // Numbered checks each journey prompt defines. Synthesis rejects a result
@@ -473,8 +486,11 @@ const expectedChecks = {
   'session-management': 8,
   'data-export': 7,
   'security-vault': 10,
+  'schema8-interviewer8': 7,
   'pwa-offline': 10,
   'settings-and-chrome': 9,
+  'language-negotiation': 5,
+  'offline-readiness': 9,
 };
 
 // Check numbers each prompt explicitly permits to be skipped, mapped to the
@@ -926,6 +942,94 @@ walker's two-digit sequence prefix, which shifts with conditional captures):
 Return journey="security-vault".`,
   },
   {
+    key: 'schema8-interviewer8',
+    prompt: (
+      ctx,
+    ) => `You are the "schema8-interviewer8" journey of the Interviewer release smoke test: a schema 8 protocol conducted in the REAL Interviewer 8 that the deployment bundles at /v8/ — imported and kept on schema 8, hosted in Interviewer 9's /interview/<id> frame for start, resume and review, finished, stored in the one shared database, exported, and conducted again entirely offline. The app's e2e suite covers this embed contract only against a stub page, so this journey is the only test of the bundled Interviewer 8 itself.
+${driving(ctx.workDir, ctx.repoRoot)}
+
+This journey is driven by the repo's canonical walker — RUN it, never
+rebuild its driving logic yourself (its interactions are maintained in step
+with the bundled Interviewer 8, and ad-hoc reimplementation is where this
+gate's past false failures came from):
+
+  cd ${ctx.repoRoot} && node scripts/release-test/interviewer-schema8-walker.mjs \\
+    --url ${url} --artifacts ${ctx.workDir}/schema8-interviewer8
+
+Give that Bash call an explicit timeout of ~9 minutes — the walker enforces
+its own 8-minute hard watchdog (exit 2 = hang, with watchdog-timeout.png;
+waiting up to 4 minutes for the app-wide "Ready for offline" status, which
+covers Interviewer 8's files, is part of a normal run). It conducts the
+schema 8 fixture protocol (packages/protocols/e2e/release-smoke-schema8:
+an image asset, the Anonymisation passphrase, an ego form and a quick-add
+name generator whose name is encrypted) twice — once online through
+finish, review and export, once offline — and writes numbered evidence
+screenshots and result.json into the artifacts directory; the last stdout
+line is the result JSON. Exit codes: 0 all passed, 1 check failures,
+2 watchdog hang, 3 setup error — 2 and 3 are failed runs, never passes.
+
+Map the walker's result.json steps onto these CHECKS. A check passes ONLY
+when every step listed for it passed; quote the walker's step notes in each
+check's detail:
+1. Service worker, a schema 8 import kept on schema 8 (card chip and stored
+   row), and the app-wide offline status reaching "Ready for offline":
+   steps "sw-controlled", "protocol-imported", and "offline-ready".
+2. Starting an interview frames Interviewer 8 at /v8/interview/<the same
+   id>, which renders the protocol's image asset from the shared database
+   and conducts its stages: steps "start-hosts-interviewer8",
+   "asset-renders", "stage-passphrase", "stage-egoform", and
+   "stage-quickadd".
+3. Exit and resume: Interviewer 8's exit returns Home, Resume reopens the
+   same session where it was left with the encrypted name locked, a wrong
+   passphrase is refused and the walk's passphrase decrypts the name:
+   steps "exit-mid-interview", "resume-locked", "wrong-passphrase-refused",
+   and "passphrase-unlocks".
+4. Finish and persistence: Interviewer 8's finish returns Home, /data lists
+   the session at 100% with Review, and the stored session carries the
+   finish, the ego answer and the one person with the name stored only as
+   ciphertext: steps "finish", "data-row", and "persisted-payload".
+5. Review and export: Review frames Interviewer 8 read-only, and exporting
+   the session gives one GraphML file with the one person and its CSVs,
+   the ego answer present and the encrypted name exported as ENCRYPTED,
+   never in plaintext: steps "review" and "export".
+6. Offline: with the network cut (positive control), Home boots from the
+   precache, a new interview starts in Interviewer 8 with its image, its
+   stages are conducted, reloading the interview page reopens it with the
+   person kept, Interviewer 8's exit returns Home, and /data lists it in
+   progress with its answers stored: steps "offline-positive-control",
+   "offline-boot", "offline-start", "offline-passphrase",
+   "offline-egoform", "offline-quickadd", "offline-reload",
+   "offline-exit", and "offline-data-row".
+7. No non-whitelisted console error from either app across the whole walk:
+   step "console-errors".
+A failed "setup" step means the walker could not start at all — report the
+journey as failed with that note and let the verifier adjudicate.
+
+For every failed walker step, record a failure bound to its check number,
+with the walker's note and screenshot paths as evidence: import, start,
+stage, finish, persistence or offline failures are blocker (schema 8 field
+data collection is broken); review, export and console failures are major.
+A failed offline positive control means the offline condition could not be
+created — report it as this journey's failure and let the verifier
+adjudicate whether it is an app defect or harness limit. If the walker
+aborted early (a "walk" step carries the error), every check it never
+reached is a FAILED check (missing coverage), never a skip or a pass.
+
+Evidence: after the run, copy the walker's screenshots to per-check names
+in the SAME artifacts directory (keep the originals; the ??- glob matches
+the walker's two-digit sequence prefix):
+  cd ${ctx.workDir}/schema8-interviewer8 &&
+  cp ??-protocol-imported.png check1-imported.png &&
+  cp ??-interviewer8-welcome.png check2-interviewer8.png &&
+  cp ??-resumed-locked.png check3-resumed.png &&
+  cp ??-data-row.png check4-data-row.png &&
+  cp ??-exported.png check5-exported.png &&
+  cp ??-offline-reload.png check6-offline.png &&
+  cp ??-offline-data-row.png check7-final.png
+
+Return journey="schema8-interviewer8".`,
+  },
+  {
     key: 'pwa-offline',
     prompt: (
       ctx,
@@ -1049,6 +1153,189 @@ CHECKS:
    first."
 
 Return journey="settings-and-chrome".`,
+  },
+  {
+    key: 'language-negotiation',
+    prompt: (
+      ctx,
+    ) => `You are the "language-negotiation" journey of the Interviewer release smoke test: every person sees the best language Interviewer has for them until they choose one. The researcher-facing app follows the browser's languages until a language is chosen in Settings; an interview follows the browser's languages, whatever the app's language, until the participant chooses one on a language chooser stage, and that choice stays with that one interview.
+${driving(ctx.workDir, ctx.repoRoot)}
+
+This journey is driven by the repo's canonical walker — RUN it, never
+rebuild its driving logic yourself (its expected words come from the app's
+own catalogs, and ad-hoc reimplementation is where this gate's past false
+failures came from):
+
+  cd ${ctx.repoRoot} && node scripts/release-test/interviewer-language-walker.mjs \\
+    --url ${url} --artifacts ${ctx.workDir}/language-negotiation
+
+Give that Bash call an explicit timeout of ~6 minutes — the walker enforces
+its own 5-minute hard watchdog (exit 2 = hang, with watchdog-timeout.png).
+Each browser-language case runs in its own fresh profile whose
+navigator.languages is set before any page loads, so the deployment's own
+negotiation decides; the interview cases conduct the schema 9 Release Smoke
+fixture (packages/protocols/e2e/release-smoke, declaring en-US and es), and
+the regional variant cases the same protocol declaring Mexican Spanish too,
+with no Mexican Spanish text of its own. It
+writes numbered evidence screenshots and result.json into the artifacts
+directory; the last stdout line is the result JSON. Exit codes: 0 all
+passed, 1 check failures, 2 watchdog hang, 3 setup error — 2 and 3 are
+failed runs, never passes.
+
+Map the walker's result.json steps onto these CHECKS. A check passes ONLY
+when every step listed for it passed; quote the walker's step notes in each
+check's detail:
+1. The app opens in the browser's best language by Network Canvas's one
+   locale negotiation, CLDR best fit over the browser's whole list with no
+   rules of its own (a regional variant gets its language, an earlier
+   regional fit beats a later exact match, an unsupported first preference
+   passes to the next, Chinese is matched by script, the closest variant
+   stands in, a fit in another language is taken when nothing is closer,
+   nothing supported falls back to English), and onboarding does too: steps
+   "dashboard-negotiated", "dashboard-fallback", and "welcome-negotiated".
+2. A language chosen in Settings → Language replaces negotiation for the
+   app, survives a reload, and "Automatic" hands the app back to the
+   browser: steps "app-choice-applies", "app-choice-persists", and
+   "automatic-restores-negotiation".
+3. An interview follows the browser, never the app's chosen language, and
+   negotiates once, over the protocol's languages: its own words come from
+   the protocol in that language, so a browser language the protocol lacks
+   never reaches it, and the accessible names of its icon controls are
+   English. A protocol declaring a regional variant beside its base language
+   is negotiated by the same best fit (Mexican Spanish for a Mexican or an
+   Argentinian browser), and a text with no translation in the variant is
+   shown in the base language, never English: steps
+   "interview-ignores-app-choice", "interview-second-preference",
+   "interview-builtins-follow-protocol", "interview-fallback",
+   "interview-regional-variant", and "interview-closest-variant".
+4. The participant's choice on the language chooser switches the interview
+   at once, survives a reload in the same tab without being stored with the
+   session, and does not carry to the next interview: steps
+   "chooser-choice-applies", "chooser-choice-persists", and
+   "new-interview-negotiates-again".
+5. No non-whitelisted console error across the walk: step "console-errors".
+A failed "setup" step means the walker could not start at all — report the
+journey as failed with that note and let the verifier adjudicate.
+
+For every failed walker step, record a failure bound to its check number,
+with the walker's note and screenshot paths as evidence: a participant or
+researcher shown the wrong language is major; a console error is minor
+unless it accompanies a failed step. If the walker aborted early (a "walk"
+step carries the error), every check it never reached is a FAILED check
+(missing coverage), never a skip or a pass.
+
+Evidence: after the run, copy the walker's screenshots to per-check names
+in the SAME artifacts directory (keep the originals; the ??- glob matches
+the walker's two-digit sequence prefix):
+  cd ${ctx.workDir}/language-negotiation &&
+  cp ??-dashboard-de.png check1-negotiated.png &&
+  cp ??-dashboard-fallback.png check1b-fallback.png &&
+  cp ??-automatic-es.png check2-automatic.png &&
+  cp ??-interview-es-with-app-en.png check3-interview.png &&
+  cp ??-chooser-choice-en.png check4-chooser.png &&
+  cp ??-interview-regional-variant.png check3b-regional-variant.png &&
+  cp ??-interview-fallback.png check5-final.png
+
+Return journey="language-negotiation".`,
+  },
+  {
+    key: 'offline-readiness',
+    prompt: (
+      ctx,
+    ) => `You are the "offline-readiness" journey of the Interviewer release smoke test: the app-wide "Ready for offline" status is honest, and everything it promises works with no network — every route, the app's languages, protocols IMPORTED FROM FILES WHILE OFFLINE (schema 9 and schema 8, assets included) conducted, reloaded, finished, reviewed and exported offline, and a protocol that needs the internet handled as it says. Offline readiness is ONE status for the whole app, never per protocol or per schema.
+${driving(ctx.workDir, ctx.repoRoot)}
+
+This journey is driven by the repo's canonical walker — RUN it, never
+rebuild its driving logic yourself (its interactions are maintained in step
+with the app's e2e fixtures, and ad-hoc reimplementation is where this
+gate's past false failures came from):
+
+  cd ${ctx.repoRoot} && node scripts/release-test/interviewer-offline-readiness-walker.mjs \\
+    --url ${url} --artifacts ${ctx.workDir}/offline-readiness
+
+Give that Bash call an explicit timeout of ~11 minutes — the walker enforces
+its own 10-minute hard watchdog (exit 2 = hang, with watchdog-timeout.png;
+waiting up to 4 minutes for the status to reach "Ready for offline" is part
+of a normal run). Its fixtures are packages/protocols/e2e/release-offline
+(an image and a roster), release-online-map (a map stage, which needs the
+internet) and release-smoke-schema8. It writes numbered evidence
+screenshots and result.json into the artifacts directory; the last stdout
+line is the result JSON. Exit codes: 0 all passed, 1 check failures,
+2 watchdog hang, 3 setup error — 2 and 3 are failed runs, never passes.
+
+Map the walker's result.json steps onto these CHECKS. A check passes ONLY
+when every step listed for it passed; quote the walker's step notes in each
+check's detail:
+1. The status is honest: not ready on a first visit before the download,
+   never ready in a browser that cannot install the service worker, then
+   "Ready for offline" with its explanation, Settings → Offline use reading
+   Ready, and the page controlled by the service worker: steps
+   "status-not-ready-at-first", "status-never-ready-without-worker", and
+   "status-ready".
+2. With the network cut (positive control), every route boots from the
+   precache and the app switches its own language offline: steps
+   "offline-positive-control", "offline-boot-routes", and
+   "offline-app-language".
+3. Protocols imported from files while offline are stored with their
+   assets — a schema 9 protocol, a schema 8 protocol kept on schema 8, and
+   a protocol that needs the internet, badged "Requires Internet" alone —
+   and survive an offline reload: steps "offline-import-schema9",
+   "offline-import-schema8", "offline-import-needs-internet", and
+   "offline-imports-survive-reload".
+4. Offline readiness stays one app-wide status whatever the device holds:
+   step "status-app-wide".
+5. The schema 9 protocol imported offline is conducted offline from its
+   stored assets — its image, its roster searched through the worker — and
+   reloaded mid-interview, then finished: steps "file-protocol-start",
+   "file-protocol-image", "file-protocol-roster", "file-protocol-reload",
+   and "file-protocol-finish".
+6. The finished interview is reviewed and exported offline: steps
+   "offline-review" and "offline-export".
+7. The schema 8 protocol imported offline is conducted offline in the
+   bundled Interviewer 8: steps "file-schema8-start",
+   "file-schema8-stages", and "file-schema8-stored".
+8. The protocol that needs the internet: offline it warns before starting
+   and Cancel creates nothing; "Start anyway" runs every other stage
+   offline while the map stage shows its offline notice; back online its
+   map loads; online it starts with no warning: steps
+   "needs-internet-warning-cancel", "needs-internet-start-anyway",
+   "needs-internet-reconnect", and "needs-internet-online-no-warning".
+9. Back online every interview made offline is still listed and the status
+   still reads ready, and no non-whitelisted console error accumulated:
+   steps "online-after-offline" and "console-errors".
+A failed "setup" step means the walker could not start at all — report the
+journey as failed with that note and let the verifier adjudicate.
+
+For every failed walker step, record a failure bound to its check number,
+with the walker's note and screenshot paths as evidence: a status that
+claims readiness the app cannot honour, an offline boot, import, interview,
+review or export failure, or lost data is blocker (offline field data
+collection is broken); a missing badge or warning is major;
+"needs-internet-reconnect" needs api.mapbox.com, so when it alone fails,
+first check whether this environment can reach that host (one curl) and say
+so in the failure — the verifier adjudicates. A failed offline positive
+control means the offline condition could not be created — report it as
+this journey's failure and let the verifier adjudicate whether it is an app
+defect or harness limit. If the walker aborted early (a "walk" step carries
+the error), every check it never reached is a FAILED check (missing
+coverage), never a skip or a pass.
+
+Evidence: after the run, copy the walker's screenshots to per-check names
+in the SAME artifacts directory (keep the originals; the ??- glob matches
+the walker's two-digit sequence prefix):
+  cd ${ctx.workDir}/offline-readiness &&
+  cp ??-status-first-visit.png check1-first-visit.png &&
+  cp ??-status-ready.png check1b-ready.png &&
+  cp ??-offline-german.png check2-offline-language.png &&
+  cp ??-offline-import-needs-internet.png check3-imports.png &&
+  cp ??-status-app-wide.png check4-app-wide.png &&
+  cp ??-file-protocol-finished.png check5-finished.png &&
+  cp ??-offline-export.png check6-export.png &&
+  cp ??-file-schema8-stages.png check7-interviewer8.png &&
+  cp ??-needs-internet-map-offline.png check8-map-offline.png &&
+  cp ??-online-after-offline.png check9-online.png
+
+Return journey="offline-readiness".`,
   },
 ];
 

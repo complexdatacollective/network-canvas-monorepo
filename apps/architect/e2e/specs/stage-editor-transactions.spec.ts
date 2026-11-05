@@ -376,3 +376,66 @@ test('a field added to a re-opened stage is unsaved work the editor offers to sa
   expect(formFieldsOf(after.stages[0])).toHaveLength(2);
   expect(byName(after, 'favouriteColour')).toBeDefined();
 });
+
+/**
+ * A new stage arrives named by the editor. That name is a suggestion, not the
+ * researcher's work: clicking into it and typing replaces it rather than
+ * landing in the middle of it, and leaving a new stage nobody has touched
+ * loses nothing, so Cancel asks nothing.
+ */
+test('typing into a new stage’s proposed name replaces it', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(emptyProtocol());
+  await gotoProtocol(architectPage);
+
+  await new StageEditor(architectPage).createNew('EgoForm');
+  const name = architectPage.getByRole('textbox', { name: 'Stage name' });
+  await expect(name).toHaveValue('Ego Form');
+
+  // Clicked part-way along, where a caret would otherwise land.
+  const box = await name.boundingBox();
+  if (box === null) throw new Error('the stage name has no box');
+  await architectPage.mouse.click(box.x + 40, box.y + box.height / 2);
+  await architectPage.keyboard.type('About You');
+  await expect(name).toHaveValue('About You');
+
+  // A name of the researcher's own is edited where they click, as ever.
+  await architectPage.mouse.click(box.x + 4, box.y + box.height / 2);
+  await architectPage.keyboard.press('End');
+  await architectPage.keyboard.type('rself');
+  await expect(name).toHaveValue('About Yourself');
+});
+
+test('cancelling a new stage nobody has touched leaves without asking', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(emptyProtocol());
+  await gotoProtocol(architectPage);
+
+  const before = (await readProtocolJson(architectPage)).stages.length;
+  await new StageEditor(architectPage).createNew('EgoForm');
+  const name = architectPage.getByRole('textbox', { name: 'Stage name' });
+  await expect(name).toHaveValue('Ego Form');
+  // Saving is what adds a new stage, so it is offered before anything changes.
+  await expect(
+    architectPage.getByRole('button', { name: 'Finished Editing' }),
+  ).toBeVisible();
+
+  await architectPage.getByRole('button', { name: 'Cancel' }).first().click();
+  await architectPage.waitForURL(/\/protocol$/);
+  await expect(
+    architectPage.getByRole('dialog', {
+      name: 'Discard unsaved stage changes?',
+    }),
+  ).toHaveCount(0);
+  expect((await readProtocolJson(architectPage)).stages).toHaveLength(before);
+
+  // A name the researcher typed is theirs, and leaving it is confirmed.
+  await new StageEditor(architectPage).createNew('EgoForm');
+  await expect(name).toHaveValue('Ego Form');
+  await name.fill('About You');
+  await leaveWithoutSaving(architectPage);
+});

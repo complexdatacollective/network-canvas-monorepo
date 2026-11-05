@@ -9,15 +9,14 @@ import { createCanvasStore } from '../useCanvasStore';
 
 type Posted = { type: string; nodes?: { nodeId: string; placed: boolean }[] };
 
-class FakeWorker {
+class FakeWorker extends EventTarget {
   posted: Posted[] = [];
-  onmessage: ((event: MessageEvent) => void) | null = null;
   postMessage(message: Posted) {
     this.posted.push(message);
   }
   terminate() {}
   emit(data: unknown) {
-    this.onmessage?.({ data } as MessageEvent);
+    this.dispatchEvent(new MessageEvent('message', { data }));
   }
 }
 

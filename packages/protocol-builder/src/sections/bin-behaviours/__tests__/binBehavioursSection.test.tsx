@@ -2,13 +2,14 @@ import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { binBehaviours } from '../binBehaviours.tsx';
+import { binBehaviours, binWording } from '../binBehaviours.tsx';
 
+const BinBehaviours = binBehaviours();
 const CASES = [
-  { stageId: 'ordinal-bin-1', BinBehaviours: binBehaviours('OrdinalBin') },
+  { stageId: 'ordinal-bin-1', BinWording: binWording('OrdinalBin') },
   {
     stageId: 'categorical-bin-1',
-    BinBehaviours: binBehaviours('CategoricalBin'),
+    BinWording: binWording('CategoricalBin'),
   },
 ] as const;
 
@@ -16,11 +17,36 @@ const gateSwitch = () =>
   screen.findByRole('switch', { name: 'Require every node to be placed' });
 const noticeField = () =>
   screen.findByRole('textbox', { name: 'Nodes not yet placed' });
+const wordingSwitch = () =>
+  screen.findByRole('switch', { name: 'Customize built-in wording' });
+
+/**
+ * Switches the stage's built-in wording on and shows the stage's own words:
+ * where the stage also shows words its kind shares, they are a part of their
+ * own that starts closed.
+ */
+const showStageWording = async (
+  user: ReturnType<typeof renderStageEditor>['user'],
+) => {
+  await user.click(await wordingSwitch());
+  const specific = screen.queryByRole('button', {
+    name: 'Specific to this stage',
+  });
+  if (specific) await user.click(specific);
+};
 
 describe.each(CASES)(
   'how the participant places nodes on $stageId',
-  ({ stageId, BinBehaviours }) => {
-    const open = () => ({ stageId, sections: <BinBehaviours /> });
+  ({ stageId, BinWording }) => {
+    const open = () => ({
+      stageId,
+      sections: (
+        <>
+          <BinBehaviours />
+          <BinWording />
+        </>
+      ),
+    });
 
     it('saves a stage that never chose, unchanged', async () => {
       const harness = renderStageEditor(open());
@@ -63,12 +89,27 @@ describe.each(CASES)(
       ).not.toBeInTheDocument();
     });
 
+    it('lets the notice name the node type', async () => {
+      const harness = renderStageEditor(open());
+
+      await harness.user.click(await gateSwitch());
+      await showStageWording(harness.user);
+      await noticeField();
+
+      expect(
+        screen.getByRole('button', {
+          name: 'Inject piped text from this stage',
+        }),
+      ).toBeInTheDocument();
+    });
+
     it('switched on, saves the gate with the words Network Canvas supplies', async () => {
       const harness = renderStageEditor(open());
 
       await harness.user.click(await gateSwitch());
+      await showStageWording(harness.user);
 
-      expect(await noticeField()).toHaveValue(
+      expect(await noticeField()).toHaveTextContent(
         'You must place every item before you can continue.',
       );
       const request = await harness.submit();
@@ -84,6 +125,7 @@ describe.each(CASES)(
       const harness = renderStageEditor(open());
 
       await harness.user.click(await gateSwitch());
+      await showStageWording(harness.user);
       await noticeField();
       await harness.user.click(await gateSwitch());
 

@@ -307,10 +307,12 @@ describe('NetworkWeaveBackground', () => {
         />,
       );
       const firstControlCross = (laneIndex: number) => {
+        const guides = container.querySelectorAll(
+          '.network-weave__ribbon-guide',
+        );
         const coordinates =
-          container
-            .querySelectorAll('.network-weave__ribbon-guide')
-            [laneIndex]?.getAttribute('data-centerline')
+          guides[laneIndex]
+            ?.getAttribute('data-centerline')
             ?.match(/-?\d+(?:\.\d+)?/g)
             ?.map(Number) ?? [];
         expect(coordinates).toHaveLength(8);

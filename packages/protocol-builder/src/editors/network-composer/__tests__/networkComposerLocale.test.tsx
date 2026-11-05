@@ -45,7 +45,7 @@ describe('the network composer sections, read in Spanish', () => {
       'Configuración de nodos',
       'Atributos editables',
       'Configuración de vínculos',
-      'Textos del lienzo',
+      'Personalizar la redacción predeterminada',
     ]);
     // Each attribute is chosen in a window its field's trigger opens, so the
     // control is named by the field's own label — which is what

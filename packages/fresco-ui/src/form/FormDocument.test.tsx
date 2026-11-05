@@ -507,7 +507,11 @@ function ViewField({
       type="button"
       onClick={() =>
         onChange?.({
-          ...(value !== null && typeof value === 'object' ? value : {}),
+          ...(value !== null &&
+          typeof value === 'object' &&
+          !Array.isArray(value)
+            ? value
+            : {}),
           zoom: 2,
         })
       }

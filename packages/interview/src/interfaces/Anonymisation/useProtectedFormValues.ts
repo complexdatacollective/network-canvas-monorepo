@@ -150,15 +150,17 @@ export function useProtectedFormValues(
     if (!scope || !missing) return undefined;
 
     let current = true;
-    void Promise.all(
-      stored.flatMap(({ attribute }) =>
-        attribute.status === 'encrypted'
-          ? [decryptInScope(scope, attribute.value)]
-          : [],
-      ),
-    ).then(() => {
+    const rerenderWhenDecrypted = async () => {
+      await Promise.all(
+        stored.flatMap(({ attribute }) =>
+          attribute.status === 'encrypted'
+            ? [decryptInScope(scope, attribute.value)]
+            : [],
+        ),
+      );
       if (current) rerender();
-    });
+    };
+    void rerenderWhenDecrypted();
     return () => {
       current = false;
     };

@@ -4,7 +4,9 @@
   "jsPlugins": ["oxlint-tailwindcss", "eslint-plugin-formatjs"],
   "settings": {
     "tailwindcss": {
-      "entryPoint": "apps/fresco/styles/globals.css"
+      "entryPoint": "apps/fresco/styles/globals.css",
+      "variablePatterns": ["[a-z](?:Class|ClassNames?|Classes)$"],
+      "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
     }
   },
   "rules": {
@@ -16,9 +18,22 @@
     "nextjs/no-img-element": "off",
     "tailwindcss/no-unknown-classes": "error",
     "tailwindcss/no-duplicate-classes": "error",
-    "tailwindcss/no-conflicting-classes": "warn",
+    // `focusable` sets its transition only under :focus-visible, a more
+    // specific selector, so an element's own transition classes apply until
+    // the ring shows. The rule reads that nested block as unconditional.
+    "tailwindcss/no-conflicting-classes": [
+      "error",
+      {
+        "allow": [
+          [
+            "(^|:)focusable(-within)?$",
+            "(^|:)(transition|duration|ease|delay)(-|$)"
+          ]
+        ]
+      }
+    ],
     "tailwindcss/no-unnecessary-whitespace": "error",
-    "tailwindcss/enforce-canonical": "warn",
+    "tailwindcss/enforce-canonical": "error",
     "no-restricted-imports": [
       "error",
       {

@@ -35,13 +35,14 @@ const getCodebookVariable = (
  * What a roster column holds: a codebook variable type, or a column of the
  * exporter's own making, which belongs to a layout (`layout_x`, `layout_y`) or
  * categorical (`categorical_option`) variable. `''` is a column whose data
- * does not say.
+ * does not say, and one that a variable of any other type has no such column
+ * for, which is read as it stands.
  */
 type ColumnType =
   | VariableType
-  | `${VariableType}_x`
-  | `${VariableType}_y`
-  | `${VariableType}_option`
+  | 'layout_x'
+  | 'layout_y'
+  | 'categorical_option'
   | '';
 
 /**
@@ -130,12 +131,18 @@ const getAttributeTypes = (
           if (option === '_x' || option === '_y') {
             return {
               ...acc,
-              [attributeKey]: `${optionCodebookType}${option}`,
+              [attributeKey]:
+                optionCodebookType === VariableTypes.layout
+                  ? (`layout${option}` as const)
+                  : '',
             };
           }
           return {
             ...acc,
-            [attributeKey]: `${optionCodebookType}_option`,
+            [attributeKey]:
+              optionCodebookType === VariableTypes.categorical
+                ? 'categorical_option'
+                : '',
           };
         }
       }
@@ -306,7 +313,10 @@ const getNodeListUsingTypes = (
           case VariableTypes.layout: {
             let value: unknown;
             try {
-              value = JSON.parse(String(attributeValue));
+              value =
+                typeof attributeValue === 'string'
+                  ? JSON.parse(attributeValue)
+                  : attributeValue;
             } catch {
               value = attributeValue;
             }
@@ -319,7 +329,7 @@ const getNodeListUsingTypes = (
             };
           }
           // Handle column names with _x and _y suffixes, indicating this is a file we created
-          case `${VariableTypes.layout}_x`: {
+          case 'layout_x': {
             const uuid = attributeKey.substring(0, attributeKey.indexOf('_'));
             return {
               ...consolidatedAttributes,
@@ -330,7 +340,7 @@ const getNodeListUsingTypes = (
               },
             };
           }
-          case `${VariableTypes.layout}_y`: {
+          case 'layout_y': {
             const uuid = attributeKey.substring(0, attributeKey.indexOf('_'));
             return {
               ...consolidatedAttributes,
@@ -342,7 +352,7 @@ const getNodeListUsingTypes = (
             };
           }
           // Handle column names with _option suffixes, indicating this is a file we created
-          case `${VariableTypes.categorical}_option`: {
+          case 'categorical_option': {
             // eslint-disable-next-line @typescript-eslint/no-base-to-string
             if (String(attributeValue).toLowerCase() === 'true') {
               const uuid = attributeKey.substring(0, attributeKey.indexOf('_'));
@@ -365,6 +375,7 @@ const getNodeListUsingTypes = (
           case VariableTypes.datetime:
           case VariableTypes.text:
           case VariableTypes.location:
+          case '':
           case undefined:
           default:
             return {

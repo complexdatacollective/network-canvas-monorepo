@@ -44,6 +44,7 @@ export function isNodeSelected(
       return state.linking;
     case 'select':
       return state.selected;
+    case 'addNode':
     default:
       // Adding nodes doesn't make an existing node a toggle at all.
       return false;

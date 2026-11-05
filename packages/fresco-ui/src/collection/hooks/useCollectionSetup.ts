@@ -1,6 +1,12 @@
 'use client';
 
-import { type RefObject, useEffect, useMemo, useState } from 'react';
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import type {
   DroppableCollectionResult,
@@ -39,6 +45,9 @@ type UseCollectionSetupResult<T> = {
     typeof useSelectableCollection
   >['collectionProps'];
   dndCollectionProps: Record<string, unknown>;
+  /** Attach to the same element as `containerRef`: it tells the hook when the
+   * container is mounted, so its width can be measured. */
+  containerCallbackRef: (element: HTMLElement | null) => void;
   /** Drop state for collection container styling (when onDrop is configured) */
   dropState: DroppableCollectionState | null;
 };
@@ -62,33 +71,27 @@ export function useCollectionSetup<T>(
     undefined,
   );
 
-  // Track container width using ResizeObserver
-  // We need to track a version counter to force re-evaluation when the ref becomes available
-  const [refVersion, setRefVersion] = useState(0);
+  // The container element, held in state so the effects below run again when
+  // it appears. It can mount after the hook does: a caller's render prop may
+  // leave the collection's elements out at first, and a ref alone would never
+  // tell an effect that it had been attached since.
+  const [containerElement, setContainerElement] = useState<HTMLElement | null>(
+    null,
+  );
+  // The width is read as the element attaches, so the first layout pass that
+  // has an element already has its width.
+  const containerCallbackRef = useCallback((element: HTMLElement | null) => {
+    setContainerElement(element);
+    const initialWidth = element?.offsetWidth ?? 0;
+    if (initialWidth > 0) setContainerWidth(initialWidth);
+  }, []);
 
-  // Effect to detect when ref becomes available
-  // This is needed because the ref might not be attached on first render if the
-  // collection is initially empty and the component returns early
+  // Track container width using ResizeObserver. Intentionally does not depend
+  // on `containerWidth`: the effect sets `containerWidth` but never reads it,
+  // so including it in deps would cause the ResizeObserver to
+  // disconnect/reconnect on every width change.
   useEffect(() => {
-    if (containerRef?.current && containerWidth === undefined) {
-      // Trigger re-evaluation by incrementing version
-      setRefVersion((v) => v + 1);
-    }
-  }, [containerRef, containerWidth]);
-
-  // Main effect to track container width using ResizeObserver.
-  // Intentionally does not depend on `containerWidth`: the effect sets
-  // `containerWidth` but never reads it, so including it in deps would cause
-  // the ResizeObserver to disconnect/reconnect on every width change.
-  useEffect(() => {
-    const element = containerRef?.current;
-    if (!element) return undefined;
-
-    // Get initial width immediately
-    const initialWidth = element.offsetWidth;
-    if (initialWidth > 0) {
-      setContainerWidth(initialWidth);
-    }
+    if (!containerElement) return undefined;
 
     // Watch for size changes
     const resizeObserver = new ResizeObserver((entries) => {
@@ -100,18 +103,18 @@ export function useCollectionSetup<T>(
       }
     });
 
-    resizeObserver.observe(element);
+    resizeObserver.observe(containerElement);
     return () => resizeObserver.disconnect();
-  }, [refVersion, containerRef]);
+  }, [containerElement]);
 
   // Set container ref on layout for DOM-based position queries
   // This allows layouts like InlineGridLayout to query actual item positions
   const collectionId = options.collectionId ?? 'collection';
   useEffect(() => {
-    if (!containerRef?.current) return;
+    if (!containerRef || !containerElement) return;
 
     options.layout.setContainerRef(containerRef, collectionId);
-  }, [options.layout, containerRef, collectionId, refVersion]);
+  }, [options.layout, containerRef, collectionId, containerElement]);
 
   const selectionManager = useSelectionState({
     selectionMode: options.selectionMode,
@@ -166,10 +169,13 @@ export function useCollectionSetup<T>(
     disallowEmptySelection: options.disallowEmptySelection,
   });
 
-  // Get collection-level drop state and props if hooks provided (for onDrop)
+  // Get collection-level drop state and props if hooks provided (for onDrop).
+  // Whether the hook is provided never changes while this is mounted:
+  // Collection keys its content on it (see `dragAndDropHooksInUse`).
   const dropResult: DroppableCollectionResult | null = options.dragAndDropHooks
     ?.useDroppableCollectionState
-    ? options.dragAndDropHooks.useDroppableCollectionState(collectionId)
+    ? // oxlint-disable-next-line react/hooks -- called on every render or on none: Collection remounts its content when the hook comes or goes
+      options.dragAndDropHooks.useDroppableCollectionState(collectionId)
     : null;
 
   return {
@@ -178,6 +184,7 @@ export function useCollectionSetup<T>(
     disabledKeysSet,
     collectionProps,
     dndCollectionProps: dropResult?.dropProps ?? {},
+    containerCallbackRef,
     dropState: dropResult?.state ?? null,
   };
 }

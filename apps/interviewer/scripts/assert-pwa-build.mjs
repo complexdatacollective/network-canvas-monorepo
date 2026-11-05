@@ -390,12 +390,10 @@ const catalogTags = (localesDir) =>
   readdirSync(localesDir)
     .map((f) => /^([A-Za-z-]+)\.json$/.exec(f)?.[1])
     .filter((tag) => tag !== undefined && tag !== 'en');
+// The interview's own messages are English only: what an interview shows in
+// another language comes from its protocol, so the interview has no catalogs.
 const localeGroups = [
   { prefix: 'locale-', dir: path.join(appRoot, 'src/locales') },
-  {
-    prefix: 'interview-locale-',
-    dir: path.join(appRoot, '../../packages/interview/src/locales'),
-  },
 ];
 const localeChunks = jsAssets.filter((f) =>
   localeGroups.some(({ prefix }) => f.startsWith(prefix)),

@@ -289,6 +289,33 @@ describe('makeRpcAdapter', () => {
     expect(onFailure).not.toHaveBeenCalled();
   });
 
+  // Re-enabling with the same tag and payload is a new run: it must not
+  // report the previous run's outcome while its own stream is under way.
+  it('streams again, not done, when re-enabled with the same payload', async () => {
+    const chunks: number[] = [];
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) =>
+        adapter.useRpcStream(
+          'Countdown',
+          { from: 2 },
+          (chunk) => {
+            chunks.push(chunk);
+          },
+          { enabled },
+        ),
+      { initialProps: { enabled: true } },
+    );
+    await waitFor(() => expect(result.current.status).toBe('done'));
+
+    rerender({ enabled: false });
+    expect(result.current.status).toBe('idle');
+
+    rerender({ enabled: true });
+    expect(result.current.status).toBe('streaming');
+    await waitFor(() => expect(result.current.status).toBe('done'));
+    expect(chunks).toEqual([2, 1, 2, 1]);
+  });
+
   it("reports a stream's typed failure as failed and hands it to onFailure", async () => {
     const chunks: number[] = [];
     const { result } = renderHook(() =>
@@ -481,6 +508,7 @@ const _flatClientShapeProbe = (
 };
 
 const _errorNarrowingProbe = (probe: RpcAdapter<Rpcs>) => {
+  // oxlint-disable-next-line react-hooks/rules-of-hooks -- a compile-time type probe that is never called.
   const result = useQuery(probe.rpcQuery('GetUser', { id: 'x' }));
   const narrowed: UserNotFound | RpcClientError.RpcClientError | null =
     result.error;

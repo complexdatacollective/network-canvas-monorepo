@@ -2,7 +2,7 @@
   "name": "Behavioural Influence Networks",
   "description": "An example template for studying social influence on health behaviours such as smoking, vaping, physical activity, diet, and alcohol use. It uses behaviour-specific name generators to elicit the people a participant shares each behaviour with, alongside the participant's own self-report.",
   "schemaVersion": 9,
-  "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
+  "localization": { "defaultLocale": "en", "locales": ["en"] },
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
     "ego": {
@@ -11,10 +11,7 @@
           "name": "activity_minutes_week",
           "type": "number",
           "component": "Number",
-          "validation": {
-            "minValue": 0,
-            "maxValue": 10080
-          }
+          "validation": { "minValue": 0, "maxValue": 10080 }
         },
         "smoking_status": {
           "name": "smoking_status",
@@ -23,73 +20,65 @@
           "options": [
             {
               "label": {
-                "en-US": "Current smoker (smoke every day or some days)"
+                "en": "Current smoker (smoke every day or some days)"
               },
               "value": "current"
             },
             {
               "label": {
-                "en-US": "Former smoker (smoked at least 100 cigarettes in my life, but not now)"
+                "en": "Former smoker (smoked at least 100 cigarettes in my life, but not now)"
               },
               "value": "former"
             },
             {
               "label": {
-                "en-US": "Never smoker (have not smoked 100 cigarettes in my life)"
+                "en": "Never smoker (have not smoked 100 cigarettes in my life)"
               },
               "value": "never"
             }
           ],
-          "validation": {
-            "required": true
-          }
+          "validation": { "required": true }
         },
         "vaping_status": {
           "name": "vaping_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
-            { "label": { "en-US": "I vape every day" }, "value": "daily" },
-            { "label": { "en-US": "I vape some days" }, "value": "some_days" },
+            { "label": { "en": "I vape every day" }, "value": "daily" },
+            { "label": { "en": "I vape some days" }, "value": "some_days" },
             {
-              "label": { "en-US": "I have tried vaping, but not now" },
+              "label": { "en": "I have tried vaping, but not now" },
               "value": "former"
             },
-            { "label": { "en-US": "I have never vaped" }, "value": "never" }
+            { "label": { "en": "I have never vaped" }, "value": "never" }
           ],
-          "validation": {
-            "required": true
-          }
+          "validation": { "required": true }
         },
         "diet_quality": {
           "name": "diet_quality",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en-US": "Poor" }, "value": 1 },
-            { "label": { "en-US": "Fair" }, "value": 2 },
-            { "label": { "en-US": "Good" }, "value": 3 },
-            { "label": { "en-US": "Very good" }, "value": 4 },
-            { "label": { "en-US": "Excellent" }, "value": 5 }
+            { "label": { "en": "Poor" }, "value": 1 },
+            { "label": { "en": "Fair" }, "value": 2 },
+            { "label": { "en": "Good" }, "value": 3 },
+            { "label": { "en": "Very good" }, "value": 4 },
+            { "label": { "en": "Excellent" }, "value": 5 }
           ],
-          "validation": {
-            "required": true
-          }
+          "validation": { "required": true }
         },
         "alcohol_frequency": {
           "name": "alcohol_frequency",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en-US": "Never" }, "value": 0 },
-            { "label": { "en-US": "Monthly or less" }, "value": 1 },
-            { "label": { "en-US": "2 to 4 times a month" }, "value": 2 },
-            { "label": { "en-US": "2 to 3 times a week" }, "value": 3 },
-            { "label": { "en-US": "4 or more times a week" }, "value": 4 }
+            { "label": { "en": "Never" }, "value": 0 },
+            { "label": { "en": "Monthly or less" }, "value": 1 },
+            { "label": { "en": "2 to 4 times a month" }, "value": 2 },
+            { "label": { "en": "2 to 3 times a week" }, "value": 3 },
+            { "label": { "en": "4 or more times a week" }, "value": 4 }
           ],
-          "validation": {
-            "required": true
-          }
+          "validation": { "required": true }
         }
       }
     },
@@ -104,25 +93,22 @@
             "name": "alter_name",
             "type": "text",
             "component": "Text",
-            "validation": {
-              "required": true,
-              "unique": true
-            }
+            "validation": { "required": true, "unique": true }
           },
           "relationship": {
             "name": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
-              { "label": { "en-US": "Partner or spouse" }, "value": "partner" },
-              { "label": { "en-US": "Family member" }, "value": "family" },
-              { "label": { "en-US": "Friend" }, "value": "friend" },
+              { "label": { "en": "Partner or spouse" }, "value": "partner" },
+              { "label": { "en": "Family member" }, "value": "family" },
+              { "label": { "en": "Friend" }, "value": "friend" },
               {
-                "label": { "en-US": "Co-worker or classmate" },
+                "label": { "en": "Co-worker or classmate" },
                 "value": "coworker"
               },
-              { "label": { "en-US": "Neighbour" }, "value": "neighbour" },
-              { "label": { "en-US": "Other" }, "value": "other" }
+              { "label": { "en": "Neighbour" }, "value": "neighbour" },
+              { "label": { "en": "Other" }, "value": "other" }
             ]
           },
           "closeness": {
@@ -130,10 +116,10 @@
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": { "en-US": "Not close" }, "value": 1 },
-              { "label": { "en-US": "Somewhat close" }, "value": 2 },
-              { "label": { "en-US": "Close" }, "value": 3 },
-              { "label": { "en-US": "Very close" }, "value": 4 }
+              { "label": { "en": "Not close" }, "value": 1 },
+              { "label": { "en": "Somewhat close" }, "value": 2 },
+              { "label": { "en": "Close" }, "value": 3 },
+              { "label": { "en": "Very close" }, "value": 4 }
             ]
           },
           "alter_smokes": {
@@ -141,9 +127,9 @@
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
-              { "label": { "en-US": "Yes" }, "value": "yes" },
-              { "label": { "en-US": "No" }, "value": "no" },
-              { "label": { "en-US": "Don't know" }, "value": "dont_know" }
+              { "label": { "en": "Yes" }, "value": "yes" },
+              { "label": { "en": "No" }, "value": "no" },
+              { "label": { "en": "Don't know" }, "value": "dont_know" }
             ]
           },
           "alter_activity": {
@@ -151,10 +137,10 @@
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": { "en-US": "Not at all active" }, "value": 1 },
-              { "label": { "en-US": "Slightly active" }, "value": 2 },
-              { "label": { "en-US": "Moderately active" }, "value": 3 },
-              { "label": { "en-US": "Very active" }, "value": 4 }
+              { "label": { "en": "Not at all active" }, "value": 1 },
+              { "label": { "en": "Slightly active" }, "value": 2 },
+              { "label": { "en": "Moderately active" }, "value": 3 },
+              { "label": { "en": "Very active" }, "value": 4 }
             ]
           },
           "alter_diet": {
@@ -162,11 +148,11 @@
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": { "en-US": "Poor" }, "value": 1 },
-              { "label": { "en-US": "Fair" }, "value": 2 },
-              { "label": { "en-US": "Good" }, "value": 3 },
-              { "label": { "en-US": "Very good" }, "value": 4 },
-              { "label": { "en-US": "Excellent" }, "value": 5 }
+              { "label": { "en": "Poor" }, "value": 1 },
+              { "label": { "en": "Fair" }, "value": 2 },
+              { "label": { "en": "Good" }, "value": 3 },
+              { "label": { "en": "Very good" }, "value": 4 },
+              { "label": { "en": "Excellent" }, "value": 5 }
             ]
           },
           "alter_drinks": {
@@ -174,11 +160,11 @@
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
-              { "label": { "en-US": "Never" }, "value": "never" },
-              { "label": { "en-US": "Monthly or less" }, "value": "monthly" },
-              { "label": { "en-US": "Weekly" }, "value": "weekly" },
-              { "label": { "en-US": "Most days" }, "value": "most_days" },
-              { "label": { "en-US": "Don't know" }, "value": "dont_know" }
+              { "label": { "en": "Never" }, "value": "never" },
+              { "label": { "en": "Monthly or less" }, "value": "monthly" },
+              { "label": { "en": "Weekly" }, "value": "weekly" },
+              { "label": { "en": "Most days" }, "value": "most_days" },
+              { "label": { "en": "Don't know" }, "value": "dont_know" }
             ]
           },
           "shared_domains": {
@@ -187,49 +173,39 @@
             "component": "CheckboxGroup",
             "options": [
               {
-                "label": { "en-US": "Exercise together" },
+                "label": { "en": "Exercise together" },
                 "value": "exercise"
               },
-              { "label": { "en-US": "Eat meals together" }, "value": "meals" },
+              { "label": { "en": "Eat meals together" }, "value": "meals" },
               {
-                "label": { "en-US": "Smoke or vape together" },
+                "label": { "en": "Smoke or vape together" },
                 "value": "smoke_vape"
               },
               {
-                "label": { "en-US": "Drink alcohol together" },
+                "label": { "en": "Drink alcohol together" },
                 "value": "drink"
               }
             ],
-            "validation": {
-              "minSelected": 1
-            }
+            "validation": { "minSelected": 1 }
           },
-          "layout": {
-            "name": "layout",
-            "type": "layout"
-          }
+          "layout": { "name": "layout", "type": "layout" }
         }
       }
     },
-    "edge": {
-      "knows": {
-        "name": "Knows",
-        "color": "edge-color-seq-1"
-      }
-    }
+    "edge": { "knows": { "name": "Knows", "color": "edge-color-seq-1" } }
   },
   "stages": [
     {
       "id": "information-researcher-notes",
       "type": "Information",
-      "label": { "en-US": "Template notes (delete before fielding)" },
-      "title": { "en-US": "Template notes" },
+      "label": { "en": "Template notes (delete before fielding)" },
+      "title": { "en": "Template notes" },
       "items": [
         {
           "id": "researcher-notes",
           "type": "text",
           "content": {
-            "en-US": "## For researchers\n\n_Delete this screen before you field the study._\n\n**Caveat:** behaviours shared among contacts reflect both social influence **and** homophily (selecting similar friends); this design cannot by itself separate the two.\n\nThe instruments and studies this template draws on:\n\n- [Christakis NA, Fowler JH (2007). The Spread of Obesity in a Large Social Network over 32 Years. *NEJM*.](https://www.albany.edu/~ravi/pdfs/christakis_fowler_2007.pdf)\n- [Christakis NA, Fowler JH (2008). The Collective Dynamics of Smoking in a Large Social Network. *NEJM*.](https://www.nejm.org/doi/full/10.1056/NEJMsa0706154)\n- [International Physical Activity Questionnaire (IPAQ) — PhenX Toolkit protocol.](https://www.phenxtoolkit.org/protocols/view/661901)\n- [Separating influence from homophily in network dynamics (SIENA / stochastic actor-based models).](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3469361/)"
+            "en": "## For researchers\n\n_Delete this screen before you field the study._\n\n**Caveat:** behaviours shared among contacts reflect both social influence **and** homophily (selecting similar friends); this design cannot by itself separate the two.\n\nThe instruments and studies this template draws on:\n\n- [Christakis NA, Fowler JH (2007). The Spread of Obesity in a Large Social Network over 32 Years. *NEJM*.](https://www.albany.edu/~ravi/pdfs/christakis_fowler_2007.pdf)\n- [Christakis NA, Fowler JH (2008). The Collective Dynamics of Smoking in a Large Social Network. *NEJM*.](https://www.nejm.org/doi/full/10.1056/NEJMsa0706154)\n- [International Physical Activity Questionnaire (IPAQ) — PhenX Toolkit protocol.](https://www.phenxtoolkit.org/protocols/view/661901)\n- [Separating influence from homophily in network dynamics (SIENA / stochastic actor-based models).](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3469361/)"
           }
         }
       ]
@@ -237,14 +213,14 @@
     {
       "id": "information-intro",
       "type": "Information",
-      "label": { "en-US": "Welcome" },
-      "title": { "en-US": "About this study" },
+      "label": { "en": "Welcome" },
+      "title": { "en": "About this study" },
       "items": [
         {
           "id": "intro-welcome",
           "type": "text",
           "content": {
-            "en-US": "## Welcome\n\nThank you for taking part. In this interview we will talk about some of your everyday **health behaviours** and the **people you spend time with**. There are no right or wrong answers — we are interested in your own experience."
+            "en": "## Welcome\n\nThank you for taking part. In this interview we will talk about some of your everyday **health behaviours** and the **people you spend time with**. There are no right or wrong answers — we are interested in your own experience."
           }
         }
       ]
@@ -252,15 +228,11 @@
     {
       "id": "ego-behaviours",
       "type": "EgoForm",
-      "label": {
-        "en-US": "Your own behaviours"
-      },
+      "label": { "en": "Your own behaviours" },
       "introductionPanel": {
-        "title": {
-          "en-US": "About you"
-        },
+        "title": { "en": "About you" },
         "text": {
-          "en-US": "First, a few questions about **your own** everyday behaviours. There are no right or wrong answers. Your responses give us a reference point for understanding the people you will tell us about later."
+          "en": "First, a few questions about **your own** everyday behaviours. There are no right or wrong answers. Your responses give us a reference point for understanding the people you will tell us about later."
         }
       },
       "form": {
@@ -268,34 +240,34 @@
           {
             "variable": "activity_minutes_week",
             "prompt": {
-              "en-US": "In a usual week, about how many **minutes** do you spend being physically active at a moderate or vigorous level?"
+              "en": "In a usual week, about how many **minutes** do you spend being physically active at a moderate or vigorous level?"
             },
             "hint": {
-              "en-US": "Count activities that make you breathe harder than normal, in sessions of at least 10 minutes."
+              "en": "Count activities that make you breathe harder than normal, in sessions of at least 10 minutes."
             }
           },
           {
             "variable": "smoking_status",
             "prompt": {
-              "en-US": "Which best describes your **cigarette smoking**?"
+              "en": "Which best describes your **cigarette smoking**?"
             }
           },
           {
             "variable": "vaping_status",
             "prompt": {
-              "en-US": "Which best describes your use of **e-cigarettes or vapes**?"
+              "en": "Which best describes your use of **e-cigarettes or vapes**?"
             }
           },
           {
             "variable": "diet_quality",
             "prompt": {
-              "en-US": "In general, how healthy would you say your **diet** is?"
+              "en": "In general, how healthy would you say your **diet** is?"
             }
           },
           {
             "variable": "alcohol_frequency",
             "prompt": {
-              "en-US": "How often do you have a drink containing **alcohol**?"
+              "en": "How often do you have a drink containing **alcohol**?"
             }
           }
         ]
@@ -304,19 +276,16 @@
     {
       "id": "ng-behaviours",
       "type": "NameGenerator",
-      "label": { "en-US": "People you share behaviours with" },
+      "label": { "en": "People you share behaviours with" },
       "interviewScript": "Each prompt asks about a different shared activity. The same person can take part in several of these activities; when they do, add them once and then select them from the panel of people already mentioned for the other prompts, rather than typing their name again.",
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "subject": { "entity": "node", "type": "person" },
       "form": {
-        "title": { "en-US": "Add Person" },
+        "title": { "en": "Add Person" },
         "fields": [
           {
             "variable": "alter_name",
             "prompt": {
-              "en-US": "What is this person's first name or a nickname you will recognise?"
+              "en": "What is this person's first name or a nickname you will recognise?"
             }
           }
         ]
@@ -324,7 +293,7 @@
       "panels": [
         {
           "id": "already-mentioned",
-          "title": { "en-US": "People you already mentioned" },
+          "title": { "en": "People you already mentioned" },
           "dataSource": "existing"
         }
       ],
@@ -332,25 +301,25 @@
         {
           "id": "p-exercise",
           "text": {
-            "en-US": "Who are the people you usually **exercise or play sport with**?"
+            "en": "Who are the people you usually **exercise or play sport with**?"
           }
         },
         {
           "id": "p-meals",
           "text": {
-            "en-US": "Who are the people you usually **eat meals with**?"
+            "en": "Who are the people you usually **eat meals with**?"
           }
         },
         {
           "id": "p-smoke-vape",
           "text": {
-            "en-US": "Who are the people you usually **smoke or vape with**?"
+            "en": "Who are the people you usually **smoke or vape with**?"
           }
         },
         {
           "id": "p-drink",
           "text": {
-            "en-US": "Who are the people you usually **drink alcohol with**?"
+            "en": "Who are the people you usually **drink alcohol with**?"
           }
         }
       ]
@@ -358,18 +327,14 @@
     {
       "id": "alter-behaviours-introduction",
       "type": "Information",
-      "label": {
-        "en-US": "About each person"
-      },
-      "title": {
-        "en-US": "About each person"
-      },
+      "label": { "en": "About each person" },
+      "title": { "en": "About each person" },
       "items": [
         {
           "id": "introduction-text",
           "type": "text",
           "content": {
-            "en-US": "Now we will ask about **each person's own** behaviours, as far as you know them. If you are unsure, give your best impression or choose \"Don't know\"."
+            "en": "Now we will ask about **each person's own** behaviours, as far as you know them. If you are unsure, give your best impression or choose \"Don't know\"."
           }
         }
       ]
@@ -378,46 +343,43 @@
       "id": "alter-behaviours",
       "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "type": "AlterForm",
-      "label": { "en-US": "Their behaviours" },
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "label": { "en": "Their behaviours" },
+      "subject": { "entity": "node", "type": "person" },
       "form": {
         "fields": [
           {
             "variable": "shared_domains",
             "prompt": {
-              "en-US": "Which of these activities do you ever do **with {nodeLabel}**?"
+              "en": "Which of these activities do you ever do **with {nodeLabel}**?"
             },
-            "hint": { "en-US": "Select all that apply." }
+            "hint": { "en": "Select all that apply." }
           },
           {
             "variable": "relationship",
-            "prompt": { "en-US": "What is your relationship to {nodeLabel}?" }
+            "prompt": { "en": "What is your relationship to {nodeLabel}?" }
           },
           {
             "variable": "alter_smokes",
             "prompt": {
-              "en-US": "As far as you know, does {nodeLabel} **smoke**?"
+              "en": "As far as you know, does {nodeLabel} **smoke**?"
             }
           },
           {
             "variable": "alter_activity",
             "prompt": {
-              "en-US": "How **physically active** would you say {nodeLabel} is?"
+              "en": "How **physically active** would you say {nodeLabel} is?"
             }
           },
           {
             "variable": "alter_diet",
             "prompt": {
-              "en-US": "How **healthy** would you say {nodeLabel}'s diet is?"
+              "en": "How **healthy** would you say {nodeLabel}'s diet is?"
             }
           },
           {
             "variable": "alter_drinks",
             "prompt": {
-              "en-US": "How often does {nodeLabel} **drink alcohol**, as far as you know?"
+              "en": "How often does {nodeLabel} **drink alcohol**, as far as you know?"
             }
           }
         ]
@@ -426,16 +388,13 @@
     {
       "id": "ordbin-closeness",
       "type": "OrdinalBin",
-      "label": { "en-US": "How close you are" },
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "label": { "en": "How close you are" },
+      "subject": { "entity": "node", "type": "person" },
       "prompts": [
         {
           "id": "p-closeness",
           "text": {
-            "en-US": "Place each person by **how close you feel to them**. Closer ties tend to have a stronger influence on our behaviour."
+            "en": "Place each person by **how close you feel to them**. Closer ties tend to have a stronger influence on our behaviour."
           },
           "variable": "closeness",
           "color": "ord-color-seq-1"
@@ -444,32 +403,10 @@
     },
     {
       "id": "narrative-clustering",
-      "groupsHeading": {
-        "en-US": "Groups"
-      },
-      "tooltips": {
-        "enableDrawing": {
-          "en-US": "Enable drawing"
-        },
-        "disableDrawing": {
-          "en-US": "Disable drawing"
-        },
-        "freezeAnnotations": {
-          "en-US": "Freeze annotations"
-        },
-        "unfreezeAnnotations": {
-          "en-US": "Unfreeze annotations"
-        },
-        "resetAnnotations": {
-          "en-US": "Reset annotations"
-        }
-      },
+      "groupsHeading": { "en": "Groups" },
       "type": "Narrative",
-      "label": { "en-US": "Review behavioural clustering" },
-      "subject": {
-        "entity": "node",
-        "type": "person"
-      },
+      "label": { "en": "Review behavioural clustering" },
+      "subject": { "entity": "node", "type": "person" },
       "behaviours": {
         "automaticLayout": true,
         "allowRepositioning": true,
@@ -478,125 +415,126 @@
       "presets": [
         {
           "id": "preset-smoking",
-          "label": { "en-US": "Smoking" },
+          "label": { "en": "Smoking" },
           "layoutVariable": "layout",
           "groupVariable": "alter_smokes",
           "highlight": []
         },
         {
           "id": "preset-activity",
-          "label": { "en-US": "Physical activity" },
+          "label": { "en": "Physical activity" },
           "layoutVariable": "layout",
           "groupVariable": "alter_activity",
           "highlight": []
         },
         {
           "id": "preset-drinking",
-          "label": { "en-US": "Drinking" },
+          "label": { "en": "Drinking" },
           "layoutVariable": "layout",
           "groupVariable": "alter_drinks",
           "highlight": []
         }
       ],
-      "background": {
-        "concentricCircles": 3,
-        "skewedTowardCenter": true
-      }
+      "background": { "concentricCircles": 3, "skewedTowardCenter": true }
     },
     {
       "id": "finish",
-      "finishLabel": { "en-US": "Finish" },
+      "finishLabel": { "en": "Finish" },
       "finishConfirmation": {
-        "en-US": "Are you sure you want to finish the interview?"
+        "en": "Are you sure you want to finish the interview?"
       },
       "finishFailed": {
-        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
       },
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": { "en-US": "Finish Interview" },
+      "label": { "en": "Finish Interview" },
       "content": {
-        "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+        "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
       "finishedContent": {
-        "en-US": "# Interview Finished\n\nThank you for participating!"
+        "en": "# Interview Finished\n\nThank you for participating!"
       },
       "outcome": "completed"
     }
   ],
   "interfaceText": {
     "navigation": {
-      "exitInterview": {
-        "en-US": "Exit interview"
-      },
+      "exitInterview": { "en": "Exit interview" },
       "exitInterviewDescription": {
-        "en-US": "Your answers so far will be saved and you can continue later."
+        "en": "Your answers so far will be saved and you can continue later."
       },
-      "back": {
-        "en-US": "Back"
-      },
-      "continue": {
-        "en-US": "Continue"
+      "back": { "en": "Back" },
+      "continue": { "en": "Continue" },
+      "exitFailed": {
+        "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
       }
     },
+    "interviewer": {
+      "exitReview": { "en": "Exit review" },
+      "exitReviewTitle": { "en": "Exit this review?" },
+      "exitReviewDescription": {
+        "en": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": { "en": "Hidden by answers" },
+      "outsidePath": { "en": "Outside current path" },
+      "showScreenTitle": { "en": "Show this screen?" },
+      "hiddenScreenDescription": {
+        "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": { "en": "Show screen" }
+    },
     "buttons": {
-      "cancel": {
-        "en-US": "Cancel"
-      },
-      "done": {
-        "en-US": "Done"
-      },
-      "delete": {
-        "en-US": "Delete"
-      },
-      "yes": {
-        "en-US": "Yes"
-      },
-      "no": {
-        "en-US": "No"
-      },
-      "pauseLayout": {
-        "en-US": "Pause automatic layout"
-      },
-      "resumeLayout": {
-        "en-US": "Resume automatic layout"
-      }
+      "cancel": { "en": "Cancel" },
+      "done": { "en": "Done" },
+      "delete": { "en": "Delete" },
+      "yes": { "en": "Yes" },
+      "no": { "en": "No" },
+      "pauseLayout": { "en": "Pause automatic layout" },
+      "resumeLayout": { "en": "Resume automatic layout" },
+      "copy": { "en": "Copy" },
+      "copied": { "en": "Copied" }
     },
     "messages": {
       "stageError": {
-        "en-US": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+        "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "itemUnavailable": {
-        "en-US": "This item could not be displayed."
-      },
-      "error": {
-        "en-US": "An error occurred."
-      }
+      "itemUnavailable": { "en": "This item could not be displayed." },
+      "error": { "en": "An error occurred." },
+      "loading": { "en": "Loading…" },
+      "unnamed": { "en": "Unnamed" }
+    },
+    "search": {
+      "searchLabel": { "en": "Search" },
+      "searchNoMatch": { "en": "Nothing matched your search term." }
     },
     "forms": {
-      "discardChangesTitle": {
-        "en-US": "Discard changes?"
-      },
+      "discardChangesTitle": { "en": "Discard changes?" },
       "discardChangesDescription": {
-        "en-US": "Do you want to discard your changes?"
+        "en": "Do you want to discard your changes?"
       }
     },
     "validation": {
       "required": {
-        "en-US": "You must answer this question before continuing."
+        "en": "You must answer this question before continuing."
       },
-      "minValue": {
-        "en-US": "Enter a value greater than or equal to {min}."
-      },
-      "maxValue": {
-        "en-US": "Enter a value less than or equal to {max}."
-      },
+      "minValue": { "en": "Enter a value greater than or equal to {min}." },
+      "maxValue": { "en": "Enter a value less than or equal to {max}." },
       "minSelected": {
-        "en-US": "{count, plural, one {Select at least # value.} other {Select at least # values.}}"
+        "en": "{count, plural, one {Select at least # value.} other {Select at least # values.}}"
       },
-      "unique": {
-        "en-US": "Must be unique."
-      }
+      "unique": { "en": "Must be unique." }
+    },
+    "narrative": {
+      "toggleDrawing": { "en": "Toggle drawing" },
+      "toggleFreezing": { "en": "Toggle freezing annotations" },
+      "resetAnnotations": { "en": "Reset annotations" }
+    },
+    "egoForm": {
+      "scrollForQuestions": { "en": "Scroll to see more questions" }
     }
   }
 }

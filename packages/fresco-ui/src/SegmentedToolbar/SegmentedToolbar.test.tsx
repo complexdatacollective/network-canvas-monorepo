@@ -306,6 +306,54 @@ describe('SegmentedToolbar — overlays', () => {
   });
 });
 
+describe('SegmentedToolbar — popover naming', () => {
+  /** The popup is a `role="dialog"`, and one with no name is announced as nothing. */
+  it('names the popup after its icon-only trigger', async () => {
+    render(
+      <SegmentedToolbar aria-label="Editing tools">
+        <ToolbarPopover
+          trigger={
+            <ToolbarIconButton aria-label="Canvas settings" icon={<Pencil />} />
+          }
+        >
+          <p>Adjust how the canvas is displayed.</p>
+        </ToolbarPopover>
+      </SegmentedToolbar>,
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Canvas settings' }),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Canvas settings' }),
+    ).toBeInTheDocument();
+  });
+
+  it('lets contentProps name the popup instead', async () => {
+    render(
+      <SegmentedToolbar aria-label="Editing tools">
+        <ToolbarPopover
+          trigger={
+            <ToolbarIconButton aria-label="Canvas settings" icon={<Pencil />} />
+          }
+          contentProps={{ 'aria-label': 'Display options' }}
+        >
+          <p>Adjust how the canvas is displayed.</p>
+        </ToolbarPopover>
+      </SegmentedToolbar>,
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Canvas settings' }),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Display options' }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('SegmentedToolbar — toggle groups', () => {
   it('renders toolbar controls as toggles and changes selection', async () => {
     const onValueChange = vi.fn();

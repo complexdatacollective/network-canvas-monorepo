@@ -89,8 +89,13 @@ const wireValue = (value: AnyValue) => {
   return undefined;
 };
 
+const nanosString = (nanos: LogRecord['timeUnixNano']): string =>
+  typeof nanos === 'object'
+    ? ((BigInt(nanos.high >>> 0) << 32n) | BigInt(nanos.low >>> 0)).toString()
+    : String(nanos);
+
 const wireRecord = (record: LogRecord) => ({
-  timeUnixNano: String(record.timeUnixNano),
+  timeUnixNano: nanosString(record.timeUnixNano),
   severityText: record.severityText,
   body: { stringValue: record.body?.stringValue ?? '' },
   attributes: record.attributes.flatMap((attribute) => {

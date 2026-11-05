@@ -23,9 +23,13 @@ vi.mock('../../analytics/useTrack', () => ({
 }));
 
 vi.mock('../../localization/ProtocolLocalizationProvider', () => ({
-  useResolveLocalizedString: () => (value: { en: string }) => ({
+  useResolveLocalizedMessage: () => (value: { en: string }) => ({
     text: value.en,
   }),
+}));
+
+vi.mock('../useStageSubjectName', () => ({
+  useStageSubjectName: () => 'Person',
 }));
 
 const NOTICE = { en: 'Place everyone first.' };

@@ -231,12 +231,12 @@ const RouteFocus = ({ location, ownerDocument }: RouteFocusProps) => {
 
   return (
     <>
-      <div role="status" aria-live="polite" className="sr-only">
+      <output aria-live="polite" className="sr-only">
         {announcements[0]}
-      </div>
-      <div role="status" aria-live="polite" className="sr-only">
+      </output>
+      <output aria-live="polite" className="sr-only">
         {announcements[1]}
-      </div>
+      </output>
     </>
   );
 };

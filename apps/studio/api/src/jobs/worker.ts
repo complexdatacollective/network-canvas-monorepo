@@ -505,15 +505,142 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     return step;
   });
 
-  const drainOnce = Effect.fn('JobWorker.drainOnce')(
+  const processClaimed = Effect.fn('JobWorker.process')(function* (
+    queue: JobQueueName,
+    claimed: ClaimedRow,
+  ) {
+    const idle: JobStep = { _tag: 'idle' };
+    const jobId: JobId = claimed.id;
+    const handler = registry.get(queue);
+    if (handler === undefined) {
+      const returned = yield* MaintenanceScope.open(
+        returnToQueue(schema, jobId, claimed.attempts),
+      );
+      if (!returned) yield* leaseLost(queue, jobId, claimed.attempts);
+      return idle;
+    }
+
+    // Outside the claim's transaction: holding one open across a network call starves the pool.
+    const exit = yield* Effect.exit(
+      handler({
+        id: jobId,
+        payload: claimed.payload,
+        attempt: claimed.attempts,
+        finalAttempt: claimed.attempts > claimed.retry_limit,
+      }).pipe(
+        Effect.withSpan('JobWorker.handle', {
+          attributes: { queue, attempt: claimed.attempts },
+          parent: Option.getOrUndefined(enqueuingSpan(claimed.correlation)),
+        }),
+      ),
+    );
+
+    const settledAt = yield* clock.now;
+    if (Exit.isSuccess(exit)) {
+      const fenced = yield* MaintenanceScope.open(
+        settleSuccess(jobId, claimed.attempts, exit.value, settledAt),
+      );
+      if (!fenced) {
+        yield* leaseLost(queue, jobId, claimed.attempts);
+        return idle;
+      }
+      yield* (
+        exit.value === 'uncertain'
+          ? Effect.logWarning(
+              'job ended uncertain: a side effect left the process and its record could not be written',
+            )
+          : Effect.logDebug('job settled')
+      ).pipe(
+        Effect.annotateLogs({
+          queue,
+          job_id: jobId,
+          attempt: claimed.attempts,
+          outcome: exit.value,
+        }),
+      );
+      const settled: JobStep = {
+        _tag: 'settled',
+        jobId,
+        outcome: exit.value,
+      };
+      return settled;
+    }
+
+    const error = causeError(exit.cause);
+    if (Predicate.isTagged(error, 'JobPayloadUndecodable')) {
+      const fenced = yield* MaintenanceScope.open(
+        settleDead(jobId, claimed.attempts, describe(error), settledAt),
+      );
+      if (!fenced) {
+        yield* leaseLost(queue, jobId, claimed.attempts);
+        return idle;
+      }
+      yield* Effect.logError(
+        'job carries a payload this queue does not declare',
+      ).pipe(
+        Effect.annotateLogs({
+          queue,
+          job_id: jobId,
+          ...alertAnnotation(OPERATOR_ALERTS.jobDeadLettered),
+        }),
+      );
+      yield* reportFailure(exit.cause, queue, jobId);
+      const dead: JobStep = { _tag: 'dead', jobId };
+      return dead;
+    }
+
+    const message = describe(error);
+    const step = yield* MaintenanceScope.open(
+      settleFailure(
+        queue,
+        jobId,
+        claimed.attempts,
+        claimed,
+        message,
+        settledAt,
+      ),
+    );
+    if (step === null) {
+      yield* leaseLost(queue, jobId, claimed.attempts);
+      return idle;
+    }
+    const attemptAnnotations = {
+      queue,
+      job_id: jobId,
+      attempt: claimed.attempts,
+    };
+    yield* step._tag === 'retrying'
+      ? Effect.logWarning('job attempt failed; retrying', exit.cause).pipe(
+          Effect.annotateLogs(attemptAnnotations),
+        )
+      : Effect.logError(
+          'job attempt failed and will not be retried',
+          exit.cause,
+        ).pipe(
+          Effect.annotateLogs({
+            ...attemptAnnotations,
+            ...alertAnnotation(OPERATOR_ALERTS.jobDeadLettered),
+          }),
+        );
+    if (step._tag !== 'retrying') {
+      yield* reportFailure(exit.cause, queue, jobId);
+    }
+    return step;
+  });
+
+  const drainOnce = Effect.fnUntraced(
     function* (queue: JobQueueName) {
       const idle: JobStep = { _tag: 'idle' };
       // Re-read inside the permit, so a fiber that waited for one claims nothing during
       // the stop window.
       if (!MutableRef.get(fetching)) return idle;
       const now = yield* clock.now;
+      // Nearly every poll claims nothing, so the claim runs under an unsampled span,
+      // which the exporter drops with its SQL; only a claimed job is traced.
       const claimedOrRaced = yield* Effect.exit(
-        MaintenanceScope.open(claim(queue, now)),
+        MaintenanceScope.open(claim(queue, now)).pipe(
+          Effect.withSpan('JobWorker.claim', { sampled: false }),
+        ),
       );
       if (
         Exit.isFailure(claimedOrRaced) &&
@@ -525,123 +652,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       if (Exit.isFailure(claimedOrRaced)) return idle;
       const claimed = claimedOrRaced.value;
       if (claimed === undefined) return idle;
-
-      const jobId: JobId = claimed.id;
-      const handler = registry.get(queue);
-      if (handler === undefined) {
-        const returned = yield* MaintenanceScope.open(
-          returnToQueue(schema, jobId, claimed.attempts),
-        );
-        if (!returned) yield* leaseLost(queue, jobId, claimed.attempts);
-        return idle;
-      }
-
-      // Outside the claim's transaction: holding one open across a network call starves the pool.
-      const exit = yield* Effect.exit(
-        handler({
-          id: jobId,
-          payload: claimed.payload,
-          attempt: claimed.attempts,
-          finalAttempt: claimed.attempts > claimed.retry_limit,
-        }).pipe(
-          Effect.withSpan('JobWorker.handle', {
-            attributes: { queue, attempt: claimed.attempts },
-            parent: Option.getOrUndefined(enqueuingSpan(claimed.correlation)),
-          }),
-        ),
-      );
-
-      const settledAt = yield* clock.now;
-      if (Exit.isSuccess(exit)) {
-        const fenced = yield* MaintenanceScope.open(
-          settleSuccess(jobId, claimed.attempts, exit.value, settledAt),
-        );
-        if (!fenced) {
-          yield* leaseLost(queue, jobId, claimed.attempts);
-          return idle;
-        }
-        yield* (
-          exit.value === 'uncertain'
-            ? Effect.logWarning(
-                'job ended uncertain: a side effect left the process and its record could not be written',
-              )
-            : Effect.logDebug('job settled')
-        ).pipe(
-          Effect.annotateLogs({
-            queue,
-            job_id: jobId,
-            attempt: claimed.attempts,
-            outcome: exit.value,
-          }),
-        );
-        const settled: JobStep = {
-          _tag: 'settled',
-          jobId,
-          outcome: exit.value,
-        };
-        return settled;
-      }
-
-      const error = causeError(exit.cause);
-      if (Predicate.isTagged(error, 'JobPayloadUndecodable')) {
-        const fenced = yield* MaintenanceScope.open(
-          settleDead(jobId, claimed.attempts, describe(error), settledAt),
-        );
-        if (!fenced) {
-          yield* leaseLost(queue, jobId, claimed.attempts);
-          return idle;
-        }
-        yield* Effect.logError(
-          'job carries a payload this queue does not declare',
-        ).pipe(
-          Effect.annotateLogs({
-            queue,
-            job_id: jobId,
-            ...alertAnnotation(OPERATOR_ALERTS.jobDeadLettered),
-          }),
-        );
-        yield* reportFailure(exit.cause, queue, jobId);
-        const dead: JobStep = { _tag: 'dead', jobId };
-        return dead;
-      }
-
-      const message = describe(error);
-      const step = yield* MaintenanceScope.open(
-        settleFailure(
-          queue,
-          jobId,
-          claimed.attempts,
-          claimed,
-          message,
-          settledAt,
-        ),
-      );
-      if (step === null) {
-        yield* leaseLost(queue, jobId, claimed.attempts);
-        return idle;
-      }
-      const attemptAnnotations = {
-        queue,
-        job_id: jobId,
-        attempt: claimed.attempts,
-      };
-      yield* step._tag === 'retrying'
-        ? Effect.logWarning('job attempt failed; retrying', exit.cause).pipe(
-            Effect.annotateLogs(attemptAnnotations),
-          )
-        : Effect.logError(
-            'job attempt failed and will not be retried',
-            exit.cause,
-          ).pipe(
-            Effect.annotateLogs({
-              ...attemptAnnotations,
-              ...alertAnnotation(OPERATOR_ALERTS.jobDeadLettered),
-            }),
-          );
-      if (step._tag !== 'retrying') {
-        yield* reportFailure(exit.cause, queue, jobId);
-      }
-      return step;
+      return yield* processClaimed(queue, claimed);
     },
     // The whole step holds a permit, so a graceful stop cannot interrupt before the
     // outcome is written.

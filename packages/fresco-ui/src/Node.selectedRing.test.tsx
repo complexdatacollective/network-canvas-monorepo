@@ -22,7 +22,7 @@ vi.mock('./hooks/useSafeAnimate', async (importOriginal) => {
       const animate = (...args: unknown[]) => {
         animateCalls.push(args);
         running.add(args);
-        return { then: () => undefined };
+        return { stop: () => undefined };
       };
       return [scope, animate] as unknown as ReturnType<
         typeof original.useSafeAnimate<T>

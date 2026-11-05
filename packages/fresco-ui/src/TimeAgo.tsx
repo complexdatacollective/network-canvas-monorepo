@@ -63,7 +63,11 @@ type TimeAgoProps = Omit<
 > & {
   date: Date | string | number;
   dateOptions?: Intl.DateTimeFormatOptions;
-  onClick?: React.MouseEventHandler<HTMLSpanElement>;
+  /**
+   * Called when the time is activated, by a click or (since it is a button)
+   * by Enter or Space.
+   */
+  onClick?: React.MouseEventHandler<HTMLElement>;
 };
 
 const TimeAgo: React.FC<TimeAgoProps> = ({
@@ -90,6 +94,9 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
   // ("2 days ago") rendering and the raw locale-formatted timestamp.
   const [showRaw, setShowRaw] = useState(false);
 
+  // The label only changes a whole number of minutes after `date`, so the
+  // clock ticks on those boundaries rather than a minute after mount, which
+  // could hold "just now" for up to a minute longer than it is true.
   useEffect(() => {
     const update = () => {
       setNow(Date.now());
@@ -97,27 +104,29 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
 
     update();
 
-    // Update time ago every minute
-    const interval = setInterval(update, MINUTE_MS);
+    const sinceDate = Date.now() - date.getTime();
+    const untilNextMinute =
+      MINUTE_MS - (((sinceDate % MINUTE_MS) + MINUTE_MS) % MINUTE_MS);
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const timeout = setTimeout(() => {
+      update();
+      interval = setInterval(update, MINUTE_MS);
+    }, untilNextMinute);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
   }, [date]);
 
   return (
-    <span
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={(event) => {
         setShowRaw((prev) => !prev);
         onClick?.(event);
       }}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          setShowRaw((prev) => !prev);
-        }
-      }}
-      className={cx('cursor-pointer select-none', className)}
+      className={cx('focusable cursor-pointer select-none', className)}
     >
       <time
         {...props}
@@ -127,7 +136,7 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
       >
         {showRaw ? localisedDate : timeAgo}
       </time>
-    </span>
+    </button>
   );
 };
 

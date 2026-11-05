@@ -245,7 +245,6 @@ function InteractiveNavigationDemo() {
         data-testid="navigation-controls"
       >
         <Button
-          variant="outline"
           onClick={handlePrevious}
           disabled={currentIndex === 0}
           data-testid="prev-button"
@@ -256,7 +255,6 @@ function InteractiveNavigationDemo() {
           {currentIndex + 1} / {multiplePrompts.length}
         </span>
         <Button
-          variant="outline"
           onClick={handleNext}
           disabled={currentIndex === multiplePrompts.length - 1}
           data-testid="next-button"

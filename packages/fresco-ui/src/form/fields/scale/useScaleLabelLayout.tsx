@@ -73,11 +73,9 @@ export function useScaleLabelLayout({
   const minRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Read by `measure`; updated before the layout effects below measure.
+  // Read by `measure`; updated by the label-set effect below, which then
+  // measures them.
   const labelsRef = useRef(labels);
-  useLayoutEffect(() => {
-    labelsRef.current = labels;
-  });
 
   const measure = useCallback(() => {
     if (!rootRef.current) return;
@@ -144,6 +142,7 @@ export function useScaleLabelLayout({
 
   // Re-measure when the label set changes (not just on resize).
   useLayoutEffect(() => {
+    labelsRef.current = labels;
     measure();
   }, [labels, measure]);
 

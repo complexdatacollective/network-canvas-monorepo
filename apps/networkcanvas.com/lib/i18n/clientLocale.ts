@@ -1,3 +1,8 @@
+import {
+  readLocalePreferenceCookie,
+  serializeLocalePreferenceCookies,
+} from '@codaco/shared-consts';
+
 import { isLocale, localeCookie, locales, type Locale } from './locales';
 import { negotiateLocale } from './negotiate';
 
@@ -14,29 +19,26 @@ export function getLocalizedPathname(locale: Locale, pathname: string) {
   return unlocalizedPath ? `/${locale}/${unlocalizedPath}/` : `/${locale}/`;
 }
 
-export function getLocaleCookie(locale: Locale) {
-  return `${localeCookie.name}=${locale}; Path=/; Max-Age=${localeCookie.maxAge}; SameSite=Lax`;
+/**
+ * The cookies that keep a choice made on `host`, or forget it with null: on a
+ * networkcanvas.com host, one choice for every Network Canvas website.
+ */
+export function getLocaleCookies(locale: Locale | null, host: string) {
+  return serializeLocalePreferenceCookies(localeCookie, locale, host);
 }
 
-export function getClearedLocaleCookie() {
-  return `${localeCookie.name}=; Path=/; Max-Age=0; SameSite=Lax`;
-}
-
+/** The language chosen in the site's switcher, when the site still offers it. */
 export function readLocalePreference(): Locale | null {
-  const stored = document.cookie
-    .split(';')
-    .map((entry) => entry.trim())
-    .find((entry) => entry.startsWith(`${localeCookie.name}=`))
-    ?.slice(localeCookie.name.length + 1);
-
-  return stored !== undefined && isLocale(stored) ? stored : null;
+  const stored = readLocalePreferenceCookie(localeCookie, document.cookie);
+  return stored !== null && isLocale(stored) ? stored : null;
 }
 
 export function switchLocale(locale: Locale | null, pathname: string) {
   const target = locale ?? negotiateLocale(navigator.languages);
 
-  document.cookie =
-    locale === null ? getClearedLocaleCookie() : getLocaleCookie(locale);
+  for (const cookie of getLocaleCookies(locale, window.location.host)) {
+    document.cookie = cookie;
+  }
   window.location.assign(
     `${getLocalizedPathname(target, pathname)}${window.location.search}${window.location.hash}`,
   );

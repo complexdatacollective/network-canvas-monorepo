@@ -68,18 +68,10 @@ export const narrativeStage = baseStageSchema.extend({
   // The interview's own words on this stage, which Network Canvas supplies
   // (`stage-wording/narrative.ts`). Each is required only while the stage
   // shows it, which the protocol checks (`missingRequiredStageSettings`): the
-  // headings while a preset has the content they head, and the tooltips while
-  // the stage's behaviours turn on the controls they name.
+  // headings while a preset has the content they head. The drawing tools'
+  // tooltips, which every Narrative shows alike, are interface text
+  // (`interface-text-wording.ts`).
   attributesHeading: localizedString(nonBlankText(), 'plain').optional(),
   linksHeading: localizedString(nonBlankText(), 'plain').optional(),
   groupsHeading: localizedString(nonBlankText(), 'plain').optional(),
-  tooltips: z
-    .strictObject({
-      enableDrawing: localizedString(nonBlankText(), 'plain').optional(),
-      disableDrawing: localizedString(nonBlankText(), 'plain').optional(),
-      freezeAnnotations: localizedString(nonBlankText(), 'plain').optional(),
-      unfreezeAnnotations: localizedString(nonBlankText(), 'plain').optional(),
-      resetAnnotations: localizedString(nonBlankText(), 'plain').optional(),
-    })
-    .optional(),
 });

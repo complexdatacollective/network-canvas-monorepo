@@ -92,6 +92,9 @@ export default function AddRelativeMenu({
   const counterScale = useMotionValue(1);
   const firstButton = useRef<HTMLButtonElement>(null);
   useLayoutEffect(() => {
+    // The buttons are only drawn with somewhere to draw them; measured again
+    // each time they are drawn somewhere new.
+    if (!layer || !anchor) return undefined;
     const update = () => {
       const size = firstButton.current?.offsetWidth ?? 0;
       const current = scale.get();

@@ -238,7 +238,9 @@ describe('scroll-aware drag sources', () => {
 
       pointer('pointerdown', source());
       expect(touchMove().defaultPrevented).toBe(false);
-      act(() => vi.advanceTimersByTime(SCROLL_AXIS_DRAG_HOLD));
+      act(() => {
+        vi.advanceTimersByTime(SCROLL_AXIS_DRAG_HOLD);
+      });
 
       expect(source()).toHaveAttribute('data-drag-armed');
       expect(source().style.filter).not.toBe('');
@@ -254,7 +256,9 @@ describe('scroll-aware drag sources', () => {
 
       pointer('pointerdown', source());
       pointer('pointermove', document, { x: 20, y: 0 });
-      act(() => vi.advanceTimersByTime(SCROLL_AXIS_DRAG_HOLD));
+      act(() => {
+        vi.advanceTimersByTime(SCROLL_AXIS_DRAG_HOLD);
+      });
 
       expect(source()).not.toHaveAttribute('data-drag-armed');
       expect(touchMove().defaultPrevented).toBe(false);

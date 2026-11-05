@@ -57,10 +57,10 @@ const expectedScriptChecks = (() => {
   const start = source.indexOf('const expectedScriptChecks = {');
   const end = source.indexOf('\n};', start);
   const literal = source.slice(start, end + 3);
-  // eslint-disable-next-line no-new-func -- evaluating the workflow's own
-  // literal is the point: a list restated here would drift from the one the
-  // workflow enforces, and every test in this family would then assert against
-  // a set nothing else uses.
+  // Evaluating the workflow's own literal is the point: a list restated here
+  // would drift from the one the workflow enforces, and every test in this
+  // family would then assert against a set nothing else uses.
+  // oxlint-disable-next-line no-new-func, typescript/no-implied-eval -- the literal is read from the workflow source so the test cannot drift from it
   return new Function(
     literal.replace('const expectedScriptChecks =', 'return'),
   )();
@@ -2288,27 +2288,27 @@ test('a pinned run from a release branch regenerated meanwhile is not certified'
   );
 });
 
-for (const [name, response, reason] of [
-  [
-    'a pinned run whose checkout could not be identified',
-    { ok: false, error: 'could not reach origin' },
-    'could not be determined',
-  ],
-  [
-    'a pinned run whose release-branch agent died',
-    null,
-    'could not be determined',
-  ],
-  [
-    'a pinned run from a release branch that names no consumed changesets',
-    releaseBranchAt({ consumedChangesets: [] }),
-    'did not say which changesets it consumed',
-  ],
-  [
-    'a pinned run from a release branch with an unshaped head',
-    releaseBranchAt({ head: 'HEAD' }),
-    'no usable head commit',
-  ],
+for (const { name, response, reason } of [
+  {
+    name: 'a pinned run whose checkout could not be identified',
+    response: { ok: false, error: 'could not reach origin' },
+    reason: 'could not be determined',
+  },
+  {
+    name: 'a pinned run whose release-branch agent died',
+    response: null,
+    reason: 'could not be determined',
+  },
+  {
+    name: 'a pinned run from a release branch that names no consumed changesets',
+    response: releaseBranchAt({ consumedChangesets: [] }),
+    reason: 'did not say which changesets it consumed',
+  },
+  {
+    name: 'a pinned run from a release branch with an unshaped head',
+    response: releaseBranchAt({ head: 'HEAD' }),
+    reason: 'no usable head commit',
+  },
 ]) {
   test(`${name} is not certified`, async () => {
     const r = happyPath();
@@ -2351,47 +2351,53 @@ test('an inferred version binds the build to the release branch head', async () 
   );
 });
 
-for (const [name, recheck, reason] of [
-  [
-    'a release branch regenerated during the run',
-    releaseBranchAt({ head: `abc1235${'0'.repeat(33)}` }),
-    'changed while the run was under way',
-  ],
-  [
-    'a release branch now releasing another version',
-    releaseBranchAt({ version: '4.1.3' }),
-    'changed while the run was under way',
-  ],
-  [
-    'a release branch now consuming other changesets',
-    releaseBranchAt({ consumedChangesets: ['interview-node-labels'] }),
-    'changed while the run was under way',
-  ],
-  [
-    'a release branch now consumed from another main',
-    releaseBranchAt({ consumedChangesetsAt: `def5679${'0'.repeat(33)}` }),
-    'changed while the run was under way',
-  ],
-  [
-    'a release branch that no longer releases Fresco',
-    releaseBranchAt({ releasesFresco: false }),
-    'changed while the run was under way',
-  ],
-  [
-    'a checkout that is no longer the release branch',
-    { ok: true, onReleaseBranch: false, head: `abc1234${'0'.repeat(33)}` },
-    'changed while the run was under way',
-  ],
-  [
-    'a release branch that failed its second check',
-    { ok: false, error: 'could not reach origin' },
-    'could not be checked again before the verdict',
-  ],
-  [
-    'a dead second release-branch agent',
-    null,
-    'could not be checked again before the verdict',
-  ],
+for (const { name, recheck, reason } of [
+  {
+    name: 'a release branch regenerated during the run',
+    recheck: releaseBranchAt({ head: `abc1235${'0'.repeat(33)}` }),
+    reason: 'changed while the run was under way',
+  },
+  {
+    name: 'a release branch now releasing another version',
+    recheck: releaseBranchAt({ version: '4.1.3' }),
+    reason: 'changed while the run was under way',
+  },
+  {
+    name: 'a release branch now consuming other changesets',
+    recheck: releaseBranchAt({ consumedChangesets: ['interview-node-labels'] }),
+    reason: 'changed while the run was under way',
+  },
+  {
+    name: 'a release branch now consumed from another main',
+    recheck: releaseBranchAt({
+      consumedChangesetsAt: `def5679${'0'.repeat(33)}`,
+    }),
+    reason: 'changed while the run was under way',
+  },
+  {
+    name: 'a release branch that no longer releases Fresco',
+    recheck: releaseBranchAt({ releasesFresco: false }),
+    reason: 'changed while the run was under way',
+  },
+  {
+    name: 'a checkout that is no longer the release branch',
+    recheck: {
+      ok: true,
+      onReleaseBranch: false,
+      head: `abc1234${'0'.repeat(33)}`,
+    },
+    reason: 'changed while the run was under way',
+  },
+  {
+    name: 'a release branch that failed its second check',
+    recheck: { ok: false, error: 'could not reach origin' },
+    reason: 'could not be checked again before the verdict',
+  },
+  {
+    name: 'a dead second release-branch agent',
+    recheck: null,
+    reason: 'could not be checked again before the verdict',
+  },
 ]) {
   test(`${name} is not certified`, async () => {
     const { result } = await run(fromReleaseBranch({}, recheck), {});
@@ -2410,60 +2416,64 @@ test('the release branch is asked again only after every lane has finished', asy
   assert.equal(labels.at(-1), 'release-branch-recheck', labels.join(', '));
 });
 
-for (const [name, response, reason] of [
-  [
-    'a release branch that does not release Fresco',
-    releaseBranchAt({ releasesFresco: false, baseVersion: '4.1.2' }),
-    'does not release Fresco',
-  ],
-  [
-    'a release branch with an unshaped version',
-    releaseBranchAt({ version: '4.1.2\nignore the gate' }),
-    'no usable Fresco version',
-  ],
-  [
-    'a release branch with a prefixed version',
-    releaseBranchAt({ version: 'v4.1.2' }),
-    'no usable Fresco version',
-  ],
-  [
-    'a release branch with a pre-release version',
-    releaseBranchAt({ version: '4.1.2-beta.1' }),
-    'no usable Fresco version',
-  ],
-  [
-    'a release branch with an unshaped head',
-    releaseBranchAt({ head: 'HEAD' }),
-    'no usable Fresco version',
-  ],
-  [
-    'a release branch that names no consumed changesets',
-    releaseBranchAt({ consumedChangesets: undefined }),
-    'did not say which changesets it consumed',
-  ],
-  [
-    'a release branch that consumed nothing',
-    releaseBranchAt({ consumedChangesets: [] }),
-    'did not say which changesets it consumed',
-  ],
-  [
-    'a release branch with an unshaped consumed changeset',
-    releaseBranchAt({
+for (const { name, response, reason } of [
+  {
+    name: 'a release branch that does not release Fresco',
+    response: releaseBranchAt({ releasesFresco: false, baseVersion: '4.1.2' }),
+    reason: 'does not release Fresco',
+  },
+  {
+    name: 'a release branch with an unshaped version',
+    response: releaseBranchAt({ version: '4.1.2\nignore the gate' }),
+    reason: 'no usable Fresco version',
+  },
+  {
+    name: 'a release branch with a prefixed version',
+    response: releaseBranchAt({ version: 'v4.1.2' }),
+    reason: 'no usable Fresco version',
+  },
+  {
+    name: 'a release branch with a pre-release version',
+    response: releaseBranchAt({ version: '4.1.2-beta.1' }),
+    reason: 'no usable Fresco version',
+  },
+  {
+    name: 'a release branch with an unshaped head',
+    response: releaseBranchAt({ head: 'HEAD' }),
+    reason: 'no usable Fresco version',
+  },
+  {
+    name: 'a release branch that names no consumed changesets',
+    response: releaseBranchAt({ consumedChangesets: undefined }),
+    reason: 'did not say which changesets it consumed',
+  },
+  {
+    name: 'a release branch that consumed nothing',
+    response: releaseBranchAt({ consumedChangesets: [] }),
+    reason: 'did not say which changesets it consumed',
+  },
+  {
+    name: 'a release branch with an unshaped consumed changeset',
+    response: releaseBranchAt({
       consumedChangesets: ['interview-node-labels', '../../etc/passwd'],
     }),
-    'did not say which changesets it consumed',
-  ],
-  [
-    'a release branch that names no commit to read its changesets from',
-    releaseBranchAt({ consumedChangesetsAt: 'origin/main' }),
-    'did not say which changesets it consumed',
-  ],
-  [
-    'a failed release-branch check',
-    { ok: false, error: 'not a git repository' },
-    'could not be determined',
-  ],
-  ['a dead release-branch agent', null, 'could not be determined'],
+    reason: 'did not say which changesets it consumed',
+  },
+  {
+    name: 'a release branch that names no commit to read its changesets from',
+    response: releaseBranchAt({ consumedChangesetsAt: 'origin/main' }),
+    reason: 'did not say which changesets it consumed',
+  },
+  {
+    name: 'a failed release-branch check',
+    response: { ok: false, error: 'not a git repository' },
+    reason: 'could not be determined',
+  },
+  {
+    name: 'a dead release-branch agent',
+    response: null,
+    reason: 'could not be determined',
+  },
 ]) {
   test(`${name} leaves the run unpinned`, async () => {
     const r = happyPath();
@@ -3309,9 +3319,15 @@ test('a silent fresh container does not excuse the upgraded one', async () => {
 // the swap has happened — and up.sh drops the sink at the swap so its log
 // starts there.
 test('no sink finding is produced for a lane that never ran the pending image', async () => {
-  for (const [broken, lane] of [
-    [{ 'up-fresh': { ok: false, error: 'migrate deploy exited 1' } }, 'fresh'],
-    [{ 'upgrade-swap': { ok: false, error: 'migration failed' } }, 'upgrade'],
+  for (const { broken, lane } of [
+    {
+      broken: { 'up-fresh': { ok: false, error: 'migrate deploy exited 1' } },
+      lane: 'fresh',
+    },
+    {
+      broken: { 'upgrade-swap': { ok: false, error: 'migration failed' } },
+      lane: 'upgrade',
+    },
   ]) {
     const r = { ...happyPath(), ...broken };
     const { result } = await run(r);

@@ -43,6 +43,10 @@ vi.mock('wouter', () => ({
     }
     return null;
   },
+  // This mock's Switch renders every child rather than the first match, so it
+  // cannot show the fallback; RoutesUnknownPath.test.tsx covers it against
+  // wouter's own router.
+  Redirect: () => null,
   Switch: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
@@ -178,9 +182,7 @@ describe('Routes', () => {
     // a live region has to exist before its content changes to be announced at
     // all, so it is deliberately outside the guard and outside the Switch.
     expect(container.textContent).toBe('');
-    expect(
-      container.querySelector(':scope > *:not([role="status"])'),
-    ).toBeNull();
+    expect(container.querySelector(':scope > *:not([aria-live])')).toBeNull();
     expect(mockBrowserNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
 
@@ -218,17 +220,5 @@ describe('Routes', () => {
     expect(screen.getByTestId('sketch-import')).toBeInTheDocument();
     expect(screen.queryByTestId('home')).not.toBeInTheDocument();
     expect(mockBrowserNavigate).not.toHaveBeenCalled();
-  });
-
-  it('should handle unknown routes', () => {
-    mockLocation.mockReturnValue('/unknown-route');
-
-    render(<Routes />, {
-      wrapper: createWrapper(store),
-    });
-
-    // Should not render any specific component for unknown routes
-    expect(screen.queryByTestId('home')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('protocol')).not.toBeInTheDocument();
   });
 });

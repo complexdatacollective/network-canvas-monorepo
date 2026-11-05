@@ -31,18 +31,20 @@ export function useAssetUrl(assetId: string | undefined): AssetUrlState {
 
     let cancelled = false;
 
-    onRequestAsset(assetId)
-      .then((url) => {
+    const load = async () => {
+      try {
+        const url = await onRequestAsset(assetId);
         if (!cancelled) setResolved({ assetId, url, error: null });
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (!cancelled)
           setResolved({
             assetId,
             url: null,
             error: err instanceof Error ? err : new Error(String(err)),
           });
-      });
+      }
+    };
+    void load();
 
     return () => {
       cancelled = true;

@@ -127,10 +127,11 @@ export function dumpDatabase(page: Page): Promise<DatabaseDump | null> {
         request.transaction?.abort();
       };
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () =>
+      request.addEventListener('error', () =>
         creating
           ? resolve(null)
-          : reject(request.error ?? new Error('open failed'));
+          : reject(request.error ?? new Error('open failed')),
+      );
     });
     if (!idb) return null;
     const serialise = async (value: unknown): Promise<unknown> => {
@@ -160,8 +161,9 @@ export function dumpDatabase(page: Page): Promise<DatabaseDump | null> {
         const rows = await new Promise<unknown[]>((resolve, reject) => {
           const request = store.getAll();
           request.onsuccess = () => resolve(request.result as unknown[]);
-          request.onerror = () =>
-            reject(request.error ?? new Error('getAll failed'));
+          request.addEventListener('error', () =>
+            reject(request.error ?? new Error('getAll failed')),
+          );
         });
         stores[storeName] = {
           keyPath: store.keyPath,

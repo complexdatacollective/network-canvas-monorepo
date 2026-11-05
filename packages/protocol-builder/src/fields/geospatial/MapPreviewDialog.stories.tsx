@@ -51,7 +51,9 @@ function PreviewOn({
     closeSession: closeMap,
     onSessionExited: mapExited,
   } = useDialogSession<Record<string, never>>();
-  useEffect(() => openMap({}), []);
+  useEffect(() => {
+    openMap({});
+  }, [openMap]);
   const [accepted, setAccepted] = useState('Nothing accepted yet.');
 
   return (
@@ -64,9 +66,9 @@ function PreviewOn({
       >
         Set the starting view on a map
       </Button>
-      <p role="status" aria-label="Accepted view">
+      <output aria-live="polite" aria-label="Accepted view" className="block">
         {accepted}
-      </p>
+      </output>
       {map !== null && (
         <MapPreviewDialog
           open={map.open}

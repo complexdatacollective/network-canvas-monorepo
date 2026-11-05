@@ -266,21 +266,21 @@ export function truncateNodeLabel(label: string, maxLength = 35): string {
 
 type UINodeProps = {
   /** Text label displayed inside the node */
-  label?: string;
+  'label'?: string;
   /** Accessibility label for the node button. Falls back to `label` if not provided. */
-  ariaLabel?: string;
+  'ariaLabel'?: string;
   /** Whether the node is loading */
-  loading?: boolean;
+  'loading'?: boolean;
   /** Whether the node is selected (toggle state) */
-  selected?: boolean;
+  'selected'?: boolean;
   /** Whether the node is in linking mode (externally controlled) */
-  linking?: boolean;
+  'linking'?: boolean;
   /** Whether the node is highlighted (e.g. via highlight behavior) */
-  highlighted?: boolean;
+  'highlighted'?: boolean;
   /** External pointer down handler (composes with internal behavior) */
-  onPointerDown?: (e: React.PointerEvent) => void;
+  'onPointerDown'?: (e: React.PointerEvent) => void;
   /** External pointer up handler (composes with internal behavior) */
-  onPointerUp?: (e: React.PointerEvent) => void;
+  'onPointerUp'?: (e: React.PointerEvent) => void;
   /**
    * Activation — a tap, or Enter/Space from the keyboard. The node's gesture
    * recognizer guarantees this never fires for a gesture that resolved as a
@@ -295,7 +295,7 @@ type UINodeProps = {
    * undefined}`, never `onClick={() => maybeEdit?.()}`). A node that offers a
    * press and then does nothing reads as a broken control to a participant.
    */
-  onClick?: (
+  'onClick'?: (
     event: MouseEvent<HTMLButtonElement>,
     // Always passed, but optional in the type so a handler written for a
     // plain button — or Node's own onClick forwarded to one — stays
@@ -307,21 +307,26 @@ type UINodeProps = {
    * own hold behaviour (revealing a clipped label). The click that would
    * follow the gesture is swallowed — a hold is never also a tap.
    */
-  onLongPress?: () => void;
+  'onLongPress'?: () => void;
   /**
    * Movement past the drag threshold, when the node itself owns dragging.
    * Providing any drag handler makes the node draggable: it takes pointer
-   * capture, shows the grab/grabbing cursor, reports `aria-grabbed`, and
-   * guarantees a drag is never also a tap or a hold. Hosts own the effects —
-   * where the node moves, what the payload is.
+   * capture, shows the grab/grabbing cursor, and guarantees a drag is never
+   * also a tap or a hold. Hosts own the effects — where the node moves, what
+   * the payload is.
    */
-  onDragStart?: (event: PointerEvent) => void;
+  'onDragStart'?: (event: PointerEvent) => void;
   /** Every movement of an active drag, including the one that started it. */
-  onDragMove?: (event: PointerEvent) => void;
+  'onDragMove'?: (event: PointerEvent) => void;
   /** The end of an active drag — released, or cancelled by the system. */
-  onDragEnd?: (event: PointerEvent, info: NodeDragEndInfo) => void;
+  'onDragEnd'?: (event: PointerEvent, info: NodeDragEndInfo) => void;
   /** Suppresses the press-and-hold reveal for clipped labels */
-  labelRevealDisabled?: boolean;
+  'labelRevealDisabled'?: boolean;
+  /**
+   * Set by an external drag system (`useDragSource`) while it is moving this
+   * node. The node withholds its clipped-label reveal for as long as it is set.
+   */
+  'data-dragging'?: boolean;
   /**
    * Renders the node as inert content — a `<span>` — rather than a control.
    *
@@ -337,8 +342,8 @@ type UINodeProps = {
    * stop, activation (`onClick`), dragging, keyboard handling, or a forwarded
    * `ref`. Pass none of those alongside it.
    */
-  presentational?: boolean;
-  ref?: Ref<HTMLButtonElement>;
+  'presentational'?: boolean;
+  'ref'?: Ref<HTMLButtonElement>;
 } & VariantProps<typeof nodeVariants> &
   Omit<
     ButtonHTMLAttributes<HTMLButtonElement>,
@@ -368,8 +373,8 @@ type UINodeProps = {
  * `onDragStart`/`Move`/`End` — and the node classifies each gesture as
  * exactly one of them, and renders every visual consequence itself: press
  * animation and pointer cursor for taps, the filling indicator for holds,
- * grab/grabbing cursor and `aria-grabbed` for drags, and a tab stop whenever
- * any of them (or a revealable label) gives focus something to do.
+ * grab/grabbing cursor and `data-node-dragging` for drags, and a tab stop
+ * whenever any of them (or a revealable label) gives focus something to do.
  *
  * An external drag system may still compose its own pointer handlers
  * (`useDragSource`); the recognizer then treats movement as belonging to that
@@ -473,8 +478,7 @@ export default function Node(props: UINodeProps) {
 
   // A keyboard drag already owns arrow keys and the node's position; revealing
   // the label on top of that is noise.
-  const grabbed = buttonProps['aria-grabbed'];
-  const isGrabbed = grabbed === true || grabbed === 'true';
+  const isGrabbed = buttonProps['data-dragging'] === true;
 
   const [labelRevealed, setLabelRevealed] = useState(false);
   const canRevealLabel =
@@ -486,14 +490,14 @@ export default function Node(props: UINodeProps) {
   }, [canRevealLabel, onLongPress]);
 
   // A label already on screen has to come down when it stops being applicable.
-  // Starting a keyboard drag flips `aria-grabbed` without moving focus, so
+  // Starting a keyboard drag sets `data-dragging` without moving focus, so
   // nothing else would close a popup opened by that focus. Adjusted during
   // render, so the label is gone in the same paint that withdraws it.
   if (labelRevealed && !canRevealLabel) setLabelRevealed(false);
 
-  // A drag withdraws a revealed label — pointer drags set no `aria-grabbed`
-  // (that is the drag system moving the node, not the node describing itself),
-  // so without this the label would trail the node and outlast the drop.
+  // A drag withdraws a revealed label. A drag the node recognizes itself sets
+  // no `data-dragging` (that is the external drag system's marker), so without
+  // this the label would trail the node and outlast the drop.
   const withdrawLabel = useCallback(() => setLabelRevealed(false), []);
 
   const {
@@ -768,9 +772,6 @@ export default function Node(props: UINodeProps) {
       type="button"
       disabled={disabled}
       aria-label={ariaLabel ?? label}
-      // An external drag system (useDragSource) declares its own grabbed
-      // state; otherwise the recognizer's drag is the node being moved.
-      aria-grabbed={grabbed ?? (dragEnabled ? isDragging : undefined)}
       aria-pressed={
         // A host whose taps don't arrive as `onClick` — a canvas node driving
         // selection from pointer events — can declare the toggle state itself,

@@ -109,9 +109,10 @@ export function useValidationNetwork(
   // Only node variables can be encrypted, and a rule compares with nodes of
   // the subject's own type.
   const nodeType = subject?.entity === 'node' ? subject.type : undefined;
-  const variables =
-    nodeType === undefined ? {} : (codebook.node?.[nodeType]?.variables ?? {});
+  const nodeVariables =
+    nodeType === undefined ? undefined : codebook.node?.[nodeType]?.variables;
   const comparesEncrypted = useMemo(() => {
+    const variables = nodeVariables ?? {};
     const nodesOfType = network.nodes.filter((node) => node.type === nodeType);
     return variableIds.some((variableId) =>
       comparesEncryptedValues(
@@ -121,7 +122,7 @@ export function useValidationNetwork(
         currentEntityId,
       ),
     );
-  }, [network.nodes, nodeType, variables, variableIds, currentEntityId]);
+  }, [network.nodes, nodeType, nodeVariables, variableIds, currentEntityId]);
 
   const decrypted = useDecryptedNodes(
     comparesEncrypted ? network.nodes : NO_NODES,

@@ -25,6 +25,26 @@ type SortState = {
   desc: boolean;
 };
 
+const cellText = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return String(value);
+  }
+  return '';
+};
+
 const renderCellValue = (value: unknown): ReactNode => {
   if (typeof value === 'string' || typeof value === 'number') {
     return value;
@@ -35,7 +55,7 @@ const renderCellValue = (value: unknown): ReactNode => {
   if (Array.isArray(value)) {
     return value.join('');
   }
-  return String(value);
+  return cellText(value);
 };
 
 // A column is named by the researcher, so it can share its name with a
@@ -99,8 +119,8 @@ const Table = ({ data, columns }: TableProps) => {
       (rowA, rowB) =>
         direction *
         collator.compare(
-          String(cellValue(rowA, sort.id) ?? ''),
-          String(cellValue(rowB, sort.id) ?? ''),
+          cellText(cellValue(rowA, sort.id)),
+          cellText(cellValue(rowB, sort.id)),
         ),
     );
   }, [data, sort, collator]);

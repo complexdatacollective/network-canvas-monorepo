@@ -33,8 +33,7 @@ whole protocol, as interface text, instead of once per stage.
 
 **Interview runtime (`@codaco/interview`)**
 
-- These words come from the protocol's interface text, falling back to the
-  interview's own catalog. The Family Pedigree's twin question uses the same
+- These words come from the protocol's interface text. The Family Pedigree's twin question uses the same
   Don't know answer as its other questions.
 
 **Architect**

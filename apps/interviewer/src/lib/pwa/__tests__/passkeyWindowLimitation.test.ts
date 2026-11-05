@@ -17,7 +17,6 @@ function stubEnvironment({
   touchPoints?: number;
 }) {
   vi.stubGlobal('navigator', {
-    ...navigator,
     platform,
     maxTouchPoints: touchPoints,
     ...(chromium ? { userAgentData: {} } : {}),

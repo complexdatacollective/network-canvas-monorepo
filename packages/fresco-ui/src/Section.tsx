@@ -153,6 +153,7 @@ export default function Section({
         setIsChangePending(false);
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- all three are read above; the rule cannot follow a try/finally and reports every dependency of one as unused
     [disabled, onOpenChange, toggleable],
   );
 

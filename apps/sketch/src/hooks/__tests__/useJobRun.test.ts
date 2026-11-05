@@ -5,6 +5,7 @@ import {
   describeCall,
   jobStatus,
   jsonResponse,
+  requestBodyText,
   stepsAt,
   succeededJob,
 } from '../../__tests__/fixtures.ts';
@@ -71,7 +72,7 @@ describe('useJobRun', () => {
 
     const [, firstInit] = server.fetchMock.mock.calls[0] ?? [];
     expect(firstInit?.method).toBe('POST');
-    expect(JSON.parse(String(firstInit?.body))).toEqual({
+    expect(JSON.parse(requestBodyText(firstInit))).toEqual({
       ...request,
       jobId: expect.any(String),
     });
@@ -110,7 +111,7 @@ describe('useJobRun', () => {
     let posted = '';
     const fetchMock = vi.fn(async (_input: unknown, init?: RequestInit) => {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
-      posted = (JSON.parse(String(init?.body)) as { jobId: string }).jobId;
+      posted = (JSON.parse(requestBodyText(init)) as { jobId: string }).jobId;
       throw new TypeError('network down');
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -127,7 +128,7 @@ describe('useJobRun', () => {
       'fetch',
       vi.fn(async (_input: unknown, init?: RequestInit) => {
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
-        posted = (JSON.parse(String(init?.body)) as { jobId: string }).jobId;
+        posted = (JSON.parse(requestBodyText(init)) as { jobId: string }).jobId;
         return new Response(JSON.stringify({ error: 'Try again.' }), {
           status: 502,
         });
@@ -160,7 +161,7 @@ describe('useJobRun', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (_url: string, init?: RequestInit) => {
-        posted = (JSON.parse(String(init?.body)) as { jobId: string }).jobId;
+        posted = (JSON.parse(requestBodyText(init)) as { jobId: string }).jobId;
         return new Response(JSON.stringify({ error: 'Slow down.' }), {
           status: 429,
         });

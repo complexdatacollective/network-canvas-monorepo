@@ -42,19 +42,35 @@ const STAGE_TEXT_ROWS = [
  */
 const ALL_TEXT_ROWS = [
   ...STAGE_TEXT_ROWS,
-  'Finishing the interview › Finish button',
-  'Finishing the interview › Confirmation question',
-  'Finishing the interview › If finishing fails',
+  'Customize built-in wording › Finish button',
+  'Customize built-in wording › Confirmation question',
+  'Customize built-in wording › If finishing fails',
   'Interview navigation › Exit button',
   'Interview navigation › Exit explanation',
   'Interview navigation › Back button',
   'Interview navigation › Continue button',
+  'Interview navigation › Exit failed message',
+  'Interviewer controls › Exit review button',
+  'Interviewer controls › Exit review question',
+  'Interviewer controls › Exit review explanation',
+  'Interviewer controls › Hidden screen label',
+  'Interviewer controls › Outside path label',
+  'Interviewer controls › Show screen question',
+  'Interviewer controls › Hidden screen explanation',
+  'Interviewer controls › Outside path explanation',
+  'Interviewer controls › Show screen button',
   'Buttons › Cancel button',
   'Buttons › Done button',
   'Buttons › Delete button',
+  'Buttons › Copy button',
+  'Buttons › Copied message',
   'Messages › Screen error message',
   'Messages › Missing item message',
   'Messages › Error message',
+  'Messages › Loading message',
+  'Messages › Unnamed label',
+  'Search › Search field',
+  'Search › No results message',
 ];
 
 /** The finish stage's finishing words, as Network Canvas supplies them. */
@@ -214,7 +230,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(languageRows(page)).toHaveCount(1);
   await expect(english).toContainText('English');
   await expect(english.getByText('Default', { exact: true })).toBeVisible();
-  await expect(english).toContainText('19 of 19 strings translated');
+  await expect(english).toContainText('35 of 35 strings translated');
   // The translation table is there even with nothing to translate into: it
   // is where the protocol's own words for the interface are edited.
   const openTable = page.getByRole('link', {
@@ -253,7 +269,7 @@ test('adds a language, keeps the default language from being removed, translates
 
   const french = languageRow(page, 'fr');
   await expect(french).toContainText('French');
-  await expect(french).toContainText('13 of 19 strings translated');
+  await expect(french).toContainText('29 of 35 strings translated');
   await expect(french.getByText('Default', { exact: true })).toHaveCount(0);
   await expect(
     french.getByText('Missing translations', { exact: true }),
@@ -391,7 +407,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(page).toHaveURL(
     /\/protocol\/localization\?table=open&missing=fr$/,
   );
-  await expect(page.getByText('Showing 6 of 19 strings')).toBeVisible();
+  await expect(page.getByText('Showing 6 of 35 strings')).toBeVisible();
   const table = translationTable(page);
   await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
   // A stage is headed by its position, its name in the default language and
@@ -437,7 +453,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
   await expect(
     table.getByRole('columnheader', { name: /^French/ }),
-  ).toContainText('13 of 19 translated');
+  ).toContainText('29 of 35 translated');
 
   // Saving writes every translation at once, and goes back to the Languages
   // page and to the link that opened the table.
@@ -470,7 +486,7 @@ test('adds a language, keeps the default language from being removed, translates
     en: 'Thank you for taking part.',
     fr: 'Merci de votre participation.',
   });
-  await expect(french).toContainText('19 of 19 strings translated');
+  await expect(french).toContainText('35 of 35 strings translated');
   await expect(
     french.getByText('Missing translations', { exact: true }),
   ).toHaveCount(0);
@@ -566,7 +582,7 @@ test('changes the protocol’s languages from the language chooser stage, and th
   const name = page.getByRole('textbox', { name: 'Stage name' });
   await expect(name).toHaveValue(CHOOSER_LABEL.en);
 
-  // The Languages page's own list, with its way to the translation table.
+  // The Languages page's own list, without its way to the translation table.
   const languages = page.getByRole('region', {
     name: 'Languages',
     exact: true,
@@ -576,11 +592,15 @@ test('changes the protocol’s languages from the language chooser stage, and th
     /^French/,
     /^Spanish/,
   ]);
-  const openTable = languages.getByRole('link', {
-    name: 'Open translation table',
-    exact: true,
-  });
-  await expect(openTable).toBeVisible();
+  await expect(
+    languages.getByRole('link', {
+      name: 'Open translation table',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    languages.getByRole('button', { name: /^Edit .* translations$/ }),
+  ).toHaveCount(0);
 
   // Removing a language from a stage that has not been touched leaves nothing
   // to save, and nothing to be asked about on the way out.
@@ -608,24 +628,9 @@ test('changes the protocol’s languages from the language chooser stage, and th
     page.getByRole('button', { name: 'Finished Editing' }),
   ).toBeVisible();
 
-  // Going to the translation table leaves the stage, so its unsaved changes
-  // are confirmed first.
-  await openTable.click();
-  const discard = page.getByRole('dialog', {
-    name: 'Discard unsaved stage changes?',
-  });
-  await expect(discard).toBeVisible();
-  await discard.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(discard).toBeHidden();
-  await expect(page).toHaveURL(/\/protocol\/stage\/choose-language$/);
-  await expect(name).toHaveValue('Pick a language');
-
   await removeLanguage(page, 'French');
   await expect(stageLanguageRow(page, 'fr')).toHaveCount(0);
   await expect(name).toHaveValue('Pick a language');
-  // With one language left the table stays, for the protocol's own words for
-  // the interface.
-  await expect(openTable).toBeVisible();
   await page.getByRole('button', { name: 'Finished Editing' }).click();
   await page.waitForURL(/\/protocol$/);
 
@@ -678,7 +683,7 @@ test('opens the translation table on every missing translation from the protocol
   await expect(textsToShow(page).locator('option:checked')).toHaveText(
     'Missing in any shown language',
   );
-  await expect(page.getByText('Showing 6 of 19 strings')).toBeVisible();
+  await expect(page.getByText('Showing 6 of 35 strings')).toBeVisible();
 
   // The filter is kept in the address, and every text has a row without it.
   await textsToShow(page).selectOption({ label: 'All translations' });

@@ -145,7 +145,11 @@ export const AllStates: Story = {
         >
           Normal
         </Paragraph>
-        <TextAreaField placeholder="Normal state" rows={3} />
+        <TextAreaField
+          aria-label="Normal state"
+          placeholder="Normal state"
+          rows={3}
+        />
       </div>
       <div>
         <Paragraph
@@ -154,7 +158,12 @@ export const AllStates: Story = {
         >
           Disabled
         </Paragraph>
-        <TextAreaField disabled defaultValue="Disabled state" rows={3} />
+        <TextAreaField
+          aria-label="Disabled state"
+          disabled
+          defaultValue="Disabled state"
+          rows={3}
+        />
       </div>
       <div>
         <Paragraph
@@ -163,7 +172,12 @@ export const AllStates: Story = {
         >
           Read-Only
         </Paragraph>
-        <TextAreaField readOnly defaultValue="Read-only state" rows={3} />
+        <TextAreaField
+          aria-label="Read-only state"
+          readOnly
+          defaultValue="Read-only state"
+          rows={3}
+        />
       </div>
       <div>
         <Paragraph
@@ -172,7 +186,12 @@ export const AllStates: Story = {
         >
           Invalid
         </Paragraph>
-        <TextAreaField aria-invalid defaultValue="Invalid state" rows={3} />
+        <TextAreaField
+          aria-label="Invalid state"
+          aria-invalid
+          defaultValue="Invalid state"
+          rows={3}
+        />
       </div>
     </div>
   ),

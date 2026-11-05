@@ -121,15 +121,17 @@ describe('ArrayFieldDragHandle', () => {
     handle().focus();
     fireEvent.keyDown(handle(), { key: 'ArrowDown' });
 
-    const elsewhere = screen.getByRole('button', { name: 'Somewhere else' });
-    elsewhere.focus();
+    // Focus is then lost (on the page body), which is the one place a claim
+    // still standing would take it back from: one the user put elsewhere is
+    // left alone either way.
+    handle().blur();
     // Something unrelated now moves the item. Without the disarm the refused
     // press is still waiting, and focus is yanked back onto the handle here.
     fireEvent.click(screen.getByRole('button', { name: 'Shift the item' }));
 
     await new Promise((resolve) => requestAnimationFrame(resolve));
     await new Promise((resolve) => requestAnimationFrame(resolve));
-    expect(elsewhere).toHaveFocus();
+    expect(document.activeElement).toBe(document.body);
   });
 
   it('does not ask for a move that would run off either end', () => {

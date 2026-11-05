@@ -1099,6 +1099,7 @@ export default function UserManagement({
 
         <DataTable
           table={table}
+          aria-label={intl.formatMessage(messages.allUsers)}
           emptyText={intl.formatMessage(messages.noUsersCreatedYet)}
           showPagination={false}
           floatingBar={
@@ -1127,7 +1128,7 @@ export default function UserManagement({
           }}
           title={intl.formatMessage(messages.changePassword)}
           description={intl.formatMessage(messages.updateYourAccountPassword)}
-          footer={(heldOpen) =>
+          renderFooter={(heldOpen) =>
             passwordChangeSuccess ? null : (
               <>
                 <Button
@@ -1208,7 +1209,7 @@ export default function UserManagement({
             setError(null);
           }}
           title={intl.formatMessage(messages.addUser)}
-          footer={(heldOpen) => (
+          renderFooter={(heldOpen) => (
             <>
               <Button
                 type="button"
@@ -1306,7 +1307,7 @@ export default function UserManagement({
           description={intl.formatMessage(
             messages.enterYourCurrentPasswordThenRegisterA,
           )}
-          footer={(heldOpen) => (
+          renderFooter={(heldOpen) => (
             <>
               <Button
                 type="button"
@@ -1362,7 +1363,7 @@ export default function UserManagement({
           description={intl.formatMessage(
             messages.allYourPasskeysWillBeRemovedAnd,
           )}
-          footer={(heldOpen) =>
+          renderFooter={(heldOpen) =>
             switchToPasswordReauthed ? (
               <>
                 <Button

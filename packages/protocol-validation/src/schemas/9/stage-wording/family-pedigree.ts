@@ -205,7 +205,7 @@ const CHILD_KIND_LABEL = {
 } as const satisfies SuppliedWording;
 
 /** The instruction shown while the connect tool is on. */
-const CONNECT_HINT = {
+export const CONNECT_HINT = {
   'en': 'Select a person, then select another to connect them.',
   'de': 'Wählen Sie eine Person aus und dann eine weitere, um die beiden zu verbinden.',
   'es': 'Selecciona una persona y luego otra para conectarlas.',
@@ -296,7 +296,7 @@ const DISCONNECT_CONFIRM_TITLE = {
 } as const satisfies SuppliedWording;
 
 /** The instruction shown while the disconnect tool is on. */
-const DISCONNECT_HINT = {
+export const DISCONNECT_HINT = {
   'en': 'Select a person, then select someone they are connected to, to remove that connection.',
   'de': 'Wählen Sie eine Person aus und dann jemanden, mit dem sie verbunden ist, um diese Verbindung zu entfernen.',
   'es': 'Selecciona una persona y luego alguien con quien esté conectada para quitar esa conexión.',
@@ -342,7 +342,7 @@ const PANEL_TITLE = {
 } as const satisfies SuppliedWording;
 
 /** The explanation under the heading of the choice of words. Asked only when participants choose the words. */
-const FRAMING_CHOICE_DESCRIPTION = {
+export const FRAMING_CHOICE_DESCRIPTION = {
   'en': 'Choose the words you would like us to use for the people in your family. You can change this at any time.',
   'de': 'Wählen Sie die Wörter, mit denen wir die Menschen in Ihrer Familie beschreiben sollen. Sie können das jederzeit ändern.',
   'es': 'Elige las palabras que quieres que usemos para las personas de tu familia. Puedes cambiarlo en cualquier momento.',
@@ -356,7 +356,7 @@ const FRAMING_CHOICE_DESCRIPTION = {
 } as const satisfies SuppliedWording;
 
 /** The heading of the choice of words. Asked only when participants choose the words. */
-const FRAMING_CHOICE_TITLE = {
+export const FRAMING_CHOICE_TITLE = {
   'en': 'How should we describe your family?',
   'de': 'Wie sollen wir Ihre Familie beschreiben?',
   'es': '¿Cómo quieres que describamos a tu familia?',
@@ -656,7 +656,7 @@ const YOU = {
 } as const satisfies SuppliedWording;
 
 /** The accessible name and tooltip of the connect tool. */
-const CONNECT_TOOL = {
+export const CONNECT_TOOL = {
   'en': 'Connect',
   'de': 'Verbinden',
   'es': 'Conectar',
@@ -669,7 +669,7 @@ const CONNECT_TOOL = {
 } as const satisfies SuppliedWording;
 
 /** The accessible name and tooltip of the disconnect tool. */
-const DISCONNECT_TOOL = {
+export const DISCONNECT_TOOL = {
   'en': 'Disconnect',
   'de': 'Trennen',
   'es': 'Desconectar',
@@ -682,7 +682,7 @@ const DISCONNECT_TOOL = {
 } as const satisfies SuppliedWording;
 
 /** The accessible name and tooltip of the button that opens the choice of words. Shown only when participants choose the words. */
-const FRAMING_CONTROL_LABEL = {
+export const FRAMING_CONTROL_LABEL = {
   'en': 'Wording',
   'de': 'Wortwahl',
   'es': 'Términos',
@@ -695,7 +695,7 @@ const FRAMING_CONTROL_LABEL = {
 } as const satisfies SuppliedWording;
 
 /** The accessible name and tooltip of the add and edit tool. */
-const POINTER_TOOL = {
+export const POINTER_TOOL = {
   'en': 'Add and edit',
   'de': 'Hinzufügen und bearbeiten',
   'es': 'Añadir y editar',
@@ -1280,7 +1280,6 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
   { path: ['wording', 'childKindLabel'], message: CHILD_KIND_LABEL },
   { path: ['wording', 'childKindSocial'], message: CHILD_KIND_SOCIAL },
   { path: ['wording', 'childKindSurrogate'], message: CHILD_KIND_SURROGATE },
-  { path: ['wording', 'connectHint'], message: CONNECT_HINT },
   { path: ['wording', 'connectParent'], message: CONNECT_PARENT },
   { path: ['wording', 'connectPartners'], message: CONNECT_PARTNERS },
   { path: ['wording', 'connectQuestion'], message: CONNECT_QUESTION },
@@ -1292,22 +1291,11 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
     path: ['wording', 'disconnectConfirmTitle'],
     message: DISCONNECT_CONFIRM_TITLE,
   },
-  { path: ['wording', 'disconnectHint'], message: DISCONNECT_HINT },
   {
     path: ['wording', 'disconnectWouldCutOff'],
     message: DISCONNECT_WOULD_CUT_OFF,
   },
   { path: ['wording', 'disconnectStandIn'], message: DISCONNECT_STAND_IN },
-  {
-    path: ['wording', 'framingChoiceDescription'],
-    message: FRAMING_CHOICE_DESCRIPTION,
-    when: choosesFraming,
-  },
-  {
-    path: ['wording', 'framingChoiceTitle'],
-    message: FRAMING_CHOICE_TITLE,
-    when: choosesFraming,
-  },
   {
     path: ['wording', 'genderIdentityLabel'],
     message: GENDER_IDENTITY_LABEL,
@@ -1427,14 +1415,6 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
   { path: ['wording', 'zygosityFraternal'], message: ZYGOSITY_FRATERNAL },
   { path: ['wording', 'zygosityIdentical'], message: ZYGOSITY_IDENTICAL },
   { path: ['wording', 'you'], message: YOU },
-  { path: ['wording', 'connectTool'], message: CONNECT_TOOL },
-  { path: ['wording', 'disconnectTool'], message: DISCONNECT_TOOL },
-  {
-    path: ['wording', 'framingControlLabel'],
-    message: FRAMING_CONTROL_LABEL,
-    when: choosesFraming,
-  },
-  { path: ['wording', 'pointerTool'], message: POINTER_TOOL },
 ];
 
 /**

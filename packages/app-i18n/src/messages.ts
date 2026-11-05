@@ -59,7 +59,8 @@ export type AppIntlErrorHandler = NonNullable<IntlConfig['onError']>;
 export const makeOnError =
   (onError?: AppIntlErrorHandler): AppIntlErrorHandler =>
   (error) => {
-    if (error.code === 'MISSING_TRANSLATION') return;
+    const code: string = error.code;
+    if (code === 'MISSING_TRANSLATION') return;
     if (onError === undefined) {
       // oxlint-disable-next-line no-console -- Restores the reporting react-intl does by default; hosts that want the error routed elsewhere pass `onError`.
       console.error(error);

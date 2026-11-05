@@ -363,10 +363,11 @@ function Harness({
   const renderLink = (
     linkProps: EverythingBarLinkRenderProps,
   ): ReactElement => {
-    const { onClick, children, ...rest } = linkProps;
+    const { onClick, children, href, ...rest } = linkProps;
     return (
       <a
         {...rest}
+        href={href}
         onClick={(event) => {
           // Stands in for a router's `Link`, which is the contract the bar
           // documents: run the caller's handler first, then navigate only if
@@ -375,10 +376,7 @@ function Harness({
           onClick(event);
           if (event.defaultPrevented) return;
           event.preventDefault();
-          setNavigations((current) => [
-            ...current,
-            { via: 'link', href: rest.href },
-          ]);
+          setNavigations((current) => [...current, { via: 'link', href }]);
         }}
       >
         {children}
@@ -653,6 +651,11 @@ export const ComboboxSemantics: Story = {
       name: labels.results,
     });
     await expect(input).toHaveAttribute('aria-controls', listbox.id);
+    // The listbox is the box that scrolls, not a child of it, and it is not a
+    // tab stop: focus stays in the input. A scrolling box the combobox does not
+    // control would need a keyboard stop of its own.
+    await expect(getComputedStyle(listbox).overflowY).toBe('auto');
+    await expect(listbox).toHaveAttribute('tabindex', '-1');
 
     // Everything outside the dialog is inert while it is open, so Tab cannot
     // walk out of it and into the page behind.

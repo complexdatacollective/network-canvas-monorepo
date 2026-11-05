@@ -98,7 +98,7 @@ export const Default: Story = {
     return (
       <div
         className={
-          'flex h-screen items-center justify-center gap-4 [background-image:linear-gradient(90deg,oklch(var(--surface-1))_20%,transparent_10%)] bg-size-[25px]'
+          'flex h-screen items-center justify-center gap-4 bg-[linear-gradient(90deg,oklch(var(--surface-1))_20%,transparent_10%)] bg-size-[25px]'
         }
       >
         <Button onClick={acknowledgeDialog}>Acknowledge Dialog</Button>
@@ -143,7 +143,7 @@ export const NestedDialogs: Story = {
     return (
       <div
         className={
-          'flex h-screen items-center justify-center gap-4 [background-image:linear-gradient(90deg,oklch(var(--surface-1))_20%,transparent_10%)] bg-size-[25px]'
+          'flex h-screen items-center justify-center gap-4 bg-[linear-gradient(90deg,oklch(var(--surface-1))_20%,transparent_10%)] bg-size-[25px]'
         }
       >
         <Button onClick={handleDelete} color="destructive">
@@ -187,7 +187,7 @@ export const FormDialogWithRefusedSubmit: Story = {
     return (
       <div
         className={
-          'flex h-screen items-center justify-center gap-4 [background-image:linear-gradient(90deg,oklch(var(--surface-1))_20%,transparent_10%)] bg-size-[25px]'
+          'flex h-screen items-center justify-center gap-4 bg-[linear-gradient(90deg,oklch(var(--surface-1))_20%,transparent_10%)] bg-size-[25px]'
         }
       >
         <Button onClick={openFormDialog}>Rename item</Button>
@@ -237,7 +237,7 @@ export const ConfirmUtility: StoryObj<Meta<ConfirmUtilityArgs>> = {
     return (
       <div
         className={
-          'flex h-screen items-center justify-center gap-4 [background-image:linear-gradient(90deg,oklch(var(--surface-1))_20%,transparent_10%)] bg-size-[25px]'
+          'flex h-screen items-center justify-center gap-4 bg-[linear-gradient(90deg,oklch(var(--surface-1))_20%,transparent_10%)] bg-size-[25px]'
         }
       >
         <Button onClick={handleDelete} color="destructive">

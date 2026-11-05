@@ -29,7 +29,7 @@ import {
 import { testDb } from '../../__tests__/support/database.ts';
 import {
   ADA,
-  enUS,
+  inEnglish,
   GRACE,
   latch,
   revisionsOf,
@@ -412,8 +412,8 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label: enUS('Past the bound'),
-              title: enUS('Past the bound'),
+              label: inEnglish('Past the bound'),
+              title: inEnglish('Past the bound'),
               items: [],
             }),
           }),
@@ -546,8 +546,8 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label: enUS('Watched'),
-              title: enUS('Watched'),
+              label: inEnglish('Watched'),
+              title: inEnglish('Watched'),
               items: [],
             }),
           }),
@@ -788,8 +788,8 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label: enUS('Polled beside an unreadable draft'),
-              title: enUS('Polled beside an unreadable draft'),
+              label: inEnglish('Polled beside an unreadable draft'),
+              title: inEnglish('Polled beside an unreadable draft'),
               items: [],
             }),
           }),

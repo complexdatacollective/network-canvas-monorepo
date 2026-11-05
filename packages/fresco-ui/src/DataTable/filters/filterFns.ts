@@ -54,7 +54,27 @@ export function textFilterFn<
   if (query.length === 0) return true;
   const cell = row.getValue(columnId);
   if (cell == null) return false;
-  return String(cell).toLowerCase().includes(query);
+  return cellText(cell).toLowerCase().includes(query);
+}
+
+// A cell that JSON cannot represent (a function, or an object holding a
+// bigint or a cycle) has no text to match, rather than breaking the filter.
+function cellText(cell: unknown): string {
+  if (
+    typeof cell === 'string' ||
+    typeof cell === 'number' ||
+    typeof cell === 'boolean' ||
+    typeof cell === 'bigint' ||
+    typeof cell === 'symbol' ||
+    cell instanceof Date
+  ) {
+    return String(cell);
+  }
+  try {
+    return JSON.stringify(cell) ?? '';
+  } catch {
+    return '';
+  }
 }
 
 export function facetedFilterFn<

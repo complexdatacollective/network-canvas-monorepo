@@ -8,9 +8,8 @@ import {
   type LocalizedStringFormat,
 } from '../schemas/9/localized-string.ts';
 // Imported from its own module for the reason given in
-// `collectEntityAttributeReferences.ts`: the schema module calls back into
-// this one, and `../schemas/index.ts` would read the schema before it exists.
-import { ProtocolSchemaV9 } from '../schemas/9/schema.ts';
+// `collectEntityAttributeReferences.ts`.
+import { ProtocolStructureSchema } from '../schemas/9/protocol-structure.ts';
 
 export type LocalizedStringHit = Readonly<{
   path: (string | number)[];
@@ -20,6 +19,8 @@ export type LocalizedStringHit = Readonly<{
   arguments?: MessageArguments;
   /** Where text that may show dynamic values sits; absent where it may not. */
   dynamicValues?: DynamicValueSite;
+  /** The text may have no translation at all (see `localizedString`). */
+  mayBeEmpty?: true;
 }>;
 
 export type LocalizedStringSite = Readonly<{
@@ -30,6 +31,8 @@ export type LocalizedStringSite = Readonly<{
   arguments?: MessageArguments;
   /** Where text that may show dynamic values sits; absent where it may not. */
   dynamicValues?: DynamicValueSite;
+  /** The text may have no translation at all (see `localizedString`). */
+  mayBeEmpty?: true;
   /** The tagged declaration, shared by every site it describes. */
   schema: z.ZodType;
   /** The owning object lets the field be left out. */
@@ -182,6 +185,7 @@ const walk = (
         ...(descriptor.dynamicValues === undefined
           ? {}
           : { dynamicValues: descriptor.dynamicValues }),
+        ...(descriptor.mayBeEmpty === true ? { mayBeEmpty: true } : {}),
         schema: node,
         ...context,
       },
@@ -281,6 +285,7 @@ export const collectLocalizedStringsFromSchema = (
             ...(site.dynamicValues === undefined
               ? {}
               : { dynamicValues: site.dynamicValues }),
+            ...(site.mayBeEmpty === true ? { mayBeEmpty: true } : {}),
           },
         ]
       : [],
@@ -289,4 +294,4 @@ export const collectLocalizedStringsFromSchema = (
 export const collectLocalizedStrings = (
   protocol: unknown,
 ): LocalizedStringHit[] =>
-  collectLocalizedStringsFromSchema(ProtocolSchemaV9, protocol);
+  collectLocalizedStringsFromSchema(ProtocolStructureSchema, protocol);

@@ -135,6 +135,7 @@ const linkClasses = cx(
 const skipLinkClasses = cx(
   headingVariants({ level: 'h4', variant: 'all-caps', margin: 'none' }),
   'focusable bg-surface text-surface-contrast rounded-full shadow-xl',
+  // oxlint-disable-next-line tailwindcss/no-conflicting-classes -- focus:whitespace-nowrap deliberately overrides the white-space that focus:not-sr-only resets (see above)
   'sr-only focus:not-sr-only focus:px-5 focus:py-3 focus:whitespace-nowrap',
 );
 

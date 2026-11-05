@@ -62,6 +62,11 @@ const accentElements = (
         };
       case TYPE.tag:
         return { ...element, children: accentElements(element.children) };
+      case TYPE.argument:
+      case TYPE.number:
+      case TYPE.date:
+      case TYPE.time:
+      case TYPE.pound:
       default:
         return element;
     }
@@ -79,6 +84,13 @@ const literalLength = (elements: readonly MessageFormatElement[]): number =>
         return total + element.value.length;
       case TYPE.tag:
         return total + literalLength(element.children);
+      case TYPE.argument:
+      case TYPE.number:
+      case TYPE.date:
+      case TYPE.time:
+      case TYPE.select:
+      case TYPE.plural:
+      case TYPE.pound:
       default:
         return total;
     }
@@ -126,6 +138,12 @@ const padArms = (
         };
       case TYPE.tag:
         return { ...element, children: padArms(element.children) };
+      case TYPE.literal:
+      case TYPE.argument:
+      case TYPE.number:
+      case TYPE.date:
+      case TYPE.time:
+      case TYPE.pound:
       default:
         return element;
     }

@@ -204,14 +204,14 @@ async function walk(driver, page, pageErrors) {
   };
   const stageCount = `document.querySelectorAll('.timeline-stage').length`;
   // Waits for a protocol to open, failing fast on a visible error.
-  const waitForProtocol = (minStages = 0) =>
-    waitFor(
+  const waitForProtocol = async (minStages = 0) => {
+    const r = await waitFor(
       driver,
       `(() => { const e = __rt.errors().filter((x) => !/^info/i.test(x)); if (e.length) return { error: e.join(' | ') }; return document.querySelector('.timeline') && ${stageCount} >= ${minStages} ? { ok: true } : null; })()`,
       { timeout: 45_000, label: 'protocol opened' },
-    ).then((r) => {
-      if (r.error) throw new Error(`app reported: ${r.error.slice(0, 600)}`);
-    });
+    );
+    if (r.error) throw new Error(`app reported: ${r.error.slice(0, 600)}`);
+  };
 
   const booted = await check('app boots to the start screen', async () => {
     await waitFor(driver, `Boolean(__rt.byText('Download Sample Protocol'))`, {

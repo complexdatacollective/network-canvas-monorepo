@@ -32,6 +32,10 @@ import {
 import type { StageLabelPanel } from '../proposeStageLabel.ts';
 import { type StageName, useStageName } from '../useStageName.ts';
 import { useStageNameField } from '../useStageNameField.ts';
+import {
+  type StandingStageNameProposal,
+  useStandingStageNameProposal,
+} from '../useStandingStageNameProposal.ts';
 
 const EDITED_STAGE_ID = 'stage-edited';
 const EDITED_SECTION = sectionId({ kind: 'stage', stageId: EDITED_STAGE_ID });
@@ -103,6 +107,7 @@ function Editor({
   headless,
   onStore,
   onLiveDraft,
+  onStanding,
   onHost,
   onName,
 }: {
@@ -111,6 +116,7 @@ function Editor({
   headless: boolean;
   onStore: (storeApi: StageFormStoreApi) => void;
   onLiveDraft: (read: () => SectionDoc) => void;
+  onStanding: (standing: StandingStageNameProposal) => void;
   onHost: (host: ReturnType<typeof createInMemoryHost>) => void;
   onName: (name: StageName) => void;
 }) {
@@ -130,7 +136,11 @@ function Editor({
           <StageEditSession target={target} formId="stage-form">
             <StageEditorShell>
               {headless ? <HeadlessName onName={onName} /> : <HostStageTitle />}
-              <Probe onStore={onStore} onLiveDraft={onLiveDraft} />
+              <Probe
+                onStore={onStore}
+                onLiveDraft={onLiveDraft}
+                onStanding={onStanding}
+              />
             </StageEditorShell>
           </StageEditSession>
         </ResourceClientProvider>
@@ -142,13 +152,16 @@ function Editor({
 function Probe({
   onStore,
   onLiveDraft,
+  onStanding,
 }: {
   onStore: (api: StageFormStoreApi) => void;
   onLiveDraft: (read: () => SectionDoc) => void;
+  onStanding: (standing: StandingStageNameProposal) => void;
 }) {
   const { storeApi, liveDraft } = useStageEditorForm();
   onStore(storeApi);
   onLiveDraft(liveDraft);
+  onStanding(useStandingStageNameProposal());
   return null;
 }
 
@@ -196,6 +209,7 @@ function renderEditor(options: EditorOptions = {}) {
   let host: ReturnType<typeof createInMemoryHost> | null = null;
   let stageName: StageName | null = null;
   let readLiveDraft: (() => SectionDoc) | null = null;
+  let standing: StandingStageNameProposal | null = null;
 
   render(
     <Wrapper>
@@ -209,6 +223,9 @@ function renderEditor(options: EditorOptions = {}) {
           }}
           onLiveDraft={(read) => {
             readLiveDraft = read;
+          }}
+          onStanding={(answer) => {
+            standing = answer;
           }}
           onHost={(built) => {
             host = built;
@@ -237,6 +254,8 @@ function renderEditor(options: EditorOptions = {}) {
     name: () => stageName as StageName | null,
     /** The document a submit would write, as the form holds it right now. */
     liveDraft: () => (readLiveDraft as (() => SectionDoc) | null)?.(),
+    /** What `useStandingStageNameProposal` last answered. */
+    standing: () => standing as StandingStageNameProposal | null,
     setValue: (name: string, value: FieldValue) =>
       act(() => {
         storeApi?.getState().setFieldValue(name, value);
@@ -537,6 +556,133 @@ describe('a name written in more than one language', () => {
     });
 
     await waitFor(() => expect(input).toHaveValue('Information'));
+  });
+});
+
+/**
+ * A proposed name is the editor's suggestion, not the researcher's work: it is
+ * replaced by the first thing they type, and leaving a new stage that holds
+ * nothing else loses nothing.
+ */
+describe('a proposed name nobody has touched', () => {
+  it('is selected when the name is clicked, so typing replaces it', async () => {
+    const user = userEvent.setup();
+    const { input } = renderEditor();
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    await user.click(input);
+    await user.keyboard('Friends');
+
+    expect(input).toHaveValue('Friends');
+  });
+
+  it('is selected when the name is reached from the keyboard', async () => {
+    const { input } = renderEditor();
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    act(() => {
+      input.focus();
+    });
+
+    const control = input as HTMLTextAreaElement;
+    expect(control.selectionStart).toBe(0);
+    expect(control.selectionEnd).toBe('Form Name Generator'.length);
+  });
+
+  it('is not selected once the researcher has typed a name of their own', async () => {
+    const user = userEvent.setup();
+    const { input } = renderEditor();
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+    fireEvent.change(input, { target: { value: 'My custom stage' } });
+
+    await user.click(input);
+    await user.keyboard(' 2');
+
+    expect(input).toHaveValue('My custom stage 2');
+  });
+
+  it('is left out of the draft compared with what the protocol holds', async () => {
+    const { input, liveDraft, standing } = renderEditor();
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    expect(standing()?.isStanding()).toBe(true);
+    expect(liveDraft()?.label).toEqual({ en: 'Form Name Generator' });
+    expect(
+      standing()?.withoutProposal(liveDraft() ?? {}, {}).label,
+    ).toBeUndefined();
+
+    fireEvent.change(input, { target: { value: 'Friends' } });
+
+    expect(standing()?.isStanding()).toBe(false);
+    expect(standing()?.withoutProposal(liveDraft() ?? {}, {}).label).toEqual({
+      en: 'Friends',
+    });
+  });
+
+  it('keeps a translation added beside it as unsaved work', async () => {
+    const { input, liveDraft, setValue, standing } = renderEditor({
+      sections: protocolSections({
+        [sectionId({ kind: 'settings' })]: {
+          localization: ENGLISH_AND_SPANISH,
+        },
+      }),
+    });
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    setValue('label', { en: 'Form Name Generator', es: 'Generador' });
+
+    expect(standing()?.withoutProposal(liveDraft() ?? {}, {}).label).toEqual({
+      es: 'Generador',
+    });
+  });
+
+  it('is not selected while another language is being edited', async () => {
+    const user = userEvent.setup();
+    const { input } = renderEditor({
+      sections: protocolSections({
+        [sectionId({ kind: 'settings' })]: {
+          localization: ENGLISH_AND_SPANISH,
+        },
+      }),
+    });
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    await user.click(screen.getByRole('button', { name: /Editing language/ }));
+    await user.click(
+      await screen.findByRole('menuitemradio', { name: /^español/ }),
+    );
+    const spanish = screen.getByRole('textbox', { name: 'Stage name' });
+    fireEvent.change(spanish, { target: { value: 'Generador' } });
+    act(() => {
+      spanish.blur();
+    });
+
+    // The English name is still the proposal, but the Spanish one shown is
+    // the researcher's.
+    await user.click(spanish);
+    await user.keyboard('!');
+    expect(spanish).toHaveValue('Generador!');
+  });
+
+  it('never stands on a stage the interview already contains', async () => {
+    const { name, liveDraft, standing } = renderEditor({
+      type: 'Sociogram',
+      fields: { subject: { entity: 'node', type: 'person' } },
+      existing: true,
+      headless: true,
+    });
+    await settle();
+
+    act(() => {
+      name()?.acceptProposal();
+    });
+    await waitFor(() => expect(name()?.value).toBe('Person Sociogram'));
+
+    // Accepting a proposal for a stage that exists is a rename, and unsaved.
+    expect(standing()?.isStanding()).toBe(false);
+    expect(standing()?.withoutProposal(liveDraft() ?? {}, {}).label).toEqual({
+      en: 'Person Sociogram',
+    });
   });
 });
 

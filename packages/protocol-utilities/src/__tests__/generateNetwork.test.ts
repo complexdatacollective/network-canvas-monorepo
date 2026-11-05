@@ -88,6 +88,7 @@ function makeRosterStage(overrides?: Record<string, unknown>): Stage {
     label: en('Roster'),
     type: 'NameGeneratorRoster',
     allAddedNotice: en('There is nothing left to add from this list.'),
+    unnamedLabel: en('Unnamed {count}'),
     minNodesNotice: en(
       '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
     ),

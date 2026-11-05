@@ -86,7 +86,7 @@ async function openPrompter({
 
   render(
     <Provider store={store}>
-      <InterviewI18nProvider requestedLocale="en">
+      <InterviewI18nProvider>
         <PassphrasePrompter orientation="vertical" />
       </InterviewI18nProvider>
     </Provider>,
