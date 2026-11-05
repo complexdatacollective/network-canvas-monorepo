@@ -36,6 +36,7 @@ import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate'
 import {
   edgeSourceProperty,
   edgeTargetProperty,
+  entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
@@ -58,7 +59,7 @@ import {
   hasUsableDimensions,
   toSim,
 } from './layoutGeometry';
-import type { CanvasStoreApi } from './useCanvasStore';
+import { type CanvasStoreApi, isPosition } from './useCanvasStore';
 
 type SimLink = { source: number; target: number };
 
@@ -259,7 +260,12 @@ export function useAutoLayout({
   // paint. Hide people from that paint when a layout is about to move them.
   useLayoutEffect(() => {
     const starting = runMode === 'once' || simulationEnabled;
-    if (enabled && starting && nodesRef.current.length > 0) {
+    const moving = nodesRef.current.some(
+      (node) =>
+        !persistArgsRef.current ||
+        !isPosition(node[entityAttributesProperty][layoutVariable]),
+    );
+    if (enabled && starting && moving) {
       store.getState().setLayoutPending(true);
     }
     // Only the first paint; each run then sets whether it is pending.
@@ -313,8 +319,8 @@ export function useAutoLayout({
     let disposed = false;
     // The step this stage was shown at, which settled positions are saved to.
     const persistTo = persistArgsRef.current;
-    // Whether this run is the first the canvas shows, which it reveals once
-    // it arrives instead of showing it being computed.
+    // Whether this run is the first the canvas shows and moves people, which
+    // it reveals once it arrives instead of showing it being computed.
     let revealing = false;
 
     worker.addEventListener('message', (event: MessageEvent) => {
@@ -456,6 +462,8 @@ export function useAutoLayout({
       links: simLinks,
       paused: runMode === 'continuous' && !simulationEnabled,
       incremental: nodesChanged,
+      // Saved positions are this layout's own, so people keep them.
+      keepPlaced: persistTo !== null,
       options: {
         collideRadius,
         boundsInset,
@@ -472,7 +480,11 @@ export function useAutoLayout({
     // user has the simulation enabled; the start/stop effect below also reacts
     // to toggles.
     const starting = runMode === 'once' || simulationEnabled;
-    revealing = starting && simNodes.length > 0 && !shownRef.current;
+    // A layout that keeps saved positions moves only the people it places.
+    revealing =
+      starting &&
+      !shownRef.current &&
+      simNodes.some((simNode) => !simNode.placed || !persistTo);
     // A canvas that shows its people without laying them out first has shown
     // them, so later runs move them into place instead.
     if (!revealing) shownRef.current = true;

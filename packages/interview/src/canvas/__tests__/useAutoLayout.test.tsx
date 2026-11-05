@@ -156,6 +156,59 @@ describe('useAutoLayout', () => {
     expect(store.getState().layoutPending).toBe(false);
   });
 
+  describe('when everyone already has a place', () => {
+    const placed = (id: string, x: number, y: number): NcNode => ({
+      ...node(id),
+      attributes: { layout: { x, y } },
+    });
+    const render = ({ persist }: { persist: boolean }) => {
+      const store = createCanvasStore();
+      // Not yet measured: only what the first paint shows is decided.
+      store.getState().setBatchPositions([
+        ['a', { x: 0.3, y: 0.5 }],
+        ['b', { x: 0.7, y: 0.5 }],
+      ]);
+      const hook = renderHook(() =>
+        useAutoLayout({
+          enabled: true,
+          nodes: [placed('a', 0.3, 0.5), placed('b', 0.7, 0.5)],
+          edges: [],
+          store,
+          nodeRadius: 20,
+          layoutVariable: 'layout',
+          persist,
+          dispatch: vi.fn(),
+          currentStep: 1,
+        }),
+      );
+      return { store, hook };
+    };
+
+    it('shows the places it saved straight away, and asks the layout to keep them', () => {
+      const { store } = render({ persist: true });
+      expect(store.getState().layoutPending).toBe(false);
+
+      act(() => store.getState().setCanvasDimensions(DIMS));
+
+      expect(store.getState().layoutPending).toBe(false);
+      expect(worker.posted.find((m) => m.type === 'initialize')).toMatchObject({
+        keepPlaced: true,
+      });
+    });
+
+    it('hides a layout it does not save until that layout arrives', () => {
+      const { store } = render({ persist: false });
+      expect(store.getState().layoutPending).toBe(true);
+
+      act(() => store.getState().setCanvasDimensions(DIMS));
+
+      expect(store.getState().layoutPending).toBe(true);
+      expect(worker.posted.find((m) => m.type === 'initialize')).toMatchObject({
+        keepPlaced: false,
+      });
+    });
+  });
+
   it('moves people in a straight line from where they are shown to where a later layout settled', () => {
     const { store, hook } = setup();
     act(() => worker.emit({ type: 'end', nodes: FIRST_LAYOUT }));

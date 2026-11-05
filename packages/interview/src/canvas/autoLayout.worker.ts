@@ -762,6 +762,9 @@ type InitializeMessage = {
   paused?: boolean;
   // The node set changed since the previous initialize (an add or a delete).
   incremental?: boolean;
+  // The positions people arrive with are the ones this layout saved for them,
+  // so they keep them until the network changes.
+  keepPlaced?: boolean;
 };
 
 type StopMessage = { type: 'stop' };
@@ -792,6 +795,7 @@ let needsLayout = false;
 let incrementalChange = false;
 // Whether that change added or removed people or ties, so it is untangled.
 let structuralChange = false;
+let keepPlaced = false;
 
 const createSimulation = (nodes: SimNode[]) => {
   const sim = forceSimulation(nodes);
@@ -916,6 +920,7 @@ export function handleMessage(data: Message) {
       needsLayout = true;
       incrementalChange = data.incremental ?? false;
       structuralChange = incrementalChange;
+      keepPlaced = data.keepPlaced ?? false;
       break;
     }
     case 'start': {
@@ -930,6 +935,10 @@ export function handleMessage(data: Message) {
         layoutFromScratch();
       } else if (unplaced > 0 || incrementalChange) {
         resettle({ untangleCrossings: unplaced > 0 || structuralChange });
+      } else if (keepPlaced) {
+        // Coming back to a layout that has not changed leaves everyone where
+        // they were, only making room where people are too close.
+        finish();
       } else {
         simulation.force('anchorX', null);
         simulation.force('anchorY', null);

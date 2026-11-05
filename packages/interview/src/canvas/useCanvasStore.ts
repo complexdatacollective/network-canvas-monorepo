@@ -18,7 +18,7 @@ type Position = { x: number; y: number };
 type CanvasDimensions = { width: number; height: number };
 
 /** Whether a stored layout value is a position the canvas can place a node at. */
-const isPosition = (value: unknown): value is Position =>
+export const isPosition = (value: unknown): value is Position =>
   typeof value === 'object' &&
   value !== null &&
   'x' in value &&

@@ -281,6 +281,48 @@ describe('autoLayout worker', () => {
     expect(posted.filter((m) => m.type === 'end')).toHaveLength(1);
   });
 
+  describe('coming back to people who all have the places it saved', () => {
+    const PLACED: SimNode[] = [
+      { nodeId: 'p', x: 0.6, y: 0.4 },
+      { nodeId: 'q', x: 1.0, y: 0.45 },
+      { nodeId: 'r', x: 0.8, y: 0.7 },
+    ];
+
+    it('leaves them where they are', () => {
+      handleMessage({
+        type: 'initialize',
+        nodes: cloneNodes(PLACED),
+        links: [{ source: 0, target: 1 }],
+        options: SCRATCH_OPTIONS,
+        keepPlaced: true,
+      });
+      handleMessage({ type: 'start' });
+
+      const end = posted.find((m) => m.type === 'end')!;
+      expect(end.nodes.map(({ x, y }) => ({ x, y }))).toEqual(
+        PLACED.map(({ x, y }) => ({ x, y })),
+      );
+    });
+
+    it('still makes room where people are too close', () => {
+      handleMessage({
+        type: 'initialize',
+        nodes: [
+          { nodeId: 'p', x: 0.8, y: 0.5 },
+          { nodeId: 'q', x: 0.81, y: 0.5 },
+        ],
+        options: SCRATCH_OPTIONS,
+        keepPlaced: true,
+      });
+      handleMessage({ type: 'start' });
+
+      const end = posted.find((m) => m.type === 'end')!;
+      expect(minPairwiseDistance(end.nodes)).toBeGreaterThanOrEqual(
+        2 * SIM_COLLIDE_RADIUS - 1e-9,
+      );
+    });
+  });
+
   it('stays paused when initialized paused, until started', () => {
     handleMessage({
       type: 'initialize',
