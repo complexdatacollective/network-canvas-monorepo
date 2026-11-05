@@ -12,12 +12,11 @@ function label(key) {
 }
 
 /**
- * The shared site header's links, as two sections at the foot of the forum's
- * menu. They show only where the theme hides that header (header.scss), so
- * the forum has one menu there instead of two. Every link leaves the forum,
- * which its icon says. They sit in the menu's plugin outlet because Discourse
- * shows sections added through its sidebar API only to members who are
- * signed in.
+ * The site's links, as two sections at the foot of the forum's menu. They
+ * show only where the header has no room for them (header.scss), so the
+ * forum still has one menu there. Every link leaves the forum, which its icon
+ * says. They sit in the menu's plugin outlet because Discourse shows sections
+ * added through its sidebar API only to members who are signed in.
  */
 export default class SiteMenu extends Component {
   get siteLinks() {
@@ -30,7 +29,7 @@ export default class SiteMenu extends Component {
   get softwareLinks() {
     return SOFTWARE_LINKS.map((link) => ({
       ...link,
-      text: label(`softwareLinks.${link.name}`),
+      text: label(`softwareLinks.${link.name}.name`),
     }));
   }
 

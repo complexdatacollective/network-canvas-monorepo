@@ -7,7 +7,7 @@
 // The page has no content sheet (layout.scss): its cards sit on the tinted
 // page in a column that grows with the window, as on the website. The layout
 // answers to the width of that column, not the window, so a sidebar beside
-// it narrows it too. Its top padding is the whole gap under the forum's bar:
+// it narrows it too. Its top padding is the whole gap under the header:
 // the content area adds none above the page (layout.scss).
 
 .nc-landing {

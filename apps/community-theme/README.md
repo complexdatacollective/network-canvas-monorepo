@@ -2,19 +2,19 @@
 
 The Discourse theme for the community forum at
 [community.networkcanvas.com](https://community.networkcanvas.com). It gives
-the forum the look of the Network Canvas apps and websites and puts the shared
-site header above Discourse's own.
+the forum the look of the Network Canvas apps and websites and makes
+Discourse's header the site header they share.
 
 ## What it does
 
-- **Shared header.** Renders `<nc-site-navigation>` from
-  `@codaco/site-navigation-element` above Discourse's header, in the forum's
-  language and colour mode. Discourse's header becomes the forum's bar: a slim
-  band titled "Community" in the visitor's language (the shared header's own
-  word for it), with sign-in, search and the forum's menu. Below 65rem, where
-  the shared header would fold into a second menu, it is hidden: the bar leads
-  with the Network Canvas mark, and the site's links (in the shared header's
-  words) end the forum's menu.
+- **Site header.** Discourse's header is laid out like the shared site header
+  (`navigation/SiteNavigation.tsx` in `@codaco/fresco-ui`), in its words and
+  with its software icons: the Network Canvas logo, which goes to the
+  website; Community, which opens the forum's menu; the site's pages and its
+  software; then the forum's search, sign-in and account controls. Where the
+  links do not all fit, the pages fold into a Resources menu and then the
+  logo drops its name. Below 65rem the links move to the foot of the forum's
+  menu, and on a topic the docked title takes their place.
 - **Design tokens.** Every token of the default Network Canvas theme is
   declared as `--nc-*` (light and dark), and Discourse's variables are set from
   them: fonts, its text sizes, radii, buttons, inputs, links and its muted
@@ -49,6 +49,7 @@ generates it from the workspace packages:
 |                                 | and type scale (`@codaco/tailwind-config/type-scale`)                      |
 | palettes in `about.json`        | the same tokens, resolved to hex by `@codaco/tailwind-config/theme-colors` |
 | `scss/fonts.scss`, `assets/`    | `@codaco/tailwind-config/fonts/*.css` and their fontsource files           |
+| `assets/apps/`                  | the shared header's software icons in `@codaco/fresco-ui`                  |
 | `locales/*.yml`                 | the shared header's messages in `@codaco/fresco-ui`, and the home page's   |
 |                                 | app-i18n catalogs in `src/locales/`                                        |
 
@@ -96,7 +97,7 @@ it.
    `dist/network-canvas.zip`. Updating an installed theme is the same upload.
 2. Attach the components the current theme uses (DiscoTOC, Discourse Clickable
    Topic, Discourse Loading Slider, Modern Category + Group Boxes) to the new
-   theme. Leave out Custom Header Links, which the shared header replaces, and
+   theme. Leave out Custom Header Links, which the site header replaces, and
    the Google font component, whose fonts and sizes would override the
    theme's.
 3. Preview the theme, then make it the default.
@@ -110,10 +111,6 @@ To work on the theme against a forum, the
 [`discourse_theme` CLI](https://meta.discourse.org/t/discourse-theme-cli-console-app-to-help-you-build-themes/82950)
 can watch `dist/network-canvas/` and upload each change: rebuild after editing
 `theme/`, and the CLI picks up the new files.
-
-The theme setting `site_navigation_script_url` says where the shared header's
-script loads from. The default follows every 1.x release on jsDelivr; set an
-exact version to pin it.
 
 The home page finds its categories by slug, through the settings
 `help_category`, `ideas_category`, `conversation_category` and

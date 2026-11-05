@@ -15,12 +15,8 @@ import { SITE_LOCALES } from '../theme/javascripts/discourse/lib/site-locale.js'
 // Shown to forum admins in the theme list and settings, so English only.
 const THEME_METADATA = {
   description:
-    'The Network Canvas look for the community forum: the shared site header, typefaces, colours and controls of the apps and websites, and a home page that sends people to the right category.',
+    'The Network Canvas look for the community forum: the site header with the forum’s controls in it, the typefaces, colours and controls of the apps and websites, and a home page that sends people to the right category.',
   settings: {
-    site_navigation_script_url: {
-      description:
-        'Where the shared site header is loaded from. The default follows every 1.x release of @codaco/site-navigation-element; pin an exact version here to stop it updating.',
-    },
     help_category: {
       description:
         'Slug of the category the home page sends questions and problem reports to.',
@@ -228,10 +224,11 @@ function toYaml(value: { [key: string]: YamlValue }, depth = 0): string[] {
 
 /**
  * The theme's translations for each language the Network Canvas sites are
- * translated into, keyed by Discourse locale. The forum's title is the shared
- * header's own "Community" label, so the forum and the header say the same
- * word in every language, and the site's links in the forum's menu
- * (`site.*`, lib/site-links.js) carry the header's labels for them; the
+ * translated into, keyed by Discourse locale. The forum's header is the
+ * shared site header's design (components/site-navigation.gjs), so its words
+ * are that header's own: "Community" names the forum's entry in it, and the
+ * site's links and software (`site.*`, lib/site-links.js) carry the header's
+ * labels and descriptions, in the header and in the forum's menu alike. The
  * landing page's copy comes from the app-i18n catalogs in `locales/`.
  */
 export function themeStrings() {
@@ -246,16 +243,20 @@ export function themeStrings() {
       community: header.community,
       site: {
         home: header.home,
+        navigationLabel: header.navigationLabel,
         documentation: header.documentation,
         updates: header.updates,
         protocolGallery: header.protocolGallery,
+        resources: header.resources,
         getStarted: header.getStarted,
         software: header.software,
         softwareLinks: Object.fromEntries(
-          Object.entries(header.softwareLinks).map(([id, { name }]) => [
-            id,
-            name,
-          ]),
+          Object.entries(header.softwareLinks).map(
+            ([id, { name, description, action }]) => [
+              id,
+              { name, description, action },
+            ],
+          ),
         ),
       },
       ...nest(landingMessages(siteLocale), siteLocale),

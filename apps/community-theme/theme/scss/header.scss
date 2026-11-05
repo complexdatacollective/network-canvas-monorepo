@@ -1,26 +1,419 @@
-// The shared Network Canvas header sits above Discourse's own header, which
-// becomes the forum's bar: the "Community" title, search, sign-in and the
-// user menu. The shared header scrolls away; Discourse's bar stays pinned.
+// Discourse's header is the site's header, set out as the website's and the
+// documentation's is (fresco-ui navigation/SiteNavigation.tsx): the Network
+// Canvas logo, which goes to the website (components/site-brand.gjs); the
+// site's links, the forum's own first (components/site-navigation.gjs); a
+// rule; then the forum's search, sign-in, notifications and account menu.
+// Below 65rem, where the shared header folds its links into a menu, the
+// links move to the foot of the forum's menu (components/site-menu.gjs) and
+// the header keeps the logo and the forum's controls.
 //
-// The bar is a slim band of the content surface, ruled off from the header
-// above, with a smaller title and quieter controls, so it reads as the
-// forum's toolbar under the site's menu rather than a second menu of the
-// same weight. It is the surface the default button is drawn for, as on the
-// cards, so Sign up sits on it as it does there; on a tinted band the button
-// was a paler patch.
+// Like the shared header it has no band of its own: it spans the window in
+// the page's colours. Discourse pins it, so once the page scrolls under it,
+// it takes the page's colour and a rule; a browser that cannot tie those to
+// the scroll position has them from the start.
 
 :root {
-  --nc-forum-bar: var(--nc-surface);
+  // The home page's gutter (layout.scss), so the logo lines up with the
+  // edge of its cards.
+  --d-header-padding-x: clamp(var(--space-4), 5vw, var(--space-12));
+  --nc-header-rule: color-mix(in oklab, var(--nc-text) 9%, transparent);
 }
 
 .d-header {
-  height: 3.5rem;
-  border-block: 1px solid color-mix(in oklab, var(--nc-text) 9%, transparent);
-  background-color: var(--nc-forum-bar);
-  box-shadow: none;
+  height: 4rem;
+  background-color: var(--nc-background);
+  box-shadow: 0 1px 0 var(--nc-header-rule);
+
+  @media (width >= 65rem) {
+    height: 5rem;
+  }
+
+  > .wrap {
+    max-width: none;
+  }
 }
 
-// Beside Sign up, Log in is a text button and comes first.
+@supports (animation-timeline: scroll()) {
+  .d-header {
+    animation: nc-header-scrolled linear both;
+    animation-range: 0 var(--space-6);
+    animation-timeline: scroll(root);
+  }
+
+  @keyframes nc-header-scrolled {
+    from {
+      background-color: transparent;
+      box-shadow: 0 1px 0 transparent;
+    }
+
+    to {
+      background-color: var(--nc-background);
+      box-shadow: 0 1px 0 var(--nc-header-rule);
+    }
+  }
+}
+
+// The logo: the mark and the name, set as the shared header sets them. The
+// name gives way where the header is short of room (site-navigation.gjs).
+// Discourse clips a logo too wide for its header; this one never is, and
+// clipping would cut off its focus ring.
+.d-header {
+  .home-logo-wrapper-outlet,
+  .title:not(.title--minimized) {
+    flex: none;
+    overflow: visible;
+  }
+
+  .title a {
+    display: flex;
+    align-items: center;
+    border-radius: var(--nc-radius-xs);
+    color: var(--nc-text);
+    text-decoration: none;
+  }
+}
+
+.nc-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.nc-brand__mark {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+
+  @media (width >= 65rem) {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
+.nc-brand__name {
+  font-family: var(--nc-heading-font);
+  font-size: var(--nc-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+}
+
+.d-header[data-nc-fit='mark'] .nc-brand__name {
+  display: none;
+}
+
+// The links sit at the far end, against the forum's controls, with a rule
+// between them.
+.d-header .before-header-panel-outlet:has(.nc-site-nav) {
+  margin-inline-start: auto;
+
+  + .panel {
+    margin-inline-start: 0;
+  }
+}
+
+.nc-site-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  &::after {
+    content: '';
+    flex: none;
+    width: 1px;
+    height: 1.75rem;
+    margin-inline: var(--space-6);
+    background-color: color-mix(in oklab, var(--nc-text) 15%, transparent);
+  }
+
+  @media (width < 65rem) {
+    display: none;
+  }
+}
+
+.nc-site-nav__list {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (width >= 80rem) {
+    gap: var(--space-8);
+  }
+}
+
+// One list shows: every link, or the forum's link and two menus where that
+// is all there is room for (site-navigation.gjs). The other stays laid out,
+// so it can be measured, but out of sight and out of reach.
+.nc-site-nav__list--compact,
+.d-header:is([data-nc-fit='compact'], [data-nc-fit='mark'])
+  .nc-site-nav__list--full {
+  position: absolute;
+  inset-inline-start: 0;
+  visibility: hidden;
+}
+
+.d-header:is([data-nc-fit='compact'], [data-nc-fit='mark'])
+  .nc-site-nav__list--compact {
+  position: static;
+  visibility: visible;
+}
+
+// The shared header's links: h4 capitals at the heading face's black weight,
+// coral on hover and for the site the visitor is on.
+.nc-site-nav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  border-radius: var(--nc-radius-xs);
+  background: none;
+  color: var(--nc-text);
+  font-family: var(--nc-heading-font);
+  font-size: var(--nc-text-sm);
+  font-weight: 900;
+  line-height: 1.8;
+  letter-spacing: 0.1em;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover,
+  &[aria-current] {
+    color: oklch(var(--nc-neon-coral));
+  }
+
+  &:visited {
+    color: var(--nc-text);
+  }
+
+  .d-icon {
+    width: 0.875em;
+    height: 0.875em;
+    color: inherit;
+    transition: rotate 0.2s;
+  }
+
+  &[aria-expanded='true'] .d-icon {
+    rotate: 180deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nc-site-nav__link .d-icon {
+    transition: none;
+  }
+}
+
+// The forum's menu opens under the Community link (site-navigation.gjs sets
+// where that is), level with the site's own menus. Discourse's menu button
+// is hidden while the link shows.
+@media (width >= 65rem) {
+  .d-header:has(.nc-site-nav) {
+    .hamburger-dropdown {
+      display: none;
+    }
+
+    .hamburger-panel .menu-panel.drop-down {
+      inset-inline: var(--nc-forum-menu-start, auto) auto;
+    }
+  }
+}
+
+// The site's menus: the shared header's popups, on the surface with its
+// large radius and shadow.
+.fk-d-menu:is(.nc-resources-content, .nc-software-content) {
+  border: 0;
+  border-radius: var(--nc-radius-base);
+  background-color: var(--nc-surface);
+  color: var(--nc-surface-contrast);
+  box-shadow: var(--nc-shadow-2xl-base);
+
+  .fk-d-menu__inner-content {
+    padding: var(--space-3);
+  }
+}
+
+.nc-site-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 16rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nc-site-menu-list__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--nc-radius-sm);
+  color: var(--nc-surface-contrast);
+  font-family: var(--nc-heading-font);
+  font-size: var(--nc-text-sm);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  &:is(:hover, :focus-visible) {
+    background-color: color-mix(
+      in oklab,
+      var(--nc-surface-contrast) 6%,
+      transparent
+    );
+    color: var(--nc-surface-contrast);
+  }
+
+  .d-icon {
+    width: 0.875em;
+    height: 0.875em;
+    color: inherit;
+  }
+}
+
+// The Software menu: a card for each piece of software, three to a row
+// where they fit, in that software's colour, as in the shared header.
+.fk-d-menu.nc-software-content .fk-d-menu__inner-content {
+  padding: var(--space-5);
+}
+
+.nc-software-menu {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(19rem, 100%), 1fr));
+  gap: var(--space-1);
+  width: min(72rem, calc(100vw - 2 * var(--d-header-padding-x)));
+  max-height: calc(100dvh - 7rem);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.nc-software-menu__link {
+  --nc-software-accent: oklch(var(--nc-cyber-grape));
+
+  display: flex;
+  box-sizing: border-box;
+  align-items: flex-start;
+  gap: var(--space-4);
+  height: 100%;
+  padding: var(--space-5);
+  border-radius: var(--nc-radius-sm);
+  color: var(--nc-surface-contrast);
+
+  &:is(:hover, :focus-visible) {
+    background-color: color-mix(
+      in oklab,
+      var(--nc-software-accent) 10%,
+      transparent
+    );
+    color: var(--nc-surface-contrast);
+  }
+
+  &[data-software='architect'] {
+    --nc-software-accent: oklch(var(--nc-sea-green));
+  }
+
+  &[data-software='interviewer'] {
+    --nc-software-accent: oklch(var(--nc-neon-coral));
+  }
+
+  &[data-software='fresco'] {
+    --nc-software-accent: oklch(var(--nc-slate-blue));
+  }
+}
+
+// The classic apps' grape is too dark to read on the dark palette's surface,
+// so there they take its pale counterpart, as in the shared header.
+.nc-software-menu__link:is(
+  [data-software='architectClassic'],
+  [data-software='interviewerClassic']
+) {
+  --nc-software-accent: light-dark(
+    oklch(var(--nc-cyber-grape)),
+    oklch(var(--nc-platinum--dark))
+  );
+}
+
+.nc-software-menu__icon {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 18%;
+  object-fit: contain;
+}
+
+.nc-software-menu__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-self: stretch;
+  min-width: 0;
+}
+
+.nc-software-menu__name {
+  color: var(--nc-software-accent);
+  font-family: var(--nc-heading-font);
+  font-size: var(--nc-text-sm);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nc-software-menu__description {
+  margin-top: var(--space-1);
+  color: color-mix(in oklab, var(--nc-surface-contrast) 85%, transparent);
+  font-size: var(--nc-text-sm);
+  line-height: 1.375;
+}
+
+.nc-software-menu__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: auto;
+  padding-top: var(--space-2);
+  color: var(--nc-software-accent);
+  font-family: var(--nc-heading-font);
+  font-size: var(--nc-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+
+  .d-icon {
+    width: 0.875em;
+    height: 0.875em;
+    color: inherit;
+  }
+}
+
+// The forum's controls: search, the menu and notifications in the text
+// colour the shared header's controls use rather than Discourse's muted
+// grey.
+.d-header-icons .icon .d-icon {
+  color: var(--nc-text);
+  font-size: var(--font-up-1);
+}
+
+// Where the links show, search comes first among the forum's controls, as
+// the shared header's controls lead its end of the header; Discourse's
+// menu button, which it would put after search, is hidden there.
+@media (width >= 65rem) {
+  .d-header:has(.nc-site-nav) .d-header-icons {
+    order: -1;
+  }
+}
+
+// Beside Sign up, Log in is a text button and comes first, with no icon
+// while it has room for its label.
 .d-header .auth-buttons:has(.sign-up-button) .login-button {
   --d-button-primary-bg-color: transparent;
   --d-button-primary-bg-color--hover: color-mix(
@@ -34,101 +427,19 @@
   --d-button-primary-icon-color--hover: var(--nc-text);
 
   order: -1;
+  padding-inline: var(--space-4);
   box-shadow: none;
-}
 
-// Sign up takes the default button's colours: the shared header's "Get
-// started" is the one filled button at the top of the page.
-.d-header .auth-buttons .sign-up-button {
-  --d-button-primary-bg-color: var(--d-button-default-bg-color);
-  --d-button-primary-bg-color--hover: var(--d-button-default-bg-color--hover);
-  --d-button-primary-text-color: var(--d-button-default-text-color);
-  --d-button-primary-text-color--hover: var(
-    --d-button-default-text-color--hover
-  );
-}
-
-// The title's link is a flex box so it is as tall as the title: as an inline
-// box its line left room for descenders under the title, and the bar, which
-// centres the link, set the title 3px high.
-.d-header .title a {
-  display: flex;
-  align-items: center;
-  color: var(--nc-text);
-  text-decoration: none;
-}
-
-// Search, the forum menu and notifications, in the text colour the shared
-// header's controls use rather than Discourse's muted grey, a step smaller
-// than Discourse's to suit the slimmer bar.
-.d-header-icons .icon .d-icon {
-  color: var(--nc-text);
-  font-size: var(--font-up-1);
-}
-
-.nc-community-title {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-family: var(--nc-heading-font);
-  font-size: var(--nc-text-lg);
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-}
-
-.nc-community-title__mark {
-  flex: none;
-  width: 1.375em;
-  height: 1.375em;
-  fill: none;
-  stroke: var(--nc-accent);
-  stroke-linejoin: round;
-  stroke-width: 2.25;
-}
-
-.nc-site-mark {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  margin-right: var(--space-3);
-  padding-right: var(--space-3);
-  border-right: 1px solid color-mix(in oklab, var(--nc-text) 15%, transparent);
-
-  svg {
-    width: 2rem;
-    height: 2rem;
-  }
-}
-
-// Below 65rem the shared header folds its links into a menu of its own (at
-// 64rem of its width, which is the window's less any scrollbar), which would
-// put a second menu button above the forum's. There the forum's bar is the
-// page's only header: the Network Canvas mark (components/site-mark.gjs)
-// leads it in place of the bubble, and the site's links are at the foot of
-// the forum's menu (components/site-menu.gjs). Wider, the mark and those
-// links go.
-@media (width < 65rem) {
-  nc-site-navigation,
-  .nc-community-title__mark {
-    display: none;
-  }
-
-  .d-header {
-    border-top: 0;
-  }
-}
-
-@media (width >= 65rem) {
-  .nc-site-mark,
-  .nc-site-menu {
-    display: none;
+  @media (width >= 40rem) {
+    .d-icon {
+      display: none;
+    }
   }
 }
 
 // On a phone, "Log in" in some languages ("Iniciar sesión") leaves no room
-// for the forum's name, so the button shows only its icon, like search and
-// the menu beside it; its label stays as its accessible name.
+// for the logo, so the button shows only its icon, like search and the menu
+// beside it; its label stays as its accessible name.
 @media (width < 40rem) {
   .d-header .auth-buttons .btn.login-button {
     padding-inline: var(--space-2);
@@ -145,5 +456,13 @@
     .d-icon {
       font-size: var(--font-up-1);
     }
+  }
+}
+
+// The site's links at the foot of the forum's menu stand in for the header's
+// where it has no room for them.
+@media (width >= 65rem) {
+  .nc-site-menu {
+    display: none;
   }
 }

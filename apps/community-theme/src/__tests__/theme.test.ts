@@ -17,6 +17,7 @@ import {
 } from '@codaco/tailwind-config/theme-colors';
 
 import {
+  NETWORK_CANVAS,
   SOFTWARE_LINKS,
   siteLinks,
 } from '../../theme/javascripts/discourse/lib/site-links.js';
@@ -433,8 +434,11 @@ describe('fonts', () => {
       ),
     );
     expect(referenced.size).toBe(16);
-    expect(new Set(Object.keys(assets))).toEqual(referenced);
-    for (const path of Object.values(assets)) {
+    const fonts = Object.entries(assets).filter(([name]) =>
+      name.startsWith('nc-font-'),
+    );
+    expect(new Set(fonts.map(([name]) => name))).toEqual(referenced);
+    for (const [, path] of fonts) {
       expect(files.map((file) => file.path)).toContain(path);
     }
   });
@@ -489,16 +493,19 @@ describe('languages', () => {
         english,
       );
   // `themePrefix("key")` in JavaScript, `(themePrefix "key")` in a template,
-  // and the landing page's keys, which its routes table spells out in full.
+  // the header's `label "key"` for `site.key`, and the landing page's keys,
+  // which its routes table spells out in full.
   const askedFor = new Set(
     files
       .filter((file) => file.path.startsWith('javascripts/'))
       .flatMap((file) => [
         ...file.contents
           .toString()
-          .matchAll(/themePrefix[(\s]+"([^"]+)"|"(landing\.[\w.]+)"/g),
+          .matchAll(
+            /themePrefix[(\s]+"([^"]+)"|\blabel[(\s]+"([^"]+)"|"(landing\.[\w.]+)"/g,
+          ),
       ])
-      .map((match) => match[1] ?? match[2]),
+      .map((match) => match[1] ?? (match[2] && `site.${match[2]}`) ?? match[3]),
   );
 
   it('translates every theme string the JavaScript asks for', () => {
@@ -562,11 +569,11 @@ describe('languages', () => {
   });
 });
 
-// Where the shared header is hidden (header.scss), the forum's menu carries
-// its links (lib/site-links.js). The theme cannot import the header at
-// runtime, so it repeats the header's addresses, which are held here to the
-// header's source.
-describe("the forum menu's links to the site", () => {
+// The forum's header shows the shared header's links, and the forum's menu
+// carries them where the header has no room (lib/site-links.js). The theme
+// cannot import the header at runtime, so it repeats the header's addresses
+// and icons, which are held here to the header's source.
+describe("the forum header's links to the site", () => {
   const header = readFileSync(
     new URL(
       '../../../../packages/fresco-ui/src/navigation/SiteNavigation.tsx',
@@ -594,6 +601,8 @@ describe("the forum menu's links to the site", () => {
       siteLinks('de').map(({ name, href }) => [name, href]),
     );
     const website = destinations.get('networkCanvas');
+    // The logo goes to the website, as the shared header's does.
+    expect(NETWORK_CANVAS).toBe(website);
     expect(links.home).toBe(website);
     expect(links.documentation).toBe(destinations.get('documentation'));
     expect(links['protocol-gallery']).toBe(destinations.get('protocolGallery'));
@@ -617,14 +626,39 @@ describe("the forum menu's links to the site", () => {
           expect.any(String),
         );
       }
-      const software = site.softwareLinks;
-      if (typeof software !== 'object')
-        throw new Error(`${discourseLocale}: no software names`);
-      for (const { name } of SOFTWARE_LINKS) {
-        expect(software[name], `${discourseLocale}: ${name}`).toEqual(
+      for (const key of ['navigationLabel', 'resources', 'software']) {
+        expect(site[key], `${discourseLocale}: ${key}`).toEqual(
           expect.any(String),
         );
       }
+      const software = site.softwareLinks;
+      if (typeof software !== 'object')
+        throw new Error(`${discourseLocale}: no software links`);
+      for (const { name } of SOFTWARE_LINKS) {
+        const link = software[name];
+        if (typeof link !== 'object')
+          throw new Error(`${discourseLocale}: no ${name}`);
+        for (const part of ['name', 'description', 'action']) {
+          expect(link[part], `${discourseLocale}: ${name}.${part}`).toEqual(
+            expect.any(String),
+          );
+        }
+      }
+    }
+  });
+
+  it('ships the icon the shared header shows for each piece of software', () => {
+    const { assets } = about();
+    const headerIcons = new Map(
+      [...header.matchAll(/(\w+):\s*new URL\(\s*'\.\/assets\/([^']+)'/g)].map(
+        (match) => [match[1], match[2]],
+      ),
+    );
+    expect(headerIcons.size).toBe(SOFTWARE_LINKS.length);
+    for (const { name, icon } of SOFTWARE_LINKS) {
+      const path = assets[icon] ?? '';
+      expect(path, name).toBe(`assets/apps/${headerIcons.get(name)}`);
+      expect(text(path).length, name).toBeGreaterThan(0);
     }
   });
 });

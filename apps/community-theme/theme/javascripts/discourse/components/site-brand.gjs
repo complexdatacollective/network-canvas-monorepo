@@ -2,18 +2,23 @@ import { i18n } from "discourse-i18n";
 import { themePrefix } from "virtual:theme";
 
 /**
- * The Network Canvas mark, linking to the website. It leads the forum's bar
- * only where the shared site header, which carries the full logo, is hidden
- * (header.scss). The drawing is the brand mark the documentation site serves
- * (apps/documentation/public/images/mark.svg), in its own colours.
+ * What Discourse's home link shows: the Network Canvas logo, as the shared
+ * site header shows it. The link goes to the website (the initializer's
+ * `home-logo-href`), as the logo does on every Network Canvas site; the
+ * forum's own home is the first link in its menu. The name gives way to the
+ * mark alone where the header is short of room (site-navigation.gjs) and
+ * while a topic's title is docked in the header. The drawing is the brand
+ * mark the documentation site serves (apps/documentation/public/images/
+ * mark.svg), in its own colours.
  */
-const SiteMark = <template>
-  <a
-    class="nc-site-mark"
-    href="https://networkcanvas.com/"
-    aria-label={{i18n (themePrefix "site.home")}}
-  >
-    <svg viewBox="0 0 131.7 131.6" aria-hidden="true" focusable="false">
+const SiteBrand = <template>
+  <span class="nc-brand">
+    <svg
+      class="nc-brand__mark"
+      viewBox="0 0 131.7 131.6"
+      aria-hidden="true"
+      focusable="false"
+    >
       <path
         fill="#CE1E55"
         d="M19.4,27.2C19.4,12.2,31.6,0,46.6,0c7.2,0,14.1,2.9,19.2,8L27.3,46.5C22.2,41.4,19.3,34.4,19.4,27.2"
@@ -47,7 +52,11 @@ const SiteMark = <template>
         d="M104.3,46.5c-10.6,10.7-27.8,10.8-38.5,0.2S55,18.9,65.6,8.2c0.1-0.1,0.2-0.2,0.2-0.2L104.3,46.5z"
       />
     </svg>
-  </a>
+    {{#unless @outletArgs.minimized}}
+      <span class="nc-brand__name" aria-hidden="true">Network Canvas</span>
+    {{/unless}}
+    <span class="sr-only">{{i18n (themePrefix "site.home")}}</span>
+  </span>
 </template>;
 
-export default SiteMark;
+export default SiteBrand;

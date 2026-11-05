@@ -13,8 +13,8 @@ html {
 }
 
 // Discourse paints its full-page log-in, sign-up and account screens, header
-// included, in the content colour; they keep the tinted page and the
-// forum's bar (header.scss) here too.
+// included, in the content colour; they keep the tinted page and its header
+// (header.scss) here too.
 body:is(
   .login-page,
   .signup-page,
@@ -25,7 +25,7 @@ body:is(
   background-color: var(--nc-background);
 
   .d-header {
-    background-color: var(--nc-forum-bar);
+    background-color: var(--nc-background);
   }
 }
 
@@ -63,21 +63,18 @@ body:is(
 // The home page (landing.scss) has no sheet: its cards sit on the tinted
 // page, as on the website. Its column grows with the window, gutters
 // included, up to 110rem of content, so a large screen gets a wider page
-// rather than wider margins. The bar above shares the column and its gutters
-// (Discourse gives the header a padding variable of its own), so its title
-// lines up with the page's edge.
+// rather than wider margins. Its gutters are the header's (header.scss), so
+// the logo lines up with the page's edge.
 //
 // Behind the content, three soft glows of the illustrations' colours tint the page:
 // blue at the top right, coral at the left and mustard at the right. They
 // are fainter in the dark palette (--nc-glow-strength), where the same tint
-// shows far more against the dark page. The shared header paints the plain
-// page colour over whatever is behind it, so the glows are centred low enough
-// to show below the two headers. The sidebar, when it shows, lets
-// them through.
+// shows far more against the dark page. The header is clear until the page
+// scrolls under it, so the blue shows behind it too. The sidebar, when it
+// shows, lets them through.
 body.nc-landing-page {
-  --d-wrap-padding-x: clamp(var(--space-4), 5vw, var(--space-12));
+  --d-wrap-padding-x: var(--d-header-padding-x);
   --d-max-width: calc(110rem + 2 * var(--d-wrap-padding-x));
-  --d-header-padding-x: var(--d-wrap-padding-x);
   --d-sidebar-background: transparent;
   --main-outlet-padding-x: 0;
   --main-outlet-padding-top: 0;
@@ -114,7 +111,7 @@ body.nc-landing-page {
 
   // With no sheet, the sheet's margin and inner padding above the content
   // would only push the page down; its own padding sets the gap under the
-  // bar.
+  // header.
   #main-outlet {
     margin-block-start: 0;
     border-radius: 0;
@@ -123,7 +120,7 @@ body.nc-landing-page {
   }
 
   // A site notice (read-only mode, email turned off) comes above the page,
-  // so it takes the same gap from the bar. Discourse renders the notices'
+  // so it takes the same gap from the header. Discourse renders the notices'
   // wrapper empty when there are none.
   .global-notice:has(.alert) {
     margin-top: var(--space-8);
