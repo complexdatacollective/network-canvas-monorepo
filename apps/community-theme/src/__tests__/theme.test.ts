@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { siteNavigationMessages } from '@codaco/fresco-ui/navigation/SiteNavigation.messages';
 import {
   defaultSiteLocale,
   siteLocales,
@@ -16,11 +15,7 @@ import {
   toDisplayColor,
 } from '@codaco/tailwind-config/theme-colors';
 
-import {
-  NETWORK_CANVAS,
-  SOFTWARE_LINKS,
-  siteLinks,
-} from '../../theme/javascripts/discourse/lib/site-links.js';
+import { NETWORK_CANVAS } from '../../theme/javascripts/discourse/lib/site-links.js';
 import {
   SITE_LOCALES,
   siteLocaleFor,
@@ -465,20 +460,6 @@ describe('languages', () => {
     expect(siteLocaleFor('constructor')).toBe(defaultSiteLocale);
   });
 
-  it.each(Object.entries(SITE_LOCALES))(
-    'titles the forum in %s with the shared header’s own word',
-    (discourseLocale, siteLocale) => {
-      const yaml = text(`locales/${discourseLocale}.yml`);
-      const label =
-        siteNavigationMessages[
-          siteLocale as keyof typeof siteNavigationMessages
-        ].community;
-      expect(yaml).toContain(
-        `${discourseLocale}:\n  community: ${JSON.stringify(label)}`,
-      );
-    },
-  );
-
   const english = themeStrings().find(
     ({ discourseLocale }) => discourseLocale === 'en',
   )?.strings;
@@ -493,19 +474,16 @@ describe('languages', () => {
         english,
       );
   // `themePrefix("key")` in JavaScript, `(themePrefix "key")` in a template,
-  // the header's `label "key"` for `site.key`, and the landing page's keys,
-  // which its routes table spells out in full.
+  // and the landing page's keys, which its routes table spells out in full.
   const askedFor = new Set(
     files
       .filter((file) => file.path.startsWith('javascripts/'))
       .flatMap((file) => [
         ...file.contents
           .toString()
-          .matchAll(
-            /themePrefix[(\s]+"([^"]+)"|\blabel[(\s]+"([^"]+)"|"(landing\.[\w.]+)"/g,
-          ),
+          .matchAll(/themePrefix[(\s]+"([^"]+)"|"(landing\.[\w.]+)"/g),
       ])
-      .map((match) => match[1] ?? (match[2] && `site.${match[2]}`) ?? match[3]),
+      .map((match) => match[1] ?? match[2]),
   );
 
   it('translates every theme string the JavaScript asks for', () => {
@@ -569,96 +547,20 @@ describe('languages', () => {
   });
 });
 
-// The forum's header shows the shared header's links, and the forum's menu
-// carries them where the header has no room (lib/site-links.js). The theme
-// cannot import the header at runtime, so it repeats the header's addresses
-// and icons, which are held here to the header's source.
-describe("the forum header's links to the site", () => {
-  const header = readFileSync(
-    new URL(
-      '../../../../packages/fresco-ui/src/navigation/SiteNavigation.tsx',
-      import.meta.url,
-    ),
-    'utf8',
-  );
-  const destinations = new Map(
-    [
-      ...(
-        /const destinations = \{([\s\S]*?)\} as const;/.exec(header)?.[1] ?? ''
-      ).matchAll(/(\w+):\s*'([^']+)'/g),
-    ].map((match) => [match[1], match[2]]),
-  );
-
-  it('links each piece of software where the shared header does', () => {
-    expect(destinations.size).toBeGreaterThan(5);
-    for (const { name, href } of SOFTWARE_LINKS) {
-      expect(href, name).toBe(destinations.get(name));
-    }
-  });
-
-  it('links the site’s pages where the shared header does', () => {
-    const links = Object.fromEntries(
-      siteLinks('de').map(({ name, href }) => [name, href]),
-    );
-    const website = destinations.get('networkCanvas');
-    // The logo goes to the website, as the shared header's does.
-    expect(NETWORK_CANVAS).toBe(website);
-    expect(links.home).toBe(website);
-    expect(links.documentation).toBe(destinations.get('documentation'));
-    expect(links['protocol-gallery']).toBe(destinations.get('protocolGallery'));
-    // The header builds these two from the website's address for a site
-    // other than the website itself.
-    expect(header).toContain('`/${locale}/updates/`');
-    expect(links.updates).toBe(`${website}de/updates/`);
-    expect(header).toContain(
-      "appendPath(destinations.networkCanvas, '/download')",
-    );
-    expect(links['get-started']).toBe(`${website}download`);
-  });
-
-  it('labels every link with the shared header’s words, in every language', () => {
-    for (const { discourseLocale, strings } of themeStrings()) {
-      const site = strings.site;
-      if (typeof site !== 'object')
-        throw new Error(`${discourseLocale}: no site strings`);
-      for (const { label } of siteLinks('en-US')) {
-        expect(site[label], `${discourseLocale}: ${label}`).toEqual(
-          expect.any(String),
-        );
-      }
-      for (const key of ['navigationLabel', 'resources', 'software']) {
-        expect(site[key], `${discourseLocale}: ${key}`).toEqual(
-          expect.any(String),
-        );
-      }
-      const software = site.softwareLinks;
-      if (typeof software !== 'object')
-        throw new Error(`${discourseLocale}: no software links`);
-      for (const { name } of SOFTWARE_LINKS) {
-        const link = software[name];
-        if (typeof link !== 'object')
-          throw new Error(`${discourseLocale}: no ${name}`);
-        for (const part of ['name', 'description', 'action']) {
-          expect(link[part], `${discourseLocale}: ${name}.${part}`).toEqual(
-            expect.any(String),
-          );
-        }
-      }
-    }
-  });
-
-  it('ships the icon the shared header shows for each piece of software', () => {
-    const { assets } = about();
-    const headerIcons = new Map(
-      [...header.matchAll(/(\w+):\s*new URL\(\s*'\.\/assets\/([^']+)'/g)].map(
-        (match) => [match[1], match[2]],
+// The header is the shared header's own element, so the theme repeats only
+// where the forum's logo goes beside a docked topic title, which is held here
+// to the header's source.
+describe("the forum's logo", () => {
+  it('goes to the website, as the shared header’s does', () => {
+    const header = readFileSync(
+      new URL(
+        '../../../../packages/fresco-ui/src/navigation/SiteNavigation.tsx',
+        import.meta.url,
       ),
+      'utf8',
     );
-    expect(headerIcons.size).toBe(SOFTWARE_LINKS.length);
-    for (const { name, icon } of SOFTWARE_LINKS) {
-      const path = assets[icon] ?? '';
-      expect(path, name).toBe(`assets/apps/${headerIcons.get(name)}`);
-      expect(text(path).length, name).toBeGreaterThan(0);
-    }
+    const website = /networkCanvas:\s*'([^']+)'/.exec(header)?.[1];
+    expect(website).toMatch(/^https:/);
+    expect(NETWORK_CANVAS).toBe(website);
   });
 });

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Monitor, Search } from 'lucide-react';
+import { useState } from 'react';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import { siteLocales } from '@codaco/shared-consts';
@@ -60,6 +61,12 @@ import SiteNavigation from '@codaco/fresco-ui/navigation/SiteNavigation';
   (\`main-content\` by default, exported as \`SITE_NAVIGATION_SKIP_TARGET_ID\`
   from \`navigation/SiteNavigation.constants\`). The page owns that element:
   put the \`id\` on the element where its content starts, after the header.
+- **\`layout\`** places the header inside a host's own header bar
+  (\`embedded\`: the logo and links alone, fitted to the room they are given,
+  \`onFitChange\` reporting how much fits) or in a host's own menu (\`menu\`).
+  **\`hostMenu\`** turns the embedded header's active entry into the button
+  that opens the host's menu. \`@codaco/site-navigation-element\` exposes both
+  for the community forum.
 - **Layout and motion** can be adapted with \`className\`,
   \`containerClassName\`, \`style\`, and \`entranceVariants\`.
 
@@ -339,4 +346,93 @@ export const DocumentationCompact: Story = {
     showUtility: true,
     site: 'documentation',
   },
+};
+
+/**
+ * A host's header bar with the forum's arrangement: the shared header first,
+ * its active entry opening the host's own menu, then the host's controls.
+ */
+function HostHeader({
+  containerWidth,
+  locale,
+}: Pick<StoryArgs, 'containerWidth' | 'locale'>) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="bg-background text-text flex items-center gap-6 px-6 py-4"
+      style={{ width: `${containerWidth}px`, marginInline: 'auto' }}
+    >
+      <div className="flex min-w-0 flex-1">
+        <SiteNavigation
+          activeItemId="community"
+          hostMenu={{ open, onToggle: () => setOpen((value) => !value) }}
+          layout="embedded"
+          locale={locale}
+          site="external"
+        />
+      </div>
+      <Button icon={<Search aria-hidden />} size="sm" variant="text">
+        Search
+      </Button>
+    </div>
+  );
+}
+
+export const EmbeddedInHostHeader: Story = {
+  args: {
+    containerWidth: 1536,
+  },
+  render: ({ containerWidth, locale }) => (
+    <HostHeader containerWidth={containerWidth} locale={locale} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const hostEntry = canvas.getByRole('button', { name: 'Community' });
+
+    await expect(hostEntry).toHaveAttribute('aria-expanded', 'false');
+    await expect(
+      canvas.getByRole('link', { name: 'Documentation' }),
+    ).toBeVisible();
+    await userEvent.click(hostEntry);
+    await expect(hostEntry).toHaveAttribute('aria-expanded', 'true');
+  },
+};
+
+export const EmbeddedFolded: Story = {
+  args: {
+    containerWidth: 768,
+  },
+  render: ({ containerWidth, locale }) => (
+    <HostHeader containerWidth={containerWidth} locale={locale} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: 'Resources' })).toBeVisible(),
+    );
+    await expect(
+      canvas.getByRole('button', { name: 'Community' }),
+    ).toBeVisible();
+  },
+};
+
+export const InHostMenu: Story = {
+  args: {
+    activeItemId: 'community',
+    containerWidth: 320,
+  },
+  render: ({ activeItemId, containerWidth, locale }) => (
+    <div
+      className="bg-background text-text p-6"
+      style={{ width: `${containerWidth}px` }}
+    >
+      <SiteNavigation
+        activeItemId={activeItemId}
+        layout="menu"
+        locale={locale}
+        site="external"
+      />
+    </div>
+  ),
 };

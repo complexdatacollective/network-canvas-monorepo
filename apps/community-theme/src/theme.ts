@@ -2,7 +2,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { themeAppIcons } from './app-icons.ts';
 import { themeFonts } from './fonts.ts';
 import { themeLocales } from './locales.ts';
 import { discoursePalettes } from './palette.ts';
@@ -36,13 +35,11 @@ function readJson(path: string): Record<string, unknown> {
 /**
  * The complete Discourse theme: the hand-written files in `theme/` plus what
  * is generated from the shared design system — the colour tokens, the
- * light and dark palettes, the fonts, the software's icons and the
- * translations. `about.json` gains the palettes, the font and icon assets and
- * the package version.
+ * light and dark palettes, the fonts and the translations. `about.json`
+ * gains the palettes, the font assets and the package version.
  */
 export function buildTheme(): ThemeFile[] {
-  const { fonts, scss: fontsScss } = themeFonts();
-  const assets = [...fonts, ...themeAppIcons()];
+  const { fonts: assets, scss: fontsScss } = themeFonts();
   const { version } = readJson(join(packageRoot, 'package.json'));
   if (typeof version !== 'string')
     throw new Error('package.json has no version');

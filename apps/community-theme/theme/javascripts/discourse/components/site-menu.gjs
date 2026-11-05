@@ -1,76 +1,44 @@
 import Component from "@glimmer/component";
-import Section from "discourse/components/sidebar/section";
-import SectionLink from "discourse/components/sidebar/section-link";
-import I18n, { i18n } from "discourse-i18n";
-import { themePrefix } from "virtual:theme";
-import { SOFTWARE_LINKS, siteLinks } from "../lib/site-links";
-import { siteLocaleFor } from "../lib/site-locale";
-
-// One of the shared header's messages (`site.*` in the theme's translations).
-function label(key) {
-  return i18n(themePrefix(`site.${key}`));
-}
+import { service } from "@ember/service";
+import {
+  loadSiteNavigation,
+  siteNavigationLocale,
+  siteNavigationTheme,
+} from "../lib/site-navigation-element";
 
 /**
- * The site's links, as two sections at the foot of the forum's menu. They
- * show only where the header has no room for them (header.scss), so the
- * forum still has one menu there. Every link leaves the forum, which its icon
- * says. They sit in the menu's plugin outlet because Discourse shows sections
- * added through its sidebar API only to members who are signed in.
+ * The shared site header's links, at the foot of the forum's menu, as the
+ * header's own compact menu lists them (`<nc-site-navigation layout="menu">`).
+ * They show only where the header has room for its logo alone (header.scss),
+ * so the forum still has one menu there. They sit in the menu's plugin
+ * outlet because Discourse shows sections added through its sidebar API
+ * only to members who are signed in.
  */
 export default class SiteMenu extends Component {
-  get siteLinks() {
-    return siteLinks(siteLocaleFor(I18n.currentLocale())).map((link) => ({
-      ...link,
-      text: label(link.label),
-    }));
+  @service interfaceColor;
+  @service session;
+
+  constructor() {
+    super(...arguments);
+    loadSiteNavigation();
   }
 
-  get softwareLinks() {
-    return SOFTWARE_LINKS.map((link) => ({
-      ...link,
-      text: label(`softwareLinks.${link.name}.name`),
-    }));
+  get locale() {
+    return siteNavigationLocale();
   }
 
-  get softwareTitle() {
-    return label("software");
+  get theme() {
+    return siteNavigationTheme(this.session, this.interfaceColor);
   }
 
   <template>
     <div class="nc-site-menu">
-      <Section
-        @sectionName="nc-site"
-        @headerLinkText="Network Canvas"
-        @collapsable={{false}}
-      >
-        {{#each this.siteLinks as |link|}}
-          <SectionLink
-            @linkName={{link.name}}
-            @href={{link.href}}
-            @title={{link.text}}
-            @content={{link.text}}
-            @prefixType="icon"
-            @prefixValue="up-right-from-square"
-          />
-        {{/each}}
-      </Section>
-      <Section
-        @sectionName="nc-software"
-        @headerLinkText={{this.softwareTitle}}
-        @collapsable={{false}}
-      >
-        {{#each this.softwareLinks as |link|}}
-          <SectionLink
-            @linkName={{link.name}}
-            @href={{link.href}}
-            @title={{link.text}}
-            @content={{link.text}}
-            @prefixType="icon"
-            @prefixValue="up-right-from-square"
-          />
-        {{/each}}
-      </Section>
+      <nc-site-navigation
+        layout="menu"
+        active-item="community"
+        locale={{this.locale}}
+        theme={{this.theme}}
+      ></nc-site-navigation>
     </div>
   </template>
 }

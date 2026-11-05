@@ -1,11 +1,10 @@
-// Discourse's header is the site's header, set out as the website's and the
-// documentation's is (fresco-ui navigation/SiteNavigation.tsx): the Network
-// Canvas logo, which goes to the website (components/site-brand.gjs); the
-// site's links, the forum's own first (components/site-navigation.gjs); a
-// rule; then the forum's search, sign-in, notifications and account menu.
-// Below 65rem, where the shared header folds its links into a menu, the
-// links move to the foot of the forum's menu (components/site-menu.gjs) and
-// the header keeps the logo and the forum's controls.
+// Discourse's header holds the shared site header, the one every Network
+// Canvas site shows (`<nc-site-navigation layout="embedded">`,
+// components/site-navigation.gjs): its logo, which goes to the website, and
+// its links, Community first. A rule follows, then the forum's search,
+// sign-in, notifications and account menu. The shared header decides how
+// much of itself fits beside them; where only its logo does, its links move
+// to the foot of the forum's menu (components/site-menu.gjs).
 //
 // Like the shared header it has no band of its own: it spans the window in
 // the page's colours. Discourse pins it, so once the page scrolls under it,
@@ -53,14 +52,39 @@
   }
 }
 
-// The logo: the mark and the name, set as the shared header sets them. The
-// name gives way where the header is short of room (site-navigation.gjs).
-// Discourse clips a logo too wide for its header; this one never is, and
-// clipping would cut off its focus ring.
+// The shared header takes the room between the start of the header and the
+// forum's controls, and measures what fits in it. It replaces Discourse's
+// logo once it renders its embedded layout (`:state(embedded)`). Until then,
+// on a page it never loads on, and with a version of it that predates that
+// layout, the logo and the forum's own menu stay.
+.d-header .home-logo-wrapper-outlet:has(nc-site-navigation) {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  min-width: 0;
+  overflow: visible;
+
+  nc-site-navigation {
+    flex: 1 1 0;
+    min-width: 0;
+
+    &:not(:state(embedded)) {
+      display: none;
+    }
+  }
+
+  &:has(nc-site-navigation:state(embedded)) .title {
+    display: none;
+  }
+}
+
+// The forum's logo, beside a docked topic title: the mark the shared header
+// shows, in its own colours (components/site-brand.gjs). Discourse clips a
+// logo too wide for its header; this one never is, and clipping would cut
+// off its focus ring.
 .d-header {
   .home-logo-wrapper-outlet,
   .title:not(.title--minimized) {
-    flex: none;
     overflow: visible;
   }
 
@@ -98,303 +122,6 @@
   white-space: nowrap;
 }
 
-.d-header[data-nc-fit='mark'] .nc-brand__name {
-  display: none;
-}
-
-// The links sit at the far end, against the forum's controls, with a rule
-// between them.
-.d-header .before-header-panel-outlet:has(.nc-site-nav) {
-  margin-inline-start: auto;
-
-  + .panel {
-    margin-inline-start: 0;
-  }
-}
-
-.nc-site-nav {
-  position: relative;
-  display: flex;
-  align-items: center;
-
-  &::after {
-    content: '';
-    flex: none;
-    width: 1px;
-    height: 1.75rem;
-    margin-inline: var(--space-6);
-    background-color: color-mix(in oklab, var(--nc-text) 15%, transparent);
-  }
-
-  @media (width < 65rem) {
-    display: none;
-  }
-}
-
-.nc-site-nav__list {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  @media (width >= 80rem) {
-    gap: var(--space-8);
-  }
-}
-
-// One list shows: every link, or the forum's link and two menus where that
-// is all there is room for (site-navigation.gjs). The other stays laid out,
-// so it can be measured, but out of sight and out of reach.
-.nc-site-nav__list--compact,
-.d-header:is([data-nc-fit='compact'], [data-nc-fit='mark'])
-  .nc-site-nav__list--full {
-  position: absolute;
-  inset-inline-start: 0;
-  visibility: hidden;
-}
-
-.d-header:is([data-nc-fit='compact'], [data-nc-fit='mark'])
-  .nc-site-nav__list--compact {
-  position: static;
-  visibility: visible;
-}
-
-// The shared header's links: h4 capitals at the heading face's black weight,
-// coral on hover and for the site the visitor is on.
-.nc-site-nav__link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 0;
-  border: 0;
-  border-radius: var(--nc-radius-xs);
-  background: none;
-  color: var(--nc-text);
-  font-family: var(--nc-heading-font);
-  font-size: var(--nc-text-sm);
-  font-weight: 900;
-  line-height: 1.8;
-  letter-spacing: 0.1em;
-  text-decoration: none;
-  text-transform: uppercase;
-  white-space: nowrap;
-  cursor: pointer;
-
-  &:hover,
-  &[aria-current] {
-    color: oklch(var(--nc-neon-coral));
-  }
-
-  &:visited {
-    color: var(--nc-text);
-  }
-
-  .d-icon {
-    width: 0.875em;
-    height: 0.875em;
-    color: inherit;
-    transition: rotate 0.2s;
-  }
-
-  &[aria-expanded='true'] .d-icon {
-    rotate: 180deg;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .nc-site-nav__link .d-icon {
-    transition: none;
-  }
-}
-
-// The forum's menu opens under the Community link (site-navigation.gjs sets
-// where that is), level with the site's own menus. Discourse's menu button
-// is hidden while the link shows.
-@media (width >= 65rem) {
-  .d-header:has(.nc-site-nav) {
-    .hamburger-dropdown {
-      display: none;
-    }
-
-    .hamburger-panel .menu-panel.drop-down {
-      inset-inline: var(--nc-forum-menu-start, auto) auto;
-    }
-  }
-}
-
-// The site's menus: the shared header's popups, on the surface with its
-// large radius and shadow.
-.fk-d-menu:is(.nc-resources-content, .nc-software-content) {
-  border: 0;
-  border-radius: var(--nc-radius-base);
-  background-color: var(--nc-surface);
-  color: var(--nc-surface-contrast);
-  box-shadow: var(--nc-shadow-2xl-base);
-
-  .fk-d-menu__inner-content {
-    padding: var(--space-3);
-  }
-}
-
-.nc-site-menu-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 16rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.nc-site-menu-list__link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--nc-radius-sm);
-  color: var(--nc-surface-contrast);
-  font-family: var(--nc-heading-font);
-  font-size: var(--nc-text-sm);
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  white-space: nowrap;
-
-  &:is(:hover, :focus-visible) {
-    background-color: color-mix(
-      in oklab,
-      var(--nc-surface-contrast) 6%,
-      transparent
-    );
-    color: var(--nc-surface-contrast);
-  }
-
-  .d-icon {
-    width: 0.875em;
-    height: 0.875em;
-    color: inherit;
-  }
-}
-
-// The Software menu: a card for each piece of software, three to a row
-// where they fit, in that software's colour, as in the shared header.
-.fk-d-menu.nc-software-content .fk-d-menu__inner-content {
-  padding: var(--space-5);
-}
-
-.nc-software-menu {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(19rem, 100%), 1fr));
-  gap: var(--space-1);
-  width: min(72rem, calc(100vw - 2 * var(--d-header-padding-x)));
-  max-height: calc(100dvh - 7rem);
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.nc-software-menu__link {
-  --nc-software-accent: oklch(var(--nc-cyber-grape));
-
-  display: flex;
-  box-sizing: border-box;
-  align-items: flex-start;
-  gap: var(--space-4);
-  height: 100%;
-  padding: var(--space-5);
-  border-radius: var(--nc-radius-sm);
-  color: var(--nc-surface-contrast);
-
-  &:is(:hover, :focus-visible) {
-    background-color: color-mix(
-      in oklab,
-      var(--nc-software-accent) 10%,
-      transparent
-    );
-    color: var(--nc-surface-contrast);
-  }
-
-  &[data-software='architect'] {
-    --nc-software-accent: oklch(var(--nc-sea-green));
-  }
-
-  &[data-software='interviewer'] {
-    --nc-software-accent: oklch(var(--nc-neon-coral));
-  }
-
-  &[data-software='fresco'] {
-    --nc-software-accent: oklch(var(--nc-slate-blue));
-  }
-}
-
-// The classic apps' grape is too dark to read on the dark palette's surface,
-// so there they take its pale counterpart, as in the shared header.
-.nc-software-menu__link:is(
-  [data-software='architectClassic'],
-  [data-software='interviewerClassic']
-) {
-  --nc-software-accent: light-dark(
-    oklch(var(--nc-cyber-grape)),
-    oklch(var(--nc-platinum--dark))
-  );
-}
-
-.nc-software-menu__icon {
-  flex: none;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 18%;
-  object-fit: contain;
-}
-
-.nc-software-menu__text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-self: stretch;
-  min-width: 0;
-}
-
-.nc-software-menu__name {
-  color: var(--nc-software-accent);
-  font-family: var(--nc-heading-font);
-  font-size: var(--nc-text-sm);
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.nc-software-menu__description {
-  margin-top: var(--space-1);
-  color: color-mix(in oklab, var(--nc-surface-contrast) 85%, transparent);
-  font-size: var(--nc-text-sm);
-  line-height: 1.375;
-}
-
-.nc-software-menu__action {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-top: auto;
-  padding-top: var(--space-2);
-  color: var(--nc-software-accent);
-  font-family: var(--nc-heading-font);
-  font-size: var(--nc-text-xs);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-
-  .d-icon {
-    width: 0.875em;
-    height: 0.875em;
-    color: inherit;
-  }
-}
-
 // The forum's controls: search, the menu and notifications in the text
 // colour the shared header's controls use rather than Discourse's muted
 // grey.
@@ -403,12 +130,45 @@
   font-size: var(--font-up-1);
 }
 
-// Where the links show, search comes first among the forum's controls, as
-// the shared header's controls lead its end of the header; Discourse's
-// menu button, which it would put after search, is hidden there.
-@media (width >= 65rem) {
-  .d-header:has(.nc-site-nav) .d-header-icons {
+// While the shared header's links show: a rule sets them off from the
+// forum's controls, search leads those controls, and Discourse's menu
+// button gives way to Community, which opens the same menu under itself
+// (site-navigation.gjs sets where that is).
+.d-header:has(nc-site-navigation:state(links)) {
+  .contents > .panel::before {
+    content: '';
+    flex: none;
+    order: -2;
+    width: 1px;
+    height: 1.75rem;
+    margin-inline: var(--space-6);
+    background-color: color-mix(in oklab, var(--nc-text) 15%, transparent);
+  }
+
+  .d-header-icons {
     order: -1;
+  }
+
+  .hamburger-dropdown,
+  .nc-site-menu {
+    display: none;
+  }
+
+  .hamburger-panel .menu-panel.drop-down {
+    inset-inline: var(--nc-forum-menu-start, auto) auto;
+  }
+}
+
+// The shared header's links at the foot of the forum's menu, where the
+// header shows its logo alone; left out, like the header, by a version of
+// the element that predates its menu layout.
+.nc-site-menu {
+  margin-top: var(--space-2);
+  padding: var(--space-4) var(--space-3) var(--space-2);
+  border-top: 1px solid var(--content-border-color);
+
+  &:not(:has(nc-site-navigation:state(menu))) {
+    display: none;
   }
 }
 
@@ -456,13 +216,5 @@
     .d-icon {
       font-size: var(--font-up-1);
     }
-  }
-}
-
-// The site's links at the foot of the forum's menu stand in for the header's
-// where it has no room for them.
-@media (width >= 65rem) {
-  .nc-site-menu {
-    display: none;
   }
 }

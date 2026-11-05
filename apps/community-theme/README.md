@@ -2,19 +2,23 @@
 
 The Discourse theme for the community forum at
 [community.networkcanvas.com](https://community.networkcanvas.com). It gives
-the forum the look of the Network Canvas apps and websites and makes
-Discourse's header the site header they share.
+the forum the look of the Network Canvas apps and websites and puts the site
+header they share in Discourse's header.
 
 ## What it does
 
-- **Site header.** Discourse's header is laid out like the shared site header
-  (`navigation/SiteNavigation.tsx` in `@codaco/fresco-ui`), in its words and
-  with its software icons: the Network Canvas logo, which goes to the
-  website; Community, which opens the forum's menu; the site's pages and its
-  software; then the forum's search, sign-in and account controls. Where the
-  links do not all fit, the pages fold into a Resources menu and then the
-  logo drops its name. Below 65rem the links move to the foot of the forum's
-  menu, and on a topic the docked title takes their place.
+- **Site header.** Discourse's header holds the shared site header itself:
+  the `<nc-site-navigation>` element from `@codaco/site-navigation-element`,
+  which renders the same component as the website and the documentation
+  (`navigation/SiteNavigation.tsx` in `@codaco/fresco-ui`), so a change to
+  the global navigation reaches the forum with the element's next release.
+  It shows the Network Canvas logo, which goes to the website; Community,
+  which opens the forum's menu; the site's pages and its software. A rule
+  follows, then the forum's search, sign-in and account controls. The element
+  measures what fits beside them: the pages fold into a Resources menu, then
+  the logo drops its name, and where only the logo fits, the links move to
+  the foot of the forum's menu. On a topic, the docked title takes their
+  place.
 - **Design tokens.** Every token of the default Network Canvas theme is
   declared as `--nc-*` (light and dark), and Discourse's variables are set from
   them: fonts, its text sizes, radii, buttons, inputs, links and its muted
@@ -49,9 +53,8 @@ generates it from the workspace packages:
 |                                 | and type scale (`@codaco/tailwind-config/type-scale`)                      |
 | palettes in `about.json`        | the same tokens, resolved to hex by `@codaco/tailwind-config/theme-colors` |
 | `scss/fonts.scss`, `assets/`    | `@codaco/tailwind-config/fonts/*.css` and their fontsource files           |
-| `assets/apps/`                  | the shared header's software icons in `@codaco/fresco-ui`                  |
-| `locales/*.yml`                 | the shared header's messages in `@codaco/fresco-ui`, and the home page's   |
-|                                 | app-i18n catalogs in `src/locales/`                                        |
+| `locales/*.yml`                 | the logo's label from the shared header's messages in `@codaco/fresco-ui`, |
+|                                 | and the home page's app-i18n catalogs in `src/locales/`                    |
 
 Everything else in [`theme/`](theme) is written by hand: the SCSS partials that
 map the tokens onto Discourse (`theme/scss/`) and the header components
@@ -111,6 +114,11 @@ To work on the theme against a forum, the
 [`discourse_theme` CLI](https://meta.discourse.org/t/discourse-theme-cli-console-app-to-help-you-build-themes/82950)
 can watch `dist/network-canvas/` and upload each change: rebuild after editing
 `theme/`, and the CLI picks up the new files.
+
+The theme setting `site_navigation_script_url` says where the shared header's
+script loads from. The default follows every 1.x release on jsDelivr from
+1.3.0, the first with the layouts the forum uses; set an exact version to pin
+it.
 
 The home page finds its categories by slug, through the settings
 `help_category`, `ideas_category`, `conversation_category` and
