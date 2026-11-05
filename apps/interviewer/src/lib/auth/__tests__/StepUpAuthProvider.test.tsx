@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { type ReactNode, useEffect } from 'react';
+import { createContext, type ReactNode, useContext, useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -12,11 +12,19 @@ import {
 } from '../interviewRecoveryRestriction';
 import { StepUpAuthProvider, useStepUpAuth } from '../StepUpAuthProvider';
 
+type Auth = Pick<AuthContextValue, 'kind' | 'mode'>;
+
+const LOCKED: Auth = { kind: 'locked', mode: 'biometric' };
+const UNLOCKED: Auth = { kind: 'unlocked', mode: 'pin' };
+
 // The provider only reads `auth.kind`/`auth.mode` from useAuth; mock it so the
-// test can drive the locked → unlocked transition directly.
-let mockAuth: Pick<AuthContextValue, 'kind' | 'mode'>;
+// test can drive the locked → unlocked transition directly. The value travels
+// through a context, as the real AuthProvider's does: a module variable read
+// by the mock would never re-render anything, so the provider would see a
+// change only when something else happened to re-render it.
+const MockAuthContext = createContext<Auth>(LOCKED);
 vi.mock('../AuthContext', () => ({
-  useAuth: () => mockAuth,
+  useAuth: () => useContext(MockAuthContext),
 }));
 
 const RESET_CONFIRM_TITLE = 'Reset all app data?';
@@ -78,21 +86,22 @@ function AuthorizationProbe() {
   );
 }
 
-function Harness({ children }: { children?: ReactNode }) {
+function Harness({ auth, children }: { auth: Auth; children?: ReactNode }) {
   return (
-    <DialogProvider>
-      <StepUpAuthProvider>
-        <ConfirmOpener />
-        {children}
-      </StepUpAuthProvider>
-    </DialogProvider>
+    <MockAuthContext value={auth}>
+      <DialogProvider>
+        <StepUpAuthProvider>
+          <ConfirmOpener />
+          {children}
+        </StepUpAuthProvider>
+      </DialogProvider>
+    </MockAuthContext>
   );
 }
 
 beforeEach(() => {
   window.history.replaceState({}, '', '/');
   window.sessionStorage.clear();
-  mockAuth = { kind: 'locked', mode: 'biometric' };
 });
 afterEach(() => {
   vi.clearAllMocks();
@@ -100,7 +109,7 @@ afterEach(() => {
 
 describe('StepUpAuthProvider dialog dismissal across lock transitions', () => {
   it('dismisses a provider-hosted confirm opened while locked when auth unlocks', async () => {
-    const { rerender } = render(<Harness />);
+    const { rerender } = render(<Harness auth={LOCKED} />);
 
     // While locked (e.g. during the biometric auto-unlock window) the user taps
     // Reset, arming a destructive confirm hosted by the app-level DialogProvider.
@@ -111,8 +120,7 @@ describe('StepUpAuthProvider dialog dismissal across lock transitions', () => {
 
     // Auth resolves to unlocked and AuthGate swaps the locked child for Home.
     // The confirm must not float armed over the unlocked app.
-    mockAuth = { kind: 'unlocked', mode: 'biometric' };
-    rerender(<Harness />);
+    rerender(<Harness auth={{ kind: 'unlocked', mode: 'biometric' }} />);
 
     await waitFor(() =>
       expect(screen.queryByText(RESET_CONFIRM_TITLE)).not.toBeInTheDocument(),
@@ -120,16 +128,14 @@ describe('StepUpAuthProvider dialog dismissal across lock transitions', () => {
   });
 
   it('dismisses a provider-hosted confirm opened while unlocked when the app locks', async () => {
-    mockAuth = { kind: 'unlocked', mode: 'pin' };
-    const { rerender } = render(<Harness />);
+    const { rerender } = render(<Harness auth={UNLOCKED} />);
 
     await act(async () => {
       screen.getByText('open-reset').click();
     });
     expect(await screen.findByText(RESET_CONFIRM_TITLE)).toBeInTheDocument();
 
-    mockAuth = { kind: 'locked', mode: 'pin' };
-    rerender(<Harness />);
+    rerender(<Harness auth={{ kind: 'locked', mode: 'pin' }} />);
 
     await waitFor(() =>
       expect(screen.queryByText(RESET_CONFIRM_TITLE)).not.toBeInTheDocument(),
@@ -137,10 +143,9 @@ describe('StepUpAuthProvider dialog dismissal across lock transitions', () => {
   });
 
   it('cancels a pending step-up when destructive recovery resets auth', async () => {
-    mockAuth = { kind: 'unlocked', mode: 'pin' };
     const onResult = vi.fn();
     const { rerender } = render(
-      <Harness>
+      <Harness auth={UNLOCKED}>
         <StepUpRequester onResult={onResult} />
       </Harness>,
     );
@@ -152,9 +157,8 @@ describe('StepUpAuthProvider dialog dismissal across lock transitions', () => {
       await screen.findByText('Confirm your identity'),
     ).toBeInTheDocument();
 
-    mockAuth = { kind: 'unconfigured' };
     rerender(
-      <Harness>
+      <Harness auth={{ kind: 'unconfigured' }}>
         <StepUpRequester onResult={onResult} />
       </Harness>,
     );
@@ -170,9 +174,8 @@ describe('StepUpAuthProvider dialog dismissal across lock transitions', () => {
 
   it('keeps destructive recovery suppressed for a step-up opened on an interview route', async () => {
     window.history.replaceState({}, '', '/interview/s1');
-    mockAuth = { kind: 'unlocked', mode: 'pin' };
     render(
-      <Harness>
+      <Harness auth={UNLOCKED}>
         <StepUpRequester onResult={vi.fn()} />
       </Harness>,
     );
@@ -207,14 +210,13 @@ describe('StepUpAuthProvider callback stability', () => {
   // mounted for its exit fade, which is how the phantom post-exit
   // "Confirm your identity" prompt over Home arose.
   it('keeps requireFreshUnlock identity stable across location changes', async () => {
-    mockAuth = { kind: 'unlocked', mode: 'pin' };
     const seen: Array<unknown> = [];
     function IdentityProbe() {
       seen.push(useStepUpAuth().requireFreshUnlock);
       return null;
     }
     const { rerender } = render(
-      <Harness>
+      <Harness auth={UNLOCKED}>
         <IdentityProbe />
       </Harness>,
     );
@@ -228,7 +230,7 @@ describe('StepUpAuthProvider callback stability', () => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     rerender(
-      <Harness>
+      <Harness auth={UNLOCKED}>
         <IdentityProbe />
       </Harness>,
     );
@@ -256,24 +258,26 @@ describe('StepUpAuthProvider interview authorization', () => {
     return null;
   }
 
-  function renderGated(onRead: (authorized: string | null) => void) {
-    const gated = () => (
-      <Harness>
+  function renderGated(
+    onRead: (authorized: string | null) => void,
+    auth: Auth,
+  ) {
+    const gated = (current: Auth) => (
+      <Harness auth={current}>
         <AuthorizationProbe />
-        {mockAuth.kind === 'unlocked' && <GatedEnterGate onRead={onRead} />}
+        {current.kind === 'unlocked' && <GatedEnterGate onRead={onRead} />}
       </Harness>
     );
-    const view = render(gated());
-    return { rerenderGated: () => view.rerender(gated()) };
+    const view = render(gated(auth));
+    return { rerenderGated: (next: Auth) => view.rerender(gated(next)) };
   }
 
   it('authorizes the interview the app was unlocked on before its enter gate runs', () => {
     window.history.replaceState({}, '', '/interview/s1');
     const onRead = vi.fn();
-    const { rerenderGated } = renderGated(onRead);
+    const { rerenderGated } = renderGated(onRead, LOCKED);
 
-    mockAuth = { kind: 'unlocked', mode: 'pin' };
-    rerenderGated();
+    rerenderGated(UNLOCKED);
 
     expect(onRead).toHaveBeenCalledTimes(1);
     expect(onRead).toHaveBeenCalledWith('s1');
@@ -282,20 +286,18 @@ describe('StepUpAuthProvider interview authorization', () => {
   it('ignores an authorization value planted in sessionStorage', () => {
     window.sessionStorage.setItem('interviewer:authorized-interview-id', 's1');
     window.history.replaceState({}, '', '/interview/s1');
-    mockAuth = { kind: 'unlocked', mode: 'pin' };
     const onRead = vi.fn();
 
-    renderGated(onRead);
+    renderGated(onRead, UNLOCKED);
 
     expect(onRead).toHaveBeenCalledWith(null);
   });
 
   it('does not authorize an interview when the unlock happens elsewhere', async () => {
     const onRead = vi.fn();
-    const { rerenderGated } = renderGated(onRead);
+    const { rerenderGated } = renderGated(onRead, LOCKED);
 
-    mockAuth = { kind: 'unlocked', mode: 'pin' };
-    rerenderGated();
+    rerenderGated(UNLOCKED);
     expect(onRead).toHaveBeenLastCalledWith(null);
 
     // Navigating into an interview afterwards is not an unlock on its route.
@@ -303,7 +305,7 @@ describe('StepUpAuthProvider interview authorization', () => {
       window.history.pushState({}, '', '/interview/s1');
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
-    rerenderGated();
+    rerenderGated(UNLOCKED);
     expect(screen.getByTestId('authorized-interview')).toHaveTextContent(
       'none',
     );
@@ -311,7 +313,7 @@ describe('StepUpAuthProvider interview authorization', () => {
 
   it('clears stale interview authorization when unlocked on the home route', () => {
     const view = render(
-      <Harness>
+      <Harness auth={LOCKED}>
         <AuthorizationProbe />
       </Harness>,
     );
@@ -319,14 +321,13 @@ describe('StepUpAuthProvider interview authorization', () => {
       screen.getByText('authorize-s1').click();
     });
 
-    mockAuth = { kind: 'unlocked', mode: 'pin' };
     view.rerender(
-      <Harness>
+      <Harness auth={UNLOCKED}>
         <AuthorizationProbe />
       </Harness>,
     );
     view.rerender(
-      <Harness>
+      <Harness auth={UNLOCKED}>
         <AuthorizationProbe />
       </Harness>,
     );
@@ -339,7 +340,7 @@ describe('StepUpAuthProvider interview authorization', () => {
   it('clears interview authorization after a destructive reset', () => {
     window.history.replaceState({}, '', '/interview/s1');
     const view = render(
-      <Harness>
+      <Harness auth={LOCKED}>
         <AuthorizationProbe />
       </Harness>,
     );
@@ -347,14 +348,13 @@ describe('StepUpAuthProvider interview authorization', () => {
       screen.getByText('authorize-s1').click();
     });
 
-    mockAuth = { kind: 'unconfigured' };
     view.rerender(
-      <Harness>
+      <Harness auth={{ kind: 'unconfigured' }}>
         <AuthorizationProbe />
       </Harness>,
     );
     view.rerender(
-      <Harness>
+      <Harness auth={{ kind: 'unconfigured' }}>
         <AuthorizationProbe />
       </Harness>,
     );
@@ -370,13 +370,12 @@ describe('StepUpAuthProvider lock recovery restriction cleanup', () => {
     { kind: 'unlocked', mode: 'pin' },
     { kind: 'unconfigured' },
     { kind: 'corrupt' },
-  ] satisfies Array<Pick<AuthContextValue, 'kind' | 'mode'>>)(
+  ] satisfies Auth[])(
     'clears the persisted lock restriction when auth is $kind',
     async (auth) => {
       persistInterviewRecoveryRestriction();
-      mockAuth = auth;
 
-      render(<Harness />);
+      render(<Harness auth={auth} />);
 
       await waitFor(() =>
         expect(readInterviewRecoveryRestriction()).toBe(false),

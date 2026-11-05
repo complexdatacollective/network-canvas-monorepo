@@ -79,17 +79,22 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // The browser's languages decide the automatic entry, and the language in
+  // force whenever no preference settles it. Both are read through the
+  // subscription: worked out during render, they would be remembered for the
+  // preference alone and miss a change of browser language. Explicit
+  // preferences still win, including the non-persisted development locale.
   const automaticLocale = useSyncExternalStore(
     subscribeToLanguageChange,
     readAutomaticLocale,
   );
-  // A change of browser language re-renders through `automaticLocale`, and
-  // only matters here when no preference decides the language; explicit
-  // preferences still win, including the non-persisted development locale.
+  const deviceLocale = useSyncExternalStore(subscribeToLanguageChange, () =>
+    resolveDeviceLocale(preference),
+  );
   const locale =
     import.meta.env.DEV && preference === PSEUDO_LOCALE
       ? PSEUDO_LOCALE
-      : resolveDeviceLocale(preference);
+      : deviceLocale;
   const value = useMemo(
     () => ({ preference, automaticLocale, saveState, setLocale }),
     [preference, automaticLocale, saveState, setLocale],
