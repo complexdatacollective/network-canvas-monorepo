@@ -345,6 +345,27 @@ const CLEANUP_SCHEMA = {
   required: ['status', 'details'],
 };
 
+// The creation dialog starts a protocol in the browser's language and region.
+// A test browser in British English (any Mac set to the UK) would start every
+// protocol in en-GB, which has no built-in wording by design, so the app
+// offers "Also add English?" and refuses downloads: checks written for an
+// English protocol would then fail for the tester's locale, not the app.
+const newProtocolLanguage = `
+## New protocols start in English
+- The create-protocol dialog starts with the browser's own language and
+  region, which may be a regional English such as "British English (en-GB)".
+  Network Canvas's built-in wording exists only for "English (en)" and its
+  default region, so unless a check names the languages to create a protocol
+  in, make its "Protocol languages" hold exactly "English (en)" before
+  pressing "Create Protocol": remove any other language there and choose
+  "English (en)" (the entry without a region). Its "Default language" is then
+  English. If an "Also add English?" dialog appears anyway, check on the
+  "Languages" page which language the protocol was created in. Another
+  language means your selection slipped: delete the protocol and create it
+  again. "English (en)" alone means the app offered English for a protocol
+  already in English: that is an app failure, so report it.
+`;
+
 // Shared operating instructions for every browser-driving agent. Slices run
 // strictly sequentially: every Browser-pane tab shares one profile, and
 // Architect keeps all protocols in that origin's IndexedDB, so concurrent
@@ -414,7 +435,7 @@ protocol-design PWA. Target deployment: ${target}
   storage.
 - Before finishing — even after a failure — return to the start screen, delete
   every protocol you created, and close every tab you opened.
-
+${newProtocolLanguage}
 ## Token efficiency
 - Prefer read_page / find / get_page_text over screenshots; screenshots are
   expensive — take one only when visual evidence is genuinely needed
@@ -647,8 +668,8 @@ with made-up people and answers; while it is off, the interview starts empty.
       'cleanup',
     ],
     checklist: `
-1. "create": Create your protocol, keeping the languages the creation dialog
-   offers. Open the "Languages" page through its link in the project
+1. "create": Create your protocol in English ("English (en)", see "New
+   protocols start in English"). Open the "Languages" page through its link in the project
    navigation and confirm the "Protocol languages" list shows exactly one
    language, marked "Default", and that an "Open translation table" link is
    offered (it is there with one language too: the table is where the
@@ -721,8 +742,8 @@ protocol's starting language may be listed as "English", "British English"
 or another regional English. Below, "English" means that starting language
 by its role, whatever its row is called, and "Remove English" means that
 row's Remove control.
-1. "create": Create your protocol, keeping the one language the creation
-   dialog offers (English). Open the "Languages" page and confirm English is
+1. "create": Create your protocol in English ("English (en)", see "New
+   protocols start in English"). Open the "Languages" page and confirm English is
    the only language, marked "Default", with its "Remove English" control
    unavailable.
 2. "add-languages": Press "Add languages". In the dialog's "Languages" box
@@ -1118,10 +1139,9 @@ now Information stages.
    family", and ending with the two finish stages "Finish Interview" and "Not
    Taking Part".
 2. "family-pedigree": Open "Family pedigree". Confirm the "Stage sections"
-   outline lists "Participant wording" (with "Prompt", "Person attributes" and
-   "Relationships") and reports no section with a problem. In "Participant
-   wording" expand "Drawing the family" and confirm its fields hold wording.
-   Append " (RT)" to the "Prompt text", save, reopen the stage, and confirm
+   outline lists "Prompt", "Person attributes", "Relationships" and
+   "Customize built-in wording" (spelled "Customise" when the app is in
+   British English) and reports no section with a problem. Append " (RT)" to the "Prompt text", save, reopen the stage, and confirm
    the prompt ends with "(RT)". Leave the editor.
 3. "narrative-pedigree": Open "How the condition runs in the family" and
    confirm its "Source stage" box names "Family pedigree"; leave without
@@ -1402,7 +1422,7 @@ ${pwBrowser}
   never use "Clear all", never clear site storage.
 - Before finishing — even after a failure — return to the start screen, delete
   every protocol you created, and close every tab you opened.
-${reportingDiscipline}`;
+${newProtocolLanguage}${reportingDiscipline}`;
 
 // Older-schema editors. Architect bundles the Architect of each earlier
 // schema it still lets researchers edit, at /v<schema>/ (the apps/architect
@@ -1640,6 +1660,22 @@ ${analysis.assets.map((a) => `   - "${a.name}" (${a.type}): ${a.path}`).join('\n
 4. Leave the protocol saved and return to the start screen.
 Report protocolName exactly as created, and one assets entry per asset.`;
 
+// A stage's "Customize built-in wording" switch starts on only when the
+// stage holds wording that differs from Network Canvas's own (or the protocol
+// has several languages): switched off means "Network Canvas's wording". The
+// sample protocol stores wording equal to that built-in wording on several
+// stages, so its builders reopened those stages, found the switch off, and
+// reported the wording as dropped on save when the export held it.
+const builtInWordingNote = `
+A stage's "Customize built-in wording" ("Customise" when the app is in
+British English) switch reopens off whenever the stage's wording is exactly
+Network Canvas's own, because off means "Network Canvas's wording". So where
+the specification's wording for a stage equals the built-in wording, the
+switch reading off on reopening is expected and is not lost wording: turn it
+on and confirm the fields show the specified text, and do not report the
+stage partial on the switch's state alone.
+`;
+
 const buildPrompt = (
   analysis,
   protocolName,
@@ -1678,7 +1714,7 @@ new "Finish Screen" stage.
 2. Add each stage below in order after the stages already built, configuring
    everything its plan describes through the stage editor, and save it.
    Reopen each saved stage once to confirm your settings persisted.
-${batch.map((s) => `\n### Stage ${s.index}: "${s.label}" (${s.type})\n${s.buildPlan}`).join('\n')}
+${builtInWordingNote}${batch.map((s) => `\n### Stage ${s.index}: "${s.label}" (${s.type})\n${s.buildPlan}`).join('\n')}
 
 3. Return to the start screen with everything saved.
 Report one stages entry per stage above: "built" when everything in its plan
@@ -1756,7 +1792,7 @@ library to match the specification — deleting a duplicate resource from
 this protocol's library is a fix, but never re-upload one the library
 already holds. Save, reopen to confirm each change persisted, and return to
 the start screen.
-${worklist}
+${builtInWordingNote}${worklist}
 Report one stages entry per stage you touched, with the canonical index, and
 describe any protocol, codebook or resource fixes in tooling_notes.`;
 

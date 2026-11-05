@@ -92,18 +92,10 @@ function VariantsDemo() {
         Different visual styles for different types of notifications.
       </Paragraph>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={() => createToast('default')}>
-          Default
-        </Button>
-        <Button variant="outline" onClick={() => createToast('info')}>
-          Info
-        </Button>
-        <Button variant="outline" onClick={() => createToast('success')}>
-          Success
-        </Button>
-        <Button variant="outline" onClick={() => createToast('destructive')}>
-          Destructive
-        </Button>
+        <Button onClick={() => createToast('default')}>Default</Button>
+        <Button onClick={() => createToast('info')}>Info</Button>
+        <Button onClick={() => createToast('success')}>Success</Button>
+        <Button onClick={() => createToast('destructive')}>Destructive</Button>
       </div>
     </div>
   );

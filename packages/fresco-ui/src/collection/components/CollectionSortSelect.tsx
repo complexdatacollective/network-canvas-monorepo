@@ -95,7 +95,7 @@ export function CollectionSortSelect({
   showClearOption = true,
   showDirectionToggle = true,
   className,
-  variant = 'outline',
+  variant = 'default',
   size = 'sm',
 }: CollectionSortSelectProps) {
   const intl = useAppIntl();

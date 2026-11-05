@@ -179,11 +179,16 @@ export const OneLineOnly: Story = {
 
     const box = await canvas.findByRole('textbox', { name: CENSUS_LABEL });
     await expect(box).toHaveAttribute('aria-multiline', 'false');
-    // A prompt is one line of VALUE, not a one-line-tall box: it keeps the
-    // tall editing area. Only `compact` fields shrink to the toolbar's height.
+    // Enter cannot add a line, so the box is one line tall too: as tall as
+    // the toolbar above it, not the tall area a multi-line field opens at.
+    const editableHeight = box.parentElement?.getBoundingClientRect().height;
+    const toolbarHeight = canvas
+      .getByRole('toolbar')
+      .getBoundingClientRect().height;
+    await expect(editableHeight).toBeLessThan(120);
     await expect(
-      box.parentElement?.getBoundingClientRect().height,
-    ).toBeGreaterThanOrEqual(120);
+      Math.abs((editableHeight ?? 0) - toolbarHeight),
+    ).toBeLessThanOrEqual(1);
     await expect(
       canvas.queryByRole('button', { name: 'Heading 1' }),
     ).toBeNull();

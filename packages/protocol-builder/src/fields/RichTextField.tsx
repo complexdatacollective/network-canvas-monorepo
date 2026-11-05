@@ -30,16 +30,12 @@ type RichTextFieldProps = CreateFormFieldProps<
      * is a promise about the value, and a document the editor was free to split
      * left the serializer joining two paragraphs into one line by inventing a
      * separator — "Never met" saved as " Never met".
+     *
+     * The editor opens one line tall and grows as the text wraps.
      */
     'singleLine'?: boolean;
     /** Toolbar features to withhold, e.g. `['bold', 'lists']`. */
     'disallowedTypes'?: string[];
-    /**
-     * One line tall, for a short label such as an option's; implies
-     * `singleLine`. A prompt is `singleLine` alone and keeps the tall editing
-     * area.
-     */
-    'compact'?: boolean;
   }
 >;
 
@@ -55,12 +51,10 @@ const asRichTextContent = (value: unknown): RichTextContent | undefined =>
 const RichTextField = ({
   value,
   onChange,
-  singleLine: singleLineProp = false,
-  compact = false,
+  singleLine = false,
   disallowedTypes = [],
   ...props
 }: RichTextFieldProps) => {
-  const singleLine = singleLineProp || compact;
   const toolbarOptions = {
     bold: !disallowedTypes.includes('bold'),
     italic: !disallowedTypes.includes('italic'),
@@ -124,7 +118,6 @@ const RichTextField = ({
     <RichTextEditorField
       {...props}
       singleLine={singleLine}
-      compact={compact}
       changeMode="input"
       toolbarOptions={toolbarOptions}
       value={content}

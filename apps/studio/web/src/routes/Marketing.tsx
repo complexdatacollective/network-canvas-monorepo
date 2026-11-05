@@ -131,10 +131,7 @@ export default function Marketing() {
             >
               {intl.formatMessage(messages.createAccount)}
             </Link>
-            <Link
-              className={buttonVariants({ variant: 'outline' })}
-              to="/sign-in"
-            >
+            <Link className={buttonVariants()} to="/sign-in">
               {intl.formatMessage(messages.signIn)}
             </Link>
             <Link className={buttonVariants({ variant: 'link' })} to="/pricing">

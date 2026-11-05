@@ -135,7 +135,7 @@ const meta: Meta<StoryArgs> = {
         socialLinks={socialLinks}
         extraContent={
           showExtraContent ? (
-            <Button variant="outline" color="dynamic" size="sm">
+            <Button color="dynamic" size="sm">
               en-US
             </Button>
           ) : undefined

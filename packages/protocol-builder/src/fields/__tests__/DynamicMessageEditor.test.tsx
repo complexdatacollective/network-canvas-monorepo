@@ -30,7 +30,6 @@ describe('DynamicMessageEditor', () => {
           readOnly={false}
           markdown={false}
           singleLine
-          compact={false}
           message="Hello {gone}, welcome"
           onMessageChange={onMessageChange}
           original={undefined}

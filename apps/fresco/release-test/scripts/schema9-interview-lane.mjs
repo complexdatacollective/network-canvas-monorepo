@@ -459,15 +459,18 @@ try {
       for (const name of [second, first]) {
         if ((await person(name).getAttribute('aria-pressed')) !== 'true')
           await person(name).click();
+        // Accessible names stay English whatever the interview language
+        // (#2468); the bins' visible labels are the protocol's Spanish.
         await page
           .getByRole('button', {
-            name: `Colocar a ${name} en «${TRANSCRIPT.context[name].label}»`,
+            name: `Place ${name} in ${TRANSCRIPT.context[name].label}`,
+            exact: true,
           })
           .click();
         await page.waitForTimeout(800);
       }
       const done = await page
-        .getByText('0 sin colocar')
+        .getByText('0 unplaced')
         .isVisible()
         .catch(() => false);
       // The stored answers, waited for: Fresco batches sync writes, so the

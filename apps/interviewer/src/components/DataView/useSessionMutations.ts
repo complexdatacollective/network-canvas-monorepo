@@ -5,6 +5,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
+import { saveBlob } from '@codaco/fresco-ui/utils/saveBlob';
 import type { ExportEvent } from '@codaco/network-exporters/events';
 import type { ExportWarning } from '@codaco/network-exporters/output';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -18,7 +19,6 @@ import {
 } from '~/lib/db/api';
 import type { StoredSessionLite } from '~/lib/db/types';
 import { buildExportOptions, runExport } from '~/lib/export/exportSessions';
-import { saveBlob } from '~/lib/files/download';
 
 import { useShowExportWarnings } from './useShowExportWarnings';
 
@@ -347,11 +347,11 @@ export function useSessionMutations({
     } = exportFlow;
     setExportFlow({ ...exportFlow, phase: 'saving' });
     try {
-      const outcome = await saveBlob(
-        blob,
-        fileName,
-        intl.formatMessage(messages.zipArchive),
-      );
+      const outcome = await saveBlob(blob, fileName, {
+        description: intl.formatMessage(messages.zipArchive),
+        mimeType: 'application/zip',
+        extension: '.zip',
+      });
       if (!outcome.saved) {
         // The archive is retained and the dialog stays open in the ready
         // state — that is the retry affordance; sessions are NOT marked

@@ -97,6 +97,8 @@ const CARD_MIN_WIDTH = 400;
 // handle can never drag the panel narrow enough for a card to overflow.
 const SOURCE_PANEL_MIN_WIDTH = CARD_MIN_WIDTH + 32;
 
+const itemLabel = (item: UseItemElement) => item.props.label;
+
 const layout = new GridLayout<UseItemElement>({
   gap: 2,
   minItemWidth: CARD_MIN_WIDTH,
@@ -479,7 +481,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
               <Collection
                 items={filteredItems}
                 keyExtractor={keyExtractor}
-                textValueExtractor={(item: UseItemElement) => item.props.label}
+                textValueExtractor={itemLabel}
                 viewportClassName="px-2"
                 layout={layout}
                 renderItem={renderItem}

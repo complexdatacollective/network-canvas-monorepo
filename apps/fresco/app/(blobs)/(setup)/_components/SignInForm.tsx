@@ -546,7 +546,6 @@ export const SignInForm = () => {
           </div>
 
           <Button
-            variant="outline"
             className="h-auto min-h-12 w-full py-2 text-center text-wrap"
             onClick={handlePasskeySignIn}
             disabled={passkeyLoading}

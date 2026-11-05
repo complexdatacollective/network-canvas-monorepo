@@ -113,10 +113,10 @@ export default function RecoveryCodes({ codes }: RecoveryCodesProps) {
         ))}
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" onClick={handleDownload}>
+        <Button onClick={handleDownload}>
           {intl.formatMessage(messages.downloadAsText)}
         </Button>
-        <Button variant="outline" onClick={() => void handleCopy()}>
+        <Button onClick={() => void handleCopy()}>
           {copied
             ? intl.formatMessage(messages.copyCopied)
             : intl.formatMessage(messages.copyCopyToClipboard)}

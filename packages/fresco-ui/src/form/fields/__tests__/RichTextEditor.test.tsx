@@ -2103,7 +2103,7 @@ describe('a RichTextEditorField with tokens', () => {
         name="item"
         aria-describedby="item-hint"
         aria-label="List item"
-        compact
+        singleLine
         changeMode="input"
         toolbarOptions={{ bold: false, italic: false, history: false }}
         tokens={TOKENS}
@@ -2276,7 +2276,7 @@ describe('a RichTextEditorField with tokens', () => {
       'name': 'item',
       'aria-describedby': 'item-hint',
       'aria-label': 'List item',
-      'compact': true,
+      'singleLine': true,
       'changeMode': 'input',
       'value': lineOf({ type: 'text', text: 'Add ' }, token('name')),
       onChange,
