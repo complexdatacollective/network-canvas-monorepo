@@ -36,7 +36,8 @@ The short URL shape is production-only. `NEXT_PUBLIC_PROTOCOL_GALLERY_URL` is
 set by `next.config.ts` when `CONTEXT` is `production`; without it — locally and
 in every deploy preview, which serve a single host — the gallery stays a route
 of this site, keeps its `/protocol-gallery` links, and canonicalises to
-`networkcanvas.com`. Nothing in CI exercises the gallery host, so verify client
+`networkcanvas.com`. A deploy preview ignores the variable even when the Netlify
+site sets it for every context, as the dev site does. Nothing in CI exercises the gallery host, so verify client
 navigation, the language selector, and the downloads on the live subdomain after
 a cutover.
 
