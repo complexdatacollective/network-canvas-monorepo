@@ -5,6 +5,12 @@ import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
+import {
+  generateScenarioNetwork,
+  LAYOUT_SCENARIO_LABELS,
+  LAYOUT_SCENARIOS,
+  type LayoutScenario,
+} from '../../storybook-support/layoutScenarios';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 function createSociogramInterview(seed: number) {
@@ -276,26 +282,35 @@ export const WithHighlighting: Story = {
   render: () => <SociogramStoryWrapper buildFn={buildWithHighlighting} />,
 };
 
-const buildAutomaticLayout = () => {
-  const { si, layoutVar, et } = createSociogramInterview(7);
+type AutomaticLayoutArgs = {
+  scenario: LayoutScenario;
+  seed: number;
+  people: number;
+  tieChance: number;
+};
+
+const buildAutomaticLayout = ({
+  scenario,
+  seed,
+  people,
+  tieChance,
+}: AutomaticLayoutArgs) => {
+  const { nodeCount, edges } = generateScenarioNetwork(scenario, seed, {
+    people,
+    tieChance,
+  });
+  const { si, layoutVar, et } = createSociogramInterview(seed);
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('Sociogram', {
-    initialNodes: { count: 8 },
+    initialNodes: { count: nodeCount },
     behaviours: { automaticLayout: true },
   });
-  leaveUnplaced(si, layoutVar.id, 8);
+  leaveUnplaced(si, layoutVar.id, nodeCount);
   stage.addPrompt({
     layout: { layoutVariable: layoutVar.id },
     edges: { create: et.id, display: [et.id] },
   });
-  si.addEdges([
-    [0, 1],
-    [0, 2],
-    [1, 2],
-    [3, 4],
-    [4, 5],
-    [6, 7],
-  ]);
+  si.addEdges(edges);
   si.addInformationStage({
     title: 'Complete',
     text: 'After the main stage.',
@@ -303,8 +318,59 @@ const buildAutomaticLayout = () => {
   return si;
 };
 
-export const AutomaticLayout: Story = {
-  render: () => <SociogramStoryWrapper buildFn={buildAutomaticLayout} />,
+function ConfigurableAutomaticLayout({
+  scenario,
+  seed,
+  people,
+  tieChance,
+}: AutomaticLayoutArgs) {
+  const rawPayload = useMemo(
+    () =>
+      SuperJSON.stringify(
+        buildAutomaticLayout({
+          scenario,
+          seed,
+          people,
+          tieChance,
+        }).getInterviewPayload({ currentStep: 1 }),
+      ),
+    [scenario, seed, people, tieChance],
+  );
+
+  // Remounting on each change lays the new network out from scratch.
+  return (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell key={rawPayload} rawPayload={rawPayload} />
+    </div>
+  );
+}
+
+// The network is chosen from the controls: a scenario and a seed give the same
+// people and ties as the layout comparison page linked from PR #2451.
+export const AutomaticLayout: StoryObj<AutomaticLayoutArgs> = {
+  args: {
+    scenario: 'ego',
+    seed: 1,
+    people: 25,
+    tieChance: 0.08,
+  },
+  argTypes: {
+    scenario: {
+      control: { type: 'select', labels: LAYOUT_SCENARIO_LABELS },
+      options: LAYOUT_SCENARIOS,
+    },
+    seed: { control: { type: 'number', min: 1, step: 1 } },
+    people: {
+      description: 'Sizes the no ties, sparse and random scenarios.',
+      control: { type: 'range', min: 2, max: 80, step: 1 },
+    },
+    tieChance: {
+      description: 'Chance that any two people are tied.',
+      control: { type: 'range', min: 0, max: 1, step: 0.01 },
+      if: { arg: 'scenario', eq: 'random' },
+    },
+  },
+  render: (args) => <ConfigurableAutomaticLayout {...args} />,
 };
 
 const buildMultiplePrompts = () => {
@@ -380,43 +446,6 @@ const buildBackgroundImage = () => {
 
 export const BackgroundImage: Story = {
   render: () => <SociogramStoryWrapper buildFn={buildBackgroundImage} />,
-};
-
-const buildAutomaticLayoutLarge = () => {
-  const { si, layoutVar, et } = createSociogramInterview(11);
-  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
-  const stage = si.addStage('Sociogram', {
-    initialNodes: { count: 20 },
-    behaviours: { automaticLayout: true },
-  });
-  leaveUnplaced(si, layoutVar.id, 20);
-  stage.addPrompt({
-    layout: { layoutVariable: layoutVar.id },
-    edges: { create: et.id, display: [et.id] },
-  });
-  si.addEdges([
-    [0, 1],
-    [1, 2],
-    [2, 3],
-    [4, 5],
-    [6, 7],
-    [8, 9],
-    [10, 11],
-    [12, 13],
-    [14, 15],
-    [16, 17],
-    [0, 9],
-    [4, 14],
-  ]);
-  si.addInformationStage({
-    title: 'Complete',
-    text: 'After the main stage.',
-  });
-  return si;
-};
-
-export const AutomaticLayoutLarge: Story = {
-  render: () => <SociogramStoryWrapper buildFn={buildAutomaticLayoutLarge} />,
 };
 
 const buildEdgesAndHighlighting = () => {
