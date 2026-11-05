@@ -345,14 +345,14 @@ function ConfigurableAutomaticLayout({
   );
 }
 
-// The network is chosen from the controls: a scenario and a seed give the same
-// people and ties as the layout comparison page linked from PR #2451.
+// The network is chosen from the controls: a pattern of connection, how many
+// people it has, and a seed that varies the network within the pattern.
 export const AutomaticLayout: StoryObj<AutomaticLayoutArgs> = {
   args: {
-    scenario: 'ego',
+    scenario: 'bridgedGroups',
     seed: 1,
-    people: 25,
-    tieChance: 0.08,
+    people: 12,
+    tieChance: 0.15,
   },
   argTypes: {
     scenario: {
@@ -361,8 +361,8 @@ export const AutomaticLayout: StoryObj<AutomaticLayoutArgs> = {
     },
     seed: { control: { type: 'number', min: 1, step: 1 } },
     people: {
-      description: 'Sizes the no ties, sparse and random scenarios.',
-      control: { type: 'range', min: 2, max: 80, step: 1 },
+      description: 'Personal networks typically have 8 to 15 people.',
+      control: { type: 'range', min: 2, max: 40, step: 1 },
     },
     tieChance: {
       description: 'Chance that any two people are tied.',

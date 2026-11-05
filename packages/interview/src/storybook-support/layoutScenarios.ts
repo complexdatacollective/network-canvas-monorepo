@@ -1,31 +1,31 @@
-// Seeded networks for exploring the automatic layout in Storybook. Each
-// scenario, seed and people count produces the same people and ties as the
-// layout comparison page linked from PR #2451, so a network can be compared in
-// both. As on that page, the people count sizes the no-ties, sparse and random
-// scenarios; the others have a fixed size.
+// Seeded personal networks for exploring the automatic layout in Storybook.
+// Personal networks typically have 8 to 15 people, so each scenario is a
+// pattern of connection that takes the number of people as an input.
 
 export const LAYOUT_SCENARIOS = [
-  'ego',
-  'isolates',
-  'sparse',
-  'clique',
-  'tree',
-  'pieces',
-  'big',
+  'bridgedGroups',
+  'separateGroups',
+  'groupAndLoners',
+  'closeKnit',
+  'hub',
+  'chain',
+  'fewTies',
+  'noTies',
   'random',
 ] as const;
 
 export type LayoutScenario = (typeof LAYOUT_SCENARIOS)[number];
 
 export const LAYOUT_SCENARIO_LABELS: Record<LayoutScenario, string> = {
-  ego: 'Typical ego network (20)',
-  isolates: 'No ties yet',
-  sparse: 'Sparse: a tie for every four people',
-  clique: 'Dense group plus loners (17)',
-  tree: 'Chain of acquaintances (19)',
-  pieces: 'Separate tied groups plus loners (21)',
-  big: 'Large: 4 groups plus 8 loners (38)',
-  random: 'Random people and ties',
+  bridgedGroups: 'Two or three groups joined by a few ties',
+  separateGroups: 'Small separate groups, not joined',
+  groupAndLoners: 'One close group plus loners',
+  closeKnit: 'Almost everyone knows each other',
+  hub: 'One person knows almost everyone',
+  chain: 'A chain of acquaintances',
+  fewTies: 'A few scattered ties',
+  noTies: 'No ties yet',
+  random: 'Random ties',
 };
 
 type ScenarioNetwork = {
@@ -43,6 +43,13 @@ const mulberry32 = (seed: number) => {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 };
+
+// Splits a number of people into groups whose sizes differ by at most one.
+const groupSizes = (total: number, groups: number) =>
+  Array.from(
+    { length: groups },
+    (_, index) => Math.floor(total / groups) + (index < total % groups ? 1 : 0),
+  );
 
 export function generateScenarioNetwork(
   scenario: LayoutScenario,
@@ -62,13 +69,13 @@ export function generateScenarioNetwork(
     tied.add(key);
     edges.push([a, b]);
   };
-  const isolates = (count: number) => {
+  const loners = (count: number) => {
     for (let i = 0; i < count; i++) add();
   };
   const pick = (ids: number[]) => ids[Math.floor(rng() * ids.length)]!;
   // A group whose members are tied with chance p, then joined up so nobody
   // in it is left without a tie to an earlier member.
-  const cluster = (size: number, p: number) => {
+  const group = (size: number, p: number) => {
     const ids = Array.from({ length: size }, add);
     for (let i = 0; i < size; i++) {
       for (let j = i + 1; j < size; j++) {
@@ -85,56 +92,76 @@ export function generateScenarioNetwork(
     }
     return ids;
   };
+  // Ties between people picked at random from everyone added so far.
+  const scatteredTies = (count: number) => {
+    for (let i = 0; i < count; i++) {
+      link(Math.floor(rng() * nodeCount), Math.floor(rng() * nodeCount));
+    }
+  };
 
   switch (scenario) {
-    case 'ego': {
-      const a = cluster(6, 0.55);
-      const b = cluster(5, 0.5);
-      const c = cluster(3, 0.4);
-      link(pick(a), pick(b));
-      link(pick(b), pick(c));
-      cluster(2, 1);
-      isolates(4);
-      break;
-    }
-    case 'isolates':
-      isolates(people);
-      break;
-    case 'sparse':
-      isolates(people);
-      for (let i = 0; i < Math.round(people / 4); i++) {
-        link(Math.floor(rng() * nodeCount), Math.floor(rng() * nodeCount));
+    case 'bridgedGroups': {
+      // Family, work and friends, say: each fairly close, joined through one
+      // or two people, with a few people who know nobody else.
+      const outside = Math.round(people * 0.2);
+      const inside = people - outside;
+      const groups = groupSizes(inside, inside >= 9 ? 3 : 2)
+        .filter((size) => size > 0)
+        .map((size) => group(size, 0.6));
+      for (let i = 1; i < groups.length; i++) {
+        link(pick(groups[i - 1]!), pick(groups[i]!));
       }
-      break;
-    case 'clique':
-      cluster(10, 0.8);
-      isolates(7);
-      break;
-    case 'tree':
-      add();
-      for (let i = 1; i < 16; i++) link(add(), Math.floor(rng() * i));
-      isolates(3);
-      break;
-    case 'pieces':
-      for (const size of [2, 2, 2, 3, 3, 4]) cluster(size, 0.7);
-      isolates(5);
-      break;
-    case 'big': {
-      const groups = [
-        cluster(9, 0.35),
-        cluster(8, 0.4),
-        cluster(7, 0.4),
-        cluster(6, 0.5),
-      ];
-      link(pick(groups[0]!), pick(groups[1]!));
-      link(pick(groups[1]!), pick(groups[2]!));
-      link(pick(groups[0]!), pick(groups[3]!));
-      link(pick(groups[2]!), pick(groups[3]!));
-      isolates(8);
+      loners(outside);
       break;
     }
+    case 'separateGroups': {
+      // Pairs and small groups that do not know each other, plus loners.
+      let remaining = people - Math.round(people * 0.25);
+      for (let size = 2; remaining >= 2; size = size === 4 ? 2 : size + 1) {
+        const taken = Math.min(size, remaining);
+        group(taken, 0.7);
+        remaining -= taken;
+      }
+      loners(people - nodeCount);
+      break;
+    }
+    case 'groupAndLoners': {
+      const core = Math.round(people * 0.6);
+      group(core, 0.8);
+      loners(people - core);
+      break;
+    }
+    case 'closeKnit':
+      group(people, 0.85);
+      break;
+    case 'hub': {
+      // A partner or parent who knows most of the others.
+      const hub = add();
+      loners(people - 1);
+      for (let other = 1; other < people; other++) {
+        if (rng() < 0.75) link(hub, other);
+      }
+      scatteredTies(Math.round(people / 5));
+      break;
+    }
+    case 'chain': {
+      const outside = Math.round(people * 0.15);
+      if (people - outside > 0) add();
+      for (let i = 1; i < people - outside; i++) {
+        link(add(), Math.floor(rng() * i));
+      }
+      loners(outside);
+      break;
+    }
+    case 'fewTies':
+      loners(people);
+      scatteredTies(Math.round(people / 4));
+      break;
+    case 'noTies':
+      loners(people);
+      break;
     case 'random':
-      isolates(people);
+      loners(people);
       for (let i = 0; i < people; i++) {
         for (let j = i + 1; j < people; j++) {
           if (rng() < tieChance) link(i, j);
