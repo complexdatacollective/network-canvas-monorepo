@@ -141,6 +141,7 @@
     "axe-core": "catalog:",
     "jsdom": "catalog:",
     "motion": "catalog:",
+    "oxc-transform-react": "catalog:",
     "playwright": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

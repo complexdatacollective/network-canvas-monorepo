@@ -1075,6 +1075,7 @@
     "@vitest/browser-playwright": "catalog:",
     "chromatic": "catalog:",
     "jsdom": "catalog:",
+    "oxc-transform-react": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",
     "tinyglobby": "^0.2.17",
