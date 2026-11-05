@@ -106,11 +106,15 @@ place the shared header inside that bar instead:
   Resources menu; that without the logo's name; then the logo alone. While
   any links show, the element matches the custom state
   `nc-site-navigation:state(links)`, so the host's styles can hide what the
-  header already offers, such as the host's own menu button:
+  header already offers, such as the host's own menu button. Hide it in
+  place rather than taking it out of the layout, and keep anything added
+  while the links show within the room it frees: the element measures the
+  room it is given, so a room that shrinks once its links show makes it fold
+  them away again, and the two alternate at the width where they just fit.
 
   ```css
   .host-header:has(nc-site-navigation:state(links)) .host-menu-button {
-    display: none;
+    visibility: hidden;
   }
   ```
 

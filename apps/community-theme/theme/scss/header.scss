@@ -130,26 +130,36 @@
   font-size: var(--font-up-1);
 }
 
-// While the shared header's links show: a rule sets them off from the
-// forum's controls, search leads those controls, and Discourse's menu
-// button gives way to Community, which opens the same menu under itself
-// (site-navigation.gjs sets where that is).
+// While the shared header's links show, Discourse's menu button gives way to
+// Community, which opens the same menu under itself (site-navigation.gjs
+// sets where that is), and the forum's controls lead with search. The
+// button's place stays, holding a rule that sets the links off from the
+// controls: the shared header measures the room left beside the controls,
+// so if showing its links took room back, it would fold them away again
+// and the two would alternate at the width where they just fit.
 .d-header:has(nc-site-navigation:state(links)) {
-  .contents > .panel::before {
-    content: '';
-    flex: none;
-    order: -2;
-    width: 1px;
-    height: 1.75rem;
-    margin-inline: var(--space-6);
-    background-color: color-mix(in oklab, var(--nc-text) 15%, transparent);
-  }
-
   .d-header-icons {
     order: -1;
   }
 
-  .hamburger-dropdown,
+  .hamburger-dropdown {
+    position: relative;
+    order: -1;
+    visibility: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset-block: 0;
+      inset-inline-start: 50%;
+      width: 1px;
+      height: 1.75rem;
+      margin-block: auto;
+      background-color: color-mix(in oklab, var(--nc-text) 15%, transparent);
+      visibility: visible;
+    }
+  }
+
   .nc-site-menu {
     display: none;
   }
