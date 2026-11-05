@@ -6,7 +6,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./NetworkWeaveBackground": "./src/NetworkWeaveBackground/NetworkWeaveBackground.tsx"
+    "./NetworkWeaveBackground": "./src/NetworkWeaveBackground/NetworkWeaveBackground.tsx",
+    "./illustration/BrowserWindow": "./src/illustration/BrowserWindow.tsx",
+    "./illustration/Cursor": "./src/illustration/Cursor.tsx",
+    "./illustration/motion": "./src/illustration/motion.ts"
   },
   "scripts": {
     "build-storybook": "storybook build",

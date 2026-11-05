@@ -1,3 +1,4 @@
+import { CirclePlay } from 'lucide-react';
 import { createElement, useCallback, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
@@ -8,6 +9,7 @@ import {
   AppMessage,
   useAppIntl,
 } from '@codaco/app-i18n/react';
+import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
@@ -45,6 +47,13 @@ import {
 } from './stageDraftBeacon';
 import StageSectionOutline from './StageSectionOutline';
 import StageTitle from './StageTitle';
+import StageWalkthrough, {
+  useStageWalkthrough,
+} from './walkthrough/StageWalkthrough';
+import {
+  openWalkthrough,
+  useWalkthroughState,
+} from './walkthrough/walkthroughStore';
 const messages = defineMessages({
   openingPreview: {
     id: 'architect.chrome.stageEditor.stageEditor.openingPreview',
@@ -108,6 +117,12 @@ const messages = defineMessages({
     defaultMessage: 'Start preview with example data',
     description: 'Visible text in components / StageEditor / StageEditor.',
   },
+  walkthrough: {
+    id: 'architect.stageEditor.stageEditorChrome.walkthrough',
+    defaultMessage: 'Walk me through it',
+    description:
+      'Button above the list of sections of the stage being edited. It opens a step-by-step guide to the stage in a floating panel.',
+  },
   respectSkipLogic: {
     id: 'architect.stageEditor.stageEditor.respectSkipLogic',
     defaultMessage: 'Respect skip logic',
@@ -158,7 +173,8 @@ export default function StageEditorChrome({
     <>
       <StageDraftPublisher />
       {outlineHost !== null &&
-        createPortal(<StageSectionOutline sections={sections} />, outlineHost)}
+        createPortal(<SidebarOutline sections={sections} />, outlineHost)}
+      <StageWalkthrough sections={sections} />
       <StageEditorActions
         formId={formId}
         readOnly={readOnly}
@@ -168,6 +184,33 @@ export default function StageEditorChrome({
         onCancel={onCancel}
       />
     </>
+  );
+}
+
+function SidebarOutline({
+  sections,
+}: Readonly<{ sections: StageSectionsStore }>) {
+  const intl = useAppIntl();
+  const walkthrough = useStageWalkthrough();
+  const { open } = useWalkthroughState();
+  return (
+    <StageSectionOutline
+      sections={sections}
+      header={
+        walkthrough !== undefined && (
+          <Button
+            color="primary"
+            size="sm"
+            icon={<CirclePlay aria-hidden />}
+            className="shrink-0 @min-[60rem]:mb-2 @min-[60rem]:w-full"
+            aria-expanded={open}
+            onClick={(event) => openWalkthrough(event.currentTarget)}
+          >
+            {intl.formatMessage(messages.walkthrough)}
+          </Button>
+        )
+      }
+    />
   );
 }
 
