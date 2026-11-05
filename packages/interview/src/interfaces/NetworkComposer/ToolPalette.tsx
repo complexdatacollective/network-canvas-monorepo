@@ -81,7 +81,12 @@ type ToolPaletteProps = {
   activeGroup: ActiveGroup | null;
   onSelectGroup: (variable: string, value: string) => void;
   automaticLayout: boolean;
-  onToggleAutomaticLayout: (next: boolean) => void;
+  /**
+   * Switches the layout from the mode it is in when the switch is made. The
+   * pressed state shown can trail a switch still waiting to be made, so it
+   * does not decide which way to switch.
+   */
+  onToggleAutomaticLayout: () => void;
 };
 
 // Codebook edge colour token → Tailwind background/foreground classes. Literal
@@ -293,7 +298,7 @@ export default function ToolPalette({
           aria-label={words.automaticLayout}
           icon={<AutoLayoutIcon />}
           pressed={automaticLayout}
-          onPressedChange={onToggleAutomaticLayout}
+          onPressedChange={() => onToggleAutomaticLayout()}
         />
       </ToolbarGroup>
 

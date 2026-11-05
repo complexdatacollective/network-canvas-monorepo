@@ -89,6 +89,7 @@ function renderActions(store: Store) {
         quickAdd: QUICK_ADD_VAR,
         layoutVariable: LAYOUT_VAR,
         useEncryption: true,
+        automaticLayoutDefault: false,
         currentStep: 0,
         undoStore,
         dispatch: store.dispatch,
