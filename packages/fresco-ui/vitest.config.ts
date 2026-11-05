@@ -23,7 +23,7 @@ const storybookBrowsers =
     : [{ browser: 'chromium' as const }, { browser: 'firefox' as const }];
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react({ compiler: true })],
   // `fuse.js` is imported lazily by the inlined search worker, so Vite's static
   // scanner doesn't see it before the first browser test starts. Pre-bundling it
   // here keeps Playwright's connection from being torn down by a mid-test

@@ -42,6 +42,7 @@
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "jsdom": "catalog:",
+    "oxc-transform-react": "catalog:",
     "playwright": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
