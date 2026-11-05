@@ -1096,19 +1096,21 @@ const editorContentVariants = cva({
     '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
   ),
   variants: {
-    compact: {
-      // The text area is at least as tall as the toolbar above it, so the
-      // editor reads as two equal rows. The toolbar is a 40px icon button
+    singleLine: {
+      // A field Enter cannot add a line to opens one line tall, not as a box
+      // for paragraphs: the text area is as tall as the toolbar above it, so
+      // the editor reads as two equal rows. The toolbar is a 40px icon button
       // (`h-10`) between 8px of padding (`py-2`) on each side, and a 1px
       // bottom border; the variable states those same terms. The single line
       // sits in the middle of the row, and the whole row is the `.tiptap`
       // element, so a click anywhere in it focuses the editor. Text that
-      // wraps still grows the row.
+      // wraps grows the row, and the row's padding keeps the wrapped lines
+      // off the toolbar's border and the field's edge.
       true: cx(
         'w-full px-6',
         '[--editable-min-h:calc(var(--spacing)*10+var(--spacing)*2*2+1px)]',
         'min-h-(--editable-min-h)',
-        '[&>.tiptap]:grid [&>.tiptap]:min-h-(--editable-min-h) [&>.tiptap]:content-center',
+        '[&>.tiptap]:grid [&>.tiptap]:min-h-(--editable-min-h) [&>.tiptap]:grid-cols-1 [&>.tiptap]:content-center [&>.tiptap]:py-3.5',
       ),
       false: cx(multilineContentVariants(), '[&>.tiptap]:min-h-[120px]'),
     },
@@ -1157,16 +1159,13 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      * and Shift-Enter do nothing, and pasted lines arrive joined by spaces.
      * The block controls go with it — a heading, a list or a rule cannot be
      * made in this schema, so the toolbar does not offer one.
+     *
+     * The height follows: the text area opens one line tall, as tall as the
+     * toolbar above it, and grows as the text wraps, rather than opening as
+     * the 120px box a multi-line editor does. A tall box would say the field
+     * takes paragraphs, which it does not.
      */
     'singleLine'?: boolean;
-    /**
-     * For a field that holds a short label, not a prompt or a passage: the
-     * text area is one line tall, as tall as the toolbar above it, rather than
-     * the 120px box a multi-line editor opens at. Implies `singleLine`, since
-     * a compact multi-line editor makes no sense. `singleLine` alone changes
-     * only the value, never the height.
-     */
-    'compact'?: boolean;
     /**
      * Placeholders the text can hold, such as a person's name filled in
      * later. Each shows as a chip in the text, and the toolbar offers a
@@ -1235,8 +1234,7 @@ export default function RichTextEditorField({
   changeMode = 'blur',
   autoFocus = false,
   placeholder,
-  singleLine: singleLineProp = false,
-  compact = false,
+  singleLine = false,
   tokens: tokensProp,
   versions = false,
   insertMenu,
@@ -1245,7 +1243,6 @@ export default function RichTextEditorField({
   onBlur,
   ...props
 }: RichTextEditorFieldProps) {
-  const singleLine = singleLineProp || compact;
   const intl = useAppIntl();
   const onChangeRef = useRef(onChange);
   // Where the insert menu was opened by typing its trigger: the editor, and
@@ -1965,7 +1962,7 @@ export default function RichTextEditorField({
       <NestedEditingContext.Provider value={nestedEditing}>
         <EditorContent
           editor={editor}
-          className={editorContentVariants({ compact })}
+          className={editorContentVariants({ singleLine })}
         />
       </NestedEditingContext.Provider>
       {triggered !== null && (

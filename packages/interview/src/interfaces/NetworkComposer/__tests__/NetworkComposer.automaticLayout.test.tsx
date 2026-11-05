@@ -1,17 +1,28 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
+import type { CanvasStoreApi } from '../../../canvas/useCanvasStore';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import protocol from '../../../store/modules/protocol';
-import session from '../../../store/modules/session';
+import session, { updateNode } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
@@ -19,18 +30,26 @@ import NetworkComposer from '../NetworkComposer';
 
 // jsdom has no Worker, and automatic mode would otherwise construct the shared
 // auto-layout worker. These tests cover the metadata-driven layout toggle, not
-// the simulation, so stub the engine out.
+// the simulation, so stub the engine out. The stub keeps the canvas store it
+// is handed, so a test can move people on screen as the simulation would.
+const autoLayout = vi.hoisted(() => ({
+  store: null as CanvasStoreApi | null,
+}));
+
 vi.mock('../../../canvas/useAutoLayout', () => ({
-  useAutoLayout: () => ({
-    isRunning: false,
-    start: vi.fn(),
-    stop: vi.fn(),
-    reheat: vi.fn(),
-    moveNode: vi.fn(),
-    releaseNode: vi.fn(),
-    simulationEnabled: false,
-    toggleSimulation: vi.fn(),
-  }),
+  useAutoLayout: ({ store }: { store: CanvasStoreApi }) => {
+    autoLayout.store = store;
+    return {
+      isRunning: false,
+      start: vi.fn(),
+      stop: vi.fn(),
+      reheat: vi.fn(),
+      moveNode: vi.fn(),
+      releaseNode: vi.fn(),
+      simulationEnabled: false,
+      toggleSimulation: vi.fn(),
+    };
+  },
 }));
 
 beforeAll(() => {
@@ -94,12 +113,29 @@ const codebook = {
   ego: { variables: {} },
 };
 
+const MANUAL_LAYOUT = {
+  alex: { x: 0.2, y: 0.3 },
+  blake: { x: 0.7, y: 0.6 },
+};
+
+const makeNodes = (): NcNode[] =>
+  Object.entries(MANUAL_LAYOUT).map(([id, position]) => ({
+    [entityPrimaryKeyProperty]: id,
+    type: NODE_TYPE,
+    [entityAttributesProperty]: {
+      [QUICK_ADD_VAR]: id === 'alex' ? 'Alex' : 'Blake',
+      [LAYOUT_VAR]: position,
+    },
+  }));
+
 function renderInterface({
   defaultEnabled = false,
   stageMetadata,
+  nodes = [],
 }: {
   defaultEnabled?: boolean;
   stageMetadata?: Record<number, unknown>;
+  nodes?: NcNode[];
 } = {}) {
   const stage = makeStage(defaultEnabled);
   const store = configureStore({
@@ -110,7 +146,7 @@ function renderInterface({
         promptIndex: 0,
         stageMetadata,
         network: {
-          nodes: [],
+          nodes,
           edges: [],
           ego: { [entityAttributesProperty]: {} },
         },
@@ -160,6 +196,50 @@ function renderInterface({
   return { store };
 }
 
+type Store = ReturnType<typeof renderInterface>['store'];
+
+const storedPositions = (store: Store) =>
+  Object.fromEntries(
+    store
+      .getState()
+      .session.network.nodes.map((node) => [
+        node[entityPrimaryKeyProperty],
+        node[entityAttributesProperty][LAYOUT_VAR],
+      ]),
+  );
+
+// What the simulation's settle does: save a position for everyone.
+const saveLayout = async (
+  store: Store,
+  positions: Record<string, { x: number; y: number }>,
+) => {
+  await act(async () => {
+    for (const [nodeId, position] of Object.entries(positions)) {
+      await store
+        .dispatch(
+          updateNode({
+            nodeId,
+            attributePatch: { set: { [LAYOUT_VAR]: position }, unset: [] },
+            currentStep: 0,
+          }),
+        )
+        .unwrap();
+    }
+  });
+};
+
+const pressUndo = () =>
+  fireEvent.keyDown(screen.getByTestId('network-composer'), {
+    key: 'z',
+    metaKey: true,
+  });
+const pressRedo = () =>
+  fireEvent.keyDown(screen.getByTestId('network-composer'), {
+    key: 'z',
+    metaKey: true,
+    shiftKey: true,
+  });
+
 const layoutMode = () =>
   screen.getByTestId('network-composer').getAttribute('data-layout-mode');
 // Automatic layout is a toggle button (aria-pressed) in the tool palette.
@@ -200,13 +280,77 @@ describe('NetworkComposer automatic layout', () => {
     expect(layoutToggle().getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('persists the participant toggle to stage metadata', () => {
+  it('persists the participant toggle to stage metadata', async () => {
     const { store } = renderInterface({ defaultEnabled: false });
     fireEvent.click(layoutToggle());
+    await waitFor(() => expect(layoutMode()).toBe('AUTOMATIC'));
     const metadata = store.getState().session.stageMetadata as
       | Record<number, unknown>
       | undefined;
     expect(metadata?.[0]).toEqual({ automaticLayout: true });
-    expect(layoutMode()).toBe('AUTOMATIC');
+  });
+
+  it('puts everyone back where they were when turning automatic layout on is undone', async () => {
+    const { store } = renderInterface({ nodes: makeNodes() });
+
+    fireEvent.click(layoutToggle());
+    await waitFor(() => expect(layoutMode()).toBe('AUTOMATIC'));
+    await saveLayout(store, {
+      alex: { x: 0.5, y: 0.5 },
+      blake: { x: 0.55, y: 0.45 },
+    });
+    expect(storedPositions(store)).not.toEqual(MANUAL_LAYOUT);
+
+    pressUndo();
+    await waitFor(() => expect(layoutMode()).toBe('MANUAL'));
+    expect(storedPositions(store)).toEqual(MANUAL_LAYOUT);
+    expect(layoutToggle().getAttribute('aria-pressed')).toBe('false');
+
+    pressRedo();
+    await waitFor(() => expect(layoutMode()).toBe('AUTOMATIC'));
+  });
+
+  it('keeps everyone where they are shown when automatic layout is turned off', async () => {
+    const { store } = renderInterface({
+      defaultEnabled: true,
+      nodes: makeNodes(),
+    });
+    // The simulation has moved Alex on screen but not yet saved it.
+    act(() => {
+      autoLayout.store?.getState().setPosition('alex', { x: 0.45, y: 0.4 });
+    });
+
+    fireEvent.click(layoutToggle());
+    await waitFor(() => expect(layoutMode()).toBe('MANUAL'));
+    expect(storedPositions(store)).toEqual({
+      alex: { x: 0.45, y: 0.4 },
+      blake: MANUAL_LAYOUT.blake,
+    });
+
+    pressUndo();
+    await waitFor(() => expect(layoutMode()).toBe('AUTOMATIC'));
+  });
+
+  it('saves a move made in automatic layout at once, without making it a step to undo', async () => {
+    const { store } = renderInterface({ nodes: makeNodes() });
+
+    fireEvent.click(layoutToggle());
+    await waitFor(() => expect(layoutMode()).toBe('AUTOMATIC'));
+    fireEvent.keyDown(screen.getByRole('button', { name: /Alex/ }), {
+      key: 'ArrowUp',
+    });
+
+    // Saved before the layout settles, so leaving the stage keeps it.
+    await waitFor(() =>
+      expect(storedPositions(store).alex).toEqual({
+        x: MANUAL_LAYOUT.alex.x,
+        y: MANUAL_LAYOUT.alex.y - 0.02,
+      }),
+    );
+
+    // One undo reverses turning the layout on, not the move.
+    pressUndo();
+    await waitFor(() => expect(layoutMode()).toBe('MANUAL'));
+    expect(storedPositions(store)).toEqual(MANUAL_LAYOUT);
   });
 });

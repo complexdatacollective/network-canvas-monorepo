@@ -650,7 +650,7 @@ export default function TeamActivity() {
         </Heading>
         <Alert>{intl.formatMessage(messages.forbidden)}</Alert>
         <div>
-          <Button asChild variant="outline">
+          <Button asChild>
             <Link to="/team/$teamId" params={{ teamId }}>
               {intl.formatMessage(messages.backToStudies)}
             </Link>
@@ -671,7 +671,7 @@ export default function TeamActivity() {
             {intl.formatMessage(messages.intro)}
           </Paragraph>
         </div>
-        <Button asChild size="sm" variant="outline">
+        <Button asChild size="sm">
           <Link to="/team/$teamId" params={{ teamId }}>
             {intl.formatMessage(messages.backToStudies)}
           </Link>
@@ -823,7 +823,7 @@ export default function TeamActivity() {
             <Button
               size="sm"
               type="button"
-              variant="outline"
+              variant="text"
               disabled={!hasActiveFilter(staged) && !hasActiveFilter(applied)}
               onClick={() => {
                 setStaged(EMPTY_FILTERS);
@@ -877,7 +877,6 @@ export default function TeamActivity() {
           <Button
             className="mt-3"
             size="sm"
-            variant="outline"
             onClick={() => void activity.refetch()}
           >
             {intl.formatMessage(messages.retry)}
@@ -961,7 +960,6 @@ export default function TeamActivity() {
           {activity.hasNextPage ? (
             <div>
               <Button
-                variant="outline"
                 disabled={activity.isFetchingNextPage}
                 onClick={() => void activity.fetchNextPage()}
               >
@@ -1014,7 +1012,6 @@ function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
         <Button
           className="mt-3"
           size="sm"
-          variant="outline"
           onClick={() => void detail.refetch()}
         >
           {intl.formatMessage(messages.retry)}

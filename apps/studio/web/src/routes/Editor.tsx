@@ -1084,7 +1084,6 @@ function EditorWorkspace({
                       <Button
                         className="mt-3"
                         size="sm"
-                        variant="outline"
                         aria-disabled={reconcilingAdd}
                         onClick={() => void reconcileAddStage()}
                       >
@@ -1107,7 +1106,6 @@ function EditorWorkspace({
                       <Button
                         className="mt-3"
                         size="sm"
-                        variant="outline"
                         aria-disabled={reconcilingMove}
                         onClick={() => void reconcileMoveStage()}
                       >
@@ -1133,11 +1131,7 @@ function EditorWorkspace({
                         <span>
                           {intl.formatMessage(messages.screensUnreadable)}
                         </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={retryReadingProtocol}
-                        >
+                        <Button size="sm" onClick={retryReadingProtocol}>
                           {intl.formatMessage(commonMessages.retry)}
                         </Button>
                       </div>
@@ -1355,7 +1349,6 @@ function ValidationButton(props: { validation: DraftValidation }) {
   return (
     <Button
       size="sm"
-      variant="outline"
       onClick={() => document.getElementById('protocol-problems')?.focus()}
     >
       {validation.status === 'invalid' &&

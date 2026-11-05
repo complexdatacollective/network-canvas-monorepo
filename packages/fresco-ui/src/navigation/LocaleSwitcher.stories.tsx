@@ -90,7 +90,7 @@ const meta = {
     searchable: { control: 'boolean' },
     variant: {
       control: 'select',
-      options: ['text', 'outline', 'glass', 'default', 'raised', 'dashed'],
+      options: ['text', 'glass', 'default', 'raised', 'dashed'],
     },
     color: {
       control: 'select',

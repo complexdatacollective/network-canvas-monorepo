@@ -47,7 +47,6 @@ import {
   getStageMetadata,
 } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
-import { updateStageMetadata } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
@@ -262,6 +261,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     quickAdd: stage.quickAdd,
     layoutVariable: stage.layoutVariable,
     useEncryption: quickAddEncrypted,
+    automaticLayoutDefault,
     currentStep,
     undoStore,
     dispatch,
@@ -336,9 +336,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleNodeDragEnd = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
+      // In automatic layout a drag only nudges the layout, which decides
+      // where the person comes to rest, so the move is saved without being a
+      // step to undo.
+      if (layoutMode === 'AUTOMATIC') {
+        void actions.placeNode(nodeId, position);
+        return;
+      }
       void actions.repositionNode(nodeId, position);
     },
-    [actions],
+    [actions, layoutMode],
   );
 
   // Nodes are added by name from the tool palette (not by tapping the canvas),
@@ -492,17 +499,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     [composerStore, undoStore, actions, deleteEntities],
   );
 
-  const handleToggleAutomaticLayout = useCallback(
-    (next: boolean) => {
-      dispatch(
-        updateStageMetadata({
-          currentStep,
-          metadata: { automaticLayout: next },
-        }),
-      );
-    },
-    [dispatch, currentStep],
-  );
+  const handleToggleAutomaticLayout = useCallback(() => {
+    void actions.toggleAutomaticLayout(() => canvasStore.getState().positions);
+  }, [actions, canvasStore]);
 
   const edgeEntries = (stage.edges ?? []).map((edgeDef) => {
     const edgeType = edgeDef.subject.type;
