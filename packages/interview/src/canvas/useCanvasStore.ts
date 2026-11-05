@@ -37,6 +37,9 @@ type CanvasState = {
   // ramp and the participant text-size control — instead of clipping larger
   // nodes against a fixed inset.
   nodeRadius: number;
+  // True while the first automatic layout the canvas shows is computed. The
+  // canvas shows a loading indicator, then fades its contents in.
+  layoutPending: boolean;
 };
 
 type CanvasActions = {
@@ -44,6 +47,10 @@ type CanvasActions = {
   setBatchPositions: (entries: [string, Position][]) => void;
   setCanvasDimensions: (dimensions: CanvasDimensions) => void;
   setNodeRadius: (radius: number) => void;
+  setLayoutPending: (pending: boolean) => void;
+  // Places a computed layout and ends the pending state in one update, so the
+  // people it places appear together as the canvas fades in.
+  revealLayout: (entries: [string, Position][]) => void;
   syncFromNodes: (nodes: NcNode[], layoutVariable: string) => void;
   syncNewFromNodes: (nodes: NcNode[], layoutVariable: string) => void;
   selectNode: (nodeId: string | null) => void;
@@ -76,6 +83,18 @@ const clampPosition = (
   };
 };
 
+// The stored positions with each entry clamped inside the canvas and set.
+const withPositions = (state: CanvasState, entries: [string, Position][]) => {
+  const next = new Map(state.positions);
+  for (const [nodeId, position] of entries) {
+    next.set(
+      nodeId,
+      clampPosition(position, state.canvasDimensions, state.nodeRadius),
+    );
+  }
+  return next;
+};
+
 export const createCanvasStore = () =>
   createStore<CanvasStore>()(
     subscribeWithSelector((set, get) => ({
@@ -83,6 +102,7 @@ export const createCanvasStore = () =>
       selectedNodeId: null,
       canvasDimensions: null,
       nodeRadius: FALLBACK_NODE_RADIUS,
+      layoutPending: false,
 
       setPosition: (nodeId, position) => {
         set((state) => {
@@ -96,16 +116,18 @@ export const createCanvasStore = () =>
       },
 
       setBatchPositions: (entries) => {
-        set((state) => {
-          const next = new Map(state.positions);
-          for (const [nodeId, position] of entries) {
-            next.set(
-              nodeId,
-              clampPosition(position, state.canvasDimensions, state.nodeRadius),
-            );
-          }
-          return { positions: next };
-        });
+        set((state) => ({ positions: withPositions(state, entries) }));
+      },
+
+      setLayoutPending: (pending) => {
+        set({ layoutPending: pending });
+      },
+
+      revealLayout: (entries) => {
+        set((state) => ({
+          positions: withPositions(state, entries),
+          layoutPending: false,
+        }));
       },
 
       setCanvasDimensions: (dimensions) => {

@@ -72,7 +72,7 @@ type AutoLayoutRuntimeOptions = Pick<
 // measured value divided by the canvas height.
 const FALLBACK_SIM_COLLIDE_RADIUS =
   collideRadiusForNode(FALLBACK_NODE_RADIUS) / 800;
-const LINK_DISTANCE_COLLIDE_RATIO = 1.8;
+const LINK_DISTANCE_COLLIDE_RATIO = 1.6;
 
 const DEFAULT_OPTIONS: AutoLayoutOptions = {
   // A hot start and slow 500-tick cooldown let a layout built from scratch
@@ -98,8 +98,10 @@ const DEFAULT_OPTIONS: AutoLayoutOptions = {
   linkDistance: LINK_DISTANCE_COLLIDE_RATIO * FALLBACK_SIM_COLLIDE_RADIUS,
   // Firm enough that connected nodes reach the collision floor during the anneal
   // and stay pressed there against charge, giving connected pairs a visibly
-  // tighter spacing than the charge-spread unconnected pairs.
-  linkStrength: 2,
+  // tighter spacing than the charge-spread unconnected pairs. Above 1 a link
+  // overshoots its length on every pass, so a well-connected node's group
+  // drifts instead of settling.
+  linkStrength: 1,
   // Symmetric horizontal and vertical positioning forces keep every interface's
   // composition centered. Fractions are targets within the simulation extents.
   biasXFraction: 0.5,
@@ -156,8 +158,6 @@ const MAX_SCORED_LINKS = 1000;
 const UNTANGLE_BUDGET = 5_000_000;
 const ATTEMPT_JITTER = 0.1;
 const MAX_TICKS = 1000;
-const PLAYBACK_FRAMES = 60;
-const PLAYBACK_MAX_OVERLAP = 0.05;
 
 type SimNode = SimulationNodeDatum & {
   nodeId?: string;
@@ -337,9 +337,8 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   } else {
     sim.force('charge', null);
   }
-  // strength(1) + iterations(3) firmly enforces the minimum distance rather
-  // than merely nudging, so the guaranteed gap holds even from a tightly
-  // clustered seed.
+  // Collision is a soft force: links and centering can still press nodes
+  // inside the minimum distance, so `separate` enforces it after every tick.
   sim.force(
     'collide',
     forceCollide().radius(options.collideRadius).strength(1).iterations(3),
@@ -652,14 +651,17 @@ const layoutScore = (nodes: SimNode[]) => {
   return crossings * 3 + throughNodes * 5 + (gap < 0.4 ? (0.4 - gap) * 10 : 0);
 };
 
-const untangle = (nodes: SimNode[]) => {
-  const swaps: [number, number][] = [];
+// Swaps pairs of people on a crossing or an edge whenever that lowers the
+// layout score, within a fixed work budget, never moving `keep`. Returns
+// whether anyone moved.
+const untangle = (nodes: SimNode[], keep?: SimNode) => {
   const edges = links.length;
   const scoreCost = edges * edges + edges * nodes.length + nodes.length ** 2;
   let checks = Math.floor(UNTANGLE_BUDGET / scoreCost);
-  if (checks === 0) return swaps;
+  if (checks === 0) return false;
   const { involved } = layoutProblems(nodes);
   let best = layoutScore(nodes);
+  let swapped = false;
   const swap = (a: SimNode, b: SimNode) => {
     [a.x, b.x] = [b.x, a.x];
     [a.y, b.y] = [b.y, a.y];
@@ -667,27 +669,31 @@ const untangle = (nodes: SimNode[]) => {
   for (let i = 0; i < nodes.length; i += 1) {
     for (let j = i + 1; j < nodes.length; j += 1) {
       if (!involved.has(i) && !involved.has(j)) continue;
+      if (nodes[i] === keep || nodes[j] === keep) continue;
       if (checks === 0) break;
       checks -= 1;
       swap(nodes[i]!, nodes[j]!);
       const score = layoutScore(nodes);
       if (score < best - 1e-9) {
         best = score;
-        swaps.push([i, j]);
+        swapped = true;
       } else {
         swap(nodes[i]!, nodes[j]!);
       }
     }
   }
-  if (swaps.length > 0) {
+  if (swapped) {
     for (const node of nodes) {
       node.vx = 0;
       node.vy = 0;
     }
   }
-  return swaps;
+  return swapped;
 };
 
+// Pushes apart every pair closer than the collision floor and keeps everyone
+// inside the bounds. A held person is left to the collision force, so the
+// people they are dragged past move aside instead of jumping clear of them.
 const separate = (nodes: SimNode[]) => {
   const floor = 2 * options.collideRadius;
   const inset = options.boundsInset;
@@ -698,9 +704,7 @@ const separate = (nodes: SimNode[]) => {
       for (let j = i + 1; j < nodes.length; j += 1) {
         const a = nodes[i]!;
         const b = nodes[j]!;
-        const aFixed = a.fx != null;
-        const bFixed = b.fx != null;
-        if (aFixed && bFixed) continue;
+        if (a.fx != null || b.fx != null) continue;
         let dx = (b.x ?? 0) - (a.x ?? 0);
         let dy = (b.y ?? 0) - (a.y ?? 0);
         let distance = Math.hypot(dx, dy);
@@ -710,12 +714,11 @@ const separate = (nodes: SimNode[]) => {
           dy = 0;
           distance = 1e-6;
         }
-        const share = (floor - distance) / distance;
-        const aShare = aFixed ? 0 : bFixed ? 1 : 0.5;
-        a.x = (a.x ?? 0) - dx * share * aShare;
-        a.y = (a.y ?? 0) - dy * share * aShare;
-        b.x = (b.x ?? 0) + dx * share * (1 - aShare);
-        b.y = (b.y ?? 0) + dy * share * (1 - aShare);
+        const share = (floor - distance) / distance / 2;
+        a.x = (a.x ?? 0) - dx * share;
+        a.y = (a.y ?? 0) - dy * share;
+        b.x = (b.x ?? 0) + dx * share;
+        b.y = (b.y ?? 0) + dy * share;
         moved = true;
       }
     }
@@ -741,74 +744,13 @@ const isSettled = (sim: Simulation<SimNode, undefined>) =>
   (sim.alpha() < EARLY_STOP_ALPHA_CEILING &&
     maxNodeSpeed(sim.nodes()) < EARLY_STOP_MAX_SPEED);
 
-// Runs the simulation to rest, returning each tick's positions as flat
-// [x0, y0, x1, y1, ...] arrays.
+// Runs the simulation to rest, holding the minimum gap after every tick.
 const settle = (sim: Simulation<SimNode, undefined>) => {
-  const frames: number[][] = [];
   for (let tick = 0; tick < MAX_TICKS; tick += 1) {
     sim.tick();
-    frames.push(sim.nodes().flatMap((node) => [node.x ?? 0, node.y ?? 0]));
+    separate(sim.nodes());
     if (isSettled(sim)) break;
   }
-  return frames;
-};
-
-const worstOverlap = (frame: number[]) => {
-  const diameter = (2 * options.collideRadius) / (1 + EDGE_GAP_RATIO);
-  let worst = 0;
-  for (let i = 0; i < frame.length; i += 2) {
-    for (let j = i + 2; j < frame.length; j += 2) {
-      const distance = Math.hypot(
-        frame[i]! - frame[j]!,
-        frame[i + 1]! - frame[j + 1]!,
-      );
-      worst = Math.max(worst, diameter - distance);
-    }
-  }
-  return worst / diameter;
-};
-
-// The part of a settle worth showing: from the first tick where people no
-// longer sit on top of each other, sampled at even steps of movement so the
-// barely moving tail does not take up the animation.
-const playbackFrames = (frames: number[][]) => {
-  let first = 0;
-  while (
-    first < frames.length - 1 &&
-    worstOverlap(frames[first]!) > PLAYBACK_MAX_OVERLAP
-  ) {
-    first += 1;
-  }
-  const kept = frames.slice(first);
-  const travelled = [0];
-  for (let f = 1; f < kept.length; f += 1) {
-    const [previous, current] = [kept[f - 1]!, kept[f]!];
-    let distance = 0;
-    for (let i = 0; i < current.length; i += 2) {
-      distance += Math.hypot(
-        current[i]! - previous[i]!,
-        current[i + 1]! - previous[i + 1]!,
-      );
-    }
-    travelled.push(travelled[f - 1]! + distance);
-  }
-  const total = travelled.at(-1) ?? 0;
-  if (total === 0) return [];
-  // A single early tick can cover several samples' worth of movement, so
-  // samples are interpolated between ticks rather than snapped to one.
-  const sampled: number[][] = [];
-  let f = 1;
-  for (let step = 0; step <= PLAYBACK_FRAMES; step += 1) {
-    const target = (total * step) / PLAYBACK_FRAMES;
-    while (f < kept.length - 1 && travelled[f]! < target) f += 1;
-    const [before, after] = [kept[f - 1]!, kept[f]!];
-    const span = travelled[f]! - travelled[f - 1]!;
-    const u = span > 0 ? (target - travelled[f - 1]!) / span : 1;
-    sampled.push(
-      u >= 1 ? after : before.map((v, i) => v + (after[i]! - v) * u),
-    );
-  }
-  return sampled;
 };
 
 type InitializeMessage = {
@@ -848,6 +790,8 @@ type Message =
 let needsLayout = false;
 // A change to the nodes or links, settled anchored rather than from scratch.
 let incrementalChange = false;
+// Whether that change added or removed people or ties, so it is untangled.
+let structuralChange = false;
 
 const createSimulation = (nodes: SimNode[]) => {
   const sim = forceSimulation(nodes);
@@ -859,6 +803,7 @@ const createSimulation = (nodes: SimNode[]) => {
 
   // Only a drag runs on the d3 timer; every other run settles synchronously.
   sim.on('tick', () => {
+    separate(sim.nodes());
     postMessage({ type: 'tick', nodes: sim.nodes() });
     // Dropping alpha below alphaMin makes d3 stop the timer and fire 'end'.
     if (isSettled(sim)) sim.alpha(0);
@@ -870,36 +815,50 @@ const createSimulation = (nodes: SimNode[]) => {
   return sim;
 };
 
-const finish = (frames: number[][]) => {
+const finish = () => {
   separate(simulation.nodes());
-  frames.push(simulation.nodes().flatMap((node) => [node.x ?? 0, node.y ?? 0]));
   running = false;
   needsLayout = false;
   incrementalChange = false;
+  structuralChange = false;
   for (const node of simulation.nodes()) node.placed = true;
-  postMessage({
-    type: 'end',
-    nodes: simulation.nodes(),
-    frames: playbackFrames(frames),
-  });
+  postMessage({ type: 'end', nodes: simulation.nodes() });
 };
 
 const runToEnd = (alpha: number) => {
   simulation.stop();
   simulation.alpha(alpha);
-  finish(settle(simulation));
+  settle(simulation);
+  finish();
 };
 
-// Settles a change while holding everyone near where they are now.
-const resettle = () => {
+// Settles a change while holding everyone near where they are now, then, when
+// asked, untangles it without moving `keep`.
+const resettle = ({
+  untangleCrossings,
+  keep,
+}: {
+  untangleCrossings: boolean;
+  keep?: SimNode;
+}) => {
   setAnchors(simulation);
-  runToEnd(REHEAT_ALPHA);
+  simulation.stop();
+  simulation.alpha(REHEAT_ALPHA);
+  settle(simulation);
+  if (untangleCrossings && untangle(simulation.nodes(), keep)) {
+    // Hold the swapped people at their new places, not their old ones.
+    setAnchors(simulation);
+    simulation.alpha(UNTANGLE_ALPHA);
+    settle(simulation);
+  }
+  finish();
 };
 
 // A change made while paused is settled, anchored, once the user resumes.
-const markPending = () => {
+const markPending = ({ structural }: { structural: boolean }) => {
   needsLayout = true;
   incrementalChange = true;
+  structuralChange ||= structural;
 };
 
 // A layout built from scratch keeps the best of several runs.
@@ -907,7 +866,6 @@ const layoutFromScratch = () => {
   const seed = simulation.nodes();
   const attempts = links.length > MAX_SCORED_LINKS ? 1 : LAYOUT_ATTEMPTS;
   let bestScore = Infinity;
-  let bestFrames: number[][] = [];
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     // Each attempt after the first starts from a jittered copy of the seed so
     // the attempts explore different arrangements.
@@ -923,29 +881,18 @@ const layoutFromScratch = () => {
     );
     candidate.randomSource(random);
     candidate.alpha(options.startAlpha);
-    const frames = settle(candidate);
+    settle(candidate);
     const score = attempts === 1 ? 0 : layoutScore(candidate.nodes());
     if (score < bestScore) {
       bestScore = score;
-      bestFrames = frames;
       simulation = candidate;
     }
   }
-  const swaps = untangle(simulation.nodes());
-  if (swaps.length > 0) {
-    for (const frame of bestFrames) {
-      for (const [i, j] of swaps) {
-        [frame[2 * i], frame[2 * j]] = [frame[2 * j]!, frame[2 * i]!];
-        [frame[2 * i + 1], frame[2 * j + 1]] = [
-          frame[2 * j + 1]!,
-          frame[2 * i + 1]!,
-        ];
-      }
-    }
+  if (untangle(simulation.nodes())) {
     simulation.alpha(UNTANGLE_ALPHA);
-    bestFrames.push(...settle(simulation));
+    settle(simulation);
   }
-  finish(bestFrames);
+  finish();
 };
 
 export function handleMessage(data: Message) {
@@ -968,6 +915,7 @@ export function handleMessage(data: Message) {
       paused = data.paused ?? false;
       needsLayout = true;
       incrementalChange = data.incremental ?? false;
+      structuralChange = incrementalChange;
       break;
     }
     case 'start': {
@@ -981,7 +929,7 @@ export function handleMessage(data: Message) {
       if (nodes.length > 0 && unplaced === nodes.length) {
         layoutFromScratch();
       } else if (unplaced > 0 || incrementalChange) {
-        resettle();
+        resettle({ untangleCrossings: unplaced > 0 || structuralChange });
       } else {
         simulation.force('anchorX', null);
         simulation.force('anchorY', null);
@@ -1002,7 +950,7 @@ export function handleMessage(data: Message) {
       if (!simulation) return;
       console.debug('autolayout-worker:reheat');
       paused = false;
-      resettle();
+      resettle({ untangleCrossings: false });
       break;
     }
     case 'update_links': {
@@ -1014,8 +962,8 @@ export function handleMessage(data: Message) {
       // Which nodes are linked changes the centering and gap forces too.
       registerForces(simulation);
 
-      if (paused) markPending();
-      else resettle();
+      if (paused) markPending({ structural: true });
+      else resettle({ untangleCrossings: true });
       break;
     }
     case 'update_node': {
@@ -1030,7 +978,7 @@ export function handleMessage(data: Message) {
       Object.assign(node, data.node);
 
       if (paused) {
-        markPending();
+        markPending({ structural: false });
         break;
       }
       if (data.node.fx != null || data.node.fy != null) {
@@ -1039,8 +987,9 @@ export function handleMessage(data: Message) {
         running = true;
         simulation.alpha(REHEAT_ALPHA).restart();
       } else {
-        // Anchor at the release position, not where the drag began.
-        resettle();
+        // Anchor at the release position, not where the drag began, and
+        // untangle around the person where they were dropped.
+        resettle({ untangleCrossings: true, keep: node });
       }
       break;
     }

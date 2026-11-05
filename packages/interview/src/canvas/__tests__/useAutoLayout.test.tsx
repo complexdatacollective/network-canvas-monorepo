@@ -58,32 +58,50 @@ const node = (id: string): NcNode => ({
   attributes: {},
 });
 
-const setup = () => {
+const setup = ({ measured = true } = {}) => {
   const store = createCanvasStore();
-  store.getState().setCanvasDimensions(DIMS);
+  if (measured) store.getState().setCanvasDimensions(DIMS);
   store.getState().setBatchPositions([['a', { x: 0.3, y: 0.5 }]]);
-  const hook = renderHook(() =>
-    useAutoLayout({
-      enabled: true,
-      nodes: [node('a'), node('b')],
-      edges: [],
-      store,
-      nodeRadius: 20,
-      layoutVariable: 'layout',
-    }),
+  const hook = renderHook(
+    ({ currentStep, nodes }: { currentStep: number; nodes: NcNode[] }) =>
+      useAutoLayout({
+        enabled: true,
+        nodes,
+        edges: [],
+        store,
+        nodeRadius: 20,
+        layoutVariable: 'layout',
+        persist: true,
+        dispatch: vi.fn(),
+        currentStep,
+      }),
+    { initialProps: { currentStep: 1, nodes: [node('a'), node('b')] } },
   );
   return { store, hook };
 };
 
-// Final sim positions and a two-frame path for each node, in sim space.
-const END_NODES = [
+// Where the first layout settles, and where a later one moves people to, in
+// sim space.
+const FIRST_LAYOUT = [
   { nodeId: 'a', x: 1.2, y: 0.4 },
   { nodeId: 'b', x: 0.8, y: 0.6 },
 ];
-const FRAMES = [
-  [1.0, 0.45, 0.9, 0.55],
-  [1.2, 0.4, 0.8, 0.6],
+const NEXT_LAYOUT = [
+  { nodeId: 'a', x: 1.0, y: 0.5 },
+  { nodeId: 'b', x: 0.6, y: 0.4 },
 ];
+
+const expectPlacedAt = (
+  store: ReturnType<typeof createCanvasStore>,
+  layout: typeof FIRST_LAYOUT,
+) => {
+  for (const { nodeId, x, y } of layout) {
+    const position = store.getState().positions.get(nodeId)!;
+    const expected = fromSim({ x, y }, DIMS);
+    expect(position.x).toBeCloseTo(expected.x);
+    expect(position.y).toBeCloseTo(expected.y);
+  }
+};
 
 beforeEach(() => {
   worker = new FakeWorker();
@@ -105,32 +123,66 @@ describe('useAutoLayout', () => {
     ]);
   });
 
-  it('plays the settle back from where people are on screen to where they settled', () => {
+  it('keeps the first layout pending until it arrives, then reveals it in place', () => {
+    const { store } = setup();
+    expect(store.getState().layoutPending).toBe(true);
+
+    act(() => worker.emit({ type: 'end', nodes: FIRST_LAYOUT }));
+
+    expect(store.getState().layoutPending).toBe(false);
+    expect(playback).toBeNull();
+    expectPlacedAt(store, FIRST_LAYOUT);
+  });
+
+  it('hides people from the first paint, before the canvas is measured', () => {
+    const { store } = setup({ measured: false });
+
+    expect(worker.posted).toHaveLength(0);
+    expect(store.getState().layoutPending).toBe(true);
+  });
+
+  it('lays out a later change in sight once the first layout is shown', () => {
     const { store, hook } = setup();
-    act(() => worker.emit({ type: 'end', nodes: END_NODES, frames: FRAMES }));
+    act(() => worker.emit({ type: 'end', nodes: FIRST_LAYOUT }));
+
+    hook.rerender({
+      currentStep: 1,
+      nodes: [node('a'), node('b'), node('c')],
+    });
+
+    expect(worker.posted.filter((m) => m.type === 'initialize')).toHaveLength(
+      2,
+    );
+    expect(store.getState().layoutPending).toBe(false);
+  });
+
+  it('moves people in a straight line from where they are shown to where a later layout settled', () => {
+    const { store, hook } = setup();
+    act(() => worker.emit({ type: 'end', nodes: FIRST_LAYOUT }));
+    act(() => worker.emit({ type: 'end', nodes: NEXT_LAYOUT }));
 
     expect(hook.result.current.isRunning).toBe(true);
     act(() => playback!.onUpdate(0));
-    // 'a' starts where it was; 'b' had no position, so it starts on its path.
-    expect(store.getState().positions.get('a')).toEqual({ x: 0.3, y: 0.5 });
-    expect(store.getState().positions.get('b')).toEqual(
-      fromSim({ x: 0.9, y: 0.55 }, DIMS),
+    expectPlacedAt(store, FIRST_LAYOUT);
+    act(() => playback!.onUpdate(0.5));
+    expectPlacedAt(
+      store,
+      FIRST_LAYOUT.map(({ nodeId, x, y }, i) => ({
+        nodeId,
+        x: (x + NEXT_LAYOUT[i]!.x) / 2,
+        y: (y + NEXT_LAYOUT[i]!.y) / 2,
+      })),
     );
 
     act(() => {
       playback!.onUpdate(1);
       playback!.onComplete();
     });
-    for (const { nodeId, x, y } of END_NODES) {
-      const position = store.getState().positions.get(nodeId)!;
-      const expected = fromSim({ x, y }, DIMS);
-      expect(position.x).toBeCloseTo(expected.x);
-      expect(position.y).toBeCloseTo(expected.y);
-    }
+    expectPlacedAt(store, NEXT_LAYOUT);
     expect(hook.result.current.isRunning).toBe(false);
   });
 
-  it('reports a run skipped for reduced motion, then places people at once', () => {
+  it('reports a later layout skipped for reduced motion, then places people at once', () => {
     skipAnimations = true;
     let frame: FrameRequestCallback | undefined;
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
@@ -138,25 +190,56 @@ describe('useAutoLayout', () => {
       return 1;
     });
     const { store, hook } = setup();
-    act(() => worker.emit({ type: 'end', nodes: END_NODES, frames: FRAMES }));
+    act(() => worker.emit({ type: 'end', nodes: FIRST_LAYOUT }));
+    act(() => frame!(0));
+    act(() => worker.emit({ type: 'end', nodes: NEXT_LAYOUT }));
 
     expect(playback).toBeNull();
     expect(hook.result.current.isRunning).toBe(true);
-    expect(store.getState().positions.get('a')).toEqual(
-      fromSim({ x: 1.2, y: 0.4 }, DIMS),
-    );
+    expectPlacedAt(store, NEXT_LAYOUT);
     act(() => frame!(0));
     expect(hook.result.current.isRunning).toBe(false);
   });
 
-  it('places people at once when the end carries no frames', () => {
+  it('leaves a held person to the drag, and saves and moves people only once they are let go', () => {
     const { store, hook } = setup();
-    act(() => worker.emit({ type: 'end', nodes: END_NODES }));
+    act(() => worker.emit({ type: 'end', nodes: FIRST_LAYOUT }));
+    const syncToRedux = vi.fn();
+    store.setState({ syncToRedux });
+    const dragged = { x: 0.2, y: 0.2 };
 
+    act(() => {
+      store.getState().setPosition('a', dragged);
+      hook.result.current.moveNode('a', dragged);
+    });
+    act(() => worker.emit({ type: 'tick', nodes: NEXT_LAYOUT }));
+    act(() => worker.emit({ type: 'end', nodes: NEXT_LAYOUT }));
+
+    expect(store.getState().positions.get('a')).toEqual(dragged);
+    expectPlacedAt(store, NEXT_LAYOUT.slice(1));
     expect(playback).toBeNull();
-    expect(hook.result.current.isRunning).toBe(false);
-    expect(store.getState().positions.get('b')).toEqual(
-      fromSim({ x: 0.8, y: 0.6 }, DIMS),
+    expect(syncToRedux).not.toHaveBeenCalled();
+
+    act(() => hook.result.current.releaseNode('a'));
+    act(() => worker.emit({ type: 'end', nodes: FIRST_LAYOUT }));
+
+    expect(syncToRedux).toHaveBeenCalledTimes(1);
+    expect(playback).not.toBeNull();
+  });
+
+  it('neither lays out again nor saves to the next step when the step changes', () => {
+    const { store, hook } = setup();
+    const syncToRedux = vi.fn();
+    store.setState({ syncToRedux });
+
+    // The stage stays on screen for its exit transition after the step moves.
+    hook.rerender({ currentStep: 2, nodes: [node('a'), node('b')] });
+    act(() => worker.emit({ type: 'end', nodes: FIRST_LAYOUT }));
+
+    expect(worker.posted.filter((m) => m.type === 'initialize')).toHaveLength(
+      1,
     );
+    expect(syncToRedux).toHaveBeenCalledTimes(1);
+    expect(syncToRedux.mock.calls[0]![2]).toBe(1);
   });
 });

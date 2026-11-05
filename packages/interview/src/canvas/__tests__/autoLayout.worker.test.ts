@@ -100,6 +100,29 @@ const minPairwiseDistance = (nodes: SimNode[]): number => {
   return min;
 };
 
+// How many pairs of ties cross, ignoring pairs that share a person.
+const countCrossings = (
+  nodes: SimNode[],
+  edges: readonly (readonly [number, number])[],
+) => {
+  const side = (p: SimNode, q: SimNode, r: SimNode) =>
+    ((q.x ?? 0) - (p.x ?? 0)) * ((r.y ?? 0) - (p.y ?? 0)) -
+    ((q.y ?? 0) - (p.y ?? 0)) * ((r.x ?? 0) - (p.x ?? 0));
+  let crossings = 0;
+  edges.forEach(([a, b], i) => {
+    for (const [c, d] of edges.slice(i + 1)) {
+      if (a === c || a === d || b === c || b === d) continue;
+      const [p, q, r, t] = [nodes[a]!, nodes[b]!, nodes[c]!, nodes[d]!];
+      if (
+        side(r, t, p) * side(r, t, q) < 0 &&
+        side(p, q, r) * side(p, q, t) < 0
+      )
+        crossings += 1;
+    }
+  });
+  return crossings;
+};
+
 // Reference canvas height for converting px geometry to sim distances.
 const HEIGHT = 900;
 // Sim-space collide radius for a base 48px node on a HEIGHT-tall canvas.
@@ -190,9 +213,9 @@ describe('autoLayout worker', () => {
     expect(sim.force('centre')).toBeTruthy();
     expect(sim.force('componentGap')).toBeTruthy();
     expect(link.distance()(liveLinks[0]!, 0, liveLinks)).toBeCloseTo(
-      1.8 * (collideRadiusForNode(48) / 800),
+      1.6 * (collideRadiusForNode(48) / 800),
     );
-    expect(link.strength()(liveLinks[0]!, 0, liveLinks)).toBe(2);
+    expect(link.strength()(liveLinks[0]!, 0, liveLinks)).toBe(1);
     expect(link.iterations()).toBe(3);
   });
 
@@ -531,71 +554,88 @@ describe('autoLayout worker', () => {
     handleMessage({ type: 'start' });
 
     const nodes = posted.find((m) => m.type === 'end')!.nodes;
-    const side = (p: SimNode, q: SimNode, r: SimNode) =>
-      ((q.x ?? 0) - (p.x ?? 0)) * ((r.y ?? 0) - (p.y ?? 0)) -
-      ((q.y ?? 0) - (p.y ?? 0)) * ((r.x ?? 0) - (p.x ?? 0));
-    let crossings = 0;
-    edges.forEach(([a, b], i) => {
-      for (const [c, d] of edges.slice(i + 1)) {
-        if (a === c || a === d || b === c || b === d) continue;
-        const [p, q, r, t] = [nodes[a]!, nodes[b]!, nodes[c]!, nodes[d]!];
-        if (
-          side(r, t, p) * side(r, t, q) < 0 &&
-          side(p, q, r) * side(p, q, t) < 0
-        )
-          crossings += 1;
-      }
-    });
-    expect(crossings).toBe(0);
-
-    const { frames } = posted.find((m) => m.type === 'end') as unknown as {
-      frames: number[][];
-    };
-    const diameter = (2 * 48) / HEIGHT;
-    for (const frame of frames) {
-      const frameNodes = Array.from({ length: 9 }, (_, i) => ({
-        x: frame[2 * i],
-        y: frame[2 * i + 1],
-      }));
-      expect(minPairwiseDistance(frameNodes)).toBeGreaterThan(diameter * 0.95);
-    }
+    expect(countCrossings(nodes, edges)).toBe(0);
   });
 
-  it('sends the settle as frames that start with nobody overlapping and end at rest', () => {
-    const nodes: SimNode[] = Array.from({ length: 12 }, (_, i) => ({
-      nodeId: `n${i}`,
-      x: 0.8,
-      y: 0.5,
-      placed: false,
-    }));
+  it('holds the minimum gap between the people not held on every tick of a drag', () => {
     handleMessage({
       type: 'initialize',
-      nodes,
+      nodes: cloneNodes(TWO_GROUPS),
       links: [
         { source: 0, target: 1 },
         { source: 1, target: 2 },
+        { source: 3, target: 4 },
       ],
-      options: {
-        collideRadius: SIM_COLLIDE_RADIUS,
-        simWidth: 1.6,
-        simHeight: 1,
-      },
+      options: SCRATCH_OPTIONS,
     });
     handleMessage({ type: 'start' });
+    const sim = capturedSim!;
+    const target = sim.nodes()[3]!;
+    // Drop a1 on top of b1, so everyone near b1 has to make room at once.
+    handleMessage({
+      type: 'update_node',
+      nodeId: 'a1',
+      node: { fx: target.x, fy: target.y },
+    });
 
-    const end = posted.find((m) => m.type === 'end')! as PostedMessage & {
-      frames: number[][];
-    };
-    expect(end.frames.length).toBeGreaterThan(1);
-    expect(end.frames.length).toBeLessThanOrEqual(61);
-    const asNodes = (frame: number[]) =>
-      end.nodes.map((_, i) => ({ x: frame[i * 2], y: frame[i * 2 + 1] }));
-    expect(minPairwiseDistance(asNodes(end.frames[0]!))).toBeGreaterThan(
-      (2 * 48 * 0.95) / HEIGHT,
-    );
-    expect(asNodes(end.frames.at(-1)!)).toEqual(
-      end.nodes.map(({ x, y }) => ({ x, y })),
-    );
+    sim.stop();
+    let ticks = 0;
+    for (let i = 0; i < 2000; i += 1) {
+      sim.tick();
+      sim.on('tick')!.call(sim);
+      ticks += 1;
+      const free = sim.nodes().filter((node) => node.fx == null);
+      expect(minPairwiseDistance(free)).toBeGreaterThanOrEqual(
+        2 * SIM_COLLIDE_RADIUS - 1e-9,
+      );
+      if (sim.alpha() < sim.alphaMin()) break;
+    }
+    expect(ticks).toBeGreaterThan(1);
+  });
+
+  it('moves people aside gradually as a held person is dragged quickly past them', () => {
+    handleMessage({
+      type: 'initialize',
+      nodes: [
+        { nodeId: 'held', x: 0.5, y: 0.5 },
+        { nodeId: 'passed', x: 0.89, y: 0.5 },
+      ],
+      options: SCRATCH_OPTIONS,
+    });
+    handleMessage({ type: 'start' });
+    const sim = capturedSim!;
+    const [start, passed] = sim.nodes() as [SimNode, SimNode];
+    const from = { x: start.x ?? 0, y: start.y ?? 0 };
+    const to = { x: (passed.x ?? 0) * 2 - from.x, y: (passed.y ?? 0) + 0.05 };
+
+    // Each move is longer than the minimum gap, as a quick pointer move is,
+    // and passes just off the other person's centre.
+    const MOVES = 4;
+    let largestStep = 0;
+    for (let move = 1; move <= MOVES; move += 1) {
+      handleMessage({
+        type: 'update_node',
+        nodeId: 'held',
+        node: {
+          fx: from.x + ((to.x - from.x) * move) / MOVES,
+          fy: from.y + ((to.y - from.y) * move) / MOVES,
+        },
+      });
+      sim.stop();
+      for (let tick = 0; tick < 15; tick += 1) {
+        const before = { x: passed.x ?? 0, y: passed.y ?? 0 };
+        sim.tick();
+        sim.on('tick')!.call(sim);
+        largestStep = Math.max(
+          largestStep,
+          Math.hypot((passed.x ?? 0) - before.x, (passed.y ?? 0) - before.y),
+        );
+      }
+    }
+
+    // Holding the gap against the held person throws the other person about a
+    // full collision radius in one tick.
+    expect(largestStep).toBeLessThan(SIM_COLLIDE_RADIUS / 2);
   });
 
   it('ends a held drag once, when the live layout settles', () => {
@@ -714,6 +754,79 @@ describe('autoLayout worker', () => {
     );
   });
 
+  describe('with two crossing ties between four placed people', () => {
+    const CROSSED = [
+      [0, 2],
+      [1, 3],
+    ] as const;
+    // Four people already placed on the corners of a square, tied across its
+    // diagonals. Starting the layout would pull them into two separate pairs,
+    // so each case changes the network without starting it first.
+    const setUp = ({ paused = false } = {}) => {
+      const corners = [
+        [-1, -1],
+        [1, -1],
+        [1, 1],
+        [-1, 1],
+      ];
+      handleMessage({
+        type: 'initialize',
+        nodes: corners.map(([dx, dy], i) => ({
+          nodeId: `n${i}`,
+          x: 0.89 + dx! * 0.15,
+          y: 0.5 + dy! * 0.15,
+        })),
+        links: CROSSED.map(([source, target]) => ({ source, target })),
+        options: SCRATCH_OPTIONS,
+        paused,
+      });
+    };
+
+    it('swaps people to remove the crossing when a tie is added', () => {
+      setUp();
+      const edges = [...CROSSED, [0, 1]] as const;
+      handleMessage({
+        type: 'update_links',
+        links: edges.map(([source, target]) => ({ source, target })),
+      });
+
+      expect(countCrossings(capturedSim!.nodes(), edges)).toBe(0);
+    });
+
+    it('swaps people to remove the crossing when ties added while paused are resumed', () => {
+      setUp({ paused: true });
+      const edges = [...CROSSED, [0, 1]] as const;
+      handleMessage({
+        type: 'update_links',
+        links: edges.map(([source, target]) => ({ source, target })),
+      });
+      handleMessage({ type: 'start' });
+
+      expect(countCrossings(capturedSim!.nodes(), edges)).toBe(0);
+    });
+
+    it('swaps others to remove the crossing when one is let go, leaving them where they were dropped', () => {
+      setUp();
+      const held = capturedSim!.nodes()[0]!;
+      const drop = { fx: (held.x ?? 0) - 0.02, fy: (held.y ?? 0) - 0.02 };
+      handleMessage({ type: 'update_node', nodeId: 'n0', node: drop });
+      handleMessage({
+        type: 'update_node',
+        nodeId: 'n0',
+        node: { fx: null, fy: null },
+      });
+
+      const nodes = capturedSim!.nodes();
+      expect(countCrossings(nodes, CROSSED)).toBe(0);
+      // Swapping them away would put someone else nearest the drop.
+      const distanceToDrop = (node: SimNode) =>
+        Math.hypot((node.x ?? 0) - drop.fx, (node.y ?? 0) - drop.fy);
+      expect(
+        nodes.toSorted((a, b) => distanceToDrop(a) - distanceToDrop(b))[0],
+      ).toBe(held);
+    });
+  });
+
   it('is deterministic: same seed and messages produce identical positions', () => {
     const runOnce = () => {
       capturedSim = null;
@@ -753,7 +866,7 @@ describe('autoLayout worker', () => {
     const link = capturedSim!.force('link') as ForceLink<SimNode, SimLink>;
     const liveLinks = link.links();
     expect(link.distance()(liveLinks[0]!, 0, liveLinks)).toBeCloseTo(
-      1.8 * SIM_COLLIDE_RADIUS,
+      1.6 * SIM_COLLIDE_RADIUS,
     );
     handleMessage({ type: 'start' });
     tickManually(300);
@@ -849,7 +962,7 @@ describe('autoLayout worker', () => {
     }
   });
 
-  it('only ever posts {type, nodes} payloads, plus playback frames on end, with no persistence-shaped fields', () => {
+  it('only ever posts {type, nodes} payloads, with no persistence-shaped fields', () => {
     handleMessage({ type: 'initialize', nodes: cloneNodes(TWO_GROUPS) });
     handleMessage({ type: 'start' });
     tickManually(20);
@@ -857,11 +970,7 @@ describe('autoLayout worker', () => {
 
     expect(posted.length).toBeGreaterThan(0);
     for (const message of posted) {
-      expect(Object.keys(message).toSorted()).toEqual(
-        message.type === 'end' && 'frames' in message
-          ? ['frames', 'nodes', 'type']
-          : ['nodes', 'type'],
-      );
+      expect(Object.keys(message).toSorted()).toEqual(['nodes', 'type']);
       expect(['tick', 'end']).toContain(message.type);
       expect(Array.isArray(message.nodes)).toBe(true);
       for (const node of message.nodes) {
