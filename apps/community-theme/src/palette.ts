@@ -26,7 +26,7 @@ const DISCOURSE_SLOTS = {
   secondary: 'var(--surface)',
   tertiary: 'var(--link)',
   quaternary: 'var(--accent)',
-  header_background: 'var(--background)',
+  header_background: 'var(--surface)',
   header_primary: 'var(--text)',
   highlight: 'var(--selected)',
   selected: 'var(--neutral)',

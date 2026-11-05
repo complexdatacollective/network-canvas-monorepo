@@ -9,6 +9,7 @@ import {
   toScriptMatchingTag,
 } from '@codaco/shared-consts';
 import {
+  compositeOver,
   contrastRatio,
   parseColor,
   type Scope,
@@ -114,7 +115,7 @@ describe('palettes', () => {
   // Text and links over what they sit on, at WCAG AA for normal text: the
   // content sheet, menus and dialogs (secondary), the header bar, the page
   // around the sheet (--background), where the sidebar's links sit, and the
-  // tint of hovered rows and the home page's tiles (--surface-2). The shared
+  // tint of hovered rows (--surface-2). The shared
   // contrast test (tooling/tailwind) does not check link pairs, and the
   // design system's dark link falls short on three of these, so the forum
   // lightens it (scopes.ts).
@@ -289,24 +290,53 @@ describe('palettes', () => {
   );
 
   // The home page has no sheet (landing.scss): its lead and section text sit
-  // on the page, and its tiles on --surface-2, in the darker muted step.
-  it.each(['--background', '--surface-2'])(
-    'keeps --primary-high legible on %s, where the home page sets text',
-    (background) => {
-      const declaration = /--primary-high: ([^;]+);/.exec(
-        text('scss/variables.scss'),
+  // on the page, in the darker muted step, and the page is tinted by three
+  // glows (layout.scss) at a strength set per palette. Measured where all
+  // three are at their strongest at once, which no spot on the page is, so
+  // the page is as far from the text as it can be.
+  it('keeps --primary-high legible on the home page, glows and all', () => {
+    const declaration = /--primary-high: ([^;]+);/.exec(
+      text('scss/variables.scss'),
+    );
+    if (!declaration?.[1]) throw new Error('No --primary-high');
+    const expression = declaration[1].replaceAll('var(--nc-', 'var(--');
+
+    const glows = [
+      ...text('scss/layout.scss').matchAll(
+        /oklch\(var\(--nc-([a-z-]+)\)\) calc\(([\d.]+)% \* var\(--nc-glow-strength\)\)/g,
+      ),
+    ];
+    expect(glows).toHaveLength(3);
+
+    const [dark = '', light = ''] = text('common/color_definitions.scss').split(
+      '} @else {',
+    );
+    const strength = (css: string) => {
+      const value = /--nc-glow-strength: ([\d.]+);/.exec(css)?.[1];
+      if (value === undefined) throw new Error('No --nc-glow-strength');
+      return Number(value);
+    };
+
+    for (const [scope, definitions] of [
+      [scopes.light, light],
+      [scopes.dark, dark],
+    ] as const) {
+      const page = glows.reduce(
+        (backdrop, [, colour, percent]) =>
+          compositeOver(
+            scope.color(`oklch(var(--${colour}))`),
+            (Number(percent) / 100) * strength(definitions),
+            backdrop,
+          ),
+        toDisplayColor(scope.token('--background')),
       );
-      if (!declaration?.[1]) throw new Error('No --primary-high');
-      const expression = declaration[1].replaceAll('var(--nc-', 'var(--');
-      for (const scope of Object.values(SCOPE_FOR)) {
-        const ratio = contrastRatio(
-          toDisplayColor(scope.color(expression)),
-          toDisplayColor(scope.token(background)),
-        );
-        expect(ratio, scope.name).toBeGreaterThanOrEqual(4.5);
-      }
-    },
-  );
+      const ratio = contrastRatio(
+        toDisplayColor(scope.color(expression)),
+        page,
+      );
+      expect(ratio, scope.name).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 
   // A field's edge is what shows it is there: WCAG's non-text contrast asks
   // 3:1 against what surrounds it (the page) and what fills it (the surface).

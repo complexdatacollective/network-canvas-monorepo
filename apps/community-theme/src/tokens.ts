@@ -59,6 +59,16 @@ function typeDeclarations() {
   );
 }
 
+/**
+ * The forum's own values that differ between the colour modes and are not
+ * colours: how strongly the home page's background glows (layout.scss). The
+ * same tint shows far more against the dark page, so there it is a little
+ * under half as strong.
+ */
+function forumDeclarations(mode: 'light' | 'dark') {
+  return [`  --nc-glow-strength: ${mode === 'dark' ? 0.45 : 1};`];
+}
+
 const indent = (lines: string[]) => lines.map((line) => `  ${line}`);
 
 /**
@@ -76,10 +86,12 @@ export function colorDefinitionsScss() {
     ...indent(tokenDeclarations(scopes.dark)),
     ...indent(elevationDeclarations()),
     ...indent(typeDeclarations()),
+    ...indent(forumDeclarations('dark')),
     '  } @else {',
     ...indent(tokenDeclarations(scopes.light)),
     ...indent(elevationDeclarations()),
     ...indent(typeDeclarations()),
+    ...indent(forumDeclarations('light')),
     '  }',
     '}',
     '',

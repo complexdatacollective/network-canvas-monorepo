@@ -5,12 +5,16 @@
 // quieter tiles, then recent activity.
 //
 // The page has no content sheet (layout.scss): its cards sit on the tinted
-// page in a wider column, as on the website. The layout answers to the width
-// of that column, not the window, so a sidebar beside it narrows it too.
+// page in a column that grows with the window, as on the website. The layout
+// answers to the width of that column, not the window, so a sidebar beside
+// it narrows it too. The space between its sections grows with the column
+// (`cqi`, a hundredth of its width), so a wide page opens out rather than
+// leaving the same blocks further apart at the edges.
 
 .nc-landing {
   container: nc-landing / inline-size;
-  padding-block: var(--space-4) calc(var(--nc-spacing-base) * 16);
+  padding-block: clamp(var(--space-6), 3vw, var(--space-12))
+    calc(var(--nc-spacing-base) * 24);
 
   h1,
   h2,
@@ -28,19 +32,19 @@
   display: grid;
   grid-template-columns: minmax(0, 4.5fr) minmax(0, 7.5fr);
   align-items: start;
-  gap: calc(var(--nc-spacing-base) * 14);
+  gap: clamp(calc(var(--nc-spacing-base) * 14), 6cqi, 7.5rem);
 
   @container nc-landing (width < 66rem) {
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-8);
+    gap: var(--space-12);
   }
 }
 
 .nc-landing__hero {
   .nc-illustration--hero {
     width: 100%;
-    max-width: 21rem;
-    margin-top: var(--space-8);
+    max-width: 26rem;
+    margin-top: var(--space-12);
 
     @container nc-landing (width < 66rem) {
       display: none;
@@ -55,7 +59,7 @@
 // (text-xl, bold); and panel and tile titles an h4 (text-lg, bold). The scale
 // is fluid, so they need no phone sizes.
 .nc-landing__title {
-  margin: var(--space-5) 0 0;
+  margin: var(--space-8) 0 0;
   font-size: var(--nc-text-3xl);
   font-weight: 900;
   line-height: var(--nc-text-3xl--line-height);
@@ -71,7 +75,7 @@
 // darker of the muted steps: the lighter (--primary-medium) is set for the
 // white surface and falls under 4.5:1 on the tinted page.
 .nc-landing__lead {
-  margin: var(--space-4) 0 0;
+  margin: var(--space-6) 0 0;
   max-width: 34em;
   font-size: var(--nc-text-lg);
   line-height: var(--nc-text-lg--line-height);
@@ -79,14 +83,16 @@
   text-wrap: pretty;
 }
 
+// The newest announcement, in full: a title too long for one line wraps,
+// and the pill becomes a rounded box around it.
 .nc-landing__news {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   max-width: 100%;
   min-height: var(--space-9);
-  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
-  border-radius: 999px;
+  padding: var(--space-1) var(--space-4) var(--space-1) var(--space-1);
+  border-radius: calc(var(--space-9) / 2);
   background: color-mix(in oklab, var(--nc-accent) 12%, var(--nc-surface));
   color: var(--nc-text);
   font-size: var(--nc-text-sm);
@@ -117,9 +123,10 @@
 }
 
 .nc-landing__news-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  padding-block: var(--space-1);
+  line-height: 1.4;
+  text-wrap: pretty;
 }
 
 // Discourse's welcome-banner search, borrowed for its results panel and
@@ -128,7 +135,7 @@
 // (WCAG's non-text contrast), where the input border's outline colour is
 // barely visible.
 .nc-landing__search.welcome-banner__wrap {
-  margin-top: var(--space-6);
+  margin-top: var(--space-10);
   padding: 0;
 
   .search-menu {
@@ -151,7 +158,7 @@
 }
 
 .nc-landing__section-lead {
-  margin: var(--space-1) 0 0;
+  margin: var(--space-3) 0 0;
   font-size: var(--nc-text-lg);
   line-height: var(--nc-text-lg--line-height);
   color: var(--primary-high);
@@ -232,13 +239,14 @@
 .nc-landing__route-list {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) minmax(15.5rem, max-content);
-  gap: var(--space-4) var(--space-5);
-  margin: var(--space-5) 0 0;
+  gap: var(--space-6) var(--space-8);
+  margin: var(--space-8) 0 0;
   padding: 0;
   list-style: none;
 
   @container nc-routes (width < 44rem) {
     grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-5) var(--space-5);
   }
 }
 
@@ -247,15 +255,15 @@
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
   align-items: center;
-  row-gap: var(--space-4);
-  padding: var(--space-5) var(--space-6);
+  row-gap: var(--space-5);
+  padding: var(--space-7) var(--space-8);
 
   .nc-landing__icon {
     align-self: start;
   }
 
   @container nc-routes (width < 44rem) {
-    padding: var(--space-5);
+    padding: var(--space-6);
 
     .nc-landing__icon {
       width: 3.5rem;
@@ -289,23 +297,35 @@
 }
 
 .nc-route__text {
-  margin: var(--space-1) 0 0;
+  margin: var(--space-2) 0 0;
   font-size: var(--nc-text-sm);
   color: var(--primary-high);
   text-wrap: pretty;
 }
 
+// The newest topic stands on its own under its label, like the title above
+// it, so it is underlined only on hover and focus.
 .nc-route__latest {
-  margin: var(--space-3) 0 0;
+  margin: var(--space-5) 0 0;
   font-size: var(--nc-text-sm);
   line-height: 1.45;
 
-  a {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
+  .nc-landing__eyebrow {
+    margin-bottom: var(--space-1);
+  }
+}
+
+.nc-route__topic {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  color: var(--nc-text);
+
+  &:hover,
+  &:focus-visible {
     color: var(--nc-text);
+    text-decoration: underline;
   }
 }
 
@@ -313,12 +333,12 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-1);
+  gap: var(--space-2);
   min-width: 0;
 
   .btn {
     align-self: stretch;
-    margin-bottom: var(--space-2);
+    margin-bottom: var(--space-3);
     white-space: nowrap;
   }
 
@@ -352,50 +372,74 @@
   font-weight: 700;
 }
 
-// The announcements and the documentation: flat tiles on the tint of the
-// page under the cards that take posts, one to a row, each laid out as a card
-// is: its drawing, its title and text, and its button. Like the cards, the
-// tiles share their list's columns, so the two buttons line up at the width
-// of the longer label; on a narrow page the button drops below the text.
-// Their text is the darker muted step.
+// The announcements and the documentation: two tiles side by side under the
+// cards that take posts. They are drawn on the content surface, as the cards
+// are, since that is what the default button is drawn for, but flat, so they
+// read a step quieter. Each has its drawing beside its title and text, and
+// its button at the foot, so the two buttons line up however long the text
+// above them runs. Where each tile is wide enough, the button moves beside
+// the text instead; where the column is too narrow for two tiles, they
+// stack, and the button takes the tile's whole width so its label fits.
 .nc-landing__tiles {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) max-content;
-  gap: var(--space-4) var(--space-5);
-  margin-top: calc(var(--nc-spacing-base) * 14);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8);
+  margin-top: clamp(calc(var(--nc-spacing-base) * 16), 7cqi, 8rem);
 
-  @container nc-landing (width < 44rem) {
-    grid-template-columns: auto minmax(0, 1fr);
-    margin-top: var(--space-10);
+  @container nc-landing (width < 50rem) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+    margin-top: var(--space-12);
   }
 }
 
 .nc-landing__tile {
   display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-  align-items: center;
-  row-gap: var(--space-4);
-  padding: var(--space-6) var(--space-7);
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  border: 1px solid color-mix(in oklab, var(--nc-text) 8%, transparent);
   border-radius: var(--nc-radius-base);
-  background: var(--nc-surface-2);
+  background: var(--nc-surface);
+  color: var(--nc-surface-contrast);
 
   .nc-landing__icon {
+    grid-row: 1 / -1;
+    align-self: start;
     width: 3.5rem;
     height: 3.5rem;
   }
 
   > .btn {
-    white-space: nowrap;
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  @container nc-landing (width >= 94rem) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    align-items: center;
+
+    .nc-landing__icon {
+      grid-row: auto;
+    }
+
+    > .btn {
+      grid-column: 3;
+    }
   }
 
   @container nc-landing (width < 44rem) {
-    padding: var(--space-5);
+    gap: var(--space-5);
+    padding: var(--space-6);
+
+    .nc-landing__icon {
+      grid-row: auto;
+    }
 
     > .btn {
-      grid-column: 2;
-      justify-self: start;
-      white-space: normal;
+      grid-column: 1 / -1;
     }
   }
 }
@@ -406,7 +450,7 @@
   color: var(--nc-text);
 
   p {
-    margin: var(--space-1) 0 0;
+    margin: var(--space-2) 0 0;
     font-size: var(--nc-text-sm);
     color: var(--primary-high);
     text-wrap: pretty;
@@ -422,14 +466,14 @@
 }
 
 .nc-landing__activity {
-  margin-top: calc(var(--nc-spacing-base) * 24);
+  margin-top: clamp(calc(var(--nc-spacing-base) * 24), 9cqi, 10rem);
 
   > .nc-landing__heading {
     text-align: center;
   }
 
   @container nc-landing (width < 44rem) {
-    margin-top: var(--space-12);
+    margin-top: calc(var(--nc-spacing-base) * 16);
   }
 }
 
@@ -437,31 +481,32 @@
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   align-items: start;
-  gap: var(--space-6);
-  margin-top: var(--space-8);
+  gap: var(--space-8);
+  margin-top: var(--space-10);
 
   @container nc-landing (width < 66rem) {
     grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
   }
 }
 
 .nc-landing__panel {
   margin: 0;
-  padding: var(--space-8);
+  padding: var(--space-10);
 
   @container nc-landing (width < 44rem) {
     padding: var(--space-6);
   }
 
   figcaption {
-    margin-top: var(--space-2);
+    margin-top: var(--space-3);
     font-size: var(--nc-text-sm);
     color: var(--primary-medium);
   }
 }
 
 .nc-landing__subheading {
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-4);
   font-size: var(--nc-text-lg);
   font-weight: 700;
   line-height: var(--nc-text-lg--line-height);
@@ -478,7 +523,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-4);
-  padding-block: var(--space-4);
+  padding-block: var(--space-5);
   border-bottom: 1px solid var(--primary-low);
 
   .avatar {
@@ -524,12 +569,16 @@
 }
 
 .nc-landing__more {
-  margin-top: var(--space-4);
+  margin-top: var(--space-6);
 }
 
 .nc-landing__aside {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-8);
+
+  @container nc-landing (width < 66rem) {
+    gap: var(--space-6);
+  }
 }
 
 .nc-activity-network {

@@ -61,18 +61,55 @@ body:is(
 }
 
 // The home page (landing.scss) has no sheet: its cards sit on the tinted
-// page, as on the website, in a column as wide as the website's. The bar
-// above shares the column and its gutters (Discourse gives the header a
-// padding variable of its own), so its title lines up with the page's edge.
+// page, as on the website. Its column grows with the window, gutters
+// included, up to 110rem of content, so a large screen gets a wider page
+// rather than wider margins. The bar above shares the column and its gutters
+// (Discourse gives the header a padding variable of its own), so its title
+// lines up with the page's edge.
+//
+// Behind it, three soft glows of the illustrations' colours tint the page:
+// blue at the top right, coral at the left and mustard at the right. They
+// are fainter in the dark palette (--nc-glow-strength), where the same tint
+// shows far more against the dark page. The shared header paints the plain
+// page colour over whatever is behind it, so the glows are centred low enough
+// to show below the two headers. The sidebar, when it shows, lets
+// them through.
 body.nc-landing-page {
-  --d-max-width: 83rem;
-  --d-wrap-padding-x: var(--space-4);
+  --d-wrap-padding-x: clamp(var(--space-4), 5vw, var(--space-12));
+  --d-max-width: calc(110rem + 2 * var(--d-wrap-padding-x));
   --d-header-padding-x: var(--d-wrap-padding-x);
+  --d-sidebar-background: transparent;
   --main-outlet-padding-x: 0;
 
-  @include viewport.from(md) {
-    --d-wrap-padding-x: var(--space-6);
-  }
+  background:
+    radial-gradient(
+      60rem 28rem at 88% 8rem,
+      color-mix(
+        in oklab,
+        oklch(var(--nc-sea-serpent)) calc(13% * var(--nc-glow-strength)),
+        transparent
+      ),
+      transparent 70%
+    ),
+    radial-gradient(
+      48rem 26rem at 4% 20rem,
+      color-mix(
+        in oklab,
+        oklch(var(--nc-neon-coral)) calc(7% * var(--nc-glow-strength)),
+        transparent
+      ),
+      transparent 70%
+    ),
+    radial-gradient(
+      40rem 24rem at 96% 38rem,
+      color-mix(
+        in oklab,
+        oklch(var(--nc-mustard)) calc(10% * var(--nc-glow-strength)),
+        transparent
+      ),
+      transparent 70%
+    ),
+    var(--nc-background);
 
   #main-outlet {
     border-radius: 0;

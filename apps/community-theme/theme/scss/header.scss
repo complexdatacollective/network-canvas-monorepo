@@ -2,13 +2,15 @@
 // becomes the forum's bar: the "Community" title, search, sign-in and the
 // user menu. The shared header scrolls away; Discourse's bar stays pinned.
 //
-// The bar is a slim band a step darker than the page and ruled off from the
-// header above, with a smaller title and quieter controls, so it reads as
-// the forum's toolbar under the site's menu rather than a second menu of the
-// same weight.
+// The bar is a slim band of the content surface, ruled off from the header
+// above, with a smaller title and quieter controls, so it reads as the
+// forum's toolbar under the site's menu rather than a second menu of the
+// same weight. It is the surface the default button is drawn for, as on the
+// cards, so Sign up sits on it as it does there; on a tinted band the button
+// was a paler patch.
 
 :root {
-  --nc-forum-bar: color-mix(in oklab, var(--nc-text) 4%, var(--nc-background));
+  --nc-forum-bar: var(--nc-surface);
 }
 
 .d-header {

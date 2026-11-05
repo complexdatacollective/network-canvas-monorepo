@@ -288,7 +288,7 @@ export default class LandingPage extends Component {
                       <span class="nc-landing__eyebrow">
                         {{i18n (themePrefix "landing.routes.latestTopic")}}
                       </span>
-                      <a href={{route.latestUrl}}>
+                      <a class="nc-route__topic" href={{route.latestUrl}}>
                         {{fancyTitle route.latest}}
                       </a>
                     </p>
