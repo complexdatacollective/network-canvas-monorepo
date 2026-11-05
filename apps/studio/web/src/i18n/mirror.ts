@@ -1,3 +1,5 @@
+import { webStorageLocalePreference } from '@codaco/shared-consts';
+
 /**
  * The device mirror of the researcher's UI-language preference (2026-09-04
  * localization design §5.1): what lets a returning researcher's own device
@@ -13,29 +15,21 @@
  * Values are not validated here — `resolveAppLocale` ignores a stored tag
  * that matches no declared locale.
  */
-const MIRROR_KEY = 'studio.locale';
+const mirror = webStorageLocalePreference(
+  () => window.localStorage,
+  'studio.locale',
+);
 
 export function readLocaleMirror(): string | null {
-  try {
-    return window.localStorage.getItem(MIRROR_KEY);
-  } catch {
-    return null;
-  }
+  return mirror.read();
 }
 
+// A device that cannot persist the mirror still honours the choice for this
+// page's lifetime; the server preference restores it next visit.
 export function writeLocaleMirror(locale: string): void {
-  try {
-    window.localStorage.setItem(MIRROR_KEY, locale);
-  } catch {
-    // A device that cannot persist the mirror still honours the choice for
-    // this page's lifetime; the server preference restores it next visit.
-  }
+  mirror.write(locale);
 }
 
 export function clearLocaleMirror(): void {
-  try {
-    window.localStorage.removeItem(MIRROR_KEY);
-  } catch {
-    // See writeLocaleMirror.
-  }
+  mirror.write(null);
 }

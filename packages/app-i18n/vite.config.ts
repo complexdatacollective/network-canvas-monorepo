@@ -32,7 +32,6 @@ export default defineConfig({
         'react-intl/server',
         '@formatjs/cli-lib',
         '@formatjs/icu-messageformat-parser',
-        '@formatjs/intl-localematcher',
         '@formatjs/unplugin/vite',
         '@formatjs/unplugin/transform',
         'vite',

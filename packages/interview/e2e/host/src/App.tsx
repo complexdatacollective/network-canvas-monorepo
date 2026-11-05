@@ -20,9 +20,7 @@ import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { mockFinish, mockSync } from './mockCallbacks';
 import {
   createInterview as createInterviewHook,
-  getAllowStageNavigation,
-  getMountGeneration,
-  getRequestedLocales,
+  getHostSnapshot,
   getTestState,
   installProtocol as installProtocolHook,
   installTestHooks,
@@ -64,21 +62,11 @@ const mockAssetReq: AssetRequestHandler = async (assetId: string) => {
 
 installTestHooks();
 
-function useTestState() {
-  return useSyncExternalStore(
-    subscribe,
-    () =>
-      // Include allowStageNavigation so a mid-test setAllowStageNavigation()
-      // toggle changes the snapshot and re-renders App (which re-reads the flag
-      // and passes it to Shell). Without it useSyncExternalStore would bail out.
-      // The mount generation likewise re-renders App for remountInterview().
-      `${Array.from(getTestState().interviews.entries())
-        .map(([id]) => id)
-        .join(
-          ',',
-        )}|${getAllowStageNavigation()}|${JSON.stringify(getRequestedLocales())}|${getMountGeneration()}`,
-    () => '',
-  );
+// Everything App renders is read from this snapshot, never from the test
+// hooks' live state, so the React Compiler (which compiles this host, as
+// Fresco compiles the interview) cannot keep a value read before it changed.
+function useHostSnapshot() {
+  return useSyncExternalStore(subscribe, getHostSnapshot, getHostSnapshot);
 }
 
 function getStepFromUrl(): number | undefined {
@@ -101,7 +89,7 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState<number | undefined>(() =>
     getInterviewIdFromUrl() !== null ? getStepFromUrl() : undefined,
   );
-  useTestState();
+  const host = useHostSnapshot();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -128,10 +116,8 @@ export default function App() {
     window.history.replaceState(null, '', `?${params.toString()}`);
   }, []);
 
-  const entry = activeId ? getTestState().interviews.get(activeId) : undefined;
-  const protocol = entry
-    ? getTestState().protocols.get(entry.protocolId)
-    : undefined;
+  const entry = activeId ? host.interviews.get(activeId) : undefined;
+  const protocol = entry ? host.protocols.get(entry.protocolId) : undefined;
 
   if (!activeId) {
     return <div>No interview selected. Use ?interviewId=... in the URL.</div>;
@@ -153,11 +139,11 @@ export default function App() {
         session held at that moment.
       */}
       <MountedInterview
-        key={`${activeId}:${getMountGeneration()}`}
+        key={`${activeId}:${host.mountGeneration}`}
         session={entry.session}
         protocol={protocol}
-        requestedLocales={getRequestedLocales()}
-        allowStageNavigation={getAllowStageNavigation()}
+        requestedLocales={host.requestedLocales}
+        allowStageNavigation={host.allowStageNavigation}
         currentStep={currentStep}
         onStepChange={onStepChange}
       />

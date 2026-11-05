@@ -17,13 +17,13 @@ import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   dynamicMessageParts,
   type DynamicValueState,
-  isSuppliedEnglishMessage,
   type LocaleMetadata,
   type LocaleTag,
   type LocalizationDeclaration,
   type LocalizedString,
   type ResolvedLocalizedString,
   resolveLocalizedString,
+  resolveProtocolLocale,
   selectProtocolLocale,
   sortByLanguageName,
 } from '@codaco/protocol-validation';
@@ -35,13 +35,35 @@ import {
   type DynamicValueSources,
   resolveDynamicText,
 } from '../dynamicValues/resolveDynamicText';
-import { useSettledLocalePreference } from '../i18n/InterviewI18nProvider';
 import { contentFormatFor, resolveContentLocale } from './contentFormat';
 import {
   createLocalizedMessageFormatter,
   type LocalizedMessageFormatter,
   type LocalizedMessageValues,
 } from './messageFormatter';
+
+/**
+ * `resolveLocalizedString`, reading text with no translation in any of the
+ * protocol's languages as empty rather than as an error. Only a protocol still
+ * being written holds such text: wording Network Canvas supplies, in a
+ * language it has none in, before the researcher writes it, which Architect
+ * previews. A protocol like that cannot be downloaded, so no participant
+ * meets it.
+ */
+const resolveText = (
+  value: LocalizedString,
+  localization: LocalizationDeclaration,
+  resolutionOrder: readonly [LocaleTag, ...string[]],
+): ResolvedLocalizedString =>
+  localization.locales.some((locale) => Object.hasOwn(value, locale))
+    ? resolveLocalizedString(value, localization, resolutionOrder)
+    : {
+        text: '',
+        locale: resolutionOrder[0],
+        selectedLocale: resolutionOrder[0],
+        usedFallback: true,
+        matchedBy: 'any',
+      };
 
 type ProtocolLocalizationState = Readonly<{
   locale: LocaleTag;
@@ -84,9 +106,13 @@ function assertOptionsMatchDeclaration(
 }
 
 /**
- * Decides which protocol language the interview shows: the participant's
- * stated preference when there is one, otherwise the first of the browser's
- * languages the protocol declares, otherwise the protocol's default. Without a
+ * Decides which language the interview shows, for all of its text, from the
+ * languages the protocol declares: the participant's stated preference when
+ * there is one (made on a Language Chooser stage, or stated by the host),
+ * otherwise the first of the browser's languages the protocol declares,
+ * otherwise the protocol's default. This is the interview's only language
+ * negotiation: the protocol's interface text stands in for the interview's
+ * built-in messages (see `InterfaceTextOverlay`). Without a
  * stated preference the choice is made afresh on every load. A text with no
  * translation in that language falls back to the browser's other languages,
  * then to the protocol's default (see `resolveLocalizedString`).
@@ -111,29 +137,18 @@ export function ProtocolLocalizationProvider({
   onLocalePreferenceChange: (locale: LocaleTag) => void;
   children: ReactNode;
 }) {
-  const intl = useAppIntl();
-  const options = useMemo(() => {
-    assertOptionsMatchDeclaration(localization, localeOptions);
-    return sortByLanguageName(
-      localeOptions,
-      (option) => option.label,
-      intl.locale,
-    );
-  }, [localization, localeOptions, intl.locale]);
-
-  // A stated preference is passed as the only request, so a preference the
-  // protocol no longer matches yields its default rather than a browser
-  // language. It applies once the built-in text has changed with it, so the
-  // two change language together.
-  const settledPreference = useSettledLocalePreference(localePreference);
+  // The interview's one language choice: the participant's stated preference
+  // first, then the browser's languages.
   const locale = useMemo(
     () =>
-      selectProtocolLocale(
-        settledPreference === null ? requestedLocales : [settledPreference],
-        localization,
-      ),
-    [settledPreference, requestedLocales, localization],
+      resolveProtocolLocale(localePreference, requestedLocales, localization),
+    [localePreference, requestedLocales, localization],
   );
+
+  const options = useMemo(() => {
+    assertOptionsMatchDeclaration(localization, localeOptions);
+    return sortByLanguageName(localeOptions, (option) => option.label, locale);
+  }, [localization, localeOptions, locale]);
 
   // A stated preference only chooses the interview language: the browser's
   // languages still come next for text that has no translation in it.
@@ -187,10 +202,10 @@ export function ProtocolLocalizationProvider({
 }
 
 /**
- * The protocol language the interview shows, its presentation metadata, every
+ * The language the interview shows, its presentation metadata, every
  * declared locale's metadata in alphabetical order of its name, collated for
- * the interface language, and a setter that records the participant's stated
- * preference.
+ * the interview's language, and a setter that records the participant's
+ * stated preference.
  */
 export function useProtocolLocale(): Readonly<{
   locale: LocaleTag;
@@ -207,14 +222,22 @@ export function useProtocolLocale(): Readonly<{
 }
 
 /**
+ * The participant's languages, most preferred first: the interview language,
+ * then the browser's. Text Network Canvas does not take from the protocol,
+ * such as a map's place names, is matched against them.
+ */
+export function useProtocolLanguageOrder(): readonly [LocaleTag, ...string[]] {
+  return useProtocolLocalizationState().resolutionOrder;
+}
+
+/**
  * The language the protocol's own values are written for, to format and
  * alphabetise them in: the protocol language the interview shows. Participant
  * and protocol data sit among the protocol's text, so a participant reading
- * Hungarian gets Hungarian number formats and Hungarian alphabetical order even
- * when the interface falls back to English for want of a Hungarian catalog.
+ * Hungarian gets Hungarian number formats and Hungarian alphabetical order.
  * The form fields inside the interview follow it too (see
- * `ContentLocaleProvider`); sentences the interface itself speaks stay in the
- * interface language.
+ * `ContentLocaleProvider`); only the built-in text screen readers read stays
+ * in English.
  *
  * Outside a `ProtocolLocalizationProvider` (a component shown on its own) it is
  * the interface language.
@@ -223,6 +246,22 @@ export function useContentLocale(): string {
   const interfaceLocale = useAppIntl().locale;
   const protocolLocale = useContext(ProtocolLocalizationContext)?.locale;
   return resolveContentLocale(protocolLocale, interfaceLocale);
+}
+
+/**
+ * The language the interview shows, best fitted to the languages a host
+ * translates its own text into, for host text shown inside the Shell: a
+ * protocol in es-MX gets a host's es. `fallback` when none fits.
+ */
+export function useContentLocaleIn<const T extends string>(
+  supported: readonly T[],
+  fallback: T,
+): T {
+  const fitted = selectProtocolLocale([useContentLocale()], {
+    locales: supported,
+    defaultLocale: fallback,
+  });
+  return supported.find((locale) => locale === fitted) ?? fallback;
 }
 
 /**
@@ -268,20 +307,12 @@ export function useResolveLocalizedStringIn(): (
   const intl = useAppIntl();
   return useCallback(
     (value: LocalizedString, sources: DynamicValueSources | null) => {
-      const resolved = resolveLocalizedString(
-        value,
-        localization,
-        resolutionOrder,
-      );
+      const resolved = resolveText(value, localization, resolutionOrder);
       if (sources !== null) {
         const formatters: DynamicValueFormatters = {
           format: contentFormatFor(locale),
           resolveLabel: (label) => {
-            const option = resolveLocalizedString(
-              label,
-              localization,
-              resolutionOrder,
-            );
+            const option = resolveText(label, localization, resolutionOrder);
             // An option's label is markdown; a value is only ever text.
             return getMarkdownLabelText(format(option.locale, option.text));
           },
@@ -342,11 +373,7 @@ export function useResolveLocalizedMessage(): (
     useProtocolLocalizationState();
   return useCallback(
     (value: LocalizedString, values: LocalizedMessageValues) => {
-      const resolved = resolveLocalizedString(
-        value,
-        localization,
-        resolutionOrder,
-      );
+      const resolved = resolveText(value, localization, resolutionOrder);
       return {
         ...resolved,
         text: format(resolved.locale, resolved.text, values),
@@ -366,20 +393,16 @@ export type LocalizedMessagePartValues = Readonly<
 >;
 
 /**
- * A message held in `heldIn`, with each value it shows kept apart from
+ * A message held in `locale`, with each value it shows kept apart from
  * its words, so that it can be marked out as a value the interview filled
  * in. A select or plural is decided by the value it is on; a number a plural
  * shows is written as the language writes numbers, among the words.
  */
 export const localizedMessageParts = (
   message: string,
-  heldIn: LocaleTag,
+  locale: LocaleTag,
   values: LocalizedMessagePartValues,
 ): readonly DynamicTextPart[] => {
-  // Network Canvas's English wording, held under a language it supplies no
-  // wording in, still chooses its plural and joins its lists by English rules
-  // (as `createLocalizedMessageFormatter` does).
-  const locale = isSuppliedEnglishMessage(message) ? 'en' : heldIn;
   const stateOf = (name: string): DynamicValueState => {
     const shown = values[name];
     if (shown === undefined) return { missing: true };
@@ -423,7 +446,7 @@ export function useResolveLocalizedMessageParts(): (
   const { localization, resolutionOrder } = useProtocolLocalizationState();
   return useCallback(
     (value: LocalizedString, values: LocalizedMessagePartValues) => {
-      const { text, locale } = resolveLocalizedString(
+      const { text, locale } = resolveText(
         value,
         localization,
         resolutionOrder,

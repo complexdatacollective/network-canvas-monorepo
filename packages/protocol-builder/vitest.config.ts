@@ -48,7 +48,7 @@ const MAPBOX_ALIAS = {
  * panel nobody reads in CI.
  */
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react({ compiler: true })],
   resolve: { alias: [MAPBOX_ALIAS] },
   test: {
     globals: true,

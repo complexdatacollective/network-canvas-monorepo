@@ -158,15 +158,41 @@ describe('selectProtocolLocale', () => {
     expect(selectProtocolLocale([], french)).toBe('fr');
   });
 
-  it('lets an earlier regional preference beat a later exact match', () => {
-    expect(selectProtocolLocale(['es-MX', 'en'], bilingual)).toBe('es');
-  });
+  // Browsers' language lists, as sent: an earlier regional fit beats a later
+  // exact match, and a later exact match beats an earlier fit in another
+  // language (ICU's default demotion of one region difference per place).
+  it.each([
+    { requested: ['es-MX', 'en'], locales: ['en', 'es'], expected: 'es' },
+    { requested: ['es-MX', 'en'], locales: ['es', 'en'], expected: 'es' },
+    { requested: ['en-GB', 'sv'], locales: ['en', 'sv'], expected: 'en' },
+    { requested: ['pt-PT', 'en'], locales: ['en', 'pt-BR'], expected: 'pt-BR' },
+    {
+      requested: ['zh-HK', 'zh'],
+      locales: ['zh-Hans', 'zh-Hant'],
+      expected: 'zh-Hant',
+    },
+    { requested: ['af', 'en'], locales: ['en', 'nl'], expected: 'en' },
+    { requested: ['ca', 'en'], locales: ['en', 'es'], expected: 'en' },
+    { requested: ['da', 'en'], locales: ['en', 'nb'], expected: 'en' },
+  ])(
+    'selects $expected for the browser list $requested against $locales',
+    ({ requested, locales, expected }) => {
+      expect(
+        selectProtocolLocale(requested, {
+          defaultLocale: locales[0] ?? 'en',
+          locales,
+        }),
+      ).toBe(expected);
+    },
+  );
 
   it.each([
     ['zh-Hant-TW', 'zh-Hant'],
     ['zh-TW', 'zh-Hant'],
     ['zh-HK', 'zh-Hant'],
+    ['zh-MO', 'zh-Hant'],
     ['zh-CN', 'zh-Hans'],
+    ['zh-SG', 'zh-Hans'],
     ['zh', 'zh-Hans'],
   ])('matches Chinese %s by script to %s', (requested, expected) => {
     const chinese = {
@@ -193,12 +219,12 @@ describe('selectProtocolLocale', () => {
     expect(selectProtocolLocale(['zh-TW'], taiwan)).toBe('zh-TW');
   });
 
-  it('fails closed to the default when the matcher answers with an undeclared tag', () => {
+  it('matches a deprecated alias to the declared tag', () => {
     expect(
       selectProtocolLocale(['he'], {
         defaultLocale: 'en',
         locales: ['en', 'iw'],
       }),
-    ).toBe('en');
+    ).toBe('iw');
   });
 });

@@ -12,6 +12,7 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
+import { useStageSubjectName } from '../hooks/useStageSubjectName';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import DrawerNode from '../interfaces/Sociogram/DrawerNode';
 
@@ -75,6 +76,7 @@ export default function NodeDrawer({
   selectionKey,
 }: NodeDrawerProps) {
   const intl = useAppIntl();
+  const subject = useStageSubjectName();
   const unplacedId = useId();
   const toggleLabelId = useId();
   const [internalExpanded, setInternalExpanded] = useState(nodes.length > 0);
@@ -306,7 +308,10 @@ export default function NodeDrawer({
                 {/* Only loop while the drawer is open to be seen. */}
                 {isExpandedEffective && <NodeDropAnimation />}
                 <span className="sr-only">
-                  <AppMessage message={messages.dropToRemove} />
+                  <AppMessage
+                    message={messages.dropToRemove}
+                    values={{ subject }}
+                  />
                 </span>
               </div>
             ) : (

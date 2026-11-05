@@ -7,7 +7,7 @@ import type {
   SiteNavigationLinkRenderProps,
   SiteNavigationLocale,
 } from '@codaco/fresco-ui/navigation/SiteNavigation';
-import { type Locale, toLocale } from '~/app/types';
+import { type Locale, toLocale } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
 import { resolveNetworkCanvasUrl } from '~/lib/siteUrls';
 import { Link } from '~/navigation';

@@ -101,7 +101,6 @@ export function LocalizedInputField({
         hideUntranslatedNote={hideUntranslatedNote}
         dynamicValues={dynamicValues}
         fieldPath={fieldPath}
-        compact
       />
     );
   }
@@ -171,7 +170,6 @@ export function LocalizedRichTextField({
         fieldPath={fieldPath}
         markdown
         singleLine={props.singleLine}
-        compact={props.compact}
       />
     );
   }

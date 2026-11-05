@@ -8,6 +8,7 @@ import {
   type EdgeDefinition,
   EgoDefinitionSchema,
   type EgoDefinition,
+  type InterfaceText,
   NodeDefinitionSchema,
   type NodeDefinition,
   type Stage,
@@ -130,6 +131,12 @@ export type ProtocolBuilderProtocolContext = Readonly<{
    * section has been read, or while its declaration is not valid.
    */
   localization?: ProtocolLocalization;
+  /**
+   * The words the interview itself shows, in the protocol's languages (see
+   * `interfaceTextFor`). Absent until the settings section has been read, or
+   * while it is not valid.
+   */
+  interfaceText?: InterfaceText;
   issues: readonly ProtocolContextIssue[];
 }>;
 
@@ -212,6 +219,7 @@ export function protocolContextFromSections(
   const entityNameOwners = new Map<string, string>();
   let ego: EgoDefinition | undefined;
   let localization: ProtocolLocalization | undefined;
+  let interfaceText: InterfaceText | undefined;
   let stageOrder: string[] | null = null;
 
   const recordVariableIds = (
@@ -359,6 +367,19 @@ export function protocolContextFromSections(
             })),
           );
         }
+        const text = CurrentProtocolSchema.shape.interfaceText.safeParse(
+          document.interfaceText,
+        );
+        if (text.success) {
+          if (text.data !== undefined) interfaceText = text.data;
+        } else {
+          issues.push(
+            ...sectionIssues(id, text.error.issues).map((issue) => ({
+              ...issue,
+              path: ['interfaceText', ...issue.path],
+            })),
+          );
+        }
         break;
       }
     }
@@ -413,6 +434,7 @@ export function protocolContextFromSections(
     assets: Object.freeze(Object.fromEntries(assets)),
     orderedStages: Object.freeze(orderedStages),
     ...(localization === undefined ? {} : { localization }),
+    ...(interfaceText === undefined ? {} : { interfaceText }),
     issues: Object.freeze(issues),
   });
 }

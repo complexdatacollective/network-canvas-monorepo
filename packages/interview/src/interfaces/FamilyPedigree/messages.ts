@@ -87,6 +87,56 @@ export const messages = defineMessages({
     description:
       'Accessible name of the small toolbar beside the family tree tools that zooms the family tree out and in, and fits the whole family on the screen.',
   },
+  pointerTool: {
+    id: 'interview.familyPedigree.pointerTool',
+    defaultMessage: 'Add and edit',
+    description:
+      'Name of the family tree toolbar tool that is chosen by default: with it, selecting a family member opens their details, and buttons beside them add a parent, sibling, partner or child. Shown as the tool’s tooltip heading and read as its accessible name.',
+  },
+  connectTool: {
+    id: 'interview.familyPedigree.connectTool',
+    defaultMessage: 'Connect',
+    description:
+      'Name of the family tree toolbar tool that joins two people already in the tree with a relationship. Shown as the tool’s tooltip heading and read as its accessible name.',
+  },
+  connectHint: {
+    id: 'interview.familyPedigree.connectHint',
+    defaultMessage: 'Select a person, then select another to connect them.',
+    description:
+      'Shown over the family tree while the Connect tool is chosen, telling the participant how to join two people already in the tree.',
+  },
+  disconnectTool: {
+    id: 'interview.familyPedigree.disconnectTool',
+    defaultMessage: 'Disconnect',
+    description:
+      'Name of the family tree toolbar tool that removes a relationship line between two people. Shown as the tool’s tooltip heading and read as its accessible name.',
+  },
+  disconnectHint: {
+    id: 'interview.familyPedigree.disconnectHint',
+    defaultMessage:
+      'Select a person, then select someone they are connected to, to remove that connection.',
+    description:
+      'Shown over the family tree while the Disconnect tool is chosen, telling the participant how to remove a relationship line.',
+  },
+  framingControlLabel: {
+    id: 'interview.familyPedigree.framingControlLabel',
+    defaultMessage: 'Wording',
+    description:
+      'Name of the family tree toolbar button that opens a choice between sets of words for relatives, such as mother and father, or egg parent and sperm parent. Shown as its tooltip heading and read as its accessible name.',
+  },
+  framingChoiceTitle: {
+    id: 'interview.familyPedigree.framingChoiceTitle',
+    defaultMessage: 'How should we describe your family?',
+    description:
+      'Question over the choice between sets of words for relatives, such as mother and father, or egg parent and sperm parent.',
+  },
+  framingChoiceDescription: {
+    id: 'interview.familyPedigree.framingChoiceDescription',
+    defaultMessage:
+      'Choose the words you would like us to use for the people in your family. You can change this at any time.',
+    description:
+      'Explanation under the question asking which set of words for relatives the family tree should use.',
+  },
   pointerToolDescription: {
     id: 'interview.familyPedigree.pointerToolDescription',
     defaultMessage:

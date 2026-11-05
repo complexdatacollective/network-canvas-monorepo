@@ -13,7 +13,7 @@ import {
 import { testDb } from './support/database.ts';
 import {
   ADA,
-  enUS,
+  inEnglish,
   GRACE,
   plainDescriptor,
   setupProtocolBuilderSuite,
@@ -278,7 +278,7 @@ describe.skipIf(!testDb)('protocol-builder across replicas', () => {
         sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Saved on another replica'),
+          label: inEnglish('Saved on another replica'),
         }),
         revision: held.revision,
       }),
@@ -378,7 +378,7 @@ describe.skipIf(!testDb)('protocol-builder across replicas', () => {
         sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Saved after the restart'),
+          label: inEnglish('Saved after the restart'),
         }),
         revision: held.revision,
       }),

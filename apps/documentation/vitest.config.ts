@@ -20,6 +20,7 @@ export default defineConfig({
     include: [
       'components/**/__tests__/**/*.{ts,tsx}',
       'lib/**/__tests__/**/*.{ts,tsx}',
+      'netlify/**/__tests__/**/*.ts',
     ],
   },
 });

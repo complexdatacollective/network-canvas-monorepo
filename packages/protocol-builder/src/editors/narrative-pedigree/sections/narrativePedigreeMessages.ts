@@ -462,30 +462,6 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Body of the message refusing a confirmed change of source pedigree whose chosen stage is no longer offered. Addressed to the researcher authoring the protocol, and it says what did NOT happen: the change was not applied and the disease mappings beside it were not thrown away.',
   },
-  wordingTitle: {
-    id: 'protocolBuilder.narrativePedigree.wordingTitle',
-    defaultMessage: 'Words on the pedigree',
-    description:
-      'Heading of the section holding the words a participant reads on a narrative pedigree: its key, its condition panel, its tooltips and its snapshot titles. Also names the section in the editor outline and to assistive technology.',
-  },
-  wordingDescription: {
-    id: 'protocolBuilder.narrativePedigree.wordingDescription',
-    defaultMessage:
-      'The key, the condition panel, the tooltips and the snapshot titles. These start with wording Network Canvas supplies, which you can change.',
-    description: 'Description of the words section of a narrative pedigree.',
-  },
-  keyHeadingLabel: {
-    id: 'protocolBuilder.narrativePedigree.keyHeadingLabel',
-    defaultMessage: 'Key heading',
-    description:
-      'Label of the setting holding the heading of the key that explains the symbols on the pedigree.',
-  },
-  clearFocusTooltipLabel: {
-    id: 'protocolBuilder.narrativePedigree.clearFocusTooltipLabel',
-    defaultMessage: 'Clear focus tooltip',
-    description:
-      'Label of the setting holding the tooltip of the tool that clears the selected focal person.',
-  },
   saveSnapshotButtonLabel: {
     id: 'protocolBuilder.narrativePedigree.saveSnapshotButtonLabel',
     defaultMessage: 'Save snapshot button',
@@ -498,48 +474,6 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       "Label of the setting holding the text the participant's condition menu shows while no condition is chosen, which is also the menu's choice for showing none.",
   },
-  affectedNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.affectedNotationLabel',
-    defaultMessage: 'Has this condition',
-    description:
-      'Label of the setting holding the key entry for a person who has the selected condition.',
-  },
-  obligateAffectedNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.obligateAffectedNotationLabel',
-    defaultMessage: 'Will develop this condition',
-    description:
-      'Label of the setting holding the key entry for a person who will develop the selected condition.',
-  },
-  obligateCarrierNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.obligateCarrierNotationLabel',
-    defaultMessage: 'Carries this condition',
-    description:
-      'Label of the setting holding the key entry for a person who carries the selected condition.',
-  },
-  atRiskAffectedNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.atRiskAffectedNotationLabel',
-    defaultMessage: 'May develop this condition',
-    description:
-      'Label of the setting holding the key entry for a person who may develop the selected condition.',
-  },
-  atRiskCarrierNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.atRiskCarrierNotationLabel',
-    defaultMessage: 'May carry this condition',
-    description:
-      'Label of the setting holding the key entry for a person who may carry the selected condition.',
-  },
-  atRiskHint: {
-    id: 'protocolBuilder.narrativePedigree.atRiskHint',
-    defaultMessage: 'Shown only when the pedigree shows at-risk statuses.',
-    description:
-      'Hint under the at-risk key settings, saying when they are used.',
-  },
-  unknownNotationLabel: {
-    id: 'protocolBuilder.narrativePedigree.unknownNotationLabel',
-    defaultMessage: 'Not known',
-    description:
-      'Label of the setting holding the key entry for a person whose status for the selected condition is not known.',
-  },
   snapshotConditionLabel: {
     id: 'protocolBuilder.narrativePedigree.snapshotConditionLabel',
     defaultMessage: 'Snapshot title for a condition',
@@ -549,9 +483,9 @@ export const narrativePedigreeMessages = defineMessages({
   snapshotConditionHint: {
     id: 'protocolBuilder.narrativePedigree.snapshotConditionHint',
     defaultMessage:
-      'The pedigree title and the condition name are filled in where the two placeholders are.',
+      'Title of a saved image of one condition. The pedigree title and the condition name fill the placeholders.',
     description:
-      'Hint under the snapshot title setting for one condition, explaining the placeholders.',
+      'Hint under the setting holding the snapshot title for a condition, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
   },
   snapshotInheritanceLabel: {
     id: 'protocolBuilder.narrativePedigree.snapshotInheritanceLabel',
@@ -562,8 +496,21 @@ export const narrativePedigreeMessages = defineMessages({
   snapshotInheritanceHint: {
     id: 'protocolBuilder.narrativePedigree.snapshotInheritanceHint',
     defaultMessage:
-      'The pedigree title, the condition name and the name of the person are filled in where the three placeholders are.',
+      'Title of a saved image of how a condition is inherited. The pedigree title, the condition name and the family member’s name fill the placeholders.',
     description:
-      'Hint under the snapshot title setting for inheritance, explaining the placeholders.',
+      'Hint under the setting holding the snapshot title for inheritance, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
+  },
+  saveSnapshotHint: {
+    id: 'protocolBuilder.narrativePedigree.saveSnapshotHint',
+    defaultMessage: 'Button below the key that saves an image of the pedigree.',
+    description:
+      'Hint under the setting holding the save snapshot button, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
+  },
+  selectConditionHint: {
+    id: 'protocolBuilder.narrativePedigree.selectConditionHint',
+    defaultMessage:
+      'Shown in the condition menu when no condition is chosen. Also the menu option for showing no condition.',
+    description:
+      'Hint under the setting holding the select a condition option, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
   },
 });

@@ -144,7 +144,7 @@ export function labelEveryone(
     family.people.map((person) => [
       person.id,
       person.isEgo
-        ? words.text(words.wording.you)
+        ? words.you
         : (person.name ??
           generated.get(person.id) ??
           formatRelativeTerm('other', words)),

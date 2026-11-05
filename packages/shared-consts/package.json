@@ -41,6 +41,7 @@
     "typecheck": "tsc --build --noEmit"
   },
   "dependencies": {
+    "@formatjs/intl-localematcher": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -127,7 +127,7 @@ function renderSiteLink({
  * its controls rather than as page content that has drifted upward.
  */
 const ENTRY_CLASSES = cx(
-  buttonVariants({ variant: 'outline', color: 'primary', size: 'sm' }),
+  buttonVariants({ color: 'primary', size: 'sm' }),
   'rounded-full no-underline',
   headingVariants({ level: 'h4', variant: 'all-caps', margin: 'none' }),
 );

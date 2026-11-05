@@ -149,14 +149,12 @@ export class NarrativeFixture {
   }
 
   async toggleDrawing(): Promise<void> {
-    await this.page
-      .getByRole('button', { name: /Enable drawing|Disable drawing/ })
-      .click();
+    await this.page.getByRole('button', { name: 'Toggle drawing' }).click();
   }
 
   async toggleFreeze(): Promise<void> {
     await this.page
-      .getByRole('button', { name: /Freeze annotations|Unfreeze annotations/ })
+      .getByRole('button', { name: 'Toggle freezing annotations' })
       .click();
   }
 

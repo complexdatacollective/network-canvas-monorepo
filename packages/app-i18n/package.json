@@ -72,7 +72,6 @@
     "@codaco/shared-consts": "workspace:^",
     "@formatjs/cli-lib": "catalog:",
     "@formatjs/icu-messageformat-parser": "catalog:",
-    "@formatjs/intl-localematcher": "catalog:",
     "@formatjs/unplugin": "catalog:",
     "react-intl": "catalog:"
   },

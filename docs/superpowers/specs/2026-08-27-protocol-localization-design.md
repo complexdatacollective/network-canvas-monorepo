@@ -45,8 +45,9 @@ where the repository records one.
    not built. The existing deploy-time migration brings stored protocols to
    schema 9 (§8.5). The repository does not record the reason.
 5. **The interface language is negotiated separately.** The proposal made the
-   built-in interface messages a non-goal. They exist in ten languages, and the
-   Shell picks one independently of the protocol locale (§8.3).
+   built-in interface messages a non-goal. They existed in ten languages, and
+   the Shell picked one independently of the protocol locale. Revision 19
+   replaced this.
 6. **Values are ICU MessageFormat literal messages.** The proposal stored raw
    strings. A message is escaped on save, unescaped on load, and formatted at
    runtime with `IntlMessageFormat` (§5.3). The ICU parser therefore stays in
@@ -157,7 +158,8 @@ where the repository records one.
     and toasts alike, and no text inside marks a language of its own, even
     when it falls back to another of the protocol's languages (§8.3, §8.8).
     Built-in interface text inside the Shell is to come from the protocol in
-    the interview language, so that the boundary holds for it too.
+    the interview language, so that the boundary holds for it too (revision
+    19).
 
 18. **The end of the interview is a Finish Screen stage with supplied text.**
     (8 October 2026, #2131.) The completion screen was interface-owned copy that
@@ -174,6 +176,29 @@ where the repository records one.
     language are still the supplied text; the stage name (`label`) is filled in
     only if it is also still the supplied name. A researcher who has changed the
     text keeps control of it.
+
+19. **One language list, one negotiation, every word from the protocol.**
+    (30 October 2026.) Revision 5 left the built-in interface negotiating its
+    own language from the browser, so a browser set to `fr-FR, es` showed a
+    protocol written in English and Spanish in Spanish with the interview's
+    own controls in French. The product owner ruled that the 8 October ruling
+    (revision 17) meant every word a participant or interviewer reads in the
+    interview comes from the protocol, in the one language negotiated from the
+    protocol's languages, with a Language Chooser stage's choice overriding
+    it. The Interview package no longer ships interface catalogs: its
+    built-in messages are English only, and the protocol's interface text
+    stands in for every one a participant can see (§8.3). Network Canvas
+    supplies that text in the languages it translates and writes it into the protocol
+    as a language is added, like a stage's supplied wording. Text only screen
+    readers read (accessible names, announcements) stays English until it is
+    localised too (#2468). Text every stage of one kind shows alike, such as a
+    Family Pedigree's tool descriptions, is interface text in a group named
+    for that stage type; text one stage words for itself stays that stage's
+    setting. A stage editor's Wording section is optional: switched off, the
+    stage holds Network Canvas's wording; it starts on when the protocol has
+    more than one language or the stage holds wording of its own, and it lists
+    the shared text of its stage type, which is edited in the translations
+    table.
 
 ## 1. Summary
 
@@ -208,8 +233,9 @@ React context and hooks live in `@codaco/interview`. Vite applications read
 browser preferences at their host boundary; Fresco reads `Accept-Language` on
 the Next.js server for each request. Both pass the ordered list to the Shell
 as `requestedLocales`. A participant has one control: a Language Chooser stage
-that the protocol author places in the interview. The built-in interface
-language is negotiated separately from the protocol language. Shared code
+that the protocol author places in the interview. The interview's own
+controls, messages and dialogs are shown in the same language, from text the
+protocol holds (§8.3). Shared code
 never imports Next.js APIs and never reads browser globals at module
 evaluation.
 
@@ -225,8 +251,8 @@ evaluation.
 - Let a participant choose the interview language on a Language Chooser stage,
   switch the whole interview immediately, and persist the choice with the
   session.
-- Choose the built-in interface language independently of the protocol's
-  languages.
+- Show the interview's own controls in the interview language, from text the
+  protocol holds, so a participant reads one language throughout.
 - Derive locale display names and text direction rather than storing mutable
   English labels or an `ltr`/`rtl` flag in the protocol.
 - Use one pure resolution implementation in Architect preview, Interviewer,
@@ -237,11 +263,8 @@ evaluation.
 
 ## 3. Non-goals
 
-- Writing the Interview package's own built-in user-interface messages into
-  protocols. Navigation labels, validation messages, and dialogs come from
-  application message catalogs, which the Interview package supplies in ten
-  interface languages and negotiates separately from the protocol language
-  (§8.3). They must not be placed in each protocol.
+- Localizing text only screen readers read, such as accessible names and
+  announcements. It stays English in schema 9 (#2468).
 - A language control outside the Language Chooser stage. The Interview
   settings menu has none, and Interviewer's new-session form asks for no
   language.
@@ -645,8 +668,7 @@ If no preference fits, or the list is empty, the protocol `defaultLocale` wins.
 
 Preferences are matched one at a time because best fit over the whole list
 lets a later exact match beat an earlier regional one: `['es-MX', 'en']` would
-select `en` when `es` is declared. The built-in interface language uses the
-same rule (§8.3).
+select `en` when `es` is declared.
 
 Priority is established before the call. What the host passes is:
 
@@ -909,7 +931,8 @@ The browser or HTTP preference list is never stored. The Shell takes it as
 `Accept-Language` header in a server-rendered host, which serializes it to the
 client so that both choose alike. The package reads no browser or storage
 globals itself. Until the participant states a preference, `requestedLocales`
-chooses both the protocol translation (§7.2) and the interface language (§8.3).
+chooses the interview language, which the interview's own text follows too
+(§8.3).
 Whether or not a preference is stated, the browser's languages also supply the
 fallback for a text that the language shown lacks: such a text is shown in
 another language the browser lists, when the protocol has the text in it,
@@ -965,13 +988,13 @@ It can appear anywhere, more than once.
   more.
 - The stage shows a built-in heading, then a `RichSelectGroup` single-selection
   list of every declared language, taken from `useProtocolLocale().options`. The
-  list is alphabetical by the languages' own names, collated for the language of
-  the interview's built-in interface (§8.3); the protocol's stored order has no
+  list is alphabetical by the languages' own names, collated for the interview
+  language; the protocol's stored order has no
   effect on it. Each option is labeled with the language's own name and carries
   its own `lang` and `dir`. The language currently shown is selected. Arrow keys move focus
   through the list, and Enter or Space chooses the focused language.
 - Choosing another language calls `setLocale`. The protocol text and the
-  built-in interface text switch at once, the network, prompt position, and form
+  interview's own text switch at once, the network, prompt position, and form
   answers are untouched, and the choice is stored through the locale-change
   handler (§8.1). Leaving the preselected language unchanged states nothing, so
   the browser continues to decide.
@@ -987,25 +1010,31 @@ It can appear anywhere, more than once.
 
 ### 8.3 Interface language
 
-The built-in interface language is negotiated separately from the protocol
-language:
+There is one language list, the protocol's, and one negotiation (§6.2). The
+interview's own text follows it:
 
-- The Interview package supplies built-in messages in ten interface languages:
-  `en`, `en-GB`, `es`, `zh-Hans`, `zh-Hant`, `de`, `nl`, `pt-BR`, `it`, and `fr`.
-  The default is `en`.
-- `InterviewI18nProvider` calls `resolveAppLocale` with the participant's stated
-  `localePreference` as the stored choice and `requestedLocales` as the browser
-  languages. A stated preference decides only when the interface has that
-  language. Otherwise the first requested language the interface has wins, and
-  `en` applies when none does.
-- Preferences are matched one at a time with best fit, and Chinese is matched by
-  script, as in §6.2.
-- The result is never stored. Each Shell owns its formatter, so one interview's
-  language cannot leak into another on the same page.
-- The Shell root carries the interview language and direction, not the
-  interface language (§8.8). Built-in text that the interface has no catalog
-  for is therefore shown in English inside a region marked with the interview
-  language, until that text comes from the protocol (revision 17).
+- The Interview package's built-in messages are English only, and it ships no
+  interface catalogs. `InterviewI18nProvider` always formats in `en`.
+- Every built-in message a participant or interviewer can see has a
+  counterpart in the protocol's `interfaceText`, grouped for the translations
+  table (navigation, interviewer controls, buttons, messages, search,
+  passphrase, forms, validation, and one group per stage type whose every
+  stage shows the same text: family tree view, Family Pedigree, Categorical
+  Bin, Name Generator Roster, Network Composer, Ego Form). A protocol holds a
+  group only while it uses what the group is for. `InterfaceTextOverlay`
+  replaces each built-in message with the protocol's text, resolved like any
+  localized string (§6.3).
+- Network Canvas supplies this text in `en`, `de`, `es`, `fr`, `it`, `nl`,
+  `pt-BR`, `zh-Hans` and `zh-Hant`, and writes it into the protocol when a
+  language is added, while the default language's text is still the
+  supplied text (revision 18's rule). A protocol in any other language holds
+  the English under its default language until the researcher translates it.
+- Text only screen readers read stays English: accessible names, live-region
+  announcements and visually hidden text (#2468). An icon whose purpose the
+  text beside it already gives is decorative and has no name.
+- Host text rendered inside the Shell, such as Interviewer's finish
+  explanation, follows the interview language through `useContentLocale`; a
+  language the host has no translation for shows that text in English.
 
 ### 8.4 Interviewer (Vite SPA)
 
@@ -1646,8 +1675,9 @@ language does not change analysis schema.
 - The documentation lane covers translated protocols, the Language Chooser,
   the schema-9 migration notes, the new interview-language export column, and
   how an interview's language follows the participant's browser.
-- Document that the built-in Interview interface is available in ten languages
-  that are chosen independently of the protocol's languages.
+- Document that the interview's own text comes from the protocol, in the
+  interview language, and that Network Canvas supplies it when a language it
+  translates is added.
 - Update protocol authoring documentation and generated schema/API references.
 
 ## 15. Standards and implementation references

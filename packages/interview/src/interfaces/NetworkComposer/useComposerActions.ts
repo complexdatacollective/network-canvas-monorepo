@@ -6,6 +6,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
+  isNetworkComposerStageMetadata,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
@@ -21,6 +22,7 @@ import {
   restoreNodeAttributes,
   updateEdge,
   updateNode,
+  updateStageMetadata,
 } from '../../store/modules/session';
 import type { AppDispatch } from '../../store/store';
 import { isPosition } from './gridPlacement';
@@ -34,6 +36,8 @@ type UseComposerActionsArgs = {
   layoutVariable: string;
   /** Whether the quick-add variable is marked encrypted in the codebook. */
   useEncryption: boolean;
+  /** Whether the layout is automatic before the participant switches it. */
+  automaticLayoutDefault: boolean;
   currentStep: number;
   undoStore: UndoStoreApi;
   dispatch: AppDispatch;
@@ -94,6 +98,23 @@ type ComposerActions = {
     value: string,
     member: boolean,
   ) => Promise<void>;
+  /**
+   * Saves where someone was moved to, at once and outside the history. In
+   * automatic layout the layout decides where they come to rest, so the move
+   * is no step of the participant's own to undo, but it is kept if they leave
+   * the stage before the layout settles.
+   */
+  placeNode: (id: string, position: Position) => Promise<void>;
+  /**
+   * Switches the automatic layout on or off, whichever it is when the switch
+   * is made, so every switch changes it and is a step of its own. Switching it
+   * on moves everyone, so undoing that puts everyone back where they were.
+   * Switching it off keeps everyone where they are shown, which
+   * `readShownPositions` reads.
+   */
+  toggleAutomaticLayout: (
+    readShownPositions: () => ReadonlyMap<string, Position>,
+  ) => Promise<void>;
 };
 
 // Node undo and redo put stored state back verbatim instead of replaying a
@@ -137,6 +158,7 @@ export function useComposerActions({
   quickAdd,
   layoutVariable,
   useEncryption,
+  automaticLayoutDefault,
   currentStep,
   undoStore,
   dispatch,
@@ -149,12 +171,33 @@ export function useComposerActions({
     );
   }
 
-  function readOccupiedPositions(): Position[] {
+  function readStageNodes(): NcNode[] {
     return dispatch((_, getState) =>
-      getState()
-        .session.network.nodes.filter((n) => n.type === subjectType)
-        .map((n) => n[entityAttributesProperty][layoutVariable])
-        .filter(isPosition),
+      getState().session.network.nodes.filter((n) => n.type === subjectType),
+    );
+  }
+
+  function readOccupiedPositions(): Position[] {
+    return readStageNodes()
+      .map((n) => n[entityAttributesProperty][layoutVariable])
+      .filter(isPosition);
+  }
+
+  function readAutomaticLayout(): boolean {
+    const metadata = dispatch(
+      (_, getState) => getState().session.stageMetadata?.[currentStep],
+    );
+    return isNetworkComposerStageMetadata(metadata)
+      ? metadata.automaticLayout
+      : automaticLayoutDefault;
+  }
+
+  function writeAutomaticLayout(enabled: boolean) {
+    dispatch(
+      updateStageMetadata({
+        currentStep,
+        metadata: { automaticLayout: enabled },
+      }),
     );
   }
 
@@ -643,6 +686,73 @@ export function useComposerActions({
     });
   }
 
+  async function placeNode(id: string, position: Position): Promise<void> {
+    await dispatch(
+      updateNode({
+        nodeId: id,
+        attributePatch: { set: { [layoutVariable]: position }, unset: [] },
+        currentStep,
+      }),
+    ).unwrap();
+  }
+
+  // The automatic layout saves positions only when it settles, so where
+  // someone is shown can be newer than where they are saved.
+  async function saveShownPositions(
+    readShownPositions: () => ReadonlyMap<string, Position>,
+  ): Promise<void> {
+    const unsaved = [...readShownPositions()].filter(([id, shown]) => {
+      const node = readNode(id);
+      if (!node) return false;
+      const saved = node[entityAttributesProperty][layoutVariable];
+      return !isPosition(saved) || saved.x !== shown.x || saved.y !== shown.y;
+    });
+    await Promise.all(unsaved.map(([id, position]) => placeNode(id, position)));
+  }
+
+  async function toggleAutomaticLayout(
+    readShownPositions: () => ReadonlyMap<string, Position>,
+  ): Promise<void> {
+    await undoStore.getState().record(async () => {
+      if (readAutomaticLayout()) {
+        await saveShownPositions(readShownPositions);
+        writeAutomaticLayout(false);
+
+        return {
+          label: `Turn off automatic layout`,
+          undo: () => {
+            writeAutomaticLayout(true);
+          },
+          redo: async () => {
+            await saveShownPositions(readShownPositions);
+            writeAutomaticLayout(false);
+          },
+        };
+      }
+
+      const before = readStageNodes().map((node) => ({
+        id: node[entityPrimaryKeyProperty],
+        snapshot: snapshotAttributes(node, [layoutVariable]),
+      }));
+      writeAutomaticLayout(true);
+
+      return {
+        label: `Turn on automatic layout`,
+        // Synchronous, so no position the layout saves can land between
+        // turning it off and putting everyone back.
+        undo: () => {
+          writeAutomaticLayout(false);
+          for (const { id, snapshot } of before) {
+            dispatch(restoreNodeAttributes({ nodeId: id, snapshot }));
+          }
+        },
+        redo: () => {
+          writeAutomaticLayout(true);
+        },
+      };
+    });
+  }
+
   return {
     createNodeAt,
     toggleEdge,
@@ -654,5 +764,7 @@ export function useComposerActions({
     repositionNode,
     toggleGroupMembership,
     setGroupMembership,
+    placeNode,
+    toggleAutomaticLayout,
   };
 }

@@ -1174,7 +1174,9 @@ its own 5-minute hard watchdog (exit 2 = hang, with watchdog-timeout.png).
 Each browser-language case runs in its own fresh profile whose
 navigator.languages is set before any page loads, so the deployment's own
 negotiation decides; the interview cases conduct the schema 9 Release Smoke
-fixture (packages/protocols/e2e/release-smoke, declaring en-US and es). It
+fixture (packages/protocols/e2e/release-smoke, declaring en-US and es), and
+the regional variant cases the same protocol declaring Mexican Spanish too,
+with no Mexican Spanish text of its own. It
 writes numbered evidence screenshots and result.json into the artifacts
 directory; the last stdout line is the result JSON. Exit codes: 0 all
 passed, 1 check failures, 2 watchdog hang, 3 setup error — 2 and 3 are
@@ -1183,21 +1185,29 @@ failed runs, never passes.
 Map the walker's result.json steps onto these CHECKS. A check passes ONLY
 when every step listed for it passed; quote the walker's step notes in each
 check's detail:
-1. The app opens in the browser's best language, one preference at a time
-   (a regional variant gets its language, an unsupported first preference
+1. The app opens in the browser's best language by Network Canvas's one
+   locale negotiation, CLDR best fit over the browser's whole list with no
+   rules of its own (a regional variant gets its language, an earlier
+   regional fit beats a later exact match, an unsupported first preference
    passes to the next, Chinese is matched by script, the closest variant
-   stands in, nothing supported falls back to English), and onboarding does
-   too: steps "dashboard-negotiated", "dashboard-fallback", and
-   "welcome-negotiated".
+   stands in, a fit in another language is taken when nothing is closer,
+   nothing supported falls back to English), and onboarding does too: steps
+   "dashboard-negotiated", "dashboard-fallback", and "welcome-negotiated".
 2. A language chosen in Settings → Language replaces negotiation for the
    app, survives a reload, and "Automatic" hands the app back to the
    browser: steps "app-choice-applies", "app-choice-persists", and
    "automatic-restores-negotiation".
 3. An interview follows the browser, never the app's chosen language, and
-   takes the best of each separately — the protocol's translation from the
-   protocol's languages, its built-in text from the interview's: steps
+   negotiates once, over the protocol's languages: its own words come from
+   the protocol in that language, so a browser language the protocol lacks
+   never reaches it, and the accessible names of its icon controls are
+   English. A protocol declaring a regional variant beside its base language
+   is negotiated by the same best fit (Mexican Spanish for a Mexican or an
+   Argentinian browser), and a text with no translation in the variant is
+   shown in the base language, never English: steps
    "interview-ignores-app-choice", "interview-second-preference",
-   "interview-builtins-follow-browser", and "interview-fallback".
+   "interview-builtins-follow-protocol", "interview-fallback",
+   "interview-regional-variant", and "interview-closest-variant".
 4. The participant's choice on the language chooser switches the interview
    at once, survives a reload in the same tab without being stored with the
    session, and does not carry to the next interview: steps
@@ -1223,6 +1233,7 @@ the walker's two-digit sequence prefix):
   cp ??-automatic-es.png check2-automatic.png &&
   cp ??-interview-es-with-app-en.png check3-interview.png &&
   cp ??-chooser-choice-en.png check4-chooser.png &&
+  cp ??-interview-regional-variant.png check3b-regional-variant.png &&
   cp ??-interview-fallback.png check5-final.png
 
 Return journey="language-negotiation".`,

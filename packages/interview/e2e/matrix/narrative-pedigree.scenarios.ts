@@ -160,7 +160,9 @@ const KEY_HEADING = 'Guide - matrix check';
 const SELECT_CONDITION_WORDING = 'Pick one - matrix check';
 const CLEAR_FOCUS = 'Stop focusing - matrix check';
 const SAVE_SNAPSHOT = 'Keep a picture - matrix check';
-const NOTATION_AFFECTED = 'Has it now - matrix check';
+// The key's words may name the condition chosen (`{condition}`).
+const NOTATION_AFFECTED = { 'en-US': 'Has {condition} now - matrix check' };
+const NOTATION_AFFECTED_SHOWN = "Has Huntington's Disease now - matrix check";
 const NOTATION_OBLIGATE_AFFECTED = 'Will get it - matrix check';
 const NOTATION_OBLIGATE_CARRIER = 'Passes it on - matrix check';
 const NOTATION_UNKNOWN = 'Nobody knows - matrix check';
@@ -578,19 +580,25 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
     },
     {
       id: 'at-risk-notation-wording',
-      covers: [
-        'conditionText.notation.atRiskAffected',
-        'conditionText.notation.atRiskCarrier',
-      ],
+      covers: ['interfaceText.narrativePedigree.atRisk'],
       currentStep: 1,
       seedNetwork: true,
-      build: () =>
-        buildCousinUnion(true, {
-          'conditionText.notation.atRiskAffected': NOTATION_AT_RISK_AFFECTED,
-          'conditionText.notation.atRiskCarrier': NOTATION_AT_RISK_CARRIER,
-        }),
+      build: () => {
+        const synth = buildCousinUnion(true);
+        synth.setInterfaceText(
+          'narrativePedigree',
+          'mayDevelop',
+          NOTATION_AT_RISK_AFFECTED,
+        );
+        synth.setInterfaceText(
+          'narrativePedigree',
+          'mayCarry',
+          NOTATION_AT_RISK_CARRIER,
+        );
+        return synth;
+      },
       run: async ({ page }) => {
-        // The key lists both at-risk rows in the stage's own words, and not
+        // The key lists both at-risk rows in the protocol's own words, and not
         // in the words Network Canvas supplies. (A row's text is matched as
         // part of the row, whose glyph also draws a "?".)
         await chooseCondition(page, 'Cystic Fibrosis');
@@ -1030,13 +1038,8 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         'saveSnapshot',
         'label',
         'readOnlyInvariant',
-        'keyHeading',
-        'tooltips.clearFocus',
+        'interfaceText.narrativePedigree',
         'conditionText.selectCondition',
-        'conditionText.notation.affected',
-        'conditionText.notation.obligateAffected',
-        'conditionText.notation.obligateCarrier',
-        'conditionText.notation.unknown',
         'conditionText.snapshotCondition',
         'conditionText.snapshotInheritance',
       ],
@@ -1062,15 +1065,8 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           sourceStageId: fpStageId,
           showAtRiskStatuses: false,
           wording: {
-            'keyHeading': KEY_HEADING,
-            'tooltips.clearFocus': CLEAR_FOCUS,
             'saveSnapshot': SAVE_SNAPSHOT,
             'conditionText.selectCondition': SELECT_CONDITION_WORDING,
-            'conditionText.notation.affected': NOTATION_AFFECTED,
-            'conditionText.notation.obligateAffected':
-              NOTATION_OBLIGATE_AFFECTED,
-            'conditionText.notation.obligateCarrier': NOTATION_OBLIGATE_CARRIER,
-            'conditionText.notation.unknown': NOTATION_UNKNOWN,
             'conditionText.snapshotCondition': SNAPSHOT_CONDITION,
             'conditionText.snapshotInheritance': SNAPSHOT_INHERITANCE,
           },
@@ -1084,6 +1080,18 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
             },
           ],
         });
+        // The key and the focus button every Narrative Pedigree shows alike,
+        // which the protocol holds once.
+        for (const [key, text] of [
+          ['keyHeading', KEY_HEADING],
+          ['clearFocus', CLEAR_FOCUS],
+          ['hasCondition', NOTATION_AFFECTED],
+          ['willDevelop', NOTATION_OBLIGATE_AFFECTED],
+          ['carries', NOTATION_OBLIGATE_CARRIER],
+          ['notKnown', NOTATION_UNKNOWN],
+        ] as const) {
+          synth.setInterfaceText('narrativePedigree', key, text);
+        }
         return synth;
       },
       run: async ({ page, protocol, interview }) => {
@@ -1144,12 +1152,13 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         // message for a condition (the file is named after the heading).
         await chooseCondition(page, "Huntington's Disease");
 
-        // The key, shown now a condition is, carries the stage's own words,
-        // and none of the words Network Canvas supplies.
+        // The key, shown now a condition is, carries the protocol's own words
+        // with the condition named where they name it, and none of the words
+        // Network Canvas supplies.
         const key = conditionKey(page);
         for (const [own, supplied] of [
           [KEY_HEADING, 'Key'],
-          [NOTATION_AFFECTED, 'Has this condition'],
+          [NOTATION_AFFECTED_SHOWN, 'Has this condition'],
           [NOTATION_OBLIGATE_AFFECTED, 'Will develop this condition'],
           [NOTATION_OBLIGATE_CARRIER, 'Carries this condition'],
           [NOTATION_UNKNOWN, 'Not known'],

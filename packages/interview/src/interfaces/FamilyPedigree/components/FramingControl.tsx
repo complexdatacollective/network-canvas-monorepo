@@ -17,7 +17,7 @@ import { useContentFormat } from '../../../localization/useContentFormat';
 import { ToolTip } from '../../pedigree-common/PedigreeCanvas';
 import { formatRelativeTerm } from '../kinship';
 import { messages } from '../messages';
-import { configuredWord, usePedigreeWords } from '../pedigreeWords';
+import { usePedigreeWords } from '../pedigreeWords';
 
 type FramingControlProps = {
   /** The framing the participant chose, if they have. */
@@ -49,7 +49,6 @@ function FramingControl({
   ref,
 }: FramingControlProps) {
   const words = usePedigreeWords();
-  const { wording, text } = words;
   const contentFormat = useContentFormat();
   const intl = useAppIntl();
   // The toolbar button, as well as whoever the ref is forwarded to.
@@ -99,10 +98,10 @@ function FramingControl({
       }}
       trigger={
         <ToolbarIconButton
-          aria-label={text(configuredWord(wording.framingControlLabel))}
+          aria-label={intl.formatMessage(messages.framingControlLabel)}
           tooltip={
             <ToolTip
-              name={text(configuredWord(wording.framingControlLabel))}
+              name={intl.formatMessage(messages.framingControlLabel)}
               description={intl.formatMessage(
                 messages.framingControlDescription,
               )}
@@ -135,8 +134,8 @@ function FramingControl({
         <UnconnectedField
           component={RichSelectGroupField}
           name="pedigreeFraming"
-          label={text(configuredWord(wording.framingChoiceTitle))}
-          hint={text(configuredWord(wording.framingChoiceDescription))}
+          label={intl.formatMessage(messages.framingChoiceTitle)}
+          hint={intl.formatMessage(messages.framingChoiceDescription)}
           options={[
             {
               value: 'gendered',

@@ -619,7 +619,13 @@ const messages = defineMessages({
     id: 'protocolBuilder.localizedMessage.placeholderCondition',
     defaultMessage: 'Condition name',
     description:
-      'Name of the placeholder, inserted into a heading, that shows the name of the condition being shown.',
+      'Name of the placeholder, inserted into a heading or a key entry, that shows the name of the condition being shown.',
+  },
+  placeholderSubject: {
+    id: 'protocolBuilder.localizedMessage.placeholderSubject',
+    defaultMessage: 'Node type',
+    description:
+      'Name of the placeholder, inserted into a message, that shows the name of the kind of node the stage is about, as the codebook names it (such as Person).',
   },
   placeholderLabel: {
     id: 'protocolBuilder.localizedMessage.placeholderLabel',
@@ -848,6 +854,7 @@ export function messageArgumentLabels(intl: IntlShape): MessageArgumentLabels {
       title: text(messages.placeholderTitle),
       condition: text(messages.placeholderCondition),
       label: text(messages.placeholderLabel),
+      subject: text(messages.placeholderSubject),
     },
   };
 }

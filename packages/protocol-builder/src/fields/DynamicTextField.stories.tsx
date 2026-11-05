@@ -21,7 +21,6 @@ const title = (
     label={TITLE_LABEL}
     required={REQUIRED}
     dynamicValues="stageText"
-    compact
   />
 );
 

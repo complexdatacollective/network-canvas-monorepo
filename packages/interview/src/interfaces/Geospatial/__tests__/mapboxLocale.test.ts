@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 
-import { interviewCatalogLoaders } from '../../../locales/catalogs';
 import { getMapboxLocale, updateMapboxControlLocale } from '../mapboxLocale';
 
 function makeMapControls() {
@@ -38,33 +36,26 @@ function makeMapControls() {
   };
 }
 
-describe('native Mapbox control localization', () => {
-  it('supplies Spanish control labels at construction and updates the same DOM on a live switch', async () => {
-    const es = createAppIntl({
-      locale: 'es',
-      messages: await loadCatalog('es', interviewCatalogLoaders),
-    });
-    expect(getMapboxLocale(es)).toEqual({
-      'Map.Title': 'Mapa',
-      'LogoControl.Title': 'Página de inicio de Mapbox',
-      'AttributionControl.ToggleAttribution': 'Mostrar u ocultar los créditos',
+// The map's control names are read by screen readers only, so the interview
+// gives them in English.
+describe('native Mapbox control names', () => {
+  it('supplies English control labels at construction and applies them to the same DOM', () => {
+    const intl = createAppIntl({ locale: 'en' });
+    expect(getMapboxLocale(intl)).toEqual({
+      'Map.Title': 'Map',
+      'LogoControl.Title': 'Mapbox homepage',
+      'AttributionControl.ToggleAttribution': 'Toggle attribution',
     });
     const map = makeMapControls();
-    updateMapboxControlLocale(map, es);
-    expect(map.canvas).toHaveAccessibleName('Mapa');
-    expect(map.logo).toHaveAccessibleName('Página de inicio de Mapbox');
-    expect(map.button).toHaveAccessibleName('Mostrar u ocultar los créditos');
+    updateMapboxControlLocale(map, intl);
+    expect(map.canvas).toHaveAccessibleName('Map');
+    expect(map.logo).toHaveAccessibleName('Mapbox homepage');
+    expect(map.button).toHaveAccessibleName('Toggle attribution');
     expect(map.icon).not.toHaveAttribute('title');
     expect(map.container.children).toHaveLength(4);
     expect(map.container.firstChild).toBe(map.canvas);
     expect(map.logo.href).toBe('https://www.mapbox.com/');
     expect(map.credits.textContent).toBe('© Authored map source / Mapbox');
     expect(map.button).toHaveAttribute('aria-expanded', 'true');
-
-    updateMapboxControlLocale(map, createAppIntl({ locale: 'en-GB' }));
-    expect(map.canvas).toHaveAccessibleName('Map');
-    expect(map.logo).toHaveAccessibleName('Mapbox homepage');
-    expect(map.button).toHaveAccessibleName('Toggle attribution');
-    expect(map.icon).not.toHaveAttribute('title');
   });
 });

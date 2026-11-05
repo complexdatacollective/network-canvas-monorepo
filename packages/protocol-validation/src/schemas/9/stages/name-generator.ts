@@ -8,18 +8,18 @@ import {
   nameGeneratorPromptSchema,
   panelsSchema,
 } from '../common/index.ts';
-import {
-  localizedMessage,
-  localizedString,
-  nonBlankText,
-} from '../localized-string.ts';
+import { localizedMessage, nonBlankText } from '../localized-string.ts';
 import {
   hasMinimumNodes,
   hasMaximumNodes,
   requireWhenShown,
   type StageRecord,
 } from '../stage-wording/conditions.ts';
-import { MIN_NODES_NOTICE } from '../stage-wording/name-generator.ts';
+import {
+  MAX_NODES_NOTICE,
+  MIN_NODES_NOTICE,
+} from '../stage-wording/name-generator.ts';
+import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
 import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -47,12 +47,22 @@ export const nameGeneratorBehavioursSchema = z
   .optional();
 
 /**
- * What a minimum's notice may use: how many people are still needed, which
- * every translation must show where the supplied wording does.
+ * What a minimum's notice may use: how many nodes are needed, which every
+ * translation must show where the supplied wording does, and the name of the
+ * stage's node type.
  */
-export const NODE_COUNT_ARGUMENTS: MessageArguments = requireSuppliedPlacements(
-  { count: { kind: 'plural' } },
+export const MIN_NODES_ARGUMENTS: MessageArguments = requireSuppliedPlacements(
+  { count: { kind: 'plural' }, ...SUBJECT_ARGUMENTS },
   MIN_NODES_NOTICE,
+);
+
+/**
+ * What a maximum's notice may use: the most nodes the stage takes, and the
+ * name of its node type.
+ */
+export const MAX_NODES_ARGUMENTS: MessageArguments = requireSuppliedPlacements(
+  { count: { kind: 'plural' }, ...SUBJECT_ARGUMENTS },
+  MAX_NODES_NOTICE,
 );
 
 /**
@@ -63,9 +73,11 @@ export const NODE_COUNT_ARGUMENTS: MessageArguments = requireSuppliedPlacements(
  */
 export const nameGeneratorWording = {
   minNodesNotice: localizedMessage(nonBlankText(), {
-    arguments: NODE_COUNT_ARGUMENTS,
+    arguments: MIN_NODES_ARGUMENTS,
   }).optional(),
-  maxNodesNotice: localizedString(nonBlankText(), 'plain').optional(),
+  maxNodesNotice: localizedMessage(nonBlankText(), {
+    arguments: MAX_NODES_ARGUMENTS,
+  }).optional(),
 };
 
 /** Refuses a name generator that shows a setting it does not hold. */

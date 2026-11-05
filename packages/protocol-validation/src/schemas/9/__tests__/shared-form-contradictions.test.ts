@@ -12,7 +12,6 @@ import {
 } from '../family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
-import { networkComposerWords } from './canvas-stage-words.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
@@ -311,7 +310,6 @@ describe('shared form stage-effective validation contradictions', () => {
           quickAdd: 'name',
           layoutVariable: 'layoutPosition',
           background: { concentricCircles: 4 },
-          ...networkComposerWords(),
           nodeForm: {
             fields: [
               {
@@ -350,7 +348,6 @@ describe('shared form stage-effective validation contradictions', () => {
           quickAdd: 'name',
           layoutVariable: 'layoutPosition',
           background: { concentricCircles: 4 },
-          ...networkComposerWords(),
           nodeForm: {
             fields: [
               {
@@ -478,7 +475,7 @@ describe('shared form stage-effective validation contradictions', () => {
       stage: {
         id: 'quick',
         type: 'NameGeneratorQuickAdd',
-        quickAddHint: localized('Press Enter when you are finished.'),
+        addNamePlaceholder: localized('Type a name, then press Enter'),
         label: localized('Quick add'),
         subject: { entity: 'node', type: 'person' },
         quickAdd: 'name',
@@ -494,6 +491,7 @@ describe('shared form stage-effective validation contradictions', () => {
         allAddedNotice: localized(
           'There is nothing left to add from this list.',
         ),
+        unnamedLabel: localized('Unnamed {count}'),
         label: localized('Roster'),
         subject: { entity: 'node', type: 'person' },
         dataSource: 'roster',

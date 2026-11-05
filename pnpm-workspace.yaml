@@ -64,7 +64,7 @@ catalog:
   # BCP 47 best-fit matching for app locale negotiation (@codaco/app-i18n);
   # the protocol localization design (§7.1) adopts this same entry when
   # protocol-validation's locale helpers land.
-  '@formatjs/intl-localematcher': ^0.9.0
+  '@formatjs/intl-localematcher': ^0.10.1
   '@microsoft/api-extractor': ^7.59.4
   '@next/bundle-analyzer': ^16.4.2
   '@next/third-parties': ^16.4.2
@@ -157,6 +157,9 @@ catalog:
   # two versions means the hook can rewrite a generated baseline that the
   # subsequent comparison then rejects.
   oxfmt: ^0.74.0
+  # The React Compiler for `@vitejs/plugin-react`'s `compiler: true` (its Rust
+  # port; no babel). Every package that compiles React with it lists this.
+  oxc-transform-react: ^0.152.0
   pdfjs-dist: ^6.3.289
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".

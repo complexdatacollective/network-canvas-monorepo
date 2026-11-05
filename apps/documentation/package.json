@@ -50,6 +50,7 @@
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
     "@microflash/rehype-figure": "^2.1.4",
+    "@netlify/edge-functions": "^4.0.3",
     "@tailwindcss/postcss": "catalog:",
     "@tailwindcss/typography": "catalog:",
     "@testing-library/jest-dom": "catalog:",

@@ -149,6 +149,8 @@ type VariableSpotlightItem =
       variableType: string;
     };
 
+const itemLabel = (item: VariableSpotlightItem) => item.label;
+
 type VariableSpotlightProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -539,7 +541,7 @@ const VariableSpotlight = ({
                 aria-label={intl.formatMessage(messages.attributeResults)}
                 items={collectionItems}
                 keyExtractor={(item) => item.id}
-                textValueExtractor={(item) => item.label}
+                textValueExtractor={itemLabel}
                 layout={layout}
                 renderItem={renderItem}
                 selectionMode="single"

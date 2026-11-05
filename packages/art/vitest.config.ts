@@ -21,7 +21,7 @@ const here = dirname(fileURLToPath(import.meta.url));
  * anything: outside it the addon reports into a panel nobody reads in CI.
  */
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react({ compiler: true })],
   test: {
     globals: true,
     exclude: ['**/node_modules/**', '**/dist/**'],

@@ -610,7 +610,6 @@ export function DeckCard(props: DeckCardProps) {
                             deleteLabel ??
                             intl.formatMessage(messages.deleteProtocol)
                           }
-                          variant="outline"
                           color="dynamic"
                           className="bg-rich-black/60 text-platinum size-[max(40px,10cqi)] border text-[max(16px,4cqi)]"
                           onClick={(event) => {

@@ -55,6 +55,7 @@
     "./Node": "./src/Node.tsx",
     "./NodeDropAnimation": "./src/NodeDropAnimation.tsx",
     "./OptionLabel": "./src/OptionLabel.tsx",
+    "./pageActivity": "./src/pageActivity.ts",
     "./Pips": "./src/Pips.tsx",
     "./Popover": "./src/Popover.tsx",
     "./PortalContainer": "./src/PortalContainer.tsx",
@@ -210,7 +211,8 @@
     "./utils/composeEventHandlers": "./src/utils/composeEventHandlers.ts",
     "./utils/cva": "./src/utils/cva.ts",
     "./utils/finalFocus": "./src/utils/finalFocus.ts",
-    "./utils/foldText": "./src/utils/foldText.ts"
+    "./utils/foldText": "./src/utils/foldText.ts",
+    "./utils/saveBlob": "./src/utils/saveBlob.ts"
   },
   "publishConfig": {
     "exports": {
@@ -369,6 +371,10 @@
       "./OptionLabel": {
         "types": "./dist/OptionLabel.d.ts",
         "default": "./dist/OptionLabel.js"
+      },
+      "./pageActivity": {
+        "types": "./dist/pageActivity.d.ts",
+        "default": "./dist/pageActivity.js"
       },
       "./Pips": {
         "types": "./dist/Pips.d.ts",
@@ -990,6 +996,10 @@
       "./utils/foldText": {
         "types": "./dist/utils/foldText.d.ts",
         "default": "./dist/utils/foldText.js"
+      },
+      "./utils/saveBlob": {
+        "types": "./dist/utils/saveBlob.d.ts",
+        "default": "./dist/utils/saveBlob.js"
       }
     },
     "access": "public"
@@ -1065,6 +1075,7 @@
     "@vitest/browser-playwright": "catalog:",
     "chromatic": "catalog:",
     "jsdom": "catalog:",
+    "oxc-transform-react": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",
     "tinyglobby": "^0.2.17",

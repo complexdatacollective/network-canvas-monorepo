@@ -32,10 +32,10 @@ export function resolveFrescoLocale(input: {
   }
   const account = input.account ? resolve(input.account.locale) : null;
   const resolved =
-    account?.source === 'stored' ? account : resolve(input.mirror);
+    account?.source === 'chosen' ? account : resolve(input.mirror);
   return {
     locale: resolved.locale,
-    preference: resolved.source === 'stored' ? resolved.locale : null,
+    preference: resolved.source === 'chosen' ? resolved.locale : null,
     userId: input.account?.userId ?? null,
     requested: input.requested,
   };

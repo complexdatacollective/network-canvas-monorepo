@@ -205,8 +205,8 @@ describe('a new stage given nothing but a name', () => {
    * pedigree's list wording arrives with its completeness requirement, which a
    * new stage does not have. The messages a stage shows a participant are
    * supplied too, where the stage's configuration needs them: a quick-add
-   * line always, a roster's messages for its data file, and a map's messages
-   * always.
+   * placeholder always, a roster's messages for its list, and a map's label
+   * for places outside its areas always.
    */
   it.each(STAGE_TYPES)('is the %s template under its stage type', (type) => {
     const { id: _id, label: _label, ...seeded } = newStage(type);
@@ -218,19 +218,14 @@ describe('a new stage given nothing but a name', () => {
             allAddedNotice: {
               en: 'There is nothing left to add from this list.',
             },
+            unnamedLabel: { en: 'Unnamed {count}' },
           }
         : {}),
       ...(type === 'NameGeneratorQuickAdd'
-        ? { quickAddHint: { en: 'Press Enter when you are finished.' } }
+        ? { addNamePlaceholder: { en: 'Type a name, then press Enter' } }
         : {}),
       ...(type === 'Geospatial'
         ? {
-            offlineNotice: {
-              en: 'You are offline — the map will not load until you reconnect.',
-            },
-            mapUnavailable: {
-              en: 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
-            },
             outsideAreasLabel: { en: 'Outside Selectable Areas' },
           }
         : {}),
@@ -271,33 +266,11 @@ describe('a new stage given nothing but a name', () => {
             ),
           }
         : {}),
-      ...(type === 'NetworkComposer'
-        ? {
-            addNamePlaceholder: { en: 'Type a name, then press Enter' },
-            overtakenEditNotice: {
-              en: 'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
-            },
-            tooltips: {
-              addPerson: { en: 'Add node' },
-              automaticLayout: { en: 'Automatic layout' },
-            },
-          }
-        : {}),
       ...(type === 'NarrativePedigree'
         ? {
-            keyHeading: { en: 'Key' },
             saveSnapshot: { en: 'Save snapshot' },
-            tooltips: {
-              clearFocus: { en: 'Clear focus' },
-            },
             conditionText: {
               selectCondition: { en: 'Select a condition' },
-              notation: {
-                affected: { en: 'Has this condition' },
-                obligateAffected: { en: 'Will develop this condition' },
-                obligateCarrier: { en: 'Carries this condition' },
-                unknown: { en: 'Not known' },
-              },
               snapshotCondition: { en: '{title}: {condition}' },
               snapshotInheritance: {
                 en: '{title}: {condition} — inheritance for {name}',
@@ -310,19 +283,17 @@ describe('a new stage given nothing but a name', () => {
   });
 
   /**
-   * The wording is supplied in the protocol's languages, and a panel title is
-   * required, so a default language Network Canvas has no wording for holds
-   * the English text, for the researcher to translate.
+   * The wording is supplied only in the protocol's languages Network Canvas
+   * has it in exactly, so a default language it has no wording for is left
+   * for the researcher to write.
    */
-  it('writes a roster’s panel title in the protocol’s languages, in English in a default language with no supplied wording', () => {
+  it('writes a roster’s panel title only in the protocol’s languages Network Canvas has it in', () => {
     expect(
       newStageFields('NameGeneratorRoster', {
         defaultLocale: 'hu',
         locales: ['hu', 'fr', 'ja'],
-      }),
-    ).toMatchObject({
-      panelTitle: { hu: 'Available to add', fr: 'Éléments disponibles' },
-    });
+      }).panelTitle,
+    ).toEqual({ fr: 'Éléments disponibles' });
   });
 
   it.each(STAGE_TYPES)('still needs the listed properties on %s', (type) => {

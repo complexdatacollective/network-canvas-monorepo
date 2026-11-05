@@ -13,13 +13,6 @@ const baseStage = {
   quickAdd: 'name',
   layoutVariable: 'layoutPosition',
   background: { concentricCircles: 4 },
-  addNamePlaceholder: localized('Type a name, then press Enter'),
-  overtakenEditNotice: localized('Your edit has not been saved.'),
-  tooltips: {
-    addPerson: localized('Add node'),
-    automaticLayout: localized('Automatic layout'),
-    drawConnection: localized('Draw edge'),
-  },
   nodeForm: {
     fields: [
       {
@@ -103,7 +96,6 @@ describe('NetworkComposer cross-reference validation', () => {
         composerProtocol({
           ...baseStage,
           convexHullVariable: 'category',
-          groupsHeading: localized('Groups'),
         }),
       ),
     );

@@ -57,7 +57,7 @@ vi.mock('../../../../hooks/useStageSelector', () => ({
 import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import QuickAddField from '../QuickAddField';
 
-const HINT = { en: 'Press Enter when you are finished.' };
+const HINT = 'Press Enter when you are finished.';
 
 const renderField = (ui: ReactElement) =>
   render(ui, { wrapper: TestProtocolLocalization });

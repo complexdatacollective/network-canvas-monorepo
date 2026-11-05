@@ -79,6 +79,7 @@
     "chromatic": "catalog:",
     "fake-indexeddb": "^6.2.6",
     "jsdom": "catalog:",
+    "oxc-transform-react": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",
     "tailwindcss": "catalog:",

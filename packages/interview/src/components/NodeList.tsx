@@ -189,9 +189,9 @@ const NodeList = memo(
     );
     const labelNode = useNodeLabeller(useDecryptedOutcomes(encryptedLabels));
 
-    // The collection reads each node's typeahead text only when its items
-    // change, so they are handed over anew whenever a label changes: as each
-    // name decrypts, and when the key stops being in force.
+    // A new `textOf` whenever a label changes (as each name decrypts, and when
+    // the key stops being in force) has the collection read every node's
+    // typeahead text again.
     const typeahead = useMemo(() => {
       const texts = new Map(
         displayItems.map((node) => [
@@ -200,7 +200,6 @@ const NodeList = memo(
         ]),
       );
       return {
-        items: [...displayItems],
         textOf: (node: NcNode) =>
           texts.get(node[entityPrimaryKeyProperty]) ?? labelNode(node),
         // A drag names the person by the label their card shows.
@@ -290,7 +289,7 @@ const NodeList = memo(
             {...collectionProps}
             key={displayAnimationKey}
             id={id ?? 'node-list'}
-            items={typeahead.items}
+            items={displayItems}
             keyExtractor={keyExtractor}
             textValueExtractor={typeahead.textOf}
             layout={layout}

@@ -469,7 +469,6 @@ export type DynamicMessageEditorProps = Readonly<{
   readOnly: boolean;
   markdown: boolean;
   singleLine: boolean;
-  compact: boolean;
   message: string;
   onMessageChange: (message: string | undefined) => void;
   /** The text in the protocol's main language, to check a translation against. */
@@ -505,7 +504,6 @@ export function DynamicMessageEditor({
   readOnly,
   markdown,
   singleLine,
-  compact,
   message,
   onMessageChange,
   original,
@@ -897,8 +895,7 @@ export function DynamicMessageEditor({
         autoFocus={autoFocus}
         disabled={disabled}
         readOnly={readOnly}
-        singleLine={singleLine || compact}
-        compact={compact}
+        singleLine={singleLine}
         changeMode="input"
         toolbarOptions={toolbarOptions}
         tokens={tokens}
@@ -1282,7 +1279,6 @@ export type DynamicTextFieldProps = CreateFormFieldProps<
     /** Markdown text; plain text otherwise. */
     'markdown'?: boolean;
     'singleLine'?: boolean;
-    'compact'?: boolean;
     'placeholder'?: string;
     'autoFocus'?: boolean;
     'hideUntranslatedNote'?: boolean;
@@ -1308,7 +1304,6 @@ export default function DynamicTextField({
   fieldPath,
   markdown = false,
   singleLine = false,
-  compact = false,
   placeholder,
   autoFocus,
   hideUntranslatedNote,
@@ -1350,7 +1345,6 @@ export default function DynamicTextField({
           readOnly={readOnly === true || translation.readOnly}
           markdown={markdown}
           singleLine={!markdown || singleLine}
-          compact={compact}
           message={translation.message}
           onMessageChange={translation.onMessageChange}
           original={original}

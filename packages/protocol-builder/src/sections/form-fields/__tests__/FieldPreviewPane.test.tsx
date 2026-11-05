@@ -97,33 +97,6 @@ vi.mock('../../../state/protocolContext.ts', () => ({
   useProtocolContext: () => mocks.context,
 }));
 
-// The interview's Spanish catalog arrives only once a test lets it, so the
-// placeholder the participant's field shows meanwhile is there to look at
-// however quickly the import would otherwise resolve.
-const spanishInterviewCatalog = vi.hoisted(() => {
-  let open = () => {};
-  const opened = new Promise<void>((resolve) => {
-    open = resolve;
-  });
-  return { opened, open: () => open() };
-});
-
-vi.mock('@codaco/interview/locales', async (importOriginal) => {
-  const { interviewCatalogLoaders } =
-    await importOriginal<typeof import('@codaco/interview/locales')>();
-  const load = interviewCatalogLoaders.es;
-  if (load === undefined) throw new Error('No es catalog');
-  return {
-    interviewCatalogLoaders: {
-      ...interviewCatalogLoaders,
-      es: async () => {
-        await spanishInterviewCatalog.opened;
-        return load();
-      },
-    },
-  };
-});
-
 const { default: FieldPreviewPane } = await import('../FieldPreviewPane.tsx');
 
 // Asserted as literals rather than by formatting the descriptor the component
@@ -133,7 +106,6 @@ const SHARED_ATTRIBUTE =
 const EMPTY_STATE =
   'Select an attribute and input control to preview this field.';
 const REQUIRED_EN = 'You must answer this question before continuing.';
-const REQUIRED_ES = 'Debes responder a esta pregunta antes de continuar.';
 
 const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
 
@@ -276,12 +248,9 @@ const renderPreview = (
 };
 
 /**
- * For a language the interview may not have loaded yet.
- *
- * Its field suspends until the language arrives, and React 19 retries a
- * suspended render only if it began inside an awaited `act`; a plain `render`
- * would leave the placeholder up for good. The field itself still arrives a
- * moment later, so a test waits for it with `findBy`.
+ * Renders inside an awaited `act`, so what the field does as it mounts has
+ * settled before the test looks. A test still waits for the field with
+ * `findBy`.
  */
 const renderPreviewLoading = async (
   item: Record<string, unknown>,
@@ -645,32 +614,10 @@ describe('FieldPreviewPane', () => {
     expect(submitAuthoring).not.toHaveBeenCalled();
   });
 
-  // Asserts the placeholder, which only a language not yet loaded produces, and
-  // the interview keeps a language once it has it. So this has to be the first
-  // test in the file to render in Spanish; the others let the catalog through
-  // themselves and wait for the field, so they do not depend on running after
-  // it.
-  it('holds a busy placeholder while the participant’s language loads, then shows the field in it', async () => {
-    const item = { variable: 'consents', prompt: en('Research_Question_Á1') };
-    const preview = await renderPreviewLoading(item, { locale: 'es' });
-
-    // The pane's own words are the researcher's and need nothing loaded, so
-    // they are already there while only the participant's field waits.
-    expect(
-      within(preview).getByRole('button', { name: 'Comprobar respuesta' }),
-    ).toBeVisible();
-    expect(preview.querySelector('[aria-busy]')).not.toBeNull();
-    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
-
-    spanishInterviewCatalog.open();
-    expect(await screen.findByRole('radio', { name: 'Sí' })).toBeVisible();
-    expect(preview.querySelector('[aria-busy]')).toBeNull();
-    expect(
-      screen.getByRole('radiogroup', { name: 'Research_Question_Á1' }),
-    ).toBeVisible();
-  });
-
-  it('reads the pane and the participant’s own field in Spanish, leaving authored words alone', async () => {
+  // The participant's field is the interview's, in the language being edited:
+  // its built-in words are the protocol's interface text in that language,
+  // whatever language Architect itself shows.
+  it('reads the pane in Architect’s language and the participant’s field in the protocol’s, leaving authored words alone', async () => {
     const item = {
       variable: 'consents',
       prompt: en('Research_Question_Á1'),
@@ -678,7 +625,6 @@ describe('FieldPreviewPane', () => {
     };
     const original = structuredClone(item);
     const submitAuthoring = vi.fn(() => ({ success: true as const }));
-    spanishInterviewCatalog.open();
     const preview = await renderPreviewLoading(item, {
       locale: 'es',
       probe: true,
@@ -688,14 +634,12 @@ describe('FieldPreviewPane', () => {
     expect(preview).toHaveTextContent(
       'Al seleccionar un atributo existente, los cambios que hagas en el control de entrada o las opciones de validación también afectarán a los demás usos de ese atributo.',
     );
-    // The field arrives once the participant's Spanish has loaded; checking a
-    // response before then would run the rules against a field not yet there.
-    const field = await screen.findByRole('radio', { name: 'Sí' });
+    const field = await screen.findByRole('radio', { name: 'Yes' });
     const check = within(preview).getByRole('button', {
       name: 'Comprobar respuesta',
     });
     fireEvent.click(check);
-    expect(await screen.findByText(REQUIRED_ES)).toBeVisible();
+    expect(await screen.findByText(REQUIRED_EN)).toBeVisible();
 
     // The researcher's own words are protocol content and are rendered as
     // they were typed, in any language.
@@ -710,16 +654,41 @@ describe('FieldPreviewPane', () => {
 
     fireEvent.click(field);
     fireEvent.click(check);
-    await waitFor(() => expect(screen.queryByText(REQUIRED_ES)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(REQUIRED_EN)).toBeNull());
     expectUnchangedParent();
     expect(item).toEqual(original);
     expect(submitAuthoring).not.toHaveBeenCalled();
   });
 
+  it('words the participant’s field by the protocol’s interface text in the language being edited', async () => {
+    const before = mocks.context.interfaceText;
+    Object.assign(mocks.context, {
+      interfaceText: {
+        buttons: {
+          yes: { en: 'Yes', es: 'Sí' },
+          no: { en: 'No', es: 'No' },
+        },
+      },
+    });
+    try {
+      await renderPreviewLoading(
+        { variable: 'consents', prompt: { es: 'Pregunta_Á1' } },
+        { localization: { defaultLocale: 'es', locales: ['es', 'en'] } },
+      );
+      const field = await screen.findByRole('radio', { name: 'Sí' });
+      expect(field.closest('[lang]')).toHaveAttribute('lang', 'es');
+      // Architect's own words stay in Architect's language.
+      expect(
+        screen.getByRole('button', { name: 'Check response' }),
+      ).toBeVisible();
+    } finally {
+      Object.assign(mocks.context, { interfaceText: before });
+    }
+  });
+
   it('keeps a participant scale’s own popup inside the locale region and the portal boundary', async () => {
     const item = { variable: 'satisfaction', prompt: en('Research_Scale_Á1') };
     const original = structuredClone(item);
-    spanishInterviewCatalog.open();
     await renderPreviewLoading(item, { locale: 'es', probe: true });
 
     const slider = await screen.findByRole('slider', {

@@ -1,6 +1,7 @@
 import {
   defaultSiteLocale,
   isSiteLocale,
+  siteLocalePreferenceCookie,
   siteLocales,
   supportedSiteLocales,
   type SiteLocale,
@@ -12,9 +13,9 @@ export const defaultLocale = defaultSiteLocale;
 export const locales = siteLocales;
 export const isLocale = isSiteLocale;
 
+/** The language chosen on any Network Canvas website (see `siteLocalePreferenceCookie`). */
 export const localeCookie = {
-  name: 'NEXT_LOCALE',
-  maxAge: 31_536_000,
+  ...siteLocalePreferenceCookie,
   sameSite: 'lax',
 } as const;
 

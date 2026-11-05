@@ -10,12 +10,14 @@ import { pedigreePipedFrom, type PedigreeWords } from '../pedigreeWords';
  */
 export const pedigreeWordsIn = (locale = 'en'): PedigreeWords => {
   const format = createLocalizedMessageFormatter();
+  const wording = familyPedigreeWordingIn([locale]);
   return {
-    wording: familyPedigreeWordingIn([locale]),
+    wording,
     text: (value, values) => format(locale, value[locale] ?? '', values),
     piped: pedigreePipedFrom((value, values) =>
       localizedMessageParts(value[locale] ?? '', locale, values),
     ),
+    you: format(locale, wording.you[locale] ?? '', {}),
     locale,
   };
 };

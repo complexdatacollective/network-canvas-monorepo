@@ -1,19 +1,5 @@
 {
   "conditionText": {
-    "notation": {
-      "affected": {
-        "en": "Has this condition"
-      },
-      "obligateAffected": {
-        "en": "Will develop this condition"
-      },
-      "obligateCarrier": {
-        "en": "Carries this condition"
-      },
-      "unknown": {
-        "en": "Not known"
-      }
-    },
     "selectCondition": {
       "en": "Select a condition"
     },
@@ -36,9 +22,6 @@
     }
   ],
   "id": "id-2",
-  "keyHeading": {
-    "en": "Key"
-  },
   "label": {
     "en": "Family Health History"
   },
@@ -47,10 +30,5 @@
   },
   "showAtRiskStatuses": false,
   "sourceStageId": "family-pedigree-1",
-  "tooltips": {
-    "clearFocus": {
-      "en": "Clear focus"
-    }
-  },
   "type": "NarrativePedigree"
 }

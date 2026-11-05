@@ -37,6 +37,14 @@ type LocalizedStringDescriptor = Readonly<{
    * (see `DynamicValueSite`); absent for text that may not.
    */
   dynamicValues?: DynamicValueSite;
+  /**
+   * Text that may have no translation at all, even in a protocol leaving its
+   * editor, because something else decides whether it needs one (the finish
+   * stage's screens; see `findFinishStageTextProblems`). Any other text must
+   * have one, unless it is wording Network Canvas supplies, which a protocol
+   * being written may hold empty (see `findEmptyTextProblems`).
+   */
+  mayBeEmpty?: true;
 }>;
 
 /**
@@ -137,7 +145,6 @@ export const nonBlankText = () =>
 const localizedTranslations = (
   content: z.ZodString,
   findProblem: (message: string) => string | undefined,
-  mayBeEmpty: boolean,
 ) =>
   z
     .record(
@@ -147,15 +154,10 @@ const localizedTranslations = (
         if (problem) ctx.addIssue({ code: 'custom', message: problem });
       }),
     )
+    // Whether the text may have no translation at all depends on where it
+    // sits, which only the protocol can see (`findEmptyTextProblems`).
     .superRefine((value, ctx) => {
-      const locales = Object.keys(value);
-      if (locales.length === 0 && !mayBeEmpty) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Text must have at least one translation.',
-        });
-      }
-      for (const locale of locales) {
+      for (const locale of Object.keys(value)) {
         const problem = findLocaleTagProblem(locale);
         if (problem) {
           ctx.addIssue({ code: 'custom', message: problem, path: [locale] });
@@ -180,9 +182,11 @@ export const localizedString = (
     /**
      * Let the text show the stage's dynamic values, and say where it sits,
      * which decides which ones (see `DynamicValueSite`). Only stage-owned
-     * participant text a researcher writes may: never a stage label, which
-     * shows outside the stage, codebook text reused across stages, or wording
-     * Network Canvas supplies. Each translation is checked here only for what
+     * participant text may: never a stage label, which shows outside the
+     * stage, or codebook text reused across stages. Wording Network Canvas
+     * supplies may, where a researcher may want to show a value in its place
+     * (the participant's own label on a Family Pedigree), but its supplied
+     * wording never does. Each translation is checked here only for what
      * needs no stage; which values it shows, and how, is checked against the
      * stage's bindings by the protocol (`findDynamicValueProblems`).
      */
@@ -194,10 +198,12 @@ export const localizedString = (
     dynamicValues === undefined
       ? findMessageSyntaxProblem
       : findDynamicMessageSyntaxProblem,
-    mayBeEmpty,
   ).meta({
-    [LOCALIZED_STRING]:
-      dynamicValues === undefined ? { format } : { format, dynamicValues },
+    [LOCALIZED_STRING]: {
+      format,
+      ...(dynamicValues === undefined ? {} : { dynamicValues }),
+      ...(mayBeEmpty ? { mayBeEmpty: true } : {}),
+    },
   });
 
 const describeMissingPlacement = (
@@ -237,10 +243,8 @@ export const localizedMessage = (
   if (plurals.length > 1) {
     throw new Error('A localized message can declare at most one plural.');
   }
-  return localizedTranslations(
-    content,
-    (message) => findMessageArgumentProblem(message, declaration),
-    false,
+  return localizedTranslations(content, (message) =>
+    findMessageArgumentProblem(message, declaration),
   )
     .superRefine((value, ctx) => {
       for (const [locale, message] of Object.entries(value)) {
@@ -274,7 +278,8 @@ const isLocalizedStringDescriptor = (
   (!('dynamicValues' in value) ||
     value.dynamicValues === 'stageText' ||
     value.dynamicValues === 'prompt' ||
-    value.dynamicValues === 'formField');
+    value.dynamicValues === 'formField') &&
+  (!('mayBeEmpty' in value) || value.mayBeEmpty === true);
 
 export const getLocalizedStringDescriptor = (
   schema: z.ZodType,

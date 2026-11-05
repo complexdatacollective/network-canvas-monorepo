@@ -2,7 +2,6 @@
 import { invariant } from 'es-toolkit';
 import { useCallback, useMemo } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import type { LocalizedString } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
@@ -13,8 +12,11 @@ import {
 
 import useExternalData from '../../hooks/useExternalData';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
-import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import { useStageSubjectName } from '../../hooks/useStageSubjectName';
+import {
+  useResolveLocalizedMessage,
+  useResolveLocalizedString,
+} from '../../localization/ProtocolLocalizationProvider';
 import { getStageCardOptions } from '../../selectors/name-generator';
 import {
   getNetworkNodes,
@@ -75,8 +77,10 @@ export type UseItemElement = {
 
 // Returns all nodes associated with external data
 const useItems = (props: NameGeneratorRosterProps) => {
-  const intl = useAppIntl();
   const resolve = useResolveLocalizedString();
+  const resolveMessage = useResolveLocalizedMessage();
+  const subject = useStageSubjectName();
+  const { unnamedLabel } = props.stage;
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const { externalData, status } = useExternalData(
     props.stage.dataSource,
@@ -100,9 +104,9 @@ const useItems = (props: NameGeneratorRosterProps) => {
         node,
         sequentialNumber,
         placeholder: (number) =>
-          intl.formatMessage(runtimeMessages.unnamedNumbered, { number }),
+          resolveMessage(unnamedLabel, { count: String(number), subject }).text,
       }),
-    [codebookVariables, intl],
+    [codebookVariables, resolveMessage, unnamedLabel, subject],
   );
 
   const items = useMemo(() => {

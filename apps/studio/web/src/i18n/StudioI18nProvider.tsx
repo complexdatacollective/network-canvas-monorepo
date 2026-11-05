@@ -109,7 +109,7 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
   // explicit preference the language page should show.
   const [preference, setPreference] = useState<string | null>(() => {
     const resolved = resolveMirroredLocale();
-    return resolved.source === 'stored' ? resolved.locale : null;
+    return resolved.source === 'chosen' ? resolved.locale : null;
   });
   const [saveState, setSaveState] = useState<LocaleSaveState>('idle');
 

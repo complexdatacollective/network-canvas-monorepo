@@ -153,6 +153,9 @@ type SpotlightRow =
   | Readonly<{ id: string; kind: 'create'; name: string }>
   | Readonly<{ id: string; kind: 'refused'; name: string; reason: string }>;
 
+const rowText = (row: SpotlightRow) =>
+  row.kind === 'attribute' ? row.option.label : row.name;
+
 /**
  * What the window does once a create has answered.
  *
@@ -672,9 +675,7 @@ export default function VariableSpotlight({
                 aria-label={intl.formatMessage(messages.resultsLabel)}
                 items={rows}
                 keyExtractor={(row) => row.id}
-                textValueExtractor={(row) =>
-                  row.kind === 'attribute' ? row.option.label : row.name
-                }
+                textValueExtractor={rowText}
                 layout={layout}
                 renderItem={renderRow}
                 selectionMode="single"

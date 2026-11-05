@@ -3,12 +3,10 @@
     - heading "Who do you know?" [level=2]
   - button "Broken source":
     - heading "Broken source" [level=3]
-  - img "Warning"
   - heading "Something went wrong" [level=4]
   - paragraph: The list could not load - matrix check
   - listbox "Added Nodes"
-  - button "Add a person":
-    - img "Add a person"
+  - button "Add a person"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

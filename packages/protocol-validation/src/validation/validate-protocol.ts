@@ -1,5 +1,6 @@
 import { ensureError } from '@codaco/shared-consts';
 
+import { findBuiltInWordingProblems } from '../schemas/9/built-in-wording.ts';
 import { findFinishStageTextProblems } from '../schemas/9/finish-stage-text.ts';
 import {
   type VersionedProtocol,
@@ -68,11 +69,34 @@ const finishStageTextIssues = (
         })),
       );
 
+/**
+ * The issue code for wording Network Canvas supplies that has no text in the
+ * protocol's default language.
+ */
+export const BUILT_IN_WORDING_MISSING = 'built_in_wording_missing';
+
+/**
+ * Wording Network Canvas supplies with no text in the protocol's default
+ * language, as validation issues: something only a protocol being written
+ * may lack (see `findBuiltInWordingProblems`).
+ */
+const builtInWordingIssues = (
+  protocol: VersionedProtocol,
+): ProtocolValidationIssue[] =>
+  protocol.schemaVersion !== 9
+    ? []
+    : findBuiltInWordingProblems(protocol).map((problem) => ({
+        code: BUILT_IN_WORDING_MISSING,
+        path: [...problem.path, problem.locale],
+        message: `Network Canvas has no built-in wording in the protocol's default language (${problem.locale}), so this text must be written in it, or a language Network Canvas has wording in made the default.`,
+      }));
+
 export type ValidateProtocolOptions = {
   /**
    * The protocol is still being written, in an editor: allow what a protocol
-   * may lack until it leaves the editor, which is the finish stage's closing
-   * and finished text in its default language. Everything that reads a protocol
+   * may lack until it leaves the editor, which is text in its default
+   * language that Network Canvas has no wording in it for: the finish stage's
+   * closing and finished text, and its other built-in wording. Everything that reads a protocol
    * someone has handed over — an import, a publish, a download — leaves this
    * off.
    */
@@ -101,7 +125,12 @@ const validateProtocol = async (
     const result = await VersionedProtocolSchema.safeParseAsync(protocol);
 
     const releaseIssues =
-      result.success && !draft ? finishStageTextIssues(result.data) : [];
+      result.success && !draft
+        ? [
+            ...finishStageTextIssues(result.data),
+            ...builtInWordingIssues(result.data),
+          ]
+        : [];
 
     if (
       result.success &&

@@ -99,6 +99,16 @@ describe('ProtocolLocalizationSchema', () => {
     ]);
   });
 
+  it('records nothing about where a language’s built-in wording comes from', () => {
+    expect(
+      issuesOf(ProtocolLocalizationSchema, {
+        defaultLocale: 'en',
+        locales: ['en', 'es-MX'],
+        startFrom: { 'es-MX': 'es' },
+      }).map(({ path }) => path),
+    ).toEqual([[]]);
+  });
+
   it('rejects a language declared twice at the repeat', () => {
     expect(
       issuesOf(ProtocolLocalizationSchema, {
@@ -167,10 +177,11 @@ describe('localizedString', () => {
     expect(required.safeParse('Hello').success).toBe(false);
   });
 
-  it('rejects an object with no translation', () => {
-    expect(issuesOf(required, {})).toEqual([
-      { message: 'Text must have at least one translation.', path: [] },
-    ]);
+  // Whether text may have no translation depends on where it sits, which
+  // only the protocol can see: wording Network Canvas supplies may, until the
+  // researcher writes it (see `findEmptyTextPaths`).
+  it('leaves an object with no translation to the protocol', () => {
+    expect(issuesOf(required, {})).toEqual([]);
   });
 
   it("applies the owning field's rule to every translation", () => {

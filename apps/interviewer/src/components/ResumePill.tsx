@@ -5,6 +5,8 @@ import { useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { usePageActive } from '@codaco/fresco-ui/pageActivity';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { updateSettings } from '~/lib/db/api';
 import type { StoredSessionLite } from '~/lib/db/types';
 
@@ -78,6 +80,9 @@ export function ResumePillView({
   onResume: () => void;
 }) {
   const intl = useAppIntl();
+  // The dot pulses only while the window is in front of the user; a browser
+  // keeps repainting the glow in a window that is on screen but not focused.
+  const pageActive = usePageActive();
   return (
     <motion.button
       key="resume-pill-button"
@@ -96,7 +101,10 @@ export function ResumePillView({
       <div className="flex size-20 shrink-0 items-center justify-center">
         <span
           aria-hidden
-          className="bg-sea-green animate-pulse-glow size-2 rounded-full shadow-[0_0_10px_oklch(var(--sea-green))]"
+          className={cx(
+            'bg-sea-green size-2 rounded-full shadow-[0_0_10px_oklch(var(--sea-green))]',
+            pageActive && 'animate-pulse-glow',
+          )}
         />
       </div>
 

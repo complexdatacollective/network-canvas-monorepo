@@ -19,6 +19,11 @@ import {
 
 import NodeDrawer from '../NodeDrawer';
 
+// The drawer sits inside a stage, whose node type its drop hint may name.
+vi.mock('../../hooks/useStageSubjectName', () => ({
+  useStageSubjectName: () => 'Person',
+}));
+
 // A drawn person reads the session store; what these tests own is the drawer
 // around them.
 const layoutSettled = vi.hoisted(() => ({ current: () => {} }));

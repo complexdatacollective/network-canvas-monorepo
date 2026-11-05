@@ -14,6 +14,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import type { ChoiceDialog } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { usePageActive } from '@codaco/fresco-ui/pageActivity';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type {
@@ -21,6 +22,7 @@ import type {
   ExtractedAsset,
 } from '@codaco/protocol-validation';
 import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
+import { useBaseLanguageOffer } from '~/components/Localization/useBaseLanguageOffer';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavLink from '~/components/ProjectNav/NavLink';
 import NavShell from '~/components/ProjectNav/NavShell';
@@ -144,6 +146,7 @@ const Home = () => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
+  const offerBaseLanguage = useBaseLanguageOffer();
   const [isLoading, setIsLoading] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<{
@@ -153,10 +156,15 @@ const Home = () => {
     sourceRef?: ProtocolSourceRef;
   } | null>(null);
   const [visibleCount, setVisibleCount] = useState(3);
+  // The map gains a station every few seconds, forever, so it only grows while
+  // the page is in front of the user. Out of sight the stations already moving
+  // settle and nothing more is drawn.
+  const pageActive = usePageActive();
   useEffect(() => {
+    if (!pageActive) return undefined;
     const id = setInterval(() => setVisibleCount((c) => c + 1), 2400);
     return () => clearInterval(id);
-  }, []);
+  }, [pageActive]);
   // The loading overlay covers async work (dispatch, asset loading) only. It
   // must be dismissed before any dialog is awaited, otherwise the spinner
   // (rendered at a high z-index) paints over the dialog and blocks its buttons.
@@ -177,11 +185,21 @@ const Home = () => {
       localization: CurrentProtocol['localization'];
     }) => {
       setShowNewDialog(false);
-      void runAction(async () => {
-        await dispatch(createNetcanvas(values));
-      });
+      void (async () => {
+        // Asked before the loading overlay, which would cover the question.
+        const { defaultLocale, locales } = values.localization;
+        const bases = await offerBaseLanguage(locales, [], defaultLocale);
+        await runAction(async () => {
+          await dispatch(
+            createNetcanvas({
+              ...values,
+              localization: { defaultLocale, locales: [...locales, ...bases] },
+            }),
+          );
+        });
+      })();
     },
-    [dispatch, runAction],
+    [dispatch, offerBaseLanguage, runAction],
   );
   const handleOpenLocalFile = useCallback(
     async (file: File) => {

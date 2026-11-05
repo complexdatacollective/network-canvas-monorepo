@@ -14,7 +14,6 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import type { CatalogMessages } from '@codaco/app-i18n/locales';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { InterviewPayload } from '@codaco/interview';
-import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import InterviewClient from '~/app/(interview)/interview/[interviewId]/InterviewClient';
 import ParticipantLayout from '~/app/(interview)/layout';
@@ -106,8 +105,6 @@ const originalPayload = structuredClone(payload);
 const en = await frescoCatalogSource.load('en');
 const es = await frescoCatalogSource.load('es');
 await frescoCatalogSource.load('en-GB');
-// What the interview page loads on the server for a Spanish request.
-const interviewCatalog = await loadInterviewCatalog('es');
 
 const spanish: FrescoI18nInitialization = {
   locale: 'es',
@@ -146,7 +143,6 @@ function Host({
           installationId="test-installation"
           disableAnalytics
           view="active"
-          catalog={interviewCatalog}
         />
       </ParticipantLayout>
     </FrescoI18nProvider>
@@ -179,7 +175,6 @@ describe('Fresco hands the interview the request’s languages, never its own', 
     expect(shell).toHaveBeenLastCalledWith(
       expect.objectContaining({
         requestedLocales: serializedRequest,
-        catalog: interviewCatalog,
         payload,
       }),
     );

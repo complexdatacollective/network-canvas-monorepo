@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useRef } from 'react';
+import { type RefObject, useRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -51,6 +51,35 @@ function Probe({
         data-testid="state"
         data-fitted={String(fittedWatch)}
       >{`${stepIndex}:${isTruncated}`}</output>
+    </div>
+  );
+}
+
+// The text fitted inside a box its parent renders, as a bin's label is.
+function FittedInParent({
+  containerRef,
+}: {
+  containerRef: RefObject<HTMLDivElement | null>;
+}) {
+  const { ref, stepIndex, isTruncated } = useFitText<HTMLSpanElement>({
+    steps: STEPS,
+    containerRef,
+    watch: 'label',
+  });
+
+  return (
+    <>
+      <span ref={ref}>label</span>
+      <output data-testid="state">{`${stepIndex}:${isTruncated}`}</output>
+    </>
+  );
+}
+
+function ParentBox() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  return (
+    <div ref={containerRef} data-testid="container">
+      <FittedInParent containerRef={containerRef} />
     </div>
   );
 }
@@ -134,6 +163,96 @@ describe('useFitText', () => {
     fireEvent.resize(window);
 
     await waitFor(() => expect(state()).toBe('1:false'));
+  });
+
+  describe('when its container resizes', () => {
+    // The shared setup's ResizeObserver fires once per element and cannot be
+    // driven, so swap in one that records what is being watched and fires only
+    // when the test says so.
+    type Watcher = { callback: ResizeObserverCallback; targets: Set<Element> };
+    let watchers: Watcher[] = [];
+    const originalResizeObserver = globalThis.ResizeObserver;
+
+    beforeEach(() => {
+      watchers = [];
+      globalThis.ResizeObserver = class implements ResizeObserver {
+        private watcher: Watcher;
+
+        constructor(callback: ResizeObserverCallback) {
+          this.watcher = { callback, targets: new Set() };
+          watchers.push(this.watcher);
+        }
+
+        observe(target: Element) {
+          this.watcher.targets.add(target);
+        }
+
+        unobserve(target: Element) {
+          this.watcher.targets.delete(target);
+        }
+
+        disconnect() {
+          this.watcher.targets.clear();
+        }
+      };
+    });
+
+    afterEach(() => {
+      globalThis.ResizeObserver = originalResizeObserver;
+    });
+
+    const reportResize = (target: Element) => {
+      const watching = watchers.filter((watcher) =>
+        watcher.targets.has(target),
+      );
+      if (watching.length === 0) {
+        throw new Error(
+          'Nothing is observing the container, so the text keeps a size it no longer fits.',
+        );
+      }
+      for (const watcher of watching) {
+        watcher.callback(
+          [{ target } as ResizeObserverEntry],
+          {} as ResizeObserver,
+        );
+      }
+    };
+
+    it('re-fits when a container its parent renders shrinks', async () => {
+      // React attaches a parent's ref only after the layout effects beneath it
+      // have run, so the container is not there yet when the text first fits.
+      // The text still has to hear about the box shrinking afterwards.
+      uninstallLabelMetrics();
+      let containerHasShrunk = false;
+      Object.defineProperty(HTMLSpanElement.prototype, 'clientWidth', {
+        configurable: true,
+        get: () => 100,
+      });
+      Object.defineProperty(HTMLSpanElement.prototype, 'scrollWidth', {
+        configurable: true,
+        get(this: HTMLElement) {
+          return containerHasShrunk && this.className.includes('text-base')
+            ? 101
+            : 100;
+        },
+      });
+      Object.defineProperty(HTMLSpanElement.prototype, 'clientHeight', {
+        configurable: true,
+        get: () => 20,
+      });
+      Object.defineProperty(HTMLSpanElement.prototype, 'scrollHeight', {
+        configurable: true,
+        get: () => 20,
+      });
+
+      render(<ParentBox />);
+      await waitFor(() => expect(state()).toBe('0:false'));
+
+      containerHasShrunk = true;
+      reportResize(screen.getByTestId('container'));
+
+      await waitFor(() => expect(state()).toBe('1:false'));
+    });
   });
 
   it('still reports truncation for a single-rung ladder', async () => {

@@ -60,7 +60,7 @@ export const runtimeMessages = defineMessages({
     id: 'interview.runtime.dropToRemove',
     defaultMessage: 'Drop here to remove',
     description:
-      'Hint shown on the tray when dropping an item removes its position.',
+      'Hint shown on the tray when dropping an item removes its position. subject is the name of the kind of item, such as Person, which the protocol may use in its own wording.',
   },
   nodeList: {
     id: 'interview.runtime.nodeList',
@@ -103,12 +103,6 @@ export const runtimeMessages = defineMessages({
     defaultMessage: 'Connection',
     description:
       'Title of the panel for a connection between two people or other items on the canvas, shown when the task gives that kind of connection no name of its own.',
-  },
-  unnamedNumbered: {
-    id: 'interview.runtime.unnamedNumbered',
-    defaultMessage: 'Unnamed {number}',
-    description:
-      'Title of an entry in a list of people or other items to choose from when the entry has no name or other details to show. number tells the entries apart: 1, 2, 3 and so on.',
   },
   answerUnavailable: {
     id: 'interview.runtime.answerUnavailable',
