@@ -6,9 +6,8 @@
 // the one dependency chain guaranteed to satisfy that. Adding a relative
 // import here would break those scripts.
 //
-// It imports the import-free `schema-version` subpath, not the package root:
-// Fresco's config reads this constant on every route, and the root would put
-// every protocol schema into each of those routes' browser bundles.
+// It uses the `schema-version` subpath because the package root would put every
+// schema into the bundle of each route that reads this constant.
 
 import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation/schema-version';
 

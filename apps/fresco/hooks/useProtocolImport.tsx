@@ -472,8 +472,6 @@ export const useProtocolImport = () => {
       return;
     } catch (e) {
       const error = ensureError(e);
-      // If the pipeline itself failed to load, nothing it could classify was
-      // thrown, so the error is reported as an operational failure.
       const { refusalKind, protocolFileError, reportableError } =
         await loadImportPipeline().then(
           (pipeline) => pipeline.classifyImportError(error),

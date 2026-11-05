@@ -1,3 +1,2 @@
-// Kept free of imports so the `./schema-version` subpath gives hosts the
-// current schema version without evaluating the schemas themselves.
+// Must stay import-free: hosts use this subpath to avoid loading the schemas.
 export const CURRENT_SCHEMA_VERSION = 9 as const;
