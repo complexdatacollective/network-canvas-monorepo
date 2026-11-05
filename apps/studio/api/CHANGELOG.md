@@ -1,5 +1,16 @@
 # @codaco/studio-api
 
+## 1.0.3
+
+### Patch Changes
+
+- Studio keeps the researcher's language choice with the locale system every
+  Network Canvas app shares, and matches browser languages with its best fit.
+- An idle Studio deployment no longer sends a trace for every background check. The worker's job polls that find nothing, the once-a-second maintenance readings, and `/healthz` and `/readyz` probes are no longer exported, along with the database queries they run. A poll that claims a job is still traced from the job's processing onwards. When telemetry is on, an idle worker now exports roughly a twelfth of the trace data it did.
+- Studio's stage editors do much less work each time they redraw, so editing a stage stays more responsive in large protocols.
+- The protocol editor now works better with a keyboard and a screen reader. Moving a screen in the outline with the arrow keys or the move buttons is announced with its new position, and focus stays on the screen you moved, including at the top and bottom of the list. Focus also stays on Add while a new screen is being added, and returns to it after you refresh the outline. Each validation problem is now a button that takes you to the screen and field it is about, and the number of problems is announced when it changes. If you lose the right to edit a screen, or open one that someone else is editing, the editor now says so aloud.
+- Studio's loading and confirmation messages are now announced to screen readers as standard status messages. An invitation that expires while the team members page is open now leaves the pending list within a minute, instead of staying until the page is reloaded.
+
 ## 1.0.2
 
 ### Patch Changes
