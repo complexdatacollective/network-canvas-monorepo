@@ -51,7 +51,7 @@ The Per Alter Form is a name interpreter: it collects information about alters a
 
 Read the full [Per Alter Form documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form).
 
-## What you get
+## What data it collects
 
 <!-- scene: name-generator-data -->
 
@@ -90,9 +90,11 @@ These are the questions asked about each alter. Each field records one attribute
 
 Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms), and open a field, or create a new one, for a tour of the field editor.
 
-<!-- include: form-field -->
+<!-- include: node-form-field -->
 
-<!-- include: attribute-picker -->
+<!-- include: form-field-details -->
+
+<!-- include: attribute-search -->
 
 <!-- include: skip-logic -->
 

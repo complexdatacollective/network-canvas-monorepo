@@ -61,7 +61,7 @@ In the Name Generator (using forms), the add button opens a **form** the partici
 
 If you only need names, the [Name Generator (using quick add)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-quick-add) is quicker for participants. If you already have a list of the alters they might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-roster).
 
-## What you get
+## What data it collects
 
 <!-- scene: name-generator-data -->
 
@@ -99,9 +99,11 @@ These are the questions the participant answers each time they add a node. The *
 
 Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms), and open a field, or create a new one, for a tour of the field editor.
 
-<!-- include: form-field -->
+<!-- include: node-form-field -->
 
-<!-- include: attribute-picker -->
+<!-- include: form-field-details -->
+
+<!-- include: attribute-search -->
 
 ## Write the prompts
 

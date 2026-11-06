@@ -59,7 +59,7 @@ In the Name Generator (using quick add), the add button opens a single box. The 
 
 If you also want to ask a few questions about each alter as it is named, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-forms). If you already have a list of the alters they might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-roster).
 
-## What you get
+## What data it collects
 
 Every alter named becomes one row in your exported data. What the participant typed goes in one column, the quick add attribute, and later stages add more columns to the same rows.
 
@@ -102,7 +102,7 @@ These rules belong to the attribute in the codebook, so a change applies whereve
 
 Read more about [field validation](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/field-validation).
 
-<!-- include: attribute-picker -->
+<!-- include: attribute-search -->
 
 ## Write the prompts
 

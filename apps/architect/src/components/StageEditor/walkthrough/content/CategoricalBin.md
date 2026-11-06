@@ -51,7 +51,7 @@ The Categorical Bin is a name interpreter: it collects information about alters 
 
 Read the full [Categorical Bin documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/categorical-bin).
 
-## What you get
+## What data it collects
 
 <!-- scene: categorical-bin-data -->
 
@@ -130,7 +130,7 @@ The **Follow-up question** appears as soon as an alter is dropped in the other c
 
 Typing a new name in the attribute picker opens this window, since a categorical attribute is its list of values. Name it, then add its values, each with a label and a value.
 
-<!-- include: attribute-picker -->
+<!-- include: attribute-search -->
 
 ## Choose how alters are placed
 

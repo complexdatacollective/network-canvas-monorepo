@@ -59,7 +59,7 @@ In the Name Generator for Roster Data, nothing is typed in. The alters already e
 
 If participants should name alters you can't list in advance, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-forms) or the [Name Generator (using quick add)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-quick-add).
 
-## What you get
+## What data it collects
 
 <!-- scene: roster-data -->
 

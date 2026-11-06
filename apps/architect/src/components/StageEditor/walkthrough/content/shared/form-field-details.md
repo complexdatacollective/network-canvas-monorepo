@@ -1,29 +1,17 @@
 <!--
-  Shared steps for the form field window, opened from a form's Form
-  configuration section. Include with the line "include: form-field" in an
-  HTML comment.
+  Shared steps for the form field window that hold for any form, whatever it
+  is about: hint, input control, options, validation and preview. A form's
+  own walkthrough writes the two steps before these (what the field records,
+  and its question), then includes these with the line
+  "include: form-field-details" in an HTML comment.
 -->
-
-## Choose what this field records
-
-<!-- dialog: form field -->
-<!-- field: variable -->
-
-Each field saves its answer to an **attribute** of the node. Select an existing attribute, or create a new one.
-
-## Write the question
-
-<!-- dialog: form field -->
-<!-- field: prompt -->
-
-This is the question the participant reads above the input, such as _"What is this person's first name?"_. Keep it short; it is asked once for every alter.
 
 ## Add a hint
 
 <!-- dialog: form field -->
 <!-- field: hint -->
 
-A hint appears under the question in smaller text. Use it for an example or a short instruction, such as _"First name or a nickname is fine"_, rather than making the question longer.
+A hint appears under the question in smaller text. Use it for an example or a short instruction, rather than making the question longer.
 
 ## Choose how they answer
 

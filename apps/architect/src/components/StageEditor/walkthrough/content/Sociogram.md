@@ -53,7 +53,7 @@ Its companion, the [Narrative](https://documentation.networkcanvas.com/en/design
 
 Read the full [Sociogram documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram).
 
-## What you get
+## What data it collects
 
 <!-- scene: sociogram-data -->
 
@@ -150,12 +150,7 @@ Name the attribute that will hold the positions placed on this prompt. It is add
 
 Name the attribute that tapping a node will switch on and off. Its values are true and false, and it becomes one column in your exported data.
 
-## Name the edge type
-
-<!-- dialog: create new edge type | edit this edge type -->
-<!-- field: name -->
-
-An edge type is one kind of relationship between nodes, such as _Knows_, _Works with_ or _Located near_. Its name is how it appears in the codebook and in the edge list of your exported data.
+<!-- include: edge-type -->
 
 ## Choose the background
 

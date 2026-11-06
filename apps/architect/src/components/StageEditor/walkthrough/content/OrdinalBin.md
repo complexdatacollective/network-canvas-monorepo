@@ -51,7 +51,7 @@ The Ordinal Bin is a name interpreter: it collects information about alters alre
 
 Read the full [Ordinal Bin documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ordinal-bin).
 
-## What you get
+## What data it collects
 
 <!-- scene: ordinal-bin-data -->
 
@@ -125,7 +125,7 @@ The attribute's values are listed under it, and you edit them here: each has a l
 
 Typing a new name in the attribute picker opens this window, since an ordinal attribute is its list of values. Name it, then add its values, each with a label and a value, in order.
 
-<!-- include: attribute-picker -->
+<!-- include: attribute-search -->
 
 ## Choose how alters are placed
 

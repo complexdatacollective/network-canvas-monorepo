@@ -1,14 +1,14 @@
 <!--
-  Shared steps for the attribute picker and the rename window, opened from a
-  form field, the quick add attribute or a prompt's additional attributes.
-  Include with the line "include: attribute-picker" in an HTML comment.
+  Shared steps for the attribute picker and the rename window, worded for
+  any subject: the participant, a node type or an edge type. Include with the
+  line "include: attribute-search" in an HTML comment.
 -->
 
 ## Find or create an attribute
 
 <!-- dialog: =attribute | =select an attribute | create or select an attribute -->
 
-Search the attributes this node type already has, or type a new name to create one. Reusing an attribute when you ask the same thing again keeps the answers in one column of your data.
+Search the attributes already defined for what this form is about, or type a new name to create one. Reusing an attribute when you ask the same thing again keeps the answers in one column of your data.
 
 Read more about [variables and attributes](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/variables).
 

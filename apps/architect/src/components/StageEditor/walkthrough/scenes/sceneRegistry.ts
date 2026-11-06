@@ -16,6 +16,20 @@ import {
   StageFilterScene,
 } from './BinScenes';
 import {
+  DyadCensusDataScene,
+  DyadCensusExistingScene,
+  DyadCensusIntroScene,
+  DyadCensusPairsScene,
+  DyadCensusPromptsScene,
+  EdgeFormDataScene,
+  EdgeFormIntroScene,
+  EdgeFormSourceScene,
+  EgoFormDataScene,
+  EgoFormIntroductionScene,
+  EgoFormIntroScene,
+  EgoFormScrollScene,
+} from './InterpreterScenes';
+import {
   NameGeneratorAdditionalAttributesScene,
   NameGeneratorDataScene,
   NameGeneratorFilterScene,
@@ -88,4 +102,16 @@ export const SCENES: Readonly<Record<string, ComponentType>> = {
   'bin-bucket-order': BinBucketOrderScene,
   'stage-filter': StageFilterScene,
   'alter-form-intro': AlterFormIntroScene,
+  'ego-form-intro': EgoFormIntroScene,
+  'ego-form-introduction': EgoFormIntroductionScene,
+  'ego-form-scroll': EgoFormScrollScene,
+  'ego-form-data': EgoFormDataScene,
+  'edge-form-intro': EdgeFormIntroScene,
+  'edge-form-data': EdgeFormDataScene,
+  'edge-form-source': EdgeFormSourceScene,
+  'dyad-census-intro': DyadCensusIntroScene,
+  'dyad-census-existing': DyadCensusExistingScene,
+  'dyad-census-prompts': DyadCensusPromptsScene,
+  'dyad-census-data': DyadCensusDataScene,
+  'dyad-census-pairs': DyadCensusPairsScene,
 };
