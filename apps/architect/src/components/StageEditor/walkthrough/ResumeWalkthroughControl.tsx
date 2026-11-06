@@ -19,13 +19,13 @@ const messages = defineMessages({
     id: 'architect.stageEditor.walkthrough.resumeEyebrow',
     defaultMessage: 'Resume walkthrough · {index} of {total}',
     description:
-      'Small heading in the tooltip of the minimised walkthrough in the stage editor toolbar, above the title of the step the researcher was on.',
+      'Small heading in the tooltip of the minimized walkthrough in the stage editor toolbar, above the title of the step the researcher was on.',
   },
   resumeLabel: {
     id: 'architect.stageEditor.walkthrough.resumeLabel',
     defaultMessage: 'Resume walkthrough, step {index} of {total}: {title}',
     description:
-      'Accessible name of the minimised walkthrough button in the stage editor toolbar. It opens the walkthrough again at the step named.',
+      'Accessible name of the minimized walkthrough button in the stage editor toolbar. It opens the walkthrough again at the step named.',
   },
 });
 

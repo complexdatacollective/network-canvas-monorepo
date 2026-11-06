@@ -98,7 +98,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/en/design-prot
 
 This is the instruction the participant reads in the prompt card over the canvas, which they can drag out of the way, such as _"Place the people who know each other close together."_ or _"Drag the places you visit every week into the inner circle."_
 
-> Do: Match each prompt's wording to its tap behaviour: ask about relationships on edge-creation prompts, and about a characteristic of individual alters on attribute-toggling prompts.
+> Do: Match each prompt's wording to its tap behavior: ask about relationships on edge-creation prompts, and about a characteristic of individual alters on attribute-toggling prompts.
 
 ## Choose where positions are saved
 
@@ -147,7 +147,7 @@ A prompt uses one or the other, or neither while the section is switched off. Ea
 <!-- section: Background -->
 <!-- scene: sociogram-background -->
 
-The background sits behind the whole stage. **Concentric Circles** draws rings, and you choose how many; **Skew circle sizes** makes the inner rings larger, which can reduce crowding in the centre. **Image** uses a picture of your own.
+The background sits behind the whole stage. **Concentric Circles** draws rings, and you choose how many; **Skew circle sizes** makes the inner rings larger, which can reduce crowding in the center. **Image** uses a picture of your own.
 
 > Do: Consider customizing the background to orient participants to the activity or to give the layout meaning, for example dividing the canvas into quadrants or social contexts that positions can then be read against.
 

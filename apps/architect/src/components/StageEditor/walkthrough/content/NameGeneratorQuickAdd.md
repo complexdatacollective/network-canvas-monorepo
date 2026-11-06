@@ -90,7 +90,7 @@ Whatever the participant types into the box is saved to this one **attribute**. 
 
 > Do: Use an attribute called `name` unless you have a good reason to use another. Network Canvas labels nodes with it throughout the interview.
 
-Read more about [node labelling](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/node-labelling).
+Read more about [node labeling](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/node-labelling).
 
 ## Decide whether an answer is required
 

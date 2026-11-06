@@ -94,19 +94,19 @@ const messages = defineMessages({
     id: 'architect.stageEditor.walkthrough.eyebrow',
     defaultMessage: 'Walkthrough',
     description:
-      'Small label above the name of the stage type at the top of the walkthrough, and on the minimised walkthrough.',
+      'Small label above the name of the stage type at the top of the walkthrough, and on the minimized walkthrough.',
   },
   progressShort: {
     id: 'architect.stageEditor.walkthrough.progressShort',
     defaultMessage: '{index, number}/{total, number}',
     description:
-      'Compact step count inside the progress ring of the minimised walkthrough, e.g. "1/8". index is one-based.',
+      'Compact step count inside the progress ring of the minimized walkthrough, e.g. "1/8". index is one-based.',
   },
   resume: {
     id: 'architect.stageEditor.walkthrough.resume',
     defaultMessage: 'Resume',
     description:
-      'Button on the minimised walkthrough that opens it again at the step the researcher was on.',
+      'Button on the minimized walkthrough that opens it again at the step the researcher was on.',
   },
   move: {
     id: 'architect.stageEditor.walkthrough.move',

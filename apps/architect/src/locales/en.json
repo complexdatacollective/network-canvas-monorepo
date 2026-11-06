@@ -3317,7 +3317,7 @@
   },
   "architect.stageEditor.walkthrough.eyebrow": {
     "defaultMessage": "Walkthrough",
-    "description": "Small label above the name of the stage type at the top of the walkthrough, and on the minimised walkthrough."
+    "description": "Small label above the name of the stage type at the top of the walkthrough, and on the minimized walkthrough."
   },
   "architect.stageEditor.walkthrough.finish": {
     "defaultMessage": "Finish",
@@ -3345,19 +3345,19 @@
   },
   "architect.stageEditor.walkthrough.progressShort": {
     "defaultMessage": "{index, number}/{total, number}",
-    "description": "Compact step count inside the progress ring of the minimised walkthrough, e.g. \"1/8\". index is one-based."
+    "description": "Compact step count inside the progress ring of the minimized walkthrough, e.g. \"1/8\". index is one-based."
   },
   "architect.stageEditor.walkthrough.resume": {
     "defaultMessage": "Resume",
-    "description": "Button on the minimised walkthrough that opens it again at the step the researcher was on."
+    "description": "Button on the minimized walkthrough that opens it again at the step the researcher was on."
   },
   "architect.stageEditor.walkthrough.resumeEyebrow": {
     "defaultMessage": "Resume walkthrough · {index} of {total}",
-    "description": "Small heading in the tooltip of the minimised walkthrough in the stage editor toolbar, above the title of the step the researcher was on."
+    "description": "Small heading in the tooltip of the minimized walkthrough in the stage editor toolbar, above the title of the step the researcher was on."
   },
   "architect.stageEditor.walkthrough.resumeLabel": {
     "defaultMessage": "Resume walkthrough, step {index} of {total}: {title}",
-    "description": "Accessible name of the minimised walkthrough button in the stage editor toolbar. It opens the walkthrough again at the step named."
+    "description": "Accessible name of the minimized walkthrough button in the stage editor toolbar. It opens the walkthrough again at the step named."
   },
   "architect.stageEditor.walkthrough.saveToContinue": {
     "defaultMessage": "Click <strong>{label}</strong> to save this, and the walkthrough will carry on.",

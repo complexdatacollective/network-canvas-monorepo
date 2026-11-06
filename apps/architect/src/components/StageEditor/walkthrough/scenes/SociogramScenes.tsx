@@ -19,7 +19,7 @@ import {
 } from './parts';
 
 const TEXT = {
-  place: ['Place people closer to the centre', 'the closer you feel to them.'],
+  place: ['Place people closer to the center', 'the closer you feel to them.'],
   connect: ['Connect the people', 'who know each other.'],
   weekly: ['Tap the people you', 'see every week.'],
   works: ['Connect the people', 'who work together.'],

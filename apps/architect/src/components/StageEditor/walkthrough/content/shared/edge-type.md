@@ -11,9 +11,9 @@
 
 An edge type is one kind of relationship between nodes, such as _Knows_, _Works with_ or _Located near_. Its name is how it appears in the [codebook](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/codebook) and in the edge list of your exported data.
 
-## Choose the edge colour
+## Choose the edge color
 
 <!-- dialog: create new edge type | edit this edge type -->
 <!-- field: color -->
 
-The colour is used for edges of this type wherever the interview draws them, so a participant can tell one kind of relationship from another when several are shown together.
+The color is used for edges of this type wherever the interview draws them, so a participant can tell one kind of relationship from another when several are shown together.

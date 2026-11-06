@@ -15,4 +15,4 @@ The type's name is how it appears in the [codebook](https://documentation.networ
 <!-- dialog: create new node type | edit this node type -->
 <!-- field: color -->
 
-The colour and shape decide how nodes of this type are drawn throughout the interview. On stages with an add button, the icon appears on that button.
+The color and shape decide how nodes of this type are drawn throughout the interview. On stages with an add button, the icon appears on that button.

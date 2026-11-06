@@ -95,7 +95,7 @@ If the type you need does not exist yet, create it here.
 
 These are the questions the participant answers each time they add a node. The **form title** is the heading shown at the top of the form, such as _Add a person_. Each field below it records one attribute of the node.
 
-> Do: Include a field for an attribute called `name`, so [node labelling](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/node-labelling) works correctly everywhere else in the interview.
+> Do: Include a field for an attribute called `name`, so [node labeling](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/node-labelling) works correctly everywhere else in the interview.
 
 Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms), and open a field, or create a new one, for a tour of the field editor.
 

@@ -69,9 +69,9 @@ Once added, an alter leaves the list of cards for the rest of the interview, so 
 
 ## When to use it
 
-Use this stage when you have a known set of alters your participant might nominate from, such as a class, a team or an organisation.
+Use this stage when you have a known set of alters your participant might nominate from, such as a class, a team or an organization.
 
-> Do: Make sure the roster file has a `name` attribute, so cards and nodes are labelled correctly. See [node labelling](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/node-labelling).
+> Do: Make sure the roster file has a `name` attribute, so cards and nodes are labeled correctly. See [node labeling](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/node-labelling).
 
 > Do: Configure the display and sorting options of the cards, to help participants find entries in the roster.
 

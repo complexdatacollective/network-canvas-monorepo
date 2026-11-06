@@ -109,13 +109,13 @@ Under **Ordinal response**, pick the ordinal attribute this prompt records. Its 
 
 The attribute's values are listed under it, and you edit them here: each has a label the participant reads on its bin and a value saved in your data. They are saved when you save the prompt. Labels can be a short sentence; check your longest one in [Preview](https://documentation.networkcanvas.com/en/design-protocols/preview-mode).
 
-## Choose the colour gradient
+## Choose the color gradient
 
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: color -->
 <!-- scene: ordinal-bin-gradient -->
 
-**Color** picks the colour the bins are shaded along: the first bin takes the full colour, and each bin after it fades a step further into the background, so the scale reads as a scale.
+**Color** picks the color the bins are shaded along: the first bin takes the full color, and each bin after it fades a step further into the background, so the scale reads as a scale.
 
 <!-- include: bin-sort-orders -->
 

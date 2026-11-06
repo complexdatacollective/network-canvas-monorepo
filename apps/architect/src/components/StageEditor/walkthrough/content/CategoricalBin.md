@@ -47,7 +47,7 @@
 
 <!-- scene: categorical-bin-intro -->
 
-The Categorical Bin is a name interpreter: it collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into one of a set of coloured circles, each one category, such as _Family_, _Work_ or _School_. Tapping a circle opens it, so the alters inside can be moved to another category.
+The Categorical Bin is a name interpreter: it collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into one of a set of colored circles, each one category, such as _Family_, _Work_ or _School_. Tapping a circle opens it, so the alters inside can be moved to another category.
 
 Read the full [Categorical Bin documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/categorical-bin).
 
