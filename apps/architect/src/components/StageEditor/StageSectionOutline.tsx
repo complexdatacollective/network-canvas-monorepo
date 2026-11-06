@@ -1,5 +1,5 @@
 import { AlertCircle, Check, Circle, Lock, MinusCircle } from 'lucide-react';
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
 
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -12,6 +12,8 @@ import type {
   StageSectionsStore,
   StageSectionStatus,
 } from '@codaco/protocol-builder/stage-editor-contract';
+
+import { useWalkthroughState } from './walkthrough/walkthroughStore';
 
 /**
  * What each state of a section is CALLED, keyed by the state itself so the
@@ -119,7 +121,8 @@ const STATUS_PRESENTATION: Record<
  */
 export default function StageSectionOutline({
   sections,
-}: Readonly<{ sections: StageSectionsStore }>) {
+  header,
+}: Readonly<{ sections: StageSectionsStore; header?: ReactNode }>) {
   const intl = useAppIntl();
   const entries = useSyncExternalStore(
     sections.subscribe,
@@ -163,6 +166,7 @@ export default function StageSectionOutline({
         shadow="sm"
         className="@max-[60rem]:contents @min-[60rem]:max-h-[calc(100dvh-var(--architect-nav-height))] @min-[60rem]:overflow-y-auto"
       >
+        {header}
         <ol className="flex list-none gap-2 overflow-x-auto p-0 @min-[60rem]:flex-col @min-[60rem]:overflow-visible">
           {entries.map((section) => (
             <li key={section.id} className="shrink-0">
@@ -180,6 +184,8 @@ function StageSectionOutlineItem({
 }: Readonly<{ section: StageSection }>) {
   const intl = useAppIntl();
   const presentation = STATUS_PRESENTATION[section.status];
+  // The section the walkthrough's current step is about.
+  const current = useWalkthroughState().section === section.id;
   const StatusIcon = presentation.icon;
   // The control's own words come first, one problem at a time. A control
   // showing a message beside itself has already said what is wrong in the
@@ -217,7 +223,11 @@ function StageSectionOutlineItem({
       // whatever the page happens to have positioned — reaching, in a host
       // whose editor sits in a scrolling panel, past the right of the page and
       // giving it a horizontal scrollbar.
-      className="focusable relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-left text-sm hover:bg-current/5"
+      aria-current={current ? 'step' : undefined}
+      className={cx(
+        'focusable relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-left text-sm hover:bg-current/5',
+        current && 'bg-warning/15 hover:bg-warning/20',
+      )}
     >
       <StatusIcon
         aria-hidden

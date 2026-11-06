@@ -7,3 +7,4 @@
    package's source and are invisible to a scanner pointed only here. */
 @import '@codaco/protocol-builder/styles.css';
 @import './architect-theme.css';
+@source '../../node_modules/@codaco/art/src/illustration/**/*.{ts,tsx}';
