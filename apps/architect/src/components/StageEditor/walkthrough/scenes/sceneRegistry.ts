@@ -15,6 +15,23 @@ import {
   NameGeneratorPanelSourcesScene,
   NameGeneratorPromptsScene,
 } from './NameGeneratorScenes';
+import {
+  RosterCardDisplayScene,
+  RosterDataScene,
+  RosterIntroScene,
+  RosterLimitsScene,
+  RosterSearchScene,
+  RosterSortScene,
+} from './RosterScenes';
+import {
+  SociogramBackgroundScene,
+  SociogramDataScene,
+  SociogramDisplayEdgesScene,
+  SociogramIntroScene,
+  SociogramLayoutModeScene,
+  SociogramSharedLayoutScene,
+  SociogramTapScene,
+} from './SociogramScenes';
 
 /** Scenes a walkthrough step can name with a `scene:` directive. */
 export const SCENES: Readonly<Record<string, ComponentType>> = {
@@ -29,5 +46,18 @@ export const SCENES: Readonly<Record<string, ComponentType>> = {
   'name-generator-additional-attributes':
     NameGeneratorAdditionalAttributesScene,
   'name-generator-filter': NameGeneratorFilterScene,
-  'name-generator-skip-logic': NameGeneratorSkipLogicScene,
+  'skip-logic': NameGeneratorSkipLogicScene,
+  'sociogram-intro': SociogramIntroScene,
+  'sociogram-data': SociogramDataScene,
+  'sociogram-shared-layout': SociogramSharedLayoutScene,
+  'sociogram-tap': SociogramTapScene,
+  'sociogram-display-edges': SociogramDisplayEdgesScene,
+  'sociogram-background': SociogramBackgroundScene,
+  'sociogram-layout-mode': SociogramLayoutModeScene,
+  'roster-intro': RosterIntroScene,
+  'roster-data': RosterDataScene,
+  'roster-card-display': RosterCardDisplayScene,
+  'roster-sort': RosterSortScene,
+  'roster-search': RosterSearchScene,
+  'roster-limits': RosterLimitsScene,
 };

@@ -119,10 +119,40 @@ const sources = import.meta.glob<string>('./content/*.md', {
   eager: true,
 });
 
+const sharedSources = import.meta.glob<string>('./content/shared/*.md', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+});
+
+const shared = new Map(
+  Object.entries(sharedSources).map(([path, source]) => [
+    path.replace(/^\.\/content\/shared\/(.*)\.md$/, '$1'),
+    source.slice(Math.max(0, source.indexOf('\n## ') + 1)),
+  ]),
+);
+
+const INCLUDE = /^<!--\s*include:\s*(.*?)\s*-->$/;
+
+/** The source with each include line replaced by that shared file's steps. */
+const withIncludes = (source: string) =>
+  source
+    .split(/\r?\n/)
+    .map((line) => {
+      const name = INCLUDE.exec(line.trim())?.[1];
+      if (name === undefined) return line;
+      const steps = shared.get(name);
+      if (steps === undefined) {
+        throw new Error(`Walkthrough includes unknown shared steps "${name}"`);
+      }
+      return steps;
+    })
+    .join('\n');
+
 const walkthroughs = new Map(
   Object.entries(sources).map(([path, source]) => [
     path.replace(/^\.\/content\/(.*)\.md$/, '$1'),
-    parseWalkthrough(source),
+    parseWalkthrough(withIncludes(source)),
   ]),
 );
 

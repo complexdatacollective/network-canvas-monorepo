@@ -49,7 +49,7 @@ const TEXT = {
   rule: 'Show if: has a partner',
   hasPartner: 'Participant A: has a partner',
   noPartner: 'Participant B: no partner',
-  stages: ['Information', 'Name generator', 'Sociogram', 'Finish'],
+  stages: ['Information', 'This stage', 'Next stage', 'Finish'],
 } as const;
 
 const ALEX = 'Alex';
@@ -445,7 +445,7 @@ const TAGS = { first: 'discuss_matters', second: 'work_with' } as const;
  */
 export const NameGeneratorAdditionalAttributesScene = defineScene(
   5.0,
-  ({ t, id }) => {
+  ({ t }) => {
     const swap = smooth(segment(t, 2.3, 0.5));
     const span = 460;
     const xs = row(2, 180);
@@ -497,21 +497,10 @@ export const NameGeneratorAdditionalAttributesScene = defineScene(
               );
             }),
           )}
-          <AddButton id={id} press={pressAt(t, [0.45, 0.75, 2.85, 3.15])} />
         </>
       ),
       overlay: (
-        <Click
-          t={t}
-          stops={[
-            { to: ADD_BUTTON, at: 0.45 },
-            { to: ADD_BUTTON, at: 0.75 },
-            { to: NEXT_BUTTON, at: 2.2 },
-            { to: ADD_BUTTON, at: 2.85 },
-            { to: ADD_BUTTON, at: 3.15 },
-          ]}
-          leave={3.4}
-        />
+        <Click t={t} stops={[{ to: NEXT_BUTTON, at: 2.2 }]} leave={3.4} />
       ),
     };
   },

@@ -32,6 +32,10 @@
                          it was. Their "field:" looks inside the dialog.
   - Lines starting "> Do:" and "> Avoid:" render as do / don't callouts.
     Consecutive ones are grouped together.
+  - A line "include: <name>" in an HTML comment, between steps, is replaced
+    by the steps in shared/<name>.md. Use it for steps every stage type that
+    has that section shares (node type, skip logic, interviewer guidance and
+    so on); edit those steps there, once.
   - Anything above the "# " heading (like this note) is ignored.
 
   Save the file and the panel updates live.
@@ -43,61 +47,45 @@
 
 <!-- scene: name-generator-intro -->
 
-Name generators are one of the fundamental parts of a network interview. They let participants create **alters**: the people in their network, one of the two main things your network data describes. Each person they add becomes a node, and later stages such as sociograms, bins and follow-up questions work with the people named here.
+Name generators are one of the fundamental parts of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations, one of the two main things your network data describes. Each alter they add becomes a node, and later stages such as sociograms, bins and follow-up questions work with the alters named here.
 
-The form and quick-add name generators share the same parts: a **prompt** that explains the task, a **list** of the people named so far, a **button** that adds someone, and optionally one or two **side panels**.
+The form and quick-add name generators share the same parts: a **prompt** that explains the task, a **list** of the alters named so far, a **button** that adds one, and optionally one or two **side panels**.
+
+Read the full [Name Generator using Forms documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-forms).
 
 ## This one uses a form
 
 <!-- scene: name-generator-form -->
 
-In the Name Generator (using forms), the add button opens a **form** the participant fills in to create each person. The form can ask one or more questions, so this stage combines naming people with collecting some basic information about each of them.
+In the Name Generator (using forms), the add button opens a **form** the participant fills in to create each node. The form can ask one or more questions, so this stage combines naming alters with collecting some basic information about each of them.
 
-If you only need names, the [Name Generator (using quick add)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-quick-add) is quicker for participants. If you already have a list of the people they might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-roster).
+If you only need names, the [Name Generator (using quick add)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-quick-add) is quicker for participants. If you already have a list of the alters they might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-roster).
 
 ## What you get
 
 <!-- scene: name-generator-data -->
 
-Every person named becomes one row in your exported data, and every question on the form becomes a column. Later stages add more columns to the same rows.
+Every alter named becomes one row in your exported data, and every question on the form becomes a column. Later stages add more columns to the same rows.
 
 ## When to use it
 
-Use this stage when you want to collect a small amount of information about each person at the moment they are named.
+Use this stage when you want to collect a small amount of information about each alter at the moment they are named.
 
-> Do: Use it for a few attributes per person. Asking them here can be more efficient than adding a [Per Alter Form](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form) stage, or other follow-up stages, later.
+> Do: Use it for a few attributes per alter. Asking them here can be more efficient than adding a [Per Alter Form](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form) stage, or other follow-up stages, later.
 
-> Avoid: Long forms with many questions. They make naming each person more work, which can discourage participants from naming more people.
+> Avoid: Long forms with many questions. They make naming each alter more work, which can discourage participants from naming more.
 
-> Avoid: Attributes that are better judged against the other people in the network. Perceptual scales, for example, may work better on an [Ordinal Bin](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ordinal-bin) stage.
+> Avoid: Attributes that are better judged against the other alters in the network. Perceptual scales, for example, may work better on an [Ordinal Bin](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ordinal-bin) stage.
 
-Read the full [Name Generator using Forms documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-forms).
-
-## Choose who this stage creates
+## Choose what this stage creates
 
 <!-- section: Node setup -->
 
-Pick the **node type** the people named here will be, for example _Person_. Every person added on this stage is created as that type, and the type decides which attributes the form can record.
+Pick the **node type** the alters named here will be, for example _Person_. Every node added on this stage is created as that type, and the type decides which attributes the form can record.
 
 If the type you need does not exist yet, create it here.
 
-## Name the type
-
-<!-- dialog: create new node type | edit this node type -->
-<!-- field: name -->
-
-The type's name is how it appears in the [codebook](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/codebook) and in your exported data, for example _Person_, _Organization_ or _Place_. Some built-in messages, such as the ones about nomination limits, can include it, so choose a name that reads naturally to participants.
-
-> Do: Use one type for everyone who can appear in the same network, and tell them apart with attributes, rather than making a new type for each prompt.
-
-## Choose how it looks
-
-<!-- dialog: create new node type | edit this node type -->
-<!-- field: color -->
-
-The colour and shape decide how people of this type are drawn throughout the interview. The icon appears on the button participants use to add someone.
-
-> Do: Give each node type a distinct colour, so participants can tell them apart on a sociogram.
+<!-- include: node-type -->
 
 ## Build the form
 
@@ -105,9 +93,9 @@ The colour and shape decide how people of this type are drawn throughout the int
 <!-- field: form.title -->
 <!-- scene: name-generator-form -->
 
-These are the questions the participant answers each time they add someone. The **form title** is the heading shown at the top of the form, such as _Add a person_. Each field below it records one attribute of the person.
+These are the questions the participant answers each time they add a node. The **form title** is the heading shown at the top of the form, such as _Add a person_. Each field below it records one attribute of the node.
 
-> Do: Include a field for an attribute called `name`, so people are labelled correctly everywhere else in the interview.
+> Do: Include a field for an attribute called `name`, so [node labelling](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/node-labelling) works correctly everywhere else in the interview.
 
 Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms), and open a field, or create a new one, for a tour of the field editor.
 
@@ -116,14 +104,14 @@ Read more about [forms](https://documentation.networkcanvas.com/en/design-protoc
 <!-- dialog: form field -->
 <!-- field: variable -->
 
-Each field saves its answer to an **attribute** of the person. Select an existing attribute, or create a new one.
+Each field saves its answer to an **attribute** of the node. Select an existing attribute, or create a new one.
 
 ## Write the question
 
 <!-- dialog: form field -->
 <!-- field: prompt -->
 
-This is the question the participant reads above the input, such as _"What is this person's first name?"_. Keep it short; it is asked once for every person named.
+This is the question the participant reads above the input, such as _"What is this person's first name?"_. Keep it short; it is asked once for every alter named.
 
 ## Add a hint
 
@@ -164,25 +152,7 @@ Read more about [validation](https://documentation.networkcanvas.com/en/design-p
 
 The **Interactive preview** beside the editor shows the field as participants will see it. Type an answer there to check the question, hint, control and validation together.
 
-## Find or create an attribute
-
-<!-- dialog: =attribute | create or select an attribute -->
-
-Search the attributes this node type already has, or type a new name to create one.
-
-> Do: Reuse an existing attribute when you are asking the same thing again, so the answers end up in one column of your data.
-
-> Do: Choose names you will recognise in your data. Short names without spaces, such as `close_friend`, are easiest to work with in analysis software.
-
-Read more about [variables and attributes](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/variables).
-
-## Rename the attribute
-
-<!-- dialog: edit attribute name -->
-
-Renaming changes the attribute everywhere it is used in this protocol, and the column it becomes in your exported data.
-
-> Avoid: Renaming an attribute after you have started collecting data, since earlier and later exports will no longer line up.
+<!-- include: attribute-picker -->
 
 ## Write the prompts
 
@@ -193,123 +163,35 @@ A prompt is the question shown beside the list, such as _"Who have you discussed
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
-## Write the prompt text
+<!-- include: name-generator-prompts -->
 
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: text -->
+<!-- include: side-panels -->
 
-This is the question the participant reads while naming people. Ask about one relationship at a time, and say what counts, for example a time period.
+<!-- include: data-file -->
 
-## Record which prompt named them
+<!-- include: rule -->
 
-<!-- dialog: create prompt | edit prompt -->
-<!-- field: additionalAttributes -->
-<!-- scene: name-generator-additional-attributes -->
-
-You can set an attribute on everyone named in response to this prompt, such as `discuss_matters` set to true. Later you will know which question each person was named for, even when several prompts share one stage.
-
-Read more about [additional attributes](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/additional-variables).
-
-## Offer people from elsewhere
-
-<!-- section: Side panels -->
-<!-- scene: name-generator-panel-sources -->
-
-A side panel lists people beside the question, so the participant can drag them in instead of typing them again. Each panel draws from one of two places:
-
-- **The interview so far**: people already named on earlier stages or prompts. Use this when several prompts may name the same people, so they can be added again without duplicates.
-- **A network data file**: a roster you import, such as everyone in a class or team. The same list is shown to every participant.
-
-A stage can have up to two panels, for example one of people already named and one of the roster.
-
-Read more about [working with roster data](https://documentation.networkcanvas.com/en/design-protocols/tutorials/working-with-rosters).
-
-## Name the panel
-
-<!-- dialog: create panel | edit panel -->
-<!-- field: title -->
-
-The title is shown at the top of the panel in the interview, for example _People you've already named_ or _Your classmates_. Say what the list is, so the participant knows why it is there.
-
-## Choose where the people come from
-
-<!-- dialog: create panel | edit panel -->
-<!-- field: dataSource -->
-<!-- scene: name-generator-panel-sources -->
-
-**The in-progress interview** shows people already in this participant's network. Dragging one in adds them to this prompt rather than creating someone new.
-
-**A network data file** shows the rows of a roster you import as a CSV or JSON file. Dragging one in creates a person from that row, and they then leave the roster: each roster entry can be named once.
-
-## Filter who appears
-
-<!-- dialog: create panel | edit panel -->
-<!-- scene: name-generator-filter -->
-
-Switch on **Panel filter** to show only some people, for example only people whose `close_friend` attribute is true, or only roster rows for one class. The filter applies on every prompt of this stage. Without one, the panel shows everyone in its source.
-
-Read more about [network filtering](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/network-filtering).
-
-## Import or reuse a roster
-
-<!-- dialog: choose a data file -->
-
-Import a CSV or JSON file from your computer, or choose one already stored in this protocol. The file travels inside the protocol, so every participant sees the same list.
-
-> Do: Include a `name` column; it becomes each person's label once they are named.
-
-> Do: Check the first row holds your column names, and that names are unique.
-
-> Avoid: Assuming very large rosters will be quick. They work, but loading and searching slow down, so test on the devices you will use in the field.
-
-Read more about [preparing a roster file](https://documentation.networkcanvas.com/en/design-protocols/tutorials/working-with-rosters#how-to-create-a-roster) and [resources](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/resources).
-
-## Build a rule
-
-<!-- dialog: construct a rule -->
-
-A rule picks out the people, connections or the participant's own answers that should count. Choose what the rule looks at, then either an attribute and the value it must have, or simply whether something exists.
-
-When a filter has more than one rule, you choose whether all of them must match or any one is enough.
-
-Read more about [network filtering](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/network-filtering) and [skip logic](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/skip-logic).
-
-## Limit how many people can be named
+## Limit how many alters can be named
 
 <!-- section: Nomination limits -->
 <!-- scene: name-generator-limits -->
 
-Switch on this section to set a minimum, a maximum, or both. The limits count everyone named on the stage, across all of its prompts.
+Switch on this section to set a minimum, a maximum, or both. The limits count every alter named on the stage, across all of its prompts.
 
-At the maximum, the add button is switched off and the participant is told to move on. Under the minimum, they cannot leave the last prompt until they have named enough people.
+At the maximum, the add button is switched off and the participant is told to move on. Under the minimum, they cannot leave the last prompt until they have named enough.
 
-> Do: Say in the prompt how many people you are asking for, so the limit is not a surprise.
+When a stage has several prompts, the editor suggests saying in the prompts themselves how many alters you are asking for.
 
 ## Customize built-in wording
 
 <!-- section: Customize built-in wording -->
 
-Network Canvas supplies the messages this stage shows, such as the ones for reaching the minimum or maximum. Switch on this section to rewrite them for your study. Some of the wording is shared by every stage of this kind, so changing it there changes it everywhere.
+This section appears only once the stage has a nomination limit. It holds the **Minimum not reached** and **Maximum reached** messages Network Canvas supplies; switch it on to rewrite them for your study. Both can include the node type's name, so choose a name that reads naturally to participants.
 
 Read more about [translating your protocol](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol).
 
-## Decide when this stage appears
+<!-- include: skip-logic -->
 
-<!-- section: Skip logic -->
-<!-- scene: name-generator-skip-logic -->
+<!-- include: interviewer-guidance -->
 
-Skip logic shows or skips this whole stage based on rules, for example only asking about coworkers if the participant said earlier that they work. When the stage is skipped, choose where the interview carries on.
-
-Read more about [skip logic](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/skip-logic).
-
-## Leave notes for the interviewer
-
-<!-- section: Interviewer guidance -->
-
-Write notes for the person running the interview, such as what to say if the participant is unsure who to include. Participants never see them; they appear in the protocol summary you can print for interviewers.
-
-## You're ready
-
-<!-- scene: name-generator-intro -->
-
-That covers the settings that shape this stage. Use **Preview** in the toolbar to try the stage as a participant would see it.
+<!-- include: preview -->
