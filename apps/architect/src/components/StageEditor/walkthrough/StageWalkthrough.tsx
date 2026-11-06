@@ -1,4 +1,10 @@
-import { GripHorizontal, Minus, MousePointerClick } from 'lucide-react';
+import {
+  GripHorizontal,
+  Maximize2,
+  Minimize2,
+  Minus,
+  MousePointerClick,
+} from 'lucide-react';
 import {
   animate,
   AnimatePresence,
@@ -56,6 +62,7 @@ import {
   goToDetourStep,
   goToWalkthroughStep,
   setWalkthroughCollapsed,
+  setWalkthroughExpanded,
   setWalkthroughPosition,
   setWalkthroughSection,
   takeWalkthroughFocus,
@@ -113,6 +120,18 @@ const messages = defineMessages({
       'Drag to move it, use the arrow keys, or activate to move it to the other side of the screen.',
     description:
       'Screen-reader description of the grip on the walkthrough panel, saying the ways it can be moved.',
+  },
+  expand: {
+    id: 'architect.stageEditor.walkthrough.expand',
+    defaultMessage: 'Make the walkthrough larger',
+    description:
+      'Tooltip and accessible name of the button in the walkthrough panel header that widens the panel, so its text and animations are easier to read.',
+  },
+  shrink: {
+    id: 'architect.stageEditor.walkthrough.shrink',
+    defaultMessage: 'Make the walkthrough smaller',
+    description:
+      'Tooltip and accessible name of the button in the widened walkthrough panel header that returns it to its usual size.',
   },
   collapse: {
     id: 'architect.stageEditor.walkthrough.collapse',
@@ -462,6 +481,7 @@ function WalkthroughCard({
   const moveHintId = useId();
   const nextRef = useRef<HTMLButtonElement>(null);
   const reducedMotion = usePrefersReducedMotion() === true;
+  const { expanded } = useWalkthroughState();
 
   useEffect(() => {
     if (takeWalkthroughFocus()) nextRef.current?.focus({ preventScroll: true });
@@ -523,7 +543,12 @@ function WalkthroughCard({
         dragMomentum={false}
         onDragEnd={remember}
         style={{ x, y, maxHeight }}
-        className="pointer-events-auto fixed inset-e-6 bottom-24 flex w-[min(24rem,calc(100vw-3rem))] flex-col"
+        className={cx(
+          'pointer-events-auto fixed inset-e-6 bottom-24 flex flex-col',
+          expanded
+            ? 'w-[min(44rem,calc(100vw-3rem))]'
+            : 'w-[min(24rem,calc(100vw-3rem))]',
+        )}
       >
         <MotionSurface
           as="section"
@@ -566,6 +591,19 @@ function WalkthroughCard({
                 <span id={moveHintId} className="sr-only">
                   {intl.formatMessage(messages.moveHint)}
                 </span>
+                <IconButton
+                  size="sm"
+                  variant="text"
+                  color="dynamic"
+                  icon={expanded ? <Minimize2 /> : <Maximize2 />}
+                  title={intl.formatMessage(
+                    expanded ? messages.shrink : messages.expand,
+                  )}
+                  aria-label={intl.formatMessage(
+                    expanded ? messages.shrink : messages.expand,
+                  )}
+                  onClick={() => setWalkthroughExpanded(!expanded)}
+                />
                 <IconButton
                   size="sm"
                   variant="text"

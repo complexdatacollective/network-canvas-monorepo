@@ -3311,6 +3311,10 @@
     "defaultMessage": "Do",
     "description": "Heading over recommended practices in the stage walkthrough."
   },
+  "architect.stageEditor.walkthrough.expand": {
+    "defaultMessage": "Make the walkthrough larger",
+    "description": "Tooltip and accessible name of the button in the walkthrough panel header that widens the panel, so its text and animations are easier to read."
+  },
   "architect.stageEditor.walkthrough.eyebrow": {
     "defaultMessage": "Walkthrough",
     "description": "Small label above the name of the stage type at the top of the walkthrough, and on the minimised walkthrough."
@@ -3362,6 +3366,10 @@
   "architect.stageEditor.walkthrough.saveToContinueUnlabelled": {
     "defaultMessage": "Save this window, and the walkthrough will carry on.",
     "description": "Shown on the last walkthrough step about an open dialog whose save button has no text. The walkthrough resumes by itself once the dialog closes."
+  },
+  "architect.stageEditor.walkthrough.shrink": {
+    "defaultMessage": "Make the walkthrough smaller",
+    "description": "Tooltip and accessible name of the button in the widened walkthrough panel header that returns it to its usual size."
   },
   "architect.storageUnavailableBanner.downloadFailed": {
     "defaultMessage": "Download failed",

@@ -4,6 +4,8 @@ type WalkthroughState = Readonly<{
   open: boolean;
   step: number;
   collapsed: boolean;
+  /** Whether the researcher has widened the panel to read it more easily. */
+  expanded: boolean;
   /**
    * Where the researcher is in the steps written for each open dialog, by
    * the dialog's serial, so a dialog keeps its place while another is opened
@@ -20,6 +22,7 @@ const CLOSED: WalkthroughState = {
   open: false,
   step: 0,
   collapsed: false,
+  expanded: false,
   detours: {},
   section: undefined,
 };
@@ -94,6 +97,11 @@ export function setWalkthroughCollapsed(collapsed: boolean) {
   if (state.collapsed === collapsed) return;
   focusPending = true;
   set({ ...state, collapsed });
+}
+
+export function setWalkthroughExpanded(expanded: boolean) {
+  if (state.expanded === expanded) return;
+  set({ ...state, expanded });
 }
 
 export function closeWalkthrough({ restoreFocus = true } = {}) {
