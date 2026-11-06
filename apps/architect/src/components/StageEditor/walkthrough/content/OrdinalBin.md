@@ -73,7 +73,7 @@ Use this stage to rate alters on an ordered scale.
 
 Pick the **node type** this stage sorts, for example _Person_. Every node of that type already in the participant's network waits in the drawer.
 
-Changing the node type later clears the rest of this stage's settings, since they all describe the type chosen now.
+Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
 
 <!-- include: node-type -->
 
@@ -101,7 +101,7 @@ This is the question the participant reads above the bins, such as _"How close d
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: variable -->
 
-Under **Ordinal response**, pick the ordinal attribute this prompt records. Its values become the bins, from left to right in the attribute's own order. The editor warns you when the attribute has more than six values.
+Under **Ordinal response**, pick the ordinal attribute this prompt records. Its values become the bins, in the attribute's own order: left to right, or top to bottom on a portrait screen. The editor warns you when the attribute has more than six values.
 
 ## Set the bin labels
 
@@ -115,7 +115,7 @@ The attribute's values are listed under it, and you edit them here: each has a l
 <!-- field: color -->
 <!-- scene: ordinal-bin-gradient -->
 
-**Color** picks the colour the bins are shaded along: the first bin takes the full colour, and each bin after it is a step darker, so the scale reads as a scale.
+**Color** picks the colour the bins are shaded along: the first bin takes the full colour, and each bin after it fades a step further into the background, so the scale reads as a scale.
 
 <!-- include: bin-sort-orders -->
 
@@ -123,7 +123,7 @@ The attribute's values are listed under it, and you edit them here: each has a l
 
 <!-- dialog: create a new attribute -->
 
-Typing a new name in the attribute picker opens this window, since an ordinal attribute is its list of values. Name it, then add its values, each with a label and a value, in order.
+Typing a new name in the attribute picker opens this window with that name filled in, since an ordinal attribute is its list of values. Add its values in order, each with a label and a value.
 
 <!-- include: attribute-search -->
 

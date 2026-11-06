@@ -33,9 +33,9 @@ import {
   NameGeneratorAdditionalAttributesScene,
   NameGeneratorDataScene,
   NameGeneratorFilterScene,
-  NameGeneratorInputControlsScene,
   NameGeneratorSkipLogicScene,
-  NameGeneratorValidationScene,
+  FormFieldInputControlsScene,
+  FormFieldValidationScene,
 } from './NameGeneratorConsequenceScenes';
 import {
   NameGeneratorFormScene,
@@ -70,8 +70,8 @@ export const SCENES: Readonly<Record<string, ComponentType>> = {
   'name-generator-limits': NameGeneratorLimitsScene,
   'name-generator-panel-sources': NameGeneratorPanelSourcesScene,
   'name-generator-data': NameGeneratorDataScene,
-  'name-generator-input-controls': NameGeneratorInputControlsScene,
-  'name-generator-validation': NameGeneratorValidationScene,
+  'form-field-input-controls': FormFieldInputControlsScene,
+  'form-field-validation': FormFieldValidationScene,
   'name-generator-additional-attributes':
     NameGeneratorAdditionalAttributesScene,
   'name-generator-filter': NameGeneratorFilterScene,

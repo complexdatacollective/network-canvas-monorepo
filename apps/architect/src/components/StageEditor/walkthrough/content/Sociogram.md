@@ -47,7 +47,7 @@
 
 <!-- scene: sociogram-intro -->
 
-The Sociogram is one of Network Canvas's two canvas interfaces. Participants place the alters they have already named on a canvas, draw the edges between them, and mark nodes that share a characteristic. It does not create new nodes: it works with the alters named on earlier stages.
+On the Sociogram, participants place the alters they have already named on a canvas, draw the edges between them, and mark nodes that share a characteristic. It does not create new nodes: it works with the alters named on earlier stages.
 
 Its companion, the [Narrative](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/narrative), replays a network the participant has already laid out, for discussion, without collecting new data.
 
@@ -59,7 +59,7 @@ Read the full [Sociogram documentation](https://documentation.networkcanvas.com/
 
 A sociogram can record three kinds of data:
 
-- **Positions**: each node's place on the canvas, saved to a layout attribute as a pair of coordinates. In exported data it becomes an x and a y column.
+- **Positions**: each node's place on the canvas, saved to a layout attribute as a pair of coordinates. In exported data it becomes two columns named after the attribute, such as `position_x` and `position_y`.
 - **Edges**: every edge the participant draws becomes one row in the edge list.
 - **Marked attributes**: a true or false attribute for each node, set by tapping it.
 
@@ -75,7 +75,7 @@ Use this stage when the arrangement of the network matters, or when you want par
 
 Pick the **node type** placed on this canvas, for example _Person_. Every node of that type already in the participant's network appears here.
 
-Changing the node type later clears the rest of this stage's settings, since they all describe the type chosen now.
+Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
 
 <!-- include: node-type -->
 
@@ -96,7 +96,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/en/design-prot
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: text -->
 
-This is the instruction the participant reads above the canvas, such as _"Place the people who know each other close together."_ or _"Drag the places you visit every week into the inner circle."_
+This is the instruction the participant reads in the prompt card over the canvas, which they can drag out of the way, such as _"Place the people who know each other close together."_ or _"Drag the places you visit every week into the inner circle."_
 
 > Do: Match each prompt's wording to its tap behaviour: ask about relationships on edge-creation prompts, and about a characteristic of individual alters on attribute-toggling prompts.
 
@@ -106,7 +106,7 @@ This is the instruction the participant reads above the canvas, such as _"Place 
 <!-- scene: sociogram-shared-layout -->
 <!-- field: layout.layoutVariable -->
 
-The **Layout attribute** stores where each node is placed while this prompt is on screen. Prompts that share one layout attribute share one arrangement, so positions carry over from prompt to prompt. A different layout attribute starts a separate arrangement.
+The **Layout attribute** stores where each node is placed while this prompt is on screen. Prompts that share one layout attribute share one arrangement, so positions carry over from prompt to prompt. A different layout attribute starts a separate arrangement. To make a new one, type its name in the picker and create it; no window opens, since a name is all a position attribute needs.
 
 > Do: Keep the same layout attribute across a stage's prompts when you want participants to build up one arrangement of their network, so the positions they set on an early prompt are still there on later ones.
 
@@ -116,7 +116,7 @@ Read more about [variables](https://documentation.networkcanvas.com/en/design-pr
 
 <!-- dialog: create prompt | edit prompt -->
 
-In manual layout, the nodes not yet placed wait in a bucket at the bottom of the screen. **Sort unplaced nodes** sets the order they are handed over in, by one or more attributes. Without sort rules, they come in the order they were added.
+In manual layout, the nodes not yet placed wait in a bucket at the bottom of the screen. Switch on **Sort unplaced nodes** to set the order they are handed over in, by one or more attributes. Without sort rules, they come in the order they were added.
 
 ## Choose what tapping does
 
@@ -128,7 +128,9 @@ Switch on **Node interaction** to make tapping a node do something:
 - **Edge creation**: tapping one node and then another draws an edge of the chosen type between them. Tapping the pair again removes it.
 - **Attribute toggling**: tapping a node switches a true or false attribute, and nodes whose value is true are highlighted.
 
-A prompt uses one or the other. Each edge-creation prompt creates one edge type, so ask about each kind of relationship on its own prompt.
+For attribute toggling, pick a **Boolean attribute**, or type a new name in the picker to create one.
+
+A prompt uses one or the other, or neither while the section is switched off. Each edge-creation prompt creates one edge type, so ask about each kind of relationship on its own prompt.
 
 ## Choose which edges are shown
 
@@ -136,19 +138,7 @@ A prompt uses one or the other. Each edge-creation prompt creates one edge type,
 <!-- scene: sociogram-display-edges -->
 <!-- field: edges.display -->
 
-**Displayed edges** decides which edge types are drawn while this prompt is on screen, for example to show the edges drawn on an earlier prompt. The edge type this prompt creates is always shown. Where two nodes share more than one displayed edge type, only one of those edges is drawn.
-
-## Create a position attribute
-
-<!-- dialog: create a new position attribute -->
-
-Name the attribute that will hold the positions placed on this prompt. It is added to the node type in the codebook, and reusing it on another prompt shares the arrangement.
-
-## Create a true or false attribute
-
-<!-- dialog: create a new true-or-false attribute -->
-
-Name the attribute that tapping a node will switch on and off. Its values are true and false, and it becomes one column in your exported data.
+**Displayed edges** decides which edge types are drawn while this prompt is on screen, for example to show the edges drawn on an earlier prompt. Choosing an edge type for edge creation ticks it here, so participants see the edges they draw. Edges between the same two nodes are drawn on top of each other, so only one of them can be seen.
 
 <!-- include: edge-type -->
 
@@ -177,7 +167,7 @@ Read more about [resources](https://documentation.networkcanvas.com/en/design-pr
 <!-- scene: sociogram-layout-mode -->
 <!-- field: behaviours.automaticLayout -->
 
-**Manual mode** puts every node in a bucket at the bottom of the screen, and the participant drags each one onto the canvas. **Automatic mode** arranges the nodes when the stage opens by simulating attraction and repulsion; the participant can pause the simulation and move nodes while it is paused.
+**Manual mode** puts the nodes not yet placed in a bucket at the bottom of the screen; the participant drags each one onto the canvas, and can drag one back to the bucket to remove it. **Automatic mode** arranges the nodes when the stage opens by simulating attraction and repulsion; the participant can pause the simulation and move nodes while it is paused.
 
 <!-- include: skip-logic -->
 

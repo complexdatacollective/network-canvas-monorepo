@@ -3,14 +3,12 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { PANEL } from './NameGeneratorScenes';
 import {
-  ADD_BUTTON,
   AddButton,
   Chip,
   Click,
   CONTENT,
   defineScene,
   FORM_CARD,
-  FORM_SUBMIT,
   FormCard,
   lerp,
   NEXT_BUTTON,
@@ -31,6 +29,8 @@ import {
 
 const TEXT = {
   addPerson: 'Add a person',
+  movingOn: 'Trying to move on with no answer',
+  accepted: 'Answer accepted',
   important: 'Who do you talk to about important things?',
   discuss: 'Who do you discuss important matters with?',
   work: 'Who do you work with?',
@@ -52,7 +52,6 @@ const TEXT = {
   stages: ['Information', 'This stage', 'Next stage', 'Finish'],
 } as const;
 
-const ALEX = 'Alex';
 const ROW_Y = STAGE.y + 190;
 const dataNodeY = (i: number) => CONTENT.y + 78 + i * 96;
 
@@ -202,9 +201,10 @@ const PHASE = 2.2;
  * The input control decides what the participant uses to answer, and so what
  * kind of answer the attribute records.
  */
-export const NameGeneratorInputControlsScene = defineScene(
+/** The same question answered with different controls, on a form of any kind. */
+export const FormFieldInputControlsScene = defineScene(
   CONTROLS.length * PHASE,
-  ({ t, id }) => {
+  ({ t }) => {
     const phase = Math.min(CONTROLS.length - 1, Math.floor(t / PHASE));
     const local = t - phase * PHASE;
     const control = CONTROLS[phase] ?? CONTROLS[0];
@@ -224,14 +224,9 @@ export const NameGeneratorInputControlsScene = defineScene(
     const knob = smooth(segment(local, 1.1, 0.25));
     return {
       rail: { progress: 0.3 },
-      body: (
-        <>
-          <Prompt text={TEXT.important} />
-          <AddButton id={id} />
-        </>
-      ),
+      body: null,
       modal: (
-        <FormCard title={TEXT.addPerson} k={1}>
+        <FormCard submit={false} k={1}>
           <Chip
             x={FORM_CARD.x + FORM_CARD.width - 90}
             y={FORM_CARD.y + 36}
@@ -346,7 +341,7 @@ export const NameGeneratorInputControlsScene = defineScene(
  * A required question left empty: Done shows the form's own message, and the
  * form stays open until it is answered.
  */
-export const NameGeneratorValidationScene = defineScene(4.8, ({ t, id }) => {
+export const FormFieldValidationScene = defineScene(4.8, ({ t }) => {
   const left = FORM_CARD.x + 34;
   const width = FORM_CARD.width - 68;
   const fieldY = FORM_CARD.y + 104;
@@ -355,28 +350,18 @@ export const NameGeneratorValidationScene = defineScene(4.8, ({ t, id }) => {
   const error = t >= tried + 0.1 && t < 2.9;
   const shake = segment(t, tried + 0.1, 0.5);
   const typed = 'Alex'.slice(0, Math.floor(segment(t, 2.9, 0.5) * 4));
-  const nodeAt: Point = [STAGE_CENTER_X, ROW_Y + 20];
   return {
     rail: { progress: 0.3 },
-    body: (
-      <>
-        <Prompt text={TEXT.important} />
-        <PersonNode
-          x={nodeAt[0]}
-          y={nodeAt[1]}
-          label={ALEX}
-          k={backOut(segment(t, 4.2, 0.45))}
-        />
-        <AddButton id={id} press={pressAt(t, [0.5])} />
-      </>
-    ),
+    body: null,
     modal: (
-      <FormCard
-        title={TEXT.addPerson}
-        k={backOut(segment(t, 0.65, 0.45))}
-        settle={smooth(segment(t, 3.9, 0.35))}
-        to={nodeAt}
-      >
+      <FormCard submit={false} k={backOut(segment(t, 0.65, 0.45))}>
+        <Chip
+          x={STAGE_CENTER_X}
+          y={FORM_CARD.y + 40}
+          text={t < 3.6 ? TEXT.movingOn : TEXT.accepted}
+          size={14}
+          k={backOut(segment(t, t < 3.6 ? tried - 0.3 : 3.6, 0.4))}
+        />
         <text
           x={left}
           y={FORM_CARD.y + 88}
@@ -423,16 +408,7 @@ export const NameGeneratorValidationScene = defineScene(4.8, ({ t, id }) => {
       </FormCard>
     ),
     overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: ADD_BUTTON, at: 0.5 },
-          { to: FORM_SUBMIT, at: tried },
-          { to: field, at: 2.7, glide: 0.5 },
-          { to: FORM_SUBMIT, at: 3.75, glide: 0.4 },
-        ]}
-        leave={4.0}
-      />
+      <Click t={t} stops={[{ to: field, at: 2.7, glide: 0.5 }]} leave={4.0} />
     ),
   };
 });

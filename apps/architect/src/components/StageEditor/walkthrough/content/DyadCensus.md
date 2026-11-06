@@ -55,7 +55,7 @@ Read the full [Dyad Census documentation](https://documentation.networkcanvas.co
 
 <!-- scene: dyad-census-data -->
 
-Every yes creates one edge of the prompt's edge type, which becomes one row in your exported edge list. A no creates no edge.
+Each pair answered yes is joined by one edge of the prompt's edge type, and each edge becomes one row in your exported edge list. A no leaves the pair without that edge, and the no itself is not exported.
 
 ## When to use it
 
@@ -73,7 +73,7 @@ Use this stage to ask about the relationships between alters systematically. The
 
 Pick the **node type** whose alters are paired up, for example _Person_. Every pair of nodes of that type already in the participant's network is asked about.
 
-Changing the node type later clears the rest of this stage's settings, since they all describe the type chosen now.
+Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
 
 <!-- include: node-type -->
 

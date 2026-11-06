@@ -94,7 +94,11 @@ function Label({ x, y, text }: { x: number; y: number; text: string }) {
   );
 }
 
-/** A yes and a no button, as the interview's boolean field draws them. */
+/**
+ * A yes and a no option card, as the interview's boolean field draws them: a
+ * bordered card with a radio dot before its label. The chosen card's border
+ * and dot take the primary colour, for No as much as for Yes.
+ */
 function YesNo({
   x,
   y,
@@ -115,6 +119,7 @@ function YesNo({
       {options.map(({ key, text }, i) => {
         const left = x + i * (width + 14);
         const picked = chosen === key;
+        const dot: Point = [left + 24, y + 20];
         return (
           <g key={key}>
             <rect
@@ -122,20 +127,33 @@ function YesNo({
               y={y}
               width={width}
               height={40}
-              rx={20}
+              rx={8}
               className={cx(
-                picked && key === 'yes' && 'fill-sea-green',
-                picked && key === 'no' && 'fill-navy-taupe stroke-destructive',
-                !picked && 'fill-navy-taupe stroke-white/30',
+                'fill-navy-taupe',
+                picked ? 'stroke-sea-green' : 'stroke-white/20',
               )}
-              strokeWidth={picked && key === 'yes' ? 0 : 3}
+              strokeWidth={3}
             />
+            <circle
+              cx={dot[0]}
+              cy={dot[1]}
+              r={9}
+              className="fill-none stroke-white/40"
+              strokeWidth={2}
+            />
+            {picked ? (
+              <circle
+                cx={dot[0]}
+                cy={dot[1]}
+                r={6}
+                className="fill-sea-green"
+              />
+            ) : null}
             <text
-              x={left + width / 2}
+              x={left + 42}
               y={y + 26}
-              textAnchor="middle"
               fontSize={17}
-              fontWeight={800}
+              fontWeight={700}
               className="fill-white"
             >
               {text}
@@ -159,7 +177,7 @@ function JoinedNodes({
   edge = 'fill-edge-1',
   gap = 220,
   r = 38,
-  track = true,
+  track = false,
 }: {
   centre: Point;
   from: string | undefined;
@@ -447,7 +465,7 @@ export const EgoFormScrollScene = defineScene(5.8, ({ t, id }) => {
             x={STAGE.x}
             y={STAGE.y}
             width={STAGE.right - STAGE.x}
-            height={STAGE.bottom - STAGE.y}
+            height={STAGE.bottom - STAGE.y - nudge * 64}
           />
         </clipPath>
         <g clipPath={`url(#${clip})`}>
@@ -563,8 +581,9 @@ const EDGE_CARD = {
 } as const;
 
 /**
- * The edge form: the two nodes an edge joins, above the form. After Next,
- * the node the next edge shares stays and the other changes.
+ * The edge form: the two nodes an edge joins, above the form. After Next, a
+ * node in the same place in the next edge stays; the other leaves, the next
+ * one arrives from above, and the edge is drawn again from the first node.
  */
 export const EdgeFormIntroScene = defineScene(5.8, ({ t }) => {
   const typed = TEXT.typedKnown.slice(
@@ -572,43 +591,47 @@ export const EdgeFormIntroScene = defineScene(5.8, ({ t }) => {
     Math.round(TEXT.typedKnown.length * segment(t, 0.9, 0.9)),
   );
   const change = smooth(segment(t, 3.3, 0.7));
+  const leaving = smooth(segment(t, 3.3, 0.35));
+  const arriving = smooth(segment(t, 3.6, 0.45));
+  const drawn = smooth(segment(t, 3.9, 0.4));
   const gap = 220;
   const leftX = STAGE_CENTER_X - gap / 2;
   const rightX = STAGE_CENTER_X + gap / 2;
-  const ana: Point = [lerp(rightX, leftX, change), PAIR_Y];
   const after = t >= 3.3;
+  const barLeft = leftX + 32;
+  const barWidth = gap - 64;
+  const barShown = after ? (t < 3.9 ? 1 - leaving : drawn) : 1;
   return {
     rail: { progress: lerp(0.6, 0.66, change), press: pressAt(t, [3.1]) },
     body: (
       <>
         <rect
-          x={leftX + 32}
+          x={barLeft}
           y={PAIR_Y - 5}
-          width={gap - 64}
+          width={barWidth * barShown}
           height={10}
           className="fill-edge-1"
-          opacity={after ? smooth(segment(t, 3.6, 0.4)) : 1}
         />
-        {change < 1 ? (
-          <g opacity={1 - change}>
+        <PersonNode x={leftX} y={PAIR_Y} r={38} label={SAM} k={1} />
+        {leaving < 1 ? (
+          <g opacity={1 - leaving}>
             <PersonNode
-              x={leftX - change * 120}
+              x={rightX}
               y={PAIR_Y}
               r={38}
-              label={SAM}
-              k={1}
+              label={ANA}
+              k={1 - leaving * 0.3}
             />
           </g>
         ) : null}
-        <PersonNode x={ana[0]} y={ana[1]} r={38} label={ANA} k={1} />
-        {after ? (
-          <g opacity={change}>
+        {after && arriving > 0 ? (
+          <g opacity={arriving}>
             <PersonNode
-              x={rightX + (1 - change) * 120}
-              y={PAIR_Y}
+              x={rightX}
+              y={PAIR_Y - (1 - arriving) * 40}
               r={38}
               label={JO}
-              k={1}
+              k={0.85 + arriving * 0.15}
             />
           </g>
         ) : null}

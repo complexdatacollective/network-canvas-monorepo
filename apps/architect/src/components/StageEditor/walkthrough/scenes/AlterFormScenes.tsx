@@ -24,35 +24,39 @@ const SAM = 'Sam';
 const ANA = 'Ana';
 
 const CARD = {
-  width: 380,
+  width: 360,
   height: 230,
-  x: STAGE_CENTER_X - 190,
-  y: STAGE.y + 96,
+  x: STAGE_CENTER_X - 130,
+  y: STAGE.y + 80,
 } as const;
 const OPTION_Y = (i: number) => CARD.y + 150 + i * 26;
+const NODE_R = 34;
+/** The alter sits against the card's start edge, centred on its height. */
+const NODE: readonly [number, number] = [
+  CARD.x - NODE_R - 12,
+  CARD.y + CARD.height / 2,
+];
 
-/** One alter's slide: the node above the form card, as the interview draws it. */
-function Slide({
-  label,
-  offset,
-  typed,
-  caret,
-  chosen,
-}: {
-  label: string;
-  offset: number;
-  typed: string;
-  caret: boolean;
-  chosen: number | undefined;
-}) {
+/**
+ * The form card with the alter beside its start edge, joined to it by a disc
+ * in the card's colour, as the interview lays a per alter form out on a
+ * screen wider than it is tall.
+ */
+function Card() {
   return (
-    <g transform={`translate(${offset} 0)`}>
-      <PersonNode
-        x={STAGE_CENTER_X}
-        y={STAGE.y + 50}
-        r={32}
-        label={label}
-        k={1}
+    <>
+      <circle
+        cx={NODE[0]}
+        cy={NODE[1]}
+        r={NODE_R + 14}
+        className="fill-cyber-grape"
+      />
+      <rect
+        x={NODE[0]}
+        y={NODE[1] - 22}
+        width={CARD.x - NODE[0] + 12}
+        height={44}
+        className="fill-cyber-grape"
       />
       <rect
         x={CARD.x}
@@ -62,6 +66,27 @@ function Slide({
         rx={20}
         className="fill-cyber-grape"
       />
+    </>
+  );
+}
+
+/** One alter's answers inside the card. */
+function Answers({
+  lift,
+  opacity,
+  typed,
+  caret,
+  chosen,
+}: {
+  lift: number;
+  opacity: number;
+  typed: string;
+  caret: boolean;
+  chosen: number | undefined;
+}) {
+  if (opacity <= 0) return null;
+  return (
+    <g transform={`translate(0 ${lift})`} opacity={opacity}>
       <text
         x={CARD.x + 28}
         y={CARD.y + 34}
@@ -121,7 +146,9 @@ function Slide({
 
 /**
  * A per alter form: the same form for each alter in turn. The participant
- * answers it, presses Next, and the next alter's form slides in.
+ * answers it and presses Next; the answers sink away, the alter shrinks out
+ * where it is, the next alter drops in beside the card, and its empty
+ * answers rise into place.
  */
 export const AlterFormIntroScene = defineScene(5.4, ({ t }) => {
   const typed = TEXT.typed.slice(
@@ -129,27 +156,57 @@ export const AlterFormIntroScene = defineScene(5.4, ({ t }) => {
     Math.round(TEXT.typed.length * segment(t, 0.8, 0.9)),
   );
   const chosen = t >= 2.3 ? 1 : undefined;
-  const slide = smooth(segment(t, 3.3, 0.6));
-  const span = 520;
+  const next = 3.3;
+  const answersOut = smooth(segment(t, next, 0.18));
+  const personOut = smooth(segment(t, next + 0.2, 0.2));
+  const personIn = smooth(segment(t, next + 0.34, 0.35));
+  const answersIn = smooth(segment(t, next + 0.64, 0.26));
+  const moved = t >= next;
   return {
-    rail: { progress: lerp(0.4, 0.46, slide), press: pressAt(t, [3.1]) },
+    rail: {
+      progress: lerp(0.4, 0.46, smooth(segment(t, next, 0.6))),
+      press: pressAt(t, [3.1]),
+    },
     body: (
       <>
-        <Slide
-          label={SAM}
-          offset={-slide * span}
+        <Card />
+        <Answers
+          lift={answersOut * 12}
+          opacity={1 - answersOut}
           typed={typed}
           caret={t >= 0.8 && t < 1.9}
           chosen={chosen}
         />
-        {slide > 0 ? (
-          <Slide
-            label={ANA}
-            offset={(1 - slide) * span}
+        {moved ? (
+          <Answers
+            lift={(1 - answersIn) * 12}
+            opacity={answersIn}
             typed=""
             caret={false}
             chosen={undefined}
           />
+        ) : null}
+        {personOut < 1 ? (
+          <g opacity={1 - personOut}>
+            <PersonNode
+              x={NODE[0]}
+              y={NODE[1]}
+              r={NODE_R}
+              label={SAM}
+              k={1 - personOut * 0.4}
+            />
+          </g>
+        ) : null}
+        {moved && personIn > 0 ? (
+          <g opacity={personIn}>
+            <PersonNode
+              x={NODE[0]}
+              y={NODE[1] - (1 - personIn) * 56}
+              r={NODE_R}
+              label={ANA}
+              k={0.7 + personIn * 0.3}
+            />
+          </g>
         ) : null}
       </>
     ),

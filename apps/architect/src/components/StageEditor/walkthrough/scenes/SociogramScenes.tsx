@@ -37,12 +37,11 @@ const TEXT = {
   exported: 'Exported data',
   nodes: 'Nodes',
   edges: 'Edges',
-  nodeColumns: ['name', 'x', 'y', 'weekly'],
-  edgeColumns: ['from', 'to', 'type'],
-  knowsType: 'knows',
+  nodeColumns: ['nodeID', 'name', 'position_x', 'position_y', 'weekly'],
+  edgeColumns: ['edgeID', 'from', 'to'],
   yes: 'true',
   no: 'false',
-  positions: 'Positions: x and y',
+  positions: 'Positions: position_x and position_y',
   edgeList: 'Edges: the edge list',
   marked: 'Marked: true or false',
 } as const;
@@ -376,7 +375,7 @@ export const SociogramIntroScene = defineScene(5.4, ({ t }) => {
 });
 
 /**
- * What a sociogram leaves in the data: each node's position as x and y
+ * What a sociogram leaves in the data: each node's position as _x and _y
  * columns, each edge as a row of the edge list, and a marked node as true.
  */
 export const SociogramDataScene = defineScene(
@@ -411,7 +410,7 @@ export const SociogramDataScene = defineScene(
     const table = { x: 320, width: 370, row: 30 };
     const nodesTop = CONTENT.y + 26;
     const edgesTop = nodesTop + table.row * 5 + 30;
-    const cols = [0, 110, 190, 270];
+    const cols = [0, 62, 122, 212, 302];
     const edgeCols = [0, 110, 220];
     const rowIn = (i: number) => segment(t, 0.9 + i * 0.45, 0.35);
     const edgeIn = segment(t, 2.6, 0.35);
@@ -446,7 +445,7 @@ export const SociogramDataScene = defineScene(
             key={c}
             x={table.x + 14 + (xs[i] ?? 0)}
             y={top + 28}
-            fontSize={14}
+            fontSize={13}
             fontWeight={800}
             className="fill-white"
           >
@@ -478,7 +477,7 @@ export const SociogramDataScene = defineScene(
           )}
           {people.map((p, i) => {
             const y = nodesTop + 8 + table.row * (i + 1);
-            const cells = [p.label, p.xy[0], p.xy[1]];
+            const cells = [String(i + 1), p.label, p.xy[0], p.xy[1]];
             return (
               <g key={p.label} opacity={rowIn(i)}>
                 <rect
@@ -493,7 +492,7 @@ export const SociogramDataScene = defineScene(
                     key={j}
                     x={table.x + 14 + (cols[j] ?? 0)}
                     y={y + 20}
-                    fontSize={14}
+                    fontSize={13}
                     fontWeight={700}
                     className="fill-white"
                   >
@@ -501,9 +500,9 @@ export const SociogramDataScene = defineScene(
                   </text>
                 ))}
                 <text
-                  x={table.x + 14 + (cols[3] ?? 0)}
+                  x={table.x + 14 + (cols[4] ?? 0)}
                   y={y + 20}
-                  fontSize={14}
+                  fontSize={13}
                   fontWeight={700}
                   opacity={markIn}
                   className={p.weekly ? 'fill-mustard' : 'fill-white/70'}
@@ -522,7 +521,7 @@ export const SociogramDataScene = defineScene(
               height={table.row}
               className="fill-white/5"
             />
-            {[SAM, ANA, TEXT.knowsType].map((c, j) => (
+            {['1', '1', '2'].map((c, j) => (
               <text
                 key={j}
                 x={table.x + 14 + (edgeCols[j] ?? 0)}
@@ -889,7 +888,7 @@ export const SociogramLayoutModeScene = defineScene(6.2, ({ t }) => {
       right.y + lerp((i % 2) * 8, a.to[1], sim),
     ] as Point,
   }));
-  const pauseAt: Point = [right.x + width / 2 - 40, CONTENT.y + 30];
+  const pauseAt: Point = [right.x + width / 2 - 34, CONTENT.y + 30];
   const Glyph = running ? Pause : Play;
   return {
     body: (
@@ -943,11 +942,22 @@ export const SociogramLayoutModeScene = defineScene(6.2, ({ t }) => {
         {auto.map((a) => (
           <CanvasNode key={a.label} at={a.at} label={a.label} r={20} />
         ))}
-        <circle
-          cx={pauseAt[0]}
-          cy={pauseAt[1]}
-          r={22}
+        {/* The interview keeps the pause button inside the prompt card. */}
+        <rect
+          x={pauseAt[0] - 70}
+          y={pauseAt[1] - 22}
+          width={96}
+          height={44}
+          rx={12}
           className="fill-cyber-grape"
+          opacity={0.92}
+        />
+        <GripHorizontal
+          x={pauseAt[0] - 60}
+          y={pauseAt[1] - 9}
+          width={18}
+          height={18}
+          className="text-white/50"
         />
         <Glyph
           x={pauseAt[0] - 10}

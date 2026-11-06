@@ -65,7 +65,7 @@ Use this stage to ask the same few questions about every edge of one type.
 
 > Do: Place an [Information](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/information) stage before it, to orient participants to the form they will complete for each edge.
 
-> Do: Consider fields that capture temporal data, using [input controls](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/input-controls) like the date picker.
+> Do: Consider fields that capture temporal data, using [input controls](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/input-controls) like the **Date Picker**.
 
 > Avoid: Overloading it with too many fields or text-heavy questions.
 
@@ -76,9 +76,9 @@ Use this stage to ask the same few questions about every edge of one type.
 <!-- section: Edge setup -->
 <!-- scene: edge-form-source -->
 
-Pick the **edge type** the form is about, for example _Knows_. The form is shown once for every edge of that type already in the participant's network. If there are none, the stage shows nothing and the participant moves straight on.
+Pick the **edge type** the form is about, for example _Knows_. The form is shown once for every edge of that type already in the participant's network. If there are none, the stage is empty and the participant can go straight on with the Next arrow.
 
-Changing the edge type later clears the rest of this stage's settings, since they all describe the type chosen now.
+Changing the edge type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
 
 <!-- include: edge-type -->
 

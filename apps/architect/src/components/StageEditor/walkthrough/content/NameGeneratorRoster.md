@@ -152,7 +152,7 @@ Switch on **Roster sorting** and add a **Sort rule** to choose the order cards f
 
 Switch on **Roster search** to put a search box above the cards. Under **Searchable attributes**, choose which attributes a search looks in. Without this section, there is no search box, and participants find entries by scrolling.
 
-Every attribute you choose is searched on each keystroke, so a long roster searches faster with fewer of them.
+Each attribute you add makes searching a long roster slower, and can make matches less accurate, so choose only the ones participants are likely to search by.
 
 ## Choose how closely searches match
 
@@ -177,7 +177,7 @@ At the maximum, the cards can no longer be dragged and the participant is told t
 
 Network Canvas supplies the messages this stage shows. Switch on this section to rewrite them for your study. As well as the minimum and maximum messages, a roster stage has **Everything added**, shown once every card has been added, and **Unnamed label**, the numbered label for an entry with no name. These messages can include the node type's name, so choose a name that reads naturally to participants.
 
-The message shown while a card is dragged back to be removed is shared by every roster stage, so changing it changes it everywhere.
+The message shown while an added alter is dragged back to be removed is under **Shared by every stage of this kind**, so changing it changes every roster stage. That part appears once the protocol has a roster stage saved.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 

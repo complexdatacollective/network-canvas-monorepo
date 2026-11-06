@@ -33,7 +33,10 @@ const TEXT = {
   exported: 'Exported data',
   nameColumn: 'name',
   closenessColumn: 'closeness',
-  relationshipColumn: 'relationship',
+  // A categorical attribute exports one true-or-false column per value.
+  categoryColumns: ['group_family', 'group_work'],
+  yes: 'true',
+  no: 'false',
   gradient: (n: number) => `Color: gradient ${n}`,
   bucketOrder: 'Bucket order: name, A to Z',
   network: 'In the interview',
@@ -211,7 +214,8 @@ function OrdinalBins({
         {labels.map((label, i) => {
           const x = ordX(i, count);
           const w = ordWidth(count);
-          const darken = (i / count) * 0.8;
+          // The interview mixes each bin with the background by i / count.
+          const darken = i / count;
           return (
             <g key={label}>
               <rect
@@ -220,7 +224,7 @@ function OrdinalBins({
                 width={w}
                 height={ORD.bottom - ORD.top}
                 className="fill-cyber-grape"
-                opacity={0.75 - i * 0.05}
+                opacity={0.75 * (1 - i / count)}
               />
               <rect
                 x={x}
@@ -528,7 +532,7 @@ function CategoryCircles({
               cy={y}
               r={r}
               className={`${CAT_FILLS[i % CAT_FILLS.length]} ${CAT_STROKES[i % CAT_STROKES.length]}`}
-              fillOpacity={highlight === i ? 0.4 : 0.15}
+              fillOpacity={highlight === i ? 0.4 : 0.1}
               strokeWidth={4}
             />
             <text
@@ -856,6 +860,7 @@ function DataTable({
   columns,
   rows,
   reveal,
+  colWidth = 120,
 }: {
   x: number;
   y: number;
@@ -863,8 +868,8 @@ function DataTable({
   rows: readonly (readonly string[])[];
   /** 0 to 1 for each row, its arrival. */
   reveal: readonly number[];
+  colWidth?: number;
 }) {
-  const colWidth = 120;
   const rowHeight = 40;
   const width = colWidth * columns.length;
   return (
@@ -921,14 +926,24 @@ function binDataScene(kind: 'ordinal' | 'categorical') {
     5.0,
     ({ t }) => {
       const people = [SAM, ANA, JO];
-      const values =
-        kind === 'ordinal' ? ['3', '4', '1'] : ['family', 'work', 'work'];
+      const rows =
+        kind === 'ordinal'
+          ? [
+              [SAM, '3'],
+              [ANA, '4'],
+              [JO, '1'],
+            ]
+          : [
+              [SAM, TEXT.yes, TEXT.no],
+              [ANA, TEXT.no, TEXT.yes],
+              [JO, TEXT.no, TEXT.yes],
+            ];
       const placesTo =
         kind === 'ordinal'
           ? [TEXT.closeness[2], TEXT.closeness[3], TEXT.closeness[0]]
           : [TEXT.categories[0], TEXT.categories[1], TEXT.categories[1]];
       const left = CONTENT.x + 40;
-      const tableX = CONTENT.x + 360;
+      const tableX = CONTENT.x + (kind === 'ordinal' ? 360 : 300);
       const tableY = CONTENT.y + 70;
       const reveal = people.map((_, i) =>
         smooth(segment(t, 1.2 + i * 0.8, 0.4)),
@@ -976,14 +991,14 @@ function binDataScene(kind: 'ordinal' | 'categorical') {
             <DataTable
               x={tableX}
               y={tableY}
-              columns={[
-                TEXT.nameColumn,
+              columns={
                 kind === 'ordinal'
-                  ? TEXT.closenessColumn
-                  : TEXT.relationshipColumn,
-              ]}
-              rows={people.map((p, i) => [p, values[i] ?? ''])}
+                  ? [TEXT.nameColumn, TEXT.closenessColumn]
+                  : [TEXT.nameColumn, ...TEXT.categoryColumns]
+              }
+              rows={rows}
               reveal={reveal}
+              colWidth={kind === 'ordinal' ? 120 : 125}
             />
           </>
         ),

@@ -8,7 +8,7 @@
 
 <!-- dialog: =attribute | =select an attribute | create or select an attribute -->
 
-Search the attributes already defined for what this form is about, or type a new name to create one. Reusing an attribute when you ask the same thing again keeps the answers in one column of your data.
+Search the attributes already in the codebook for what this stage is about, or type a new name to create one. Reusing an attribute when you ask the same thing again keeps the answers in one column of your data.
 
 Read more about [variables and attributes](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/variables).
 

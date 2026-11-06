@@ -741,12 +741,15 @@ export const FORM_SUBMIT: Point = [
 
 export function FormCard({
   title,
+  submit = true,
   k,
   settle = 0,
   to = [STAGE_CENTER_X, FORM_CARD.y + FORM_CARD.height / 2],
   children,
 }: {
-  title: string;
+  title?: string;
+  /** Whether to draw the name generator form's own Done button. */
+  submit?: boolean;
   /** 0 to 1, the card opening. */
   k: number;
   /** 0 to 1, the card closing into the person it created at `to`. */
@@ -788,15 +791,17 @@ export function FormCard({
         {title}
       </text>
       {children}
-      <Chip
-        x={FORM_SUBMIT[0]}
-        y={FORM_SUBMIT[1]}
-        text={DONE_TEXT}
-        size={19}
-        width={132}
-        fill="fill-sea-green"
-        ink="fill-white"
-      />
+      {submit ? (
+        <Chip
+          x={FORM_SUBMIT[0]}
+          y={FORM_SUBMIT[1]}
+          text={DONE_TEXT}
+          size={19}
+          width={132}
+          fill="fill-sea-green"
+          ink="fill-white"
+        />
+      ) : null}
     </g>
   );
 }

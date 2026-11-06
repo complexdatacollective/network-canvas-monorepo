@@ -30,15 +30,15 @@ The title is shown at the top of the panel in the interview, for example _People
 <!-- field: dataSource -->
 <!-- scene: name-generator-panel-sources -->
 
-**The in-progress interview** shows nodes already in this participant's network. Dragging one in adds it to this prompt rather than creating a new node.
+**Use the network from the in-progress interview** lists the nodes of this type already in the participant's network that aren't on this prompt yet. Dragging one in adds it to this prompt rather than creating a new node.
 
-**A network data file** shows the rows of a roster you import as a CSV or JSON file. Dragging one in creates a node from that row, which then leaves the roster: each roster entry can be named once.
+**Use a network data file** lists the rows of a roster you import as a CSV or JSON file. Dragging one in creates a node from that row, which then leaves the list: each roster entry can be named once.
 
 ## Filter what appears
 
 <!-- dialog: create panel | edit panel -->
 <!-- scene: name-generator-filter -->
 
-Switch on **Panel filter** to show only some nodes, for example only nodes whose `close_friend` attribute is true, or only roster rows for one class. The filter applies on every prompt of this stage. Without one, the panel shows every node in its source.
+Switch on **Panel filter** to show only some nodes, for example only nodes whose `close_friend` attribute is true, or only roster rows for one class. The filter applies on every prompt of this stage. Without one, the panel shows every node in its source that isn't already on this prompt.
 
 Read more about [network filtering](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/network-filtering).

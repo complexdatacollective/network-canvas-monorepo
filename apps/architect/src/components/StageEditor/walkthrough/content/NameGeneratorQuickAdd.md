@@ -141,7 +141,7 @@ Network Canvas supplies the words this stage shows, and this section lets you re
 
 Each of these can include the node type's name, so choose a name that reads naturally to participants.
 
-The hint beside the box that says how to finish adding an alter is under **Shared by every stage of this kind**, so changing it changes every quick-add stage.
+The hint that tells participants to press Enter, shown if they haven't after a few seconds, is under **Shared by every stage of this kind**, so changing it changes every quick-add stage. That part appears once the protocol has a quick-add stage saved.
 
 Read more about [translating your protocol](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol).
 

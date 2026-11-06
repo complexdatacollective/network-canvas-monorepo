@@ -55,7 +55,7 @@ Read the full [Categorical Bin documentation](https://documentation.networkcanva
 
 <!-- scene: categorical-bin-data -->
 
-Each prompt records one categorical attribute. The circle an alter is placed in sets that attribute's value, so each prompt fills one column of your exported data, with the category of every alter placed.
+Each prompt records one categorical attribute. The circle an alter is placed in sets that attribute's value. In exported data the attribute becomes one true or false column for each category, named after the attribute and the category's value, such as `group_family`, so a placed alter has true in the column for its circle. An answer typed into the other circle is kept in its own column.
 
 ## When to use it
 
@@ -73,7 +73,7 @@ Use this stage to sort alters into categories that have no order.
 
 Pick the **node type** this stage sorts, for example _Person_. Every node of that type already in the participant's network waits in the drawer.
 
-Changing the node type later clears the rest of this stage's settings, since they all describe the type chosen now.
+Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
 
 <!-- include: node-type -->
 
@@ -85,7 +85,7 @@ Changing the node type later clears the rest of this stage's settings, since the
 
 <!-- section: Prompt collection -->
 
-Each prompt asks one question and sorts the alters by one categorical attribute. The participant moves through the prompts in order. An alter waits in the drawer until it has a value for the current prompt's attribute.
+Each prompt asks one question and sorts the alters by one categorical attribute. The participant moves through the prompts in order. An alter waits in the drawer until it has a value for the current prompt's attribute, or an answer for its other circle.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -101,7 +101,7 @@ This is the question the participant reads above the circles, such as _"Which of
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: variable -->
 
-Under **Categorical response**, pick the categorical attribute this prompt records. Each of its values becomes a circle. The interface shows at most ten, counting the other bin below if it is switched on.
+Under **Categorical response**, pick the categorical attribute this prompt records. Each of its values becomes a circle. A prompt can have at most ten circles, counting the other circle below if it is switched on, and the editor will not save one with more.
 
 ## Set the category labels
 
@@ -128,7 +128,7 @@ The **Follow-up question** appears as soon as an alter is dropped in the other c
 
 <!-- dialog: create a new attribute -->
 
-Typing a new name in the attribute picker opens this window, since a categorical attribute is its list of values. Name it, then add its values, each with a label and a value.
+Typing a new name in the attribute picker opens this window with that name filled in, since a categorical attribute is its list of values. Add its values, each with a label and a value.
 
 <!-- include: attribute-search -->
 
@@ -154,7 +154,7 @@ Switch on **Require every node to be placed** to stop the participant leaving a 
 
 While **Require every node to be placed** is switched on, this section holds **Nodes not yet placed**, the message shown when the participant tries to continue with alters still in the drawer. It can include the node type's name, so choose a name that reads naturally to participants.
 
-The **Place here** label is under **Shared by every stage of this kind**, so changing it changes every Categorical Bin stage.
+Once the protocol has a Categorical Bin stage, the section also holds **Place here**, the button on an opened circle while **Tap to place** is on. It is under **Shared by every stage of this kind**, so changing it changes every Categorical Bin stage.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 

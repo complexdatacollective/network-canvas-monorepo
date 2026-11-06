@@ -107,7 +107,7 @@ This is the question the participant reads above the input, such as _"How old ar
 <!-- section: Customize built-in wording -->
 <!-- scene: ego-form-scroll -->
 
-When a form runs below the bottom of the screen, a bouncing arrow appears after a while to show there are more questions, and screen readers announce **Scroll to see more questions**. That wording is shared by every Ego Form stage, so changing it here changes it on all of them. The section appears only when the protocol holds this shared wording.
+When a form runs below the bottom of the screen and the participant has not touched it for 15 seconds, a button with bouncing arrows appears below the form. Pressing it scrolls to the end, and screen readers announce **Scroll to see more questions**. That wording is shared by every Ego Form stage, so changing it here changes it on all of them. The section appears once an Ego Form stage has been saved to the protocol.
 
 Read more about [translating your protocol](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol).
 

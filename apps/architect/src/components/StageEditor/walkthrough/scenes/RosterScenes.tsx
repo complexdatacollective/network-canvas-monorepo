@@ -343,19 +343,12 @@ export const RosterIntroScene = defineScene(6.0, ({ t, id }) => {
         <RosterPanel id={id}>
           {INTRO_CARDS.map((card) => {
             const p = placed.get(card.key);
-            const lifted = drags.some(
-              (d) =>
-                d.key === card.key &&
-                t >= d.pick &&
-                t < d.drop &&
-                d.from[0] < NETWORK.x,
-            );
             return (
               <Card
                 key={card.key}
                 at={at(card.key)}
                 label={card.label}
-                opacity={(p?.k ?? 0) * (lifted ? 0.4 : 1)}
+                opacity={p?.k ?? 0}
               />
             );
           })}
@@ -431,8 +424,6 @@ export const RosterCardDisplayScene = defineScene(5.2, ({ t, id }) => {
         <RosterPanel id={id}>
           {DISPLAY_CARDS.map((card) => {
             const placedCard = placed.get(card.key);
-            const lifted =
-              card.key === drag.key && t >= drag.pick && t < drag.drop;
             return (
               <Card
                 key={card.key}
@@ -440,7 +431,7 @@ export const RosterCardDisplayScene = defineScene(5.2, ({ t, id }) => {
                 label={card.label}
                 detail={card.detail}
                 detailK={detailK}
-                opacity={(placedCard?.k ?? 0) * (lifted ? 0.4 : 1)}
+                opacity={placedCard?.k ?? 0}
               />
             );
           })}
@@ -804,7 +795,6 @@ export const RosterLimitsScene = defineScene(6.4, ({ t, id }) => {
   const minMet = 3.7;
   const full = t >= 4.8;
   const early = segment(t, 1.7, 0.3) * (1 - segment(t, 2.8, 0.3));
-  const disabled = smooth(segment(t, 4.8, 0.3));
   return {
     rail: {
       progress: 0.3,
@@ -818,17 +808,12 @@ export const RosterLimitsScene = defineScene(6.4, ({ t, id }) => {
         <RosterPanel id={id}>
           {LIMIT_CARDS.map((label) => {
             const p = placed.get(label);
-            const lifted = drags.some(
-              (d) => d.key === label && t >= d.pick && t < d.drop,
-            );
             return (
               <Card
                 key={label}
                 at={p?.at ?? slot(0)}
                 label={label}
-                opacity={
-                  (p?.k ?? 0) * (lifted ? 0.4 : 1) * (1 - 0.45 * disabled)
-                }
+                opacity={p?.k ?? 0}
               />
             );
           })}

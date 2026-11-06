@@ -47,7 +47,7 @@
 
 <!-- scene: alter-form-intro -->
 
-The Per Alter Form is a name interpreter: it collects information about alters already named, rather than creating new ones. The participant completes the same [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) for each alter in turn, with the alter shown above it, and moves on to the next one with the Next arrow.
+The Per Alter Form is a name interpreter: it collects information about alters already named, rather than creating new ones. The participant completes the same [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) for each alter in turn, with the alter shown beside it (above it on a screen taller than it is wide), and moves on to the next one with the Next arrow.
 
 Read the full [Per Alter Form documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form).
 
@@ -73,7 +73,7 @@ Use this stage to ask the same few questions about every alter.
 
 Pick the **node type** the form is about, for example _Person_. The form is shown once for every node of that type already in the participant's network.
 
-Changing the node type later clears the rest of this stage's settings, since they all describe the type chosen now.
+Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
 
 <!-- include: node-type -->
 
@@ -86,7 +86,7 @@ Changing the node type later clears the rest of this stage's settings, since the
 <!-- section: Form configuration -->
 <!-- scene: alter-form-intro -->
 
-These are the questions asked about each alter. Each field records one attribute of the alter, and the fields appear in the order listed here. The form has no title of its own: the alter it is about is shown above it.
+These are the questions asked about each alter. Each field records one attribute of the alter, and the fields appear in the order listed here. The form has no title of its own: the alter it is about is shown beside it.
 
 Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms), and open a field, or create a new one, for a tour of the field editor.
 
