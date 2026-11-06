@@ -523,7 +523,22 @@ function WalkthroughCard({
     startDrag,
     flipSide,
     nudge,
+    avoid,
   } = useMovablePanel(clearOfNav, reducedMotion);
+
+  // Once the step's target has scrolled into place, the panel moves to the
+  // other side if it sits over that target or the save button it points at.
+  useEffect(() => {
+    const covered = [target, saveButton].filter(
+      (element): element is HTMLElement => element !== null,
+    );
+    if (covered.length === 0) return undefined;
+    const timer = window.setTimeout(
+      () => covered.forEach(avoid),
+      reducedMotion ? 0 : SCROLL_SETTLE_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [avoid, reducedMotion, saveButton, target]);
   const Scene = step.scene === undefined ? undefined : SCENES[step.scene];
   const saveLabel = saveButton?.textContent?.trim() ?? '';
 
@@ -654,12 +669,14 @@ function WalkthroughCard({
                 </div>
               </motion.div>
             </AnimatePresence>
-            {awaitingSave && (
+          </ScrollArea>
+          {awaitingSave && (
+            <div className="shrink-0 px-5 pb-1">
               <Alert
                 variant="info"
                 density="compact"
                 icon={MousePointerClick}
-                className="my-0 shrink-0"
+                className="my-0"
               >
                 {saveButton === null
                   ? intl.formatMessage(messages.chooseToContinue)
@@ -670,8 +687,8 @@ function WalkthroughCard({
                         strong: renderStrong,
                       })}
               </Alert>
-            )}
-          </ScrollArea>
+            </div>
+          )}
           <footer className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-5 py-3">
             <div>
               <Button
@@ -735,6 +752,12 @@ function useSaveButton(popup: HTMLElement | null): HTMLButtonElement | null {
   }, [popup]);
   return useSyncExternalStore(subscribeToPage, getSnapshot, () => null);
 }
+
+/** Long enough for a smooth scroll to bring the step's target into place. */
+const SCROLL_SETTLE_MS = 450;
+
+const overlaps = (a: DOMRect, b: DOMRect) =>
+  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 
 /** How far one arrow key press moves the panel. */
 const NUDGE = 32;
@@ -834,6 +857,23 @@ function useMovablePanel(clearOfNav: number, reducedMotion: boolean) {
     [moveBy],
   );
 
+  /** Moves the panel to the other side if that uncovers `element`. */
+  const avoid = useCallback(
+    (element: HTMLElement) => {
+      const rect = card.current?.getBoundingClientRect();
+      const room = bounds.current?.getBoundingClientRect();
+      if (rect === undefined || room === undefined) return;
+      const covered = element.getBoundingClientRect();
+      if (!overlaps(rect, covered)) return;
+      const onRight = rect.left + rect.width / 2 > window.innerWidth / 2;
+      const dx = onRight ? room.left - rect.left : room.right - rect.right;
+      const moved = new DOMRect(rect.x + dx, rect.y, rect.width, rect.height);
+      if (overlaps(moved, covered)) return;
+      moveBy(dx, 0, { animated: true });
+    },
+    [moveBy],
+  );
+
   const nudge = useCallback(
     (event: KeyboardEvent) => {
       const step = {
@@ -860,6 +900,7 @@ function useMovablePanel(clearOfNav: number, reducedMotion: boolean) {
     startDrag,
     flipSide,
     nudge,
+    avoid,
   };
 }
 

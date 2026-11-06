@@ -19,7 +19,7 @@ A hint appears under the question in smaller text. Use it for an example or a sh
 <!-- field: _component -->
 <!-- scene: form-field-input-controls -->
 
-The **input control** decides what the participant uses to answer: a text box, a set of options, a toggle, a slider and so on. For a new attribute, the control you pick also sets what kind of data it holds. For an existing attribute, only the controls that suit its type are offered.
+The **input control** decides what the participant uses to answer: a text box, a set of options, a toggle, a slider and so on. For a new attribute, the control you pick also sets what kind of data it holds. For an existing attribute, only the controls that suit its type are offered. The choice of control appears once the field has an attribute, so in a new field choose or create one first.
 
 Read more about [input controls](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/input-controls).
 
