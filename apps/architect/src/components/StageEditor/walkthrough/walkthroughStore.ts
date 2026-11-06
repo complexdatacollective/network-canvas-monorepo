@@ -14,6 +14,10 @@ type WalkthroughState = Readonly<{
   detours: Readonly<Record<number, number>>;
   /** The editor section the current step is about, for the section list. */
   section: string | undefined;
+  /** The stage the walkthrough is about, whose progress it keeps. */
+  stage: string | undefined;
+  /** Counts requests to bring an open panel to the researcher's attention. */
+  focusRequest: number;
 }>;
 
 type Position = Readonly<{ x: number; y: number }>;
@@ -25,6 +29,8 @@ const CLOSED: WalkthroughState = {
   expanded: false,
   detours: {},
   section: undefined,
+  stage: undefined,
+  focusRequest: 0,
 };
 
 let state: WalkthroughState = CLOSED;
@@ -36,6 +42,11 @@ let state: WalkthroughState = CLOSED;
  */
 let position: Position = { x: 0, y: 0 };
 let returnFocusTo: HTMLElement | null = null;
+/**
+ * The step each stage's walkthrough was left on, so opening it again carries
+ * on there. Kept until the page reloads.
+ */
+const progress = new Map<string, number>();
 let focusPending = false;
 const listeners = new Set<() => void>();
 
@@ -57,10 +68,22 @@ export function useWalkthroughState(): WalkthroughState {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
-export function openWalkthrough(launcher: HTMLElement | null) {
+/**
+ * Opens the walkthrough for `stage` where the researcher left it. Already
+ * open, it is restored if minimised and brought to their attention.
+ */
+export function openWalkthrough(launcher: HTMLElement | null, stage: string) {
   returnFocusTo = launcher;
   focusPending = true;
-  set({ ...CLOSED, open: true });
+  if (state.open && state.stage === stage) {
+    set({
+      ...state,
+      collapsed: false,
+      focusRequest: state.focusRequest + 1,
+    });
+    return;
+  }
+  set({ ...CLOSED, open: true, stage, step: progress.get(stage) ?? 0 });
 }
 
 /**
@@ -75,6 +98,7 @@ export function takeWalkthroughFocus(): boolean {
 }
 
 export function goToWalkthroughStep(step: number) {
+  if (state.stage !== undefined) progress.set(state.stage, step);
   set({ ...state, step });
 }
 
@@ -104,8 +128,16 @@ export function setWalkthroughExpanded(expanded: boolean) {
   set({ ...state, expanded });
 }
 
-export function closeWalkthrough({ restoreFocus = true } = {}) {
+/**
+ * Closes the walkthrough. Its place is kept for next time, unless it was
+ * closed by finishing it.
+ */
+export function closeWalkthrough({
+  restoreFocus = true,
+  finished = false,
+} = {}) {
   if (!state.open) return;
+  if (finished && state.stage !== undefined) progress.delete(state.stage);
   set(CLOSED);
   const target = returnFocusTo;
   returnFocusTo = null;

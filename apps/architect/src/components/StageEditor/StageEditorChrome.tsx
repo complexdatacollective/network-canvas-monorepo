@@ -193,6 +193,7 @@ function SidebarOutline({
 }: Readonly<{ sections: StageSectionsStore }>) {
   const intl = useAppIntl();
   const walkthrough = useStageWalkthrough();
+  const { identity } = useStageEdit();
   const { open } = useWalkthroughState();
   return (
     <StageSectionOutline
@@ -205,7 +206,9 @@ function SidebarOutline({
             icon={<CirclePlay aria-hidden />}
             className="shrink-0 @min-[60rem]:mb-2 @min-[60rem]:w-full"
             aria-expanded={open}
-            onClick={(event) => openWalkthrough(event.currentTarget)}
+            onClick={(event) =>
+              openWalkthrough(event.currentTarget, identity?.id ?? '')
+            }
           >
             {intl.formatMessage(messages.walkthrough)}
           </Button>

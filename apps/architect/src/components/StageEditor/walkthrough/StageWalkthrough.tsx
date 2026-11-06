@@ -317,7 +317,11 @@ function WalkthroughPanel({
       saveButton={saveButton}
       awaitingSave={awaitingSave}
       onBack={index === 0 ? undefined : () => goTo(index - 1)}
-      onNext={isLast ? () => closeWalkthrough() : () => goTo(index + 1)}
+      onNext={
+        isLast
+          ? () => closeWalkthrough({ finished: true })
+          : () => goTo(index + 1)
+      }
       isLast={isLast}
     />
   );
@@ -481,11 +485,15 @@ function WalkthroughCard({
   const moveHintId = useId();
   const nextRef = useRef<HTMLButtonElement>(null);
   const reducedMotion = usePrefersReducedMotion() === true;
-  const { expanded } = useWalkthroughState();
+  const { expanded, focusRequest } = useWalkthroughState();
 
+  // On mount, and whenever the researcher asks for the panel again.
+  const focusedFor = useRef<number | null>(null);
   useEffect(() => {
+    if (focusedFor.current === focusRequest) return;
+    focusedFor.current = focusRequest;
     if (takeWalkthroughFocus()) nextRef.current?.focus({ preventScroll: true });
-  }, []);
+  }, [focusRequest]);
 
   useEffect(() => {
     target?.scrollIntoView({
