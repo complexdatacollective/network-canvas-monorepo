@@ -79,13 +79,7 @@ Changing the node type later clears the rest of this stage's settings, since the
 
 <!-- include: node-type -->
 
-## Show only some of them
-
-<!-- section: Stage filter -->
-
-Switch on **Stage filter** to place only some nodes on this canvas, for example only nodes whose `close_friend` attribute is true. Without a filter, every node of the chosen type appears.
-
-Read more about [network filtering](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/network-filtering).
+<!-- include: stage-filter -->
 
 <!-- include: rule -->
 

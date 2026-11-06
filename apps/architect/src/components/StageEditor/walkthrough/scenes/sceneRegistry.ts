@@ -1,5 +1,20 @@
 import type { ComponentType } from 'react';
 
+import { AlterFormIntroScene } from './AlterFormScenes';
+import {
+  BinBucketOrderScene,
+  CategoricalBinDataScene,
+  CategoricalBinIntroScene,
+  CategoricalBinOtherScene,
+  CategoricalBinRequireScene,
+  CategoricalBinTapScene,
+  OrdinalBinDataScene,
+  OrdinalBinGradientScene,
+  OrdinalBinIntroScene,
+  OrdinalBinRequireScene,
+  OrdinalBinTapScene,
+  StageFilterScene,
+} from './BinScenes';
 import {
   NameGeneratorAdditionalAttributesScene,
   NameGeneratorDataScene,
@@ -60,4 +75,17 @@ export const SCENES: Readonly<Record<string, ComponentType>> = {
   'roster-sort': RosterSortScene,
   'roster-search': RosterSearchScene,
   'roster-limits': RosterLimitsScene,
+  'ordinal-bin-intro': OrdinalBinIntroScene,
+  'ordinal-bin-data': OrdinalBinDataScene,
+  'ordinal-bin-gradient': OrdinalBinGradientScene,
+  'ordinal-bin-tap': OrdinalBinTapScene,
+  'ordinal-bin-require': OrdinalBinRequireScene,
+  'categorical-bin-intro': CategoricalBinIntroScene,
+  'categorical-bin-data': CategoricalBinDataScene,
+  'categorical-bin-other': CategoricalBinOtherScene,
+  'categorical-bin-tap': CategoricalBinTapScene,
+  'categorical-bin-require': CategoricalBinRequireScene,
+  'bin-bucket-order': BinBucketOrderScene,
+  'stage-filter': StageFilterScene,
+  'alter-form-intro': AlterFormIntroScene,
 };
