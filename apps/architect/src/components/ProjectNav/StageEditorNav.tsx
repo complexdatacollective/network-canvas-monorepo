@@ -156,6 +156,8 @@ export type StageEditorToolbarProps = Readonly<{
   previewOptionsContent?: ReactNode;
   isStageInvalid: boolean;
   isOpeningPreview: boolean;
+  /** A control that ends the toolbar after its own separator, if any. */
+  trailing?: ReactNode;
 }>;
 
 /**
@@ -176,6 +178,7 @@ export const StageEditorToolbar = ({
   previewOptionsContent,
   isStageInvalid,
   isOpeningPreview,
+  trailing,
 }: StageEditorToolbarProps) => {
   const intl = useAppIntl();
   const { control: issuesControl, openIssues } =
@@ -253,6 +256,8 @@ export const StageEditorToolbar = ({
             {previewOptionsContent}
           </ToolbarPopover>
         </ToolbarGroup>,
+        trailing ? <ToolbarSeparator key="trailing-separator" /> : null,
+        trailing ?? null,
       ],
     }),
     [
@@ -270,6 +275,7 @@ export const StageEditorToolbar = ({
       previewLabel,
       previewOptionsContent,
       previewOptionsOpen,
+      trailing,
       intl,
     ],
   );

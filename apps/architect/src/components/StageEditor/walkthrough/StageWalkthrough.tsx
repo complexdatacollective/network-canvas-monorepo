@@ -271,6 +271,9 @@ function WalkthroughPanel({
   if (step === undefined) return null;
 
   if (collapsed) {
+    // Minimised over the editor, it sits in the editor's toolbar instead;
+    // a dialog makes that toolbar inert, so inside one it stays a pill.
+    if (host === undefined) return null;
     return (
       <MinimizedPill index={index} total={steps.length} title={step.title} />
     );
@@ -351,7 +354,7 @@ function MinimizedPill({
 const RING_RADIUS = 16;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
-function ProgressRing({
+export function ProgressRing({
   index,
   total,
 }: Readonly<{ index: number; total: number }>) {

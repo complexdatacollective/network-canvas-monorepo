@@ -3347,6 +3347,14 @@
     "defaultMessage": "Resume",
     "description": "Button on the minimised walkthrough that opens it again at the step the researcher was on."
   },
+  "architect.stageEditor.walkthrough.resumeEyebrow": {
+    "defaultMessage": "Resume walkthrough · {index} of {total}",
+    "description": "Small heading in the tooltip of the minimised walkthrough in the stage editor toolbar, above the title of the step the researcher was on."
+  },
+  "architect.stageEditor.walkthrough.resumeLabel": {
+    "defaultMessage": "Resume walkthrough, step {index} of {total}: {title}",
+    "description": "Accessible name of the minimised walkthrough button in the stage editor toolbar. It opens the walkthrough again at the step named."
+  },
   "architect.stageEditor.walkthrough.saveToContinue": {
     "defaultMessage": "Click <strong>{label}</strong> to save this, and the walkthrough will carry on.",
     "description": "Shown on the last walkthrough step about an open dialog, in place of a Next button. label is the text of the dialog’s own save button, such as “Add” or “Save”. The walkthrough resumes by itself once the dialog closes."

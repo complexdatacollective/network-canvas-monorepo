@@ -47,6 +47,7 @@ import {
 } from './stageDraftBeacon';
 import StageSectionOutline from './StageSectionOutline';
 import StageTitle from './StageTitle';
+import { ResumeWalkthroughControl } from './walkthrough/ResumeWalkthroughControl';
 import StageWalkthrough, {
   useStageWalkthrough,
 } from './walkthrough/StageWalkthrough';
@@ -301,6 +302,15 @@ function StageEditorActions({
   const protocol = useSelector(getProtocol);
   const useSyntheticData = useSelector(getPreviewUseSyntheticData);
   const respectSkipLogic = useSelector(getPreviewRespectSkipLogic);
+  const walkthroughState = useWalkthroughState();
+  const walkthroughSteps = useStageWalkthrough()?.steps.filter(
+    (step) => step.dialog === undefined,
+  );
+  const minimisedIndex = Math.min(
+    walkthroughState.step,
+    (walkthroughSteps?.length ?? 1) - 1,
+  );
+  const minimisedStep = walkthroughSteps?.[minimisedIndex];
 
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
   // Disabled until the stage is known to be previewable, so Preview cannot be
@@ -452,6 +462,19 @@ function StageEditorActions({
         previewOptionsContent={previewOptionsContent}
         isStageInvalid={!isStageValid}
         isOpeningPreview={isOpeningPreview}
+        trailing={
+          walkthroughState.open &&
+          walkthroughState.collapsed &&
+          walkthroughSteps !== undefined &&
+          minimisedStep !== undefined ? (
+            <ResumeWalkthroughControl
+              key="resume-walkthrough"
+              index={minimisedIndex}
+              total={walkthroughSteps.length}
+              title={minimisedStep.title}
+            />
+          ) : undefined
+        }
       />
     </>
   );
