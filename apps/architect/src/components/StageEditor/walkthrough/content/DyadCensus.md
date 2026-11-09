@@ -65,7 +65,7 @@ Use this stage to ask about the relationships between alters systematically. The
 
 > Do: Use it to encourage participants to add edges they might not have considered.
 
-> Avoid: Using it with a large number of alters, which results in a large number of screens. The number of pairs grows rapidly: n alters means n(n-1)/2 pairs for each prompt.
+> Avoid: Using it with a large number of alters, which results in a large number of screens.
 
 ## Choose what this stage shows
 

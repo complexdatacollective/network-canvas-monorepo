@@ -60,7 +60,7 @@ const TEXT = {
 
 /* ------------------------------------------------------------- pieces */
 
-function Card({
+export function Card({
   x,
   y,
   width,
@@ -169,7 +169,7 @@ function YesNo({
  * Two nodes with the track between them that fills with the edge colour,
  * left to right, as the interview's dyad pair and joined pair draw it.
  */
-function JoinedNodes({
+export function JoinedNodes({
   centre,
   from,
   to,
@@ -220,7 +220,7 @@ function JoinedNodes({
   );
 }
 
-function DataTable({
+export function DataTable({
   x,
   y,
   columns,
@@ -289,7 +289,15 @@ function DataTable({
   );
 }
 
-function Heading({ x, y, text }: { x: number; y: number; text: string }) {
+export function Heading({
+  x,
+  y,
+  text,
+}: {
+  x: number;
+  y: number;
+  text: string;
+}) {
   return (
     <text
       x={x}
@@ -794,7 +802,7 @@ export const EdgeFormSourceScene = defineScene(
 
 /* --------------------------------------------------------- dyad census */
 
-const DYAD_Y = STAGE.y + 110;
+export const DYAD_Y = STAGE.y + 110;
 const DYAD_CARD = {
   x: STAGE_CENTER_X - 190,
   y: STAGE.y + 200,
@@ -834,7 +842,7 @@ function DyadCard({
   );
 }
 
-type DyadPair = Readonly<{
+export type DyadPair = Readonly<{
   from: string;
   to: string;
   /** When the pair arrives, sliding up from below. */
@@ -849,7 +857,13 @@ type DyadPair = Readonly<{
 }>;
 
 /** A run of pairs, each answered and replaced by the next. */
-function DyadPairs({ t, pairs }: { t: number; pairs: readonly DyadPair[] }) {
+export function DyadPairs({
+  t,
+  pairs,
+}: {
+  t: number;
+  pairs: readonly DyadPair[];
+}) {
   return (
     <>
       {pairs.map((pair) => {

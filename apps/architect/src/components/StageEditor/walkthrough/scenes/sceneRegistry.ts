@@ -16,6 +16,15 @@ import {
   StageFilterScene,
 } from './BinScenes';
 import {
+  OneToManyDataScene,
+  OneToManyIntroScene,
+  OneToManyRemoveScene,
+  TieStrengthDataScene,
+  TieStrengthDeclineScene,
+  TieStrengthIntroScene,
+  TieStrengthScaleScene,
+} from './CensusScenes';
+import {
   DyadCensusDataScene,
   DyadCensusExistingScene,
   DyadCensusIntroScene,
@@ -44,6 +53,14 @@ import {
   NameGeneratorPanelSourcesScene,
   NameGeneratorPromptsScene,
 } from './NameGeneratorScenes';
+import {
+  NarrativeDataScene,
+  NarrativeDrawScene,
+  NarrativeGroupsScene,
+  NarrativeHighlightScene,
+  NarrativeIntroScene,
+  NarrativeLayoutScene,
+} from './NarrativeScenes';
 import {
   RosterCardDisplayScene,
   RosterDataScene,
@@ -114,4 +131,17 @@ export const SCENES: Readonly<Record<string, ComponentType>> = {
   'dyad-census-prompts': DyadCensusPromptsScene,
   'dyad-census-data': DyadCensusDataScene,
   'dyad-census-pairs': DyadCensusPairsScene,
+  'tie-strength-intro': TieStrengthIntroScene,
+  'tie-strength-data': TieStrengthDataScene,
+  'tie-strength-scale': TieStrengthScaleScene,
+  'tie-strength-decline': TieStrengthDeclineScene,
+  'one-to-many-intro': OneToManyIntroScene,
+  'one-to-many-data': OneToManyDataScene,
+  'one-to-many-remove': OneToManyRemoveScene,
+  'narrative-intro': NarrativeIntroScene,
+  'narrative-data': NarrativeDataScene,
+  'narrative-layout': NarrativeLayoutScene,
+  'narrative-groups': NarrativeGroupsScene,
+  'narrative-highlight': NarrativeHighlightScene,
+  'narrative-draw': NarrativeDrawScene,
 };

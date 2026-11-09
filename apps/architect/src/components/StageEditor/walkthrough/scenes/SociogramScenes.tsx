@@ -53,12 +53,12 @@ const KAI = 'Kai';
 const CAFE = 'Café';
 
 /** The canvas the interview draws: concentric circles filling its height. */
-const CANVAS = {
+export const CANVAS = {
   x: STAGE_CENTER_X,
   y: (STAGE.y + STAGE.bottom) / 2,
   r: (STAGE.bottom - STAGE.y) / 2 - 12,
 } as const;
-const NODE_R = 27;
+export const NODE_R = 27;
 
 /** Radii as the interview computes them, outermost first. */
 const radii = (n: number, skewed: boolean, r: number) =>
@@ -71,7 +71,7 @@ const radii = (n: number, skewed: boolean, r: number) =>
  * The interview's concentric circles: each ring a blend of the background
  * toward white, lighter toward the centre.
  */
-function Circles({
+export function Circles({
   n,
   skew = 0,
   x = CANVAS.x,
@@ -113,7 +113,7 @@ function Circles({
 }
 
 /** A canvas node, with the white ring the interview gives a marked one. */
-function CanvasNode({
+export function CanvasNode({
   at,
   label,
   k = 1,
@@ -158,7 +158,7 @@ function CanvasNode({
 }
 
 /** An edge as the interview draws it: a thick round-capped line. */
-function Edge({
+export function Edge({
   from,
   to,
   k = 1,
