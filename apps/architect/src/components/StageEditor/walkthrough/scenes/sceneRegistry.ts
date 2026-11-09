@@ -25,6 +25,26 @@ import {
   TieStrengthScaleScene,
 } from './CensusScenes';
 import {
+  FinishSessionAutomaticScene,
+  FinishSessionDataScene,
+  FinishSessionFailedScene,
+  FinishSessionIntroScene,
+  FinishSessionOutcomesScene,
+} from './FinishSessionScenes';
+import {
+  GeospatialDataScene,
+  GeospatialIntroScene,
+  GeospatialOutsideScene,
+  GeospatialPropertyScene,
+} from './GeospatialScenes';
+import {
+  InformationBlocksScene,
+  InformationDataScene,
+  InformationIntroScene,
+  InformationMediaScene,
+  InformationSizeScene,
+} from './InformationScenes';
+import {
   DyadCensusDataScene,
   DyadCensusExistingScene,
   DyadCensusIntroScene,
@@ -144,4 +164,18 @@ export const SCENES: Readonly<Record<string, ComponentType>> = {
   'narrative-groups': NarrativeGroupsScene,
   'narrative-highlight': NarrativeHighlightScene,
   'narrative-draw': NarrativeDrawScene,
+  'information-intro': InformationIntroScene,
+  'information-data': InformationDataScene,
+  'information-blocks': InformationBlocksScene,
+  'information-media': InformationMediaScene,
+  'information-size': InformationSizeScene,
+  'geospatial-intro': GeospatialIntroScene,
+  'geospatial-data': GeospatialDataScene,
+  'geospatial-property': GeospatialPropertyScene,
+  'geospatial-outside': GeospatialOutsideScene,
+  'finish-session-intro': FinishSessionIntroScene,
+  'finish-session-data': FinishSessionDataScene,
+  'finish-session-automatic': FinishSessionAutomaticScene,
+  'finish-session-failed': FinishSessionFailedScene,
+  'finish-session-outcomes': FinishSessionOutcomesScene,
 };

@@ -6,7 +6,7 @@
 
 ## Find or create an attribute
 
-<!-- dialog: =attribute | =ordinal attribute | =select an attribute | create or select an attribute -->
+<!-- dialog: =attribute | =ordinal attribute | =location attribute | =select an attribute | create or select an attribute -->
 
 Search the attributes already in the codebook for what this stage is about, or type a new name to create one. Reusing an attribute when you ask the same thing again keeps the answers in one column of your data.
 
