@@ -2,6 +2,12 @@ import type { ComponentType } from 'react';
 
 import { AlterFormIntroScene } from './AlterFormScenes';
 import {
+  AnonymisationDataScene,
+  AnonymisationIntroScene,
+  AnonymisationReturnScene,
+  AnonymisationRulesScene,
+} from './AnonymisationScenes';
+import {
   BinBucketOrderScene,
   CategoricalBinDataScene,
   CategoricalBinIntroScene,
@@ -58,6 +64,12 @@ import {
   EgoFormIntroScene,
   EgoFormScrollScene,
 } from './InterpreterScenes';
+import {
+  LanguageChooserDataScene,
+  LanguageChooserIntroScene,
+  LanguageChooserLanguagesScene,
+  LanguageChooserOrderScene,
+} from './LanguageChooserScenes';
 import {
   NameGeneratorAdditionalAttributesScene,
   NameGeneratorDataScene,
@@ -178,4 +190,12 @@ export const SCENES: Readonly<Record<string, ComponentType>> = {
   'finish-session-automatic': FinishSessionAutomaticScene,
   'finish-session-failed': FinishSessionFailedScene,
   'finish-session-outcomes': FinishSessionOutcomesScene,
+  'language-chooser-intro': LanguageChooserIntroScene,
+  'language-chooser-data': LanguageChooserDataScene,
+  'language-chooser-order': LanguageChooserOrderScene,
+  'language-chooser-languages': LanguageChooserLanguagesScene,
+  'anonymisation-intro': AnonymisationIntroScene,
+  'anonymisation-data': AnonymisationDataScene,
+  'anonymisation-rules': AnonymisationRulesScene,
+  'anonymisation-return': AnonymisationReturnScene,
 };
