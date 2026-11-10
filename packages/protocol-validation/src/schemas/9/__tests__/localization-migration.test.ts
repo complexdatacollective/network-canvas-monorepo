@@ -319,11 +319,28 @@ describe('v8 to v9 localization migration', () => {
     }
   });
 
-  it('leaves text declared one line that would be blank once joined as it was', () => {
+  // Line breaks and spaces only are blank before the join as after it, so
+  // the rules on blank text settle them: a stage name is repaired, a prompt
+  // is refused.
+  it('names a stage whose name is only line breaks by its position', () => {
     const document = schema8Protocol();
-    const at = [...stagePath(document, 'information'), 'label'];
-    setAt(document, at, '\n \n');
-    expect(getAt(migrateStep(document), at)).toEqual({ en: '\n \n' });
+    const stage = stagePath(document, 'information');
+    setAt(document, [...stage, 'label'], '\n');
+    expect(getAt(migrateStep(document), [...stage, 'label'])).toEqual({
+      en: `Stage ${Number(stage[1]) + 1}`,
+    });
+  });
+
+  it('refuses a prompt that is only line breaks and spaces as blank content', () => {
+    const document = schema8Protocol();
+    setAt(
+      document,
+      [...stagePath(document, 'nameGenerator'), 'prompts', 0, 'text'],
+      '\n  \n',
+    );
+    expect(() => migrateProtocol(document, 9)).toThrow(
+      MigrationContentRefusedError,
+    );
   });
 
   it("keeps braces and the fork's {{fieldName}} literal where text may now show values", () => {

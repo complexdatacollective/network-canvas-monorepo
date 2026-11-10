@@ -75,7 +75,7 @@
   "protocolValidation.migrationNotes.schema8.unsupportedValidation": "新架构无法表达的验证规则会被移除：从未定义过的规则名称、值类型错误的规则（例如带引号的数字），以及不适用于该属性类型的规则（例如文本属性上的 `minValue`，或任何位置的 `requiredAcceptsNull`）。被移除的 `minValue`/`minLength`/`minSelected` 仍会将该属性标记为必填，以保留旧的隐含必填行为。布局属性不接受任何验证规则；其验证规则会被移除。",
   "protocolValidation.migrationNotes.schema8.validationHints": "为表单字段添加了可选的 `showValidationHints` 属性，可自动显示根据验证规则生成的提示。",
   "protocolValidation.migrationNotes.schema9.attributeNames": "属性名称现在可以使用任何语言的文字，也可以包含空格和标点符号。",
-  "protocolValidation.migrationNotes.schema9.blankRequiredContent": "如果以下任一内容为空或只包含空格，协议就无法升级，因为升级无法得知它们应当是什么：提示或问题；有序或分类属性任一选项的值；节点类型、关系类型或属性的名称。这包括表单字段的问题、家族谱系的提示和提名提示，以及“分类分箱”阶段中请参与者描述未列出的回答时所问的问题。请在创建该协议的 Architect 版本中逐一更正，然后再升级。",
+  "protocolValidation.migrationNotes.schema9.blankRequiredContent": "如果以下任一内容为空或只包含空格，协议就无法升级，因为升级无法得知它们应当是什么：提示或问题；有序或分类属性任一选项的值；节点类型、关系类型或属性的名称。这包括表单字段的问题、为“网络构建器”阶段表单中的字段设置的标签、家族谱系的提示和提名提示，以及“分类分箱”阶段中请参与者描述未列出的回答时所问的问题。请在创建该协议的 Architect 版本中逐一更正，然后再升级。",
   "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": "如果某个匿名化阶段要求的密码短语最小长度大于其最大长度，参与者将无法选择任何密码短语，因此这两个长度都会被移除，并改用默认的最小长度。",
   "protocolValidation.migrationNotes.schema9.defaultLanguage": "协议现在可以用多种语言撰写。现有协议默认视为用英语撰写。如果您的协议是用其他语言撰写的，请在 Architect 的“语言”页面中更改其默认语言。",
   "protocolValidation.migrationNotes.schema9.duplicateOptionValues": "有序和分类选项的值现在必须各不相同。如果现有选项共用同一个值，将保留第一个选项，删除其后所有重复的选项。值按其原样进行比较，但读起来相同的数字和文本（例如 1 和 \"1\"）视为同一个值。如果删除选项后某个属性要求的选择数多于其选项数，该要求将被删除。",

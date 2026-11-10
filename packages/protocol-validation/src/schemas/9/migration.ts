@@ -15,6 +15,7 @@ import {
   messageText,
 } from '../../localization/messageSyntax.ts';
 import { createMigration } from '../../migration/index.ts';
+import { recordOriginalPositions } from '../../migration/originalPositions.ts';
 import type { SessionDocument } from '../../migration/session.ts';
 import {
   collectLocalizedStringSites,
@@ -1317,7 +1318,7 @@ const migrationV8toV9 = createMigration({
 - The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol.
 - Encrypted attributes are no longer experimental: the Anonymisation interface can be added in Architect like any other interface.
 - Attribute names can now use letters from any language, as well as spaces and punctuation.
-- A protocol cannot be upgraded while a prompt or question, the value of an option of an ordinal or categorical attribute, or the name of a node type, edge type or attribute is empty or contains only spaces, because the upgrade cannot know what it should be. This includes form field questions, a Family Pedigree's prompt and nomination prompts, and the question a Categorical Bin stage asks participants to describe an answer that is not listed. Correct each in the version of Architect that made the protocol, then upgrade it.
+- A protocol cannot be upgraded while a prompt or question, the value of an option of an ordinal or categorical attribute, or the name of a node type, edge type or attribute is empty or contains only spaces, because the upgrade cannot know what it should be. This includes form field questions, the label given to a field of a Network Composer form, a Family Pedigree's prompt and nomination prompts, and the question a Categorical Bin stage asks participants to describe an answer that is not listed. Correct each in the version of Architect that made the protocol, then upgrade it.
 - If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
 - Ordinal and categorical option values must now be unique. Where existing options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.
 - The rules for ordinal and categorical option values are now stricter. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.
@@ -1342,6 +1343,9 @@ const migrationV8toV9 = createMigration({
 - Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.`,
   migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
+    // Before any repair removes or reorders a list item, so a refusal names
+    // each item where the researcher will find it.
+    recordOriginalPositions(migrated);
     const localization = localizationOf(migrated);
     // Before any stage is added, and before anything reads a stage's name.
     repairStageLabels(migrated);

@@ -110,7 +110,9 @@ const textSites = (document: unknown): Path[] =>
     );
   });
 
-const BLANKS = ['', ' '] as const;
+// Line breaks and spaces only: the join of single-line text runs after the
+// repairs, and must leave this blank for them and for the refusal to judge.
+const BLANKS = ['', ' ', '\n  \n'] as const;
 
 /**
  * What becomes of each kind of text schema 8 accepted blank. A title or label
@@ -387,9 +389,59 @@ describe('how a refusal names what to correct', () => {
       ),
     ).toEqual([
       expect.stringMatching(
-        /^Node type “Person”, attribute “closeness”, the value of option 2: /,
+        /^Node type “Person”, attribute “closeness”, the value of option 2 \(“.+”\): /,
       ),
     ]);
+  });
+
+  // Repairs may remove list items before the result is validated. The place
+  // named is where the researcher will find it in the Architect that made the
+  // protocol, not where it ended up after the repairs.
+  it('names an option by its position before duplicates were removed', () => {
+    const document = structuredClone(ecoGeneticTemplate);
+    const options = [
+      'codebook',
+      'node',
+      'person',
+      'variables',
+      'closeness',
+      'options',
+    ];
+    setAt(document, options, [
+      { label: 'First', value: 'a' },
+      { label: 'Again', value: 'a' },
+      { label: 'Unwritten', value: ' ' },
+    ]);
+    const refusal = refusalOf(() => migrateProtocol(document, 9));
+    expect(refusal).toBeInstanceOf(MigrationContentRefusedError);
+    expect(
+      (refusal as MigrationContentRefusedError).problems.map(
+        ({ place }) => place,
+      ),
+    ).toEqual([
+      'Node type “Person”, attribute “closeness”, the value of option 3 (“Unwritten”)',
+    ]);
+  });
+
+  it('names a form field by its position before the stage took over another', () => {
+    const document = structuredClone(ecoGeneticTemplate);
+    const form = ['stages', 3, 'nodeConfig', 'form'];
+    const fields = getAt(document, form);
+    if (!Array.isArray(fields)) throw new Error('The template has no form');
+    // The name is asked by the Family Pedigree itself, so the conversion
+    // removes this field from the form.
+    setAt(document, form, [
+      { variable: 'name', prompt: 'What is their name?' },
+      ...fields,
+    ]);
+    setAt(document, [...form, 2, 'prompt'], ' ');
+    const refusal = refusalOf(() => migrateProtocol(document, 9));
+    expect(refusal).toBeInstanceOf(MigrationContentRefusedError);
+    expect(
+      (refusal as MigrationContentRefusedError).problems.map(
+        ({ place }) => place,
+      ),
+    ).toEqual([expect.stringMatching(/, the question of form field 3$/)]);
   });
 
   it('names a type or attribute with no name by where it is', () => {

@@ -1,6 +1,7 @@
 import { isBlankMessage, isBlankText } from '../localization/blankText.ts';
 import { messageText } from '../localization/messageSyntax.ts';
 import type { ProtocolValidationIssue } from '../validation/validate-protocol.ts';
+import { originalPositionOf } from './originalPositions.ts';
 
 /**
  * A place in a migrated protocol that is empty, where the migration copied
@@ -119,7 +120,26 @@ const edgeFormPlace = (protocol: unknown, stage: number, edge: number) => {
       : undefined;
   return typeof name === 'string' && name.trim() !== ''
     ? `form for edge type ${quoted(name)}`
-    : `form for edge ${edge + 1}`;
+    : `form for edge ${numberAt(protocol, ['stages', stage, 'edges', edge])}`;
+};
+
+/**
+ * The 1-based position of the list item at `at`, as it stood in the protocol
+ * the researcher made: repairs may have removed or reordered items before the
+ * refusal (see `originalPositions.ts`). An item the migration created keeps
+ * its position in the migrated document.
+ */
+const numberAt = (protocol: unknown, at: Path): number => {
+  const index = at.at(-1);
+  const original = originalPositionOf(valueAt(protocol, at));
+  return (original ?? (typeof index === 'number' ? index : 0)) + 1;
+};
+
+/** An option by its position, with its label where it has one. */
+const optionPlace = (protocol: unknown, at: Path): string => {
+  const label = shownText(protocol, valueAt(protocol, [...at, 'label']));
+  const option = `option ${numberAt(protocol, at)}`;
+  return label === undefined ? option : `${option} (${quoted(label)})`;
 };
 
 const isIndex = (segment: unknown): segment is number =>
@@ -137,13 +157,14 @@ const describePlace = (protocol: unknown, path: Path): string | undefined => {
 
   if (root === 'stages' && isIndex(rest[0])) {
     const stage = stagePlace(protocol, rest[0]);
+    const stageAt = ['stages', rest[0]] as const;
     const [, field, a, b, c] = rest;
     const atEnd = (count: number) =>
       rest.length === count ||
       (rest.length === count + 1 && isKey(rest[count]));
 
     if (field === 'prompts' && isIndex(a) && b === 'text' && atEnd(4)) {
-      return `${stage}, prompt ${a + 1}`;
+      return `${stage}, prompt ${numberAt(protocol, [...stageAt, 'prompts', a])}`;
     }
     if (
       field === 'prompts' &&
@@ -151,7 +172,7 @@ const describePlace = (protocol: unknown, path: Path): string | undefined => {
       b === 'otherVariablePrompt' &&
       atEnd(4)
     ) {
-      return `${stage}, prompt ${a + 1}, the question asking participants to describe an answer that is not listed`;
+      return `${stage}, prompt ${numberAt(protocol, [...stageAt, 'prompts', a])}, the question asking participants to describe an answer that is not listed`;
     }
     if (field === 'prompt' && atEnd(2)) return `${stage}, prompt`;
     if (
@@ -160,7 +181,7 @@ const describePlace = (protocol: unknown, path: Path): string | undefined => {
       b === 'text' &&
       atEnd(4)
     ) {
-      return `${stage}, nomination prompt ${a + 1}`;
+      return `${stage}, nomination prompt ${numberAt(protocol, [...stageAt, 'nominationPrompts', a])}`;
     }
     if (
       field === 'form' &&
@@ -169,7 +190,7 @@ const describePlace = (protocol: unknown, path: Path): string | undefined => {
       c === 'prompt' &&
       atEnd(5)
     ) {
-      return `${stage}, the question of form field ${b + 1}`;
+      return `${stage}, the question of form field ${numberAt(protocol, [...stageAt, 'form', 'fields', b])}`;
     }
     // A Network Composer field's caption, present but blank: one left out is
     // given its attribute's name and never reaches here.
@@ -180,7 +201,7 @@ const describePlace = (protocol: unknown, path: Path): string | undefined => {
       c === 'label' &&
       atEnd(5)
     ) {
-      return `${stage}, node form, the label of field ${b + 1}`;
+      return `${stage}, node form, the label of field ${numberAt(protocol, [...stageAt, 'nodeForm', 'fields', b])}`;
     }
     const [, , , , , d, e] = rest;
     if (
@@ -192,7 +213,7 @@ const describePlace = (protocol: unknown, path: Path): string | undefined => {
       e === 'label' &&
       atEnd(7)
     ) {
-      return `${stage}, ${edgeFormPlace(protocol, rest[0], a)}, the label of field ${d + 1}`;
+      return `${stage}, ${edgeFormPlace(protocol, rest[0], a)}, the label of field ${numberAt(protocol, [...stageAt, 'edges', a, 'form', 'fields', d])}`;
     }
     return undefined;
   }
@@ -229,7 +250,7 @@ const describePlace = (protocol: unknown, path: Path): string | undefined => {
     isIndex(below[1]) &&
     below[2] === 'value'
   ) {
-    return `${attributePlace(protocol, attribute)}, the value of option ${below[1] + 1}`;
+    return `${attributePlace(protocol, attribute)}, the value of ${optionPlace(protocol, [...attribute, 'options', below[1]])}`;
   }
   // An option's label is repaired from its value, so a label left blank
   // beside a blank value is refused with it: both say what the option means.
@@ -242,7 +263,7 @@ const describePlace = (protocol: unknown, path: Path): string | undefined => {
       valueAt(protocol, [...attribute, 'options', below[1], 'value']),
     )
   ) {
-    return `${attributePlace(protocol, attribute)}, the label of option ${below[1] + 1}`;
+    return `${attributePlace(protocol, attribute)}, the label of ${optionPlace(protocol, [...attribute, 'options', below[1]])}`;
   }
   return undefined;
 };
@@ -256,7 +277,11 @@ const describePlace = (protocol: unknown, path: Path): string | undefined => {
  * type or attribute name from the researcher's protocol without writing any of
  * them (`schema9BlankRequiredContent` in its notes says so to researchers).
  * An option's label left blank beside a blank value goes with it, since the
- * label is repaired only from the value.
+ * label is repaired only from the value. So does a Network Composer field's
+ * caption given as blank: one left out is given its attribute's name, but one
+ * given as nothing is copied as written. Text that is only line breaks and
+ * spaces is blank before the single-line join as after it, which leaves it as
+ * it was, so it is judged the same way.
  * The blank-text sweep in `schemas/9/__tests__` proves every such place in two
  * complete protocols is refused here and nowhere else. So an issue
  * at one of those places, where the migrated value is empty or shows nothing,

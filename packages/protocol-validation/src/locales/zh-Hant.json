@@ -75,7 +75,7 @@
   "protocolValidation.migrationNotes.schema8.unsupportedValidation": "新架構無法表達的驗證規則會被移除：從未定義過的規則名稱、值的型別錯誤的規則（例如加了引號的數字），以及不適用於屬性類型的規則（例如文字屬性上的 `minValue`，或任何地方的 `requiredAcceptsNull`）。被移除的 `minValue`/`minLength`/`minSelected` 仍會將屬性標示為必填，以保留舊有的隱含必填行為。版面配置屬性完全不接受驗證；其驗證規則會被移除。",
   "protocolValidation.migrationNotes.schema8.validationHints": "為表單欄位新增選用的「showValidationHints」屬性，可自動顯示根據驗證規則產生的提示。",
   "protocolValidation.migrationNotes.schema9.attributeNames": "屬性名稱現在可以使用任何語言的文字，也可以包含空格與標點符號。",
-  "protocolValidation.migrationNotes.schema9.blankRequiredContent": "若下列任一內容為空或只含空格，協定就無法升級，因為升級無從得知這些內容應該是什麼：提示或問題；順序或類別屬性任一選項的值；節點類型、關係類型或屬性的名稱。這包括表單欄位的問題、家族譜系的提示與提名提示，以及「類別分箱」階段中請參與者描述未列出的回答時所問的問題。請在建立該協定的 Architect 版本中逐一更正，然後再升級。",
+  "protocolValidation.migrationNotes.schema9.blankRequiredContent": "若下列任一內容為空或只含空格，協定就無法升級，因為升級無從得知這些內容應該是什麼：提示或問題；順序或類別屬性任一選項的值；節點類型、關係類型或屬性的名稱。這包括表單欄位的問題、為「網絡編輯器」階段表單中的欄位設定的標籤、家族譜系的提示與提名提示，以及「類別分箱」階段中請參與者描述未列出的回答時所問的問題。請在建立該協定的 Architect 版本中逐一更正，然後再升級。",
   "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": "若某個匿名化階段要求的通關密語長度下限大於其長度上限，參與者便無法選擇任何通關密語，因此這兩個長度都會移除，並改用預設的長度下限。",
   "protocolValidation.migrationNotes.schema9.defaultLanguage": "協定現在可以使用多種語言撰寫。既有的協定會被視為以英文撰寫。如果您的協定是以其他語言撰寫，請在 Architect 的「語言」頁面中變更其預設語言。",
   "protocolValidation.migrationNotes.schema9.duplicateOptionValues": "順序與類別選項的值現在必須是唯一的。若既有的多個選項共用一個值，會保留第一個選項，並移除後面的選項。值會按原樣比較，但看起來相同的數字與文字（例如 1 與 \"1\"）視為同一個值。若移除選項後某個屬性要求的選擇數多於其選項數，該要求會被移除。",
