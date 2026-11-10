@@ -23,6 +23,7 @@ import { categoricalBinStageEditor } from '../../../editors/categorical-bin/Cate
 import { geospatialSections } from '../../../editors/geospatial/__tests__/geospatialFixtures.tsx';
 import type { ProtocolLocalization } from '../../../localization/localizedText.ts';
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
+import { beforeCall } from '../../../testing/host/beforeCall.ts';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
@@ -807,6 +808,42 @@ describe('a shared word held with a stage whose save was refused', () => {
     retryable: true,
   } as const;
 
+  /**
+   * A transport whose first `call` comes back refused, as the host would
+   * answer it: the request never reaches the host, so nothing is written, and
+   * every request that does reach it is recorded with the words it carried.
+   */
+  const refusingTheFirst = (
+    call: 'Submit' | 'Create',
+    refusal: () => Error,
+  ): Readonly<{
+    adapter: (host: InMemoryHost) => ProtocolBuilderAdapter;
+    reached: () => readonly string[][];
+  }> => {
+    const sent: (readonly InterfaceTextUpdate[])[] = [];
+    let refused = false;
+    return {
+      reached: () => wordsSent(sent),
+      adapter: (host) => {
+        const inner = host.adapterWith({
+          Submit: (input) => {
+            sent.push(input.interfaceText ?? []);
+            return host.handle.Submit(input);
+          },
+          Create: (input) => {
+            sent.push(input.interfaceText ?? []);
+            return host.handle.Create(input);
+          },
+        });
+        return beforeCall(inner, (tag) => {
+          if (tag !== call || refused) return undefined;
+          refused = true;
+          return Promise.reject(refusal());
+        });
+      },
+    };
+  };
+
   /** Every answer a submit can be refused with that leaves the draft open. */
   const submitRefusals = {
     SectionsLocked: () => new SectionsLocked({ blocked: [] }),
@@ -819,32 +856,26 @@ describe('a shared word held with a stage whose save was refused', () => {
   it.each(Object.entries(submitRefusals))(
     'takes the collaborator’s wording after a stage save refused with %s',
     async (_name, refusal) => {
-      const sent: (readonly InterfaceTextUpdate[])[] = [];
+      const transport = refusingTheFirst('Submit', refusal);
       const harness = renderStageEditor({
         stageId: 'geospatial-1',
         sections: geospatialSections,
-        adapter: (host) =>
-          host.adapterWith({
-            Submit: (input) => {
-              sent.push(input.interfaceText ?? []);
-              return sent.length === 1
-                ? Effect.fail(refusal())
-                : host.handle.Submit(input);
-            },
-          }),
+        adapter: transport.adapter,
       });
       await openSharedWording(harness);
       await toggleSearch(harness);
       await screen.findByRole('textbox', { name: SEARCH_FAILED });
 
       expect(await harness.submit()).toBeNull();
+      expect(mapStageAllowsSearch(harness)).not.toBe(true);
       collaboratorSaves(harness, { 'en-US': 'Their wording' });
 
       expect(await harness.submit()).not.toBeNull();
+      expect(mapStageAllowsSearch(harness)).toBe(true);
       expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
         'en-US': 'Their wording',
       });
-      expect(wordsSent(sent)).toEqual([['geospatial.searchFailed'], []]);
+      expect(transport.reached()).toEqual([[]]);
     },
   );
 
@@ -862,7 +893,7 @@ describe('a shared word held with a stage whose save was refused', () => {
   it.each(Object.entries(createRefusals))(
     'takes the collaborator’s wording after adding the stage was refused with %s',
     async (_name, refusal) => {
-      const sent: (readonly InterfaceTextUpdate[])[] = [];
+      const transport = refusingTheFirst('Create', refusal);
       const map = loadFixtureStage('geospatial-1');
       const mapOptions = map.fields.mapOptions as Readonly<
         Record<string, unknown>
@@ -877,15 +908,7 @@ describe('a shared word held with a stage whose save was refused', () => {
           },
         },
         sections: geospatialSections,
-        adapter: (host) =>
-          host.adapterWith({
-            Create: (input) => {
-              sent.push(input.interfaceText ?? []);
-              return sent.length === 1
-                ? Effect.fail(refusal())
-                : host.handle.Create(input);
-            },
-          }),
+        adapter: transport.adapter,
       });
       const before = stageOrder(harness).length;
       await openSharedWording(harness);
@@ -900,7 +923,7 @@ describe('a shared word held with a stage whose save was refused', () => {
       expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
         'en-US': 'Their wording',
       });
-      expect(wordsSent(sent)).toEqual([['geospatial.searchFailed'], []]);
+      expect(transport.reached()).toEqual([[]]);
     },
   );
 });
