@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import { z } from 'zod/mini';
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
@@ -218,6 +219,113 @@ export function sharedWordingIssues(
   });
 }
 
+/** One shared word the stage form holds a field for, mounted or parked. */
+type SharedWordingField = Readonly<{
+  name: string;
+  group: string;
+  key: string;
+  value: FieldValue;
+  /** What the form measures the field's unsaved change against. */
+  baseline: FieldValue;
+}>;
+
+/**
+ * Every shared word the stage form holds a field for, mounted or parked,
+ * whatever the stage's settings currently show: a field its setting has
+ * hidden still holds what the researcher gave it, and returns with it.
+ */
+function sharedWordingFields(
+  storeApi: StageFormStoreApi,
+): readonly SharedWordingField[] {
+  const { fields, dormantValues } = storeApi.getState();
+  return [...fields, ...dormantValues].flatMap(([name, field]) => {
+    const path = field.path ?? safeFieldPath(name);
+    const [root, group, key] = path ?? [];
+    return path?.length !== 3 ||
+      root !== SHARED_WORDING_PATH ||
+      typeof group !== 'string' ||
+      typeof key !== 'string'
+      ? []
+      : [
+          {
+            name,
+            group,
+            key,
+            value: field.value,
+            baseline: field.initialValue,
+          },
+        ];
+  });
+}
+
+/**
+ * What the researcher has given the shared words the form holds, by field:
+ * the part of a save's ask that is theirs rather than the protocol's. The
+ * words a save sends are worked out from this AND from what the protocol
+ * holds, and a save that lands changes what it holds, so a request is named by
+ * this, never by the words it sent (see `StageEditorShell`'s `handleSubmit`).
+ */
+export function sharedWordingAsk(
+  storeApi: StageFormStoreApi,
+): Readonly<Record<string, FieldValue>> {
+  return Object.fromEntries(
+    sharedWordingFields(storeApi)
+      .map(({ name, value }) => [name, value] as const)
+      .toSorted(([a], [b]) => a.localeCompare(b)),
+  );
+}
+
+/**
+ * The shared words held with the stage that the form holds something other
+ * than Network Canvas's wording for, mounted or parked, each with that
+ * wording to put back: what switching the wording section off resets, as it
+ * resets the stage's own wording.
+ */
+export function pendingWordingResets(
+  storeApi: StageFormStoreApi,
+  protocol: ProtocolBuilderProtocolContext,
+  localization: ProtocolLocalization,
+): readonly Readonly<{ name: string; value: LocalizedString }>[] {
+  return sharedWordingFields(storeApi).flatMap(
+    ({ name, group, key, value }) => {
+      if (holdsSharedWord(protocol, group, key)) return [];
+      const supplied = suppliedInterfaceText(group, key, localization);
+      return supplied === undefined || isEqual(value, supplied)
+        ? []
+        : [{ name, value: supplied }];
+    },
+  );
+}
+
+/**
+ * Researcher's changes, still held with the stage, to shared words the
+ * protocol has come to hold meanwhile (a collaborator saved a stage that uses
+ * them): each a change the form has not saved (it differs from the field's
+ * baseline) and that the protocol does not already hold. The protocol holds
+ * the entry, so it is no longer saved with the stage, and its change is
+ * written the way a held word's is, at once.
+ */
+export function pendingWordingNowHeld(
+  storeApi: StageFormStoreApi,
+  held: (group: string, key: string) => LocalizedString | undefined,
+): readonly Readonly<{
+  name: string;
+  update: InterfaceTextUpdate;
+  baseline: FieldValue;
+}>[] {
+  return sharedWordingFields(storeApi).flatMap(
+    ({ name, group, key, value, baseline }) => {
+      const holding = held(group, key);
+      return holding === undefined ||
+        !isLocalizedString(value) ||
+        isEqual(value, baseline) ||
+        isEqual(value, holding)
+        ? []
+        : [{ name, update: { group, key, value }, baseline }];
+    },
+  );
+}
+
 /**
  * Settles what the form holds for shared words once a save has taken the
  * stage, and answers with each one's new baseline, by group and entry, for
@@ -235,19 +343,10 @@ export function settleSharedWording(
   localization: ProtocolLocalization | undefined,
 ): Record<string, Record<string, FieldValue>> {
   const baselines: Record<string, Record<string, FieldValue>> = {};
-  const { fields, dormantValues } = storeApi.getState();
-  for (const [name, field] of [...fields, ...dormantValues]) {
-    const path = field.path ?? safeFieldPath(name);
-    const [root, group, key] = path ?? [];
-    if (
-      path?.length !== 3 ||
-      root !== SHARED_WORDING_PATH ||
-      typeof group !== 'string' ||
-      typeof key !== 'string'
-    ) {
-      continue;
-    }
-    let value = field.value;
+  for (const { name, group, key, value: held } of sharedWordingFields(
+    storeApi,
+  )) {
+    let value = held;
     const wasWritten = written.some(
       (update) => update.group === group && update.key === key,
     );

@@ -1,7 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
+  interfaceTextWithUpdates,
   type LocalizedString,
   suppliedInterfaceText,
 } from '@codaco/protocol-validation';
@@ -10,6 +12,9 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { categoricalBinStageEditor } from '../../../editors/categorical-bin/CategoricalBinStageEditor.ts';
 import { geospatialSections } from '../../../editors/geospatial/__tests__/geospatialFixtures.tsx';
 import type { ProtocolLocalization } from '../../../localization/localizedText.ts';
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
+import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
+import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -336,5 +341,250 @@ describe('a new stage of a kind the protocol has none of', () => {
       supplied(FIXTURE, 'categoricalBin', 'placeHere')['en-US'],
     );
     expect(field).toHaveAccessibleDescription(/saved when you save the stage/);
+  });
+});
+
+/** The stage ids in the protocol's stage order. */
+const stageOrder = (harness: StageEditorHarness): unknown[] => {
+  const stages =
+    harness.protocolSections()[sectionId({ kind: 'stageOrder' })]?.stages;
+  return Array.isArray(stages) ? stages : [];
+};
+
+/**
+ * A transport that drops the answer to the first create after the host has
+ * made it, so the editor is told the add failed although it happened, and
+ * records the request id of every create it carries.
+ */
+function withTheFirstCreateAnswerLost(): Readonly<{
+  adapter: (host: InMemoryHost) => ProtocolBuilderAdapter;
+  requestIds: () => readonly string[];
+}> {
+  const requestIds: string[] = [];
+  let lost = false;
+  return {
+    requestIds: () => requestIds,
+    adapter: (host) =>
+      host.adapterWith({
+        Create: (input) => {
+          requestIds.push(input.requestId);
+          return Effect.flatMap(host.handle.Create(input), (answer) => {
+            if (lost) return Effect.succeed(answer);
+            lost = true;
+            return Effect.die(
+              new Error('the socket dropped before the answer arrived'),
+            );
+          });
+        },
+      }),
+  };
+}
+
+describe('a new stage saved with its shared words, whose answer is lost', () => {
+  it('is added once when the researcher saves again after the protocol has taken its words', async () => {
+    const transport = withTheFirstCreateAnswerLost();
+    const map = loadFixtureStage('geospatial-1');
+    const mapOptions = map.fields.mapOptions as Readonly<
+      Record<string, unknown>
+    >;
+    const harness = renderStageEditor({
+      create: {
+        type: 'Geospatial',
+        position: 1,
+        fields: {
+          ...map.fields,
+          mapOptions: { ...mapOptions, allowSearch: true },
+        },
+      },
+      sections: geospatialSections,
+      adapter: transport.adapter,
+    });
+    const before = stageOrder(harness).length;
+    await openSharedWording(harness);
+    expect(
+      await screen.findByRole('textbox', { name: SEARCH_FAILED }),
+    ).toHaveAccessibleDescription(/saved when you save the stage/);
+
+    // The host made the stage and wrote its words; the editor was told the
+    // add failed, and has since read the words as the protocol's.
+    expect(await harness.submit()).toBeNull();
+    expect(stageOrder(harness)).toHaveLength(before + 1);
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual(
+      supplied(FIXTURE),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: SEARCH_FAILED }),
+      ).not.toHaveAccessibleDescription(/saved when you save the stage/),
+    );
+
+    expect(await harness.submit()).not.toBeNull();
+
+    // Asked again under the same id, so the host answered with the stage it
+    // had already made rather than making a second one.
+    expect(transport.requestIds()).toHaveLength(2);
+    expect(new Set(transport.requestIds()).size).toBe(1);
+    expect(stageOrder(harness)).toHaveLength(before + 1);
+  });
+});
+
+/** A collaborator saving one shared word, as the settings' own write. */
+const collaboratorSaves = (
+  harness: StageEditorHarness,
+  value: LocalizedString,
+) => {
+  const settings = harness.host.store.read(SETTINGS).document;
+  harness.host.store.applyAsCollaborator(SETTINGS, {
+    ...settings,
+    interfaceText: interfaceTextWithUpdates(settings.interfaceText, [
+      { group: 'geospatial', key: 'searchFailed', value },
+    ]),
+  });
+};
+
+describe('a shared word a collaborator saves while this stage still holds it', () => {
+  it('keeps the researcher’s wording, written straight away as the protocol’s', async () => {
+    const harness = openMapStage();
+    await openSharedWording(harness);
+    await toggleSearch(harness);
+    const field = await screen.findByRole('textbox', { name: SEARCH_FAILED });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'No place matched');
+    await harness.user.tab();
+
+    collaboratorSaves(harness, { 'en-US': 'Their wording' });
+
+    await waitFor(() =>
+      expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+        'en-US': 'No place matched',
+      }),
+    );
+    const now = screen.getByRole('textbox', { name: SEARCH_FAILED });
+    expect(now).toHaveValue('No place matched');
+    expect(now).not.toHaveAccessibleDescription(
+      /saved when you save the stage/,
+    );
+    expect(await harness.submit()).not.toBeNull();
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+      'en-US': 'No place matched',
+    });
+  });
+
+  it('takes the collaborator’s wording when the researcher had not changed it', async () => {
+    const harness = openMapStage();
+    await openSharedWording(harness);
+    await toggleSearch(harness);
+    expect(
+      await screen.findByRole('textbox', { name: SEARCH_FAILED }),
+    ).toHaveValue(supplied(FIXTURE)['en-US']);
+
+    collaboratorSaves(harness, { 'en-US': 'Their wording' });
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: SEARCH_FAILED })).toHaveValue(
+        'Their wording',
+      ),
+    );
+    expect(await harness.submit()).not.toBeNull();
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+      'en-US': 'Their wording',
+    });
+  });
+});
+
+describe('a refused save over a shared word held with the stage', () => {
+  it('takes focus to the field that answers for it', async () => {
+    const harness = openMapStage();
+    await openSharedWording(harness);
+    await toggleSearch(harness);
+    const field = await screen.findByRole('textbox', { name: SEARCH_FAILED });
+    await harness.user.clear(field);
+
+    expect(await harness.submit()).toBeNull();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: SEARCH_FAILED }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('takes focus to it when its part was closed', async () => {
+    const harness = openMapStage();
+    await openSharedWording(harness);
+    await toggleSearch(harness);
+    await harness.user.clear(
+      await screen.findByRole('textbox', { name: SEARCH_FAILED }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Shared by every stage of this kind',
+      }),
+    );
+
+    expect(await harness.submit()).toBeNull();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: SEARCH_FAILED }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('keeps its part open while the refusal stands, so a second save shows it too', async () => {
+    const harness = openMapStage();
+    await openSharedWording(harness);
+    await toggleSearch(harness);
+    await harness.user.clear(
+      await screen.findByRole('textbox', { name: SEARCH_FAILED }),
+    );
+    const part = screen.getByRole('button', {
+      name: 'Shared by every stage of this kind',
+    });
+    expect(await harness.submit()).toBeNull();
+
+    await harness.user.click(part);
+    expect(
+      screen.getByRole('textbox', { name: SEARCH_FAILED }),
+    ).toBeInTheDocument();
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByRole('textbox', { name: SEARCH_FAILED }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('switching the wording section off', () => {
+  it('asks first, and puts back Network Canvas’s wording for a shared word its setting has hidden', async () => {
+    const harness = openMapStage();
+    await openSharedWording(harness);
+    await toggleSearch(harness);
+    const field = await screen.findByRole('textbox', { name: SEARCH_FAILED });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'No place matched');
+    await harness.user.tab();
+    await toggleSearch(harness);
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: SEARCH_FAILED }),
+      ).not.toBeInTheDocument(),
+    );
+
+    const section = screen.getByRole('switch', {
+      name: 'Customize built-in wording',
+    });
+    await harness.user.click(section);
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Use Network Canvas’s wording',
+      }),
+    );
+    await waitFor(() =>
+      expect(section).toHaveAttribute('aria-checked', 'false'),
+    );
+
+    await toggleSearch(harness);
+    expect(await harness.submit()).not.toBeNull();
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual(
+      supplied(FIXTURE),
+    );
   });
 });

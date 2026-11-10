@@ -4,6 +4,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -26,22 +27,22 @@ import {
 } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import {
   hasSuppliedWording,
+  type LocalizedString,
   type StageType,
-  suppliedInterfaceText,
 } from '@codaco/protocol-validation';
 
 import {
+  pendingWordingNowHeld,
+  pendingWordingResets,
   sharedWordingFieldName,
-  sharedWordingInForm,
+  sharedWordingProblem,
 } from '../../form/sharedWordingDraft.ts';
-import {
-  type StageFormStoreApi,
-  useStageEditorForm,
-} from '../../form/stageEditorContext.ts';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { stageAnswerAt } from '../../form/stageFormHooks.ts';
-import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { useProtocolLocalization } from '../../localization/ProtocolLocalization.tsx';
 import { SHARED_WORDING_PATH } from '../../stageDocument.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
+import { useLatest } from '../../state/useLatest.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import SharedStageWording from './SharedStageWording.tsx';
 import {
@@ -61,28 +62,13 @@ const asFieldValue = (value: unknown): FieldValue =>
 
 const NO_PATHS: readonly string[] = Object.freeze([]);
 
-/**
- * The shared words held with the stage (those the protocol does not hold yet)
- * that the form holds something other than Network Canvas's wording for, each
- * with that wording to put back.
- */
-const pendingWordingChanges = (
-  storeApi: StageFormStoreApi,
-  groups: readonly SharedWordingGroup[],
-  localization: ProtocolLocalization,
-) =>
-  groups.flatMap(({ group, keys, entries }) =>
-    keys.flatMap((key) => {
-      if (entries.some(([held]) => held === key)) return [];
-      const inForm = sharedWordingInForm(storeApi, group, key);
-      const supplied = suppliedInterfaceText(group, key, localization);
-      return inForm === undefined ||
-        supplied === undefined ||
-        isEqual(inForm.value, supplied)
-        ? []
-        : [{ name: sharedWordingFieldName(group, key), value: supplied }];
-    }),
-  );
+/** What the protocol holds for one shared entry the stage uses, if anything. */
+const heldIn =
+  (groups: readonly SharedWordingGroup[]) =>
+  (group: string, key: string): LocalizedString | undefined =>
+    groups
+      .find((candidate) => candidate.group === group)
+      ?.entries.find(([held]) => held === key)?.[1];
 
 type StageWordingSectionProps = Readonly<{
   stageType: StageType;
@@ -118,13 +104,67 @@ export default function StageWordingSection({
 }: StageWordingSectionProps) {
   const intl = useAppIntl();
   const { confirm } = useDialog();
-  const { storeApi, committedFields, applyOwnCommands, reportRefusedWrite } =
-    useStageEditorForm();
+  const {
+    storeApi,
+    committedFields,
+    applyOwnCommands,
+    reportRefusedWrite,
+    readOnly,
+  } = useStageEditorForm();
   const localization = useProtocolLocalization();
+  const latestProtocol = useLatest(useProtocolContext());
   const supplied = useSuppliedStageWording(stageType);
   const shared = useSharedStageWording();
   const writeShared = useWriteSharedWording();
   const sharedWrites = useSharedWordingWrites(shared);
+
+  // A shared word held with the stage that the protocol comes to hold while
+  // the stage is open (a collaborator saved a stage that uses it) is no
+  // longer saved with this one. A change the researcher made to it is then
+  // written as a change to a held word is, at once, as their own edit of a
+  // held word would be had they made it a moment later; one they did not
+  // make leaves the collaborator's wording standing.
+  const carrying = useRef(new Set<string>());
+  useEffect(() => {
+    if (readOnly || localization === undefined) return;
+    const changes = pendingWordingNowHeld(storeApi, heldIn(shared)).filter(
+      ({ name, update: { group, key, value } }) =>
+        !carrying.current.has(name) &&
+        sharedWordingProblem(
+          group,
+          key,
+          value,
+          localization.defaultLocale,
+          intl,
+        ) === undefined,
+    );
+    if (changes.length === 0) return;
+    for (const { name } of changes) carrying.current.add(name);
+    const carry = async () => {
+      const outcome = await sharedWrites.write(
+        changes.map(({ update }) => update),
+      );
+      for (const { name } of changes) carrying.current.delete(name);
+      if (outcome === undefined) return;
+      if (outcome.status !== 'applied') {
+        reportRefusedWrite(outcome.message);
+        return;
+      }
+      // Written: the form's copy is no unsaved change of the stage's.
+      for (const { name, baseline } of changes) {
+        storeApi.getState().setFieldValue(name, baseline);
+      }
+    };
+    void carry();
+  }, [
+    intl,
+    localization,
+    readOnly,
+    reportRefusedWrite,
+    shared,
+    sharedWrites,
+    storeApi,
+  ]);
 
   const differsFromSupplied = useCallback(
     (read: (path: string) => unknown) =>
@@ -166,10 +206,11 @@ export default function StageWordingSection({
       localization,
     );
     // Those held with the stage are put back in the form, with the stage's
-    // own wording, and are saved, as it is, with the stage.
-    const pendingChanges = pendingWordingChanges(
+    // own wording, and are saved, as it is, with the stage: hidden by their
+    // setting or not, as a hidden stage setting is put back too.
+    const pendingChanges = pendingWordingResets(
       storeApi,
-      shared,
+      latestProtocol(),
       localization,
     );
     const stayOn = () => {
@@ -238,10 +279,10 @@ export default function StageWordingSection({
     confirm,
     differsFromSupplied,
     intl,
+    latestProtocol,
     localization,
     paths,
     reportRefusedWrite,
-    shared,
     sharedWrites,
     storeApi,
     supplied,
@@ -288,9 +329,9 @@ const refusesSetting = (issuePath: readonly PropertyKey[], path: string) =>
 
 /**
  * The stage's own words and the shared ones, each a part that opens and
- * closes. Both start closed. The stage's own part opens whenever one of its
- * settings is refused, so the field that answers for it is on screen beside
- * the refusal. Rendered inside the section, so its headings count from the
+ * closes. Both start closed. Each opens whenever what it holds is refused,
+ * and stays open while the refusal stands, so the field that answers for it
+ * is on screen beside the refusal. Rendered inside the section, so its headings count from the
  * section's own.
  */
 function WordingParts({
@@ -326,11 +367,24 @@ function WordingParts({
   // A shared word held with the stage is saved with it, so a save it refuses
   // opens the shared part over the field that answers for it, as a refused
   // setting opens the stage's own.
-  const sharedRefused = issues.some(
-    (issue) =>
-      issue.path[0] === SHARED_WORDING_PATH &&
-      shared.some(({ group }) => issue.path[1] === group),
+  const sharedFieldRefused = useSyncExternalStore(storeApi.subscribe, () =>
+    shared.some(({ group, keys }) =>
+      keys.some(
+        (key) =>
+          (storeApi
+            .getState()
+            .getFieldErrors(sharedWordingFieldName(group, key))?.length ?? 0) >
+          0,
+      ),
+    ),
   );
+  const sharedRefused =
+    sharedFieldRefused ||
+    issues.some(
+      (issue) =>
+        issue.path[0] === SHARED_WORDING_PATH &&
+        shared.some(({ group }) => issue.path[1] === group),
+    );
   // Adjusted during render, as a refusal arrives, rather than in an effect:
   // a part opened a frame late would draw the refused field one frame after
   // the refusal.
@@ -370,11 +424,13 @@ function WordingParts({
       <Accordion<string>
         multiple
         value={[...open]}
-        // The stage's own part stays open while one of its settings is refused.
+        // Each part stays open while what it holds is refused.
         onValueChange={(next) =>
-          setOpen(
-            refused && !next.includes(SPECIFIC) ? [...next, SPECIFIC] : next,
-          )
+          setOpen([
+            ...next,
+            ...(refused && !next.includes(SPECIFIC) ? [SPECIFIC] : []),
+            ...(sharedRefused && !next.includes(SHARED) ? [SHARED] : []),
+          ])
         }
         className="gap-6"
       >

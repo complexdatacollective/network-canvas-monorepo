@@ -35,10 +35,15 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   collectLocalizedStringsFromSchema,
   findDynamicValueProblems,
+  type InterfaceTextUpdate,
   type LocalizationDeclaration,
   stageSchema,
 } from '@codaco/protocol-validation';
-import { applyCommands, type Command } from '@codaco/studio-sync/apply';
+import {
+  applyCommands,
+  type Command,
+  contentHash,
+} from '@codaco/studio-sync/apply';
 
 import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import {
@@ -53,6 +58,7 @@ import {
   savedStageFields,
   SHARED_WORDING_PATH,
   stageDocument,
+  stageFieldsOf,
   type StageFormDraft,
   type StageIdentity,
 } from '../stageDocument.ts';
@@ -73,6 +79,8 @@ import { rewriteFormStore } from './rewriteFormStore.ts';
 import {
   pendingSharedWording,
   settleSharedWording,
+  sharedWordingAsk,
+  sharedWordingFieldName,
   sharedWordingInForm,
   sharedWordingIssues,
 } from './sharedWordingDraft.ts';
@@ -385,6 +393,16 @@ function StageEditorFormBody({
   );
 
   /**
+   * The shared words of the last save not known to have landed or been
+   * refused, kept with what the researcher had asked for then: see
+   * `handleSubmit`. Cleared by a save's definite answer.
+   */
+  const unresolvedWording = useRef<
+    | Readonly<{ ask: string; wording: readonly InterfaceTextUpdate[] }>
+    | undefined
+  >(undefined);
+
+  /**
    * How this form writes structurally, as a list editor commits one row
    * operation rather than as a researcher types into a control.
    *
@@ -485,13 +503,26 @@ function StageEditorFormBody({
       // The shared words the stage brings in are saved with it, so a word
       // that cannot be saved refuses the stage, as a setting of its own
       // would, and is answered for by the field that holds it.
-      const wording = sharedWordingToSave(fields);
-      const anchored = [
-        ...stageIssues,
-        ...(localization === undefined
+      //
+      // Worked out from the protocol as well as the draft, and a save that
+      // lands changes what the protocol holds: a save whose answer was lost
+      // would otherwise send different words when it is asked again, under a
+      // different request id, and a stage being added would be added twice.
+      // So while the researcher asks for the same thing (the same stage and
+      // the same words of their own), the same words go.
+      const ask = contentHash({
+        stage: stageFieldsOf(fields),
+        wording: sharedWordingAsk(storeApi),
+      });
+      const kept = unresolvedWording.current;
+      const wording =
+        kept?.ask === ask ? kept.wording : sharedWordingToSave(fields);
+      unresolvedWording.current = { ask, wording };
+      const wordingIssues =
+        localization === undefined
           ? []
-          : sharedWordingIssues(wording, localization.defaultLocale, intl)),
-      ];
+          : sharedWordingIssues(wording, localization.defaultLocale, intl);
+      const anchored = [...stageIssues, ...wordingIssues];
       outline.setValidationIssues(anchored);
       if (anchored.length > 0 || whole.length > 0) {
         const said = [...sectionProblems(sections.getSnapshot()), ...whole];
@@ -501,10 +532,21 @@ function StageEditorFormBody({
         return {
           success: false,
           formErrors: said.length > 0 ? said : [INVALID_STAGE_MESSAGE],
+          // A shared word answers for itself beside its field, which takes
+          // focus as a refused field does, once its part has opened over it.
+          fieldErrors: Object.fromEntries(
+            wordingIssues.map(({ path: [, group, key], message }) => [
+              sharedWordingFieldName(String(group), String(key)),
+              [message],
+            ]),
+          ),
         };
       }
 
       const outcome = await save(fields, wording);
+      if (outcome.status === 'saved' || outcome.status === 'lost') {
+        unresolvedWording.current = undefined;
+      }
       if (outcome.status === 'saved') {
         // A save is the only thing that may move the baselines the form's
         // dirty flag is measured against, and Studio's discard prompt reads

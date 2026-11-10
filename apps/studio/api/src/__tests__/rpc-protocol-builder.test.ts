@@ -1563,6 +1563,67 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       expect(after.revision.sequence).toBe(created.revision.sequence);
     });
 
+    it('refuses a submit carrying words while another editor holds the settings', async () => {
+      const stage = await createStage(ADA, 'Saved behind held settings');
+      const settings = await call(
+        GRACE,
+        host.rpc('AcquireLock', { protocolId, sectionId: SETTINGS }),
+      );
+      expect(settings.lock).toBe('held');
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+      );
+      const before = await heldWord('geospatial', 'searchFailed');
+
+      try {
+        const error = await expectRpcFailure(
+          callExit(
+            ADA,
+            host.rpc('Submit', {
+              protocolId,
+              requestId: randomUUID(),
+              sectionId: stage.sectionId,
+              document: Redacted.make({
+                ...Redacted.value(held.document),
+                label: inEnglish('Renamed behind held settings'),
+              }),
+              revision: held.revision,
+              interfaceText: [
+                {
+                  group: 'geospatial',
+                  key: 'searchFailed',
+                  value: inEnglish('Not written behind a held lock'),
+                },
+              ],
+            }),
+          ),
+          'SectionsLocked',
+        );
+        expect(error.blocked.map((entry) => entry.sectionId)).toEqual([
+          SETTINGS,
+        ]);
+        expect(error.blocked[0]?.holder?.userId).toBe(GRACE.principal.userId);
+        const after = await call(
+          ADA,
+          host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
+        );
+        expect(after.revision).toEqual(held.revision);
+        expect((await heldWord('geospatial', 'searchFailed')).word).toEqual(
+          before.word,
+        );
+      } finally {
+        await call(
+          GRACE,
+          host.rpc('ReleaseLock', { protocolId, sectionId: SETTINGS }),
+        );
+        await call(
+          ADA,
+          host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+        );
+      }
+    });
+
     it('writes neither the stage nor its words when the words cannot be saved', async () => {
       const sectionId = stageSection(reference.stageId);
       const held = await call(

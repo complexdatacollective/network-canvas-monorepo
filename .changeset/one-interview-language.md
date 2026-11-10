@@ -69,8 +69,10 @@ Spanish no longer gets a Spanish protocol inside French buttons.
   not hold yet, such as a map stage's search, lists that wording at once with
   Network Canvas's text, and turning the setting off hides it again. That
   wording is saved with the stage, as one step, and discarded if you cancel;
-  its field says so. The Ego Form and Categorical Bin editors gain
-  the section for their shared wording.
+  its field says so. If a collaborator saves a stage that uses the same
+  wording first, a change you made to it is saved straight away instead. The
+  Ego Form and Categorical Bin editors gain the section for their shared
+  wording.
 - Every field in the section has a hint saying where the participant sees that
   text and what it is for.
 - The Family Pedigree editor lists all of its wording under "Specific to this
