@@ -166,12 +166,32 @@ const isWholeMessageVersions = (doc: ProseMirrorNode): boolean => {
 };
 
 /**
- * The rows that hold words, in the order they read, among the versions listed
- * open that `row` is one of: every row of the outermost such element that is
- * not itself only another set of versions listed open, and not in a set that
- * is folded away.
+ * Whether a version's editor is a row the arrow keys can stop at. The rule,
+ * which is the only place it is stated:
+ *
+ * - it is rendered, and neither it nor anything around it is `hidden`. A set
+ *   folded to a pill among words keeps its editors mounted but hidden, so
+ *   they are not there to step to until the pill is opened; and
+ * - it is not a pure frame: a row whose own document is a single set of
+ *   versions and nothing else (the test that decides what opens) holds no
+ *   words, its rows are the ones to stop at.
+ *
+ * It is read from the row's own editor and its place in the page, never from
+ * what is inside it: a hidden set inside a row says nothing about the row.
  */
-const wordRowsAround = (row: HTMLElement): HTMLElement[] => {
+const isNavigableRow = (element: HTMLElement): boolean => {
+  const editor = versionEditorsByElement.get(element);
+  if (!editor || editor.isDestroyed) return false;
+  if (element.closest('[hidden]') !== null) return false;
+  return !isWholeMessageVersions(editor.state.doc);
+};
+
+/**
+ * The rows the arrow keys stop at among the versions listed open that `row`
+ * is one of, in the order they read: the navigable rows (see
+ * `isNavigableRow`) of the outermost such element.
+ */
+const navigableRowsAround = (row: HTMLElement): HTMLElement[] => {
   let outermost: Element | null = row.closest('[data-always-open]');
   while (outermost?.parentElement) {
     const outer: Element | null =
@@ -180,32 +200,35 @@ const wordRowsAround = (row: HTMLElement): HTMLElement[] => {
     outermost = outer;
   }
   if (outermost === null) return [];
-  const around = outermost;
-  return [...around.querySelectorAll<HTMLElement>('[data-version]')].filter(
-    (each) => {
-      // Not a frame for rows of its own.
-      if (each.querySelector('[data-always-open]') !== null) return false;
-      // Nor in a set folded to a pill among words: its rows stay mounted, but
-      // hidden, and are not there to step to until it is opened.
-      const hidden = each.closest('[hidden]');
-      return hidden === null || !around.contains(hidden);
-    },
+  return [...outermost.querySelectorAll<HTMLElement>('[data-version]')].filter(
+    isNavigableRow,
   );
+};
+
+/**
+ * The navigable row above (-1) or below (1) `row`. None when there is no such
+ * row, and none when `row` is not itself one of them: a row the arrow keys
+ * do not stop at has no neighbours to step to, so the key is left alone.
+ */
+const rowBeside = (
+  row: HTMLElement,
+  delta: -1 | 1,
+): HTMLElement | undefined => {
+  const rows = navigableRowsAround(row);
+  const at = rows.indexOf(row);
+  return at === -1 ? undefined : rows[at + delta];
 };
 
 /**
  * Whether the rows listed open have one beside `row`, above (-1) or below
  * (1) it, which the arrow keys step to.
  */
-export const hasVersionRowBeside = (row: HTMLElement, delta: -1 | 1) => {
-  const rows = wordRowsAround(row);
-  return rows[rows.indexOf(row) + delta] !== undefined;
-};
+export const hasVersionRowBeside = (row: HTMLElement, delta: -1 | 1) =>
+  rowBeside(row, delta) !== undefined;
 
 /** Moves the caret to the row beside `row`; false when there is none. */
 const stepToVersionRow = (row: HTMLElement, delta: -1 | 1): boolean => {
-  const rows = wordRowsAround(row);
-  const target = rows[rows.indexOf(row) + delta];
+  const target = rowBeside(row, delta);
   const editor = target && versionEditorsByElement.get(target);
   if (!editor || editor.isDestroyed) return false;
   editor

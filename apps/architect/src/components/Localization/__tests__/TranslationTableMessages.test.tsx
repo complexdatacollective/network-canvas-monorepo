@@ -321,38 +321,73 @@ describe('TranslationTable: texts with versions', () => {
     expect(getProtocol(store.getState())).toBe(before);
   });
 
-  it('moves on to the next cell from the last visible version, not into a folded set inside it', async () => {
+  const FOLDED_CHOICE =
+    '{isYou, select, true {Your brothers and sisters} other {Brothers and sisters of {name}{isYou, select, true { now} other { later}}}}';
+  // The folded choice has a version that is nothing but another choice, so a
+  // hidden row inside it is listed open.
+  const FOLDED_CHOICE_OF_A_CHOICE =
+    '{isYou, select, true {Your brothers and sisters} other {Brothers and sisters of {name}{isYou, select, true {{isYou, select, true { now} other { soon}}} other { later}}}}';
+
+  /** Puts the caret at the start or end of `row`, as the cell reads it. */
+  const placeCaret = (row: HTMLElement, at: 'start' | 'end') => {
+    row.focus();
+    const selection = row.ownerDocument.getSelection();
+    selection?.selectAllChildren(row);
+    if (at === 'end') selection?.collapseToEnd();
+    else selection?.collapseToStart();
+  };
+
+  it.each([
+    ['a folded choice among its words', FOLDED_CHOICE],
+    ['a folded choice with a choice for a version', FOLDED_CHOICE_OF_A_CHOICE],
+  ])(
+    'moves on to the next cell from the last visible version, with %s',
+    async (_name, message) => {
+      const { user } = renderTable(withChoiceInASentence(message));
+
+      const cell = messageCell('English').closest('td');
+      await user.click(messageCell('English'));
+      await editedText('English');
+      const lastVisible = await screen.findByRole('textbox', {
+        name: 'About someone else',
+      });
+      // The folded choice's rows are mounted, hidden, in that last version.
+      expect(
+        screen.getAllByRole('textbox', {
+          name: /^About someone else, /,
+          hidden: true,
+        }).length,
+      ).toBeGreaterThanOrEqual(2);
+
+      placeCaret(lastVisible, 'end');
+      await user.keyboard('{ArrowDown}');
+
+      // The key goes on to the next cell, not up to the first version or
+      // into a hidden row.
+      await waitFor(() =>
+        expect(cell?.contains(document.activeElement)).toBe(false),
+      );
+      expect(document.activeElement?.closest('td')).not.toBe(null);
+    },
+  );
+
+  it('moves on to the cell above from the first version, and not down into a hidden row', async () => {
     const { user } = renderTable(
-      withChoiceInASentence(
-        '{isYou, select, true {Your brothers and sisters} other {Brothers and sisters of {name}{isYou, select, true { now} other { later}}}}',
-      ),
+      withChoiceInASentence(FOLDED_CHOICE_OF_A_CHOICE),
     );
 
     const cell = messageCell('English').closest('td');
     await user.click(messageCell('English'));
     await editedText('English');
-    const lastVisible = await screen.findByRole('textbox', {
-      name: 'About someone else',
+    const firstVisible = await screen.findByRole('textbox', {
+      name: 'About the participant',
     });
-    // The folded number's rows are mounted, hidden, in that last version.
-    expect(
-      screen.getAllByRole('textbox', {
-        name: /^About someone else, /,
-        hidden: true,
-      }),
-    ).toHaveLength(2);
 
-    // The caret at the end of the last version, as the cell reads it.
-    lastVisible.focus();
-    const selection = lastVisible.ownerDocument.getSelection();
-    selection?.selectAllChildren(lastVisible);
-    selection?.collapseToEnd();
-    await user.keyboard('{ArrowDown}');
+    placeCaret(firstVisible, 'start');
+    await user.keyboard('{ArrowUp}');
 
-    // The key goes on to the next cell rather than into a hidden row.
     await waitFor(() =>
       expect(cell?.contains(document.activeElement)).toBe(false),
     );
-    expect(document.activeElement?.closest('td')).not.toBe(null);
   });
 });
