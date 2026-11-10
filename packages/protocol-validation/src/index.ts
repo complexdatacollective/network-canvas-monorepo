@@ -187,6 +187,8 @@ export {
 export {
   type LocalizedString,
   type LocalizedStringFormat,
+  type LocalizedTextLines,
+  type LocalizedTextShape,
 } from './schemas/9/localized-string.ts';
 // A stage's dynamic values: the bindings, the path vocabulary, and the one
 // table of what each site can show, which validation and Architect share.
@@ -343,6 +345,7 @@ export {
 export {
   collectLocalizedStrings,
   collectLocalizedStringsFromSchema,
+  localizedTextShapeAt,
   type LocalizedStringHit,
 } from './utils/collectLocalizedStrings.ts';
 export { readRosterCsv } from './utils/readRosterCsv.ts';

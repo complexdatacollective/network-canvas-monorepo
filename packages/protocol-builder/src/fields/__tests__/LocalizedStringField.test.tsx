@@ -317,6 +317,7 @@ describe('LocalizedStringField', () => {
             name="body"
             label="Body"
             component={LocalizedRichTextField}
+            shape={{ format: 'markdown', lines: 'multiple' }}
             initialValue={{ en: 'Welcome', es: 'Bienvenido' }}
           />
         </Form>

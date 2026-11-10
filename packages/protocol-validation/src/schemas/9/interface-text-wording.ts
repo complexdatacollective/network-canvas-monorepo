@@ -1,5 +1,5 @@
 import type { MessageArguments } from '../../localization/messageArguments.ts';
-import type { LocalizedStringFormat } from './localized-string.ts';
+import type { LocalizedTextShape } from './localized-string.ts';
 import {
   CONNECT_HINT,
   CONNECT_TOOL,
@@ -62,11 +62,11 @@ export type InterfaceTextEntry = Readonly<{
   ids: readonly string[];
   arguments?: MessageArguments;
   /**
-   * How the text is written: markdown for a message the researcher may format
-   * and add links to, which the interview renders as markdown. Absent, the
-   * text is plain.
+   * What the text may hold (see `LocalizedTextShape`): markdown, over several
+   * lines, for a message the researcher may format and add links to, which
+   * the interview renders as markdown. Absent, the text is one plain line.
    */
-  format?: LocalizedStringFormat;
+  shape?: LocalizedTextShape;
   message: SuppliedWording;
 }>;
 
@@ -512,7 +512,7 @@ export const BUTTONS_INTERFACE_TEXT = {
 export const MESSAGES_INTERFACE_TEXT = {
   stageError: {
     ids: ['interview.runtime.taskErrorDescription'],
-    format: 'markdown',
+    shape: { format: 'markdown', lines: 'multiple' },
     message: {
       'en': '# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.',
       'en-GB':

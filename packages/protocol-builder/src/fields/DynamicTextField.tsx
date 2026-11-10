@@ -35,6 +35,7 @@ import {
   findMissingDynamicPlacement,
   type LocaleTag,
   type LocalizedString,
+  type LocalizedTextShape,
   MISSING_CASE,
   type MessageNode,
   type MessageSwitch,
@@ -63,11 +64,17 @@ import {
 } from '../localization/messageDocument.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import {
+  richTextToolbarFor,
+  textFieldPropsFor,
+} from '../localization/textShape.ts';
+import {
   type DynamicValueSiteState,
   useDynamicValueSite,
 } from '../localization/useDynamicValueSite.ts';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
 import { participantVersionMessages } from './messageArgumentLabels.ts';
+
+const PLAIN_LINE: LocalizedTextShape = { format: 'plain', lines: 'single' };
 
 const messages = defineMessages({
   insertMenu: {
@@ -863,15 +870,7 @@ export function DynamicMessageEditor({
   }
 
   const toolbarOptions = markdown
-    ? {
-        bold: true,
-        italic: true,
-        links: !singleLine,
-        headings: !singleLine,
-        lists: !singleLine,
-        thematicBreak: !singleLine,
-        history: true,
-      }
+    ? richTextToolbarFor(singleLine)
     : {
         bold: false,
         italic: false,
@@ -1276,9 +1275,11 @@ export type DynamicTextFieldProps = CreateFormFieldProps<
      * which answers it can show.
      */
     'fieldPath'?: readonly string[];
-    /** Markdown text; plain text otherwise. */
-    'markdown'?: boolean;
-    'singleLine'?: boolean;
+    /**
+     * What the text may hold, as its field declares it (see
+     * `markdownTextShapeAt`); one plain line when absent.
+     */
+    'shape'?: LocalizedTextShape;
     'placeholder'?: string;
     'autoFocus'?: boolean;
     'hideUntranslatedNote'?: boolean;
@@ -1302,8 +1303,7 @@ export default function DynamicTextField({
   readOnly,
   'dynamicValues': siteKind,
   fieldPath,
-  markdown = false,
-  singleLine = false,
+  shape = PLAIN_LINE,
   placeholder,
   autoFocus,
   hideUntranslatedNote,
@@ -1313,6 +1313,7 @@ export default function DynamicTextField({
   'aria-required': ariaRequired,
 }: DynamicTextFieldProps) {
   const site = useDynamicValueSite(siteKind, fieldPath);
+  const { markdown, singleLine } = textFieldPropsFor(shape);
   const { localization, locale } = useEditingLanguage();
   const defaultLocale = localization?.defaultLocale;
   const originalMessage =
@@ -1344,7 +1345,7 @@ export default function DynamicTextField({
           disabled={disabled}
           readOnly={readOnly === true || translation.readOnly}
           markdown={markdown}
-          singleLine={!markdown || singleLine}
+          singleLine={singleLine}
           message={translation.message}
           onMessageChange={translation.onMessageChange}
           original={original}

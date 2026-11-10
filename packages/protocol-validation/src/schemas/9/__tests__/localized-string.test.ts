@@ -156,13 +156,23 @@ describe('ProtocolLocalizationSchema', () => {
 });
 
 describe('localizedString', () => {
-  const required = localizedString(z.string().min(1), 'plain');
-  const optionalContent = localizedString(z.string(), 'markdown');
+  const required = localizedString(z.string().min(1), {
+    format: 'plain',
+    lines: 'single',
+  });
+  const optionalContent = localizedString(z.string(), {
+    format: 'markdown',
+    lines: 'multiple',
+  });
 
-  it('tags the schema with its rendering format', () => {
-    expect(getLocalizedStringDescriptor(required)).toEqual({ format: 'plain' });
+  it('tags the schema with its declared shape', () => {
+    expect(getLocalizedStringDescriptor(required)).toEqual({
+      format: 'plain',
+      lines: 'single',
+    });
     expect(getLocalizedStringDescriptor(optionalContent)).toEqual({
       format: 'markdown',
+      lines: 'multiple',
     });
     expect(getLocalizedStringDescriptor(z.string())).toBeUndefined();
   });

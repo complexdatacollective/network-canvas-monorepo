@@ -9,6 +9,7 @@ import {
   type LocaleTag,
   type LocalizedString,
   type LocalizedStringFormat,
+  type LocalizedTextLines,
   type MessageArguments,
   type ProtocolLocalizationWarning,
 } from '@codaco/protocol-validation';
@@ -298,6 +299,8 @@ export type TranslationRow = {
   field: readonly (string | number)[];
   /** Whether participants see the string rendered as markdown. */
   format: LocalizedStringFormat;
+  /** Whether the string is one line or several, as its field declares. */
+  lines: LocalizedTextLines;
   /** Every translation the string has. */
   value: LocalizedString;
   /** What a localized message may use (see `localizedMessage`), when it is one. */
@@ -362,6 +365,7 @@ export const getTranslationGroups = createSelector(
         path: hit.path,
         field,
         format: hit.format,
+        lines: hit.lines,
         value: hit.value,
         ...(hit.arguments === undefined ? {} : { arguments: hit.arguments }),
         ...(hit.dynamicValues === undefined ||

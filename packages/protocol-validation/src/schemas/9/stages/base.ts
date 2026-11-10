@@ -28,7 +28,7 @@ export const baseStageSchema = z.strictObject({
   // silently dropped or left blank (#663): the interview has no name of its own
   // to show in its place.
   interviewScript: z.string().optional(),
-  label: localizedString(nonBlankText(), 'plain'),
+  label: localizedString(nonBlankText(), { format: 'plain', lines: 'single' }),
   skipLogic: SkipLogicSchema.optional(),
   // Values from the interview the stage's text may show, by the argument name
   // its messages use (see `dynamic-values.ts`).

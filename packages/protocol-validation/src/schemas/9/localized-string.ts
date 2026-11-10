@@ -25,8 +25,31 @@ const LOCALIZED_STRING = 'localizedString' as const;
  */
 export type LocalizedStringFormat = 'plain' | 'markdown';
 
+/**
+ * How much text a localized field holds: one line, or several. A one-line
+ * field is one paragraph, so markdown in it formats words (bold, italics)
+ * and never blocks (headings, lists, rules).
+ */
+export type LocalizedTextLines = 'single' | 'multiple';
+
+/**
+ * What a localized field may hold, declared once with the field: plain or
+ * markdown, and one line or several. Every surface that edits the field
+ * offers exactly this, whichever it is (see protocol-builder's
+ * `textFieldPropsFor`).
+ *
+ * Nothing refuses a translation that does not fit: protocols written before
+ * the shape was declared may hold a line break or block markdown in a
+ * one-line field, and still load.
+ */
+export type LocalizedTextShape = Readonly<{
+  format: LocalizedStringFormat;
+  lines: LocalizedTextLines;
+}>;
+
 type LocalizedStringDescriptor = Readonly<{
   format: LocalizedStringFormat;
+  lines: LocalizedTextLines;
   /**
    * The arguments a localized message's translations may use (see
    * `localizedMessage`); absent for text made only of literal text.
@@ -167,7 +190,7 @@ const localizedTranslations = (
 
 export const localizedString = (
   content: z.ZodString,
-  format: LocalizedStringFormat,
+  { format, lines }: LocalizedTextShape,
   {
     mayBeEmpty = false,
     dynamicValues,
@@ -201,6 +224,7 @@ export const localizedString = (
   ).meta({
     [LOCALIZED_STRING]: {
       format,
+      lines,
       ...(dynamicValues === undefined ? {} : { dynamicValues }),
       ...(mayBeEmpty ? { mayBeEmpty: true } : {}),
     },
@@ -229,8 +253,9 @@ const describeMissingPlacement = (
  * and `plural` by number (see `findMessageArgumentProblem`). Each language
  * chooses its own versions, so a language that needs no distinction writes
  * one phrase. A translation must show each argument where the declaration
- * requires it (see `findMissingPlacement`). Always plain: the interview shows
- * values as text, which markdown could otherwise read as formatting.
+ * requires it (see `findMissingPlacement`). Always plain and one line: the
+ * interview shows values as text, which markdown could otherwise read as
+ * formatting.
  */
 export const localizedMessage = (
   content: z.ZodString,
@@ -262,7 +287,11 @@ export const localizedMessage = (
       }
     })
     .meta({
-      [LOCALIZED_STRING]: { format: 'plain', arguments: declaration },
+      [LOCALIZED_STRING]: {
+        format: 'plain',
+        lines: 'single',
+        arguments: declaration,
+      },
     });
 };
 
@@ -273,6 +302,8 @@ const isLocalizedStringDescriptor = (
   value !== null &&
   'format' in value &&
   (value.format === 'plain' || value.format === 'markdown') &&
+  'lines' in value &&
+  (value.lines === 'single' || value.lines === 'multiple') &&
   (!('arguments' in value) ||
     (typeof value.arguments === 'object' && value.arguments !== null)) &&
   (!('dynamicValues' in value) ||

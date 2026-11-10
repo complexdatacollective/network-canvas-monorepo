@@ -115,7 +115,10 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
     .array(
       z.strictObject({
         id: z.string(),
-        label: localizedString(nonBlankText(), 'plain'),
+        label: localizedString(nonBlankText(), {
+          format: 'plain',
+          lines: 'single',
+        }),
         color: NodeColorReferenceSchema,
         // Boolean attribute on the source pedigree's people: true marks
         // someone as affected. Usually one of the Family Pedigree's nomination
@@ -173,9 +176,15 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
   // (`stage-wording/narrative-pedigree.ts`). The key's heading and rows and
   // the clear focus tooltip, which every Narrative Pedigree shows alike, are
   // interface text (`interface-text-wording.ts`).
-  saveSnapshot: localizedString(nonBlankText(), 'plain'),
+  saveSnapshot: localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }),
   conditionText: z.strictObject({
-    selectCondition: localizedString(nonBlankText(), 'plain'),
+    selectCondition: localizedString(nonBlankText(), {
+      format: 'plain',
+      lines: 'single',
+    }),
     snapshotCondition: localizedMessage(nonBlankText(), {
       arguments: SNAPSHOT_CONDITION_ARGUMENTS,
     }),

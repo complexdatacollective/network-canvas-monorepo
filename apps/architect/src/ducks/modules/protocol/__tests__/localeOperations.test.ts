@@ -374,6 +374,7 @@ describe('removeLocale', () => {
       path: ['stages', 0, 'title'],
       value: { fr: 'Bonjour' },
       format: 'plain',
+      lines: 'single',
     };
     const impact = getLocaleRemovalImpact(
       [...collectLocalizedStrings(bilingual()), unsaved],

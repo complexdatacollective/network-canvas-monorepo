@@ -493,7 +493,10 @@ const GROUP_NAMES = Object.keys(INTERFACE_TEXT_GROUPS) as GroupName[];
 
 const entrySchema = (entry: InterfaceTextEntry) =>
   entry.arguments === undefined
-    ? localizedString(nonBlankText(), entry.format ?? 'plain')
+    ? localizedString(
+        nonBlankText(),
+        entry.shape ?? { format: 'plain', lines: 'single' },
+      )
     : localizedMessage(nonBlankText(), {
         arguments: requireSuppliedPlacements(entry.arguments, entry.message),
       });
