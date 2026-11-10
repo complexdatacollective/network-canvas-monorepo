@@ -128,6 +128,10 @@ export const FocusRingIsNotClipped: Story = {
     multiple: true,
     defaultValue: ['field'],
   },
+  // This play reads an outline that exists only while the field matches
+  // `:focus-visible`, which never matches in Chromatic's unfocused capture
+  // tab. `test:storybook` is where it runs.
+  parameters: { chromatic: { disableSnapshot: true } },
   render: (args) => (
     <Accordion {...args} className="w-80" data-testid="accordion">
       <AccordionItem value="field">
