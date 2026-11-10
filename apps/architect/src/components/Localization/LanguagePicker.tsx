@@ -179,10 +179,16 @@ type LanguagePickerProps = {
    */
   unavailable?: readonly LocaleTag[];
   initialValue: LocaleTag[];
+  /** Choose one language rather than several. */
+  single?: boolean;
+  /** Shown while nothing is chosen. Defaults to the text for several. */
+  placeholder?: string;
+  /** The error when nothing is chosen. Defaults to the text for several. */
+  requiredMessage?: string;
 };
 
 /**
- * A searchable list of languages to choose several from. The closed list names
+ * A searchable list of languages to choose several from, or one with `single`. The closed list names
  * the chosen languages, so they are visible without opening it. A language
  * code typed into the search box (`haw`, `es-419`) is offered as well when it
  * names a language that is not in `choices`. Read the result with
@@ -194,6 +200,9 @@ export const LanguagePicker = ({
   choices,
   unavailable = NONE_UNAVAILABLE,
   initialValue,
+  single = false,
+  placeholder,
+  requiredMessage,
 }: LanguagePickerProps) => {
   const intl = useAppIntl();
   const choicesByLocale = useMemo(
@@ -248,11 +257,14 @@ export const LanguagePicker = ({
       optionFromSearch={optionFromSearch}
       renderOption={renderLanguageOption(choiceOf, intl)}
       renderValue={renderChosenNames(choiceOf)}
-      placeholder={intl.formatMessage(messages.chooseLanguages)}
+      single={single}
+      placeholder={placeholder ?? intl.formatMessage(messages.chooseLanguages)}
       searchPlaceholder={intl.formatMessage(messages.searchLanguages)}
       emptyMessage={intl.formatMessage(messages.noLanguagesFound)}
       showSelectAll={false}
-      required={intl.formatMessage(messages.chooseAtLeastOne)}
+      required={
+        requiredMessage ?? intl.formatMessage(messages.chooseAtLeastOne)
+      }
     />
   );
 };

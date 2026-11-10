@@ -136,3 +136,74 @@ describe('ComboboxField optionFromSearch', () => {
     expect(optionNames()).toEqual(['Option A', 'Option B']);
   });
 });
+
+describe('ComboboxField single', () => {
+  const Harness = ({ onChange }: { onChange: (value: unknown) => void }) => {
+    const [value, setValue] = useState<(string | number)[]>([]);
+    return (
+      <ComboboxField
+        name="topic"
+        aria-label="Topic"
+        single
+        options={OPTIONS}
+        optionFromSearch={(search) => ({
+          value: `new:${search}`,
+          label: `New ${search}`,
+        })}
+        searchPlaceholder="Find"
+        value={value}
+        onChange={(next) => {
+          setValue(next ?? []);
+          onChange(next);
+        }}
+      />
+    );
+  };
+
+  it('chooses one option, replaces it with the next and closes the list each time', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Topic' }));
+    expect(screen.queryByRole('button', { name: 'Select All' })).toBeNull();
+    await user.click(await screen.findByRole('option', { name: 'Option A' }));
+    expect(onChange).toHaveBeenLastCalledWith(['a']);
+    await vi.waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+
+    await user.click(screen.getByRole('combobox', { name: 'Topic' }));
+    await user.click(await screen.findByRole('option', { name: 'Option B' }));
+    expect(onChange).toHaveBeenLastCalledWith(['b']);
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the choice when it is chosen again', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Topic' }));
+    await user.click(await screen.findByRole('option', { name: 'Option A' }));
+    await user.click(screen.getByRole('combobox', { name: 'Topic' }));
+    await user.click(await screen.findByRole('option', { name: 'Option A' }));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith(['a']);
+  });
+
+  it('offers an option from the search text and keeps it chosen', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Topic' }));
+    await user.type(await screen.findByPlaceholderText('Find'), 'zzz');
+    await user.click(await screen.findByRole('option', { name: 'New zzz' }));
+
+    expect(onChange).toHaveBeenLastCalledWith(['new:zzz']);
+    await user.click(screen.getByRole('combobox', { name: 'Topic' }));
+    expect(
+      await screen.findByRole('option', { name: 'New zzz' }),
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+});

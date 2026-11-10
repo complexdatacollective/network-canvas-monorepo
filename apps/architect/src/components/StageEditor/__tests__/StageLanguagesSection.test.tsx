@@ -263,7 +263,7 @@ describe('the language chooser’s languages in Architect', () => {
   it('changes the language of a language’s text in the open stage too', async () => {
     const { store } = await openEditor();
     globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
-      language: 'es',
+      languages: ['es'],
     });
 
     await userEvent.click(

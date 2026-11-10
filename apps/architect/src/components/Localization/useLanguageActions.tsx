@@ -4,8 +4,6 @@ import { useSelector } from 'react-redux';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import {
   collectLocalizedStrings,
   type LanguageChange,
@@ -31,11 +29,7 @@ import {
 import { getProtocol } from '~/selectors/protocol';
 
 import { getLanguageChoices } from './languageChoices';
-import {
-  chosenLanguages,
-  LanguagePicker,
-  languageOptionText,
-} from './LanguagePicker';
+import { chosenLanguages, LanguagePicker } from './LanguagePicker';
 import { useBaseLanguageOffer } from './useBaseLanguageOffer';
 import { useLanguageName } from './useLanguageName';
 
@@ -289,22 +283,20 @@ export const useLanguageActions = (
         submitLabel: intl.formatMessage(messages.changeSubmit),
         finalFocus: focusAfter(returnFocus),
         children: (
-          <Field<typeof NativeSelectField>
-            name="language"
+          <LanguagePicker
+            single
             label={intl.formatMessage(messages.languageLabel)}
-            component={NativeSelectField}
+            choices={availableChoices(declared)}
+            unavailable={declared}
+            initialValue={[]}
             placeholder={intl.formatMessage(messages.chooseALanguage)}
-            options={availableChoices(declared).map((choice) => ({
-              value: choice.locale,
-              label: languageOptionText(intl, choice),
-            }))}
-            required={intl.formatMessage(messages.chooseOne)}
+            requiredMessage={intl.formatMessage(messages.chooseOne)}
           />
         ),
       });
       if (!values) return;
-      const tag = values.language;
-      if (typeof tag !== 'string') return;
+      const [tag] = chosenLanguages(values);
+      if (tag === undefined) return;
       const before = localizationNow();
       dispatch(changeProtocolLocale({ from, to: tag }));
       // The language as the protocol now declares it, which is the tag after

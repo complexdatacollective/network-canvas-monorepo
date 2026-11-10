@@ -66,7 +66,20 @@ const AddLanguagesButton = () => {
   );
 };
 
-const renderAddLanguages = (current: CurrentProtocol = protocol) => {
+const ChangeLanguageButton = ({ from }: { from: string }) => {
+  const focusRef = useRef<HTMLButtonElement>(null);
+  const { changeLanguage } = useLanguageActions(focusRef);
+  return (
+    <button ref={focusRef} onClick={() => void changeLanguage(from)}>
+      Open the change language dialog
+    </button>
+  );
+};
+
+const renderAddLanguages = (
+  current: CurrentProtocol = protocol,
+  action: ReactNode = <AddLanguagesButton />,
+) => {
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
@@ -88,7 +101,7 @@ const renderAddLanguages = (current: CurrentProtocol = protocol) => {
   );
   render(
     <Provider store={store}>
-      <AddLanguagesButton />
+      {action}
       <DialogHost />
     </Provider>,
   );
@@ -97,11 +110,13 @@ const renderAddLanguages = (current: CurrentProtocol = protocol) => {
 
 const SEARCH = 'Search languages or type a language code';
 
-const openList = async (user: UserEvent) => {
-  await user.click(
-    screen.getByRole('button', { name: 'Open the add languages dialog' }),
-  );
-  await user.click(await screen.findByRole('combobox', { name: 'Languages' }));
+const openList = async (
+  user: UserEvent,
+  opener = 'Open the add languages dialog',
+  list = 'Languages',
+) => {
+  await user.click(screen.getByRole('button', { name: opener }));
+  await user.click(await screen.findByRole('combobox', { name: list }));
   return await screen.findByPlaceholderText(SEARCH);
 };
 
@@ -290,6 +305,111 @@ describe('typing a language code into the list of languages to add', () => {
         screen.getByRole('combobox', { name: 'Languages' }),
       ).toHaveTextContent('Cherokee'),
     );
+  });
+});
+
+// Records the wording written under one language as another language: for a
+// protocol upgraded from an older version that recorded it as English.
+describe('typing a language code into the list of languages to change to', () => {
+  const welcome: CurrentProtocol = {
+    ...protocol,
+    localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+    stages: [
+      {
+        id: 'welcome',
+        type: 'Information',
+        label: { en: 'Welcome', fr: 'Bienvenue' },
+        title: { en: 'Hello', fr: 'Bonjour' },
+        items: [],
+      },
+    ],
+  };
+
+  const openChangeList = async (user: UserEvent) =>
+    await openList(user, 'Open the change language dialog', 'Language');
+
+  const renderChange = () =>
+    renderAddLanguages(welcome, <ChangeLanguageButton from="en" />);
+
+  it('offers a language that is not listed, and records the old language’s text as it', async () => {
+    const user = userEvent.setup();
+    const { store } = renderChange();
+
+    const search = await openChangeList(user);
+    await user.type(search, 'haw');
+    await user.click(await theOption(/Hawaiian \(haw\)/));
+
+    // Choosing closes the list, and the closed list names the language.
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('combobox', { name: 'Language' }),
+    ).toHaveTextContent('Hawaiian');
+    await user.click(screen.getByRole('button', { name: 'Submit the dialog' }));
+
+    await waitFor(() =>
+      expect(getProtocol(store.getState())?.localization).toEqual({
+        defaultLocale: 'haw',
+        locales: ['haw', 'fr'],
+      }),
+    );
+    const [stage] = getProtocol(store.getState())?.stages ?? [];
+    expect(stage).toMatchObject({
+      label: { haw: 'Welcome', fr: 'Bienvenue' },
+      title: { haw: 'Hello', fr: 'Bonjour' },
+    });
+  });
+
+  it('chooses one language: choosing another replaces the first', async () => {
+    const user = userEvent.setup();
+    const { store } = renderChange();
+
+    const search = await openChangeList(user);
+    await user.type(search, 'haw');
+    await user.click(await theOption(/\(haw\)/));
+    await user.click(screen.getByRole('combobox', { name: 'Language' }));
+    await user.type(await screen.findByPlaceholderText(SEARCH), 'chr');
+    await user.click(await theOption(/\(chr\)/));
+    await user.click(screen.getByRole('button', { name: 'Submit the dialog' }));
+
+    await waitFor(() =>
+      expect(getProtocol(store.getState())?.localization.locales).toEqual([
+        'chr',
+        'fr',
+      ]),
+    );
+  });
+
+  it('does not offer a code the protocol already has, or one that names nothing', async () => {
+    const user = userEvent.setup();
+    renderChange();
+
+    const search = await openChangeList(user);
+    await user.type(search, 'FR');
+    expect(optionsFor('fr')).toHaveLength(0);
+    await user.clear(search);
+    await user.type(search, 'xx');
+
+    expect(
+      await screen.findByText('No language matches your search.'),
+    ).toBeVisible();
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+  });
+
+  it('still asks for a language before it submits', async () => {
+    const user = userEvent.setup();
+    const { store } = renderChange();
+
+    await openChangeList(user);
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Submit the dialog' }));
+
+    expect(await screen.findByText('Choose a language.')).toBeVisible();
+    expect(getProtocol(store.getState())?.localization.locales).toEqual([
+      'en',
+      'fr',
+    ]);
   });
 });
 

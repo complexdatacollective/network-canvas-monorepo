@@ -102,6 +102,13 @@ type ComboboxFieldProps = FieldValueProps<(string | number)[]> &
      * Once chosen it stays in the list for as long as it is selected.
      */
     optionFromSearch?: (search: string) => ComboboxOption | undefined;
+    /**
+     * Choose one option instead of several. Choosing an option replaces the
+     * choice and closes the list; choosing the chosen option again keeps it.
+     * The value is still a list, holding at most one value, and "Select All" and
+     * "Deselect All" are not shown unless asked for.
+     */
+    single?: boolean;
     placeholder?: string;
     searchPlaceholder?: string;
     emptyMessage?: string;
@@ -144,12 +151,13 @@ function ComboboxField(props: ComboboxFieldProps) {
   const {
     options,
     optionFromSearch,
+    single = false,
     placeholder = intl.formatMessage(messages.placeholder),
     searchPlaceholder = intl.formatMessage(messages.searchPlaceholder),
     emptyMessage = intl.formatMessage(messages.noItems),
     showSearch = true,
-    showSelectAll = true,
-    showDeselectAll = true,
+    showSelectAll = !single,
+    showDeselectAll = !single,
     singular = intl.formatMessage(messages.defaultSingular),
     plural = intl.formatMessage(messages.defaultPlural),
     renderOption,
@@ -191,6 +199,14 @@ function ComboboxField(props: ComboboxFieldProps) {
     },
   });
 
+  // Rendering only: for one render the store can still hold the previous
+  // field's value (see the render-tolerance contract on `useField`), and
+  // anything but a list of chosen values renders as nothing selected.
+  const selectedValues = useMemo(
+    () => (Array.isArray(value) ? value : EMPTY_SELECTION),
+    [value],
+  );
+
   const handleValueChange = (
     newValue: unknown[] | null,
     _event: Combobox.Root.ChangeEventDetails,
@@ -199,6 +215,21 @@ function ComboboxField(props: ComboboxFieldProps) {
     if (newValue === null) {
       onChange?.([]);
     } else if (newValue.every(isComboboxOption)) {
+      if (single) {
+        const [chosen] = newValue.filter(
+          (opt) => !selectedValues.includes(opt.value),
+        );
+        // Choosing the chosen option again leaves it chosen.
+        if (chosen === undefined) return;
+        setChosenFromSearch(
+          options.some((option) => option.value === chosen.value)
+            ? []
+            : [chosen],
+        );
+        onChange?.([chosen.value]);
+        onOpenChange(false);
+        return;
+      }
       const fromSearch = newValue.filter(
         (opt) => !options.some((option) => option.value === opt.value),
       );
@@ -231,14 +262,6 @@ function ComboboxField(props: ComboboxFieldProps) {
     if (readOnly) return;
     onChange?.([]);
   };
-
-  // Rendering only: for one render the store can still hold the previous
-  // field's value (see the render-tolerance contract on `useField`), and
-  // anything but a list of chosen values renders as nothing selected.
-  const selectedValues = useMemo(
-    () => (Array.isArray(value) ? value : EMPTY_SELECTION),
-    [value],
-  );
 
   // The options that came from the search text and have been chosen. Kept
   // while they are selected, because the text that offered them is gone once

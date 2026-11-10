@@ -86,6 +86,15 @@ const meta: Meta<typeof ComboboxField> = {
         type: { summary: '(search: string) => ComboboxOption | undefined' },
       },
     },
+    'single': {
+      control: 'boolean',
+      description:
+        'Choose one option instead of several. Choosing an option replaces the choice and closes the list; the value is a list holding at most one value.',
+      table: {
+        type: { summary: 'boolean' },
+        defaultValue: { summary: 'false' },
+      },
+    },
     'showSearch': {
       control: 'boolean',
       description: 'Toggle search input visibility',
@@ -892,6 +901,56 @@ export const OptionFromSearch: Story = {
     await expect(
       screen.getByRole('combobox', { name: 'Topics' }),
     ).toHaveTextContent('1 item selected');
+  },
+};
+
+/**
+ * With `single`, the field chooses one option: choosing another replaces the
+ * choice and closes the list. `optionFromSearch` works the same way.
+ */
+export const SingleChoice: Story = {
+  render: function SingleChoiceStory() {
+    const [value, setValue] = useState<(string | number)[]>([]);
+
+    return (
+      <div className="w-80">
+        <ComboboxField
+          name="single-topic"
+          aria-label="Main topic"
+          single
+          options={topicOptions}
+          optionFromSearch={(search) => ({
+            value: search.toLowerCase(),
+            label: `Add “${search}”`,
+          })}
+          renderValue={(selected) =>
+            selected.map((option) => presentationalTextValue(option.label))
+          }
+          searchPlaceholder="Search or type a new topic"
+          value={value}
+          onChange={(v) => setValue(v ?? [])}
+        />
+      </div>
+    );
+  },
+  play: async () => {
+    const trigger = await screen.findByRole('combobox', {
+      name: 'Main topic',
+    });
+    await userEvent.click(trigger);
+    await userEvent.click(await screen.findByRole('option', { name: 'Diet' }));
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+    await expect(trigger).toHaveTextContent('Diet');
+
+    await userEvent.click(trigger);
+    await userEvent.type(
+      await screen.findByPlaceholderText('Search or type a new topic'),
+      'reading',
+    );
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Add “reading”' }),
+    );
+    await waitFor(() => expect(trigger).toHaveTextContent('Add “reading”'));
   },
 };
 
