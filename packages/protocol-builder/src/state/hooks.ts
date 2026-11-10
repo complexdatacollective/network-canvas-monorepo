@@ -17,6 +17,7 @@ import type {
   SectionHolderSchema,
   SectionIssueSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import type { InterfaceTextUpdate } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -247,7 +248,12 @@ export type SubmitResult =
   | Readonly<{ status: 'notLockHolder'; holder?: Presence }>
   | Readonly<{ status: 'sectionsLocked'; blocked: readonly SectionHolder[] }>
   | Readonly<{ status: 'invalidShape'; issues: readonly SectionIssue[] }>
-  | Readonly<{ status: 'promotionFailed'; failure: ResourceFailure }>;
+  | Readonly<{ status: 'promotionFailed'; failure: ResourceFailure }>
+  /**
+   * No answer came: the host may or may not have written the section, and the
+   * same save asked again is how to find out (see `attempt`'s `answered`).
+   */
+  | Readonly<{ status: 'unanswered' }>;
 
 /**
  * Whether this editor may write: `pending` until the host has answered the
@@ -267,9 +273,14 @@ export type SectionMutation = Readonly<{
   revision: Revision | undefined;
   access: SectionAccess;
   holder: Presence | undefined;
+  /**
+   * Writes the section whole, with the staged files it names and, for a
+   * stage, the shared words it brings in (the contract's `interfaceText`).
+   */
   submit(
     document: SectionDoc,
     promote?: ResourcePromotion,
+    interfaceText?: readonly InterfaceTextUpdate[],
   ): Promise<SubmitResult>;
   release(): void;
 }>;
@@ -415,6 +426,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     async (
       document: SectionDoc,
       promote?: ResourcePromotion,
+      interfaceText?: readonly InterfaceTextUpdate[],
     ): Promise<SubmitResult> => {
       if (section === undefined) {
         throw new Error(`section ${id} was submitted before it was read`);
@@ -424,7 +436,17 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       // written again. Per save rather than per edit: the next save is a
       // different document, and an id shared with the last one would be
       // answered with the revision that one wrote.
-      const requestId = saveKey.forAsk(contentHash(document));
+      // The words travel with the document, so a save of the same stage with
+      // different words is a different ask.
+      const words =
+        interfaceText === undefined || interfaceText.length === 0
+          ? undefined
+          : nonEmpty(interfaceText);
+      const requestId = saveKey.forAsk(
+        words === undefined
+          ? contentHash(document)
+          : contentHash({ document, interfaceText: words }),
+      );
       const submitted = await attempt(adapter, 'Submit', {
         protocolId,
         requestId,
@@ -432,10 +454,9 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         document: Redacted.make(document),
         revision: section.revision,
         ...(promote === undefined ? {} : { promote }),
+        ...(words === undefined ? {} : { interfaceText: words }),
       });
-      if (submitted.isSuccess || submitted.refusal !== undefined) {
-        saveKey.settled(requestId);
-      }
+      if (submitted.answered) saveKey.settled(requestId);
       if (submitted.isSuccess) {
         const { data } = submitted;
         return {
@@ -444,45 +465,53 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           ...(data.promoted === undefined ? {} : { promoted: data.promoted }),
         };
       }
+      if (!submitted.answered) return { status: 'unanswered' };
       const { refusal } = submitted;
-      if (refusal?._tag === 'NotLockHolder') {
-        // The section is somebody else's now, and nothing here re-acquires it:
-        // the editor above discards the draft it could not write, and this is
-        // what stops the form it puts back from being editable. Left
-        // `editing`, every later save is refused the same way and discards
-        // another round of work — the same loss, over and over, with the
-        // editor still saying it may write.
-        setAccess('readOnly');
-        // The refusal already names the holder, so the read-only editor can
-        // say whose section it is without waiting for a lock event — and a
-        // host whose locks are always granted never sends one.
-        //
-        // Naming NOBODY is an answer as well, and the cache has to take it:
-        // that is a lease that ran out with no one taking the section, which
-        // publishes no lock event at all (the acquire that TAKES one publishes
-        // its own). What the cache still holds is this editor's own presence,
-        // from the event its own acquire published — so left alone, the
-        // read-only form it puts back tells the researcher that they are the
-        // one editing the stage they have just been refused.
-        queryClient.setQueryData<LockState>(
-          lockQueryKey(protocolId, id),
-          refusal.holder === undefined ? {} : { holder: refusal.holder },
-        );
-        return {
-          status: 'notLockHolder',
-          ...(refusal.holder === undefined ? {} : { holder: refusal.holder }),
-        };
+      if (refusal === undefined) {
+        throw new Error(`submit of ${id} was turned away by the host`);
       }
-      if (refusal?._tag === 'SectionsLocked') {
-        return { status: 'sectionsLocked', blocked: refusal.blocked };
+      switch (refusal._tag) {
+        case 'NotLockHolder': {
+          // The section is somebody else's now, and nothing here re-acquires it:
+          // the editor above discards the draft it could not write, and this is
+          // what stops the form it puts back from being editable. Left
+          // `editing`, every later save is refused the same way and discards
+          // another round of work — the same loss, over and over, with the
+          // editor still saying it may write.
+          setAccess('readOnly');
+          // The refusal already names the holder, so the read-only editor can
+          // say whose section it is without waiting for a lock event — and a
+          // host whose locks are always granted never sends one.
+          //
+          // Naming NOBODY is an answer as well, and the cache has to take it:
+          // that is a lease that ran out with no one taking the section, which
+          // publishes no lock event at all (the acquire that TAKES one publishes
+          // its own). What the cache still holds is this editor's own presence,
+          // from the event its own acquire published — so left alone, the
+          // read-only form it puts back tells the researcher that they are the
+          // one editing the stage they have just been refused.
+          queryClient.setQueryData<LockState>(
+            lockQueryKey(protocolId, id),
+            refusal.holder === undefined ? {} : { holder: refusal.holder },
+          );
+          return {
+            status: 'notLockHolder',
+            ...(refusal.holder === undefined ? {} : { holder: refusal.holder }),
+          };
+        }
+        case 'SectionsLocked':
+          return { status: 'sectionsLocked', blocked: refusal.blocked };
+        case 'InvalidShape':
+          return { status: 'invalidShape', issues: refusal.issues };
+        case 'PromotionFailed':
+          return { status: 'promotionFailed', failure: refusal.failure };
+        case 'ProtocolNotFound':
+        case 'SectionNotFound':
+          // The protocol or the stage has gone, so no save of it can land.
+          throw refusal;
       }
-      if (refusal?._tag === 'InvalidShape') {
-        return { status: 'invalidShape', issues: refusal.issues };
-      }
-      if (refusal?._tag === 'PromotionFailed') {
-        return { status: 'promotionFailed', failure: refusal.failure };
-      }
-      throw refusal ?? new Error(`submit of ${id} failed`);
+      // Every refusal is placed above: a new one does not type-check here.
+      return refusal satisfies never;
     },
     [adapter, protocolId, id, queryClient, saveKey, section],
   );
@@ -538,4 +567,14 @@ function stageIdsOf(document: SectionDoc): string[] {
   return Array.isArray(stages)
     ? stages.filter((entry): entry is string => typeof entry === 'string')
     : [];
+}
+
+/**
+ * The contract takes the words a stage brings in as a non-empty list, which
+ * a caller has already checked `updates` is.
+ */
+export function nonEmpty<T>(updates: readonly T[]): readonly [T, ...T[]] {
+  const [first, ...rest] = updates;
+  if (first === undefined) throw new Error('expected at least one update');
+  return [first, ...rest];
 }

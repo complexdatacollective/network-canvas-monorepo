@@ -25,6 +25,7 @@ import {
   useStageEditorForm,
 } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
+import { stageFieldsOf } from '../stageDocument.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import {
   dynamicValueCasesUsedIn,
@@ -223,7 +224,8 @@ export function useDynamicValueSite(
   );
 
   const namesInUse = useCallback((): ReadonlySet<string> => {
-    const { [DYNAMIC_VALUES_PATH]: _bindings, ...text } = liveDraft();
+    const { [DYNAMIC_VALUES_PATH]: _bindings, ...text } =
+      stageFieldsOf(liveDraft());
     const names = dynamicValueNamesUsedIn(text);
     return row === null ? names : dynamicValueNamesUsedIn(row.read(), names);
   }, [liveDraft, row]);
@@ -274,7 +276,9 @@ export function useReleaseRowBindings(open: boolean) {
     const closed = wasOpen.current && !open;
     wasOpen.current = open;
     if (!closed || stageForm === null || stageForm.readOnly) return;
-    const { [DYNAMIC_VALUES_PATH]: bindings, ...text } = stageForm.liveDraft();
+    const { [DYNAMIC_VALUES_PATH]: bindings, ...text } = stageFieldsOf(
+      stageForm.liveDraft(),
+    );
     if (!isRecord(bindings)) return;
     const inUse = dynamicValueNamesUsedIn(text);
     if (enclosingRow !== null) {
