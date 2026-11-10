@@ -4,7 +4,6 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
-  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -32,10 +31,8 @@ import {
 } from '@codaco/protocol-validation';
 
 import {
-  pendingWordingNowHeld,
   pendingWordingResets,
   sharedWordingFieldName,
-  sharedWordingProblem,
 } from '../../form/sharedWordingDraft.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { stageAnswerAt } from '../../form/stageFormHooks.ts';
@@ -46,6 +43,7 @@ import { useLatest } from '../../state/useLatest.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import SharedStageWording from './SharedStageWording.tsx';
 import {
+  carryHandedOverWording,
   sharedWordingChanges,
   type SharedWordingGroup,
   type SharedWordingWrites,
@@ -121,38 +119,22 @@ export default function StageWordingSection({
   // A shared word held with the stage that the protocol comes to hold while
   // the stage is open (a collaborator saved a stage that uses it) is no
   // longer saved with this one. A change the researcher made to it is then
-  // written as a change to a held word is, at once, as their own edit of a
-  // held word would be had they made it a moment later; one they did not
-  // make leaves the collaborator's wording standing.
-  const carrying = useRef(new Set<string>());
+  // written as a change to a held word is, once they are out of its field,
+  // as their own edit of a held word would be; one they did not make leaves
+  // the collaborator's wording standing (see `carryHandedOverWording`).
   useEffect(() => {
     if (readOnly || localization === undefined) return;
-    const changes = pendingWordingNowHeld(storeApi, heldIn(shared)).filter(
-      ({ name, update: { group, key, value } }) =>
-        !carrying.current.has(name) &&
-        sharedWordingProblem(
-          group,
-          key,
-          value,
-          localization.defaultLocale,
-          intl,
-        ) === undefined,
-    );
-    if (changes.length === 0) return;
-    for (const { name } of changes) carrying.current.add(name);
+    sharedWrites.release(storeApi);
     const carry = async () => {
-      const outcome = await sharedWrites.write(
-        changes.map(({ update }) => update),
-      );
-      for (const { name } of changes) carrying.current.delete(name);
-      if (outcome === undefined) return;
-      if (outcome.status !== 'applied') {
+      const outcome = await carryHandedOverWording({
+        storeApi,
+        writes: sharedWrites,
+        held: heldIn(shared),
+        localization,
+        intl,
+      });
+      if (outcome !== undefined && outcome.status !== 'applied') {
         reportRefusedWrite(outcome.message);
-        return;
-      }
-      // Written: the form's copy is no unsaved change of the stage's.
-      for (const { name, baseline } of changes) {
-        storeApi.getState().setFieldValue(name, baseline);
       }
     };
     void carry();

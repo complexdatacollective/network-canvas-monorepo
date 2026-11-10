@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import {
   type InterfaceTextUpdate,
   interfaceTextWithUpdates,
@@ -21,10 +22,16 @@ import {
   type CodebookWriteOutcome,
 } from '../../codebook/writes.ts';
 import {
+  handedOverWording,
+  type HandedOverWord,
   sharedWordingInUse,
   type SharedWordingInUse,
+  sharedWordingProblem,
 } from '../../form/sharedWordingDraft.ts';
-import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import {
+  type StageFormStoreApi,
+  useStageEditorForm,
+} from '../../form/stageEditorContext.ts';
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
@@ -166,6 +173,23 @@ export type SharedWordingWrites = Readonly<{
   settle: () => Promise<readonly SharedWordingGroup[]>;
   /** Lets writes through again: the section stayed on, or opened again. */
   resume: () => void;
+  /**
+   * Writes the researcher's changes to shared words the protocol has come to
+   * hold while the stage was open (see `carryHandedOverWording`), and once
+   * one is written and shown, puts its field back to its baseline: the
+   * protocol holds it, so it is no unsaved change of the stage's.
+   */
+  carry: (
+    storeApi: StageFormStoreApi,
+    changes: readonly HandedOverWord[],
+  ) => Promise<CodebookWriteOutcome | undefined>;
+  /**
+   * Puts back to its baseline each carried field the protocol now shows the
+   * written words for. Not before: until then the field is still the
+   * researcher's draft of the shared word, and showing the protocol's copy
+   * would show the collaborator's wording for a moment.
+   */
+  release: (storeApi: StageFormStoreApi) => void;
 }>;
 
 export function useSharedWordingWrites(
@@ -183,14 +207,18 @@ export function useSharedWordingWrites(
     applied: [] as InterfaceTextUpdate[],
     held: false,
     shared,
+    // The fields whose change is being carried into the protocol now.
+    carrying: new Set<string>(),
+    // Those carried, until the protocol shows what was written for them.
+    carried: new Map<string, HandedOverWord>(),
   });
   useEffect(() => {
     state.current.shared = shared;
     state.current.applied = [];
   }, [shared]);
 
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    const writes: SharedWordingWrites = {
       write: (updates) => {
         const current = state.current;
         if (current.held) return Promise.resolve(undefined);
@@ -235,7 +263,86 @@ export function useSharedWordingWrites(
       resume: () => {
         state.current.held = false;
       },
-    }),
-    [write],
+      carry: async (storeApi, changes) => {
+        const { carrying, carried } = state.current;
+        const fresh = changes.filter(
+          ({ name, update }) =>
+            !carrying.has(name) &&
+            !isEqual(carried.get(name)?.update.value, update.value),
+        );
+        if (fresh.length === 0) return undefined;
+        for (const { name } of fresh) carrying.add(name);
+        try {
+          const outcome = await writes.write(fresh.map(({ update }) => update));
+          if (outcome?.status === 'applied') {
+            for (const change of fresh) carried.set(change.name, change);
+            writes.release(storeApi);
+          }
+          return outcome;
+        } finally {
+          for (const { name } of fresh) carrying.delete(name);
+        }
+      },
+      release: (storeApi) => {
+        const { carried, shared: groups } = state.current;
+        for (const [name, { update, baseline }] of carried) {
+          const { fields, dormantValues } = storeApi.getState();
+          const field = fields.get(name) ?? dormantValues.get(name);
+          // Changed again since it was written: a change of its own, still to
+          // be written, and no longer this one's to release.
+          if (!isEqual(field?.value, update.value)) {
+            carried.delete(name);
+            continue;
+          }
+          const held = groups
+            .find(({ group }) => group === update.group)
+            ?.entries.find(([key]) => key === update.key)?.[1];
+          if (!isEqual(held, update.value)) continue;
+          carried.delete(name);
+          storeApi.getState().setFieldValue(name, baseline);
+        }
+      },
+    };
+    return writes;
+  }, [write]);
+}
+
+/**
+ * Writes the researcher's changes to shared words the protocol has come to
+ * hold while the stage was open: a collaborator saved a stage using the word
+ * first. The protocol holds it now, so it is a shared word like any other and
+ * a change to it is written as one is, as its field is left. So: those that
+ * can be saved, of the entries `held` names, except one whose field the
+ * researcher is still in. One that cannot be saved stays in its field, to be
+ * made good (see `isHandedOver`).
+ */
+export function carryHandedOverWording({
+  storeApi,
+  writes,
+  held,
+  localization,
+  intl,
+}: Readonly<{
+  storeApi: StageFormStoreApi;
+  writes: SharedWordingWrites;
+  held: (group: string, key: string) => LocalizedString | undefined;
+  localization: ProtocolLocalization;
+  intl: IntlShape;
+}>): Promise<CodebookWriteOutcome | undefined> {
+  const focused =
+    typeof document === 'undefined' ? null : document.activeElement;
+  const changes = handedOverWording(storeApi, held).filter(
+    ({ name, update: { group, key, value } }) =>
+      focused?.closest(`[data-field-path="${name}"]`) == null &&
+      sharedWordingProblem(
+        group,
+        key,
+        value,
+        localization.defaultLocale,
+        intl,
+      ) === undefined,
   );
+  return changes.length === 0
+    ? Promise.resolve(undefined)
+    : writes.carry(storeApi, changes);
 }

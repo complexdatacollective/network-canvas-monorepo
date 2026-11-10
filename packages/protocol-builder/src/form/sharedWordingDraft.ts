@@ -68,35 +68,64 @@ export function sharedWordingInUse(
   );
 }
 
-/** Whether the protocol, as saved, holds one shared entry. */
-const holdsSharedWord = (
-  protocol: ProtocolBuilderProtocolContext,
-  group: string,
-  key: string,
-): boolean => {
-  const groups: Readonly<
-    Record<string, Readonly<Record<string, unknown>> | undefined>
-  > = protocol.interfaceText ?? {};
-  return groups[group]?.[key] !== undefined;
-};
-
 /**
  * What the stage form holds for one shared entry, mounted or parked, as the
  * field holds it rather than as a submit cleans it: a translation the
  * researcher emptied is still a translation they emptied, and has to be
  * refused rather than read as wording never given. Undefined when the form
- * has never shown the entry.
+ * has never shown the entry. `baseline` is what the form measures the field's
+ * unsaved change against.
  */
 export function sharedWordingInForm(
   storeApi: StageFormStoreApi,
   group: string,
   key: string,
-): Readonly<{ value: FieldValue }> | undefined {
+): Readonly<{ value: FieldValue; baseline: FieldValue }> | undefined {
   const name = sharedWordingFieldName(group, key);
   const { fields, dormantValues } = storeApi.getState();
   const field = fields.get(name) ?? dormantValues.get(name);
-  return field === undefined ? undefined : { value: field.value };
+  return field === undefined
+    ? undefined
+    : { value: field.value, baseline: field.initialValue };
 }
+
+/** What the protocol holds for one shared entry, if anything. */
+const heldSharedWord = (
+  protocol: ProtocolBuilderProtocolContext,
+  group: string,
+  key: string,
+): LocalizedString | undefined => {
+  const groups: Readonly<
+    Record<string, Readonly<Record<string, LocalizedString | undefined>>>
+  > = protocol.interfaceText ?? {};
+  return groups[group]?.[key];
+};
+
+/**
+ * Whether the form holds the researcher's unsaved change to a shared word the
+ * protocol has come to hold while the stage was open (a collaborator saved a
+ * stage that uses it first): different from what the field was last saved or
+ * opened with, and from what the protocol holds now. Such a change is no
+ * longer saved with the stage's own settings; it is the researcher's draft of
+ * the shared word, and is written as a change to one is (see
+ * `StageWordingSection`), or with the stage if the stage is saved first.
+ */
+export const isHandedOver = (
+  inForm: Readonly<{ value: unknown; baseline: unknown }> | undefined,
+  held: LocalizedString | undefined,
+): inForm is Readonly<{ value: unknown; baseline: unknown }> =>
+  held !== undefined &&
+  inForm !== undefined &&
+  !isEqual(inForm.value, inForm.baseline) &&
+  !isEqual(inForm.value, held);
+
+/**
+ * A field's value as the localized words it saves: a field emptied of every
+ * language holds nothing at all, which is wording the researcher removed
+ * rather than wording never shown.
+ */
+const asWording = (value: unknown): LocalizedString =>
+  isLocalizedString(value) ? value : {};
 
 /**
  * The shared words a save writes with the stage: every entry the stage
@@ -107,6 +136,11 @@ export function sharedWordingInForm(
  * host that keeps the words a protocol uses (Architect) and one that does not
  * (Studio) both end up holding them. An entry the stage stops using is left
  * out, whatever the form still holds for it.
+ *
+ * With them, the researcher's unsaved change to an entry the protocol came to
+ * hold while the stage was open (`isHandedOver`): saving the stage saves it
+ * too, and a change that cannot be saved refuses the save rather than being
+ * left behind.
  */
 export function pendingSharedWording(
   protocol: ProtocolBuilderProtocolContext,
@@ -115,23 +149,24 @@ export function pendingSharedWording(
   inForm: (
     group: string,
     key: string,
-  ) => Readonly<{ value: unknown }> | undefined,
+  ) => Readonly<{ value: unknown; baseline: unknown }> | undefined,
 ): readonly InterfaceTextUpdate[] {
   const { localization } = protocol;
   if (localization === undefined) return [];
   return sharedWordingInUse(protocol, identity, draft).flatMap(
     ({ group, keys }) =>
       keys.flatMap((key) => {
-        if (holdsSharedWord(protocol, group, key)) return [];
-        const held = inForm(group, key);
-        // A field emptied of every language holds nothing at all, which is
-        // wording the researcher removed rather than wording never shown.
+        const formHolds = inForm(group, key);
+        const held = heldSharedWord(protocol, group, key);
+        if (held !== undefined) {
+          return isHandedOver(formHolds, held)
+            ? [{ group, key, value: asWording(formHolds.value) }]
+            : [];
+        }
         const value =
-          held === undefined
+          formHolds === undefined
             ? suppliedInterfaceText(group, key, localization)
-            : isLocalizedString(held.value)
-              ? held.value
-              : {};
+            : asWording(formHolds.value);
         return value === undefined ? [] : [{ group, key, value }];
       }),
   );
@@ -276,19 +311,26 @@ export function sharedWordingAsk(
 }
 
 /**
- * The shared words held with the stage that the form holds something other
- * than Network Canvas's wording for, mounted or parked, each with that
- * wording to put back: what switching the wording section off resets, as it
- * resets the stage's own wording.
+ * What switching the wording section off puts back in the form, as it puts
+ * back the stage's own wording: Network Canvas's wording for each shared word
+ * held with the stage that the form holds something else for, mounted or
+ * hidden by its setting, and the researcher's unsaved change to a shared word
+ * the protocol has come to hold (`isHandedOver`) dropped, since the protocol's
+ * own copy is what the section puts back.
  */
 export function pendingWordingResets(
   storeApi: StageFormStoreApi,
   protocol: ProtocolBuilderProtocolContext,
   localization: ProtocolLocalization,
-): readonly Readonly<{ name: string; value: LocalizedString }>[] {
+): readonly Readonly<{ name: string; value: FieldValue }>[] {
   return sharedWordingFields(storeApi).flatMap(
-    ({ name, group, key, value }) => {
-      if (holdsSharedWord(protocol, group, key)) return [];
+    ({ name, group, key, value, baseline }) => {
+      const held = heldSharedWord(protocol, group, key);
+      if (held !== undefined) {
+        return isHandedOver({ value, baseline }, held)
+          ? [{ name, value: baseline }]
+          : [];
+      }
       const supplied = suppliedInterfaceText(group, key, localization);
       return supplied === undefined || isEqual(value, supplied)
         ? []
@@ -298,33 +340,34 @@ export function pendingWordingResets(
 }
 
 /**
- * Researcher's changes, still held with the stage, to shared words the
- * protocol has come to hold meanwhile (a collaborator saved a stage that uses
- * them): each a change the form has not saved (it differs from the field's
- * baseline) and that the protocol does not already hold. The protocol holds
- * the entry, so it is no longer saved with the stage, and its change is
- * written the way a held word's is, at once.
+ * The researcher's unsaved changes to shared words the protocol has come to
+ * hold (`isHandedOver`), among the entries `held` names, each as the write
+ * that would save it and the baseline the field goes back to once it has.
  */
-export function pendingWordingNowHeld(
+export function handedOverWording(
   storeApi: StageFormStoreApi,
   held: (group: string, key: string) => LocalizedString | undefined,
-): readonly Readonly<{
+): readonly HandedOverWord[] {
+  return sharedWordingFields(storeApi).flatMap(
+    ({ name, group, key, value, baseline }) =>
+      isHandedOver({ value, baseline }, held(group, key))
+        ? [
+            {
+              name,
+              update: { group, key, value: asWording(value) },
+              baseline,
+            },
+          ]
+        : [],
+  );
+}
+
+/** One researcher's change to a shared word the protocol has come to hold. */
+export type HandedOverWord = Readonly<{
   name: string;
   update: InterfaceTextUpdate;
   baseline: FieldValue;
-}>[] {
-  return sharedWordingFields(storeApi).flatMap(
-    ({ name, group, key, value, baseline }) => {
-      const holding = held(group, key);
-      return holding === undefined ||
-        !isLocalizedString(value) ||
-        isEqual(value, baseline) ||
-        isEqual(value, holding)
-        ? []
-        : [{ name, update: { group, key, value }, baseline }];
-    },
-  );
-}
+}>;
 
 /**
  * Settles what the form holds for shared words once a save has taken the
