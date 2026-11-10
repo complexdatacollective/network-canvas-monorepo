@@ -70,9 +70,9 @@ const messages = defineMessages({
   changeDescription: {
     id: 'architect.localization.languageActions.changeDescription',
     defaultMessage:
-      'Use this when the wording recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Every {language} translation is recorded as the language you choose instead. Nothing is translated or deleted.',
+      'Use this when the wording recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Everything recorded as {language} is recorded as the language you choose instead. Wording you wrote or changed moves as it is, without being translated or deleted. Built-in wording you haven’t changed becomes Network Canvas’s version of it in the language you choose. Any built-in wording that Network Canvas doesn’t have in that language is removed, and you’ll need to write it.',
     description:
-      'Explanation in the dialog that records the translations of one protocol language as another language. language is the name of the language being changed.',
+      'Explanation in the dialog that records the translations of one protocol language as another language. language is the name of the language being changed. Built-in wording is the text Network Canvas supplies, such as button labels and the closing screen. Text the researcher wrote, or built-in wording they reworded, keeps its words and moves to the chosen language. Built-in wording they have not changed is replaced, item by item, with Network Canvas’s wording in the chosen language; an item Network Canvas has no wording for in that language is removed, and the researcher must write it.',
   },
   languageLabel: {
     id: 'architect.localization.languageActions.languageLabel',

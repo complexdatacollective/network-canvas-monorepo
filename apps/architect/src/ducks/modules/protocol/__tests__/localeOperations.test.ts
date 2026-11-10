@@ -828,6 +828,21 @@ describe('the interview’s shared words', () => {
     ).toEqual({ en: 'Previous', fr: 'Retour' });
   });
 
+  it('lose what is still Network Canvas’s, and keep the researcher’s own words, when their language is corrected to one Network Canvas has no wording in', () => {
+    const protocol = withBack({ en: 'Back' });
+    const reworded = {
+      ...protocol,
+      interfaceText: {
+        navigation: { back: { en: 'Back' }, continue: { en: 'Next' } },
+      },
+    } as unknown as CurrentProtocol;
+    const corrected = protocolOf(changeLocale(reworded, 'en', 'hu'));
+    expect(corrected.interfaceText?.navigation).toEqual({
+      back: {},
+      continue: { hu: 'Next' },
+    });
+  });
+
   it('gain nothing in a new language Network Canvas has no wording in', () => {
     expect(
       backOf(protocolOf(addLocales(withBack({ en: 'Previous' }), ['ja']))),

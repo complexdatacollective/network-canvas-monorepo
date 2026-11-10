@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 import {
   type CurrentProtocol,
   CurrentProtocolSchema,
+  DEFAULT_FINISH_SESSION_TEXT,
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
@@ -15,30 +16,39 @@ import { readProtocolJson } from '../helpers/read-store.js';
  * (`/protocol/localization?table=open`), where its texts are translated.
  *
  * Seeded with one English stage holding three texts (its name, its heading and
- * one text block), then the finish stage every protocol ends with, holding
- * three more (its name, closing text and finished text — each screen's heading
- * is part of its markdown), so there is something to count and translate once
- * a second language joins. Those six are the researcher's own. The finish
- * stage's three finishing words and the interview's ten words of its own
- * (Back, Continue and the like) are Network Canvas's, so a language Network
- * Canvas supplies them in gains them when it is added: 19 texts, 13 of which
- * French starts with.
+ * one text block of two paragraphs), which are the researcher's own, so there
+ * is something to count and translate once a second language joins. Then the
+ * finish stage every protocol ends with: its name, closing text and finished
+ * text (each screen's heading is part of its markdown), reworded by the
+ * researcher, and its three finishing words, all of which Network Canvas
+ * supplies, as it does the interview's own words (Back, Continue and the
+ * like). A language Network Canvas supplies them in gains them when it is
+ * added, reworded or not, so French starts with every text but the
+ * researcher's three.
  */
 const STAGE_NAME = 'Welcome';
 
-/** Each text's row in the translation table, named as the stage editor names it. */
-const STAGE_TEXT_ROWS = [
+/** The welcome text, of more than one line, so Enter takes a new line in it. */
+const WELCOME_TEXT_EN = 'Thank you for taking part.\n\nIt takes ten minutes.';
+
+/** The researcher's own texts' rows, named as the stage editor names them. */
+const WELCOME_TEXT_ROWS = [
   'Stage name',
   'Page content › Page heading',
   'Page content › Item 1 › Content',
+];
+
+/** Each stage text's row in the translation table. */
+const STAGE_TEXT_ROWS = [
+  ...WELCOME_TEXT_ROWS,
   'Stage name',
   'Closing screen › Closing text',
   'Finished screen › Finished text',
 ];
 
 /**
- * Every text's row: the researcher's six, then the finish stage's finishing
- * words and the interview's own words, which Network Canvas supplies.
+ * Every text's row: the stage texts, then the finish stage's finishing words
+ * and the interview's own words, which Network Canvas supplies.
  */
 const ALL_TEXT_ROWS = [
   ...STAGE_TEXT_ROWS,
@@ -103,7 +113,7 @@ function englishProtocol(): CurrentProtocol {
           {
             id: 'welcome-text',
             type: 'text',
-            content: { en: 'Thank you for taking part.' },
+            content: { en: WELCOME_TEXT_EN },
           },
         ],
       },
@@ -119,16 +129,6 @@ function englishProtocol(): CurrentProtocol {
       },
     ],
   });
-}
-
-function finishContent(protocol: CurrentProtocol) {
-  const stage = protocol.stages.at(-1);
-  return stage?.type === 'FinishSession' ? stage.content : undefined;
-}
-
-function finishedContent(protocol: CurrentProtocol) {
-  const stage = protocol.stages.at(-1);
-  return stage?.type === 'FinishSession' ? stage.finishedContent : undefined;
 }
 
 function welcomeTitle(protocol: CurrentProtocol) {
@@ -269,7 +269,7 @@ test('adds a language, keeps the default language from being removed, translates
 
   const french = languageRow(page, 'fr');
   await expect(french).toContainText('French');
-  await expect(french).toContainText('29 of 35 strings translated');
+  await expect(french).toContainText('32 of 35 strings translated');
   await expect(french.getByText('Default', { exact: true })).toHaveCount(0);
   await expect(
     french.getByText('Missing translations', { exact: true }),
@@ -294,8 +294,9 @@ test('adds a language, keeps the default language from being removed, translates
     page.getByRole('link', { name: /^Languages\b/ }),
   ).toHaveAccessibleName(/has missing translations/);
 
-  // Adding a language writes Network Canvas's wording in it, and leaves the
-  // researcher's own texts with their one English translation.
+  // Adding a language writes Network Canvas's wording in it, even where the
+  // researcher reworded it in English, and leaves the researcher's own texts
+  // with their one English translation.
   const added = await readProtocolJson(page, (protocol) =>
     protocol.localization.locales.includes('fr'),
   );
@@ -311,8 +312,12 @@ test('adds a language, keeps the default language from being removed, translates
     addedFinish?.type === 'FinishSession' &&
     beforeFinish?.type === 'FinishSession'
   ) {
-    expect(addedFinish.content).toEqual(beforeFinish.content);
-    expect(addedFinish.finishedContent).toEqual(beforeFinish.finishedContent);
+    for (const key of ['label', 'content', 'finishedContent'] as const) {
+      expect(addedFinish[key]).toEqual({
+        ...beforeFinish[key],
+        fr: DEFAULT_FINISH_SESSION_TEXT.fr[key],
+      });
+    }
     for (const [key, fr] of Object.entries(FINISHING_WORDS_FR)) {
       expect(addedFinish[key as keyof typeof FINISHING_WORDS_FR]).toEqual({
         ...FINISHING_WORDS_EN[key as keyof typeof FINISHING_WORDS_EN],
@@ -381,7 +386,7 @@ test('adds a language, keeps the default language from being removed, translates
   // Nor can English, though it is no longer the default: its texts exist in
   // no other language yet.
   const strandedReason =
-    '6 strings have a translation only in English. Translate them into another language before removing English.';
+    '3 strings have a translation only in English. Translate them into another language before removing English.';
   await expect(removeEnglish).toBeDisabled();
   await expect(removeEnglish).toHaveAccessibleDescription(strandedReason);
   await removeEnglish.hover();
@@ -407,9 +412,9 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(page).toHaveURL(
     /\/protocol\/localization\?table=open&missing=fr$/,
   );
-  await expect(page.getByText('Showing 6 of 35 strings')).toBeVisible();
+  await expect(page.getByText('Showing 3 of 35 strings')).toBeVisible();
   const table = translationTable(page);
-  await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
+  await expect(table.locator('th[scope="row"]')).toHaveText(WELCOME_TEXT_ROWS);
   // A stage is headed by its position, its name in the default language and
   // its interface, and its name links to it.
   await expect(
@@ -433,27 +438,18 @@ test('adds a language, keeps the default language from being removed, translates
   await page.keyboard.type('Bienvenue dans l’étude');
   await page.keyboard.press('Enter');
   await expect(translationCell(page, 'Content', 'French')).toBeFocused();
+  // Text of more than one line, as the welcome text is in English, takes a
+  // new line on Enter; Ctrl+Enter moves on, and in the last row checks the
+  // text where it is.
   await page.keyboard.type('Merci de votre participation.');
   await page.keyboard.press('Enter');
-  await expect(translationCell(page, 'Stage name', 'French', 2)).toBeFocused();
-  await page.keyboard.type('Fin');
-  await page.keyboard.press('Enter');
-  await expect(
-    translationCell(page, 'Closing text', 'French', 2),
-  ).toBeFocused();
-  // Text of more than one line, as the closing text is in English, takes a
-  // new line on Enter, so Ctrl+Enter moves on.
-  await page.keyboard.type('Merci encore.');
+  await expect(translationCell(page, 'Content', 'French')).toBeFocused();
+  await page.keyboard.type('Cela prend dix minutes.');
   await page.keyboard.press('Control+Enter');
-  await expect(
-    translationCell(page, 'Finished text', 'French', 2),
-  ).toBeFocused();
-  await page.keyboard.type('Vos réponses sont enregistrées.');
-  await page.keyboard.press('Control+Enter');
-  await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
+  await expect(table.locator('th[scope="row"]')).toHaveText(WELCOME_TEXT_ROWS);
   await expect(
     table.getByRole('columnheader', { name: /^French/ }),
-  ).toContainText('29 of 35 translated');
+  ).toContainText('32 of 35 translated');
 
   // Saving writes every translation at once, and goes back to the Languages
   // page and to the link that opened the table.
@@ -464,16 +460,8 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(page).toHaveURL(/\/protocol\/localization$/);
   await expect(openTable).toBeFocused();
   const translated = await readProtocolJson(page, (protocol) =>
-    Object.hasOwn(finishContent(protocol) ?? {}, 'fr'),
+    Object.hasOwn(welcomeContent(protocol) ?? {}, 'fr'),
   );
-  expect(finishContent(translated)).toEqual({
-    en: '# All done\n\nThanks again.',
-    fr: 'Merci encore.',
-  });
-  expect(finishedContent(translated)).toEqual({
-    en: '# Finished\n\nYour answers are saved.',
-    fr: 'Vos réponses sont enregistrées.',
-  });
   expect(translated.stages[0]?.label).toEqual({
     en: STAGE_NAME,
     fr: 'Bienvenue',
@@ -483,9 +471,10 @@ test('adds a language, keeps the default language from being removed, translates
     fr: 'Bienvenue dans l’étude',
   });
   expect(welcomeContent(translated)).toEqual({
-    en: 'Thank you for taking part.',
-    fr: 'Merci de votre participation.',
+    en: WELCOME_TEXT_EN,
+    fr: 'Merci de votre participation.\n\nCela prend dix minutes.',
   });
+  expect(translated.stages.at(-1)).toEqual(added.stages.at(-1));
   await expect(french).toContainText('35 of 35 strings translated');
   await expect(
     french.getByText('Missing translations', { exact: true }),
@@ -642,7 +631,7 @@ test('changes the protocol’s languages from the language chooser stage, and th
   expect(saved.stages[0]?.label).toEqual({ en: 'Pick a language' });
 });
 
-/** In English and French, with only the researcher's six texts untranslated. */
+/** In English and French, with only the six stage texts untranslated. */
 function bilingualProtocol(): CurrentProtocol {
   const english = englishProtocol();
   return CurrentProtocolSchema.parse({
