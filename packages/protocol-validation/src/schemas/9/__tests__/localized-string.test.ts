@@ -286,8 +286,8 @@ describe('line breaks', () => {
   const breaks = {
     'a line feed': 'First\nsecond',
     'a carriage return': 'First\rsecond',
-    'a line separator': 'First second',
-    'a paragraph separator': 'First second',
+    'a line separator': 'First\u2028second',
+    'a paragraph separator': 'First\u2029second',
     'a trailing line feed': 'First second\n',
   };
 
@@ -312,7 +312,7 @@ describe('line breaks', () => {
 
 describe('asOneLine', () => {
   it('replaces each run of line breaks and the spaces around it with one space', () => {
-    expect(asOneLine('First \n\n  second\r\nthird fourth')).toBe(
+    expect(asOneLine('First \n\n  second\r\nthird\u2028fourth')).toBe(
       'First second third fourth',
     );
   });

@@ -287,7 +287,7 @@ describe('v8 to v9 localization migration', () => {
   });
 
   it('joins the lines of text declared one line, and leaves text of several lines as it was', () => {
-    const broken = (text: string) => `${text} \n\n second\r\nthird \n`;
+    const broken = (text: string) => `${text} \n\n second\r\nthird\u2028\n`;
     const document = schema8Protocol(broken);
     const migrated = migrateProtocol(document, 9);
     const hits = collectLocalizedStrings(migrated).filter(

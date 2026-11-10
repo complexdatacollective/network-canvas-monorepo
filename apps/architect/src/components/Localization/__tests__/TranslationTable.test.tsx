@@ -370,7 +370,7 @@ describe('TranslationTable', () => {
 
     await user.click(cell('2', 'Page heading', 'French'));
     await user.keyboard('Merci{Shift>}{Enter}{/Shift}');
-    await user.paste('\n  beaucoup !');
+    await user.paste('\n  beaucoup\u2028!');
     await save(user);
     expect(stageTitle(store, 1)).toEqual({
       en: 'Thank you',
