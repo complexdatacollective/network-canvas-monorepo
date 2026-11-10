@@ -5,10 +5,6 @@ import {
 } from '@codaco/shared-consts';
 
 import { isBlankMessage, isBlankText } from '../../localization/blankText.ts';
-import {
-  findDuplicateOptionLabels,
-  labelComparisonKey,
-} from '../../localization/duplicateLabels.ts';
 import { DYNAMIC_VALUE_MARKER } from '../../localization/dynamicValueMessages.ts';
 import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
@@ -200,66 +196,6 @@ const removeContradictionsOf = (
       const variable = variables[variableId];
       if (isRecord(variable) && isRecord(variable.validation)) {
         Reflect.deleteProperty(variable.validation, rule);
-      }
-    }
-  }
-};
-
-/**
- * Schema 9 refuses two options of one attribute that a participant would read
- * the same way in any of the protocol's languages (`findDuplicateOptionLabels`),
- * which schema 8 allowed. The first option keeps its label; each later one
- * that repeats it has its value added in parentheses, or its position where
- * the value reads the same as the label or is not text, and a number after
- * that where the result would still repeat another label. Values are never
- * changed, so answers already recorded keep their meaning.
- */
-const distinguishDuplicateOptionLabels = (
-  codebook: unknown,
-  localization: LocalizationDeclaration,
-) => {
-  for (const variables of variableRecordsOf(codebook)) {
-    for (const variable of Object.values(variables)) {
-      if (!isRecord(variable) || !Array.isArray(variable.options)) continue;
-      const { options } = variable;
-      // Each pass makes one label distinct, so the passes are bounded by the
-      // labels and languages there are.
-      for (;;) {
-        const [duplicate] = findDuplicateOptionLabels(options, localization);
-        if (duplicate === undefined) break;
-        const option: unknown = options[duplicate.index];
-        if (!isRecord(option) || !isRecord(option.label)) break;
-        const { value } = option;
-        const position = String(duplicate.index + 1);
-        // `duplicate.text` and every label compared below are markdown source,
-        // so the value is written as markdown that reads literally, and
-        // compared in that form: a label that is its own value, escaped,
-        // reads the same as the value.
-        const valueText =
-          typeof value === 'string' ? escapeMarkdownText(value) : undefined;
-        const suffix =
-          valueText !== undefined &&
-          labelComparisonKey(valueText) !== labelComparisonKey(duplicate.text)
-            ? valueText
-            : position;
-        const taken = new Set(
-          options.flatMap((other: unknown, index) => {
-            if (index === duplicate.index || !isRecord(other)) return [];
-            const label = other.label;
-            const text = isRecord(label) ? label[duplicate.locale] : undefined;
-            return typeof text === 'string'
-              ? [labelComparisonKey(messageText(text))]
-              : [];
-          }),
-        );
-        let text = `${duplicate.text} (${suffix})`;
-        for (let count = 2; taken.has(labelComparisonKey(text)); count += 1) {
-          text = `${duplicate.text} (${suffix} ${count})`;
-        }
-        option.label = {
-          ...option.label,
-          [duplicate.locale]: escapeMessageText(text),
-        };
       }
     }
   }
@@ -1288,7 +1224,6 @@ const migrationV8toV9 = createMigration({
 - If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
 - Ordinal and categorical option values must now be unique. Where existing options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.
 - The rules for ordinal and categorical option values are now stricter. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. An empty value is replaced by the option's label or, when there is none, by "Option" followed by the option's position. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.
-- Two options of one attribute can no longer have labels that read the same. Where they did, the first option keeps its label and each later one has its value added in parentheses, or its position where the value reads the same as the label or is not text, such as "Yes (2)". Option values are not changed.
 - Several places that accepted empty text, or text made up only of spaces, now require some text:
   - On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other's text, or "Other" for the label and "Please specify" for the question.
   - On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".
@@ -1345,9 +1280,6 @@ const migrationV8toV9 = createMigration({
       if (change.kind === 'set') Reflect.set(container, key, change.value);
       else Reflect.deleteProperty(container, key);
     }
-
-    // Once every label is localized and holds text.
-    distinguishDuplicateOptionLabels(migrated.codebook, localization);
 
     // The interview's own words for what the protocol uses, recorded in
     // English like the rest of its text, from the protocol as migrated (an

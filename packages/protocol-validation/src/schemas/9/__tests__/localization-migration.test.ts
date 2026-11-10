@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { expectCommittedRefusal } from '../../../__tests__/refusedCommittedProtocols.ts';
 import { dynamicValueNamesIn } from '../../../localization/dynamicValueMessages.ts';
 import {
   escapeMessageText,
@@ -256,8 +257,8 @@ describe('v8 to v9 localization migration', () => {
   });
 
   it('round-trips text that MessageFormat treats as syntax', () => {
-    const special = (text: string) =>
-      `${text}: {braces} it's 'quoted' '{both}' don't }{`;
+    // Short enough that a stage name stays within the length one may have.
+    const special = (text: string) => `${text}: {b} it's 'q' '{b}' don't }{`;
     const document = schema8Protocol(special);
     const migrated = migrateProtocol(document, 9);
 
@@ -285,7 +286,8 @@ describe('v8 to v9 localization migration', () => {
 
   it("keeps braces and the fork's {{fieldName}} literal where text may now show values", () => {
     const document = schema8Protocol(
-      (text) => `${text} {{fieldName}} {name} {name, select, other {x}}`,
+      // Short enough that a stage name stays within the length one may have.
+      (text) => `${text} {{f}} {n} {n, select, other {x}}`,
     );
     const migrated = migrateProtocol(document, 9);
     const sites = collectLocalizedStrings(migrated).filter(
@@ -907,6 +909,9 @@ describe('committed schema 8 protocols', () => {
       const schema8 = migrateProtocol(protocol, 8, {
         name: path.basename(file, '.netcanvas'),
       });
+      if (expectCommittedRefusal(file, () => migrateProtocol(schema8, 9))) {
+        return;
+      }
       const migrated = migrateProtocol(schema8, 9);
 
       const result = await validateProtocol(migrated);

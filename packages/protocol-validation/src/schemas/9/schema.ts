@@ -41,7 +41,6 @@ export * from './interface-owned-options.ts';
 export * from './stages/index.ts';
 export * from './variables/index.ts';
 
-import { findDuplicateOptionLabels } from '../../localization/duplicateLabels.ts';
 import { findEmptyTextPaths } from './built-in-wording.ts';
 // Import what we need for the ProtocolSchema
 import type { Codebook, NodeDefinition } from './codebook/index.ts';
@@ -56,7 +55,6 @@ import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { ProtocolStructureSchema } from './protocol-structure.ts';
 import { CATEGORICAL_BIN_MAX_BINS } from './stages/categorical-bin.ts';
 import type { Prompt, Stage } from './stages/index.ts';
-import { findDuplicateDiseaseLabels } from './stages/narrative-pedigree.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
 import {
   ComponentTypes,
@@ -698,51 +696,6 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     }
   }
 
-  // An attribute's options are answers a participant chooses between, so no
-  // two may read the same in any language a participant can see, fallback
-  // included: the rule a Narrative Pedigree's disease labels are held to.
-  if (localization) {
-    const codebooks: [StageSubject, Record<string, unknown> | undefined][] = [
-      ...(['node', 'edge'] as const).flatMap((entity) =>
-        Object.entries(protocol.codebook[entity] ?? {}).map(
-          ([type, definition]): [
-            StageSubject,
-            Record<string, unknown> | undefined,
-          ] => [{ entity, type }, definition.variables],
-        ),
-      ),
-      [{ entity: 'ego' }, protocol.codebook.ego?.variables],
-    ];
-    for (const [subject, variables] of codebooks) {
-      for (const [variableId, variable] of Object.entries(variables ?? {})) {
-        if (typeof variable !== 'object' || variable === null) continue;
-        const options: unknown = Reflect.get(variable, 'options');
-        for (const duplicate of findDuplicateOptionLabels(
-          options,
-          localization,
-        )) {
-          const language =
-            localization.locales.length > 1 ? ` (${duplicate.locale})` : '';
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Options of attribute "${variableNameFor(protocol, subject, variableId)}" contain duplicate label "${duplicate.text}"${language}. Each option needs a label participants can tell apart.`,
-            path: [
-              'codebook',
-              ...(subject.entity === 'ego'
-                ? ['ego']
-                : [subject.entity, subject.type]),
-              'variables',
-              variableId,
-              'options',
-              duplicate.index,
-              'label',
-            ],
-          });
-        }
-      }
-    }
-  }
-
   // The values each stage's text shows: bound, available where shown,
   // guarded where they can be missing, and shown by every translation
   // wherever the default-language text shows them.
@@ -1354,24 +1307,10 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     }
 
     // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree
-    // stage; disease attributes must resolve on the source node type; disease
-    // labels must differ in every language a participant can see them in.
+    // stage; disease attributes must resolve on the source node type. (Two
+    // diseases whose labels read the same are refused only of a protocol
+    // handed over: `labelCollisionIssues`.)
     if (stage.type === 'NarrativePedigree') {
-      if (localization) {
-        for (const duplicate of findDuplicateDiseaseLabels(
-          stage.diseases,
-          localization,
-        )) {
-          const language =
-            localization.locales.length > 1 ? ` (${duplicate.locale})` : '';
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Diseases contain duplicate label "${duplicate.text}"${language}`,
-            path: ['stages', stageIndex, 'diseases', duplicate.index, 'label'],
-          });
-        }
-      }
-
       const sourceStageIndex = protocol.stages.findIndex(
         (s) => s.id === stage.sourceStageId,
       );

@@ -1,5 +1,6 @@
 import { ensureError } from '@codaco/shared-consts';
 
+import { labelCollisionIssues } from '../localization/labelCollisions.ts';
 import { findBuiltInWordingProblems } from '../schemas/9/built-in-wording.ts';
 import { findFinishStageTextProblems } from '../schemas/9/finish-stage-text.ts';
 import {
@@ -91,14 +92,31 @@ const builtInWordingIssues = (
         message: `Network Canvas has no built-in wording in the protocol's default language (${problem.locale}), so this text must be written in it, or a language Network Canvas has wording in made the default.`,
       }));
 
+/**
+ * What a protocol being written may hold but a protocol handed over may not:
+ * text in its default language that Network Canvas has no wording in it for
+ * (the finish stage's closing and finished text, and its other built-in
+ * wording), and two labels a participant chooses between that read the same
+ * (`labelCollisionIssues`), which a change of the protocol's languages can
+ * leave through fallback.
+ */
+export const releaseIssues = (
+  protocol: VersionedProtocol,
+): ProtocolValidationIssue[] =>
+  protocol.schemaVersion !== 9
+    ? []
+    : [
+        ...finishStageTextIssues(protocol),
+        ...builtInWordingIssues(protocol),
+        ...labelCollisionIssues(protocol),
+      ];
+
 export type ValidateProtocolOptions = {
   /**
    * The protocol is still being written, in an editor: allow what a protocol
-   * may lack until it leaves the editor, which is text in its default
-   * language that Network Canvas has no wording in it for: the finish stage's
-   * closing and finished text, and its other built-in wording. Everything that reads a protocol
-   * someone has handed over — an import, a publish, a download — leaves this
-   * off.
+   * may hold until it leaves the editor (`releaseIssues`). Everything that
+   * reads a protocol someone has handed over — an import, a publish, a
+   * download — leaves this off.
    */
   draft?: boolean;
 };
@@ -124,24 +142,19 @@ const validateProtocol = async (
     const prototypeKeyIssues = findPrototypeCodebookKeys(protocol);
     const result = await VersionedProtocolSchema.safeParseAsync(protocol);
 
-    const releaseIssues =
-      result.success && !draft
-        ? [
-            ...finishStageTextIssues(result.data),
-            ...builtInWordingIssues(result.data),
-          ]
-        : [];
+    const handedOverIssues =
+      result.success && !draft ? releaseIssues(result.data) : [];
 
     if (
       result.success &&
       prototypeKeyIssues.length === 0 &&
-      releaseIssues.length === 0
+      handedOverIssues.length === 0
     ) {
       return { success: true, data: result.data };
     }
 
     const schemaIssues = result.success
-      ? releaseIssues
+      ? handedOverIssues
       : result.error.issues.map((issue) => ({
           code: issue.code,
           // Zod paths are PropertyKey[]; symbols cannot appear in protocol JSON but

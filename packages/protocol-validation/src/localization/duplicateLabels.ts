@@ -27,6 +27,8 @@ export type DuplicateLabel = Readonly<{
   locale: LocaleTag;
   /** The text a participant reading `locale` sees. */
   text: string;
+  /** The earlier label's text in `locale`, which reads the same. */
+  firstText: string;
 }>;
 
 type Localization = Pick<LocalizationDeclaration, 'defaultLocale' | 'locales'>;
@@ -97,16 +99,24 @@ export const findDuplicateLocalizedLabels = (
     Array.from(new Set(readable.flatMap((label) => Object.keys(label ?? {}))));
   const duplicates: DuplicateLabel[] = [];
   for (const locale of locales) {
-    const seen = new Map<string, number>();
+    const seen = new Map<string, { index: number; text: string }>();
     readable.forEach((label, index) => {
       if (label === undefined) return;
       const text = labelTextIn(label, locale, localization);
       if (text === undefined) return;
       const key = labelComparisonKey(text);
       if (key === '') return;
-      const firstIndex = seen.get(key);
-      if (firstIndex === undefined) seen.set(key, index);
-      else duplicates.push({ index, firstIndex, locale, text });
+      const first = seen.get(key);
+      if (first === undefined) seen.set(key, { index, text });
+      else {
+        duplicates.push({
+          index,
+          firstIndex: first.index,
+          locale,
+          text,
+          firstText: first.text,
+        });
+      }
     });
   }
   return duplicates;

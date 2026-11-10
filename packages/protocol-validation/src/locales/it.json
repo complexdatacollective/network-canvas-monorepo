@@ -115,6 +115,5 @@
   "protocolValidation.rule.requiredAcceptsNull": "Consenti risposte esplicitamente mancanti",
   "protocolValidation.rule.sameAs": "Uguale a un altro attributo",
   "protocolValidation.rule.unique": "Valore univoco",
-  "protocolValidation.migrationNotes.schema9.nonBlankText": "Diversi punti che accettavano testo vuoto, o composto solo da spazi, ora richiedono del testo:",
-  "protocolValidation.migrationNotes.schema9.duplicateOptionLabels": "Due opzioni dello stesso attributo non possono più avere etichette che si leggono allo stesso modo. Dove ciò accadeva, la prima opzione mantiene la sua etichetta e a ciascuna delle successive viene aggiunto tra parentesi il proprio valore, oppure, se il valore si legge allo stesso modo dell’etichetta o non è testo, la propria posizione, ad esempio \"Yes (2)\". I valori delle opzioni non vengono modificati."
+  "protocolValidation.migrationNotes.schema9.nonBlankText": "Diversi punti che accettavano testo vuoto, o composto solo da spazi, ora richiedono del testo:"
 }

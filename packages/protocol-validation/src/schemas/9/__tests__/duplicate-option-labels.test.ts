@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { findDuplicateOptionLabels } from '../../../localization/duplicateLabels.ts';
+import { DUPLICATE_LABEL } from '../../../localization/labelCollisions.ts';
+import { MigrationResultInvalidError } from '../../../migration/errors.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
@@ -67,14 +69,39 @@ const withCategoryLabels = (
   };
 };
 
+/** What refuses `protocol` when it is handed over, as an import is. */
 const issuesFor = async (protocol: unknown) => {
-  const result = await validateProtocol(withFinishStage(protocol), {
-    draft: true,
-  });
+  const result = await validateProtocol(withFinishStage(protocol));
   return result.success ? [] : result.error.issues;
 };
 
 describe('two options of one attribute that read the same', () => {
+  // A change of the protocol's languages can leave two labels reading the
+  // same through fallback, and is made anyway: the researcher is shown the
+  // collision, and the protocol cannot leave its editor until it is fixed.
+  it('are allowed in a protocol being written', async () => {
+    const protocol = withCategoryLabels({ en: 'Friend' }, { en: 'friend' });
+    const result = await validateProtocol(withFinishStage(protocol), {
+      draft: true,
+    });
+    expect(result.error?.issues).toBeUndefined();
+  });
+
+  it('refuse a protocol handed over, naming the attribute, both labels and the language', async () => {
+    expect(
+      await issuesFor(
+        withCategoryLabels({ en: 'Friend', fr: 'Ami' }, { en: ' friend' }),
+      ),
+    ).toEqual([
+      {
+        code: DUPLICATE_LABEL,
+        path: [...CATEGORY_PATH, 'options', 1, 'label'],
+        message:
+          'Options 1 and 2 of attribute "Category" have labels that read the same: "Friend" and " friend" (en). Each option needs a label participants can tell apart.',
+      },
+    ]);
+  });
+
   it('accepts options a participant can tell apart in every language', async () => {
     expect(
       await issuesFor(
@@ -177,89 +204,72 @@ describe('the option sets an interface owns', () => {
 });
 
 describe('migrating options whose labels read the same from schema 8', () => {
-  const migrated = () =>
-    migrateProtocol(
-      asSchema8Protocol(
-        withCategoryLabels({ en: 'Friend' }, { en: 'friend' }, [
+  // A label is what a participant chooses between, so Network Canvas does
+  // not reword one: the researcher tells the options apart in the version of
+  // Architect that made the protocol, and opens it again.
+  /** The issues a migration of `protocol` to schema 9 is refused for. */
+  const refusalOf = (protocol: unknown) => {
+    try {
+      migrateProtocol(asSchema8Protocol(protocol), 9);
+    } catch (error) {
+      expect(error).toBeInstanceOf(MigrationResultInvalidError);
+      return JSON.parse(
+        (error instanceof Error ? error.message : '').replace(
+          'Migration resulted in invalid protocol: ',
+          '',
+        ),
+      ) as unknown;
+    }
+    return undefined;
+  };
+
+  it('is refused, naming the attribute and both options', () => {
+    expect(
+      refusalOf(withCategoryLabels({ en: 'Friend' }, { en: 'friend' })),
+    ).toEqual([
+      {
+        code: DUPLICATE_LABEL,
+        path: [...CATEGORY_PATH, 'options', 1, 'label'],
+        message:
+          'Options 1 and 2 of attribute "Category" have labels that read the same: "Friend" and "friend". Each option needs a label participants can tell apart.',
+      },
+    ]);
+  });
+
+  it('is refused for the two answers of a yes-or-no attribute', () => {
+    expect(
+      refusalOf(
+        withCategoryLabels({ en: 'Friend' }, { en: 'Family' }, [
           { en: 'Yes' },
           { en: 'yes' },
         ]),
       ),
-      9,
-    );
+    ).toEqual([
+      expect.objectContaining({
+        path: [
+          'codebook',
+          'ego',
+          'variables',
+          'consent',
+          'options',
+          1,
+          'label',
+        ],
+        message: expect.stringContaining(
+          'of attribute "Consent" have labels that read the same: "Yes" and "yes".',
+        ),
+      }),
+    ]);
+  });
 
-  it('keeps the first label and adds the later option’s value to its own', () => {
-    const variable = migrated().codebook.node?.person?.variables?.category;
+  it('leaves labels a participant can tell apart as they are', () => {
+    const variable = migrateProtocol(
+      asSchema8Protocol(withCategoryLabels({ en: 'Friend' }, { en: 'Family' })),
+      9,
+    ).codebook.node?.person?.variables?.category;
     expect(variable?.type === 'categorical' ? variable.options : null).toEqual([
       { label: { en: 'Friend' }, value: 'friend' },
-      { label: { en: 'friend (family)' }, value: 'family' },
+      { label: { en: 'Family' }, value: 'family' },
     ]);
-  });
-
-  it('adds its position where the value is not text', () => {
-    const variable = migrated().codebook.ego?.variables?.consent;
-    expect(
-      variable?.type === 'boolean' && 'options' in variable
-        ? variable.options
-        : null,
-    ).toEqual([
-      { label: { en: 'Yes' }, value: true },
-      { label: { en: 'yes (2)' }, value: false },
-    ]);
-  });
-
-  it('adds its position where the value reads as the label, and a number where that is taken too', () => {
-    const protocol = withCategoryLabels({ en: 'Family' }, { en: 'family' });
-    const options = protocol.codebook.node.person.variables.category.options;
-    protocol.codebook.node.person.variables.category.options = [
-      ...options,
-      { label: { en: 'Family (2)' }, value: 'other' },
-    ];
-    const variable = migrateProtocol(asSchema8Protocol(protocol), 9).codebook
-      .node?.person?.variables?.category;
-    expect(
-      variable?.type === 'categorical'
-        ? variable.options.map(({ label }) => label)
-        : null,
-    ).toEqual([{ en: 'Family' }, { en: 'family (2 2)' }, { en: 'Family (2)' }]);
-  });
-
-  // Option labels are markdown, so a value written into one has to read as
-  // typed: `*star*` must not turn into emphasis, nor `[link](…)` into a link.
-  it('adds a value the way it reads, whatever markdown or message syntax it holds', async () => {
-    const protocol = withCategoryLabels({ en: 'Same' }, { en: 'Same' });
-    const values = [
-      'first',
-      '*star*',
-      '_edge_',
-      '[link](http://x.test)',
-      '{brace}',
-    ];
-    protocol.codebook.node.person.variables.category.options = [
-      ...values.map((value) => ({ label: { en: 'Same' }, value })),
-      // Labels are markdown already: one that shows its own value, escaped,
-      // reads the same as that value, which cannot tell the two apart.
-      { label: { en: '\\*x\\*' }, value: 'x' },
-      { label: { en: '\\*x\\*' }, value: '*x*' },
-    ];
-    const upgraded = migrateProtocol(asSchema8Protocol(protocol), 9);
-    const variable = upgraded.codebook.node?.person?.variables?.category;
-
-    expect(
-      variable?.type === 'categorical'
-        ? variable.options.map(({ label }) => label.en)
-        : null,
-    ).toEqual([
-      'Same',
-      'Same (\\*star\\*)',
-      'Same (\\_edge\\_)',
-      'Same (\\[link\\](http://x.test))',
-      "Same ('{'brace'}')",
-      '\\*x\\*',
-      '\\*x\\* (7)',
-    ]);
-    expect((await validateProtocol(upgraded, { draft: true })).success).toBe(
-      true,
-    );
   });
 });

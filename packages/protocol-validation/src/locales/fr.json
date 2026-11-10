@@ -115,6 +115,5 @@
   "protocolValidation.rule.requiredAcceptsNull": "Autoriser les réponses explicitement manquantes",
   "protocolValidation.rule.sameAs": "Identique à un autre attribut",
   "protocolValidation.rule.unique": "Valeur unique",
-  "protocolValidation.migrationNotes.schema9.nonBlankText": "Plusieurs endroits qui acceptaient un texte vide, ou composé uniquement d’espaces, exigent désormais du texte :",
-  "protocolValidation.migrationNotes.schema9.duplicateOptionLabels": "Deux options d’un même attribut ne peuvent plus avoir de libellés qui se lisent de la même façon. Lorsque c’était le cas, la première option conserve son libellé et chacune des suivantes voit son libellé complété, entre parenthèses, par sa valeur ou, si la valeur se lit de la même façon que le libellé ou n’est pas du texte, par sa position, par exemple \"Yes (2)\". Les valeurs d’option ne sont pas modifiées."
+  "protocolValidation.migrationNotes.schema9.nonBlankText": "Plusieurs endroits qui acceptaient un texte vide, ou composé uniquement d’espaces, exigent désormais du texte :"
 }

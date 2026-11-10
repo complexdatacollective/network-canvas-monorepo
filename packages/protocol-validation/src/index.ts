@@ -419,9 +419,7 @@ export {
   type FieldTextProblem,
   type FieldTextRule,
   findFieldTextProblems,
-  isStageLabelTooLong,
   lacksDefaultLanguageText,
-  STAGE_LABEL_MAX_LENGTH,
 } from './localization/fieldTextRules.ts';
 // The rule every set of labels a participant tells apart is held to: a
 // Narrative Pedigree's diseases and an attribute's options.
@@ -430,3 +428,10 @@ export {
   findDuplicateLocalizedLabels,
   findDuplicateOptionLabels,
 } from './localization/duplicateLabels.ts';
+// Where a protocol breaks that rule, which refuses a protocol handed over but
+// not one being written.
+export {
+  DUPLICATE_LABEL,
+  findLabelCollisions,
+  type LabelCollision,
+} from './localization/labelCollisions.ts';

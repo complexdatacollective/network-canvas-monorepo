@@ -16,7 +16,10 @@ import {
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
 import { findPrototypeCodebookKeys } from '../validation/prototypeCodebookKeys.ts';
-import { formatProtocolValidationIssues } from '../validation/validate-protocol.ts';
+import {
+  formatProtocolValidationIssues,
+  releaseIssues,
+} from '../validation/validate-protocol.ts';
 import {
   MigrationResultInvalidError,
   SchemaVersionDetectionError,
@@ -146,6 +149,22 @@ function migrateAndValidate(
       `Migration to version ${targetVersion} resulted in a version ${postValidationResult.data.schemaVersion} protocol`,
       targetVersion,
     );
+  }
+  // A migrated protocol is one handed over, not one being written, so it is
+  // held to what a protocol may hold only while it is written
+  // (`releaseIssues`): two options that read the same, which earlier schemas
+  // allowed, refuse it here, although a draft at the target version may hold
+  // them. A document already at the target version is not migrated, and is
+  // left to the caller, which knows whether it is a draft: Architect restores
+  // its own drafts through here.
+  if (detectedVersion < targetVersion) {
+    const handedOverIssues = releaseIssues(postValidationResult.data);
+    if (handedOverIssues.length > 0) {
+      throw new MigrationResultInvalidError(
+        `Migration resulted in invalid protocol: ${JSON.stringify(handedOverIssues, null, 2)}`,
+        targetVersion,
+      );
+    }
   }
 
   return { protocol: postValidationResult.data, sessionSteps };

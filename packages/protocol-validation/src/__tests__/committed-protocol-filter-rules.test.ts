@@ -7,6 +7,7 @@ import { migrateProtocol } from '../migration/migrate-protocol.ts';
 import { filterRuleSchema } from '../schemas/9/filters/filter.ts';
 import { CURRENT_SCHEMA_VERSION } from '../schemas/index.ts';
 import { extractProtocol } from '../utils/extractProtocol.ts';
+import { expectCommittedRefusal } from './refusedCommittedProtocols.ts';
 
 /**
  * Every filter rule in every protocol this repository has, held to the ruling
@@ -132,12 +133,13 @@ describe('filter rules in committed protocols', () => {
         return;
       }
 
+      const migrate = () =>
+        migrateProtocol(protocol, CURRENT_SCHEMA_VERSION, {
+          name: path.basename(file, '.netcanvas'),
+        });
+      if (expectCommittedRefusal(file, migrate)) return;
       const migrated =
-        version === CURRENT_SCHEMA_VERSION
-          ? protocol
-          : migrateProtocol(protocol, CURRENT_SCHEMA_VERSION, {
-              name: path.basename(file, '.netcanvas'),
-            });
+        version === CURRENT_SCHEMA_VERSION ? protocol : migrate();
 
       const rules: { where: string; rule: unknown }[] = [];
       collectRules(migrated, '$', rules);
