@@ -124,6 +124,52 @@ describe('the interface text a protocol must hold', () => {
     ).toEqual([['interfaceText', 'buttons', 'yes']]);
   });
 
+  /**
+   * The base protocol with Yes held as undefined, and the search group held
+   * as undefined: keys an object in memory may hold that a saved file drops.
+   */
+  const withUndefinedText = () => {
+    const protocol = baseProtocol();
+    const held = protocol.interfaceText ?? {};
+    return {
+      protocol: {
+        ...protocol,
+        localization: { defaultLocale: 'en', locales: ['en'] },
+        interfaceText: {
+          ...held,
+          buttons: { ...held.buttons, yes: undefined },
+          search: undefined,
+        },
+      },
+      held,
+    };
+  };
+
+  it('refuses an entry or a group it shows held as undefined, as if absent', async () => {
+    const { protocol } = withUndefinedText();
+
+    for (const draft of [false, true]) {
+      expect(
+        (await interfaceTextIssues(protocol, { draft })).map(
+          ({ path }) => path,
+        ),
+      ).toEqual([
+        ['interfaceText', 'buttons', 'yes'],
+        ['interfaceText', 'search'],
+      ]);
+    }
+  });
+
+  it('fills an entry or a group held as undefined, as if absent', () => {
+    const { protocol, held } = withUndefinedText();
+    const filled = interfaceTextFor(protocol);
+
+    expect(held.buttons?.yes).toBeDefined();
+    expect(filled.buttons?.yes).toEqual(held.buttons?.yes);
+    expect(filled.search).toEqual(held.search);
+    expect(withInterfaceText(protocol).interfaceText).toEqual(filled);
+  });
+
   it('still accepts a group, or an entry, the protocol does not use', async () => {
     const protocol = baseProtocol();
     const unused = interfaceTextFor({

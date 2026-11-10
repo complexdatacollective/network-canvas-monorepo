@@ -715,6 +715,8 @@ type MissingInterfaceText = Readonly<{
  * must hold all of it, as the interview shows these words in the protocol's
  * language from what it holds. An entry may hold no text yet where the rules
  * for supplied wording allow (see `findEmptyTextPaths`), but it must be there.
+ * A group or entry held as undefined is missing, as `interfaceTextFor` fills
+ * it and a saved file drops it.
  */
 export const findMissingInterfaceText = (
   protocol: ProtocolDocument,
@@ -725,7 +727,9 @@ export const findMissingInterfaceText = (
       const current = Object.hasOwn(held, group) ? held[group] : undefined;
       if (!isRecord(current)) return [{ group, entries: keys }];
       return keys
-        .filter((key) => !Object.hasOwn(current, key))
+        .filter(
+          (key) => !Object.hasOwn(current, key) || current[key] === undefined,
+        )
         .map((key) => ({ group, key, entries: keys }));
     },
   );
