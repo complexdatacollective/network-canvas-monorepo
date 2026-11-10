@@ -112,16 +112,22 @@ const versionLines = async () => ({
 });
 
 describe('TranslationTable: texts with versions', () => {
-  it('shows the text, its versions folded to a pill, until the cell has focus', () => {
+  it('shows the text, a line for each of its versions, until the cell has focus', () => {
     renderTable();
 
+    const cell = messageCell('English').closest('td');
+    // The text is nothing but a choice between versions, so each is written
+    // out under its case; the words are readable before the cell is edited.
+    const versions = [
+      ...(cell?.querySelectorAll('[data-version-summary]') ?? []),
+    ];
+    expect(versions.map((version) => version.textContent)).toEqual([
+      'About the participantYour brothers and sisters',
+      'About someone elseBrothers and sisters of Name',
+    ]);
     expect(messageCell('English')).toHaveAccessibleDescription(
-      /Participant or someone else/,
+      /About the participantYour brothers and sisters/,
     );
-    const pill = messageCell('English')
-      .closest('td')
-      ?.querySelector('[data-token="isYou"]');
-    expect(pill).toHaveTextContent('Participant or someone else');
     expect(screen.queryByRole('textbox', { name: cellName('English') })).toBe(
       null,
     );

@@ -391,8 +391,10 @@ const FORMAT: MessageDocumentFormat = { markdown: false, singleLine: true };
 
 /**
  * A message's words in `locale`, read-only, each placeholder drawn as the
- * pill the editor draws and each set of versions folded to the pill of what
- * it chooses by, as the editor shows it folded: what a summary or an
+ * pill the editor draws. A set of versions that is the whole of the message,
+ * or of one version of it, is written out, a labelled line for each version,
+ * as the editor lists it open; a set among words is folded to the pill of
+ * what it chooses by, as the editor shows it folded. What a summary or an
  * unfocused table cell shows.
  */
 export function LocalizedMessageVersionsSummary({
@@ -421,6 +423,7 @@ export function LocalizedMessageVersionsSummary({
       multiline={false}
       valueLabel={valueLabel}
       switchSummary={labels.switchSummary}
+      versionLabel={labels.versionLabel}
     />
   );
 }

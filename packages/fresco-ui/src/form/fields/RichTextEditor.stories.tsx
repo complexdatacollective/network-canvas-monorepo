@@ -516,6 +516,42 @@ export const KeyboardFocusRing: Story = {
   },
 };
 
+/**
+ * An invalid field keeps its focus ring: its red border says it is wrong, not
+ * which field the keyboard is in.
+ */
+export const InvalidKeyboardFocusRing: Story = {
+  render: (args) => (
+    <div className="flex w-[480px] flex-col gap-4">
+      <RichTextEditorField
+        {...args}
+        aria-label="Notes"
+        aria-invalid
+        singleLine
+        value={singleLineContent}
+        onChange={action('onChange')}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const editor = await within(canvasElement).findByRole('textbox', {
+      name: 'Notes',
+    });
+    const field = editor.parentElement?.parentElement;
+    if (!field) throw new Error('No field');
+
+    await userEvent.tab();
+    await waitFor(() => expect(editor).toHaveFocus());
+    await waitFor(() => {
+      expect(getComputedStyle(field).outlineStyle).toBe('solid');
+      expect(getComputedStyle(field).outlineWidth).toBe('2px');
+    });
+    await expect(getComputedStyle(field).borderTopColor).not.toBe(
+      'rgba(0, 0, 0, 0)',
+    );
+  },
+};
+
 const wrappingLine: JSONContent = {
   type: 'doc',
   content: [

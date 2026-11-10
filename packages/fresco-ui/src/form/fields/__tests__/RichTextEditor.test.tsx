@@ -1319,8 +1319,8 @@ describe('versions that are the whole message', () => {
     expect(screen.queryByRole('textbox', { name: 'When it is 1' })).toBeNull();
   });
 
-  it('folds a set of versions inside one of its versions', async () => {
-    const NESTED = {
+  describe('with versions inside versions', () => {
+    const NAMED = (content: JSONContent[] = []) => ({
       type: 'versions',
       attrs: {
         label: 'Wording that changes with whether you are named',
@@ -1331,33 +1331,206 @@ describe('versions that are the whole message', () => {
             label: 'If named',
             content: [{ type: 'text', text: 'Add them' }],
           },
-          { key: 'unnamed', label: 'If not named', content: [] },
+          { key: 'unnamed', label: 'If not named', content },
         ],
       },
-    };
-    renderField({
-      value: lineOf({
-        type: 'versions',
-        attrs: {
-          label: 'Wording that changes with a number',
-          versions: [
-            { key: 'one', label: 'When it is 1', content: [NESTED] },
-            {
-              key: 'other',
-              label: 'When it is 0, 2, 3, …',
-              content: [{ type: 'text', text: 'many items' }],
-            },
-          ],
-        },
-      }),
     });
 
-    await waitFor(expectBothRowsShown);
-    // The outer set is listed; the one inside its first version is a pill.
-    const inner = await screen.findByRole('button', { name: 'Named' });
-    expect(inner).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('textbox', { name: 'If named' })).toBeNull();
-    expect(document.querySelectorAll('[data-always-open]')).toHaveLength(1);
+    // The first version is only another set of versions; the second has
+    // another among words.
+    const nestedValue = lineOf({
+      type: 'versions',
+      attrs: {
+        label: 'Wording that changes with a number',
+        versions: [
+          {
+            key: 'one',
+            label: 'When it is 1',
+            content: [NAMED()],
+          },
+          {
+            key: 'other',
+            label: 'When it is 0, 2, 3, …',
+            content: [{ type: 'text', text: 'Add ' }, NAMED()],
+          },
+        ],
+      },
+    });
+
+    it('lists a set that is the whole of a version, naming each row by every case it is for', async () => {
+      renderField({ value: nestedValue });
+
+      const named = await screen.findByRole('textbox', {
+        name: 'When it is 1, If named',
+      });
+      expect(named).toBeVisible();
+      expect(named).toHaveTextContent('Add them');
+      expect(
+        screen.getByRole('textbox', { name: 'When it is 1, If not named' }),
+      ).toBeVisible();
+      // Two sets are listed open: the field's, and the one that is a whole
+      // version.
+      expect(document.querySelectorAll('[data-always-open]')).toHaveLength(2);
+    });
+
+    it('folds a set among words in a version to a pill, at any depth', async () => {
+      renderField({ value: nestedValue });
+      await screen.findByRole('textbox', { name: 'When it is 1, If named' });
+
+      const pill = screen.getByRole('button', { name: 'Named' });
+      expect(pill).toHaveAttribute('aria-expanded', 'false');
+      // Its rows stay mounted, hidden, named by the cases around them too.
+      expect(
+        screen.queryByRole('textbox', {
+          name: 'When it is 0, 2, 3, …, If named',
+        }),
+      ).toBeNull();
+      expect(
+        screen.getByRole('textbox', {
+          name: 'When it is 0, 2, 3, …, If named',
+          hidden: true,
+        }),
+      ).toBeInTheDocument();
+      expect(document.querySelectorAll('[data-always-open]')).toHaveLength(2);
+    });
+
+    it('is a frame for its rows, not a stop of its own, for Tab', async () => {
+      const { user } = renderField({ value: nestedValue });
+      const named = await screen.findByRole('textbox', {
+        name: 'When it is 1, If named',
+      });
+      const notNamed = screen.getByRole('textbox', {
+        name: 'When it is 1, If not named',
+      });
+      const frame = screen.getByRole('textbox', { name: 'When it is 1' });
+      expect(frame).toHaveAttribute('tabindex', '-1');
+
+      screen.getByRole('textbox', { name: 'Minimum not reached' }).focus();
+      await user.tab();
+      expect(named).toHaveFocus();
+      await user.tab();
+      expect(notNamed).toHaveFocus();
+    });
+
+    it('steps through every row in reading order with the arrow keys, across the levels', async () => {
+      // Every row empty, so each caret is at both ends of its line.
+      const empty = (versions: { key: string; label: string }[]) =>
+        versions.map((version) => ({ ...version, content: [] }));
+      const { user } = renderField({
+        value: lineOf({
+          type: 'versions',
+          attrs: {
+            label: 'Wording that changes with a number',
+            versions: [
+              {
+                key: 'one',
+                label: 'When it is 1',
+                content: [
+                  {
+                    type: 'versions',
+                    attrs: {
+                      label: 'Whether named',
+                      versions: empty([
+                        { key: 'named', label: 'If named' },
+                        { key: 'unnamed', label: 'If not named' },
+                      ]),
+                    },
+                  },
+                ],
+              },
+              { key: 'other', label: 'When it is 0, 2, 3, …', content: [] },
+            ],
+          },
+        }),
+      });
+      const named = await screen.findByRole('textbox', {
+        name: 'When it is 1, If named',
+      });
+      const notNamed = screen.getByRole('textbox', {
+        name: 'When it is 1, If not named',
+      });
+      const other = screen.getByRole('textbox', {
+        name: 'When it is 0, 2, 3, …',
+      });
+
+      named.focus();
+      await user.keyboard('{ArrowDown}');
+      await waitFor(() => expect(notNamed).toHaveFocus());
+      // Out of the inner set, to the next row of the outer one.
+      await user.keyboard('{ArrowDown}');
+      await waitFor(() => expect(other).toHaveFocus());
+      await user.keyboard('{ArrowUp}');
+      await waitFor(() => expect(notNamed).toHaveFocus());
+      await user.keyboard('{ArrowUp}{ArrowUp}');
+      await waitFor(() => expect(named).toHaveFocus());
+      // Nothing above the first row.
+      await user.keyboard('{ArrowUp}');
+      expect(named).toHaveFocus();
+    });
+
+    it('takes Escape out one level at a time, hiding nothing, then leaves it to a dialog', async () => {
+      const { user } = renderField({ value: nestedValue });
+      const line = screen.getByRole('textbox', { name: 'Minimum not reached' });
+      const named = await screen.findByRole('textbox', {
+        name: 'When it is 1, If named',
+      });
+      const frame = screen.getByRole('textbox', { name: 'When it is 1' });
+      const reachedDocument = vi.fn();
+      document.addEventListener('keydown', reachedDocument);
+      try {
+        await user.click(named);
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(frame).toHaveFocus());
+        await user.keyboard('{Escape}');
+        await waitFor(() => expect(line).toHaveFocus());
+        expect(
+          screen.getByRole('textbox', { name: 'When it is 1, If named' }),
+        ).toBeVisible();
+        expectBothRowsShown();
+        expect(
+          reachedDocument.mock.calls.filter(
+            ([event]) => (event as KeyboardEvent).key === 'Escape',
+          ),
+        ).toHaveLength(0);
+
+        await user.keyboard('{Escape}');
+        expect(
+          reachedDocument.mock.calls.filter(
+            ([event]) => (event as KeyboardEvent).key === 'Escape',
+          ),
+        ).toHaveLength(1);
+      } finally {
+        document.removeEventListener('keydown', reachedDocument);
+      }
+    });
+
+    it('writes an edit in an inner row into that row of that version', async () => {
+      const onChange = vi.fn();
+      const { user } = renderField({ value: nestedValue, onChange });
+      const row = await screen.findByRole('textbox', {
+        name: 'When it is 1, If named',
+      });
+
+      await user.type(row, '!');
+
+      await waitFor(() => expect(onChange).toHaveBeenCalled());
+      const written = onChange.mock.calls.at(-1)?.[0] as JSONContent;
+      const outer = written.content?.[0]?.content?.[0]?.attrs?.versions as {
+        key: string;
+        content: JSONContent[];
+      }[];
+      const inner = outer[0]?.content[0]?.attrs?.versions as {
+        key: string;
+        content: JSONContent[];
+      }[];
+      expect(inner[0]?.content.map((node) => node.text).join('')).toMatch(/!/);
+      expect(inner[1]?.content).toEqual([]);
+      // The sibling outer version is untouched.
+      expect(outer[1]?.content[0]).toEqual({
+        type: 'text',
+        text: 'Add ',
+      });
+    });
   });
 
   it('is reached by Tab one row at a time, and the arrow keys step between rows', async () => {
@@ -1398,6 +1571,113 @@ describe('versions that are the whole message', () => {
     expect(first).toHaveFocus();
   });
 
+  describe('when the versions change while the field is shown', () => {
+    const empty = (...keys: string[]) =>
+      lineOf({
+        type: 'versions',
+        attrs: {
+          label: 'Wording that changes with a number',
+          versions: keys.map((key) => ({
+            key,
+            label: `When ${key}`,
+            content: [],
+          })),
+        },
+      });
+
+    // As switching to a language with other plural categories does.
+    function Host({ first, then }: { first: JSONContent; then: JSONContent }) {
+      const [value, setValue] = useState<JSONContent | undefined>(first);
+      return (
+        <>
+          <RichTextEditorField
+            id="minimum"
+            name="minimum"
+            aria-describedby="minimum-hint"
+            aria-label="Minimum not reached"
+            singleLine
+            versions
+            openWholeMessageVersions
+            changeMode="input"
+            value={value}
+            onChange={() => undefined}
+          />
+          <button type="button" onClick={() => setValue(then)}>
+            Change language
+          </button>
+        </>
+      );
+    }
+    const rowNamed = (key: string) =>
+      screen.getByRole('textbox', { name: `When ${key}` });
+
+    it('steps to a row that was added, from the row before it and back', async () => {
+      const user = withSafeTypingIntoRichText(userEvent.setup());
+      render(
+        <Host
+          first={empty('one', 'other')}
+          then={empty('one', 'few', 'other')}
+        />,
+      );
+      await screen.findByRole('textbox', { name: 'When one' });
+
+      await user.click(screen.getByRole('button', { name: 'Change language' }));
+      await screen.findByRole('textbox', { name: 'When few' });
+
+      rowNamed('few').focus();
+      await user.keyboard('{ArrowDown}');
+      await waitFor(() => expect(rowNamed('other')).toHaveFocus());
+      await user.keyboard('{ArrowUp}');
+      await waitFor(() => expect(rowNamed('few')).toHaveFocus());
+      await user.keyboard('{ArrowUp}');
+      await waitFor(() => expect(rowNamed('one')).toHaveFocus());
+    });
+
+    it('steps past a row that was removed, and cannot reach it', async () => {
+      const user = withSafeTypingIntoRichText(userEvent.setup());
+      render(
+        <Host first={empty('one', 'few', 'other')} then={empty('other')} />,
+      );
+      await screen.findByRole('textbox', { name: 'When few' });
+      const removed = rowNamed('few');
+
+      await user.click(screen.getByRole('button', { name: 'Change language' }));
+      await waitFor(() => expect(removed).not.toBeInTheDocument());
+
+      rowNamed('other').focus();
+      await user.keyboard('{ArrowUp}');
+      // Nothing above the only row left; focus stays and nothing throws.
+      expect(rowNamed('other')).toHaveFocus();
+      await user.keyboard('{ArrowDown}');
+      expect(rowNamed('other')).toHaveFocus();
+    });
+
+    it('steps between the rows of a set that replaced another of the same kind', async () => {
+      const user = withSafeTypingIntoRichText(userEvent.setup());
+      render(
+        <Host
+          first={empty('one', 'other')}
+          then={empty('other', 'one', 'many')}
+        />,
+      );
+      await screen.findByRole('textbox', { name: 'When one' });
+      await user.click(screen.getByRole('button', { name: 'Change language' }));
+      await waitFor(() =>
+        expect(
+          screen
+            .getAllByRole('textbox', { name: /^When / })
+            .map((row) => row.getAttribute('aria-label')),
+        ).toEqual(['When other', 'When one', 'When many']),
+      );
+
+      rowNamed('other').focus();
+      await user.keyboard('{ArrowDown}');
+      await waitFor(() => expect(rowNamed('one')).toHaveFocus());
+      await user.keyboard('{ArrowDown}');
+      await waitFor(() => expect(rowNamed('many')).toHaveFocus());
+    });
+  });
+
   it('keeps Escape from hiding the words, and from reaching a dialog around them', async () => {
     const { user } = renderField({ value: lineOf(COUNT_VERSIONS) });
     const line = await screen.findByRole('textbox', {
@@ -1432,6 +1712,48 @@ describe('versions that are the whole message', () => {
     } finally {
       document.removeEventListener('keydown', reachedDocument);
     }
+  });
+});
+
+describe('typing into an ordinary field that holds text', () => {
+  // The versions options must not reach a field with no versions: a field
+  // that is clicked into and typed in takes its words where it always has
+  // (jsdom lays nothing out, so user-event puts the caret at the start).
+  it.each([
+    ['a plain field', {}],
+    [
+      'a field that lists whole-message versions',
+      { versions: true, openWholeMessageVersions: true },
+    ],
+  ])('puts the words typed at the start of %s', async (_name, options) => {
+    const onChange = vi.fn();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(
+      <RichTextEditorField
+        id="question"
+        name="question"
+        aria-label="Question text"
+        aria-describedby="question-hint"
+        singleLine
+        changeMode="input"
+        value={documentWithText}
+        onChange={onChange}
+        {...options}
+      />,
+    );
+    const editor = await screen.findByRole('textbox', {
+      name: 'Question text',
+    });
+
+    await user.type(editor, 'Also: ');
+
+    await waitFor(() =>
+      expect(editor).toHaveTextContent('Also: Existing content'),
+    );
+    const written = onChange.mock.calls.at(-1)?.[0] as JSONContent;
+    expect(
+      written.content?.[0]?.content?.map((node) => node.text).join(''),
+    ).toBe('Also: Existing content');
   });
 });
 

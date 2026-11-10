@@ -93,6 +93,7 @@ import {
   type RichTextInsertMenuItem,
 } from './richText/InsertMenu';
 import {
+  hasVersionRowBeside,
   NestedEditingContext,
   VERSIONS_NODE,
   VersionsNode,
@@ -681,7 +682,7 @@ export type {
   RichTextVersion,
   RichTextVersionsAttributes,
 } from './richText/versionsNode';
-export { VERSIONS_NODE };
+export { hasVersionRowBeside, VERSIONS_NODE };
 
 const swallowKeystroke = () => true;
 

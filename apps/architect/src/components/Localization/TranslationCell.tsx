@@ -11,6 +11,7 @@ import {
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { hasVersionRowBeside } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { useFormFieldScope } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import {
@@ -484,20 +485,6 @@ const CELL_EDITOR_CLASSES = cx(
 
 const EDITABLE_SELECTOR = '[contenteditable="true"]';
 
-/**
- * Whether `editable` is one of several versions listed open, with another
- * above (-1) or below (1) it. The field steps between those itself, so the
- * arrow key is not a request to leave the cell.
- */
-const hasVersionBeside = (editable: HTMLElement, delta: -1 | 1) => {
-  const group = editable.closest('[data-versions-element]');
-  if (group === null || !group.hasAttribute('data-always-open')) return false;
-  const rows = [...group.querySelectorAll('[data-version]')].filter(
-    (row) => row.closest('[data-versions-element]') === group,
-  );
-  return rows[rows.indexOf(editable) + delta] !== undefined;
-};
-
 const focusEditorIn = (cell: HTMLElement | null) =>
   cell
     ?.querySelector<HTMLElement>(EDITABLE_SELECTOR)
@@ -603,7 +590,13 @@ const useEditedCell = ({
       (event.key === 'ArrowUp' && isAtEdge(editable, 'start')) ||
       (event.key === 'ArrowDown' && isAtEdge(editable, 'end'))
     ) {
-      if (hasVersionBeside(editable, event.key === 'ArrowUp' ? -1 : 1)) return;
+      // Versions listed open step between their own rows first.
+      if (
+        editable.matches('[data-version]') &&
+        hasVersionRowBeside(editable, event.key === 'ArrowUp' ? -1 : 1)
+      ) {
+        return;
+      }
       if (onMove(event.key === 'ArrowUp' ? -1 : 1)) {
         event.preventDefault();
         event.stopPropagation();

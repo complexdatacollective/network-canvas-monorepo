@@ -30,6 +30,8 @@ import {
   useState,
 } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { TokenPillContent, tokenPillClasses } from '../../../TokenPill';
 import { cx } from '../../../utils/cva';
 import { contentInSchema, readableContent } from './fitToSchema';
@@ -92,6 +94,16 @@ type NestedEditing = Readonly<{
 
 export const NestedEditingContext = createContext<NestedEditing | null>(null);
 
+/**
+ * The labels of the versions a version's editor sits inside, outermost first:
+ * what a nested row's editor names itself by besides its own label, so that
+ * it says which case it is the wording for.
+ */
+const VersionPathContext = createContext<readonly string[]>([]);
+
+/** Each version's editor by its element, for stepping between rows. */
+const versionEditorsByElement = new WeakMap<HTMLElement, Editor>();
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -153,6 +165,47 @@ const isWholeMessageVersions = (doc: ProseMirrorNode): boolean => {
   return sets === 1 && !other;
 };
 
+/**
+ * The rows that hold words, in the order they read, among the versions listed
+ * open that `row` is one of: every row of the outermost such element that is
+ * not itself only another set of versions listed open.
+ */
+const wordRowsAround = (row: HTMLElement): HTMLElement[] => {
+  let outermost: Element | null = row.closest('[data-always-open]');
+  while (outermost?.parentElement) {
+    const outer: Element | null =
+      outermost.parentElement.closest('[data-always-open]');
+    if (outer === null) break;
+    outermost = outer;
+  }
+  if (outermost === null) return [];
+  return [...outermost.querySelectorAll<HTMLElement>('[data-version]')].filter(
+    (each) => each.querySelector('[data-always-open]') === null,
+  );
+};
+
+/**
+ * Whether the rows listed open have one beside `row`, above (-1) or below
+ * (1) it, which the arrow keys step to.
+ */
+export const hasVersionRowBeside = (row: HTMLElement, delta: -1 | 1) => {
+  const rows = wordRowsAround(row);
+  return rows[rows.indexOf(row) + delta] !== undefined;
+};
+
+/** Moves the caret to the row beside `row`; false when there is none. */
+const stepToVersionRow = (row: HTMLElement, delta: -1 | 1): boolean => {
+  const rows = wordRowsAround(row);
+  const target = rows[rows.indexOf(row) + delta];
+  const editor = target && versionEditorsByElement.get(target);
+  if (!editor || editor.isDestroyed) return false;
+  editor
+    .chain()
+    .focus(delta === 1 ? 'start' : 'end')
+    .run();
+  return true;
+};
+
 /** Asks an element's view to open, from the line's keyboard handling. */
 const EXPAND_EVENT = 'versions:expand';
 /** Asks an element's view to fold back to its pill. */
@@ -184,6 +237,9 @@ const versionClasses = cx('contents');
 // In a field too narrow for the label beside a line of words, the label sits
 // above its line instead (see the grid's own classes).
 const versionLabelClasses = cx('py-1 select-none @max-sm/rich-text:pb-0');
+// Inside another version the rows are always stacked, so the whole message
+// reads as an outline: a case, then what it shows, indented under it.
+const nestedVersionLabelClasses = cx('py-1 pb-0 select-none');
 
 const versionLabelTextClasses = cx('text-xs font-semibold text-current/70');
 
@@ -220,20 +276,16 @@ function VersionEditor({
   version,
   onChange,
   onEscape,
-  onStep,
-  onEditor,
+  stepsAmongRows,
 }: {
   version: RichTextVersion;
   onChange: (content: JSONContent[]) => void;
   onEscape: () => void;
   /**
-   * Moves the caret to the version above (-1) or below (1), when the element
-   * lists its versions permanently; returns whether it moved. Undefined where
-   * the arrow keys are left to the line around the versions.
+   * Whether the arrow keys step to the row above or below, as they do among
+   * versions listed open; otherwise they are left to the line around them.
    */
-  onStep?: (delta: -1 | 1) => boolean;
-  /** Hands the element this version's editor, and takes it back on unmount. */
-  onEditor: (editor: Editor | null) => void;
+  stepsAmongRows: boolean;
 }) {
   const nested = useContext(NestedEditingContext);
   // The content this editor last wrote into the line, to tell its own edit
@@ -241,12 +293,24 @@ function VersionEditor({
   const writtenRef = useRef<readonly JSONContent[] | null>(null);
   const onChangeRef = useRef(onChange);
   const onEscapeRef = useRef(onEscape);
-  const onStepRef = useRef(onStep);
+  const stepsRef = useRef(stepsAmongRows);
   useLayoutEffect(() => {
     onChangeRef.current = onChange;
     onEscapeRef.current = onEscape;
-    onStepRef.current = onStep;
+    stepsRef.current = stepsAmongRows;
   });
+  const intl = useAppIntl();
+  const parentLabels = useContext(VersionPathContext);
+  // Which case this row is wording for, from the outermost down: a row inside
+  // another version names both, so it is not mistaken for its namesakes.
+  const labels = useMemo(
+    () => [...parentLabels, version.label],
+    [parentLabels, version.label],
+  );
+  const accessibleName =
+    labels.length === 1
+      ? version.label
+      : intl.formatList(labels, { type: 'unit', style: 'short' });
 
   const extensions = nested?.extensions;
   const schema = useMemo(
@@ -276,13 +340,13 @@ function VersionEditor({
         attributes: {
           'role': 'textbox',
           'aria-multiline': 'false',
-          'aria-label': version.label,
+          'aria-label': accessibleName,
           'data-version': version.key,
         },
         handleKeyDown: (view, event) => {
           if (
             (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
-            onStepRef.current !== undefined &&
+            stepsRef.current &&
             !event.shiftKey &&
             !event.altKey &&
             !event.ctrlKey &&
@@ -295,7 +359,7 @@ function VersionEditor({
             const atEdge =
               selection.empty &&
               selection.head === (up ? 1 : doc.content.size - 1);
-            if (atEdge && onStepRef.current(up ? -1 : 1)) {
+            if (atEdge && stepToVersionRow(view.dom, up ? -1 : 1)) {
               event.preventDefault();
               return true;
             }
@@ -345,21 +409,23 @@ function VersionEditor({
     editor?.setEditable(nested?.editable ?? false, false);
   }, [editor, nested?.editable]);
 
-  const onEditorRef = useRef(onEditor);
-  useLayoutEffect(() => {
-    onEditorRef.current = onEditor;
-  });
   useEffect(() => {
-    onEditorRef.current(editor);
-    return () => onEditorRef.current(null);
+    if (!editor) return undefined;
+    const element = editor.view.dom;
+    versionEditorsByElement.set(element, editor);
+    return () => {
+      versionEditorsByElement.delete(element);
+    };
   }, [editor]);
 
-  // A set of versions inside this version is inside a sentence or a switch,
-  // however the field's own is shown: it folds to a pill.
-  const insideVersion = useMemo(
-    () => (nested === null ? null : { ...nested, openWholeMessage: false }),
-    [nested],
-  );
+  // A row that is only another set of versions listed open is a frame for
+  // its rows, not a place to type: Tab goes on to them.
+  const holdsOpenVersions = useEditorState({
+    editor,
+    selector: ({ editor: current }) =>
+      current !== null && isWholeMessageVersions(current.state.doc),
+  });
+  const framesRows = holdsOpenVersions && (nested?.openWholeMessage ?? false);
 
   useEffect(() => {
     editor?.setOptions({
@@ -368,21 +434,41 @@ function VersionEditor({
         attributes: {
           'role': 'textbox',
           'aria-multiline': 'false',
-          'aria-label': version.label,
+          'aria-label': accessibleName,
           'data-version': version.key,
+          ...(framesRows && { tabindex: '-1' }),
         },
       },
     });
-  }, [editor, version.key, version.label]);
+  }, [editor, version.key, accessibleName, framesRows]);
 
   return (
     <span className={versionClasses}>
-      <span aria-hidden className={versionLabelClasses}>
+      <span
+        aria-hidden
+        className={
+          parentLabels.length > 0
+            ? nestedVersionLabelClasses
+            : versionLabelClasses
+        }
+      >
         <span className={versionLabelTextClasses}>{version.label}</span>
       </span>
-      <NestedEditingContext.Provider value={insideVersion}>
-        <EditorContent editor={editor} className={versionEditorClasses} />
-      </NestedEditingContext.Provider>
+      <VersionPathContext.Provider value={labels}>
+        <EditorContent
+          editor={editor}
+          // A frame for rows draws none of the row's own box: the rows in it
+          // are the boxes.
+          className={cx(
+            versionEditorClasses,
+            framesRows &&
+              'bg-transparent focus-within:outline-0 [&_.tiptap]:p-0',
+            // Rows inside a version take what room there is: each level of
+            // nesting has already used some of it.
+            parentLabels.length > 0 && 'min-w-0',
+          )}
+        />
+      </VersionPathContext.Provider>
     </span>
   );
 }
@@ -416,7 +502,7 @@ function VersionsView({
       isWholeMessageVersions(current.state.doc),
   });
   const alwaysOpen = (nested?.openWholeMessage ?? false) && isWholeMessage;
-  const versionEditors = useRef<(Editor | null)[]>([]);
+  const insideVersion = useContext(VersionPathContext).length > 0;
 
   // Open while the element is selected, until Escape or leaving the field
   // folds it back to its pill; selecting it again after the caret has been
@@ -473,19 +559,6 @@ function VersionsView({
     setFolded(true);
     selectSelf();
   };
-  /** Moves into the neighbouring version, with the caret where it came from. */
-  const stepFrom = (index: number) => (delta: -1 | 1) => {
-    const target = versionEditors.current[index + delta];
-    if (target === undefined || target === null || target.isDestroyed) {
-      return false;
-    }
-    target
-      .chain()
-      .focus(delta === 1 ? 'start' : 'end')
-      .run();
-    return true;
-  };
-
   return (
     <NodeViewWrapper
       ref={wrapperRef}
@@ -549,9 +622,13 @@ function VersionsView({
           expanded ? 'inline-grid' : 'hidden',
           'max-w-full grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-3 gap-y-2 align-baseline',
           // The field's text area is the container. Its width, not the
-          // window's, decides when the rows stack.
-          '@max-sm/rich-text:w-full @max-sm/rich-text:grid-cols-[minmax(0,1fr)] @max-sm/rich-text:gap-y-1',
-          'border-primary/40 bg-primary/5 rounded-sm border border-dashed px-3 py-2',
+          // window's, decides when the rows stack; inside a version they
+          // always do, for the room each level of nesting would take.
+          insideVersion
+            ? 'w-full grid-cols-[minmax(0,1fr)] gap-y-1'
+            : '@max-sm/rich-text:w-full @max-sm/rich-text:grid-cols-[minmax(0,1fr)] @max-sm/rich-text:gap-y-1',
+          'border-primary/40 bg-primary/5 rounded-sm border border-dashed',
+          insideVersion ? 'px-2 py-1.5' : 'px-3 py-2',
           // With no pill to show it, the element being selected in the line
           // (what Escape in a row leaves it) is shown by its frame: whatever
           // is typed next replaces it.
@@ -565,10 +642,7 @@ function VersionsView({
             // A permanently open element has nothing to fold back to: Escape
             // hands the caret back to the line, with the element selected.
             onEscape={alwaysOpen ? selectSelf : foldToPill}
-            onStep={alwaysOpen ? stepFrom(index) : undefined}
-            onEditor={(versionEditor) => {
-              versionEditors.current[index] = versionEditor;
-            }}
+            stepsAmongRows={alwaysOpen}
             onChange={(content) => {
               const current = latest.current;
               updateAttributes({

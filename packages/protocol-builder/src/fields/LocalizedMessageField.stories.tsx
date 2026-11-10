@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
@@ -58,28 +58,99 @@ type Story = StoryObj<typeof meta>;
 
 /**
  * A message that is one choice, with a plural inside each of its versions:
- * the choice is the whole message, so its versions are listed open, one
- * labelled row each, with no pill to open. The number inside a version is a
- * piece of that version's text, and folds to a pill.
+ * each version that is nothing but another switch lists its own versions
+ * beneath it, so every case's wording is on screen, and each inner
+ * line is named by both cases it is for.
  */
 export const SelectAndPlural: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    const aboutYou = await canvas.findByRole('textbox', {
-      name: 'About the participant',
+    const one = await canvas.findByRole('textbox', {
+      name: 'About the participant, When it is 1',
     });
-    await expect(aboutYou).toBeVisible();
+    await expect(one).toBeVisible();
+    await expect(one).toHaveTextContent('Add your other biological parent');
     await expect(
-      canvas.getByRole('textbox', { name: 'About someone else' }),
+      canvas.getByRole('textbox', {
+        name: 'About the participant, When it is 0, 2, 3, …',
+      }),
     ).toBeVisible();
+    // The version about someone else is a number too, listed the same way.
     await expect(
-      canvas.getByRole('textbox', { name: 'About someone else' }),
+      canvas.getByRole('textbox', {
+        name: 'About someone else, When it is 1',
+      }),
     ).toHaveTextContent('Add another biological parent for “Name”');
+  },
+};
+
+const PARTNER_ARGUMENTS = {
+  named: { kind: 'select', cases: ['true'] },
+  personIsYou: { kind: 'select', cases: ['true'] },
+  partnerIsYou: { kind: 'select', cases: ['true'] },
+  partner: { kind: 'text' },
+} as const satisfies MessageArguments;
+
+/**
+ * The deepest message Network Canvas supplies: a choice inside a choice
+ * inside a choice, each the whole of the version above it. Every level is
+ * listed, so all four lines of wording show; no case is hidden behind a pill.
+ */
+export const ThreeLevelsDeep: Story = {
+  args: {
+    children: (
+      <Field<typeof LocalizedMessageField>
+        name="relationship.stillTogether"
+        component={LocalizedMessageField}
+        label="Still together question"
+        arguments={PARTNER_ARGUMENTS}
+        initialValue={{
+          'en-US':
+            '{named, select, true {{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}} other {Are they still together?}}',
+        }}
+        required={REQUIRED}
+      />
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const deepest = await canvas.findByRole('textbox', {
+      name: 'When the person has a name, When the person is someone else, When the partner is someone else',
+    });
+    await expect(deepest).toBeVisible();
+    await expect(deepest).toHaveTextContent(
+      'Are they still together with Partner’s name?',
+    );
     await expect(
-      within(aboutYou).getByRole('button', { name: 'Parents missing' }),
-    ).toHaveAttribute('aria-expanded', 'false');
+      canvasElement.querySelectorAll('[data-always-open]'),
+    ).toHaveLength(3);
+    await expect(
+      canvasElement.querySelector('[data-versions-pill]'),
+    ).toBeNull();
+
+    // The arrow keys read down through every line, across the levels.
+    const lines = canvasElement.querySelectorAll<HTMLElement>('[data-version]');
+    const leaves = [...lines].filter(
+      (line) => line.querySelector('[data-always-open]') === null,
+    );
+    await expect(leaves).toHaveLength(4);
+    let current = leaves[0];
+    current?.focus();
+    for (const leaf of leaves.slice(1)) {
+      // From the end of a line, Down goes to the next.
+      const selection = current?.ownerDocument.getSelection();
+      if (current && selection) {
+        selection.selectAllChildren(current);
+        selection.collapseToEnd();
+      }
+      await userEvent.keyboard('{ArrowDown}');
+      await waitFor(() => expect(leaf).toHaveFocus());
+      current = leaf;
+    }
   },
 };
 

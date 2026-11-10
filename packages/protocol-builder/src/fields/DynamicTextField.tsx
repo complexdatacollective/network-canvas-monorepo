@@ -994,6 +994,20 @@ function SummaryValueSpan({
 }
 
 /**
+ * The one set of versions a message is made of, with nothing but whitespace
+ * around it, or undefined when it is anything else.
+ */
+const wholeSwitch = (
+  nodes: readonly MessageNode[],
+): MessageSwitch | undefined => {
+  const only = nodes.filter(
+    (node) => !(node.kind === 'text' && node.text.trim() === ''),
+  );
+  const [one] = only;
+  return only.length === 1 && one?.kind === 'switch' ? one : undefined;
+};
+
+/**
  * A message's words, read-only, each value as the pill an editor shows and
  * each set of versions folded to the pill of the value it is on, as the
  * editor shows it folded: what it says in each case is written, and read, in
@@ -1006,6 +1020,7 @@ export function MessageNodesSummary({
   blockMarkdown = SECTION_MARKDOWN,
   valueLabel,
   switchSummary,
+  versionLabel,
 }: Readonly<{
   nodes: readonly MessageNode[];
   /** Whether the words are markdown, drawn here with their formatting. */
@@ -1022,6 +1037,14 @@ export function MessageNodesSummary({
   valueLabel: (argument: string) => string;
   /** What a set of versions' pill says. */
   switchSummary: (node: MessageSwitch) => string;
+  /**
+   * What a version of a set is called, for a set that is the whole of the
+   * message, or of one version of it: that set is written out, one labelled
+   * line for each version, instead of being folded to a pill, as the editor
+   * lists it open. A set among words is a pill either way. Without this,
+   * every set is a pill.
+   */
+  versionLabel?: (node: MessageSwitch, key: string) => string;
 }>) {
   const elements = multiline ? blockMarkdown : LABEL_MARKDOWN;
   const allowedElements = [...elements.allowedElements, 'span'];
@@ -1038,6 +1061,37 @@ export function MessageNodesSummary({
     levelNodes: readonly MessageNode[],
     plural: string | undefined,
   ): ReactNode {
+    const whole =
+      versionLabel === undefined ? undefined : wholeSwitch(levelNodes);
+    if (whole !== undefined && versionLabel !== undefined) {
+      return (
+        <span data-versions-summary="" className="flex flex-col gap-1.5">
+          {whole.versions.map((version) => (
+            <span
+              key={version.key}
+              data-version-summary={version.key}
+              className="flex flex-col"
+            >
+              <span className="text-xs font-semibold text-current/70">
+                {versionLabel(whole, version.key)}
+              </span>
+              <span
+                className={
+                  wholeSwitch(version.nodes)
+                    ? 'border-l border-current/20 pl-3'
+                    : undefined
+                }
+              >
+                {render(
+                  version.nodes,
+                  whole.type === 'plural' ? whole.argument : undefined,
+                )}
+              </span>
+            </span>
+          ))}
+        </span>
+      );
+    }
     const held: (string | MessageSwitch)[] = [];
     let source = '';
     for (const node of levelNodes) {
