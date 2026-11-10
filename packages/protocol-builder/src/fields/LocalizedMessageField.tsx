@@ -450,6 +450,7 @@ export type LocalizedMessageVersionsProps = Readonly<{
  * of text, its placeholders as pills, and a piece of text with a version for
  * each case (or for each kind of number) only where the text has one, folded
  * to a pill until it is opened, and able to hold another inside a version.
+ * Where the whole message is one such piece, its versions are listed open.
  * The insert menu (the toolbar button, or typing `{`) offers what the setting
  * declares: each placeholder, each select argument as wording for each of its
  * cases, and each number as wording that fits it, showing the number.
@@ -649,6 +650,9 @@ export function LocalizedMessageVersions({
       }}
       tokens={tokens}
       versions
+      // A message that is one plural or one choice is those versions and
+      // nothing else, so they are listed rather than folded to a pill.
+      openWholeMessageVersions
       insertMenu={insertMenu}
       value={content ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
       onChange={handleChange}

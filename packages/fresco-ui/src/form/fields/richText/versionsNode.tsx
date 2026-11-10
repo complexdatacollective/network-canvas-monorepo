@@ -7,6 +7,7 @@ import {
   mergeAttributes,
   Node as TiptapNode,
 } from '@tiptap/core';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { NodeSelection, Plugin } from '@tiptap/pm/state';
 import {
   EditorContent,
@@ -15,6 +16,7 @@ import {
   type ReactNodeViewProps,
   ReactNodeViewRenderer,
   useEditor,
+  useEditorState,
 } from '@tiptap/react';
 import { isEqual } from 'es-toolkit';
 import {
@@ -79,6 +81,13 @@ type NestedEditing = Readonly<{
    * back to its pill when they leave it.
    */
   active?: boolean;
+  /**
+   * Whether the versions of a message that is nothing but one set of versions
+   * stay open: the field is then those versions, and a pill hiding all of its
+   * words would be a field that shows nothing at rest. Versions inside a
+   * sentence, or inside another version, still fold to a pill.
+   */
+  openWholeMessage?: boolean;
 }>;
 
 export const NestedEditingContext = createContext<NestedEditing | null>(null);
@@ -128,6 +137,22 @@ const versionsAttributesOf = (
   versions: versionsIn(attrs.versions),
 });
 
+/**
+ * Whether `doc` is one line holding a single set of versions and nothing but
+ * whitespace around it: the field's whole message is that one switch.
+ */
+const isWholeMessageVersions = (doc: ProseMirrorNode): boolean => {
+  if (doc.childCount !== 1) return false;
+  const line = doc.child(0);
+  let sets = 0;
+  let other = false;
+  line.forEach((child) => {
+    if (child.type.name === VERSIONS_NODE) sets += 1;
+    else if (!(child.isText && (child.text ?? '').trim() === '')) other = true;
+  });
+  return sets === 1 && !other;
+};
+
 /** Asks an element's view to open, from the line's keyboard handling. */
 const EXPAND_EVENT = 'versions:expand';
 /** Asks an element's view to fold back to its pill. */
@@ -156,7 +181,9 @@ const versionClasses = cx('contents');
 // that wraps grew up out of the box. The label keeps the version's font for
 // its own line, padded as the version's is, so its smaller words still sit on
 // the baseline of the version's first line.
-const versionLabelClasses = cx('py-1 select-none');
+// In a field too narrow for the label beside a line of words, the label sits
+// above its line instead (see the grid's own classes).
+const versionLabelClasses = cx('py-1 select-none @max-sm/rich-text:pb-0');
 
 const versionLabelTextClasses = cx('text-xs font-semibold text-current/70');
 
@@ -193,10 +220,20 @@ function VersionEditor({
   version,
   onChange,
   onEscape,
+  onStep,
+  onEditor,
 }: {
   version: RichTextVersion;
   onChange: (content: JSONContent[]) => void;
   onEscape: () => void;
+  /**
+   * Moves the caret to the version above (-1) or below (1), when the element
+   * lists its versions permanently; returns whether it moved. Undefined where
+   * the arrow keys are left to the line around the versions.
+   */
+  onStep?: (delta: -1 | 1) => boolean;
+  /** Hands the element this version's editor, and takes it back on unmount. */
+  onEditor: (editor: Editor | null) => void;
 }) {
   const nested = useContext(NestedEditingContext);
   // The content this editor last wrote into the line, to tell its own edit
@@ -204,9 +241,11 @@ function VersionEditor({
   const writtenRef = useRef<readonly JSONContent[] | null>(null);
   const onChangeRef = useRef(onChange);
   const onEscapeRef = useRef(onEscape);
+  const onStepRef = useRef(onStep);
   useLayoutEffect(() => {
     onChangeRef.current = onChange;
     onEscapeRef.current = onEscape;
+    onStepRef.current = onStep;
   });
 
   const extensions = nested?.extensions;
@@ -240,7 +279,28 @@ function VersionEditor({
           'aria-label': version.label,
           'data-version': version.key,
         },
-        handleKeyDown: (_view, event) => {
+        handleKeyDown: (view, event) => {
+          if (
+            (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
+            onStepRef.current !== undefined &&
+            !event.shiftKey &&
+            !event.altKey &&
+            !event.ctrlKey &&
+            !event.metaKey
+          ) {
+            // Only from the line's first or last position, so a version that
+            // wraps is still walked a line at a time.
+            const { selection, doc } = view.state;
+            const up = event.key === 'ArrowUp';
+            const atEdge =
+              selection.empty &&
+              selection.head === (up ? 1 : doc.content.size - 1);
+            if (atEdge && onStepRef.current(up ? -1 : 1)) {
+              event.preventDefault();
+              return true;
+            }
+            return false;
+          }
           if (event.key !== 'Escape') return false;
           event.preventDefault();
           // Escape is spent here: a dialog around the text must not also
@@ -285,6 +345,22 @@ function VersionEditor({
     editor?.setEditable(nested?.editable ?? false, false);
   }, [editor, nested?.editable]);
 
+  const onEditorRef = useRef(onEditor);
+  useLayoutEffect(() => {
+    onEditorRef.current = onEditor;
+  });
+  useEffect(() => {
+    onEditorRef.current(editor);
+    return () => onEditorRef.current(null);
+  }, [editor]);
+
+  // A set of versions inside this version is inside a sentence or a switch,
+  // however the field's own is shown: it folds to a pill.
+  const insideVersion = useMemo(
+    () => (nested === null ? null : { ...nested, openWholeMessage: false }),
+    [nested],
+  );
+
   useEffect(() => {
     editor?.setOptions({
       editorProps: {
@@ -304,7 +380,9 @@ function VersionEditor({
       <span aria-hidden className={versionLabelClasses}>
         <span className={versionLabelTextClasses}>{version.label}</span>
       </span>
-      <EditorContent editor={editor} className={versionEditorClasses} />
+      <NestedEditingContext.Provider value={insideVersion}>
+        <EditorContent editor={editor} className={versionEditorClasses} />
+      </NestedEditingContext.Provider>
     </span>
   );
 }
@@ -329,6 +407,16 @@ function VersionsView({
   const active = nested?.active ?? true;
   const versionsId = useId();
   const wrapperRef = useRef<HTMLElement>(null);
+  // The versions are the whole message: nothing but whitespace is around the
+  // element in its line. Followed as the line is edited, since text typed
+  // beside the element makes it one in a sentence.
+  const isWholeMessage = useEditorState({
+    editor,
+    selector: ({ editor: current }) =>
+      isWholeMessageVersions(current.state.doc),
+  });
+  const alwaysOpen = (nested?.openWholeMessage ?? false) && isWholeMessage;
+  const versionEditors = useRef<(Editor | null)[]>([]);
 
   // Open while the element is selected, until Escape or leaving the field
   // folds it back to its pill; selecting it again after the caret has been
@@ -352,7 +440,7 @@ function VersionsView({
       setFocusWithin(false);
     }
   }
-  const expanded = (selected || focusWithin) && !folded;
+  const expanded = alwaysOpen || ((selected || focusWithin) && !folded);
 
   useEffect(() => {
     const element = wrapperRef.current;
@@ -385,6 +473,18 @@ function VersionsView({
     setFolded(true);
     selectSelf();
   };
+  /** Moves into the neighbouring version, with the caret where it came from. */
+  const stepFrom = (index: number) => (delta: -1 | 1) => {
+    const target = versionEditors.current[index + delta];
+    if (target === undefined || target === null || target.isDestroyed) {
+      return false;
+    }
+    target
+      .chain()
+      .focus(delta === 1 ? 'start' : 'end')
+      .run();
+    return true;
+  };
 
   return (
     <NodeViewWrapper
@@ -395,30 +495,35 @@ function VersionsView({
       aria-label={attributes.label}
       data-versions-element=""
       data-expanded={expanded || undefined}
+      data-always-open={alwaysOpen || undefined}
       className="mx-0.5"
     >
-      {/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus, jsx-a11y/click-events-have-key-events -- an atom in the editor's line: the caret reaches it as a node selection and the editor's Enter and Space shortcuts open it (openOrEnter), so it is not a tab stop of its own. */}
-      <span
-        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- see above: a <button> would be a tab stop inside the editable line.
-        role="button"
-        aria-expanded={expanded}
-        aria-controls={versionsId}
-        data-versions-pill=""
-        data-selected={selected || undefined}
-        // Open, the element shows its versions in the pill's place.
-        hidden={expanded}
-        className={tokenPillClasses(
-          cx('mx-0 cursor-pointer', expanded && 'hidden'),
-        )}
-        // Selects the element and opens it, also when it was already
-        // selected and folded.
-        onClick={() => {
-          selectSelf();
-          setFolded(false);
-        }}
-      >
-        <TokenPillContent label={attributes.summary ?? attributes.label} />
-      </span>
+      {!alwaysOpen && (
+        <>
+          {/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus, jsx-a11y/click-events-have-key-events -- an atom in the editor's line: the caret reaches it as a node selection and the editor's Enter and Space shortcuts open it (openOrEnter), so it is not a tab stop of its own. */}
+          <span
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- see above: a <button> would be a tab stop inside the editable line.
+            role="button"
+            aria-expanded={expanded}
+            aria-controls={versionsId}
+            data-versions-pill=""
+            data-selected={selected || undefined}
+            // Open, the element shows its versions in the pill's place.
+            hidden={expanded}
+            className={tokenPillClasses(
+              cx('mx-0 cursor-pointer', expanded && 'hidden'),
+            )}
+            // Selects the element and opens it, also when it was already
+            // selected and folded.
+            onClick={() => {
+              selectSelf();
+              setFolded(false);
+            }}
+          >
+            <TokenPillContent label={attributes.summary ?? attributes.label} />
+          </span>
+        </>
+      )}
       <span
         id={versionsId}
         // Folded versions stay mounted, so their editors keep their history
@@ -443,14 +548,27 @@ function VersionsView({
         className={cx(
           expanded ? 'inline-grid' : 'hidden',
           'max-w-full grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-3 gap-y-2 align-baseline',
+          // The field's text area is the container. Its width, not the
+          // window's, decides when the rows stack.
+          '@max-sm/rich-text:w-full @max-sm/rich-text:grid-cols-[minmax(0,1fr)] @max-sm/rich-text:gap-y-1',
           'border-primary/40 bg-primary/5 rounded-sm border border-dashed px-3 py-2',
+          // With no pill to show it, the element being selected in the line
+          // (what Escape in a row leaves it) is shown by its frame: whatever
+          // is typed next replaces it.
+          alwaysOpen && selected && 'border-primary border-solid',
         )}
       >
         {attributes.versions.map((version, index) => (
           <VersionEditor
             key={version.key}
             version={version}
-            onEscape={foldToPill}
+            // A permanently open element has nothing to fold back to: Escape
+            // hands the caret back to the line, with the element selected.
+            onEscape={alwaysOpen ? selectSelf : foldToPill}
+            onStep={alwaysOpen ? stepFrom(index) : undefined}
+            onEditor={(versionEditor) => {
+              versionEditors.current[index] = versionEditor;
+            }}
             onChange={(content) => {
               const current = latest.current;
               updateAttributes({
@@ -510,6 +628,11 @@ const openOrEnter = ({ editor }: { editor: Editor }) => {
  * its own: Enter or Space on the selected element opens it, or moves into its
  * versions once it is open, and Escape moves back out to the pill and folds
  * the element. Leaving the field folds it too.
+ *
+ * A field that opts in (`NestedEditing.openWholeMessage`) shows the versions
+ * of a message that is nothing else permanently open instead, one labelled
+ * row each, with no pill; the arrow keys step between the rows, and Escape
+ * moves out of a row to the line without hiding anything.
  */
 export const VersionsNode = TiptapNode.create({
   name: VERSIONS_NODE,
@@ -598,7 +721,13 @@ export const VersionsNode = TiptapNode.create({
           handleKeyDown: (_view, event) => {
             if (event.key !== 'Escape') return false;
             const element = selectedElement(editor);
-            if (element === null || !element.hasAttribute('data-expanded')) {
+            // Nothing to fold on an element that is always open: Escape is
+            // left to whatever surrounds the text.
+            if (
+              element === null ||
+              !element.hasAttribute('data-expanded') ||
+              element.hasAttribute('data-always-open')
+            ) {
               return false;
             }
             event.preventDefault();

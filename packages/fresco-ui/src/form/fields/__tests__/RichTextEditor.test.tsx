@@ -1109,6 +1109,332 @@ describe('versions folded to a pill', () => {
   });
 });
 
+describe('versions that are the whole message', () => {
+  const COUNT_VERSIONS = {
+    type: 'versions',
+    attrs: {
+      label: 'Wording that changes with a number',
+      summary: 'Number',
+      meta: { argument: 'count' },
+      versions: [
+        {
+          key: 'one',
+          label: 'When it is 1',
+          content: [{ type: 'text', text: 'one item' }],
+        },
+        {
+          key: 'other',
+          label: 'When it is 0, 2, 3, …',
+          content: [{ type: 'text', text: 'many items' }],
+        },
+      ],
+    },
+  };
+
+  const lineOf = (...content: JSONContent[]): JSONContent => ({
+    type: 'doc',
+    content: [{ type: 'paragraph', content }],
+  });
+
+  const renderField = ({
+    value,
+    open = true,
+    onChange = () => undefined,
+  }: {
+    value: JSONContent;
+    open?: boolean;
+    onChange?: (value: JSONContent | undefined) => void;
+  }) => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    const view = render(
+      <>
+        <RichTextEditorField
+          id="minimum"
+          name="minimum"
+          aria-describedby="minimum-hint"
+          aria-label="Minimum not reached"
+          singleLine
+          versions
+          openWholeMessageVersions={open}
+          tokens={[{ id: 'count', label: 'Number', inToolbar: false }]}
+          changeMode="input"
+          value={value}
+          onChange={onChange}
+        />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+    return { user, ...view };
+  };
+
+  const pillOf = () =>
+    document.querySelector<HTMLElement>('[data-versions-pill]');
+
+  const expectBothRowsShown = () => {
+    expect(screen.getByRole('textbox', { name: 'When it is 1' })).toBeVisible();
+    expect(
+      screen.getByRole('textbox', { name: 'When it is 0, 2, 3, …' }),
+    ).toBeVisible();
+  };
+
+  it('lists every version at rest, with nothing to open', async () => {
+    renderField({ value: lineOf(COUNT_VERSIONS) });
+
+    await waitFor(expectBothRowsShown);
+    expect(
+      screen.getByRole('textbox', { name: 'When it is 1' }),
+    ).toHaveTextContent('one item');
+    // No pill to open and nothing that claims to be expanded or collapsed.
+    expect(pillOf()).toBeNull();
+    expect(document.querySelector('[aria-expanded]')).toBeNull();
+    expect(
+      screen.getByRole('group', { name: 'Wording that changes with a number' }),
+    ).toBeVisible();
+  });
+
+  it('keeps them listed when the field is left', async () => {
+    const { user } = renderField({ value: lineOf(COUNT_VERSIONS) });
+    await waitFor(expectBothRowsShown);
+
+    await user.click(screen.getByRole('textbox', { name: 'When it is 1' }));
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    // Folding waits a task after the field loses focus.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expectBothRowsShown();
+    expect(pillOf()).toBeNull();
+  });
+
+  it('lists a single version as one labelled row', async () => {
+    renderField({
+      value: lineOf({
+        type: 'versions',
+        attrs: {
+          label: 'Wording that changes with a number',
+          versions: [
+            {
+              key: 'other',
+              label: 'Whatever the number',
+              content: [{ type: 'text', text: '个' }],
+            },
+          ],
+        },
+      }),
+    });
+
+    const row = await screen.findByRole('textbox', {
+      name: 'Whatever the number',
+    });
+    expect(row).toBeVisible();
+    expect(row).toHaveTextContent('个');
+    expect(screen.getAllByRole('textbox', { name: /^Whatever/ })).toHaveLength(
+      1,
+    );
+    expect(pillOf()).toBeNull();
+  });
+
+  it('writes an edit in a row as that version, leaving the others', async () => {
+    const onChange = vi.fn();
+    const { user } = renderField({
+      value: lineOf(COUNT_VERSIONS),
+      onChange,
+    });
+    const row = await screen.findByRole('textbox', { name: 'When it is 1' });
+
+    await user.type(row, '!');
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const written = onChange.mock.calls.at(-1)?.[0] as JSONContent;
+    const versions = written.content?.[0]?.content?.[0]?.attrs?.versions as {
+      key: string;
+      content: JSONContent[];
+    }[];
+    expect(versions.map(({ key }) => key)).toEqual(['one', 'other']);
+    expect(versions[0]?.content.map((node) => node.text).join('')).toMatch(/!/);
+    expect(versions[1]?.content).toEqual([
+      { type: 'text', text: 'many items' },
+    ]);
+  });
+
+  it('is folded to a pill unless the field asks for it open', async () => {
+    renderField({ value: lineOf(COUNT_VERSIONS), open: false });
+
+    await waitFor(() => expect(pillOf()).not.toBeNull());
+    expect(pillOf()).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('textbox', { name: 'When it is 1' })).toBeNull();
+  });
+
+  it('folds when the message is more than the versions', async () => {
+    const { rerender } = renderField({ value: lineOf(COUNT_VERSIONS) });
+    await waitFor(expectBothRowsShown);
+
+    const withTextBeside = lineOf(
+      { type: 'text', text: 'Add ' },
+      COUNT_VERSIONS,
+    );
+    rerender(
+      <>
+        <RichTextEditorField
+          id="minimum"
+          name="minimum"
+          aria-describedby="minimum-hint"
+          aria-label="Minimum not reached"
+          singleLine
+          versions
+          openWholeMessageVersions
+          tokens={[{ id: 'count', label: 'Number', inToolbar: false }]}
+          changeMode="input"
+          value={withTextBeside}
+          onChange={() => undefined}
+        />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+
+    await waitFor(() => expect(pillOf()).not.toBeNull());
+    expect(pillOf()).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('textbox', { name: 'When it is 1' })).toBeNull();
+  });
+
+  it('counts spaces around the versions as nothing', async () => {
+    renderField({
+      value: lineOf({ type: 'text', text: ' ' }, COUNT_VERSIONS, {
+        type: 'text',
+        text: ' ',
+      }),
+    });
+
+    await waitFor(expectBothRowsShown);
+    expect(pillOf()).toBeNull();
+  });
+
+  it('folds a pill inside a sentence even when the field asks for open versions', async () => {
+    renderField({
+      value: lineOf({ type: 'text', text: 'You must add ' }, COUNT_VERSIONS),
+    });
+
+    await waitFor(() => expect(pillOf()).not.toBeNull());
+    expect(pillOf()).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('textbox', { name: 'When it is 1' })).toBeNull();
+  });
+
+  it('folds a set of versions inside one of its versions', async () => {
+    const NESTED = {
+      type: 'versions',
+      attrs: {
+        label: 'Wording that changes with whether you are named',
+        summary: 'Named',
+        versions: [
+          {
+            key: 'named',
+            label: 'If named',
+            content: [{ type: 'text', text: 'Add them' }],
+          },
+          { key: 'unnamed', label: 'If not named', content: [] },
+        ],
+      },
+    };
+    renderField({
+      value: lineOf({
+        type: 'versions',
+        attrs: {
+          label: 'Wording that changes with a number',
+          versions: [
+            { key: 'one', label: 'When it is 1', content: [NESTED] },
+            {
+              key: 'other',
+              label: 'When it is 0, 2, 3, …',
+              content: [{ type: 'text', text: 'many items' }],
+            },
+          ],
+        },
+      }),
+    });
+
+    await waitFor(expectBothRowsShown);
+    // The outer set is listed; the one inside its first version is a pill.
+    const inner = await screen.findByRole('button', { name: 'Named' });
+    expect(inner).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('textbox', { name: 'If named' })).toBeNull();
+    expect(document.querySelectorAll('[data-always-open]')).toHaveLength(1);
+  });
+
+  it('is reached by Tab one row at a time, and the arrow keys step between rows', async () => {
+    // Empty rows, whose caret is at both ends of the line at once.
+    const { user } = renderField({
+      value: lineOf({
+        type: 'versions',
+        attrs: {
+          ...COUNT_VERSIONS.attrs,
+          versions: COUNT_VERSIONS.attrs.versions.map((version) => ({
+            ...version,
+            content: [],
+          })),
+        },
+      }),
+    });
+    const first = await screen.findByRole('textbox', { name: 'When it is 1' });
+    const second = screen.getByRole('textbox', {
+      name: 'When it is 0, 2, 3, …',
+    });
+    const line = screen.getByRole('textbox', { name: 'Minimum not reached' });
+
+    line.focus();
+    await user.tab();
+    expect(first).toHaveFocus();
+    await user.tab();
+    expect(second).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(first).toHaveFocus();
+
+    // Down from the first line goes to the second; Up goes back.
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() => expect(second).toHaveFocus());
+    await user.keyboard('{ArrowUp}');
+    await waitFor(() => expect(first).toHaveFocus());
+    // The first row has nothing above it.
+    await user.keyboard('{ArrowUp}');
+    expect(first).toHaveFocus();
+  });
+
+  it('keeps Escape from hiding the words, and from reaching a dialog around them', async () => {
+    const { user } = renderField({ value: lineOf(COUNT_VERSIONS) });
+    const line = await screen.findByRole('textbox', {
+      name: 'Minimum not reached',
+    });
+    const first = screen.getByRole('textbox', { name: 'When it is 1' });
+    const reachedDocument = vi.fn();
+    document.addEventListener('keydown', reachedDocument);
+    try {
+      await user.click(first);
+      await user.keyboard('{Escape}');
+      // The caret goes back to the line; every row is still there.
+      await waitFor(() => expect(line).toHaveFocus());
+      expectBothRowsShown();
+      expect(pillOf()).toBeNull();
+      // The Escape that did that was spent on it.
+      expect(
+        reachedDocument.mock.calls.filter(
+          ([event]) => (event as KeyboardEvent).key === 'Escape',
+        ),
+      ).toHaveLength(0);
+
+      // From the line there is nothing to fold, so Escape is left to the
+      // dialog around the field.
+      await user.keyboard('{Escape}');
+      expectBothRowsShown();
+      expect(
+        reachedDocument.mock.calls.filter(
+          ([event]) => (event as KeyboardEvent).key === 'Escape',
+        ),
+      ).toHaveLength(1);
+    } finally {
+      document.removeEventListener('keydown', reachedDocument);
+    }
+  });
+});
+
 describe('undo and redo of values and versions', () => {
   const NAME_TOKEN = { type: 'token', attrs: { id: 'name' } };
   const helloDocument = {

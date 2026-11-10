@@ -481,6 +481,41 @@ export const SingleLine: Story = {
   },
 };
 
+/**
+ * Reaching the text with the keyboard rings the whole field, as it rings any
+ * other text control: the text is not an input element, so the ring has to
+ * name it.
+ */
+export const KeyboardFocusRing: Story = {
+  render: (args) => (
+    <div className="flex w-[480px] flex-col gap-4">
+      <RichTextEditorField
+        {...args}
+        aria-label="Notes"
+        singleLine
+        value={singleLineContent}
+        onChange={action('onChange')}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const editor = await within(canvasElement).findByRole('textbox', {
+      name: 'Notes',
+    });
+    const field = editor.parentElement?.parentElement;
+    if (!field) throw new Error('No field');
+    await expect(getComputedStyle(field).outlineStyle).toBe('none');
+
+    await userEvent.tab();
+    await waitFor(() => expect(editor).toHaveFocus());
+    // The ring's width eases in, so it is read once it has settled.
+    await waitFor(() => {
+      expect(getComputedStyle(field).outlineStyle).toBe('solid');
+      expect(getComputedStyle(field).outlineWidth).toBe('2px');
+    });
+  },
+};
+
 const wrappingLine: JSONContent = {
   type: 'doc',
   content: [
@@ -794,7 +829,13 @@ const insertMenu: RichTextInsertMenu = {
   ],
 };
 
-function EditorWithValue({ initial }: { initial: JSONContent | undefined }) {
+function EditorWithValue({
+  initial,
+  openWholeMessageVersions = false,
+}: {
+  initial: JSONContent | undefined;
+  openWholeMessageVersions?: boolean;
+}) {
   const [value, setValue] = useState(initial);
   return (
     <div className="flex w-[560px] flex-col gap-4">
@@ -806,6 +847,7 @@ function EditorWithValue({ initial }: { initial: JSONContent | undefined }) {
         toolbarOptions={{ headings: false, lists: false }}
         tokens={offeredTokens}
         versions
+        openWholeMessageVersions={openWholeMessageVersions}
         insertMenu={insertMenu}
         changeMode="input"
         value={value}
@@ -945,6 +987,124 @@ export const WithVersionsAndInsertMenu: Story = {
     await expect(
       await canvas.findByRole('group', { name: 'Whether Name is known' }),
     ).toBeInTheDocument();
+  },
+};
+
+/**
+ * A field whose whole text is one set of versions, such as a message that is
+ * a plural or a choice and nothing more, with `openWholeMessageVersions`:
+ * the versions are listed open, one labelled row each, with no pill to open
+ * and nothing that folds when the field is left. Words typed beside them make
+ * the text a sentence with versions in it, which folds to a pill as before.
+ *
+ * ```tsx
+ * <RichTextEditorField versions openWholeMessageVersions … />
+ * ```
+ */
+export const WholeMessageVersionsOpen: Story = {
+  render: () => (
+    <EditorWithValue
+      openWholeMessageVersions
+      initial={{
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [nameVersions] }],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+
+    // Shown at rest, in the order given, with nothing to open.
+    const known = await canvas.findByRole('textbox', {
+      name: 'When Name is known',
+    });
+    const missing = canvas.getByRole('textbox', {
+      name: 'When Name is missing',
+    });
+    await expect(known).toBeVisible();
+    await expect(missing).toBeVisible();
+    await expect(known.getBoundingClientRect().top).toBeLessThan(
+      missing.getBoundingClientRect().top,
+    );
+    await expect(
+      canvasElement.querySelector('[data-versions-pill]'),
+    ).toBeNull();
+    const group = canvas.getByRole('group', { name: 'Whether Name is known' });
+    await expect(group.querySelector('[aria-expanded]')).toBeNull();
+
+    // Reached with Tab: the line (which shows the field's focus ring), then
+    // each row, which shows its own.
+    await userEvent.tab();
+    await waitFor(() => expect(editor).toHaveFocus());
+    const field = editor.parentElement?.parentElement;
+    if (!field) throw new Error('No field');
+    await waitFor(() =>
+      expect(getComputedStyle(field).outlineStyle).not.toBe('none'),
+    );
+    await userEvent.tab();
+    await waitFor(() => expect(known).toHaveFocus());
+    await userEvent.tab();
+    await waitFor(() => expect(missing).toHaveFocus());
+
+    // The arrow keys step between rows from a line's first or last place.
+    await userEvent.keyboard('{ArrowUp}');
+    await waitFor(() => expect(known).toHaveFocus());
+    await userEvent.keyboard('{ArrowDown}');
+    await waitFor(() => expect(missing).toHaveFocus());
+
+    // Escape hands the caret back to the line and hides nothing.
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(editor).toHaveFocus());
+    await expect(known).toBeVisible();
+    await expect(missing).toBeVisible();
+
+    // Leaving the field folds nothing either.
+    await userEvent.click(canvasElement.ownerDocument.body);
+    await expect(known).toBeVisible();
+    await expect(missing).toBeVisible();
+
+    // A version is written in place.
+    await userEvent.click(missing);
+    await userEvent.keyboard('this person');
+    await waitFor(() =>
+      expect(JSON.stringify(valueOf(canvasElement))).toContain('this person'),
+    );
+  },
+};
+
+/**
+ * The same versions in a sentence fold to a pill, whichever way the field is
+ * set: only a text that is nothing but the versions lists them open.
+ */
+export const VersionsInASentenceStayFolded: Story = {
+  render: () => (
+    <EditorWithValue
+      openWholeMessageVersions
+      initial={{
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Tell us about ' }, nameVersions],
+          },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const pill = await canvas.findByRole('button', { name: 'Name' });
+    await expect(pill).toHaveAttribute('aria-expanded', 'false');
+    await expect(
+      canvas.queryByRole('textbox', { name: 'When Name is known' }),
+    ).toBeNull();
+
+    // Opened by its pill, as before.
+    await userEvent.click(pill);
+    await expect(
+      await canvas.findByRole('textbox', { name: 'When Name is known' }),
+    ).toBeVisible();
   },
 };
 

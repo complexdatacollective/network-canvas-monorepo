@@ -76,26 +76,8 @@ const MESSAGE =
 const findLine = () => screen.findByRole('textbox', { name: 'List item' });
 
 describe('LocalizedMessageField', () => {
-  it('shows the text as one line, its versions folded to a pill named for what they change with', async () => {
+  it('lists the versions of a text that is one choice, one labelled row each, with no pill to open', async () => {
     renderItem({ en: MESSAGE });
-
-    const line = await findLine();
-    expect(
-      within(line).getByRole('button', { name: 'Participant or someone else' }),
-    ).toBeVisible();
-    // Only the text's own words and pills: no version per combination of
-    // the setting's cases and numbers.
-    expect(screen.getAllByRole('textbox', { hidden: false })).toHaveLength(1);
-  });
-
-  it('opens the versions the text has, each labelled with its case, holding the versions inside them', async () => {
-    const user = userEvent.setup();
-    renderItem({ en: MESSAGE });
-
-    const line = await findLine();
-    await user.click(
-      within(line).getByRole('button', { name: 'Participant or someone else' }),
-    );
 
     const participant = await screen.findByRole('textbox', {
       name: 'About the participant',
@@ -103,12 +85,89 @@ describe('LocalizedMessageField', () => {
     const someoneElse = screen.getByRole('textbox', {
       name: 'About someone else',
     });
+    expect(participant).toBeVisible();
+    expect(someoneElse).toBeVisible();
+    expect(someoneElse).toHaveTextContent('Parents of Name');
+    const group = screen.getByRole('group', {
+      name: 'Wording that changes with Participant or someone else',
+    });
+    expect(
+      within(group).queryByRole('button', {
+        name: 'Participant or someone else',
+      }),
+    ).toBeNull();
+    // Nothing at this level to open or close; the pill that remains is the
+    // one inside the version about the participant.
+    expect(group.querySelector(':scope > [data-versions-pill]')).toBeNull();
+    expect(group.querySelector(':scope > [aria-expanded]')).toBeNull();
+  });
+
+  it('lists the versions of a text that is one number, labelled by the numbers they are for', async () => {
+    renderItem(
+      {
+        en: '{missing, plural, one {Add your other parent} other {Add # parents}}',
+      },
+      ENGLISH,
+      { missing: { kind: 'plural' } },
+    );
+
+    const one = await screen.findByRole('textbox', {
+      name: 'When it is 1',
+    });
+    expect(one).toBeVisible();
+    expect(one).toHaveTextContent('Add your other parent');
+    expect(
+      screen.getByRole('textbox', {
+        name: 'When it is 0, 2, 3, …',
+      }),
+    ).toBeVisible();
+    expect(document.querySelector('[data-versions-pill]')).toBeNull();
+  });
+
+  it('lists the one version of a language that has one form of a number', async () => {
+    renderItem(
+      { zh: '{missing, plural, other {还需添加 # 位家长}}' },
+      { defaultLocale: 'zh', locales: ['zh'] },
+      { missing: { kind: 'plural' } },
+    );
+
+    const row = await screen.findByRole('textbox', { name: /^When it is/ });
+    expect(row).toBeVisible();
+    expect(row).toHaveTextContent('还需添加');
+    expect(document.querySelector('[data-versions-pill]')).toBeNull();
+  });
+
+  it('folds the versions of a text that has words around them to a pill named for what they change with', async () => {
+    renderItem({
+      en: 'Parents of {name}: {isYou, select, true {yours} other {theirs}}',
+    });
+
+    const line = await findLine();
+    const pill = within(line).getByRole('button', {
+      name: 'Participant or someone else',
+    });
+    expect(pill).toBeVisible();
+    expect(pill).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByRole('textbox', { name: 'About the participant' }),
+    ).toBeNull();
+    // Only the text's own words and pills: no version per combination of
+    // the setting's cases and numbers.
+    expect(screen.getAllByRole('textbox', { hidden: false })).toHaveLength(1);
+  });
+
+  it('keeps the versions inside a version folded to a pill', async () => {
+    renderItem({ en: MESSAGE });
+
+    const participant = await screen.findByRole('textbox', {
+      name: 'About the participant',
+    });
     // The version about the participant fits its words to the number of
     // parents missing; the other names the person.
-    expect(
-      within(participant).getByRole('button', { name: 'Parents missing' }),
-    ).toBeInTheDocument();
-    expect(someoneElse).toHaveTextContent('Parents of Name');
+    const inner = within(participant).getByRole('button', {
+      name: 'Parents missing',
+    });
+    expect(inner).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('shows a text without versions as one phrase, whatever the setting can choose by', async () => {

@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -98,23 +98,18 @@ const editedText = async (language: string) => {
   return text;
 };
 
-/** Opens the folded versions in `text` and returns their lines. */
-const openVersions = async (
-  user: ReturnType<typeof renderTable>['user'],
-  text: HTMLElement,
-) => {
-  await user.click(
-    within(text).getByRole('button', { name: 'Participant or someone else' }),
-  );
-  return {
-    aboutYou: await screen.findByRole('textbox', {
-      name: 'About the participant',
-    }),
-    aboutSomeoneElse: screen.getByRole('textbox', {
-      name: 'About someone else',
-    }),
-  };
-};
+/**
+ * The lines of the text's versions. The text in this cell is one choice and
+ * nothing else, so they are listed open rather than folded to a pill.
+ */
+const versionLines = async () => ({
+  aboutYou: await screen.findByRole('textbox', {
+    name: 'About the participant',
+  }),
+  aboutSomeoneElse: await screen.findByRole('textbox', {
+    name: 'About someone else',
+  }),
+});
 
 describe('TranslationTable: texts with versions', () => {
   it('shows the text, its versions folded to a pill, until the cell has focus', () => {
@@ -163,7 +158,8 @@ describe('TranslationTable: texts with versions', () => {
     const { store, user } = renderTable();
 
     await user.click(messageCell('English'));
-    const { aboutYou } = await openVersions(user, await editedText('English'));
+    await editedText('English');
+    const { aboutYou } = await versionLines();
     await user.type(aboutYou, 'All ');
     await leaveCell(user, 'English');
     await save(user);
@@ -189,7 +185,8 @@ describe('TranslationTable: texts with versions', () => {
     const { store, user } = renderTable();
 
     await user.click(messageCell('English'));
-    const { aboutYou } = await openVersions(user, await editedText('English'));
+    await editedText('English');
+    const { aboutYou } = await versionLines();
     await user.type(aboutYou, 'All ');
     await user.keyboard('{Enter}');
 
@@ -207,35 +204,44 @@ describe('TranslationTable: texts with versions', () => {
     });
   });
 
-  it('puts back the saved text on Escape, once a version is folded away', async () => {
+  it('puts back the saved text on Escape, after the first Escape has left the version', async () => {
     const { store, user } = renderTable();
     const before = getProtocol(store.getState());
 
     await user.click(messageCell('English'));
-    const { aboutYou } = await openVersions(user, await editedText('English'));
+    const text = await editedText('English');
+    const { aboutYou } = await versionLines();
     await user.type(aboutYou, 'All ');
-    // The first Escape folds the versions back into their pill and keeps
-    // the change; the next leaves the cell as it was saved.
+    // The first Escape hands the caret back to the line and keeps the
+    // change, with every version still shown; the next leaves the cell as it
+    // was saved.
     await user.keyboard('{Escape}');
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('textbox', { name: 'About the participant' }),
-      ).toBeNull(),
-    );
-    const folded = await editedText('English');
-    const { aboutYou: reopened } = await openVersions(user, folded);
-    expect(reopened).toHaveTextContent(/^All Your brothers and sisters$/);
-    await user.keyboard('{Escape}');
+    await waitFor(() => expect(text).toHaveFocus());
+    expect(
+      await screen.findByRole('textbox', { name: 'About the participant' }),
+    ).toHaveTextContent(/^All Your brothers and sisters$/);
     await user.keyboard('{Escape}');
 
-    const restored = await editedText('English');
+    await editedText('English');
     expect(
-      within(restored).getByRole('button', {
-        name: 'Participant or someone else',
-      }),
-    ).toBeInTheDocument();
+      await screen.findByRole('textbox', { name: 'About the participant' }),
+    ).toHaveTextContent(/^Your brothers and sisters$/);
     await save(user);
     expect(getProtocol(store.getState())).toBe(before);
+  });
+
+  it('steps between the versions with the arrow keys, rather than leaving the cell', async () => {
+    const { user } = renderTable();
+
+    await user.click(messageCell('English'));
+    await editedText('English');
+    const { aboutYou, aboutSomeoneElse } = await versionLines();
+    await user.click(aboutYou);
+    await user.keyboard('{Control>}a{/Control}{Backspace}');
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() => expect(aboutSomeoneElse).toHaveFocus());
+    await user.keyboard('{ArrowUp}');
+    await waitFor(() => expect(aboutYou).toHaveFocus());
   });
 
   it('says why a version left empty cannot be saved, and refuses to save it', async () => {
@@ -243,7 +249,8 @@ describe('TranslationTable: texts with versions', () => {
     const before = getProtocol(store.getState());
 
     await user.click(messageCell('English'));
-    const { aboutYou } = await openVersions(user, await editedText('English'));
+    await editedText('English');
+    const { aboutYou } = await versionLines();
     await user.click(aboutYou);
     await user.keyboard('{Control>}a{/Control}{Backspace}');
     await leaveCell(user, 'English');

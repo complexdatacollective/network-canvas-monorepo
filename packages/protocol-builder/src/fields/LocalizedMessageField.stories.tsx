@@ -57,11 +57,108 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * A message with a select and a plural: one line holding a pill, whose
- * versions open in place, the participant's own fitting its words to the
- * number.
+ * A message that is one choice, with a plural inside each of its versions:
+ * the choice is the whole message, so its versions are listed open, one
+ * labelled row each, with no pill to open. The number inside a version is a
+ * piece of that version's text, and folds to a pill.
  */
 export const SelectAndPlural: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const aboutYou = await canvas.findByRole('textbox', {
+      name: 'About the participant',
+    });
+    await expect(aboutYou).toBeVisible();
+    await expect(
+      canvas.getByRole('textbox', { name: 'About someone else' }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('textbox', { name: 'About someone else' }),
+    ).toHaveTextContent('Add another biological parent for “Name”');
+    await expect(
+      within(aboutYou).getByRole('button', { name: 'Parents missing' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+  },
+};
+
+const MINIMUM_ARGUMENTS = {
+  count: { kind: 'plural' },
+} as const satisfies MessageArguments;
+
+const minimumField = (initialValue: Record<string, string>, label: string) => (
+  <Field<typeof LocalizedMessageField>
+    name="minimumNotReached"
+    component={LocalizedMessageField}
+    label={label}
+    hint="Shown when a participant has not yet added enough."
+    arguments={MINIMUM_ARGUMENTS}
+    initialValue={initialValue}
+    required={REQUIRED}
+  />
+);
+
+/**
+ * A message that is nothing but a plural, such as the one shown when a
+ * participant has not added the minimum: both versions are always on screen,
+ * labelled by the numbers they are for, and stay there when the field is left.
+ */
+export const WholeMessageIsAPlural: Story = {
+  args: {
+    children: minimumField(
+      {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      'Minimum not reached',
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const one = await canvas.findByRole('textbox', { name: 'When it is 1' });
+    const other = canvas.getByRole('textbox', {
+      name: 'When it is 0, 2, 3, …',
+    });
+    await expect(one).toBeVisible();
+    await expect(one).toHaveTextContent(
+      'You must create at least Number item before you can continue.',
+    );
+    await expect(other).toBeVisible();
+    await expect(
+      canvasElement.querySelector('[data-versions-pill]'),
+    ).toBeNull();
+
+    // Leaving the field does not fold them.
+    await userEvent.click(one);
+    await userEvent.click(canvasElement.ownerDocument.body);
+    await expect(one).toBeVisible();
+    await expect(other).toBeVisible();
+  },
+};
+
+/**
+ * Words around a choice make it a part of a sentence, which folds to a pill
+ * until it is opened.
+ */
+export const ChoiceInASentence: Story = {
+  args: {
+    children: (
+      <Field<typeof LocalizedMessageField>
+        name="completeness.itemText.parents.listItem"
+        component={LocalizedMessageField}
+        label="Missing parents item"
+        arguments={PARENTS_ARGUMENTS}
+        initialValue={{
+          'en-US':
+            'Parents of {name}: {isYou, select, true {yours} other {theirs}}',
+        }}
+        required={REQUIRED}
+      />
+    ),
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -69,17 +166,17 @@ export const SelectAndPlural: Story = {
     const line = await canvas.findByRole('textbox', {
       name: 'Missing parents item',
     });
-    await userEvent.click(
-      within(line).getByRole('button', { name: 'Participant or someone else' }),
-    );
-    const aboutYou = await canvas.findByRole('textbox', {
-      name: 'About the participant',
+    const pill = within(line).getByRole('button', {
+      name: 'Participant or someone else',
     });
+    await expect(pill).toHaveAttribute('aria-expanded', 'false');
     await expect(
-      within(aboutYou).getByRole('button', { name: 'Parents missing' }),
-    ).toBeInTheDocument();
+      canvas.queryByRole('textbox', { name: 'About the participant' }),
+    ).toBeNull();
+
+    await userEvent.click(pill);
     await expect(
-      canvas.getByRole('textbox', { name: 'About someone else' }),
-    ).toHaveTextContent('Add another biological parent for “Name”');
+      await canvas.findByRole('textbox', { name: 'About the participant' }),
+    ).toBeVisible();
   },
 };
