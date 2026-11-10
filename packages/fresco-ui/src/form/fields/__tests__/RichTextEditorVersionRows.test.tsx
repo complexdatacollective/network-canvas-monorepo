@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Editor, JSONContent } from '@tiptap/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { withSafeTypingIntoRichText } from '../../../testing/withSafeTypingIntoRichText';
 import RichTextEditorField, { hasVersionRowBeside } from '../RichTextEditor';
@@ -212,20 +212,44 @@ const placeCaret = (row: HTMLElement, at: 'start' | 'end') => {
   );
 };
 
-/** Two frames: the editor moves focus a frame after the key, when it does. */
-const framesPass = () =>
+/** One frame: the editor moves focus a frame after the key, when it does. */
+const framePasses = () =>
   act(
     () =>
       new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        requestAnimationFrame(() => resolve());
       }),
   );
 
-/** Focus ends on `row` and stays there, so a late move is caught too. */
-const focusSettlesOn = async (row: HTMLElement) => {
-  await waitFor(() => expect(row).toHaveFocus());
-  await framesPass();
+/**
+ * The user's keys without the pause between them: the editor's own frame is
+ * what the checks wait for.
+ */
+const quickUser = () =>
+  withSafeTypingIntoRichText(userEvent.setup({ delay: null }));
+
+/**
+ * Focus ends on `row`. A move takes a frame to arrive, so it is waited for;
+ * where there is none to make, a frame is let pass and focus must still be
+ * where it was, which catches a late move too.
+ */
+const focusSettlesOn = async (row: HTMLElement, moves: boolean) => {
+  for (let frame = 0; frame < (moves ? 5 : 2); frame += 1) {
+    await framePasses();
+    if (moves && document.activeElement === row) break;
+  }
   expect(row).toHaveFocus();
+};
+
+const isOnShow = (each: Element) =>
+  each.isConnected && each.closest('[hidden]') === null;
+
+/** The editor with this name when it is on show; a plain lookup, for loops. */
+const editorNamed = (name: string) => {
+  const found = document.querySelector<HTMLElement>(
+    `[data-version][aria-label="${name}"]`,
+  );
+  return found !== null && isOnShow(found) ? found : null;
 };
 
 const visibleTextboxNames = () =>
@@ -287,22 +311,38 @@ const expectRowsToBeWalked = async (
   for (const [index, row] of rows.entries()) {
     placeCaret(row, 'end');
     await user.keyboard('{ArrowDown}');
-    await focusSettlesOn(rows[index + 1] ?? row);
+    await focusSettlesOn(rows[index + 1] ?? row, index + 1 < rows.length);
 
     placeCaret(row, 'start');
     await user.keyboard('{ArrowUp}');
-    await focusSettlesOn(rows[index - 1] ?? row);
+    await focusSettlesOn(rows[index - 1] ?? row, index > 0);
   }
 };
 
 describe('the rows the arrow keys stop at', () => {
+  // A frame is 16 ms, and every key waits for one: the editor moves focus a
+  // frame after the key. They come as soon as the loop is free instead, in
+  // the same order after the same work, so that the sweep does not wait on
+  // the clock.
+  beforeEach(() => {
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
+      window.setTimeout(() => callback(performance.now()), 0),
+    );
+    vi.stubGlobal('cancelAnimationFrame', (handle: number) =>
+      window.clearTimeout(handle),
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   const all = [...NAMED_SHAPES, ...shapes(GENERATED)];
 
   it.each(all.map((shape, index) => [index, shape] as const))(
     'are exactly the visible rows that hold words, whatever the message (shape %i)',
     async (_index, shape) => {
       const { json, expected } = build(shape);
-      const user = withSafeTypingIntoRichText(userEvent.setup());
+      const user = quickUser();
       render(fieldFor(json));
       await screen.findAllByRole('textbox', { name: expected.rows[0] });
 
@@ -315,7 +355,7 @@ describe('the rows the arrow keys stop at', () => {
     async (index, shape) => {
       const before = build(all[(index + 1) % all.length] ?? shape);
       const after = build(shape);
-      const user = withSafeTypingIntoRichText(userEvent.setup());
+      const user = quickUser();
       const view = render(fieldFor(before.json));
       await screen.findAllByRole('textbox', { name: before.expected.rows[0] });
 
@@ -327,37 +367,32 @@ describe('the rows the arrow keys stop at', () => {
   );
 
   describe('with the pills of choices among words opened', () => {
-    const isOnShow = (each: Element) =>
-      each.isConnected && each.closest('[hidden]') === null;
-
     const activeEditor = () => {
       const active = document.activeElement;
       if (!(active instanceof HTMLElement)) throw new Error('No focus.');
       return active;
     };
 
-    /** Opens the pills around a choice, outermost first, then its own. */
+    /** The pill standing for a choice, when it is on show. */
+    const pillOf = (id: string) => {
+      const pill = document.querySelector<HTMLElement>(
+        `[data-versions-element][aria-label="Choice ${id}"] > [data-versions-pill]`,
+      );
+      return pill !== null && isOnShow(pill) ? pill : null;
+    };
+
+    /**
+     * Opens the pills around a choice, outermost first, then its own. Leaving
+     * a pill's rows folds it, so this also opens again those that folded.
+     */
     const openChoice = async (
       user: ReturnType<typeof userEvent.setup>,
       foldable: Foldable,
     ) => {
       for (const id of [...foldable.around, foldable.id]) {
-        const pill = await screen.findByRole('button', { name: `Pill ${id}` });
-        await user.click(pill);
-        await waitFor(() => expect(pill).not.toBeVisible());
-      }
-    };
-
-    /** Opens again any of the pills that fold when the caret leaves them. */
-    const reopen = async (
-      user: ReturnType<typeof userEvent.setup>,
-      foldable: Foldable,
-    ) => {
-      for (const id of [...foldable.around, foldable.id]) {
-        const pill = screen.queryByRole('button', { name: `Pill ${id}` });
+        const pill = pillOf(id);
         if (pill === null) continue;
         await user.click(pill);
-        await waitFor(() => expect(pill).not.toBeVisible());
       }
     };
 
@@ -374,11 +409,12 @@ describe('the rows the arrow keys stop at', () => {
     ) => {
       for (const name of [...expected.rows, ...expected.frames]) {
         for (const key of ['ArrowDown', 'ArrowUp'] as const) {
-          await reopen(user, foldable);
-          const row = screen.getByRole('textbox', { name });
+          await openChoice(user, foldable);
+          const row = editorNamed(name);
+          if (row === null) throw new Error(`${name} is not on show.`);
           const delta = key === 'ArrowDown' ? 1 : -1;
           placeCaret(row, key === 'ArrowDown' ? 'end' : 'start');
-          await framesPass();
+          await framePasses();
           if (!isOnShow(row)) {
             // The row went out of sight with the caret in it: no neighbours.
             expect(hasVersionRowBeside(row, delta)).toBe(false);
@@ -386,11 +422,11 @@ describe('the rows the arrow keys stop at', () => {
           }
           const listed = hasVersionRowBeside(row, delta);
           const onShow = expected.rows
-            .map((each) => screen.queryByRole('textbox', { name: each }))
+            .map(editorNamed)
             .filter((each) => each !== null);
 
           await user.keyboard(`{${key}}`);
-          await framesPass();
+          await framePasses();
 
           const now = document.activeElement;
           const moved =
@@ -416,7 +452,7 @@ describe('the rows the arrow keys stop at', () => {
     it.each(openings)(
       'list a neighbour exactly when the key moves to one, with a choice opened (shape %i, choice %s)',
       async (_index, _id, shape, foldable) => {
-        const user = withSafeTypingIntoRichText(userEvent.setup());
+        const user = quickUser();
         render(fieldFor(build(shape).json));
         await screen.findByRole('group', { name: 'Choice C' });
 
@@ -454,7 +490,7 @@ describe('the rows the arrow keys stop at', () => {
         const inside = opened.rows.find((name) => !base.rows.includes(name));
         if (!inside) return;
 
-        const user = withSafeTypingIntoRichText(userEvent.setup());
+        const user = quickUser();
         render(fieldFor(build(shape).json));
         await screen.findByRole('group', { name: 'Choice C' });
         await openChoice(user, foldable);
@@ -469,7 +505,7 @@ describe('the rows the arrow keys stop at', () => {
             placeCaret(level === 0 ? row : activeEditor(), 'start');
             await user.keyboard('{Escape}');
             // The caret goes back to the line a frame later.
-            await framesPass();
+            await framePasses();
           }
         }
 

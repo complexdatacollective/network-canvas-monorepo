@@ -2086,7 +2086,10 @@ describe('the insert menu opened by typing in a version', () => {
     });
     await user.click(version);
     await user.keyboard('{{');
-    await screen.findByRole('combobox', { name: 'Search' });
+    const search = await screen.findByRole('combobox', { name: 'Search' });
+    // The menu takes focus a moment after it is drawn. Escape pressed before
+    // that is the version's own, which hands the caret to the line around it.
+    await waitFor(() => expect(search).toHaveFocus());
     await user.keyboard('{Escape}');
 
     await waitFor(() => expect(version).toHaveFocus());
