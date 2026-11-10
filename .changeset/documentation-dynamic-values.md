@@ -11,8 +11,9 @@ Pedigree, the label its family tree shows), which values
 each kind of text can show, why a value
 that can be missing needs a version of the text for when it is missing, how to
 give the text a version for each answer or for each plural form of a number,
-how participants see values, and that every translation must show the values
-its default-language text shows. It also lists the problems protocol
+how participants see values, and that showing a value is optional in every
+language, so a translation need not show the values its default-language text
+shows. It also lists the problems protocol
 validation reports. The Prompts, Translating Your Protocol and protocol schema
 pages link to it, and the schema 9 notes list dynamic values among what is
 new.

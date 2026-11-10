@@ -1,8 +1,8 @@
 'use client';
 
 import {
-  animate,
   motion,
+  type MotionValue,
   useMotionValue,
   useMotionValueEvent,
   useScroll,
@@ -13,7 +13,6 @@ import { useTranslations } from 'next-intl';
 import {
   type ReactNode,
   useCallback,
-  useEffect,
   useId,
   useLayoutEffect,
   useRef,
@@ -27,8 +26,6 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
 import { DeviceMockup } from '~/components/ui/DeviceMockup';
-import { Reveal } from '~/components/ui/Reveal';
-import { scrollDrivenRevealMotion } from '~/components/ui/scrollDrivenMotion';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { cn } from '~/lib/cn';
 import { type Tool, tools } from '~/lib/content';
@@ -50,11 +47,15 @@ import { NetworkBloom, ThreadNode, ThreadSegment } from './ToolsThreadGraphics';
 // itself into Architect, then forks — a protocol designed once is collected
 // either in person (Interviewer) or on the web (Fresco) — and the two strands
 // rejoin in a small network: the data both routes produce. The thread is
-// scroll-scrubbed; each tool's card blooms out of its node, once, when the
-// thread reaches it.
+// scroll-scrubbed, and so is each tool's card: it blooms out of its node as
+// the thread runs on past it, and closes back onto the node if the reader
+// scrolls back up.
 
 // The thread's tip sits on this line of the viewport (fraction from the top).
 const READING_LINE = 0.7;
+// How far past a card's node the thread runs while the card opens, as a
+// fraction of the viewport height.
+const BLOOM_SPAN = 0.35;
 
 const accents = {
   'sea-green': {
@@ -129,37 +130,41 @@ function ToolPreview({ tool, className }: { tool: Tool; className?: string }) {
   );
 }
 
-const revealEase = [0.22, 1, 0.36, 1] as const;
+const easeOut = (t: number) => 1 - (1 - t) ** 3;
 
 // A tool's card. The card blooms out of its node: a circular clip that opens
-// from the node's position once the thread arrives.
+// from the node's position as the thread runs on past it, scrubbed by the
+// reader's scroll in both directions.
 function ToolCard({
   labelledBy,
   card,
-  revealed,
+  nodeY,
+  readY,
   motionEnabled,
-  onFocusInside,
   className,
   children,
 }: {
   labelledBy: string;
   card: CardGeometry | undefined;
-  revealed: boolean;
+  // Where the thread arrives at the card, in the same space as `readY`.
+  nodeY: number | undefined;
+  readY: MotionValue<number>;
   motionEnabled: boolean;
-  onFocusInside: () => void;
   className?: string;
   children: ReactNode;
 }) {
+  // A keyboard user can reach a card before the thread does; while focus is
+  // inside, the card stays open so the focused control is never hidden.
+  const focusOpen = useMotionValue(0);
   // 0 = closed on the node, 1 = open past the farthest corner.
-  const bloom = useMotionValue(revealed ? 1 : 0);
-  useEffect(() => {
-    if (!revealed) {
-      bloom.jump(0);
-      return undefined;
-    }
-    const controls = animate(bloom, 1, { duration: 1.2, ease: revealEase });
-    return () => controls.stop();
-  }, [bloom, revealed]);
+  const bloom = useTransform(() => {
+    if (nodeY === undefined) return 1;
+    const travelled = (readY.get() - nodeY) / (window.innerHeight * BLOOM_SPAN);
+    return Math.max(
+      focusOpen.get(),
+      easeOut(Math.min(1, Math.max(0, travelled))),
+    );
+  });
   const clipPath = useTransform(bloom, (progress) => {
     if (!card) return 'none';
     const { node, width, height } = card;
@@ -175,9 +180,12 @@ function ToolCard({
   return (
     <motion.article
       aria-labelledby={labelledBy}
-      // A keyboard user can reach a card before the thread does; focus opens
-      // it so the focused control is never hidden.
-      onFocusCapture={onFocusInside}
+      onFocusCapture={() => focusOpen.set(1)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          focusOpen.set(0);
+        }
+      }}
       style={motionEnabled && card ? { clipPath } : undefined}
       className={cn(
         'bg-surface/60 relative z-10 rounded shadow-xl backdrop-blur-md',
@@ -205,13 +213,9 @@ export function Tools() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [geometry, setGeometry] = useState<Geometry | null>(null);
   const geometryRef = useRef<Geometry | null>(null);
-  // Which anchors the thread has reached, and which cards have bloomed. Cards
-  // stay open once revealed; nodes follow the thread both ways.
+  // Which anchors the thread has reached; nodes follow the thread both ways.
   const [reached, setReached] = useState<ReadonlySet<AnchorId>>(
     new Set<AnchorId>(),
-  );
-  const [revealed, setRevealed] = useState<ReadonlySet<Tool['id']>>(
-    new Set<Tool['id']>(),
   );
 
   const readY = useMotionValue(0);
@@ -242,13 +246,6 @@ export function Tools() {
         ? previous
         : new Set(nextReached),
     );
-    setRevealed((previous) => {
-      const next = new Set(previous);
-      for (const tool of tools) {
-        if (isPast(toolInAnchor[tool.id])) next.add(tool.id);
-      }
-      return next.size === previous.size ? previous : next;
-    });
   }, []);
 
   useLayoutEffect(() => {
@@ -290,12 +287,8 @@ export function Tools() {
   // Before measurement, and whenever motion is off, everything is shown whole.
   const isReached = (anchor: AnchorId) =>
     !motionEnabled || !geometry || reached.has(anchor);
-  const isRevealed = (tool: Tool['id']) =>
-    !motionEnabled || !geometry || revealed.has(tool);
-  const reveal = (tool: Tool['id']) => () =>
-    setRevealed((previous) =>
-      previous.has(tool) ? previous : new Set([...previous, tool]),
-    );
+  const nodeY = (tool: Tool['id']) =>
+    geometry?.points.get(toolInAnchor[tool])?.y;
 
   const [architect, interviewer, fresco] = tools;
   if (!architect || !interviewer || !fresco) return null;
@@ -343,11 +336,13 @@ export function Tools() {
             </svg>
           ) : null}
 
-          <Reveal {...scrollDrivenRevealMotion} className="relative z-10">
-            <SectionHeading id={headingId} title={t('heading')}>
-              {t('introduction')}
-            </SectionHeading>
-          </Reveal>
+          <SectionHeading
+            id={headingId}
+            title={t('heading')}
+            className="relative z-10"
+          >
+            {t('introduction')}
+          </SectionHeading>
 
           <div className="relative mx-auto mt-10 h-px w-px">
             <span data-thread-anchor="start" className="absolute top-0 left-0">
@@ -367,9 +362,9 @@ export function Tools() {
             <ToolCard
               labelledBy={toolHeadingId(architect)}
               card={geometry?.cards.get('architect')}
-              revealed={isRevealed('architect')}
+              nodeY={nodeY('architect')}
+              readY={smoothReadY}
               motionEnabled={motionEnabled}
-              onFocusInside={reveal('architect')}
               className="tablet-landscape:grid-cols-[1fr_1.2fr] tablet-landscape:gap-14 tablet-landscape:p-12 grid items-center gap-8 p-6"
             >
               <div className="min-w-0">
@@ -418,9 +413,9 @@ export function Tools() {
                 <ToolCard
                   labelledBy={toolHeadingId(tool)}
                   card={geometry?.cards.get(tool.id)}
-                  revealed={isRevealed(tool.id)}
+                  nodeY={nodeY(tool.id)}
+                  readY={smoothReadY}
                   motionEnabled={motionEnabled}
-                  onFocusInside={reveal(tool.id)}
                   className="tablet-landscape:p-10 flex w-full flex-col p-6"
                 >
                   <ToolPreview tool={tool} className="mb-8" />

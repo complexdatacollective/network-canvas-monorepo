@@ -286,7 +286,6 @@ const dynamicValueProblem = (
     {
       codebook: protocol.codebook,
       stages: protocol.stages,
-      defaultLocale: protocol.localization.defaultLocale,
     },
     [{ path: [...row.path], value, dynamicValues: row.dynamicValues }],
   ).find((problem) => JSON.stringify(problem.path) === at)?.message;

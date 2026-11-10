@@ -1,8 +1,9 @@
 import type { MessageFormatElement } from 'react-intl';
 
 /**
- * Metadata for one app UI locale. Structurally identical to the protocol
- * localization design's `LocaleMetadata` so switch UI can present either.
+ * Metadata for one app UI locale. Structurally identical to protocol
+ * localization's `LocaleMetadata` (`@codaco/protocol-validation`) so switch
+ * UI can present either.
  * App locales are a closed, maintainer-curated set: `label` is a static
  * autonym reviewed in the PR that adds the locale, never derived at runtime.
  */

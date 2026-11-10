@@ -311,12 +311,10 @@ Verify `/get-started` at representative desktop and mobile widths:
 ## Relationship to Internationalisation Work
 
 This structural refactor lands before the approved internationalisation and CSV
-content work. After implementation, update both documents:
+content work. After implementation, update the design
+`docs/superpowers/specs/2026-07-12-networkcanvas-i18n-csv-content-design.md`.
 
-- `docs/superpowers/specs/2026-07-12-networkcanvas-i18n-csv-content-design.md`
-- `docs/superpowers/plans/2026-07-12-networkcanvas-i18n-csv-content.md`
-
-The revisions must:
+The revision must:
 
 - replace `download` routes and namespaces with `get-started`;
 - generate `/en-US/get-started`, `/en-GB/get-started`, and `/es/get-started`;

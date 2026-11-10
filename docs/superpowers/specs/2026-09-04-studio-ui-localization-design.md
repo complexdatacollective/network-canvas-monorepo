@@ -6,10 +6,9 @@
 localization), under epic #1308 (Localization & internationalisation), part of
 the Studio specification tree (#1242).
 
-**Related:** the protocol localization design
-(`docs/superpowers/specs/2026-08-27-protocol-localization-design.md`), whose
-non-goals section names this work as "a separate application-message-catalog
-project"; the Studio app shell design
+**Related:** protocol localization (implemented in
+`packages/protocol-validation/src/localization/`), which leaves this work as a
+separate application-message-catalog project; the Studio app shell design
 (`docs/superpowers/specs/2026-09-01-studio-app-shell-design.md`), whose §8
 defers the locale negotiation chain to #1309 and reserves `/account/language`
 for #1310; #1312 (translation service integration); #1313 (localized interview
@@ -20,7 +19,7 @@ harness verifies RTL here).
 
 Network Canvas has two localization concerns that must never be conflated:
 what a **protocol** says to a **participant** (schema-9 `LocalizedString`
-content, designed in the protocol localization spec) and what an
+content, implemented in `packages/protocol-validation/src/localization/`) and what an
 **application** says to its **user** (chrome, navigation, forms, dialogs,
 errors). This design covers the second concern: a shared workspace package,
 `@codaco/app-i18n`, that gives every application in the monorepo one way to
@@ -60,7 +59,7 @@ Taken 2026-09-04 in specification review:
    localization, and the two meet only at conventions.** Protocol-authored
    participant strings are schema data resolved by
    `@codaco/protocol-validation` helpers and rendered by `@codaco/interview`
-   (per the accepted 2026-08-27 design). Application chrome is message
+   (per the protocol localization implementation). Application chrome is message
    catalogs owned by each app and rendered through `@codaco/app-i18n`. The
    shared conventions are the locale-metadata shape
    (`{ locale, label, direction }`), FormatJS best-fit matching, the rule
@@ -181,7 +180,7 @@ work, never engineering rework.
 5. **The host owns `<html lang>` and `<html dir>`; content regions may
    override locally.** Studio's provider writes the document attributes for
    the app locale; a protocol preview or interview region nests its own
-   `lang`/`dir` (protocol design §8.6) without touching the document root.
+   `lang`/`dir` without touching the document root.
 6. **Catalog artifacts cannot drift silently.** Extraction freshness, full
    completeness for full locales, subset-plus-token-parity for override
    locales, and Turbo input coverage for catalog files are all CI-enforced.
@@ -200,7 +199,7 @@ This design deliberately does not cover, and must not creep into:
 
 - **Protocol content localization** (#1475, #1477, #1497): schema-9
   `LocalizedString`, per-string fallback, protocol locale selection, Studio's
-  protocol-store round-trip. Owned by the accepted 2026-08-27 design; the
+  protocol-store round-trip. Owned by protocol localization; the
   helpers it places in `@codaco/protocol-validation` are not duplicated here,
   and `@codaco/app-i18n` takes no dependency on protocol packages.
 - **Participant-facing runtime chrome** (#1313): the interview package's 61
@@ -236,8 +235,8 @@ The package is built on `react-intl` (the FormatJS React binding) and
 and compilation. Rationale, against the alternatives in §10: FormatJS is the
 reference implementation of ICU MessageFormat over `Intl` and CLDR — the
 standards the grant names — it is the only i18n stack already in the monorepo
-(the website's matcher, next-intl's own foundations), and the accepted
-protocol design commits to the same matcher. `next-intl` itself is
+(the website's matcher, next-intl's own foundations), and protocol
+localization uses the same matcher. `next-intl` itself is
 Next.js-only and cannot serve a Vite SPA; hand-rolled tables (the
 `SiteNavigation.messages.ts` / `framingTerms.ts` pattern) cannot express
 plurals or selects and have no extraction path.
@@ -246,7 +245,7 @@ plurals or selects and have no extraction path.
 own; consumers never import `react-intl`, so the runtime can be swapped or
 trimmed without touching call sites. `react-intl` and the matcher enter the
 workspace catalog (`pnpm-workspace.yaml`) with the house-style inline
-comments; the protocol design already planned the matcher's catalog entry.
+comments; protocol localization shares the matcher's catalog entry.
 
 ### 4.2 Module layout and exports
 
@@ -390,9 +389,9 @@ App UI locales are a **closed, maintainer-curated set** — a locale exists
 only when its catalog ships — so metadata is static data reviewed in the
 pull request that adds the locale, not runtime `Intl.DisplayNames`
 derivation. This sidesteps the display-name runtime-variance and hydration
-hazards the protocol design has to engineer around (its locales are
+hazards protocol localization has to engineer around (its locales are
 researcher-declared and open-ended; ours are not). The shape is structurally
-identical to the protocol design's `LocaleMetadata`
+identical to the protocol `LocaleMetadata`
 (`{ locale, label, direction }`), so switch UI components can present either.
 
 `labels` are autonyms and are rendered with `lang={option.locale}` in
@@ -719,8 +718,7 @@ automatic entry, autonym `lang` attributes, and RTL rendering. Studio's
 `SiteNavigation.messages.ts` keeps its self-contained hand-rolled catalog:
 it serves static sites through the CDN bundle, its `SiteLocale` registry in
 shared-consts is a different (site) locale set, and coupling the CDN bundle
-to react-intl would be pure cost. `PresentationalText` (protocol design
-§7.2) remains the protocol-content hand-off type; app-i18n does not overlap
+to react-intl would be pure cost. `PresentationalText` remains the protocol-content hand-off type; app-i18n does not overlap
 it. The website's next-intl stack is untouched; moving the matcher to the
 workspace catalog updates only where the dependency version is declared.
 
@@ -889,13 +887,13 @@ adoption tracked in #1643.
    the preference is per-user, so encoding it per-URL adds redirect
    machinery and breaks shared links' language neutrality.
 5. **A generic localization package absorbing protocol locale helpers** —
-   rejected: re-litigates the accepted protocol design (§7.1), which keeps
+   rejected: re-litigates the protocol localization decision, which keeps
    schema-owned algorithms beside their types. The boundary holds:
    protocol-validation owns protocol locale selection and header parsing;
    app-i18n owns app catalogs; they share conventions, not code.
 6. **Runtime `Intl.DisplayNames` for the switcher** — rejected: app locales
    are curated data; static autonyms avoid runtime spelling variance and the
-   SSR serialization machinery the protocol design needs for open-ended
+   SSR serialization machinery protocol localization needs for open-ended
    locale sets.
 7. **Auditing locale changes** — rejected: the audit log is tenant-scoped by
    design; inventing a userless audit plane for a presentation preference is

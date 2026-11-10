@@ -446,7 +446,7 @@ export function PublicationNetworkStage({
           tabIndex={-1}
           data-related-publication
           className={cn(
-            'bg-surface text-text elevation-medium absolute top-0 left-0 z-10 block w-max max-w-72 rounded px-3 py-2 text-sm leading-snug font-semibold',
+            'bg-surface text-text elevation-medium absolute top-0 left-0 z-10 block w-max max-w-72 rounded px-4 py-3 text-sm leading-snug font-semibold',
             shown?.pinned ? 'pointer-events-auto' : 'pointer-events-none',
           )}
         >
