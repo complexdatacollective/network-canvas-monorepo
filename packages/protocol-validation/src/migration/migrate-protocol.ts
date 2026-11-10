@@ -19,6 +19,7 @@ import { findPrototypeCodebookKeys } from '../validation/prototypeCodebookKeys.t
 import {
   formatProtocolValidationIssues,
   releaseIssues,
+  toProtocolValidationIssues,
 } from '../validation/validate-protocol.ts';
 import {
   MigrationResultInvalidError,
@@ -142,6 +143,7 @@ function migrateAndValidate(
     throw new MigrationResultInvalidError(
       `Migration resulted in invalid protocol: ${postValidationResult.error.message}`,
       targetVersion,
+      toProtocolValidationIssues(postValidationResult.error.issues),
     );
   }
   if (postValidationResult.data.schemaVersion !== targetVersion) {
@@ -163,6 +165,7 @@ function migrateAndValidate(
       throw new MigrationResultInvalidError(
         `Migration resulted in invalid protocol: ${JSON.stringify(handedOverIssues, null, 2)}`,
         targetVersion,
+        handedOverIssues,
       );
     }
   }

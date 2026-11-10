@@ -11,7 +11,7 @@ import {
   bundleLegacyProtocol,
   bundleProtocol,
   downloadProtocolAsNetcanvas,
-  MissingDefaultLanguageTextError,
+  DownloadRefusedError,
   UnresolvedAssetsError,
 } from '../bundleProtocol';
 import type { LegacyStoredProtocolRow } from '../legacyProtocolLibrary';
@@ -242,9 +242,7 @@ describe('the finish stage text guard', () => {
 
   it('refuses to bundle a protocol whose finish stage has no closing or finished text in the default language', async () => {
     const refusal = bundleProtocol(japaneseProtocol());
-    await expect(refusal).rejects.toBeInstanceOf(
-      MissingDefaultLanguageTextError,
-    );
+    await expect(refusal).rejects.toBeInstanceOf(DownloadRefusedError);
     await expect(refusal).rejects.toMatchObject({
       problem: {
         stageId: 'end',
@@ -330,7 +328,7 @@ describe('the finish stage text guard', () => {
   it('passes the refusal through a download unwrapped, so its caller can describe it', async () => {
     await expect(
       downloadProtocolAsNetcanvas(japaneseProtocol(), 'Japanese'),
-    ).rejects.toBeInstanceOf(MissingDefaultLanguageTextError);
+    ).rejects.toBeInstanceOf(DownloadRefusedError);
   });
 });
 

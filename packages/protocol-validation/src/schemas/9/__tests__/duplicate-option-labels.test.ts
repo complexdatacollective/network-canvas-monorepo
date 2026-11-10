@@ -98,6 +98,15 @@ describe('two options of one attribute that read the same', () => {
         path: [...CATEGORY_PATH, 'options', 1, 'label'],
         message:
           'Options 1 and 2 of attribute "Category" have labels that read the same: "Friend" and " friend" (en). Each option needs a label participants can tell apart.',
+        params: {
+          kind: 'option',
+          name: 'Category',
+          first: 1,
+          second: 2,
+          firstLabel: 'Friend',
+          secondLabel: ' friend',
+          locale: 'en',
+        },
       },
     ]);
   });
@@ -232,6 +241,7 @@ describe('migrating options whose labels read the same from schema 8', () => {
         path: [...CATEGORY_PATH, 'options', 1, 'label'],
         message:
           'Options 1 and 2 of attribute "Category" have labels that read the same: "Friend" and "friend". Each option needs a label participants can tell apart.',
+        params: expect.objectContaining({ name: 'Category' }),
       },
     ]);
   });

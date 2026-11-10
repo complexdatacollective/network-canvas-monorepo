@@ -57,8 +57,8 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import Table from '~/components/Assets/Table';
 import {
-  DefaultLanguageTextRefusal,
-  DefaultLanguageTextRefusalTitle,
+  DownloadRefusalMessage,
+  DownloadRefusalTitle,
 } from '~/components/DefaultLanguageTextAlert';
 import ExternalLink from '~/components/ExternalLink';
 import { APP_SCHEMA_VERSION } from '~/config';
@@ -73,7 +73,7 @@ import { getProtocolAssetCount } from '~/utils/assetUtils';
 import {
   downloadLegacyProtocolAsNetcanvas,
   downloadProtocolAsNetcanvas,
-  MissingDefaultLanguageTextError,
+  DownloadRefusedError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
 import { beginExport } from '~/utils/criticalOperation';
@@ -891,14 +891,14 @@ const LibraryPanel = ({
       try {
         await download();
       } catch (error) {
-        // Nor one whose finish stage has no heading or text in its default
-        // language: no host would import it.
-        if (error instanceof MissingDefaultLanguageTextError) {
+        // Nor one no host would import: its finish stage has no heading or
+        // text in its default language, or two labels read the same.
+        if (error instanceof DownloadRefusedError) {
           void openDialog({
             type: 'acknowledge',
             intent: 'destructive',
-            title: createElement(DefaultLanguageTextRefusalTitle),
-            description: createElement(DefaultLanguageTextRefusal, {
+            title: createElement(DownloadRefusalTitle),
+            description: createElement(DownloadRefusalMessage, {
               problem: error.problem,
             }),
             actions: {

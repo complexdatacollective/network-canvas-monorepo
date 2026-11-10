@@ -12,8 +12,6 @@ import ArrayField, {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import {
   findDuplicateOptionLabels,
-  type LocaleTag,
-  type LocalizedString,
   MINIMUM_VARIABLE_OPTIONS,
 } from '@codaco/protocol-validation';
 import type {
@@ -29,7 +27,6 @@ import {
   findExportColumnConflictMessage,
   toExportColumnCandidate,
 } from '~/utils/exportColumnConflicts';
-import { translationText } from '~/utils/localizedText';
 import { createValidations, nameComparisonKey } from '~/utils/validations';
 
 import Option, { OptionsContext, type OptionValue } from './Option';
@@ -146,39 +143,42 @@ export const uniqueOptionValues = (
     ? intl.formatMessage(messages.uniqueValues)
     : undefined;
 
-const readLabel = (option: Record<string, unknown>) =>
-  isLocalizedString(option.label) ? option.label : undefined;
-
-const isLocalizedString = (value: unknown): value is LocalizedString =>
-  typeof value === 'object' &&
-  value !== null &&
-  Object.values(value).every((text) => typeof text === 'string');
-
-/**
- * The options with each label replaced by its plain text in `locale`, which
- * the rows show and compare as they are edited.
- */
-const optionsWithLabelText = (value: unknown, locale: LocaleTag) =>
-  readOptions(value).map((option) => ({
-    ...option,
-    label: translationText(readLabel(option), locale),
-  }));
+/** The protocol's languages, as `findDuplicateOptionLabels` reads them. */
+type OptionLabelLocalization = Parameters<typeof findDuplicateOptionLabels>[1];
 
 /**
  * The label counterpart of `uniqueOptionValues`: the rule every place an
  * option label is edited asks, `@codaco/protocol-validation`'s
- * `findDuplicateOptionLabels` — the protocol-builder editors, the codebook
- * write that records what they author, and the translation table — so a list
- * this rule lets through is never refused again further down. Labels are
- * compared one language at a time, in each language a label is written in.
+ * `findDuplicateOptionLabels` — the protocol-builder editors, each row of
+ * this list (`Option`), the codebook write that records what they author,
+ * and the translation table — so a list this rule lets through is never
+ * refused again further down. Given the protocol's languages, labels are
+ * compared in each as a participant reads them, falling back where one has no
+ * translation; without them, in each language a label is written in.
  */
 export const uniqueOptionLabels = (
   value: unknown,
   intl: IntlShape = defaultIntl,
+  localization?: OptionLabelLocalization,
 ) =>
-  findDuplicateOptionLabels(readOptions(value)).length > 0
+  findDuplicateOptionLabels(readOptions(value), localization).length > 0
     ? intl.formatMessage(messages.uniqueLabels)
     : undefined;
+
+/**
+ * The positions of the options that are either of a pair a participant would
+ * read the same way, by the rule `uniqueOptionLabels` asks of the whole list:
+ * the rows whose label cell says so while the researcher types.
+ */
+const duplicatedLabelPositions = (
+  value: unknown,
+  localization?: OptionLabelLocalization,
+): ReadonlySet<number> =>
+  new Set(
+    findDuplicateOptionLabels(readOptions(value), localization).flatMap(
+      ({ index, firstIndex }) => [index, firstIndex],
+    ),
+  );
 
 /**
  * The array counterpart of the rows' `codebookName`, run on the same rule so
@@ -243,17 +243,20 @@ const exportColumnConflicts = (
  *
  * `context` is what the options are exported next to. Without it the options
  * cannot be checked for export column clashes, so a call site that creates or
- * renames an attribute should always pass it.
+ * renames an attribute should always pass it. `localization` is the
+ * protocol's languages, which the labels are compared in.
  */
 export const optionsValidation = (
   intl: IntlShape = defaultIntl,
   context?: OptionColumnContext,
+  localization?: OptionLabelLocalization,
 ) => ({
   required: intl.formatMessage(messages.minimum),
   minTwoOptions: (value: unknown) => minTwoPopulatedOptions(value, intl),
   completeOptions: (value: unknown) => completeOptions(value, intl),
   uniqueOptionValues: (value: unknown) => uniqueOptionValues(value, intl),
-  uniqueOptionLabels: (value: unknown) => uniqueOptionLabels(value, intl),
+  uniqueOptionLabels: (value: unknown) =>
+    uniqueOptionLabels(value, intl, localization),
   allowedOptionValues: (value: unknown) => allowedOptionValues(value, intl),
   exportColumnConflicts: (
     value: unknown,
@@ -316,14 +319,12 @@ const Options = ({
     () => ({
       arrayName: name,
       allValues: arrayScopedValues(name, value),
-      labelValues: arrayScopedValues(
-        name,
-        optionsWithLabelText(value, labelLocale),
-      ),
       labelLocale,
+      duplicatedLabels: duplicatedLabelPositions(value, localization),
+      duplicatedLabelMessage: intl.formatMessage(messages.uniqueLabels),
       showArrayError: ariaInvalid,
     }),
-    [ariaInvalid, labelLocale, name, value],
+    [ariaInvalid, intl, labelLocale, localization, name, value],
   );
 
   const itemTemplate = useCallback(() => ({}), []);

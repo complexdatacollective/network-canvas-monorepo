@@ -1069,7 +1069,7 @@
   },
   "architect.finishStageText.cannotBeDownloadedYet": {
     "defaultMessage": "This protocol can’t be downloaded yet",
-    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, or while Network Canvas’s built-in wording has no text in that language."
+    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, while Network Canvas’s built-in wording has no text in that language, or while two labels participants choose between read the same."
   },
   "architect.finishStageText.editFinishStage": {
     "defaultMessage": "Edit the stage that ends the interview",
@@ -1670,6 +1670,38 @@
   "architect.jsonPreviewOverlay.copy": {
     "defaultMessage": "Copy",
     "description": "Visible text in components / JsonPreviewOverlay."
+  },
+  "architect.labelCollisions.description": {
+    "defaultMessage": "Participants could not tell these apart. The protocol can’t be downloaded until each pair has different labels.",
+    "description": "Shown under the title of the warning about labels that read the same, above the list of pairs. “These” and “each pair” are the pairs of answer options or diseases listed below it. Researcher-facing."
+  },
+  "architect.labelCollisions.diseasePair": {
+    "defaultMessage": "Diseases {first, number} and {second, number} of the stage “{stage}” read the same in {language}: “{firstLabel}” and “{secondLabel}”.",
+    "description": "One item in the warning about labels that read the same: two diseases (conditions a participant reports for their family members) of a Narrative Pedigree stage whose labels a participant reading the language would see as the same text. first and second are the diseases’ positions in the stage’s list, counting from 1. stage is the stage’s name. language is the name of the language, for example “Spanish”. firstLabel and secondLabel are the two labels as a participant reads them in that language; they may differ only in capital letters or spaces."
+  },
+  "architect.labelCollisions.downloadRefused": {
+    "defaultMessage": "Some answer options or diseases have labels that read the same in one of the protocol’s languages, so participants could not tell them apart. The Stages page lists them. The protocol can’t be downloaded until each pair has different labels.",
+    "description": "Shown in the dialog that refuses to download (or send) a protocol while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have labels a participant would read as the same text in one of the protocol’s languages: written the same, differing only in capital letters or spaces at either end, or because one has no translation in that language and shows another language’s text instead. Researcher-facing. “The Stages page” is the Architect page listing the protocol’s stages, where a notice names each pair."
+  },
+  "architect.labelCollisions.editAttribute": {
+    "defaultMessage": "Edit the attribute “{attribute}”",
+    "description": "Link after an item in the warning about labels that read the same, when the two options read the same in the protocol’s default language. It opens the codebook editor where the attribute’s options are edited. attribute is the attribute’s name."
+  },
+  "architect.labelCollisions.editStage": {
+    "defaultMessage": "Edit the stage “{stage}”",
+    "description": "Link after an item in the warning about labels that read the same, when the two diseases read the same in the protocol’s default language. It opens the editor of the stage the diseases belong to. stage is the stage’s name."
+  },
+  "architect.labelCollisions.optionPair": {
+    "defaultMessage": "Options {first, number} and {second, number} of the attribute “{attribute}” read the same in {language}: “{firstLabel}” and “{secondLabel}”.",
+    "description": "One item in the warning about labels that read the same: two answer options of one attribute (a question in the codebook with a fixed list of answers) whose labels a participant reading the language would see as the same text. first and second are the options’ positions in the attribute’s list, counting from 1. attribute is the attribute’s name. language is the name of the language, for example “Spanish”. firstLabel and secondLabel are the two labels as a participant reads them in that language; they may differ only in capital letters or spaces."
+  },
+  "architect.labelCollisions.title": {
+    "defaultMessage": "Some labels read the same",
+    "description": "Title of the warning on the stage list shown while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have labels a participant would read as the same text in one of the protocol’s languages. Researcher-facing."
+  },
+  "architect.labelCollisions.translate": {
+    "defaultMessage": "Edit the translations into {language}",
+    "description": "Link after an item in the warning about labels that read the same, when the two labels read the same only in a language other than the protocol’s default language, often because one of them has no translation into it. It opens the translation table showing that language beside the default one. language is the name of that language, for example “Spanish”."
   },
   "architect.legacyProtocol.couldNotOpenInArchitect": {
     "defaultMessage": "Could not open in Architect {version}",
@@ -3983,6 +4015,18 @@
     "defaultMessage": "Failed to Open Protocol",
     "description": "The title text in utils / describeMigrationFailure."
   },
+  "architect.utility.utils.describeMigrationFailure.optionsReadTheSameWhenMade": {
+    "defaultMessage": "Options {first, number} and {second, number} of the attribute “{attribute}” read the same: “{firstLabel}” and “{secondLabel}”. That was allowed when this protocol was made, but participants could not tell them apart. Open this protocol in the version of Architect that created it, give the options different labels, then open it here again.",
+    "description": "Shown when Architect cannot open a protocol made with an older version because two answer options of one attribute (a question in the codebook with a fixed list of answers) have labels a participant would read as the same text: written the same, or differing only in capital letters or spaces at either end. first and second are the options’ positions in the list, counting from 1. attribute is the attribute’s name. firstLabel and secondLabel are the two labels. Architect does not change the labels itself: the researcher changes them in the older Architect."
+  },
+  "architect.utility.utils.describeMigrationFailure.stageNameTooLong": {
+    "defaultMessage": "A stage name is too long",
+    "description": "Title of the dialog shown when Architect cannot open a protocol made with an older version because a stage’s name is longer than a stage name may now be."
+  },
+  "architect.utility.utils.describeMigrationFailure.stageNameTooLongWhenMade": {
+    "defaultMessage": "The stage name “{name}” is longer than {max, number} characters. That was allowed when this protocol was made, but a longer name does not fit where stage names are shown. Open this protocol in the version of Architect that created it, shorten the name, then open it here again.",
+    "description": "Shown when Architect cannot open a protocol made with an older version because a stage’s name is longer than a stage name may now be. name is the stage’s name. max is the most characters a stage name may have. Architect does not shorten the name itself: the researcher does, in the older Architect."
+  },
   "architect.utility.utils.describeMigrationFailure.thatWasAllowedWhen": {
     "defaultMessage": "{location, select, ego {Two attributes on the interviewee are both named \"{name}\".} named {Two attributes on \"{ownerLabel}\" are both named \"{name}\".} other {Two attributes are both named \"{name}\".}} That was allowed when this protocol was made, but they cannot both exist now — a researcher reading a dropdown could not tell them apart. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.",
     "description": "The message text in utils / describeMigrationFailure."
@@ -3994,6 +4038,10 @@
   "architect.utility.utils.describeMigrationFailure.twoAttributesShareAName": {
     "defaultMessage": "Two attributes share a name",
     "description": "The title text in utils / describeMigrationFailure."
+  },
+  "architect.utility.utils.describeMigrationFailure.twoOptionsReadTheSame": {
+    "defaultMessage": "Two options read the same",
+    "description": "Title of the dialog shown when Architect cannot open a protocol made with an older version because two answer options of one attribute have labels a participant would read as the same text."
   },
   "architect.utility.utils.downloadActiveProtocol.oK": {
     "defaultMessage": "OK",

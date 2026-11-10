@@ -40,7 +40,11 @@ export const stageLabelText = () =>
       ctx.addIssue({
         code: 'custom',
         message: `Stage name "${text}" is ${text.length} characters long, but a stage name may be at most ${STAGE_LABEL_MAX_LENGTH}.`,
-        params: { rule: STAGE_LABEL_TOO_LONG, max: STAGE_LABEL_MAX_LENGTH },
+        params: {
+          rule: STAGE_LABEL_TOO_LONG,
+          max: STAGE_LABEL_MAX_LENGTH,
+          text,
+        },
       });
     }
   });

@@ -5,6 +5,7 @@ import {
   collectLocalizedStringFields,
   type CurrentProtocol,
   type DynamicValueSite,
+  findLabelCollisions,
   findVariableRoleConflicts,
   type LocaleTag,
   type LocalizedString,
@@ -36,6 +37,8 @@ import { getAssetManifest, getCodebook, getProtocol } from './protocol';
  *  - A finish stage without its heading or text in the default language, or
  *    built-in wording without text there, which unlike the rest stops the
  *    protocol being downloaded
+ *  - Two labels participants choose between that read the same in some
+ *    language, which also stops it being downloaded
  *  - Several languages but no stage where participants choose one
  */
 
@@ -157,6 +160,18 @@ export const getHasVariableRoleConflicts = createSelector(
 export const getDefaultLanguageTextProblem = createSelector(
   [getProtocol],
   (protocol) => (protocol ? findDefaultLanguageTextProblem(protocol) : null),
+);
+
+/**
+ * Each pair of labels a participant chooses between that reads the same in
+ * some language (`findLabelCollisions`): two options of one attribute, or two
+ * diseases of one stage. A protocol being written may hold one — a change of
+ * its languages can leave two labels reading the same through fallback, and
+ * is made anyway — but cannot be downloaded until none is left
+ * (`findDownloadRefusal`).
+ */
+export const getLabelCollisions = createSelector([getProtocol], (protocol) =>
+  protocol ? findLabelCollisions(protocol) : [],
 );
 
 /**

@@ -29,6 +29,7 @@ import {
   type LocalizedString,
   type ProtocolValidationIssue,
   STAGE_LABEL_MAX_LENGTH,
+  STAGE_LABEL_TOO_LONG,
   validateProtocol,
 } from '@codaco/protocol-validation';
 import { useAppStore } from '~/ducks/hooks';
@@ -117,10 +118,28 @@ const messages = defineMessages({
 const ruleMessages = {
   duplicateDiseaseLabel: messages.duplicateDiseaseLabel,
   duplicateOptionLabel: messages.duplicateOptionLabel,
-  stageLabelTooLong: messages.stageLabelTooLong,
   interfaceTextWithoutDefaultLanguage:
     messages.interfaceTextWithoutDefaultLanguage,
 } satisfies Record<FieldTextRule, unknown>;
+
+/**
+ * What a cell says about a rule its field's own declaration names, in
+ * Architect's words, where it has words of its own for one: the length a
+ * stage's name may be (`STAGE_LABEL_TOO_LONG`).
+ */
+const declaredRuleMessage = (
+  issue: Readonly<{ params?: unknown }>,
+  intl: IntlShape,
+) => {
+  const { params } = issue;
+  return typeof params === 'object' &&
+    params !== null &&
+    Reflect.get(params, 'rule') === STAGE_LABEL_TOO_LONG
+    ? intl.formatMessage(messages.stageLabelTooLong, {
+        max: STAGE_LABEL_MAX_LENGTH,
+      })
+    : undefined;
+};
 
 type TextPath = TranslationRow['path'];
 
@@ -132,7 +151,7 @@ type TextKind = 'text' | 'message';
  * cell's language, spelled with letters and digits only, so the form store
  * reads it as one name rather than as a path of its own.
  */
-const translationFieldName = (path: TextPath, locale: LocaleTag) =>
+export const translationFieldName = (path: TextPath, locale: LocaleTag) =>
   `t${Array.from(JSON.stringify([path, locale]), (character) =>
     (character.codePointAt(0) ?? 0).toString(16).padStart(6, '0'),
   ).join('')}`;
@@ -167,16 +186,26 @@ export const readTranslationFieldName = (
 
 const rowKey = (path: TextPath) => JSON.stringify(path);
 
+/** Each set of groups' rows by path, made once per set. */
+const rowIndexes = new WeakMap<
+  readonly TranslationGroup[],
+  ReadonlyMap<string, TranslationRow>
+>();
+
 const findRow = (
   groups: readonly TranslationGroup[],
   path: TextPath,
 ): TranslationRow | undefined => {
-  const key = rowKey(path);
-  for (const group of groups) {
-    const found = group.rows.find((row) => rowKey(row.path) === key);
-    if (found) return found;
+  let index = rowIndexes.get(groups);
+  if (index === undefined) {
+    index = new Map(
+      groups.flatMap((group) =>
+        group.rows.map((row) => [rowKey(row.path), row] as const),
+      ),
+    );
+    rowIndexes.set(groups, index);
   }
-  return undefined;
+  return index.get(rowKey(path));
 };
 
 // Text that can show values is kept as written, like a localized message:
@@ -337,11 +366,15 @@ const protocolAfter = (
 /**
  * The protocol as the table holds it now, and the field rules it breaks,
  * kept for the cells checked against the same drafts: a change rechecks every
- * cell already left, and each would otherwise build it again.
+ * cell already left, and each would otherwise build it again. Kept by the
+ * form's values as each check is handed them, which every cell rechecked
+ * after one change shares, and by the cells those values change, which a
+ * later change may leave as they were.
  */
 let heldDrafts:
   | Readonly<{
       protocol: CurrentProtocol;
+      formValues: Readonly<Record<string, FieldValue>>;
       key: string;
       problems: readonly FieldTextProblem[];
     }>
@@ -353,12 +386,18 @@ let heldDrafts:
  * translation at all is left as the protocol has it: the cell that empties it
  * says so itself.
  */
-const fieldProblemsInTable = (
+export const fieldProblemsInTable = (
   state: RootState,
   formValues: Readonly<Record<string, FieldValue>>,
 ): readonly FieldTextProblem[] => {
   const protocol = getProtocol(state);
   if (!protocol) return [];
+  if (
+    heldDrafts?.protocol === protocol &&
+    heldDrafts.formValues === formValues
+  ) {
+    return heldDrafts.problems;
+  }
   const groups = getTranslationGroups(state);
   const cells = Object.entries(formValues).flatMap(([name, value]) => {
     const cell = readTranslationFieldName(name);
@@ -371,6 +410,7 @@ const fieldProblemsInTable = (
   });
   const key = JSON.stringify(cells);
   if (heldDrafts?.protocol === protocol && heldDrafts.key === key) {
+    heldDrafts = { ...heldDrafts, formValues };
     return heldDrafts.problems;
   }
   const { drafts } = rowDrafts(groups, cells);
@@ -380,7 +420,7 @@ const fieldProblemsInTable = (
   const problems = findFieldTextProblems(
     protocolAfter(protocol, updatesOf(drafts)),
   );
-  heldDrafts = { protocol, key, problems };
+  heldDrafts = { protocol, formValues, key, problems };
   return problems;
 };
 
@@ -391,7 +431,6 @@ const describeFieldProblem = (
 ) =>
   intl.formatMessage(ruleMessages[problem.rule], {
     language: languageName(problem.locale),
-    max: STAGE_LABEL_MAX_LENGTH,
   });
 
 /**
@@ -466,13 +505,14 @@ const cellValidation =
               );
           if (issue !== undefined) {
             fail(
-              (row.arguments === undefined
-                ? undefined
-                : localizedMessageProblemText(
-                    { [locale]: text },
-                    row.arguments,
-                    intl,
-                  )) ??
+              declaredRuleMessage(issue, intl) ??
+                (row.arguments === undefined
+                  ? undefined
+                  : localizedMessageProblemText(
+                      { [locale]: text },
+                      row.arguments,
+                      intl,
+                    )) ??
                 intl.formatMessage(messages.textNotUsable, {
                   details: issue.message,
                 }),

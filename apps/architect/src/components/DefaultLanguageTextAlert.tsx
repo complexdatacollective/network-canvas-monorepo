@@ -7,10 +7,11 @@ import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import type { FinishStageTextProblem } from '@codaco/protocol-validation';
 import { useAppSelector } from '~/ducks/hooks';
 import { getDefaultLanguageTextProblem } from '~/selectors/issues';
+import { isBuiltInWordingSummary } from '~/utils/defaultLanguageText';
 import {
-  type DefaultLanguageTextProblem,
-  isBuiltInWordingSummary,
-} from '~/utils/defaultLanguageText';
+  type DownloadRefusal,
+  isLabelCollisionsSummary,
+} from '~/utils/downloadRefusal';
 
 import { translationTableHref } from './Localization/translationTableLinks';
 import { useLanguageName } from './Localization/useLanguageName';
@@ -20,7 +21,14 @@ const messages = defineMessages({
     id: 'architect.finishStageText.cannotBeDownloadedYet',
     defaultMessage: 'This protocol can’t be downloaded yet',
     description:
-      'Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, or while Network Canvas’s built-in wording has no text in that language.',
+      'Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, while Network Canvas’s built-in wording has no text in that language, or while two labels participants choose between read the same.',
+  },
+  labelCollisions: {
+    id: 'architect.labelCollisions.downloadRefused',
+    defaultMessage:
+      'Some answer options or diseases have labels that read the same in one of the protocol’s languages, so participants could not tell them apart. The Stages page lists them. The protocol can’t be downloaded until each pair has different labels.',
+    description:
+      'Shown in the dialog that refuses to download (or send) a protocol while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have labels a participant would read as the same text in one of the protocol’s languages: written the same, differing only in capital letters or spaces at either end, or because one has no translation in that language and shows another language’s text instead. Researcher-facing. “The Stages page” is the Architect page listing the protocol’s stages, where a notice names each pair.',
   },
   missingBuiltInWording: {
     id: 'architect.builtInWording.missingInDefaultLanguage',
@@ -71,19 +79,22 @@ const describeProblem = ({ missing }: FinishStageTextProblem) => {
 };
 
 /** The title for a refused download, matching the notice's own. */
-export const DefaultLanguageTextRefusalTitle = () => {
+export const DownloadRefusalTitle = () => {
   const intl = useAppIntl();
   return <>{intl.formatMessage(messages.cannotBeDownloadedYet)}</>;
 };
 
-/** What is missing, in which language, and that it blocks downloading. */
-export const DefaultLanguageTextRefusal = ({
+/** What stops the download, and that it does. */
+export const DownloadRefusalMessage = ({
   problem,
 }: {
-  problem: DefaultLanguageTextProblem;
+  problem: DownloadRefusal;
 }) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
+  if (isLabelCollisionsSummary(problem)) {
+    return <>{intl.formatMessage(messages.labelCollisions)}</>;
+  }
   return (
     <>
       {intl.formatMessage(
@@ -118,7 +129,7 @@ const DefaultLanguageTextAlert = () => {
       </AlertTitle>
       <AlertDescription className="space-y-4 text-sm">
         <span className="block">
-          <DefaultLanguageTextRefusal problem={problem} />
+          <DownloadRefusalMessage problem={problem} />
         </span>
         {isBuiltInWordingSummary(problem) ? (
           <NativeLink

@@ -28,6 +28,7 @@ import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { type FormattedConfig, formatConfig } from '~/i18n/formatConfig';
 import { toSubmissionError } from '~/i18n/submissionErrors';
 import { getVariablesForSubject } from '~/selectors/codebook';
+import { getLocalization } from '~/selectors/protocol';
 import {
   findExportColumnConflictMessage,
   toExportColumnCandidate,
@@ -169,6 +170,9 @@ const NewVariableFields = ({
   lockedOptions,
 }: NewVariableFieldsProps) => {
   const intl = useAppIntl();
+  // The new options' labels are compared in the protocol's languages, as
+  // every other place that edits an option label compares them.
+  const localization = useAppSelector(getLocalization);
   const variableType = useFormStore((state) => {
     const value = state.getFieldState('type')?.value;
     return typeof value === 'string' ? value : undefined;
@@ -274,10 +278,11 @@ const NewVariableFields = ({
                   additionalMessages.createNewOption,
                 )}
                 initialValue={initialOptions}
-                validation={optionsValidation(intl, {
-                  entity,
-                  siblings: existingVariables,
-                })}
+                validation={optionsValidation(
+                  intl,
+                  { entity, siblings: existingVariables },
+                  localization,
+                )}
               />
             )}
           </Section>

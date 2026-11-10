@@ -59,7 +59,7 @@ vi.mock('~/ducks/modules/userActions/userActions', async () => {
       fixture.exported();
       return fixture.refusal === 'finish-stage-text'
         ? {
-            status: 'missing-default-language-text',
+            status: 'download-refused',
             problem: fixture.finishStageTextProblem,
           }
         : {
@@ -82,17 +82,15 @@ vi.mock('~/utils/bundleProtocol', async (importOriginal) => {
   // The real error class, because LibraryPanel narrows on `instanceof` — a
   // look-alike defined here would take the generic failure branch and the
   // dialog under test would never open.
-  const { MissingDefaultLanguageTextError, UnresolvedAssetsError } =
+  const { DownloadRefusedError, UnresolvedAssetsError } =
     await importOriginal<typeof import('~/utils/bundleProtocol')>();
   return {
-    MissingDefaultLanguageTextError,
+    DownloadRefusedError,
     UnresolvedAssetsError,
     downloadProtocolAsNetcanvas: async () => {
       fixture.downloaded();
       if (fixture.refusal === 'finish-stage-text') {
-        throw new MissingDefaultLanguageTextError(
-          fixture.finishStageTextProblem,
-        );
+        throw new DownloadRefusedError(fixture.finishStageTextProblem);
       }
       throw new UnresolvedAssetsError(fixture.files.map((file) => file.name));
     },

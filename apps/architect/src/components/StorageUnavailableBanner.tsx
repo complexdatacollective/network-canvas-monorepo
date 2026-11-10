@@ -14,8 +14,8 @@ import { getStorageUnavailable } from '~/ducks/modules/app';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 
 import {
-  DefaultLanguageTextRefusal,
-  DefaultLanguageTextRefusalTitle,
+  DownloadRefusalMessage,
+  DownloadRefusalTitle,
 } from './DefaultLanguageTextAlert';
 const messages = defineMessages({
   thisProtocolIsnTBeingSavedOn: {
@@ -91,12 +91,12 @@ const StorageUnavailableBanner = () => {
             void dispatch(exportNetcanvas())
               .unwrap()
               .then((result) => {
-                if (result.status === 'missing-default-language-text') {
+                if (result.status === 'download-refused') {
                   void openDialog({
                     type: 'acknowledge',
                     intent: 'destructive',
-                    title: createElement(DefaultLanguageTextRefusalTitle),
-                    description: createElement(DefaultLanguageTextRefusal, {
+                    title: createElement(DownloadRefusalTitle),
+                    description: createElement(DownloadRefusalMessage, {
                       problem: result.problem,
                     }),
                     actions: {

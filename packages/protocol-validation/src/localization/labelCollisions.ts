@@ -146,6 +146,18 @@ export const labelCollisionIssues = (
     return {
       code: DUPLICATE_LABEL,
       path: [...collision.paths[1]],
+      params: {
+        kind: collision.kind,
+        name:
+          collision.kind === 'option'
+            ? collision.variableName
+            : collision.stageId,
+        first: duplicate.firstIndex + 1,
+        second: duplicate.index + 1,
+        firstLabel: duplicate.firstText,
+        secondLabel: duplicate.text,
+        locale: duplicate.locale,
+      },
       message:
         collision.kind === 'option'
           ? `Options ${duplicate.firstIndex + 1} and ${duplicate.index + 1} of attribute "${collision.variableName}" have labels that read the same: ${labels}${language}. Each option needs a label participants can tell apart.`

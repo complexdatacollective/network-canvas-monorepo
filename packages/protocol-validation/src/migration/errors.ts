@@ -1,4 +1,5 @@
 import type { SchemaVersion } from '../schemas/index.ts';
+import type { ProtocolValidationIssue } from '../validation/validate-protocol.ts';
 
 export class MigrationError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
@@ -43,11 +44,21 @@ export class MigrationStepError extends MigrationError {
  */
 export class MigrationResultInvalidError extends MigrationError {
   readonly targetVersion: number;
+  /**
+   * Why the result is refused, where the schema said: each issue, so a host
+   * can explain one it has words for, such as two options that read the same.
+   */
+  readonly issues: readonly ProtocolValidationIssue[];
 
-  constructor(message: string, targetVersion: number) {
+  constructor(
+    message: string,
+    targetVersion: number,
+    issues: readonly ProtocolValidationIssue[] = [],
+  ) {
     super(message);
     this.name = 'MigrationResultInvalidError';
     this.targetVersion = targetVersion;
+    this.issues = issues;
   }
 }
 

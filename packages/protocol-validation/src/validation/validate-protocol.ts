@@ -1,3 +1,5 @@
+import type { z } from 'zod';
+
 import { ensureError } from '@codaco/shared-consts';
 
 import { labelCollisionIssues } from '../localization/labelCollisions.ts';
@@ -16,7 +18,30 @@ export type ProtocolValidationIssue = {
   path: (string | number)[];
   /** Human-readable description of the failure. */
   message: string;
+  /**
+   * What a host may need to explain the failure in its own words, where the
+   * rule broken supplies it: `labelCollisionIssues`'s labels, or the name a
+   * stage name's length rule refuses (`STAGE_LABEL_TOO_LONG`).
+   */
+  params?: Readonly<Record<string, unknown>>;
 };
+
+/** Zod's issues as validation issues, each with the `params` it carries. */
+export const toProtocolValidationIssues = (
+  issues: readonly z.core.$ZodIssue[],
+): ProtocolValidationIssue[] =>
+  issues.map((issue) => ({
+    code: issue.code,
+    // Zod paths are PropertyKey[]; symbols cannot appear in protocol JSON but
+    // are stringified so the domain path stays (string | number)[].
+    path: issue.path.map((segment) =>
+      typeof segment === 'symbol' ? String(segment) : segment,
+    ),
+    message: issue.message,
+    ...(issue.code === 'custom' && issue.params !== undefined
+      ? { params: issue.params }
+      : {}),
+  }));
 
 /** Single-string rendering of validation issues for dialogs, CLI output, and logs. */
 export const formatProtocolValidationIssues = (
@@ -155,15 +180,7 @@ const validateProtocol = async (
 
     const schemaIssues = result.success
       ? handedOverIssues
-      : result.error.issues.map((issue) => ({
-          code: issue.code,
-          // Zod paths are PropertyKey[]; symbols cannot appear in protocol JSON but
-          // are stringified so the domain path stays (string | number)[].
-          path: issue.path.map((segment) =>
-            typeof segment === 'symbol' ? String(segment) : segment,
-          ),
-          message: issue.message,
-        }));
+      : toProtocolValidationIssues(result.error.issues);
 
     return {
       success: false,
