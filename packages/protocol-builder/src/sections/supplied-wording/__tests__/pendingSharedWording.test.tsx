@@ -439,6 +439,49 @@ describe('a new stage saved with its shared words, whose answer is lost', () => 
   });
 });
 
+describe('a stage saved with its shared words, whose answer is lost', () => {
+  it('is written once when the researcher saves again after the protocol has taken its words', async () => {
+    const requestIds: string[] = [];
+    let lost = false;
+    const harness = renderStageEditor({
+      stageId: 'geospatial-1',
+      sections: geospatialSections,
+      adapter: (host) =>
+        host.adapterWith({
+          Submit: (input) => {
+            requestIds.push(input.requestId);
+            return Effect.flatMap(host.handle.Submit(input), (answer) => {
+              if (lost) return Effect.succeed(answer);
+              lost = true;
+              return Effect.die(
+                new Error('the socket dropped before the answer arrived'),
+              );
+            });
+          },
+        }),
+    });
+    await openSharedWording(harness);
+    await toggleSearch(harness);
+    await screen.findByRole('textbox', { name: SEARCH_FAILED });
+
+    // The host wrote the stage and its words; the editor was told the save
+    // failed, and has since read the words as the protocol's.
+    expect(await harness.submit()).toBeNull();
+    const written = harness.host.store.read(SETTINGS).revision.sequence;
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual(
+      supplied(FIXTURE),
+    );
+
+    expect(await harness.submit()).not.toBeNull();
+
+    // Asked again under the same id, so the host answered with what it had
+    // already written rather than writing it again.
+    expect(requestIds).toHaveLength(2);
+    expect(new Set(requestIds).size).toBe(1);
+    expect(harness.host.store.read(SETTINGS).revision.sequence).toBe(written);
+  });
+});
+
 /** A collaborator saving one shared word, as the settings' own write. */
 const collaboratorSaves = (
   harness: StageEditorHarness,
