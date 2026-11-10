@@ -1,13 +1,17 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import { IntroductionPanelSchema } from '@codaco/protocol-validation';
 
 import {
   LocalizedInputField,
   LocalizedRichTextField,
 } from '../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
+import { markdownTextShapeAt } from '../../localization/textShape.ts';
 import BuilderSection from '../BuilderSection.tsx';
+
+const TEXT_SHAPE = markdownTextShapeAt(IntroductionPanelSchema, ['text']);
 
 /** The schema keeps a stage's introduction in one object with two parts. */
 const TITLE_FIELD = 'introductionPanel.title';
@@ -67,6 +71,7 @@ export default function IntroductionSection() {
       <Field<typeof LocalizedRichTextField>
         name={TEXT_FIELD}
         component={LocalizedRichTextField}
+        shape={TEXT_SHAPE}
         dynamicValues="stageText"
         label={intl.formatMessage(introductionMessages.textLabel)}
       />

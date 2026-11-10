@@ -97,6 +97,20 @@ describe('StageNameInput', () => {
     expect(onChange.mock.calls[0]?.[0]).toHaveLength(pasted.length);
   });
 
+  it("puts a name pasted with Unicode's line separators on one line", () => {
+    const onChange = vi.fn();
+
+    render(<StageNameInput name="label" value="" onChange={onChange} />);
+
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: {
+        value: `Close ties${String.fromCodePoint(0x2028)}and weak${String.fromCodePoint(0x2029)}ties`,
+      },
+    });
+
+    expect(onChange).toHaveBeenCalledWith('Close ties and weak ties');
+  });
+
   it('submits the form on Enter rather than typing a line break into the name', () => {
     const onSubmit = vi.fn((event: FormEvent) => event.preventDefault());
     const onSubmitButtonClick = vi.fn();

@@ -237,13 +237,13 @@
             "options": [
               {
                 "label": {
-                  "en": "Visited\n"
+                  "en": "Visited"
                 },
                 "value": true
               },
               {
                 "label": {
-                  "en": "Studied\n"
+                  "en": "Studied"
                 },
                 "value": false,
                 "negative": false
@@ -489,14 +489,14 @@
           "options": [
             {
               "label": {
-                "en": "**Yes**. I wish to participate in the study in accordance with the terms outlined above.\n"
+                "en": "**Yes**. I wish to participate in the study in accordance with the terms outlined above."
               },
               "value": true,
               "negative": false
             },
             {
               "label": {
-                "en": "**No**. I decline to participate, and wish to immediately withdraw from this study.\n"
+                "en": "**No**. I decline to participate, and wish to immediately withdraw from this study."
               },
               "value": false,
               "negative": true
@@ -664,7 +664,7 @@
           {
             "variable": "09306238-68e4-498c-8c12-923eb2eec760",
             "prompt": {
-              "en": "Do you consent to participate in this study in accordance with the terms above?\n"
+              "en": "Do you consent to participate in this study in accordance with the terms above?"
             }
           }
         ]

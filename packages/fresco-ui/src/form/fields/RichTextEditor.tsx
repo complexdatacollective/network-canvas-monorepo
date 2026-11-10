@@ -65,6 +65,7 @@ import {
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { linesOf } from '@codaco/shared-consts';
 
 import { buttonVariants, iconButtonVariants, Button } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
@@ -528,11 +529,11 @@ const addAtom = (run: OneLineRun, atom: JSONContent) => {
   run.collected.push(atom);
 };
 
-/** A run of newlines, however the platform that wrote them spells one. */
-const LINE_BREAKS = /(?:\r\n|[\n\r])+/;
-
 /**
- * Adds a text node, treating the newlines INSIDE it as breaks like any other.
+ * Adds a text node, treating the line breaks INSIDE it as breaks like any
+ * other: newlines however a platform spells them, and Unicode's line and
+ * paragraph separators, which the schema refuses in one-line text just the
+ * same (`linesOf`, the one definition of a line break).
  *
  * A line break can live inside the text itself, where no schema was ever going
  * to refuse it: markdown's own soft break parses to one text node with the
@@ -545,7 +546,7 @@ const addTextLines = (
   text: string,
   marks: JSONContent['marks'],
 ) => {
-  for (const [index, line] of text.split(LINE_BREAKS).entries()) {
+  for (const [index, line] of linesOf(text).entries()) {
     if (index > 0) {
       run.breakPending = true;
     }

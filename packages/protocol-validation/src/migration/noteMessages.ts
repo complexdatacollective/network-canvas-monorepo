@@ -527,6 +527,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Name Generator Roster" is the name Architect gives the interface; use the same name Architect uses for it. "Available to add" is the English text written into the protocol: keep it in English, in quotation marks.',
   },
+  schema9SingleLineText: {
+    id: 'protocolValidation.migrationNotes.schema9.singleLineText',
+    defaultMessage:
+      'Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A stage is one step of an interview; a prompt is the question or instruction a stage shows above its activity; a form field is one question in a form, and its hint is extra guidance under the question; an answer is one of the fixed options a participant chooses from. A line break is where text continues on a new line.',
+  },
   schema9PedigreeWording: {
     id: 'protocolValidation.migrationNotes.schema9.pedigreeWording',
     defaultMessage:
@@ -660,6 +667,7 @@ const migrationNoteSets: Record<
         ],
       },
       migrationNoteMessages.schema9RosterPanelTitle,
+      migrationNoteMessages.schema9SingleLineText,
     ],
   },
 };

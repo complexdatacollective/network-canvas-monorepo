@@ -12,7 +12,6 @@ import {
 } from './family-pedigree-values.ts';
 import type { LocalizedString } from './localized-string.ts';
 import {
-  isStillSupplied,
   type LanguageChange,
   suppliedTextAfterLanguageChange,
   suppliedTextFor,
@@ -267,37 +266,14 @@ export const suppliedOptionLabels = (
 
 type LabelledOption = Readonly<{ value: unknown; label?: unknown }>;
 
-const labelOf = (option: LabelledOption): LocalizedString =>
-  typeof option.label === 'object' && option.label !== null
-    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an object-valued label is a language-to-text map; callers only compare its entries with supplied text
-      (option.label as LocalizedString)
-    : {};
-
 /**
- * Whether every option's label in the protocol's default language is still
- * exactly the label Network Canvas wrote there (none, where it supplies none
- * in that language): the researcher has not reworded any of them.
- */
-export const hasSuppliedOptionLabels = (
-  set: SuppliedOptionLabelSet,
-  options: readonly LabelledOption[],
-  localization: LocalizationDeclaration,
-): boolean =>
-  options.every(
-    (option) =>
-      typeof option.value === 'string' &&
-      isStillSupplied(
-        labelOf(option),
-        (locale) => suppliedOptionLabel(set, String(option.value), locale),
-        localization.defaultLocale,
-      ),
-  );
-
-/**
- * The options as Network Canvas labels them after a change to the protocol's
- * languages (see `suppliedTextAfterLanguageChange`), when their labels in the
- * default language before it are still the ones it wrote; `undefined`
- * otherwise, as the labels are then the researcher's.
+ * The options as they read after a change to the protocol's languages (see
+ * `suppliedTextAfterLanguageChange`), each label on its own: a language the
+ * protocol did not have gains Network Canvas's label for each option with no
+ * label in it, whether or not the researcher has reworded that label or
+ * another, and Network Canvas's label for a corrected language becomes its
+ * label for the language as corrected. An option whose value or label is not
+ * one Network Canvas could have written is left as it is.
  */
 export const suppliedOptionLabelsAfterLanguageChange = <
   Option extends LabelledOption,
@@ -305,18 +281,22 @@ export const suppliedOptionLabelsAfterLanguageChange = <
   set: SuppliedOptionLabelSet,
   options: readonly Option[],
   change: LanguageChange,
-): Option[] | undefined => {
-  if (!hasSuppliedOptionLabels(set, options, change.before)) return undefined;
-  return options.map((option) => {
-    const { value } = option;
-    if (typeof value !== 'string') return option;
+): Option[] =>
+  options.map((option) => {
+    const { value, label } = option;
+    if (
+      typeof value !== 'string' ||
+      typeof label !== 'object' ||
+      label === null
+    )
+      return option;
     return {
       ...option,
       label: suppliedTextAfterLanguageChange(
-        labelOf(option),
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an object-valued label is a language-to-text map; its translations are kept as they are, except one that equals the supplied label
+        label as LocalizedString,
         (locale) => suppliedOptionLabel(set, value, locale),
         change,
       ),
     };
   });
-};

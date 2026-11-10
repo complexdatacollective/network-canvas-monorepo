@@ -441,7 +441,7 @@
   "architect.localization.languageActions.addDescription": "Participants can take the interview in any of the protocol’s languages. Until you translate the wording into a new language, participants who use it see the closest translation available instead.",
   "architect.localization.languageActions.addSubmit": "Add languages",
   "architect.localization.languageActions.addTitle": "Add languages",
-  "architect.localization.languageActions.changeDescription": "Use this when the wording recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Every {language} translation is recorded as the language you choose instead. Nothing is translated or deleted.",
+  "architect.localization.languageActions.changeDescription": "Use this when the wording recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Everything recorded as {language} is recorded as the language you choose instead. Wording you wrote or changed moves as it is, without being translated or deleted. Built-in wording you haven’t changed becomes Network Canvas’s version of it in the language you choose. Any built-in wording that Network Canvas doesn’t have in that language is removed, and you’ll need to write it.",
   "architect.localization.languageActions.changeSubmit": "Change language",
   "architect.localization.languageActions.changeTitle": "Change {language} to a different language",
   "architect.localization.languageActions.chooseALanguage": "Choose a language",

@@ -51,12 +51,20 @@ const composerFormFieldShape = {
     subject: 'stageSubject',
     usage: 'validatedAttribute',
   }),
-  label: localizedString(nonBlankText(), 'markdown', {
-    dynamicValues: 'formField',
-  }),
-  hint: localizedString(nonBlankText(), 'markdown', {
-    dynamicValues: 'formField',
-  }).optional(),
+  label: localizedString(
+    nonBlankText(),
+    { format: 'markdown', lines: 'single' },
+    {
+      dynamicValues: 'formField',
+    },
+  ),
+  hint: localizedString(
+    nonBlankText(),
+    { format: 'markdown', lines: 'single' },
+    {
+      dynamicValues: 'formField',
+    },
+  ).optional(),
   showValidationHints: z.boolean().optional(),
 };
 
@@ -68,12 +76,20 @@ const ComposerScaleFieldSchema = z.strictObject({
   component: z.literal(ComponentTypes.VisualAnalogScale),
   parameters: z
     .looseObject({
-      minLabel: localizedString(nonBlankText(), 'markdown', {
-        dynamicValues: 'formField',
-      }).optional(),
-      maxLabel: localizedString(nonBlankText(), 'markdown', {
-        dynamicValues: 'formField',
-      }).optional(),
+      minLabel: localizedString(
+        nonBlankText(),
+        { format: 'markdown', lines: 'single' },
+        {
+          dynamicValues: 'formField',
+        },
+      ).optional(),
+      maxLabel: localizedString(
+        nonBlankText(),
+        { format: 'markdown', lines: 'single' },
+        {
+          dynamicValues: 'formField',
+        },
+      ).optional(),
     })
     .optional(),
 });
@@ -188,7 +204,10 @@ export const networkComposerStage = baseStageSchema.extend({
         subject: EdgeStageSubjectSchema,
         // The words participants choose this edge type by in the toolbar,
         // and the title of its editor: they never read the type's name.
-        label: localizedString(nonBlankText(), 'plain'),
+        label: localizedString(nonBlankText(), {
+          format: 'plain',
+          lines: 'single',
+        }),
         form: ComposerFormSchema.optional(),
       }),
     )

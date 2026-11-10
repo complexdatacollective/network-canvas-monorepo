@@ -7,6 +7,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
+import { tieStrengthCensusPromptSchema } from '@codaco/protocol-validation';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import {
@@ -35,6 +36,7 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { asLocalizedString } from '../../../localization/localizedText.ts';
+import { markdownTextShapeAt } from '../../../localization/textShape.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
 import { useRowValue } from '../../../sections/AttributeCodebookControls.tsx';
 import AttributeValueFields, {
@@ -50,6 +52,10 @@ import EdgeTypeSection, {
   edgeSubjectOf,
   missingEdgeTypeIssue,
 } from '../../dyad-census/sections/EdgeTypeSection.tsx';
+
+const DECLINE_SHAPE = markdownTextShapeAt(tieStrengthCensusPromptSchema, [
+  'negativeLabel',
+]);
 
 const SCALE_FIELD = 'edgeVariable';
 const DECLINE_FIELD = 'negativeLabel';
@@ -440,13 +446,13 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
           <Field<typeof LocalizedRichTextField>
             name={DECLINE_FIELD}
             component={LocalizedRichTextField}
+            shape={DECLINE_SHAPE}
             dynamicValues="prompt"
             label={intl.formatMessage(tieStrengthPromptMessages.declineLabel)}
             hint={intl.formatMessage(tieStrengthPromptMessages.declineHint)}
             placeholder={intl.formatMessage(
               tieStrengthPromptMessages.declinePlaceholder,
             )}
-            singleLine
             initialValue={asLocalizedString(item[DECLINE_FIELD])}
             required={intl.formatMessage(
               tieStrengthPromptMessages.declineRequired,

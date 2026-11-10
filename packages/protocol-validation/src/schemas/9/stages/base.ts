@@ -66,7 +66,10 @@ export const baseStageSchema = z.strictObject({
   // to show in its place. Every translation is held to the length a name can
   // be shown at (`STAGE_LABEL_MAX_LENGTH`).
   interviewScript: z.string().optional(),
-  label: localizedString(stageLabelText(), 'plain'),
+  label: localizedString(stageLabelText(), {
+    format: 'plain',
+    lines: 'single',
+  }),
   skipLogic: SkipLogicSchema.optional(),
   // Values from the interview the stage's text may show, by the argument name
   // its messages use (see `dynamic-values.ts`).

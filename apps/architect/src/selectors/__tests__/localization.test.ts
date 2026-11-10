@@ -112,6 +112,7 @@ describe('getTranslationGroups()', () => {
             path: ['stages', 0, 'label'],
             field: ['label'],
             format: 'plain',
+            lines: 'single',
             value: { en: 'Welcome', fr: 'Bienvenue', de: 'Willkommen' },
             // The declaration of the field it is in.
             schema: expect.anything(),
@@ -120,6 +121,7 @@ describe('getTranslationGroups()', () => {
             path: ['stages', 0, 'title'],
             field: ['title'],
             format: 'plain',
+            lines: 'single',
             value: { en: 'Hello', fr: 'Bonjour' },
             // The declaration of the field it is in.
             schema: expect.anything(),
@@ -143,6 +145,7 @@ describe('getTranslationGroups()', () => {
             ],
             field: ['variables', 'closeness', 'options', 0, 'label'],
             format: 'markdown',
+            lines: 'single',
             value: { en: 'Close' },
             // The declaration of the field it is in.
             schema: expect.anything(),
@@ -152,7 +155,7 @@ describe('getTranslationGroups()', () => {
     ]);
   });
 
-  it('marks text participants see as markdown', () => {
+  it('marks text participants see as markdown, and how many lines it holds', () => {
     const protocol = trilingual();
     const withText: CurrentProtocol = {
       ...protocol,
@@ -182,6 +185,7 @@ describe('getTranslationGroups()', () => {
       path: ['stages', 1, 'items', 0, 'content'],
       field: ['items', 0, 'content'],
       format: 'markdown',
+      lines: 'multiple',
       value: { en: 'Name **people**', fr: 'Nommez' },
       // The declaration of the field it is in.
       schema: expect.anything(),

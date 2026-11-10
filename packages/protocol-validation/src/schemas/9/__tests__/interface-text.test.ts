@@ -6,8 +6,10 @@ import {
   InterfaceTextSchema,
   interfaceTextAfterLanguageChange,
   interfaceTextFor,
+  suppliedInterfaceText,
   withInterfaceText,
 } from '../interface-text.ts';
+import { SUPPLIED_LANGUAGES } from '../supplied-text.ts';
 
 const ENGLISH_AND_FRENCH = { defaultLocale: 'en', locales: ['en', 'fr'] };
 
@@ -547,6 +549,26 @@ describe('the interface text a protocol holds', () => {
     ).toBe(false);
   });
 
+  it('is worded, in every language Network Canvas supplies, as each text declares its lines', () => {
+    const everyLanguage = {
+      defaultLocale: 'en',
+      locales: [...SUPPLIED_LANGUAGES],
+    };
+    const text: Record<string, Record<string, unknown>> = {};
+    for (const { group, key } of INTERFACE_TEXT_MESSAGES) {
+      const value = suppliedInterfaceText(group, key, everyLanguage);
+      expect({ group, key, languages: Object.keys(value ?? {}) }).toEqual({
+        group,
+        key,
+        languages: [...SUPPLIED_LANGUAGES],
+      });
+      text[group] = { ...text[group], [key]: value };
+    }
+
+    // A text declared one line refuses a line break in any language.
+    expect(InterfaceTextSchema.safeParse(text).error?.issues).toBeUndefined();
+  });
+
   it('holds the screen error message as markdown, and the rest as plain text', () => {
     const formats = new Map(
       collectLocalizedStrings({
@@ -596,12 +618,12 @@ describe('the interface text a protocol holds', () => {
 });
 
 describe('interface text after a change to the languages', () => {
-  it('follows the change while the default-language text is still Network Canvas’s, and leaves reworded text alone', () => {
+  it('gives a new language Network Canvas’s wording for every entry, reworded or not', () => {
     const english = { defaultLocale: 'en', locales: ['en'] };
     const text = interfaceTextFor(protocolWith({ localization: english }));
     const reworded = {
       ...text,
-      navigation: { ...text.navigation, back: { en: 'Previous' } },
+      navigation: { ...text.navigation, continue: { en: 'Next' } },
     };
 
     const updates = interfaceTextAfterLanguageChange(reworded, {
@@ -611,10 +633,50 @@ describe('interface text after a change to the languages', () => {
     const updated = (key: string) =>
       updates.find(
         (update) => update.group === 'navigation' && update.key === key,
-      );
+      )?.value;
 
-    expect(updated('exitInterview')?.value.fr).toEqual(expect.any(String));
-    expect(updated('back')).toBeUndefined();
+    expect(updated('back')).toEqual({ en: 'Back', fr: 'Retour' });
+    expect(updated('continue')).toEqual({ en: 'Next', fr: 'Continuer' });
+  });
+
+  it('overwrites no translation, and fills no gap in a language the protocol already had', () => {
+    const text = interfaceTextFor(protocolWith());
+    const reworded = {
+      ...text,
+      navigation: {
+        ...text.navigation,
+        back: { en: 'Previous', fr: 'Précédent' },
+        continue: { en: 'Next' },
+      },
+    };
+
+    const updates = interfaceTextAfterLanguageChange(reworded, {
+      before: ENGLISH_AND_FRENCH,
+      after: { defaultLocale: 'en', locales: ['en', 'fr', 'de'] },
+    });
+    const updated = (key: string) =>
+      updates.find(
+        (update) => update.group === 'navigation' && update.key === key,
+      )?.value;
+
+    expect(updated('back')).toEqual({
+      en: 'Previous',
+      fr: 'Précédent',
+      de: 'Zurück',
+    });
+    expect(updated('continue')).toEqual({ en: 'Next', de: 'Weiter' });
+  });
+
+  it('gives a new language Network Canvas has no wording in nothing', () => {
+    const english = { defaultLocale: 'en', locales: ['en'] };
+    const text = interfaceTextFor(protocolWith({ localization: english }));
+    const updates = interfaceTextAfterLanguageChange(text, {
+      before: english,
+      after: { defaultLocale: 'en', locales: ['en', 'ja'] },
+    });
+
+    expect(updates.length).toBeGreaterThan(0);
+    for (const { value } of updates) expect(Object.keys(value)).toEqual(['en']);
   });
 
   it('removes a language that was removed', () => {

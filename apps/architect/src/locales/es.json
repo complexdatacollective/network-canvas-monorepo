@@ -441,7 +441,7 @@
   "architect.localization.languageActions.addDescription": "Los participantes pueden completar la entrevista en cualquiera de los idiomas del protocolo. Hasta que traduzcas el contenido a un idioma nuevo, los participantes que lo usen verán en su lugar la traducción disponible más cercana.",
   "architect.localization.languageActions.addSubmit": "Añadir idiomas",
   "architect.localization.languageActions.addTitle": "Añadir idiomas",
-  "architect.localization.languageActions.changeDescription": "Úsalo cuando el contenido registrado como {language} esté realmente escrito en otro idioma, por ejemplo en un protocolo actualizado desde una versión anterior. Todas las traducciones en {language} se registrarán como el idioma que elijas. No se traduce ni se elimina nada.",
+  "architect.localization.languageActions.changeDescription": "Usa esta opción cuando los textos registrados como {language} estén realmente escritos en otro idioma, por ejemplo en un protocolo actualizado desde una versión anterior. Todo lo que está registrado como {language} pasa a registrarse en el idioma que elijas. Los textos que hayas escrito o cambiado pasan al nuevo idioma tal cual, sin traducirse ni eliminarse. La redacción predeterminada que no hayas cambiado se sustituye por la versión de Network Canvas en el idioma que elijas. La redacción predeterminada que Network Canvas no tenga en ese idioma se elimina, y tendrás que escribirla.",
   "architect.localization.languageActions.changeSubmit": "Cambiar idioma",
   "architect.localization.languageActions.changeTitle": "Cambiar {language} a otro idioma",
   "architect.localization.languageActions.chooseALanguage": "Elige un idioma",

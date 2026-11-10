@@ -11,9 +11,13 @@ export { OrdinalColorSequence as ordinalColorSequence } from '../color-reference
 
 export const promptSchema = z.strictObject({
   id: z.string(),
-  text: localizedString(nonBlankText(), 'markdown', {
-    dynamicValues: 'prompt',
-  }),
+  text: localizedString(
+    nonBlankText(),
+    { format: 'markdown', lines: 'single' },
+    {
+      dynamicValues: 'prompt',
+    },
+  ),
 });
 
 // Re-parses an already-refined value against a narrowing union so the STATIC
@@ -157,9 +161,13 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
     requireType: ['ordinal'],
     usage: 'unvalidatedAttribute',
   }),
-  negativeLabel: localizedString(nonBlankText(), 'markdown', {
-    dynamicValues: 'prompt',
-  }),
+  negativeLabel: localizedString(
+    nonBlankText(),
+    { format: 'markdown', lines: 'single' },
+    {
+      dynamicValues: 'prompt',
+    },
+  ),
 });
 
 export const ordinalBinPromptSchema = promptSchema.extend({
@@ -197,13 +205,21 @@ export const categoricalBinPromptSchema = promptSchema
     }).optional(),
     // The question the "other" bin asks about the node just put in it, which
     // is a one-field form about that node.
-    otherVariablePrompt: localizedString(nonBlankText(), 'markdown', {
-      dynamicValues: 'formField',
-    }).optional(),
+    otherVariablePrompt: localizedString(
+      nonBlankText(),
+      { format: 'markdown', lines: 'single' },
+      {
+        dynamicValues: 'formField',
+      },
+    ).optional(),
     // The "other" bin's caption, which is not about the node being placed.
-    otherOptionLabel: localizedString(nonBlankText(), 'markdown', {
-      dynamicValues: 'stageText',
-    }).optional(),
+    otherOptionLabel: localizedString(
+      nonBlankText(),
+      { format: 'markdown', lines: 'single' },
+      {
+        dynamicValues: 'stageText',
+      },
+    ).optional(),
   })
   .superRefine((prompt, ctx) => {
     if (prompt.otherVariable === '') {
@@ -257,12 +273,20 @@ export const categoricalBinPromptSchema = promptSchema
             requireType: ['text'],
             usage: 'validatedAttribute',
           }),
-          otherVariablePrompt: localizedString(nonBlankText(), 'markdown', {
-            dynamicValues: 'formField',
-          }),
-          otherOptionLabel: localizedString(nonBlankText(), 'markdown', {
-            dynamicValues: 'prompt',
-          }),
+          otherVariablePrompt: localizedString(
+            nonBlankText(),
+            { format: 'markdown', lines: 'single' },
+            {
+              dynamicValues: 'formField',
+            },
+          ),
+          otherOptionLabel: localizedString(
+            nonBlankText(),
+            { format: 'markdown', lines: 'single' },
+            {
+              dynamicValues: 'prompt',
+            },
+          ),
         }),
         promptSchema.extend({
           ...categoricalBinPromptFields,

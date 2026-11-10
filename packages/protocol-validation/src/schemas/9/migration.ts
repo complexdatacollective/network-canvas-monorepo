@@ -1,6 +1,8 @@
 import {
+  asOneLine,
   CodebookNameSchema,
   entitySecureAttributesMeta,
+  holdsLineBreak,
   normalizeCodebookName,
 } from '@codaco/shared-consts';
 
@@ -1125,6 +1127,38 @@ const localizeSite = (
       : { kind: 'keep' };
 };
 
+/**
+ * Text in a field schema 9 declares one line holds no line break: each run of
+ * line breaks, with the spaces around it, becomes one space, and the ends are
+ * trimmed. Text left blank by that is left as it was, for the rules on blank
+ * text to settle.
+ */
+const joinSingleLineText = (protocol: unknown) => {
+  for (const site of collectLocalizedStringSites(ProtocolSchemaV9, protocol)) {
+    const key = site.path.at(-1);
+    if (site.lines !== 'single' || key === undefined) continue;
+    const texts = isRecord(site.value)
+      ? Object.entries(site.value)
+      : [['', site.value] as const];
+    let changed = false;
+    const joined = texts.map(([locale, text]) => {
+      if (typeof text !== 'string' || !holdsLineBreak(text)) {
+        return [locale, text] as const;
+      }
+      const line = asOneLine(text);
+      if (isBlankText(line)) return [locale, text] as const;
+      changed = true;
+      return [locale, line] as const;
+    });
+    if (!changed) continue;
+    Reflect.set(
+      containerAt(protocol, site.path.slice(0, -1)),
+      key,
+      isRecord(site.value) ? Object.fromEntries(joined) : joined[0]?.[1],
+    );
+  }
+};
+
 const containerAt = (
   root: unknown,
   path: readonly (string | number)[],
@@ -1238,7 +1272,8 @@ const migrationV8toV9 = createMigration({
   - The old Family Pedigree could write each person's relationship to the participant as English text. The redesigned interface records it in a categorical attribute with fixed values that do not depend on language, which a text attribute cannot hold, so a converted stage records no relationship. To keep recording it, for example to filter later stages to the participant's parents, choose or create a categorical attribute for it in the Family Pedigree stage in Architect. The old attribute stays in the codebook with any answers already recorded, but is no longer filled in.
   - A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.
   - A Family Pedigree stage's own wording is now part of the stage, so you can change it and translate it like the rest of your protocol: the question asking each person's name and its hint, and, where the family must be complete, the list of what is still needed. It starts with the wording the interview has always shown.
-- A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".`,
+- A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".
+- Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.`,
   migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
     const localization = localizationOf(migrated);
@@ -1265,6 +1300,7 @@ const migrationV8toV9 = createMigration({
     repairFamilyPedigreeText(migrated);
     repairOtherBinText(migrated, localization);
     repairTieStrengthDeclineLabels(migrated, localization);
+    joinSingleLineText(migrated);
 
     // Every site is found before any is rewritten, so the walk reads the
     // document as schema 8 left it.

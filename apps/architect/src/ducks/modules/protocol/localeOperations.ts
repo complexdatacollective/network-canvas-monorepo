@@ -175,12 +175,15 @@ export const stageAfterLanguageChange = <
 
 /**
  * The protocol after a change to its languages. `rewritten` is the protocol
- * with every translation already moved or removed as the change says; each
- * text Network Canvas supplies that the researcher has not changed in the
- * default language — the labels of the answers a Family Pedigree asks for, a
- * finish stage's closing text, and stage settings such as a roster's panel
- * title, and the interview's shared words — then becomes what Network Canvas
- * writes for the protocol's languages as they now are.
+ * with every translation already moved or removed as the change says. Then,
+ * in each text Network Canvas supplies — the labels of the answers a Family
+ * Pedigree asks for, a finish stage's text and name, stage settings such as a
+ * roster's panel title, and the interview's shared words — a language the
+ * protocol did not have gains Network Canvas's wording wherever it has no
+ * translation, even where the researcher has reworded the text in another
+ * language, and Network Canvas's wording for a corrected language becomes its
+ * wording for the language as corrected (see
+ * `suppliedTextAfterLanguageChange`). No translation is overwritten.
  */
 const withLanguageChange = (
   original: CurrentProtocol,
@@ -208,12 +211,11 @@ const withLanguageChange = (
       const target = variableIn(draft as CurrentProtocol);
       if (variable?.type !== 'categorical' || target?.type !== 'categorical')
         continue;
-      const options = suppliedOptionLabelsAfterLanguageChange(
+      target.options = suppliedOptionLabelsAfterLanguageChange(
         set,
         variable.options,
         change,
       );
-      if (options !== undefined) target.options = options;
     }
     original.stages.forEach((stage, index) => {
       const target = draft.stages[index];
@@ -239,12 +241,12 @@ const withLanguageChange = (
 
 /**
  * Declares new languages. Nothing is translated except text Network Canvas
- * supplies that the researcher has not changed in the default language (see
- * `withLanguageChange`): a finish stage's closing text, the labels of the
- * answers a Family Pedigree asks for, and stage settings such as a roster's
- * panel title. Each gets its supplied text in every new language it is
- * supplied in. Everything else shows as a missing translation until it is
- * written.
+ * supplies (see `withLanguageChange`): a finish stage's text and name, the
+ * labels of the answers a Family Pedigree asks for, stage settings such as a
+ * roster's panel title, and the interview's shared words. Each gets its
+ * supplied text in every new language it is supplied in, whether or not the
+ * researcher has reworded it in the languages the protocol already has.
+ * Everything else shows as a missing translation until it is written.
  */
 export const addLocales = (
   protocol: CurrentProtocol,
@@ -306,8 +308,8 @@ export const getLocaleRemovalImpact = (
 };
 
 /**
- * Deletes a language and every translation written in it. Text Network Canvas
- * supplies follows as for any change of languages (see `withLanguageChange`).
+ * Deletes a language and every translation written in it. No other text
+ * changes: no language is added, so none gains Network Canvas's wording.
  */
 export const removeLocale = (
   protocol: CurrentProtocol,
@@ -340,8 +342,8 @@ export const removeLocale = (
 };
 
 /**
- * Makes another declared language the default. Text Network Canvas supplies
- * and the researcher has not changed follows (see `withLanguageChange`).
+ * Makes another declared language the default. No text changes: no language
+ * is added, so none gains Network Canvas's wording.
  */
 export const setDefaultLocale = (
   protocol: CurrentProtocol,
@@ -448,11 +450,12 @@ export const setLocalizedStrings = (
  * Says that the text recorded as `from` is really written in `tag`: the
  * declaration entry and every translation move to the new tag together, and
  * the default follows when it is `from`. Nothing the researcher wrote is
- * translated or deleted; text Network Canvas supplies and the researcher has
- * not changed becomes its text for the corrected language (see
- * `withLanguageChange`), so an English protocol corrected to German reads the
- * German supplied text. A language the protocol already has is never merged
- * into, so a tag it declares is refused.
+ * translated or deleted. A translation that is Network Canvas's wording for
+ * `from` becomes its wording for the corrected language, or is removed where
+ * it has none there, and a supplied text with no translation in `from` gains
+ * the corrected language's wording (see `withLanguageChange`), so an English
+ * protocol corrected to German reads the German supplied text. A language the
+ * protocol already has is never merged into, so a tag it declares is refused.
  */
 export const changeLocale = (
   protocol: CurrentProtocol,

@@ -9,11 +9,16 @@ import {
   dynamicValueNamesIn,
   type LocalizedString,
 } from '@codaco/protocol-validation';
+import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 
 import {
   LocalizedStringField,
   type UntranslatedNoteOption,
 } from '../localization/LocalizedStringControl.tsx';
+import {
+  type MarkdownTextShape,
+  textFieldPropsFor,
+} from '../localization/textShape.ts';
 import DynamicTextField from './DynamicTextField.tsx';
 import OptionLabelField from './OptionLabelField.tsx';
 import RichTextField from './RichTextField.tsx';
@@ -132,13 +137,29 @@ export function LocalizedInputField({
             {...props}
             readOnly={props.readOnly === true || translation.readOnly}
             value={translation.value}
-            onChange={(text) => translation.onChange(text)}
+            // An input drops a pasted line feed, but keeps Unicode's line
+            // and paragraph separators, which plain text cannot hold.
+            onChange={(text) =>
+              translation.onChange(
+                text === undefined ? text : lineBreaksAsSpaces(text),
+              )
+            }
           />
         )
       }
     </LocalizedStringField>
   );
 }
+
+type ShapeOption = Readonly<{
+  /**
+   * What the text may hold, read from the declaration of the field it edits
+   * (`markdownTextShapeAt`), never written out here: one line or several
+   * decides whether Enter breaks the line and whether the toolbar offers
+   * headings, lists and links, exactly as the translation table does.
+   */
+  shape: MarkdownTextShape;
+}>;
 
 /** Markdown participant-facing text, per language. */
 export function LocalizedRichTextField({
@@ -147,9 +168,14 @@ export function LocalizedRichTextField({
   hideUntranslatedNote,
   dynamicValues,
   fieldPath,
+  shape,
   ...props
-}: LocalizedControlProps<ComponentProps<typeof RichTextField>> &
-  DynamicValuesOption) {
+}: LocalizedControlProps<
+  Omit<ComponentProps<typeof RichTextField>, 'singleLine'>
+> &
+  DynamicValuesOption &
+  ShapeOption) {
+  const { singleLine } = textFieldPropsFor(shape);
   if (dynamicValues !== undefined) {
     return (
       <DynamicTextField
@@ -168,8 +194,7 @@ export function LocalizedRichTextField({
         hideUntranslatedNote={hideUntranslatedNote}
         dynamicValues={dynamicValues}
         fieldPath={fieldPath}
-        markdown
-        singleLine={props.singleLine}
+        shape={shape}
       />
     );
   }
@@ -185,6 +210,7 @@ export function LocalizedRichTextField({
         ) : (
           <RichTextField
             {...props}
+            singleLine={singleLine}
             readOnly={props.readOnly === true || translation.readOnly}
             value={translation.value}
             onChange={translation.onChange}

@@ -441,7 +441,7 @@
   "architect.localization.languageActions.addDescription": "参与者可以使用协议的任一语言进行访谈。在您将内容翻译成新语言之前，使用该语言的参与者会看到最接近的现有翻译。",
   "architect.localization.languageActions.addSubmit": "添加语言",
   "architect.localization.languageActions.addTitle": "添加语言",
-  "architect.localization.languageActions.changeDescription": "当记录为 {language} 的内容实际上是用另一种语言撰写时（例如从旧版本升级而来的协议），请使用此功能。所有 {language} 翻译都将改为记录为您所选的语言。不会翻译或删除任何内容。",
+  "architect.localization.languageActions.changeDescription": "当记录为{language}的措辞实际上是用另一种语言撰写时（例如从旧版本升级而来的协议），请使用此功能。所有记录为{language}的内容都会改记为您所选的语言。您自己撰写或修改过的措辞会原样转入所选语言，不会被翻译或删除。您未修改过的内置措辞会改用 Network Canvas 提供的所选语言版本。Network Canvas 在该语言中没有的内置措辞会被移除，需要由您自行撰写。",
   "architect.localization.languageActions.changeSubmit": "更改语言",
   "architect.localization.languageActions.changeTitle": "将 {language} 更改为其他语言",
   "architect.localization.languageActions.chooseALanguage": "选择一种语言",

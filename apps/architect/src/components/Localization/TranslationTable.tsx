@@ -51,7 +51,6 @@ import {
 import {
   type CurrentProtocol,
   type LocaleTag,
-  messageText,
   sortByLanguageName,
 } from '@codaco/protocol-validation';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
@@ -250,7 +249,6 @@ type ShownRow = {
   name: string;
   /** Whether the name is the text's path, for a text Architect cannot name. */
   rawName: boolean;
-  singleLine: boolean;
 };
 
 type ShownGroup = {
@@ -312,17 +310,6 @@ const rowKey = (path: TranslationRow['path']) => JSON.stringify(path);
 // Set apart from the menu's other options, which a language tag could match.
 const languageOption = (locale: LocaleTag) => `language:${locale}`;
 
-/**
- * Whether a text is edited as one line: one that has no line breaks in any
- * language. Formatted interview text is the exception, since it is edited
- * nowhere else: it always gets the whole editor, links and lists included.
- */
-const isSingleLine = (row: TranslationRow) =>
-  !(row.format === 'markdown' && row.path[0] === 'interfaceText') &&
-  Object.values(row.value).every(
-    (message) => !messageText(message).includes('\n'),
-  );
-
 /** The groups as the table names them, before any filter applies. */
 const describeGroups = (
   intl: ReturnType<typeof useAppIntl>,
@@ -344,7 +331,6 @@ const describeGroups = (
           row,
           name: steps.join(NAME_SEPARATOR),
           rawName: raw,
-          singleLine: isSingleLine(row),
         };
       }),
     };
@@ -997,7 +983,6 @@ const TranslationTable = ({
                       <TranslationCell
                         key={locale}
                         row={row.row}
-                        singleLine={row.singleLine}
                         locale={locale}
                         localization={localization}
                         labelledBy={`${groupId} ${rowId} ${columnId(locale)}`}
