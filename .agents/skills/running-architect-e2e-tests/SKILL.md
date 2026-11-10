@@ -55,4 +55,4 @@ pnpm --filter @codaco/architect test:e2e
 
 ## Reference
 
-Design + plan: `docs/superpowers/specs/2026-07-12-architect-e2e-testing-design.md`, `docs/superpowers/plans/2026-07-12-architect-e2e-testing.md`. Suite layout: `apps/architect/e2e/{specs,pageobjects,helpers,fixtures,scripts}`.
+Suite layout: `apps/architect/e2e/{specs,pageobjects,helpers,fixtures,scripts}`.
