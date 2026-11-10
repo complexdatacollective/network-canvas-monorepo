@@ -456,7 +456,7 @@
   "architect.localization.languageActions.removeConfirm": "Sprache entfernen",
   "architect.localization.languageActions.removeDescription": "{count, plural, =0 {Es gibt noch keine Übersetzungen in der Sprache „{language}“, daher wird nichts gelöscht.} one {Die einzige Übersetzung in der Sprache „{language}“ wird gelöscht.} other {Alle # Übersetzungen in der Sprache „{language}“ werden gelöscht.}} Teilnehmende können diese Sprache dann nicht mehr auswählen.",
   "architect.localization.languageActions.removeTitle": "{language} entfernen?",
-  "architect.localization.languageActions.searchLanguages": "Sprachen suchen",
+  "architect.localization.languageActions.searchLanguages": "Sprachen suchen oder Sprachcode eingeben",
   "architect.localization.languageChooserAlert.description": "Dieses Protokoll liegt in mehreren Sprachen vor, enthält aber keinen Abschnitt vom Typ „Sprachauswahl“. Jedes Interview beginnt in der Sprache, die am besten zu den Browsereinstellungen der teilnehmenden Person passt. Fügen Sie einen Abschnitt vom Typ „Sprachauswahl“ hinzu, wenn Teilnehmende die Sprache selbst wählen sollen.",
   "architect.localization.languageChooserAlert.dismiss": "Hinweis zur fehlenden Sprachwahl für Teilnehmende schließen",
   "architect.localization.languageChooserAlert.title": "Teilnehmende können keine Sprache wählen",

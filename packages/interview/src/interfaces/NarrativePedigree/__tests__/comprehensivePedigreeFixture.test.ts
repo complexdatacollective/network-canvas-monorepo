@@ -25,7 +25,7 @@ describe('pedigree demonstration protocols', () => {
   ])(
     'validates the %s scenario against the current schema',
     async (_, interview) => {
-      const { schemaVersion, localization, codebook, stages } =
+      const { schemaVersion, localization, codebook, stages, interfaceText } =
         interview.getProtocol();
       const result = await CurrentProtocolSchema.safeParseAsync({
         name: 'Pedigree demonstration',
@@ -33,6 +33,7 @@ describe('pedigree demonstration protocols', () => {
         localization,
         codebook,
         stages,
+        interfaceText,
         assetManifest: {},
       });
       expect(result.success, JSON.stringify(result, null, 2)).toBe(true);

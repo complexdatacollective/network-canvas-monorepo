@@ -1,5 +1,9 @@
 import { LANGUAGE_NAMES } from './languageNames.ts';
-import { canonicalizeLocale, type LocaleTag } from './localeTag.ts';
+import {
+  canonicalizeLocale,
+  isUndeterminedLocale,
+  type LocaleTag,
+} from './localeTag.ts';
 
 export type LocaleMetadata = Readonly<{
   locale: LocaleTag;
@@ -137,6 +141,53 @@ export function getLocaleMetadata(
     label: getLabel(canonical, displayLocale ?? canonical),
     direction: getDirection(canonical),
   };
+}
+
+// ISO 639 codes for "several languages", "uncoded" and "no linguistic content",
+// which the runtime names but which are not languages a protocol can be
+// written in.
+const NOT_A_SPOKEN_LANGUAGE: ReadonlySet<string> = new Set([
+  'mis',
+  'mul',
+  'zxx',
+]);
+
+/**
+ * The canonical tag for text a person typed, when it is a language Network
+ * Canvas can describe in full, and `undefined` otherwise. It is the tag a
+ * protocol may declare (`LocaleTagSchema`: well formed, and not `und`) with
+ * three limits that make it one a reader can be shown:
+ *
+ * - the language is a real one, not the codes for "several languages",
+ *   "uncoded" or "no linguistic content";
+ * - the region is not `ZZ` and the script is not `Zzzz`, which stand for
+ *   "unknown";
+ * - the runtime has an English name for it. `Intl.DisplayNames` answers
+ *   nothing for a code it does not know (`xx`, `qqq`) and rejects tags with
+ *   extensions or private use, so such a tag has no name to list and cannot be
+ *   shown beside its direction either. The runtime's built-in names for the
+ *   ISO 639-1 languages cover a runtime without `Intl.DisplayNames`.
+ *
+ * Typed text is trimmed and read case-insensitively, as BCP 47 does, so
+ * `ES-419` is `es-419`.
+ */
+export function describableLocale(value: string): LocaleTag | undefined {
+  const canonical = canonicalizeLocale(value.trim());
+  if (canonical === undefined || isUndeterminedLocale(canonical)) {
+    return undefined;
+  }
+  const { language, script, region } = new Intl.Locale(canonical);
+  if (
+    NOT_A_SPOKEN_LANGUAGE.has(language) ||
+    script === 'Zzzz' ||
+    region === 'ZZ'
+  ) {
+    return undefined;
+  }
+  const named =
+    runtimeName(canonical, 'en') !== undefined ||
+    Object.hasOwn(LANGUAGE_NAMES, canonical);
+  return named ? canonical : undefined;
 }
 
 /**
