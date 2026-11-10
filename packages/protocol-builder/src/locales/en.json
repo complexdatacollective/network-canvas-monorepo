@@ -7915,6 +7915,10 @@
     "defaultMessage": "Optionally edit the wording for interface elements used by this stage type. Default wording is provided for built-in languages.",
     "description": "Explains the stage editor section titled “Customize built-in wording”. Interface elements are the buttons, hints and messages the participant sees on the stage. Built-in languages are the languages Network Canvas itself supplies this wording in; for other languages the researcher writes it."
   },
+  "protocolBuilder.stageWording.savedWithStage": {
+    "defaultMessage": "Changes to this are saved when you save the stage.",
+    "description": "Shown under one of the words every stage of the same type shares, in a stage’s wording section, when the protocol does not use that word until the stage being edited is saved, for example the message shown when a map search finds nothing, which a map stage needs only once its search is turned on. Unlike the other shared words, which are saved as soon as the researcher leaves the field, a change to this one is saved together with the stage, and discarded if the stage is not saved. \"this\" is the word above the note."
+  },
   "protocolBuilder.stageWording.sharedHeading": {
     "defaultMessage": "Shared by every stage of this kind",
     "description": "Heading of the part of a stage’s “Customize built-in wording” section holding the words every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage, opened and closed by clicking it. The protocol holds them once, for all those stages."
@@ -7922,6 +7926,10 @@
   "protocolBuilder.stageWording.sharedNote": {
     "defaultMessage": "These words appear on every stage of this kind. Changes to them are saved straight away.",
     "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage. The protocol holds them once, so changing one changes it on all those stages, and the change is saved as soon as the researcher leaves the field rather than when they save the stage."
+  },
+  "protocolBuilder.stageWording.sharedNoteNoneHeld": {
+    "defaultMessage": "These words appear on every stage of this kind.",
+    "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the drawing tools of every Narrative stage, shown when the protocol uses none of them yet because the stage being edited is the first to need them. The protocol holds them once, so changing one changes it on all those stages. Each of them says beside itself when a change to it is saved."
   },
   "protocolBuilder.stageWording.specificHeading": {
     "defaultMessage": "Specific to this stage",

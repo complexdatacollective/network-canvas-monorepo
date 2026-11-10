@@ -285,6 +285,8 @@ export {
   interfaceTextAfterLanguageChange,
   interfaceTextArguments,
   type InterfaceTextUpdate,
+  interfaceTextWithUpdates,
+  sharedStageInterfaceTextUsed,
   STAGE_TYPE_INTERFACE_TEXT,
   suppliedInterfaceText,
   withInterfaceText,

@@ -27,11 +27,21 @@ import {
 import {
   hasSuppliedWording,
   type StageType,
+  suppliedInterfaceText,
 } from '@codaco/protocol-validation';
 
-import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import {
+  sharedWordingFieldName,
+  sharedWordingInForm,
+} from '../../form/sharedWordingDraft.ts';
+import {
+  type StageFormStoreApi,
+  useStageEditorForm,
+} from '../../form/stageEditorContext.ts';
 import { stageAnswerAt } from '../../form/stageFormHooks.ts';
+import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { useProtocolLocalization } from '../../localization/ProtocolLocalization.tsx';
+import { SHARED_WORDING_PATH } from '../../stageDocument.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import SharedStageWording from './SharedStageWording.tsx';
 import {
@@ -50,6 +60,29 @@ const asFieldValue = (value: unknown): FieldValue =>
   value as FieldValue;
 
 const NO_PATHS: readonly string[] = Object.freeze([]);
+
+/**
+ * The shared words held with the stage (those the protocol does not hold yet)
+ * that the form holds something other than Network Canvas's wording for, each
+ * with that wording to put back.
+ */
+const pendingWordingChanges = (
+  storeApi: StageFormStoreApi,
+  groups: readonly SharedWordingGroup[],
+  localization: ProtocolLocalization,
+) =>
+  groups.flatMap(({ group, keys, entries }) =>
+    keys.flatMap((key) => {
+      if (entries.some(([held]) => held === key)) return [];
+      const inForm = sharedWordingInForm(storeApi, group, key);
+      const supplied = suppliedInterfaceText(group, key, localization);
+      return inForm === undefined ||
+        supplied === undefined ||
+        isEqual(inForm.value, supplied)
+        ? []
+        : [{ name: sharedWordingFieldName(group, key), value: supplied }];
+    }),
+  );
 
 type StageWordingSectionProps = Readonly<{
   stageType: StageType;
@@ -89,7 +122,7 @@ export default function StageWordingSection({
     useStageEditorForm();
   const localization = useProtocolLocalization();
   const supplied = useSuppliedStageWording(stageType);
-  const shared = useSharedStageWording(stageType);
+  const shared = useSharedStageWording();
   const writeShared = useWriteSharedWording();
   const sharedWrites = useSharedWordingWrites(shared);
 
@@ -132,11 +165,22 @@ export default function StageWordingSection({
       await sharedWrites.settle(),
       localization,
     );
+    // Those held with the stage are put back in the form, with the stage's
+    // own wording, and are saved, as it is, with the stage.
+    const pendingChanges = pendingWordingChanges(
+      storeApi,
+      shared,
+      localization,
+    );
     const stayOn = () => {
       sharedWrites.resume();
       return false;
     };
-    if (differsFromSupplied(liveValue) || sharedChanges.length > 0) {
+    if (
+      differsFromSupplied(liveValue) ||
+      sharedChanges.length > 0 ||
+      pendingChanges.length > 0
+    ) {
       const confirmed = await confirm({
         title: intl.formatMessage(messages.switchOffTitle),
         description: intl.formatMessage(
@@ -184,6 +228,9 @@ export default function StageWordingSection({
       if (!fields.has(path) && !dormantValues.has(path)) continue;
       storeApi.getState().setFieldValue(path, asFieldValue(value));
     }
+    for (const { name, value } of pendingChanges) {
+      storeApi.getState().setFieldValue(name, asFieldValue(value));
+    }
     return true;
   }, [
     applyOwnCommands,
@@ -194,6 +241,7 @@ export default function StageWordingSection({
     localization,
     paths,
     reportRefusedWrite,
+    shared,
     sharedWrites,
     storeApi,
     supplied,
@@ -275,13 +323,27 @@ function WordingParts({
     paths.some((path) => refusesSetting(issue.path, path)),
   );
   const refused = fieldRefused || issueRefused;
+  // A shared word held with the stage is saved with it, so a save it refuses
+  // opens the shared part over the field that answers for it, as a refused
+  // setting opens the stage's own.
+  const sharedRefused = issues.some(
+    (issue) =>
+      issue.path[0] === SHARED_WORDING_PATH &&
+      shared.some(({ group }) => issue.path[1] === group),
+  );
   // Adjusted during render, as a refusal arrives, rather than in an effect:
   // a part opened a frame late would draw the refused field one frame after
   // the refusal.
   const [seenRefused, setSeenRefused] = useState(false);
-  if (seenRefused !== refused) {
+  const [seenSharedRefused, setSeenSharedRefused] = useState(false);
+  if (seenRefused !== refused || seenSharedRefused !== sharedRefused) {
+    const opening = [
+      ...(refused && !seenRefused ? [SPECIFIC] : []),
+      ...(sharedRefused && !seenSharedRefused ? [SHARED] : []),
+    ].filter((part) => !open.includes(part));
     setSeenRefused(refused);
-    if (refused && !open.includes(SPECIFIC)) setOpen([...open, SPECIFIC]);
+    setSeenSharedRefused(sharedRefused);
+    if (opening.length > 0) setOpen([...open, ...opening]);
   }
 
   const parts = [

@@ -51,12 +51,14 @@ import type {
 } from '../stage-editor-contract.ts';
 import {
   savedStageFields,
+  SHARED_WORDING_PATH,
   stageDocument,
   type StageFormDraft,
   type StageIdentity,
 } from '../stageDocument.ts';
 import { NOT_READY_MESSAGE, useStageEdit } from '../stageEdit.tsx';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import { useLatest } from '../state/useLatest.ts';
 import {
   dormantFieldsOf,
   mountedPathsOf,
@@ -68,6 +70,12 @@ import {
 } from './outlineStore.ts';
 import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
 import { rewriteFormStore } from './rewriteFormStore.ts';
+import {
+  pendingSharedWording,
+  settleSharedWording,
+  sharedWordingInForm,
+  sharedWordingIssues,
+} from './sharedWordingDraft.ts';
 import {
   type OwnCommandsResult,
   StageEditorFormContext,
@@ -274,7 +282,12 @@ function StageEditorFormBody({
     access === 'readOnly' ? READ_ONLY_MESSAGE : NOT_READY_MESSAGE;
   const intl = useAppIntl();
   const localization = useProtocolLocalization();
-  const { codebook } = useProtocolContext();
+  const protocol = useProtocolContext();
+  const { codebook } = protocol;
+  // Read by the shared words a save writes, which a host also reads from a
+  // store subscription: the protocol as it stands then, not as it was when
+  // the callback was made.
+  const latestProtocol = useLatest(protocol);
   const storeApi = useContext(FormStoreContext);
   // The document as the controls last left it, and what a structural write
   // reads and writes. Held in the body that does both, and seeded from the
@@ -348,6 +361,28 @@ function StageEditorFormBody({
       dormantFields: dormantFieldsOf(storeApi),
     });
   }, [storeApi, working]);
+
+  /**
+   * The shared words a save would write with the stage as the form holds it
+   * now (see `pendingSharedWording`): read, like `liveDraft`, rather than
+   * subscribed.
+   */
+  const sharedWordingToSave = useCallback(
+    (fields: StageFormDraft) =>
+      storeApi === undefined
+        ? []
+        : pendingSharedWording(
+            latestProtocol(),
+            identity,
+            fields,
+            (group, key) => sharedWordingInForm(storeApi, group, key),
+          ),
+    [identity, latestProtocol, storeApi],
+  );
+  const pendingWording = useCallback(
+    () => sharedWordingToSave(liveDraft()),
+    [liveDraft, sharedWordingToSave],
+  );
 
   /**
    * How this form writes structurally, as a list editor commits one row
@@ -441,12 +476,22 @@ function StageEditorFormBody({
       // section's problems named by that section, then the rules about the
       // stage as a whole. The unattributed ones are deliberately not here;
       // they are what a host's own issue surfacing is for.
-      const { sections: anchored, whole } = stageProblems(
+      const { sections: stageIssues, whole } = stageProblems(
         identity,
         fields,
         localization,
         codebook,
       );
+      // The shared words the stage brings in are saved with it, so a word
+      // that cannot be saved refuses the stage, as a setting of its own
+      // would, and is answered for by the field that holds it.
+      const wording = sharedWordingToSave(fields);
+      const anchored = [
+        ...stageIssues,
+        ...(localization === undefined
+          ? []
+          : sharedWordingIssues(wording, localization.defaultLocale, intl)),
+      ];
       outline.setValidationIssues(anchored);
       if (anchored.length > 0 || whole.length > 0) {
         const said = [...sectionProblems(sections.getSnapshot()), ...whole];
@@ -459,7 +504,7 @@ function StageEditorFormBody({
         };
       }
 
-      const outcome = await save(fields);
+      const outcome = await save(fields, wording);
       if (outcome.status === 'saved') {
         // A save is the only thing that may move the baselines the form's
         // dirty flag is measured against, and Studio's discard prompt reads
@@ -473,7 +518,16 @@ function StageEditorFormBody({
         // is the other question a section can ask about the stage: what the
         // researcher agreed to, as against what the form is holding now.
         setSaved(fields);
-        storeApi.getState().rebaseToDocument(fields);
+        // The shared words it wrote are the protocol's now, and those it left
+        // out (an entry the stage stopped using) are gone with the draft.
+        storeApi.getState().rebaseToDocument({
+          ...fields,
+          [SHARED_WORDING_PATH]: settleSharedWording(
+            storeApi,
+            wording,
+            localization,
+          ),
+        });
         clearRefusedWrite();
         return { success: true };
       }
@@ -492,6 +546,7 @@ function StageEditorFormBody({
       codebook,
       discardDraft,
       identity,
+      intl,
       localization,
       outline,
       readOnly,
@@ -500,6 +555,7 @@ function StageEditorFormBody({
       sections,
       setDocument,
       setSaved,
+      sharedWordingToSave,
       storeApi,
       working,
       writeRefusal,
@@ -572,6 +628,7 @@ function StageEditorFormBody({
             committedFields: document,
             savedFields: saved,
             liveDraft,
+            pendingSharedWording: pendingWording,
             applyOwnCommands,
             mapDocuments,
             reportRefusedWrite,
@@ -589,6 +646,7 @@ function StageEditorFormBody({
       liveDraft,
       mapDocuments,
       outline,
+      pendingWording,
       readOnly,
       reportRefusedWrite,
       saved,

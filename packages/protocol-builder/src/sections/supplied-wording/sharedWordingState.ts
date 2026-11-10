@@ -1,11 +1,17 @@
 import { isEqual } from 'es-toolkit';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 
 import {
   type InterfaceTextUpdate,
+  interfaceTextWithUpdates,
   type LocalizedString,
-  STAGE_TYPE_INTERFACE_TEXT,
-  type StageType,
   suppliedInterfaceText,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -14,34 +20,89 @@ import {
   useSettingsSectionWrite,
   type CodebookWriteOutcome,
 } from '../../codebook/writes.ts';
+import {
+  sharedWordingInUse,
+  type SharedWordingInUse,
+} from '../../form/sharedWordingDraft.ts';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
+import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 
-/** One group of the interview's shared words, as the protocol holds it. */
+/** One group of the interview's shared words, as the open stage uses it. */
 export type SharedWordingGroup = Readonly<{
   group: string;
+  /** Every entry of the group the stage uses, in the order they are shown. */
+  keys: readonly string[];
+  /**
+   * The entries of those the protocol holds, with what it holds: written to
+   * the protocol as their field is left. An entry in `keys` and not here is
+   * one the protocol does not hold yet, held with the stage's draft and
+   * written when the stage is saved (see `SHARED_WORDING_PATH`).
+   */
   entries: readonly (readonly [string, LocalizedString | undefined])[];
 }>;
 
 /**
- * The shared words every stage of `stageType` shows alike, by group, as the
- * protocol holds them: only the groups, and the entries, it holds. The
- * protocol holds an entry only while one of its stages shows it (see
- * `interfaceTextFor`), so a group that is not there has nothing to edit.
+ * The entries in use, as the last reading found them: the same object for as
+ * long as the reading does not change, so the form's every keystroke reads
+ * the stage again without handing the section a new list.
  */
-export function useSharedStageWording(
-  stageType: StageType,
-): readonly SharedWordingGroup[] {
-  const { interfaceText } = useProtocolContext();
+class InUseReading {
+  #last: SharedWordingInUse = [];
+
+  read(next: SharedWordingInUse): SharedWordingInUse {
+    if (!isEqual(next, this.#last)) this.#last = next;
+    return this.#last;
+  }
+}
+
+/**
+ * The shared words every stage of the open stage's kind shows alike, by
+ * group, as the protocol would use them were the stage saved as it stands:
+ * the saved protocol with the stage's draft in place of it, or added to it
+ * (see `sharedWordingInUse`). An entry a setting brings in is listed as the
+ * setting is turned on, and one it takes out goes as it is turned off, while
+ * the stage is still open.
+ *
+ * Follows the stage's draft through the form's store, reading the stage again
+ * on each change but handing back a new list only when what is in use moves.
+ */
+export function useSharedStageWording(): readonly SharedWordingGroup[] {
+  const protocol = useProtocolContext();
+  const { storeApi, identity, liveDraft } = useStageEditorForm();
+  const [reading] = useState(() => new InUseReading());
+  const read = () =>
+    reading.read(sharedWordingInUse(protocol, identity, liveDraft()));
+  const inUse = useSyncExternalStore(storeApi.subscribe, read, read);
+  // Rebuilt for what is in use and for the words the protocol holds, and not
+  // for every other change to the protocol.
+  const { interfaceText } = protocol;
   return useMemo(
     () =>
-      (STAGE_TYPE_INTERFACE_TEXT[stageType] ?? []).flatMap((group) => {
-        const entries = Object.entries(interfaceText?.[group] ?? {});
-        return entries.length === 0 ? [] : [{ group, entries }];
-      }),
-    [interfaceText, stageType],
+      inUse.map(({ group, keys }) => ({
+        group,
+        keys,
+        entries: keys.flatMap((key) => {
+          const held = heldWord(interfaceText, group, key);
+          return held === undefined ? [] : [[key, held] as const];
+        }),
+      })),
+    [inUse, interfaceText],
   );
 }
+
+/** What the protocol holds for one shared entry, if anything. */
+const heldWord = (
+  interfaceText: ProtocolBuilderProtocolContext['interfaceText'],
+  group: string,
+  key: string,
+): LocalizedString | undefined => {
+  const groups: Readonly<
+    Record<string, Readonly<Record<string, LocalizedString | undefined>>>
+  > = interfaceText ?? {};
+  return groups[group]?.[key];
+};
 
 /**
  * The shared words of `groups` the researcher has changed from Network
@@ -60,22 +121,14 @@ export const sharedWordingChanges = (
     }),
   );
 
-const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
 /** The settings document holding `updates` over the shared words it holds. */
 const withUpdates = (
   document: SectionDoc,
   updates: readonly InterfaceTextUpdate[],
-): SectionDoc => {
-  const held = isRecord(document.interfaceText) ? document.interfaceText : {};
-  const next: Record<string, unknown> = { ...held };
-  for (const { group, key, value } of updates) {
-    const current = next[group];
-    next[group] = { ...(isRecord(current) ? current : {}), [key]: value };
-  }
-  return { ...document, interfaceText: next };
-};
+): SectionDoc => ({
+  ...document,
+  interfaceText: interfaceTextWithUpdates(document.interfaceText, updates),
+});
 
 /**
  * Writes shared words into the protocol at once, under the settings' own
@@ -165,8 +218,9 @@ export function useSharedWordingWrites(
               [`${update.group}.${update.key}`, update.value] as const,
           ),
         );
-        return current.shared.map(({ group, entries }) => ({
+        return current.shared.map(({ group, keys, entries }) => ({
           group,
+          keys,
           entries: entries.map(
             ([key, held]) =>
               [

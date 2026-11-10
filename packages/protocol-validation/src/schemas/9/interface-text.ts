@@ -640,16 +640,50 @@ const heldText = (protocol: ProtocolDocument): InterfaceText =>
 const usedInterfaceText = (
   protocol: ProtocolDocument,
 ): readonly Readonly<{ group: GroupName; keys: readonly string[] }>[] =>
-  GROUP_NAMES.flatMap((group) => {
-    const { entries, usedBy, entriesUsedBy }: InterfaceTextGroup =
-      INTERFACE_TEXT_GROUPS[group];
-    if (!usedBy(protocol)) return [];
-    const shown = entriesUsedBy?.(protocol);
-    const keys = Object.keys(entries).filter(
-      (key) => shown === undefined || shown.has(key),
-    );
-    return [{ group, keys }];
-  });
+  GROUP_NAMES.flatMap((group) => usedGroup(group, protocol));
+
+/** One group, with the entries of it `protocol` shows, when it uses it. */
+const usedGroup = (
+  group: GroupName,
+  protocol: ProtocolDocument,
+): readonly Readonly<{ group: GroupName; keys: readonly string[] }>[] => {
+  const { entries, usedBy, entriesUsedBy }: InterfaceTextGroup =
+    INTERFACE_TEXT_GROUPS[group];
+  if (!usedBy(protocol)) return [];
+  const shown = entriesUsedBy?.(protocol);
+  const keys = Object.keys(entries).filter(
+    (key) => shown === undefined || shown.has(key),
+  );
+  return [{ group, keys }];
+};
+
+/**
+ * The shared interface text of `stage`'s kind (`STAGE_TYPE_INTERFACE_TEXT`)
+ * that `protocol` would use with `stage` as it stands: in place of the stage
+ * with its id, or added when the protocol has none. What a stage editor's
+ * shared wording lists while the stage is open, so an entry a setting brings
+ * in is there as the setting is turned on, and one it takes out goes as it
+ * is turned off, before the stage is saved.
+ */
+export const sharedStageInterfaceTextUsed = (
+  protocol: ProtocolDocument,
+  stage: Readonly<Record<string, unknown>>,
+): readonly Readonly<{ group: string; keys: readonly string[] }>[] => {
+  const groups =
+    typeof stage.type === 'string'
+      ? (STAGE_TYPE_INTERFACE_TEXT[stage.type] ?? [])
+      : [];
+  if (groups.length === 0) return [];
+  const stages = protocol.stages ?? [];
+  const at = stages.findIndex(
+    (candidate) => isRecord(candidate) && candidate.id === stage.id,
+  );
+  const withStage: ProtocolDocument = {
+    ...protocol,
+    stages: at === -1 ? [...stages, stage] : stages.with(at, stage),
+  };
+  return groups.flatMap((group) => usedGroup(group, withStage));
+};
 
 /**
  * The interface text `protocol` should hold: each group it uses, keeping
@@ -743,6 +777,24 @@ export type InterfaceTextUpdate = Readonly<{
   key: string;
   value: LocalizedString;
 }>;
+
+/**
+ * `held` interface text with each of `updates` written over the entry it
+ * names, every other entry and group kept as it was. `held` is whatever a
+ * protocol's settings hold, so anything that is not a record of groups reads
+ * as holding none.
+ */
+export const interfaceTextWithUpdates = (
+  held: unknown,
+  updates: readonly InterfaceTextUpdate[],
+): Readonly<Record<string, unknown>> => {
+  const next: Record<string, unknown> = isRecord(held) ? { ...held } : {};
+  for (const { group, key, value } of updates) {
+    const current = next[group];
+    next[group] = { ...(isRecord(current) ? current : {}), [key]: value };
+  }
+  return next;
+};
 
 /**
  * Every interface text entry the protocol holds, as it reads after a change

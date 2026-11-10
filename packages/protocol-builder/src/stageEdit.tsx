@@ -10,7 +10,10 @@ import {
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
-import type { StageType } from '@codaco/protocol-validation';
+import type {
+  InterfaceTextUpdate,
+  StageType,
+} from '@codaco/protocol-validation';
 import { contentHash } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -29,6 +32,7 @@ import {
 import { attempt } from './state/attempt.ts';
 import { useProtocolBuilderContext } from './state/context.ts';
 import {
+  nonEmpty,
   useSectionMutation,
   type SectionAccess,
   type SubmitResult,
@@ -74,7 +78,14 @@ export type StageEdit = Readonly<{
   access: SectionAccess;
   /** Who is editing this stage, when it is somebody else. */
   holder: Presence | undefined;
-  save(fields: StageFormDraft): Promise<StageSaveOutcome>;
+  /**
+   * Saves the stage, with the shared words it brings into use (see
+   * `pendingSharedWording`) written in the same change.
+   */
+  save(
+    fields: StageFormDraft,
+    interfaceText?: readonly InterfaceTextUpdate[],
+  ): Promise<StageSaveOutcome>;
 }>;
 
 const StageEditContext = createContext<StageEdit | null>(null);
@@ -165,7 +176,10 @@ function EditingStage({
   const identity = opened?.identity;
 
   const save = useCallback(
-    async (fields: StageFormDraft): Promise<StageSaveOutcome> => {
+    async (
+      fields: StageFormDraft,
+      interfaceText?: readonly InterfaceTextUpdate[],
+    ): Promise<StageSaveOutcome> => {
       // The stage is saved with the wording it should hold in the protocol's
       // languages (see `stageDocument`), so the save waits for them.
       if (identity === undefined || localization === undefined) {
@@ -179,6 +193,7 @@ function EditingStage({
       const result = await submit(
         stageDocument(identity, fields, localization),
         promotion,
+        interfaceText,
       );
       if (result.status === 'written') {
         staged.promoted();
@@ -254,7 +269,10 @@ function CreatingStage({
   const creation = useMemo(() => ({ position }), [position]);
 
   const save = useCallback(
-    async (fields: StageFormDraft): Promise<StageSaveOutcome> => {
+    async (
+      fields: StageFormDraft,
+      interfaceText?: readonly InterfaceTextUpdate[],
+    ): Promise<StageSaveOutcome> => {
       // Carried by the create for the reason a submit cannot cover: a stage
       // being added can hold a file the researcher imported while composing
       // it, and there is no earlier revision of that stage to have promoted it
@@ -272,7 +290,18 @@ function CreatingStage({
       // the stage the client would never learn about. Asked for by the
       // document, so an add the host REFUSED, which the researcher fixes and
       // asks for again, is a different intent and gets an id of its own.
-      const requestId = addKey.forAsk(contentHash(document));
+      //
+      // The shared words the stage brings in are part of the ask, as they
+      // are written in the same revision.
+      const words =
+        interfaceText === undefined || interfaceText.length === 0
+          ? undefined
+          : nonEmpty(interfaceText);
+      const requestId = addKey.forAsk(
+        words === undefined
+          ? contentHash(document)
+          : contentHash({ document, interfaceText: words }),
+      );
       const created = await attempt(adapter, 'Create', {
         protocolId,
         requestId,
@@ -280,6 +309,7 @@ function CreatingStage({
         document: Redacted.make(document),
         position,
         ...(promotion === undefined ? {} : { promote: promotion }),
+        ...(words === undefined ? {} : { interfaceText: words }),
       });
       if (created.isSuccess || created.refusal !== undefined) {
         addKey.settled(requestId);

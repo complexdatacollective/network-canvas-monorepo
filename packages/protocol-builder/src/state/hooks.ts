@@ -17,6 +17,7 @@ import type {
   SectionHolderSchema,
   SectionIssueSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import type { InterfaceTextUpdate } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -267,9 +268,14 @@ export type SectionMutation = Readonly<{
   revision: Revision | undefined;
   access: SectionAccess;
   holder: Presence | undefined;
+  /**
+   * Writes the section whole, with the staged files it names and, for a
+   * stage, the shared words it brings in (the contract's `interfaceText`).
+   */
   submit(
     document: SectionDoc,
     promote?: ResourcePromotion,
+    interfaceText?: readonly InterfaceTextUpdate[],
   ): Promise<SubmitResult>;
   release(): void;
 }>;
@@ -415,6 +421,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     async (
       document: SectionDoc,
       promote?: ResourcePromotion,
+      interfaceText?: readonly InterfaceTextUpdate[],
     ): Promise<SubmitResult> => {
       if (section === undefined) {
         throw new Error(`section ${id} was submitted before it was read`);
@@ -424,7 +431,17 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       // written again. Per save rather than per edit: the next save is a
       // different document, and an id shared with the last one would be
       // answered with the revision that one wrote.
-      const requestId = saveKey.forAsk(contentHash(document));
+      // The words travel with the document, so a save of the same stage with
+      // different words is a different ask.
+      const words =
+        interfaceText === undefined || interfaceText.length === 0
+          ? undefined
+          : nonEmpty(interfaceText);
+      const requestId = saveKey.forAsk(
+        words === undefined
+          ? contentHash(document)
+          : contentHash({ document, interfaceText: words }),
+      );
       const submitted = await attempt(adapter, 'Submit', {
         protocolId,
         requestId,
@@ -432,6 +449,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         document: Redacted.make(document),
         revision: section.revision,
         ...(promote === undefined ? {} : { promote }),
+        ...(words === undefined ? {} : { interfaceText: words }),
       });
       if (submitted.isSuccess || submitted.refusal !== undefined) {
         saveKey.settled(requestId);
@@ -538,4 +556,14 @@ function stageIdsOf(document: SectionDoc): string[] {
   return Array.isArray(stages)
     ? stages.filter((entry): entry is string => typeof entry === 'string')
     : [];
+}
+
+/**
+ * The contract takes the words a stage brings in as a non-empty list, which
+ * a caller has already checked `updates` is.
+ */
+export function nonEmpty<T>(updates: readonly T[]): readonly [T, ...T[]] {
+  const [first, ...rest] = updates;
+  if (first === undefined) throw new Error('expected at least one update');
+  return [first, ...rest];
 }
