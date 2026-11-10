@@ -33,13 +33,27 @@ const protocol = {
   ],
 } as unknown as CurrentProtocol;
 
-const renderTable = () => {
+/** A text whose last version has a choice of its own among its words. */
+const withChoiceInASentence = (listItem: string) => {
+  const shown = structuredClone(protocol);
+  const stage = shown.stages[0];
+  if (
+    stage !== undefined &&
+    'completeness' in stage &&
+    stage.completeness?.itemText?.siblings
+  ) {
+    stage.completeness.itemText.siblings.listItem = { en: listItem };
+  }
+  return shown;
+};
+
+const renderTable = (shown: CurrentProtocol = protocol) => {
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
-  store.dispatch(setActiveProtocol(structuredClone(protocol)));
+  store.dispatch(setActiveProtocol(structuredClone(shown)));
   render(
     <Provider store={store}>
       <FormStoreProvider>
@@ -98,35 +112,36 @@ const editedText = async (language: string) => {
   return text;
 };
 
-/** Opens the folded versions in `text` and returns their lines. */
-const openVersions = async (
-  user: ReturnType<typeof renderTable>['user'],
-  text: HTMLElement,
-) => {
-  await user.click(
-    within(text).getByRole('button', { name: 'Participant or someone else' }),
-  );
-  return {
-    aboutYou: await screen.findByRole('textbox', {
-      name: 'About the participant',
-    }),
-    aboutSomeoneElse: screen.getByRole('textbox', {
-      name: 'About someone else',
-    }),
-  };
-};
+/**
+ * The lines of the text's versions. The text in this cell is one choice and
+ * nothing else, so they are listed open rather than folded to a pill.
+ */
+const versionLines = async () => ({
+  aboutYou: await screen.findByRole('textbox', {
+    name: 'About the participant',
+  }),
+  aboutSomeoneElse: await screen.findByRole('textbox', {
+    name: 'About someone else',
+  }),
+});
 
 describe('TranslationTable: texts with versions', () => {
-  it('shows the text, its versions folded to a pill, until the cell has focus', () => {
+  it('shows the text, a line for each of its versions, until the cell has focus', () => {
     renderTable();
 
+    const cell = messageCell('English').closest('td');
+    // The text is nothing but a choice between versions, so each is written
+    // out under its case; the words are readable before the cell is edited.
+    const versions = [
+      ...(cell?.querySelectorAll('[data-version-summary]') ?? []),
+    ];
+    expect(versions.map((version) => version.textContent)).toEqual([
+      'About the participantYour brothers and sisters',
+      'About someone elseBrothers and sisters of Name',
+    ]);
     expect(messageCell('English')).toHaveAccessibleDescription(
-      /Participant or someone else/,
+      /About the participantYour brothers and sisters/,
     );
-    const pill = messageCell('English')
-      .closest('td')
-      ?.querySelector('[data-token="isYou"]');
-    expect(pill).toHaveTextContent('Participant or someone else');
     expect(screen.queryByRole('textbox', { name: cellName('English') })).toBe(
       null,
     );
@@ -163,7 +178,8 @@ describe('TranslationTable: texts with versions', () => {
     const { store, user } = renderTable();
 
     await user.click(messageCell('English'));
-    const { aboutYou } = await openVersions(user, await editedText('English'));
+    await editedText('English');
+    const { aboutYou } = await versionLines();
     await user.type(aboutYou, 'All ');
     await leaveCell(user, 'English');
     await save(user);
@@ -189,7 +205,8 @@ describe('TranslationTable: texts with versions', () => {
     const { store, user } = renderTable();
 
     await user.click(messageCell('English'));
-    const { aboutYou } = await openVersions(user, await editedText('English'));
+    await editedText('English');
+    const { aboutYou } = await versionLines();
     await user.type(aboutYou, 'All ');
     await user.keyboard('{Enter}');
 
@@ -207,35 +224,44 @@ describe('TranslationTable: texts with versions', () => {
     });
   });
 
-  it('puts back the saved text on Escape, once a version is folded away', async () => {
+  it('puts back the saved text on Escape, after the first Escape has left the version', async () => {
     const { store, user } = renderTable();
     const before = getProtocol(store.getState());
 
     await user.click(messageCell('English'));
-    const { aboutYou } = await openVersions(user, await editedText('English'));
+    const text = await editedText('English');
+    const { aboutYou } = await versionLines();
     await user.type(aboutYou, 'All ');
-    // The first Escape folds the versions back into their pill and keeps
-    // the change; the next leaves the cell as it was saved.
+    // The first Escape hands the caret back to the line and keeps the
+    // change, with every version still shown; the next leaves the cell as it
+    // was saved.
     await user.keyboard('{Escape}');
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('textbox', { name: 'About the participant' }),
-      ).toBeNull(),
-    );
-    const folded = await editedText('English');
-    const { aboutYou: reopened } = await openVersions(user, folded);
-    expect(reopened).toHaveTextContent(/^All Your brothers and sisters$/);
-    await user.keyboard('{Escape}');
+    await waitFor(() => expect(text).toHaveFocus());
+    expect(
+      await screen.findByRole('textbox', { name: 'About the participant' }),
+    ).toHaveTextContent(/^All Your brothers and sisters$/);
     await user.keyboard('{Escape}');
 
-    const restored = await editedText('English');
+    await editedText('English');
     expect(
-      within(restored).getByRole('button', {
-        name: 'Participant or someone else',
-      }),
-    ).toBeInTheDocument();
+      await screen.findByRole('textbox', { name: 'About the participant' }),
+    ).toHaveTextContent(/^Your brothers and sisters$/);
     await save(user);
     expect(getProtocol(store.getState())).toBe(before);
+  });
+
+  it('steps between the versions with the arrow keys, rather than leaving the cell', async () => {
+    const { user } = renderTable();
+
+    await user.click(messageCell('English'));
+    await editedText('English');
+    const { aboutYou, aboutSomeoneElse } = await versionLines();
+    await user.click(aboutYou);
+    await user.keyboard('{Control>}a{/Control}{Backspace}');
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() => expect(aboutSomeoneElse).toHaveFocus());
+    await user.keyboard('{ArrowUp}');
+    await waitFor(() => expect(aboutYou).toHaveFocus());
   });
 
   it('says why a version left empty cannot be saved, and refuses to save it', async () => {
@@ -243,7 +269,8 @@ describe('TranslationTable: texts with versions', () => {
     const before = getProtocol(store.getState());
 
     await user.click(messageCell('English'));
-    const { aboutYou } = await openVersions(user, await editedText('English'));
+    await editedText('English');
+    const { aboutYou } = await versionLines();
     await user.click(aboutYou);
     await user.keyboard('{Control>}a{/Control}{Backspace}');
     await leaveCell(user, 'English');
@@ -292,5 +319,172 @@ describe('TranslationTable: texts with versions', () => {
 
     await save(user);
     expect(getProtocol(store.getState())).toBe(before);
+  });
+
+  const FOLDED_CHOICE =
+    '{isYou, select, true {Your brothers and sisters} other {Brothers and sisters of {name}{isYou, select, true { now} other { later}}}}';
+  // The folded choice has a version that is nothing but another choice, so a
+  // hidden row inside it is listed open.
+  const FOLDED_CHOICE_OF_A_CHOICE =
+    '{isYou, select, true {Your brothers and sisters} other {Brothers and sisters of {name}{isYou, select, true {{isYou, select, true { now} other { soon}}} other { later}}}}';
+
+  /** Puts the caret at the start or end of `row`, as the cell reads it. */
+  const placeCaret = (row: HTMLElement, at: 'start' | 'end') => {
+    // Tiptap keeps each editor on the element it draws.
+    const { editor } = row as HTMLElement & {
+      editor?: {
+        commands: { setTextSelection: (position: number) => boolean };
+        state: { doc: { content: { size: number } } };
+      };
+    };
+    if (!editor) throw new Error('The row has no editor.');
+    row.focus();
+    editor.commands.setTextSelection(
+      at === 'start' ? 1 : editor.state.doc.content.size - 1,
+    );
+  };
+
+  it.each([
+    ['a folded choice among its words', FOLDED_CHOICE],
+    ['a folded choice with a choice for a version', FOLDED_CHOICE_OF_A_CHOICE],
+  ])(
+    'moves on to the next cell from the last visible version, with %s',
+    async (_name, message) => {
+      const { user } = renderTable(withChoiceInASentence(message));
+
+      const cell = messageCell('English').closest('td');
+      await user.click(messageCell('English'));
+      await editedText('English');
+      const lastVisible = await screen.findByRole('textbox', {
+        name: 'About someone else',
+      });
+      // The folded choice's rows are mounted, hidden, in that last version.
+      expect(
+        screen.getAllByRole('textbox', {
+          name: /^About someone else, /,
+          hidden: true,
+        }).length,
+      ).toBeGreaterThanOrEqual(2);
+
+      placeCaret(lastVisible, 'end');
+      await user.keyboard('{ArrowDown}');
+
+      // The key goes on to the next cell, not up to the first version or
+      // into a hidden row.
+      await waitFor(() =>
+        expect(cell?.contains(document.activeElement)).toBe(false),
+      );
+      expect(document.activeElement?.closest('td')).not.toBe(null);
+    },
+  );
+
+  it('moves on to the cell above from the first version, and not down into a hidden row', async () => {
+    const { user } = renderTable(
+      withChoiceInASentence(FOLDED_CHOICE_OF_A_CHOICE),
+    );
+
+    const cell = messageCell('English').closest('td');
+    await user.click(messageCell('English'));
+    await editedText('English');
+    const firstVisible = await screen.findByRole('textbox', {
+      name: 'About the participant',
+    });
+
+    placeCaret(firstVisible, 'start');
+    await user.keyboard('{ArrowUp}');
+
+    await waitFor(() =>
+      expect(cell?.contains(document.activeElement)).toBe(false),
+    );
+  });
+
+  const CHOICE_IN_THE_FIRST_VERSION =
+    '{isYou, select, true {Your brothers and sisters{isYou, select, true { now} other { later}}} other {Brothers and sisters of {name}}}';
+
+  /** Opens the choice among the words of `row`, and gives its two rows. */
+  const openInlineChoice = async (
+    user: ReturnType<typeof renderTable>['user'],
+    row: HTMLElement,
+    inside: RegExp,
+  ) => {
+    await user.click(
+      within(row).getByRole('button', { name: 'Participant or someone else' }),
+    );
+    const rows = await screen.findAllByRole('textbox', { name: inside });
+    const [first, last] = rows;
+    if (rows.length !== 2 || !first || !last)
+      throw new Error('The opened choice has two rows.');
+    return { first, last };
+  };
+
+  it('steps from the last row of an inline choice opened in an earlier version to the version below', async () => {
+    const { user } = renderTable(
+      withChoiceInASentence(CHOICE_IN_THE_FIRST_VERSION),
+    );
+
+    await user.click(messageCell('English'));
+    await editedText('English');
+    const firstVersion = await screen.findByRole('textbox', {
+      name: 'About the participant',
+    });
+    const { last } = await openInlineChoice(
+      user,
+      firstVersion,
+      /^About the participant, /,
+    );
+    const below = screen.getByRole('textbox', { name: 'About someone else' });
+
+    // The opened choice is drawn among the rows, so the key walks out of it
+    // to the version below instead of staying in the cell.
+    placeCaret(last, 'end');
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() => expect(below).toHaveFocus());
+  });
+
+  it('moves on to the next cell from the last row of an inline choice opened in the last version', async () => {
+    const { user } = renderTable(withChoiceInASentence(FOLDED_CHOICE));
+
+    const cell = messageCell('English').closest('td');
+    await user.click(messageCell('English'));
+    await editedText('English');
+    const lastVersion = await screen.findByRole('textbox', {
+      name: 'About someone else',
+    });
+    const { first, last } = await openInlineChoice(
+      user,
+      lastVersion,
+      /^About someone else, /,
+    );
+
+    // Down through the opened choice, then out of the cell.
+    placeCaret(first, 'end');
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() => expect(last).toHaveFocus());
+    placeCaret(last, 'end');
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() =>
+      expect(cell?.contains(document.activeElement)).toBe(false),
+    );
+  });
+
+  it('moves on to the cell above from the first version, with an inline choice opened below it', async () => {
+    const { user } = renderTable(withChoiceInASentence(FOLDED_CHOICE));
+
+    const cell = messageCell('English').closest('td');
+    await user.click(messageCell('English'));
+    await editedText('English');
+    const lastVersion = await screen.findByRole('textbox', {
+      name: 'About someone else',
+    });
+    await openInlineChoice(user, lastVersion, /^About someone else, /);
+    const firstVersion = screen.getByRole('textbox', {
+      name: 'About the participant',
+    });
+
+    placeCaret(firstVersion, 'start');
+    await user.keyboard('{ArrowUp}');
+    await waitFor(() =>
+      expect(cell?.contains(document.activeElement)).toBe(false),
+    );
   });
 });

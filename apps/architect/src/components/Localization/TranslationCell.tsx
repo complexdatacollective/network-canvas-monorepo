@@ -11,6 +11,7 @@ import {
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { hasVersionRowBeside } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { useFormFieldScope } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import {
@@ -589,6 +590,13 @@ const useEditedCell = ({
       (event.key === 'ArrowUp' && isAtEdge(editable, 'start')) ||
       (event.key === 'ArrowDown' && isAtEdge(editable, 'end'))
     ) {
+      // Versions listed open step between their own rows first.
+      if (
+        editable.matches('[data-version]') &&
+        hasVersionRowBeside(editable, event.key === 'ArrowUp' ? -1 : 1)
+      ) {
+        return;
+      }
       if (onMove(event.key === 'ArrowUp' ? -1 : 1)) {
         event.preventDefault();
         event.stopPropagation();

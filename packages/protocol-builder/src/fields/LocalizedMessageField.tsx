@@ -391,8 +391,10 @@ const FORMAT: MessageDocumentFormat = { markdown: false, singleLine: true };
 
 /**
  * A message's words in `locale`, read-only, each placeholder drawn as the
- * pill the editor draws and each set of versions folded to the pill of what
- * it chooses by, as the editor shows it folded: what a summary or an
+ * pill the editor draws. A set of versions that is the whole of the message,
+ * or of one version of it, is written out, a labelled line for each version,
+ * as the editor lists it open; a set among words is folded to the pill of
+ * what it chooses by, as the editor shows it folded. What a summary or an
  * unfocused table cell shows.
  */
 export function LocalizedMessageVersionsSummary({
@@ -421,6 +423,7 @@ export function LocalizedMessageVersionsSummary({
       multiline={false}
       valueLabel={valueLabel}
       switchSummary={labels.switchSummary}
+      versionLabel={labels.versionLabel}
     />
   );
 }
@@ -450,6 +453,7 @@ export type LocalizedMessageVersionsProps = Readonly<{
  * of text, its placeholders as pills, and a piece of text with a version for
  * each case (or for each kind of number) only where the text has one, folded
  * to a pill until it is opened, and able to hold another inside a version.
+ * Where the whole message is one such piece, its versions are listed open.
  * The insert menu (the toolbar button, or typing `{`) offers what the setting
  * declares: each placeholder, each select argument as wording for each of its
  * cases, and each number as wording that fits it, showing the number.
@@ -649,6 +653,9 @@ export function LocalizedMessageVersions({
       }}
       tokens={tokens}
       versions
+      // A message that is one plural or one choice is those versions and
+      // nothing else, so they are listed rather than folded to a pill.
+      openWholeMessageVersions
       insertMenu={insertMenu}
       value={content ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
       onChange={handleChange}
