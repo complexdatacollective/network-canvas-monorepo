@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -330,11 +330,18 @@ describe('TranslationTable: texts with versions', () => {
 
   /** Puts the caret at the start or end of `row`, as the cell reads it. */
   const placeCaret = (row: HTMLElement, at: 'start' | 'end') => {
+    // Tiptap keeps each editor on the element it draws.
+    const { editor } = row as HTMLElement & {
+      editor?: {
+        commands: { setTextSelection: (position: number) => boolean };
+        state: { doc: { content: { size: number } } };
+      };
+    };
+    if (!editor) throw new Error('The row has no editor.');
     row.focus();
-    const selection = row.ownerDocument.getSelection();
-    selection?.selectAllChildren(row);
-    if (at === 'end') selection?.collapseToEnd();
-    else selection?.collapseToStart();
+    editor.commands.setTextSelection(
+      at === 'start' ? 1 : editor.state.doc.content.size - 1,
+    );
   };
 
   it.each([
@@ -386,6 +393,96 @@ describe('TranslationTable: texts with versions', () => {
     placeCaret(firstVisible, 'start');
     await user.keyboard('{ArrowUp}');
 
+    await waitFor(() =>
+      expect(cell?.contains(document.activeElement)).toBe(false),
+    );
+  });
+
+  const CHOICE_IN_THE_FIRST_VERSION =
+    '{isYou, select, true {Your brothers and sisters{isYou, select, true { now} other { later}}} other {Brothers and sisters of {name}}}';
+
+  /** Opens the choice among the words of `row`, and gives its two rows. */
+  const openInlineChoice = async (
+    user: ReturnType<typeof renderTable>['user'],
+    row: HTMLElement,
+    inside: RegExp,
+  ) => {
+    await user.click(
+      within(row).getByRole('button', { name: 'Participant or someone else' }),
+    );
+    const rows = await screen.findAllByRole('textbox', { name: inside });
+    const [first, last] = rows;
+    if (rows.length !== 2 || !first || !last)
+      throw new Error('The opened choice has two rows.');
+    return { first, last };
+  };
+
+  it('steps from the last row of an inline choice opened in an earlier version to the version below', async () => {
+    const { user } = renderTable(
+      withChoiceInASentence(CHOICE_IN_THE_FIRST_VERSION),
+    );
+
+    await user.click(messageCell('English'));
+    await editedText('English');
+    const firstVersion = await screen.findByRole('textbox', {
+      name: 'About the participant',
+    });
+    const { last } = await openInlineChoice(
+      user,
+      firstVersion,
+      /^About the participant, /,
+    );
+    const below = screen.getByRole('textbox', { name: 'About someone else' });
+
+    // The opened choice is drawn among the rows, so the key walks out of it
+    // to the version below instead of staying in the cell.
+    placeCaret(last, 'end');
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() => expect(below).toHaveFocus());
+  });
+
+  it('moves on to the next cell from the last row of an inline choice opened in the last version', async () => {
+    const { user } = renderTable(withChoiceInASentence(FOLDED_CHOICE));
+
+    const cell = messageCell('English').closest('td');
+    await user.click(messageCell('English'));
+    await editedText('English');
+    const lastVersion = await screen.findByRole('textbox', {
+      name: 'About someone else',
+    });
+    const { first, last } = await openInlineChoice(
+      user,
+      lastVersion,
+      /^About someone else, /,
+    );
+
+    // Down through the opened choice, then out of the cell.
+    placeCaret(first, 'end');
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() => expect(last).toHaveFocus());
+    placeCaret(last, 'end');
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() =>
+      expect(cell?.contains(document.activeElement)).toBe(false),
+    );
+  });
+
+  it('moves on to the cell above from the first version, with an inline choice opened below it', async () => {
+    const { user } = renderTable(withChoiceInASentence(FOLDED_CHOICE));
+
+    const cell = messageCell('English').closest('td');
+    await user.click(messageCell('English'));
+    await editedText('English');
+    const lastVersion = await screen.findByRole('textbox', {
+      name: 'About someone else',
+    });
+    await openInlineChoice(user, lastVersion, /^About someone else, /);
+    const firstVersion = screen.getByRole('textbox', {
+      name: 'About the participant',
+    });
+
+    placeCaret(firstVersion, 'start');
+    await user.keyboard('{ArrowUp}');
     await waitFor(() =>
       expect(cell?.contains(document.activeElement)).toBe(false),
     );

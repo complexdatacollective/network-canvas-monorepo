@@ -178,6 +178,13 @@ const isWholeMessageVersions = (doc: ProseMirrorNode): boolean => {
  *
  * It is read from the row's own editor and its place in the page, never from
  * what is inside it: a hidden set inside a row says nothing about the row.
+ *
+ * Every row inside a set of versions listed open is one of them, and every
+ * editor there steps by this one rule, at the moment of the key: a set among
+ * words that has been opened is drawn in the flow of its row, so its rows are
+ * visible rows holding words like any other, and the keys walk into and out
+ * of it in reading order. Outside any set listed open there are no rows to
+ * walk, and the arrow keys are the line's own.
  */
 const isNavigableRow = (element: HTMLElement): boolean => {
   const editor = versionEditorsByElement.get(element);
@@ -308,16 +315,10 @@ function VersionEditor({
   version,
   onChange,
   onEscape,
-  stepsAmongRows,
 }: {
   version: RichTextVersion;
   onChange: (content: JSONContent[]) => void;
   onEscape: () => void;
-  /**
-   * Whether the arrow keys step to the row above or below, as they do among
-   * versions listed open; otherwise they are left to the line around them.
-   */
-  stepsAmongRows: boolean;
 }) {
   const nested = useContext(NestedEditingContext);
   // The content this editor last wrote into the line, to tell its own edit
@@ -325,11 +326,9 @@ function VersionEditor({
   const writtenRef = useRef<readonly JSONContent[] | null>(null);
   const onChangeRef = useRef(onChange);
   const onEscapeRef = useRef(onEscape);
-  const stepsRef = useRef(stepsAmongRows);
   useLayoutEffect(() => {
     onChangeRef.current = onChange;
     onEscapeRef.current = onEscape;
-    stepsRef.current = stepsAmongRows;
   });
   const intl = useAppIntl();
   const parentLabels = useContext(VersionPathContext);
@@ -378,7 +377,6 @@ function VersionEditor({
         handleKeyDown: (view, event) => {
           if (
             (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
-            stepsRef.current &&
             !event.shiftKey &&
             !event.altKey &&
             !event.ctrlKey &&
@@ -674,7 +672,6 @@ function VersionsView({
             // A permanently open element has nothing to fold back to: Escape
             // hands the caret back to the line, with the element selected.
             onEscape={alwaysOpen ? selectSelf : foldToPill}
-            stepsAmongRows={alwaysOpen}
             onChange={(content) => {
               const current = latest.current;
               updateAttributes({
