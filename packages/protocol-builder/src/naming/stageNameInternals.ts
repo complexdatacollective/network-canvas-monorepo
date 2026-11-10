@@ -116,6 +116,46 @@ export function generatedProposal(
     : undefined;
 }
 
+/**
+ * Takes back a proposal made in a language that has since stopped being the
+ * protocol's default, while the stage is still being created. The old
+ * proposal is this editor's own text, not the researcher's, so it goes and
+ * the stage is named afresh: in the new default language, or not at all when
+ * Network Canvas has no wording in it.
+ *
+ * Only when the old text is still exactly the proposal and the researcher has
+ * written nothing in the new default language. Anything else in the name,
+ * in any language, is theirs and stays, and a name they have taken over is
+ * never touched. Returns whether it removed one.
+ */
+export function releaseSupersededProposal(
+  storeApi: StageFormStoreApi,
+  defaultLocale: LocaleTag,
+): boolean {
+  const ownership = stageNameOwnership(storeApi);
+  const { lastGenerated, lastGeneratedIn } = ownership;
+  if (
+    ownership.isCustom ||
+    lastGenerated === undefined ||
+    lastGeneratedIn === undefined ||
+    lastGeneratedIn === defaultLocale
+  ) {
+    return false;
+  }
+  const state = storeApi.getState();
+  const label = state.getValue(LABEL);
+  if (
+    translationText(label, lastGeneratedIn) !== lastGenerated ||
+    translationText(label, defaultLocale) !== ''
+  ) {
+    return false;
+  }
+  state.setFieldValue(LABEL, withTranslation(label, lastGeneratedIn, ''));
+  ownership.lastGenerated = undefined;
+  ownership.lastGeneratedIn = undefined;
+  return true;
+}
+
 export function forgetStageNameOwnership(storeApi: StageFormStoreApi): void {
   ownershipByForm.delete(storeApi);
 }

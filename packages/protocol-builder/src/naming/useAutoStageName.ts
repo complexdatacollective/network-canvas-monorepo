@@ -7,6 +7,7 @@ import { computeAutoNameUpdate } from './computeAutoNameUpdate.ts';
 import {
   forgetStageNameOwnership,
   generatedProposal,
+  releaseSupersededProposal,
   stageNameOwnership,
   useLiveStageLabel,
   useProposedStageLabel,
@@ -63,9 +64,14 @@ export function useAutoStageName(): AutoStageName {
     // the stage in yet. And when there is no proposal because Network Canvas
     // supplies no wording in the default language: nothing is written, and the
     // name is the researcher's to enter.
-    if (readOnly || defaultLocale === undefined || proposal === undefined) {
+    if (readOnly || defaultLocale === undefined) return;
+    // A proposal made in a language that is no longer the default is taken
+    // back first, whether or not there is a new one to make: the name then
+    // reads as empty and is proposed afresh (or left to the researcher) below.
+    if (isNewStage && releaseSupersededProposal(storeApi, defaultLocale)) {
       return;
     }
+    if (proposal === undefined) return;
     const ownership = stageNameOwnership(storeApi);
     const update = computeAutoNameUpdate({
       isNewStage,

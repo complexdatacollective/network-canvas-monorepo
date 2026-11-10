@@ -260,6 +260,16 @@ function renderEditor(options: EditorOptions = {}) {
       act(() => {
         storeApi?.getState().setFieldValue(name, value);
       }),
+    /** The protocol's languages changed somewhere other than this editor. */
+    changeLocalization: (localization: {
+      defaultLocale: string;
+      locales: string[];
+    }) =>
+      act(() => {
+        host?.store.applyAsCollaborator(sectionId({ kind: 'settings' }), {
+          localization,
+        });
+      }),
     /** A codebook change made somewhere other than this editor. */
     renameNodeType: (typeId: string, definition: SectionDoc) =>
       act(() => {
@@ -604,6 +614,83 @@ describe('a name in the protocol’s default language', () => {
 
     fireEvent.change(input, { target: { value: 'Meine Etappe' } });
     expect(standing()?.isStanding()).toBe(false);
+  });
+
+  describe('when the default language changes while the stage is open', () => {
+    it('proposes the name again in the new language, and drops the old proposal', async () => {
+      const { input, changeLocalization, liveDraft } = renderEditor({
+        sections: inDefaultLanguage('en', ['en', 'es']),
+      });
+      await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+      changeLocalization({
+        defaultLocale: 'es',
+        locales: ['en', 'es'],
+      });
+
+      await waitFor(() =>
+        expect(input).toHaveValue('Generador de nombres (con formularios)'),
+      );
+      // The English text was the editor's own proposal, not the researcher's.
+      expect(liveDraft()?.label).toEqual({
+        es: 'Generador de nombres (con formularios)',
+      });
+    });
+
+    it('clears the old proposal when the new default has no wording', async () => {
+      const { input, changeLocalization, liveDraft } = renderEditor({
+        sections: inDefaultLanguage('en', ['en', 'sw']),
+      });
+      await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+      changeLocalization({
+        defaultLocale: 'sw',
+        locales: ['en', 'sw'],
+      });
+      await settle();
+
+      expect(input).toHaveValue('');
+      expect(liveDraft()?.label).toBeUndefined();
+    });
+
+    it('keeps text the researcher wrote in the new default language', async () => {
+      const { input, changeLocalization, liveDraft, setValue } = renderEditor({
+        sections: inDefaultLanguage('en', ['en', 'es']),
+      });
+      await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+      setValue('label', {
+        en: 'Form Name Generator',
+        es: 'Mis amigos',
+      });
+
+      changeLocalization({
+        defaultLocale: 'es',
+        locales: ['en', 'es'],
+      });
+      await settle();
+
+      expect(input).toHaveValue('Mis amigos');
+      expect(liveDraft()?.label).toEqual({
+        en: 'Form Name Generator',
+        es: 'Mis amigos',
+      });
+    });
+
+    it('keeps a name the researcher typed', async () => {
+      const { input, changeLocalization, liveDraft } = renderEditor({
+        sections: inDefaultLanguage('en', ['en', 'es']),
+      });
+      await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+      fireEvent.change(input, { target: { value: 'Friends' } });
+
+      changeLocalization({
+        defaultLocale: 'es',
+        locales: ['en', 'es'],
+      });
+      await settle();
+
+      expect(liveDraft()?.label).toEqual({ en: 'Friends' });
+    });
   });
 
   describe('when Network Canvas has no wording in it', () => {
