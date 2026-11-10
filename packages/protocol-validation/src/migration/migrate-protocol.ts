@@ -139,6 +139,14 @@ function migrateAndValidate(
     throw new MigrationResultInvalidError(
       `Migration resulted in invalid protocol: ${postValidationResult.error.message}`,
       targetVersion,
+      postValidationResult.error.issues.map((issue) => ({
+        code: issue.code,
+        // Symbols cannot appear in protocol JSON; stringified to keep the type.
+        path: issue.path.map((segment) =>
+          typeof segment === 'symbol' ? String(segment) : segment,
+        ),
+        message: issue.message,
+      })),
     );
   }
   if (postValidationResult.data.schemaVersion !== targetVersion) {

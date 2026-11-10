@@ -546,49 +546,57 @@ describe('v8 to v9 localization migration', () => {
       'fields',
       0,
     ];
-    const egoField = (document: unknown) =>
-      fieldPath(document, 'egoForm', ['form']);
     const alterField = (document: unknown) =>
       fieldPath(document, 'alterForm', ['form']);
     const promptOf = (document: unknown, at: Path) =>
       getAt(migrateProtocol(document, 9), [...at, 'prompt']);
 
+    // The places schema 9 reports. The migration may add stages before the
+    // field's, so its stage index is not compared.
+    const refusedAt = (document: unknown, field: Path) => {
+      let paths: Path[] = [];
+      try {
+        migrateProtocol(document, 9);
+      } catch (error) {
+        if (!(error instanceof MigrationResultInvalidError)) throw error;
+        paths = error.issues.map((issue) => issue.path);
+      }
+      const [, , ...below] = field;
+      expect(paths).toContainEqual([
+        'stages',
+        expect.any(Number),
+        ...below,
+        'prompt',
+        'en',
+      ]);
+    };
+
+    // A form field's question is the protocol's own content, which the
+    // migration never writes, so the document is refused at the question.
     it.each([
       ['an empty prompt', ''],
       ['a prompt of spaces', '   '],
       ['a prompt of tabs and line breaks', '\t\n '],
       ['a prompt of non-breaking spaces', '\u00a0\u00a0'],
       ['a prompt of zero-width spaces', '\u200b\u200b'],
-    ])('asks with the attribute name for %s', (_name, blank) => {
+    ])('refuses %s at the question', (_name, blank) => {
       const document = schema8Protocol();
       const field = alterField(document);
       setAt(document, [...field, 'prompt'], blank);
 
-      expect(promptOf(document, field)).toEqual({ en: 'Nickname' });
+      refusedAt(document, field);
     });
 
-    it('does so in an ego form, using the ego attribute', () => {
+    it.each([
+      ['an ego form', 'egoForm'],
+      ['a name generator form', 'nameGenerator'],
+      ['an edge form', 'alterEdgeForm'],
+    ])('does so in %s', (_name, id) => {
       const document = schema8Protocol();
-      const field = egoField(document);
+      const field = fieldPath(document, id, ['form']);
       setAt(document, [...field, 'prompt'], ' ');
 
-      expect(promptOf(document, field)).toEqual({ en: 'EgoName' });
-    });
-
-    it('does so in a name generator form', () => {
-      const document = schema8Protocol();
-      const field = fieldPath(document, 'nameGenerator', ['form']);
-      setAt(document, [...field, 'prompt'], ' ');
-
-      expect(promptOf(document, field)).toEqual({ en: 'Name' });
-    });
-
-    it('does so in an edge form, using the attribute of the edge type', () => {
-      const document = schema8Protocol();
-      const field = fieldPath(document, 'alterEdgeForm', ['form']);
-      setAt(document, [...field, 'prompt'], ' ');
-
-      expect(promptOf(document, field)).toEqual({ en: 'Note' });
+      refusedAt(document, field);
     });
 
     it('keeps a prompt with text in it, spaces around the text included', () => {
@@ -599,57 +607,10 @@ describe('v8 to v9 localization migration', () => {
       expect(promptOf(document, field)).toEqual({ en: '  Nickname?  ' });
     });
 
-    it('uses the attribute id when the attribute has no name or is missing', () => {
-      const document = schema8Protocol();
-      const named = alterField(document);
-      const missing = egoField(document);
-      setAt(document, [...named, 'prompt'], ' ');
-      setAt(document, [...missing, 'prompt'], ' ');
-      setAt(
-        document,
-        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
-        '  ',
-      );
-      setAt(document, [...missing, 'variable'], 'removed');
-
-      const migrated = migrateStep(document);
-      expect(getAt(migrated, [...named, 'prompt'])).toEqual({
-        en: 'nickname',
-      });
-      expect(getAt(migrated, [...missing, 'prompt'])).toEqual({
-        en: 'removed',
-      });
-    });
-
-    it('escapes the attribute name so markdown shows it as written', () => {
-      const document = schema8Protocol();
-      const field = alterField(document);
-      setAt(document, [...field, 'prompt'], ' ');
-      setAt(
-        document,
-        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
-        '*first_name* {nick}',
-      );
-
-      expect(getAt(migrateStep(document), [...field, 'prompt'])).toEqual({
-        en: escapeMessageText('\\*first\\_name\\* {nick}'),
-      });
-    });
-
-    it('migrates to a protocol schema 9 accepts', () => {
-      const document = schema8Protocol();
-      for (const id of ['egoForm', 'alterForm', 'nameGenerator']) {
-        const field = fieldPath(document, id, ['form']);
-        setAt(document, [...field, 'prompt'], ' ');
-      }
-
-      expect(
-        ProtocolSchemaV9.safeParse(migrateProtocol(document, 9)).success,
-      ).toBe(true);
-    });
-
     it('tells the researcher in the migration notes', () => {
-      expect(migrationV8toV9.notes).toContain('contained only spaces');
+      expect(migrationV8toV9.notes).toContain(
+        'A protocol cannot be upgraded while',
+      );
     });
 
     it('captions a Network Composer field whose caption is only spaces', () => {

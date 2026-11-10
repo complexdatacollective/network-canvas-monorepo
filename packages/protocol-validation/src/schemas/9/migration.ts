@@ -14,7 +14,6 @@ import {
 } from '../../localization/messageSyntax.ts';
 import { createMigration } from '../../migration/index.ts';
 import type { SessionDocument } from '../../migration/session.ts';
-import { collectEntityAttributeReferences } from '../../utils/collectEntityAttributeReferences.ts';
 import {
   collectLocalizedStringSites,
   type LocalizedStringSite,
@@ -267,23 +266,15 @@ const optionValueAsName = (value: string): string | undefined => {
   return CodebookNameSchema.safeParse(name).success ? name : undefined;
 };
 
-/** A name no other option of the attribute uses, from `base`. */
-const unusedOptionName = (base: string, used: ReadonlySet<string>) => {
-  if (!used.has(optionValueKey(base))) return base;
-  for (let suffix = 2; ; suffix += 1) {
-    const candidate = `${base} ${suffix}`;
-    if (!used.has(optionValueKey(candidate))) return candidate;
-  }
-};
-
 /**
  * Each schema 8 option value schema 9 replaces, mapped to its replacement:
  * a value that is not a valid name becomes one (`optionValueAsName`), and a
  * value that then repeats an earlier option's, compared as schema 9 compares
  * them (`optionValueKey`), becomes that option's value, so the two merge.
  * Options `1` then `"1"` map `"1"` to `1`, and `"Yes "` maps to `"Yes"`. A
- * value with nothing left to name it by takes the option's label, or "Option"
- * and its position, numbered if another option already uses it.
+ * value with nothing left to name it by, such as one that was empty or only
+ * spaces, is kept as it was: what the option records cannot be known, so the
+ * migration supplies no value and validation refuses the document.
  */
 const optionValueRewrites = (
   options: readonly unknown[],
@@ -291,46 +282,14 @@ const optionValueRewrites = (
   const values = options.map((option) =>
     isRecord(option) ? option.value : undefined,
   );
-  const named = values.map((value) =>
-    typeof value === 'string' ? optionValueAsName(value) : value,
-  );
-  // Every name an option already has, so a name given to an option that had
-  // none never takes another option's.
-  const used = new Set(
-    named.flatMap((name) =>
-      typeof name === 'string' || typeof name === 'number'
-        ? [optionValueKey(name)]
-        : [],
-    ),
-  );
   const first = new Map<string, OptionValue>();
   const rewrites = new Map<OptionValue, OptionValue>();
-  values.forEach((value, index) => {
+  values.forEach((value) => {
     if (typeof value !== 'string' && typeof value !== 'number') return;
     // A value repeated exactly is one value, already rewritten.
     if (rewrites.has(value)) return;
-    const given = named[index];
-    let name: OptionValue;
-    if (typeof given === 'string' || typeof given === 'number') {
-      name = given;
-    } else {
-      const option = options[index];
-      // A schema 8 label is text; a document already in schema 9 form has
-      // its label localized, and its first translation names it.
-      const labelText = isRecord(option)
-        ? typeof option.label === 'string'
-          ? option.label
-          : isRecord(option.label)
-            ? Object.values(option.label).find(
-                (text): text is string => typeof text === 'string',
-              )
-            : undefined
-        : undefined;
-      const label =
-        labelText === undefined ? undefined : optionValueAsName(labelText);
-      name = unusedOptionName(label ?? `Option ${index + 1}`, used);
-      used.add(optionValueKey(name));
-    }
+    const name = typeof value === 'string' ? optionValueAsName(value) : value;
+    if (name === undefined) return;
     const key = optionValueKey(name);
     const kept = first.get(key) ?? name;
     if (!first.has(key)) first.set(key, name);
@@ -628,13 +587,13 @@ const repairInformationTitles = (protocol: unknown) => {
 };
 
 /**
- * Schema 9 requires a Categorical Bin's "other" bin caption and its follow-up
- * question to say something, where schema 8 accepted text of only spaces,
- * which showed an unlabelled bin and a question with no words. Each that shows
- * nothing takes the other's text, else the default the 7 to 8 migration gives
- * when one is missing: "Other" for the caption, "Please specify" for the
- * question. Text already localized loses only its translations that show
- * nothing, as an introduction panel's does.
+ * Schema 9 requires the caption of a Categorical Bin's bin for answers not
+ * listed to say something, where schema 8 accepted text of only spaces, which
+ * showed an unlabelled bin. One that shows nothing takes the default the 7 to
+ * 8 migration gives a missing one, "Other". Text already localized loses only
+ * its translations that show nothing, as an introduction panel's does. The
+ * question that bin asks (`otherVariablePrompt`) is not repaired: the
+ * migration does not write a question, so a blank one is refused.
  */
 const repairOtherBinText = (
   protocol: unknown,
@@ -649,15 +608,9 @@ const repairOtherBinText = (
         continue;
       }
       if (prompt.otherVariable === '') continue;
-      const question = shownText(prompt.otherVariablePrompt);
-      const caption = shownText(prompt.otherOptionLabel);
-      // Copied, so the two fields never share one object.
-      prompt.otherVariablePrompt = structuredClone(
-        question ?? caption ?? { [defaultLocale]: 'Please specify' },
-      );
-      prompt.otherOptionLabel = structuredClone(
-        caption ?? question ?? { [defaultLocale]: 'Other' },
-      );
+      prompt.otherOptionLabel = shownText(prompt.otherOptionLabel) ?? {
+        [defaultLocale]: 'Other',
+      };
     }
   }
 };
@@ -856,22 +809,6 @@ const addComposerCaptions = (protocol: unknown) => {
 };
 
 /**
- * Plain text as the markdown that shows it as written: a schema 8 string, or
- * each translation of text already localized.
- */
-const asMarkdownText = (text: string | Record<string, unknown>): unknown => {
-  if (typeof text === 'string') return escapeMarkdownText(text);
-  return Object.fromEntries(
-    Object.entries(text).map(([locale, message]) => [
-      locale,
-      typeof message === 'string'
-        ? escapeMessageText(escapeMarkdownText(messageText(message)))
-        : message,
-    ]),
-  );
-};
-
-/**
  * Schema 9 requires a Narrative preset's label, and the label of each
  * attribute it highlights, to say something, where schema 8 accepted a preset
  * label of only spaces, which showed a preset with no name. A preset label
@@ -931,43 +868,6 @@ const repairFormTitles = (protocol: unknown) => {
 };
 
 /**
- * Schema 9 requires a Family Pedigree's prompt, and each of its nomination
- * prompts, to say something, where schema 8 accepted text of only spaces,
- * which showed a prompt with no words. A prompt that shows nothing takes the
- * stage's name, and a nomination prompt the name of the attribute it sets,
- * as a form field's question does; both are markdown, so the name is escaped
- * to show as written. Text already localized loses only its translations that
- * show nothing, which then fall back to another.
- */
-const repairFamilyPedigreeText = (protocol: unknown) => {
-  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
-  const { codebook } = protocol;
-  for (const stage of protocol.stages) {
-    if (!isRecord(stage) || stage.type !== 'FamilyPedigree') continue;
-    // Text that is missing is left for validation to report.
-    if (stage.prompt !== undefined) {
-      const label = shownText(stage.label);
-      stage.prompt =
-        shownText(stage.prompt) ??
-        (label === undefined ? stage.prompt : asMarkdownText(label));
-    }
-    if (!Array.isArray(stage.nominationPrompts)) continue;
-    const variables = subjectVariables(codebook, 'node', stage.subject);
-    for (const question of stage.nominationPrompts) {
-      if (!isRecord(question) || typeof question.attribute !== 'string') {
-        continue;
-      }
-      if (question.text === undefined) continue;
-      question.text =
-        shownText(question.text) ??
-        escapeMarkdownText(
-          nameOrKey(variables[question.attribute], question.attribute),
-        );
-    }
-  }
-};
-
-/**
  * Whether a value is text the repairs below may replace: a schema 8 string or
  * text already localized. Anything else, missing or of another type, schema 8
  * already rejected, so it is left for validation to report.
@@ -996,13 +896,14 @@ const repairStageLabels = (protocol: unknown) => {
  * The text an option whose label shows nothing is given: a Boolean choice's
  * is "Yes" or "No", as the interview shows a choice that has no label, and
  * any other option's is its value, which participants' answers already
- * record, else "Option" and its position.
+ * record. Undefined for a value that is itself blank, which validation
+ * refuses: the migration does not invent what an option means.
  */
-const optionLabelFor = (value: unknown, index: number): string => {
+const optionLabelFor = (value: unknown): string | undefined => {
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'number') return String(value);
   if (typeof value === 'string' && !isBlankText(value)) return value;
-  return `Option ${index + 1}`;
+  return undefined;
 };
 
 /**
@@ -1010,11 +911,11 @@ const optionLabelFor = (value: unknown, index: number): string => {
  * option to say something, where schema 8 accepted an empty label or one of
  * only spaces, which showed the participant an option with no words. A label
  * that shows nothing takes the option's value as text (`optionLabelFor`). It
- * runs after the option values are repaired, so a value that was itself
- * blank already reads "Option" and its position. The label is markdown, so
- * the value is escaped to show as written. Only the label changes, never the
- * value an answer records. Text already localized loses only its translations
- * that show nothing, which then fall back to another.
+ * runs after the option values are normalized, so the label reads the value
+ * as schema 9 stores it. The label is markdown, so the value is escaped to
+ * show as written. Only the label changes, never the value an answer records.
+ * Text already localized loses only its translations that show nothing, which
+ * then fall back to another.
  */
 const repairOptionLabels = (codebook: unknown) => {
   for (const variables of variableRecordsOf(codebook)) {
@@ -1027,35 +928,15 @@ const repairOptionLabels = (codebook: unknown) => {
       ) {
         continue;
       }
-      variable.options.forEach((option: unknown, index: number) => {
-        if (!isRecord(option) || !isText(option.label)) return;
-        option.label =
-          shownText(option.label) ??
-          escapeMarkdownText(optionLabelFor(option.value, index));
-      });
-    }
-  }
-};
-
-/**
- * Schema 9 requires a prompt's text to say something, where schema 8 accepted
- * text of only spaces, which showed a prompt with no words. A prompt that
- * shows nothing takes the stage's name, as a Family Pedigree's prompt does
- * (`repairFamilyPedigreeText`); the text is markdown, so the name is escaped to
- * show as written. It runs after `repairStageLabels`, so the name says
- * something. Text already localized loses only its translations that show
- * nothing, which then fall back to another.
- */
-const repairPromptText = (protocol: unknown) => {
-  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
-  for (const stage of protocol.stages) {
-    if (!isRecord(stage) || !Array.isArray(stage.prompts)) continue;
-    const label = shownText(stage.label);
-    for (const prompt of stage.prompts) {
-      if (!isRecord(prompt) || !isText(prompt.text)) continue;
-      prompt.text =
-        shownText(prompt.text) ??
-        (label === undefined ? prompt.text : asMarkdownText(label));
+      for (const option of variable.options) {
+        if (!isRecord(option) || !isText(option.label)) continue;
+        const shown = shownText(option.label);
+        const fallback = optionLabelFor(option.value);
+        if (shown !== undefined) option.label = shown;
+        else if (fallback !== undefined) {
+          option.label = escapeMarkdownText(fallback);
+        }
+      }
     }
   }
 };
@@ -1115,13 +996,17 @@ const repairRosterPropertyLabels = (protocol: unknown) => {
   }
 };
 
-/** Every text a label shows: a schema 8 string, or each translation. */
+/**
+ * Every text a label shows: a schema 8 string, which is plain text, or each
+ * translation of text already localized, which is a message and so is read
+ * back to the text it shows (`Type '{'A'}'` shows `Type {A}`).
+ */
 const textsOf = (label: unknown): string[] => {
   if (typeof label === 'string') return [label];
   if (!isRecord(label)) return [];
-  return Object.values(label).filter(
-    (text): text is string => typeof text === 'string',
-  );
+  return Object.values(label)
+    .filter((text): text is string => typeof text === 'string')
+    .map(messageText);
 };
 
 /**
@@ -1350,43 +1235,6 @@ const containerAt = (
   return node;
 };
 
-/** The attribute definitions of the entity a stage subject names. */
-const attributesOf = (
-  codebook: unknown,
-  subject: { entity: 'node' | 'edge' | 'ego'; type?: string },
-): Record<string, unknown> => {
-  if (subject.entity !== 'ego') {
-    return subjectVariables(codebook, subject.entity, subject);
-  }
-  const ego = isRecord(codebook) ? codebook.ego : undefined;
-  return isRecord(ego) && isRecord(ego.variables) ? ego.variables : {};
-};
-
-/**
- * A schema 8 form field whose prompt was empty or only spaces was captioned
- * with its attribute's name, so the field keeps that name as its prompt, which
- * schema 9 requires to say something. The prompt is markdown, so the name is
- * escaped to render as written. The attribute is looked up on the entity type
- * the stage's form collects into, and its id stands in for a missing or empty
- * name. Every form field is found through the attribute it names, so each
- * stage type that holds a form is covered without being listed here: only a
- * form field names an attribute it writes with validation and has a prompt.
- */
-const addFormFieldPrompts = (protocol: unknown) => {
-  if (!isRecord(protocol)) return;
-  const { codebook } = protocol;
-  for (const hit of collectEntityAttributeReferences(protocol)) {
-    if (hit.usage !== 'validatedAttribute' || !hit.subject) continue;
-    const field = containerAt(protocol, hit.path.slice(0, -1));
-    if (!isRecord(field) || typeof field.prompt !== 'string') continue;
-    if (!isBlankText(field.prompt)) continue;
-    const variables = attributesOf(codebook, hit.subject);
-    field.prompt = escapeMarkdownText(
-      nameOrKey(variables[hit.variableId], hit.variableId),
-    );
-  }
-};
-
 /**
  * Stage settings that schema 9 added and requires, whose wording Network
  * Canvas supplies (see `supplied-stage-text.ts`), get it on every stage
@@ -1430,18 +1278,18 @@ const migrationV8toV9 = createMigration({
 - The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol.
 - Encrypted attributes are no longer experimental: the Anonymisation interface can be added in Architect like any other interface.
 - Attribute names can now use letters from any language, as well as spaces and punctuation.
-- Form field questions can no longer be empty. A form field whose question was empty or contained only spaces now uses the name of its attribute as the question.
+- A protocol cannot be upgraded while a prompt or question, the value of an option of an ordinal or categorical attribute, or the name of a node type, edge type or attribute is empty or contains only spaces, because the upgrade cannot know what it should be. This includes form field questions, a Family Pedigree's prompt and nomination prompts, and the question a Categorical Bin stage asks participants to describe an answer that is not listed. Correct each in the version of Architect that made the protocol, then upgrade it.
 - If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
 - Ordinal and categorical option values must now be unique. Where existing options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.
-- The rules for ordinal and categorical option values are now stricter. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. An empty value is replaced by the option's label or, when there is none, by "Option" followed by the option's position. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.
+- The rules for ordinal and categorical option values are now stricter. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.
 - Several places that accepted empty text, or text made up only of spaces, now require some text:
-  - On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other's text, or "Other" for the label and "Please specify" for the question.
+  - On a Categorical Bin stage, the label of the bin for answers not listed must now contain some text. Where it contained only spaces, it now reads "Other".
   - On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".
   - The title of an Information stage must now contain some text. Where it contained only spaces, it now shows the name of the stage.
-  - Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator's form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone; a Family Pedigree's prompt now uses the name of the stage, and each of its nomination prompts uses the name of its attribute. A block of text on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.
+  - Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator's form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone. A block of text on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.
   - The name of a stage must now contain some text. Where it was empty or contained only spaces, it now reads "Stage" followed by the stage's position, such as "Stage 3".
-  - The label of each option of a categorical, ordinal or Boolean attribute must now contain some text. Where it was empty or contained only spaces, it now shows the option's value; on a Boolean attribute it reads "Yes" for the true choice and "No" for the false one instead. An option whose value was empty too shows "Option" followed by its position, such as "Option 2". Answers already recorded are not changed.
-  - Prompts, and some other titles and labels that participants see, must now contain some text. Where one was empty or contained only spaces, a prompt now uses the name of its stage; the title of a side panel on a Name Generator stage now reads "Panel" followed by its position, such as "Panel 1"; the label of a property shown on the cards of a Name Generator Roster stage, or used to sort them, now uses the name of its attribute; and the label of a condition on a Narrative Pedigree stage now uses the name of the attribute that records it, followed by a number if another condition on the stage already has that label.
+  - The label of each option of a categorical, ordinal or Boolean attribute must now contain some text. Where it was empty or contained only spaces, it now shows the option's value; on a Boolean attribute it reads "Yes" for the true choice and "No" for the false one instead. Answers already recorded are not changed.
+  - Other titles and labels that participants see must now contain some text. Where one was empty or contained only spaces, the title of a side panel on a Name Generator stage now reads "Panel" followed by its position, such as "Panel 1"; the label of a property shown on the cards of a Name Generator Roster stage, or used to sort them, now uses the name of its attribute; and the label of a condition on a Narrative Pedigree stage now uses the name of the attribute that records it, followed by a number if another condition on the stage already has that label.
 - Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Check the stages that used the removed rules.
 - Family Pedigree stages are converted to the redesigned Family Pedigree:
   - The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface.
@@ -1470,18 +1318,15 @@ const migrationV8toV9 = createMigration({
     migrateNarrativePedigreeStages(migrated);
     addLegendLabels(migrated);
     addComposerCaptions(migrated);
-    addFormFieldPrompts(migrated);
     addSuppliedStageText(migrated, localization);
     moveIntroductionPanelsToInformationStages(migrated, localization);
     repairInformationTitles(migrated);
     repairInformationTextItems(migrated);
     repairNarrativeLabels(migrated);
     repairFormTitles(migrated);
-    repairFamilyPedigreeText(migrated);
-    // After the option values are repaired and the pedigree conversion has
+    // After the option values are normalized and the pedigree conversion has
     // given its options their labels.
     repairOptionLabels(migrated.codebook);
-    repairPromptText(migrated);
     repairPanelTitles(migrated);
     repairRosterPropertyLabels(migrated);
     repairDiseaseLabels(migrated);

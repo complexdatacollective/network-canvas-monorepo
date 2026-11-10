@@ -1,4 +1,5 @@
 import type { SchemaVersion } from '../schemas/index.ts';
+import type { ProtocolValidationIssue } from '../validation/validate-protocol.ts';
 
 export class MigrationError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
@@ -40,14 +41,25 @@ export class MigrationStepError extends MigrationError {
  * the file, the other is a migration that produced garbage. A host that cannot
  * tell them apart either reports every old protocol as a bug, or — worse —
  * reports none of its own broken migrations.
+ *
+ * It is also what a document gets when it lacks content the target schema
+ * requires and a migration may not invent, such as a question a schema 8
+ * protocol left blank. `issues` names each place that failed in the migrated
+ * document, so a host can say what to correct.
  */
 export class MigrationResultInvalidError extends MigrationError {
   readonly targetVersion: number;
+  readonly issues: readonly ProtocolValidationIssue[];
 
-  constructor(message: string, targetVersion: number) {
+  constructor(
+    message: string,
+    targetVersion: number,
+    issues: readonly ProtocolValidationIssue[] = [],
+  ) {
     super(message);
     this.name = 'MigrationResultInvalidError';
     this.targetVersion = targetVersion;
+    this.issues = issues;
   }
 }
 

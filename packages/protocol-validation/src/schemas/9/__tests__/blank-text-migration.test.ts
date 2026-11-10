@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { escapeMessageText } from '../../../localization/messageSyntax.ts';
+import { MigrationResultInvalidError } from '../../../migration/errors.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { collectLocalizedStringSites } from '../../../utils/collectLocalizedStrings.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
@@ -108,14 +110,105 @@ const textSites = (document: unknown): Path[] =>
 const BLANKS = ['', ' '] as const;
 
 /**
- * Text schema 8 accepted empty or made of spaces must not stop a protocol
- * migrating: every string that becomes localized text is blanked in turn,
- * and the protocol must still migrate to a valid schema 9 protocol.
+ * What becomes of each kind of text schema 8 accepted blank. A title or label
+ * is display text, so the migration repairs it (or leaves out optional text
+ * that said nothing). A prompt or question is the instrument's own content,
+ * which the migration never invents, so the document is refused at that place.
+ */
+type Outcome = 'repaired' | 'refused';
+
+/** Text within a stage, by its path below the stage. */
+const STAGE_TEXT: readonly (readonly [RegExp, Outcome])[] = [
+  // Stage names, side panel titles, roster card and sort labels, and
+  // condition labels.
+  [/^label$/, 'repaired'],
+  [/^panels\.\d+\.title$/, 'repaired'],
+  [/^cardOptions\.additionalProperties\.\d+\.label$/, 'repaired'],
+  [/^sortOptions\.sortableProperties\.\d+\.label$/, 'repaired'],
+  [/^diseases\.\d+\.label$/, 'repaired'],
+  // Other titles and labels, given a default.
+  [/^title$/, 'repaired'],
+  [/^form\.title$/, 'repaired'],
+  [/^introductionPanel\.title$/, 'repaired'],
+  [/^presets\.\d+\.label$/, 'repaired'],
+  [/^prompts\.\d+\.negativeLabel$/, 'repaired'],
+  [/^prompts\.\d+\.otherOptionLabel$/, 'repaired'],
+  [/^explanationText\.(title|body)$/, 'repaired'],
+  [/^(nodeForm|edges\.\d+\.form)\.fields\.\d+\.label$/, 'repaired'],
+  // Optional text, left out when it says nothing.
+  [/(^|\.)hint$/, 'repaired'],
+  [/^introductionPanel\.text$/, 'repaired'],
+  [/^(introScreen\.)?items\.\d+\.(content|description)$/, 'repaired'],
+  [/\.parameters\.(min|max)Label$/, 'repaired'],
+  // Prompts and questions.
+  [/^prompts\.\d+\.text$/, 'refused'],
+  [/^(prompt|censusPrompt)$/, 'refused'],
+  [/^nominationPrompts\.\d+\.text$/, 'refused'],
+  [/^(form\.fields|nodeConfig\.form)\.\d+\.prompt$/, 'refused'],
+  [/^prompts\.\d+\.otherVariablePrompt$/, 'refused'],
+];
+
+/** Text within the codebook: option labels with a value, scale end labels. */
+const CODEBOOK_TEXT: readonly (readonly [RegExp, Outcome])[] = [
+  [/\.options\.\d+\.label$/, 'repaired'],
+  [/\.parameters\.(min|max)Label$/, 'repaired'],
+];
+
+const outcomeOf = (at: Path): Outcome | undefined => {
+  const [root, , ...below] = at;
+  const [table, rest] =
+    root === 'stages'
+      ? [STAGE_TEXT, below.join('.')]
+      : [CODEBOOK_TEXT, at.join('.')];
+  return table.find(([pattern]) => pattern.test(rest))?.[1];
+};
+
+/**
+ * Where schema 9 reports a site of a schema 8 document: the same place in
+ * the migrated document. A stage keeps its id, though the migration can add
+ * stages before it, and the pedigree conversion renames two of its fields.
+ */
+const migratedPathOf = (document: unknown, migrated: unknown, at: Path) => {
+  if (at[0] !== 'stages') return at;
+  const id = getAt(document, ['stages', at[1] ?? -1, 'id']);
+  const stages = getAt(migrated, ['stages']);
+  const index = Array.isArray(stages)
+    ? stages.findIndex((stage) => isRecord(stage) && stage.id === id)
+    : -1;
+  const below = at
+    .slice(2)
+    .join('.')
+    .replace(/^censusPrompt$/, 'prompt')
+    .replace(/^nodeConfig\.form\./, 'form.fields.')
+    .split('.')
+    .map((key) => (/^\d+$/.test(key) ? Number(key) : key));
+  return ['stages', index, ...below];
+};
+
+/** The places schema 9 reports when a migration fails. */
+const issuePathsOf = (run: () => unknown): Path[] => {
+  try {
+    run();
+  } catch (error) {
+    if (error instanceof MigrationResultInvalidError) {
+      return error.issues.map(({ path }) => path);
+    }
+    throw error;
+  }
+  return [];
+};
+
+/**
+ * Every string of a complete schema 8 protocol that becomes localized text is
+ * blanked in turn. Where schema 8 accepted the result, the protocol migrates
+ * to a valid schema 9 protocol if the text is a title or label, and is
+ * refused, at that text, if it is a prompt or question.
  */
 describe.each(FIXTURES)('blank text in %s', (_name, fixture) => {
   const document = fixture();
   const sites = textSites(document);
   const found = sites.map((at) => at.join('.'));
+  const migrated = migrateProtocol(structuredClone(document), 9);
 
   // The sweep finds its sites itself, so it is checked to find the families
   // it guards; a sweep that found nothing would pass vacuously.
@@ -135,19 +228,96 @@ describe.each(FIXTURES)('blank text in %s', (_name, fixture) => {
     );
   });
 
-  it.each(BLANKS)('migrates with any one text set to %j', (blank) => {
-    const failures: string[] = [];
-    for (const at of sites) {
+  // A kind of text the tables do not name has had no decision made for it.
+  it('expects an outcome for every text it finds', () => {
+    expect(found.filter((_, index) => !outcomeOf(sites[index] ?? []))).toEqual(
+      [],
+    );
+  });
+
+  // One test per text, so each stays short and a failure names its text.
+  describe.each(BLANKS)('with one text set to %j', (blank) => {
+    it.each(
+      sites.map(
+        (at) => [at.join('.'), outcomeOf(at) ?? 'repaired', at] as const,
+      ),
+    )('%s is %s', (_site, outcome, at) => {
       const blanked = structuredClone(document);
       setAt(blanked, at, blank);
-      if (!ProtocolSchemaV8.safeParse(blanked).success) continue;
-      try {
-        migrateProtocol(blanked, 9);
-      } catch (error) {
-        failures.push(`${at.join('.')}: ${String(error).slice(0, 300)}`);
+      // Only text schema 8 accepted blank is held to an outcome.
+      if (!ProtocolSchemaV8.safeParse(blanked).success) return;
+      if (outcome === 'repaired') {
+        expect(() => migrateProtocol(blanked, 9)).not.toThrow();
+        return;
       }
-    }
-    expect(failures).toEqual([]);
+      const expected = migratedPathOf(document, migrated, at);
+      const paths = issuePathsOf(() => migrateProtocol(blanked, 9));
+      expect(paths).not.toEqual([]);
+      expect(
+        paths.every((path) => startsWith(path, expected)),
+        `expected every issue at ${expected.join('.')}, got ${JSON.stringify(paths)}`,
+      ).toBe(true);
+    });
+  });
+});
+
+/**
+ * Content a schema 8 document can leave blank that the migration never
+ * invents: an option's value, whose meaning cannot be known, and the name of
+ * a node type, edge type or attribute. The document is refused at that place.
+ */
+describe('blank content the migration does not invent', () => {
+  const closeness = ['codebook', 'node', 'person', 'variables', 'closeness'];
+  const SITES: readonly (readonly [string, Path])[] = [
+    ['an ordinal option value', [...closeness, 'options', 1, 'value']],
+    [
+      'a categorical option value',
+      [
+        'codebook',
+        'node',
+        'person',
+        'variables',
+        'tie_type',
+        'options',
+        0,
+        'value',
+      ],
+    ],
+    ['a node type name', ['codebook', 'node', 'person', 'name']],
+    ['an edge type name', ['codebook', 'edge', 'knows', 'name']],
+    ['a node attribute name', [...closeness, 'name']],
+    [
+      'an edge attribute name',
+      [
+        'codebook',
+        'edge',
+        'family_relationship',
+        'variables',
+        'gameteRole',
+        'name',
+      ],
+    ],
+    [
+      'an ego attribute name',
+      ['codebook', 'ego', 'variables', 'participant_consent', 'name'],
+    ],
+  ];
+
+  describe.each(SITES)('%s', (_name, at) => {
+    // So the case below blanks something the fixture holds.
+    it('is in the fixture', () => {
+      expect(['string', 'number']).toContain(
+        typeof getAt(ecoGeneticTemplate, at),
+      );
+    });
+
+    it.each(BLANKS)('set to %j is refused at that place', (blank) => {
+      const document = structuredClone(ecoGeneticTemplate);
+      setAt(document, at, blank);
+      expect(ProtocolSchemaV8.safeParse(document).success).toBe(true);
+      const paths = issuePathsOf(() => migrateProtocol(document, 9));
+      expect(paths).toContainEqual(at);
+    });
   });
 });
 
@@ -182,20 +352,6 @@ describe('the text given to blank schema 8 text', () => {
       });
     },
   );
-
-  it.each(BLANKS)('asks a prompt with the stage name for %j', (blank) => {
-    const migrated = migrateWith(['stages', 6, 'prompts', 0, 'text'], blank);
-    const stage = stageWithId(migrated, stageIdAt(6));
-    expect(getAt(stage, ['prompts', 0, 'text'])).toEqual(stage.label);
-  });
-
-  it('asks a prompt with the backfilled stage name when both are blank', () => {
-    const document = structuredClone(ecoGeneticTemplate);
-    setAt(document, ['stages', 6, 'label'], ' ');
-    setAt(document, ['stages', 6, 'prompts', 0, 'text'], '');
-    const stage = stageWithId(migrateProtocol(document, 9), stageIdAt(6));
-    expect(getAt(stage, ['prompts', 0, 'text'])).toEqual({ en: 'Stage 7' });
-  });
 
   it.each(BLANKS)('titles a side panel by its position for %j', (blank) => {
     const migrated = migrateWith(['stages', 5, 'panels', 0, 'title'], blank);
@@ -295,15 +451,25 @@ describe('option labels that show nothing', () => {
     expect(labelsOf(migrated)).toEqual([{ en: '\\*Often\\*' }, { en: '2' }]);
   });
 
-  it('reads "Option" and its position when the value is blank too', () => {
-    const migrated = protocolWith({
+  // The migration does not invent what an option means, so neither its value
+  // nor its label is supplied, and the document is refused at the value.
+  it('is refused at the value when the value is blank too', () => {
+    const variable = ['codebook', 'node', 'person', 'variables', 'blanks'];
+    const document = asSchema8Protocol(completeProtocol());
+    setAt(document, variable, {
+      name: 'blanks',
       type: 'categorical',
       options: [
         { label: 'Often', value: 'often' },
         { label: ' ', value: ' ' },
       ],
     });
-    expect(labelsOf(migrated)).toEqual([{ en: 'Often' }, { en: 'Option 2' }]);
+    expect(issuePathsOf(() => migrateProtocol(document, 9))).toContainEqual([
+      ...variable,
+      'options',
+      1,
+      'value',
+    ]);
   });
 });
 
@@ -357,6 +523,43 @@ describe('condition labels that show nothing', () => {
       : undefined;
     expect(getAt(stage, ['diseases', 1, 'label'])).toEqual({
       en: 'had_testing 2',
+    });
+  });
+
+  // Fresco re-runs this migration over rows already in schema 9 form, where
+  // a label is a message: `Type '{'A'}'` shows the participant `Type {A}`.
+  it('are numbered when another already shows the name, in schema 9 form', () => {
+    const document = structuredClone(ecoGeneticTemplate);
+    const diseases = ['stages', 12, 'diseases'];
+    const first = getAt(document, [...diseases, 0]);
+    if (!isRecord(first)) throw new Error('No condition');
+    Reflect.set(document, 'localization', {
+      defaultLocale: 'en',
+      locales: ['en'],
+    });
+    setAt(
+      document,
+      ['codebook', 'node', 'person', 'variables', 'had_testing', 'name'],
+      'Type {A}',
+    );
+    setAt(document, [...diseases, 0, 'label'], {
+      en: escapeMessageText('Type {A}'),
+    });
+    setAt(document, [...diseases, 1], {
+      ...structuredClone(first),
+      id: 'second-condition',
+      label: { en: ' ' },
+      variable: 'had_testing',
+    });
+    const stages = getAt(migrateProtocol(document, 9), ['stages']);
+    const stage = Array.isArray(stages)
+      ? stages.find(
+          (candidate) =>
+            isRecord(candidate) && candidate.id === 'narrative-pedigree',
+        )
+      : undefined;
+    expect(getAt(stage, ['diseases', 1, 'label'])).toEqual({
+      en: escapeMessageText('Type {A} 2'),
     });
   });
 });

@@ -53,26 +53,31 @@ Schema 9:
   type's name (or its ID) and wrapped as `{ en: <text> }`. Each Network
   Composer edge entry gets a `label` taken from its edge type's name (or its
   ID) and wrapped the same way. Codebook node types, edge types and variables
-  have no `label`: participants never see a codebook name. A form field with no caption, or an
-  empty or blank one (a Network Composer field's `label`, or any other form
-  field's `prompt`), gets its attribute's name (or its ID) as one, escaped so
-  that markdown shows it as written, and wrapped the same way. An empty
-  optional text that schema 9 requires to be non-empty is removed, as are
-  Network Composer scale end labels that were not strings. Required text that
-  schema 8 accepted empty or blank is filled in, so every protocol schema 8
-  accepted migrates: a stage name becomes `Stage` and its position (as the v7
-  to v8 migration names a stage with none); an option label becomes the
-  option's value (`Yes` or `No` for a Boolean attribute, else `Option` and its
-  position when the value is blank too); a prompt takes its stage's name; a
-  Name Generator side panel title becomes `Panel` and its position; a Name
-  Generator Roster card or sort label takes its attribute's name; and a
-  Narrative Pedigree condition label takes the name of the attribute that
-  records it, numbered if another condition on the stage already has that
-  label. Only text changes, never an option value or ID. Its migration notes
-  tell researchers what the new version allows, that the text is recorded as
-  English, so they should confirm the default language and change it in
-  Architect if the protocol is written in another one, and which empty
-  questions were filled in.
+  have no `label`: participants never see a codebook name. A Network Composer
+  field with no caption, or an empty or blank one, gets its attribute's name
+  (or its ID) as its `label`, escaped so that markdown shows it as written, and
+  wrapped the same way. An empty optional text that schema 9 requires to be
+  non-empty is removed, as are Network Composer scale end labels that were not
+  strings. A required label or title that schema 8 accepted empty or blank is
+  filled in: a stage name becomes `Stage` and its position (as the v7 to v8
+  migration names a stage with none); an option label becomes the option's
+  value (`Yes` or `No` for a Boolean attribute); a Name Generator side panel
+  title becomes `Panel` and its position; a Name Generator Roster card or sort
+  label takes its attribute's name; and a Narrative Pedigree condition label
+  takes the name of the attribute that records it, numbered if another
+  condition on the stage already has that label. Only text changes, never an
+  option value or ID. The migration never invents the instrument's own
+  content: a protocol whose prompt or question (including a form field's
+  `prompt`, a Family Pedigree's prompt and nomination prompts, and a
+  Categorical Bin's `otherVariablePrompt`), ordinal or categorical option
+  value, or node type, edge type or attribute name is empty or blank is not
+  migrated. `migrateProtocol` throws `MigrationResultInvalidError` for it,
+  whose new `issues` list gives each problem's `code`, `message` and `path` in
+  the migrated document. Its migration notes tell researchers what the new
+  version allows, that the text is recorded as English, so they should confirm
+  the default language and change it in Architect if the protocol is written
+  in another one, and which empty content they must correct in the version of
+  Architect that made the protocol before upgrading.
 - Schema 9 keeps the optional `experiments` property, for features released
   within a schema version, but `encryptedVariables` is no longer one of them:
   an attribute marked `encrypted` is always encrypted. `ExperimentsSchema` and
@@ -119,9 +124,9 @@ Schema 9:
   migration removes text that is blank in every language, so the panel shows
   only its title, and gives a blank title the stage's label. A Categorical Bin
   prompt's `otherOptionLabel` and `otherVariablePrompt` must also contain text;
-  the migration gives a blank one the other's text, else `Other` or
-  `Please specify`. In a document already in schema 9 form, only the blank
-  translations of these fields are removed.
+  the migration gives a blank `otherOptionLabel` the text `Other`, and refuses
+  a blank `otherVariablePrompt`. In a document already in schema 9 form, only
+  the blank translations of these fields are removed.
 
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body
