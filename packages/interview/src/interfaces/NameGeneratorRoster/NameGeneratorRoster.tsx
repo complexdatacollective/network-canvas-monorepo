@@ -128,6 +128,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   }).text;
   // The protocol's interface text words the search (`search.searchLabel`).
   const searchLabel = intl.formatMessage(commonMessages.search);
+  const loadingStatus = intl.formatMessage(runtimeMessages.loadingStatus);
 
   const { isLastPrompt } = usePrompts();
 
@@ -504,7 +505,11 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                     <div>
                       {searchOptions && (
                         <div className="flex flex-wrap gap-2 p-2">
-                          <CollectionFilterInput placeholder={searchLabel} />
+                          <CollectionFilterInput
+                            placeholder={searchLabel}
+                            loadingText={loadingStatus}
+                            indexingText={loadingStatus}
+                          />
                         </div>
                       )}
                       {sortableProperties && sortableProperties.length > 0 && (

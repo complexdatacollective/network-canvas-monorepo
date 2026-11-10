@@ -1307,9 +1307,6 @@
       "stageError": {
         "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "itemUnavailable": {
-        "en-US": "This item could not be displayed."
-      },
       "error": {
         "en-US": "An error occurred."
       },
@@ -1341,29 +1338,11 @@
       "passphraseIncorrect": {
         "en-US": "This passphrase does not match the one used earlier in this interview. Check it and try again."
       },
-      "protectedAnswersLocked": {
-        "en-US": "Some answers here are protected by your passphrase. Enter your passphrase to see and change them."
-      },
-      "protectedAnswersNotSaved": {
-        "en-US": "Your answers have not been saved. Enter your passphrase, then try again."
-      },
-      "protectedAnswersUnavailable": {
-        "en-US": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know."
-      },
-      "answerUnavailable": {
-        "en-US": "Answer unavailable"
-      },
-      "answerUnavailableKept": {
-        "en-US": "This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer."
-      },
       "confirmPassphrase": {
         "en-US": "Confirm Passphrase"
       },
       "passphraseAccepted": {
         "en-US": "Passphrase accepted! Click \"Next\" to continue."
-      },
-      "checkingPassphrase": {
-        "en-US": "Checking your passphrase…"
       },
       "passwordPlaceholder": {
         "en-US": "Enter password"
@@ -1438,9 +1417,6 @@
       },
       "redoDescription": {
         "en-US": "Bring back the change you undid."
-      },
-      "trackerAllDetails": {
-        "en-US": "Add required details for all family members"
       }
     },
     "narrativePedigree": {
@@ -1463,27 +1439,14 @@
         "en-US": "Clear focus"
       }
     },
-    "categoricalBin": {
-      "placeHere": {
-        "en-US": "Place here"
-      }
-    },
     "quickAdd": {
       "quickAddHint": {
         "en-US": "Press Enter when you are finished."
       }
     },
-    "roster": {
-      "dropToRemove": {
-        "en-US": "Drop here to remove"
-      }
-    },
     "networkComposer": {
       "addNamePlaceholder": {
         "en-US": "Type a name, then press Enter"
-      },
-      "overtakenEditNotice": {
-        "en-US": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost."
       },
       "addNodeTooltip": {
         "en-US": "Add node"
@@ -1512,11 +1475,6 @@
       },
       "mapUnavailable": {
         "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow."
-      }
-    },
-    "egoForm": {
-      "scrollForQuestions": {
-        "en-US": "Scroll to see more questions"
       }
     }
   }

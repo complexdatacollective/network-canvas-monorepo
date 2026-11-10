@@ -201,11 +201,24 @@ describe('v8 to v9 localization migration', () => {
         .map(({ schema }) => schema),
     );
     // Schema 8 has no Language Chooser, so a schema 8 document has none of
-    // its text to wrap.
+    // its text to wrap. Nor does it hold an encrypted attribute or a bin
+    // placed by tapping, so it shows none of the text about protected
+    // answers and no Place here button.
+    const NEW_IN_SCHEMA_9 = [
+      'protocol.interfaceText.passphrase.protectedAnswersLocked',
+      'protocol.interfaceText.passphrase.protectedAnswersNotSaved',
+      'protocol.interfaceText.passphrase.answerUnavailable',
+      'protocol.interfaceText.passphrase.answerUnavailableKept',
+      'protocol.interfaceText.categoricalBin.placeHere',
+    ];
     const missed = [...declarations]
       .filter(([declaration]) => !wrapped.has(declaration))
       .map(([, where]) => where)
-      .filter((where) => !where.includes('[type=LanguageChooser]'));
+      .filter(
+        (where) =>
+          !where.includes('[type=LanguageChooser]') &&
+          !NEW_IN_SCHEMA_9.includes(where),
+      );
     expect(missed).toEqual([]);
   });
 

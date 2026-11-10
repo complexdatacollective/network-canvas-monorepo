@@ -2,11 +2,11 @@
 
 import { useEffect } from 'react';
 
-import { commonMessages } from '@codaco/app-i18n/common';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { usePassphrase } from './usePassphrase';
 
 export type PassphraseNoticeStatus = 'locked' | 'pending';
@@ -42,7 +42,7 @@ export default function PassphraseNotice({
         <>
           <Spinner size="sm" />
           <span className="sr-only">
-            {intl.formatMessage(commonMessages.loading)}
+            {intl.formatMessage(runtimeMessages.loadingStatus)}
           </span>
         </>
       ) : (

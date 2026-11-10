@@ -1075,9 +1075,6 @@
       "done": {
         "en": "Done"
       },
-      "delete": {
-        "en": "Delete"
-      },
       "yes": {
         "en": "Yes"
       },
@@ -1104,14 +1101,8 @@
       "stageError": {
         "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "itemUnavailable": {
-        "en": "This item could not be displayed."
-      },
       "error": {
         "en": "An error occurred."
-      },
-      "loading": {
-        "en": "Loading…"
       },
       "unnamed": {
         "en": "Unnamed"
@@ -1141,9 +1132,6 @@
       "protectedAnswersNotSaved": {
         "en": "Your answers have not been saved. Enter your passphrase, then try again."
       },
-      "protectedAnswersUnavailable": {
-        "en": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know."
-      },
       "answerUnavailable": {
         "en": "Answer unavailable"
       },
@@ -1155,9 +1143,6 @@
       },
       "passphraseAccepted": {
         "en": "Passphrase accepted! Click \"Next\" to continue."
-      },
-      "checkingPassphrase": {
-        "en": "Checking your passphrase…"
       },
       "passwordPlaceholder": {
         "en": "Enter password"
@@ -1195,16 +1180,6 @@
       },
       "sameAs": {
         "en": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}"
-      }
-    },
-    "categoricalBin": {
-      "placeHere": {
-        "en": "Place here"
-      }
-    },
-    "egoForm": {
-      "scrollForQuestions": {
-        "en": "Scroll to see more questions"
       }
     }
   }

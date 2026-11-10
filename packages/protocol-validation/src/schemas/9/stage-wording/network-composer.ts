@@ -35,7 +35,7 @@ export const OVERTAKEN_EDIT_NOTICE = {
     '復原或重做在您編輯某個回答時變更了該回答，因此您的修改尚未儲存。若要保留您的修改，請再次變更該回答。如果繼續，您的修改將會遺失。',
 } as const satisfies SuppliedWording;
 
-/** The heading over the groups, and the words on the Groups tool. */
+/** The Groups tool's name, shown in its tooltip. */
 export const GROUPS_HEADING = {
   'en': 'Groups',
   'de': 'Gruppen',
@@ -84,7 +84,7 @@ export const DRAW_EDGE_TOOLTIP = {
   'zh-Hant': '繪製關係',
 } as const satisfies SuppliedWording;
 
-/** The Groups tool and its heading appear only once the stage has groups. */
+/** The Groups tool appears only once the stage has groups. */
 export const hasGroups = (stage: Stage) =>
   stage.convexHullVariable !== undefined;
 
@@ -92,4 +92,42 @@ export const hasGroups = (stage: Stage) =>
 export const hasEdgeTypes = (stage: Stage) => {
   const edges = stage.edges;
   return Array.isArray(edges) && edges.length > 0;
+};
+
+const isRecord = (value: unknown): value is Stage =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const edgeTypesOf = (stage: Stage): readonly Stage[] =>
+  Array.isArray(stage.edges) ? stage.edges.filter(isRecord) : [];
+
+/** A form the inspector shows: one with fields to answer. */
+const hasFields = (form: unknown) =>
+  isRecord(form) && Array.isArray(form.fields) && form.fields.length > 0;
+
+/**
+ * The inspector shows a form, and so can say that an undo or redo overtook an
+ * edit in it, only for a selected node while the stage gives nodes fields to
+ * answer, or for a selected edge of a type the stage gives fields.
+ */
+export const hasInspectorForm = (stage: Stage) =>
+  hasFields(stage.nodeForm) ||
+  edgeTypesOf(stage).some((edgeType) => hasFields(edgeType.form));
+
+/**
+ * Whether the codebook has an edge type the stage does not draw. An edge of
+ * such a type, made on another stage, is the only one the inspector names
+ * simply as a connection.
+ */
+export const leavesEdgeTypesUndrawn = (
+  stage: Stage,
+  codebookEdgeTypes: readonly string[],
+) => {
+  const drawn = new Set(
+    edgeTypesOf(stage).flatMap(({ subject }) =>
+      isRecord(subject) && typeof subject.type === 'string'
+        ? [subject.type]
+        : [],
+    ),
+  );
+  return codebookEdgeTypes.some((type) => !drawn.has(type));
 };

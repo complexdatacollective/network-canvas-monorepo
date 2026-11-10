@@ -1812,9 +1812,6 @@
       "done": {
         "en": "Done"
       },
-      "delete": {
-        "en": "Delete"
-      },
       "yes": {
         "en": "Yes"
       },
@@ -1875,19 +1872,9 @@
         "en": "Must be on or after {min}."
       }
     },
-    "categoricalBin": {
-      "placeHere": {
-        "en": "Place here"
-      }
-    },
     "quickAdd": {
       "quickAddHint": {
         "en": "Press Enter when you are finished."
-      }
-    },
-    "roster": {
-      "dropToRemove": {
-        "en": "Drop here to remove"
       }
     },
     "narrative": {
@@ -1899,11 +1886,6 @@
       },
       "resetAnnotations": {
         "en": "Reset annotations"
-      }
-    },
-    "egoForm": {
-      "scrollForQuestions": {
-        "en": "Scroll to see more questions"
       }
     }
   }

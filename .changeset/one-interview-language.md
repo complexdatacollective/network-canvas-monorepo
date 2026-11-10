@@ -16,7 +16,8 @@ Spanish no longer gets a Spanish protocol inside French buttons.
   protocol language that best fits the participant's browser languages, or
   else the protocol's default language.
 - Text that only screen readers read, such as announcements and the names of
-  icon buttons, stays in English for now.
+  icon buttons, stays in English. It is not interface text, so a protocol
+  never holds it and it is never offered for translation.
 - Icons beside text that already says what they mean are hidden from screen
   readers.
 
@@ -29,9 +30,11 @@ Spanish no longer gets a Spanish protocol inside French buttons.
 - Words that every stage of one type shows alike are held once in interface
   text, in a group named for that stage type: `familyPedigree`,
   `categoricalBin`, `quickAdd` (the quick-add name box's placeholder),
-  `roster`, `networkComposer` and `egoForm`, plus
-  `familyTreeView` for the controls both pedigree stages share. Each group is
-  held only while the protocol has a stage that shows it.
+  `networkComposer`, plus `familyTreeView` for the controls both pedigree
+  stages share. Each group is held only while the protocol has a stage that
+  shows it, and an entry that only some configurations show (such as a
+  Categorical Bin's Place here button, shown only when it places nodes by
+  tapping) only while one does.
 - A protocol must hold all the interface text it shows. Validation refuses one
   that lacks a group, or an entry of a group, that something in it shows,
   naming each at its place in `interfaceText`. Architect, Studio and the
@@ -60,10 +63,10 @@ Spanish no longer gets a Spanish protocol inside French buttons.
   its own, the section opens and closes two parts, "Specific to this stage"
   and "Shared by every stage of this kind". Shared wording is saved as you
   leave each field, because it changes every stage of that type, and switching
-  the section off resets it too. The Ego Form and Categorical Bin editors gain
-  the section for their shared wording.
+  the section off resets it too. The Categorical Bin editor gains the section
+  for its shared wording.
 - Every field in the section has a hint saying where the participant sees that
-  text and what it is for.
+  text and what it is for, including when it is shown only as a tooltip.
 - The Family Pedigree editor lists all of its wording under "Specific to this
   stage", without the headings that used to split it into groups.
 - The translation table lists the new Interviewer controls group and a group

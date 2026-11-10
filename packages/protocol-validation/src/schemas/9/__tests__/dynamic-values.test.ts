@@ -9,6 +9,7 @@ import {
   stageDynamicValueContext,
 } from '../dynamic-value-validation.ts';
 import { dynamicValueArgumentsAt } from '../dynamic-values.ts';
+import { interfaceTextFor } from '../interface-text.ts';
 import {
   getLocalizedStringDescriptor,
   localizedMessage,
@@ -638,13 +639,18 @@ describe('dynamic values in stage text', () => {
       });
 
       it('keeps the node a bin is placing out of the "other" bin\'s label', () => {
-        const protocol = editing('categoricalBin', (stage) => {
+        const edited = editing('categoricalBin', (stage) => {
           stage.dynamicValues = labels;
           stage.behaviours = { interactionMode: 'select' };
           (stage.prompts as Stage[])[0]!.otherOptionLabel = {
             en: guarded('nodeLabel'),
           };
         });
+        // Placing by tapping also shows the bin's Place here button.
+        const protocol = {
+          ...edited,
+          interfaceText: interfaceTextFor(edited),
+        };
         expect(issuesOf(protocol)).toEqual([
           expect.objectContaining({
             message: expect.stringContaining(

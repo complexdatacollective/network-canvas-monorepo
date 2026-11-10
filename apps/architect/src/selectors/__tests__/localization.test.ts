@@ -67,14 +67,14 @@ describe('getLocalizationCoverage()', () => {
     const coverage = getLocalizationCoverage(stateWith(trilingual()));
 
     // The attribute's one answer option, the stage's label and its title,
-    // and the twenty-six words the interview itself shows (its navigation,
+    // and the twenty-two words the interview itself shows (its navigation,
     // buttons and interviewer controls among them), which Network Canvas
     // supplies in all three languages.
-    expect(coverage.total).toBe(29);
+    expect(coverage.total).toBe(25);
     expect(coverage.locales).toEqual([
-      { locale: 'en', isDefault: true, translated: 29, missing: 0 },
-      { locale: 'fr', isDefault: false, translated: 28, missing: 1 },
-      { locale: 'de', isDefault: false, translated: 27, missing: 2 },
+      { locale: 'en', isDefault: true, translated: 25, missing: 0 },
+      { locale: 'fr', isDefault: false, translated: 24, missing: 1 },
+      { locale: 'de', isDefault: false, translated: 23, missing: 2 },
     ]);
   });
 

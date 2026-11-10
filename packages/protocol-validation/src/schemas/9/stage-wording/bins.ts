@@ -2,7 +2,11 @@ import type {
   SuppliedStageSetting,
   SuppliedWording,
 } from '../supplied-stage-setting.ts';
-import { behaviourIsOn, type StageRecord } from './configuration.ts';
+import {
+  behaviourIsOn,
+  isStageRecord,
+  type StageRecord,
+} from './configuration.ts';
 
 /**
  * Whether a bin stage keeps the participant on the stage until every node
@@ -10,6 +14,16 @@ import { behaviourIsOn, type StageRecord } from './configuration.ts';
  */
 export const requiresCompletePlacement = (stage: StageRecord): boolean =>
   behaviourIsOn(stage, 'requireCompletePlacement');
+
+/**
+ * Whether a bin stage places nodes by tapping (`interactionMode` `select`)
+ * rather than by dragging them, its default: the node being placed is shown
+ * on its own, and the participant taps where it goes.
+ */
+export const placesByTapping = (stage: StageRecord): boolean => {
+  const behaviours = stage.behaviours;
+  return isStageRecord(behaviours) && behaviours.interactionMode === 'select';
+};
 
 /** The notice when the participant tries to continue with nodes unplaced. */
 const UNPLACED_NODES_NOTICE = {

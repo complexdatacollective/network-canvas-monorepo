@@ -308,14 +308,14 @@ export default function ToolPalette({
         aria-label={intl.formatMessage(interfaceMessages.historyTools)}
       >
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.undo)}
+          aria-label={intl.formatMessage(interfaceMessages.composerUndo)}
           tooltip={false}
           icon={<UndoIcon />}
           disabled={!canUndo}
           onClick={() => void undoStore.getState().undo()}
         />
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.redo)}
+          aria-label={intl.formatMessage(interfaceMessages.composerRedo)}
           tooltip={false}
           icon={<RedoIcon />}
           disabled={!canRedo}

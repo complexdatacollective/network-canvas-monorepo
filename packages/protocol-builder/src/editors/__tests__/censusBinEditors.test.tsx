@@ -458,7 +458,8 @@ const CASES: readonly EditorCase[] = [
       'Stage filter',
       'Prompt collection',
       'Placing nodes',
-      'Customize built-in wording',
+      // The fixture's bin is placed by dragging and lets nodes stay
+      // unplaced, so it shows no built-in wording.
       'Skip logic',
       'Interviewer guidance',
     ],

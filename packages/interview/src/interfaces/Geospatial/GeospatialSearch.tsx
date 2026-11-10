@@ -254,13 +254,13 @@ export default function GeospatialSearch({
                 message: interfaceMessages.mapMoved,
                 values: { place: suggestion.name },
               }
-            : { text: failedText },
+            : { message: interfaceMessages.mapMoveFailed },
         );
       };
       void announce();
       closeSearch();
     },
-    [handleSelect, closeSearch, failedText],
+    [handleSelect, closeSearch],
   );
 
   // KeyDown handler factory for suggestions
@@ -522,7 +522,9 @@ export default function GeospatialSearch({
                             aria-hidden="true"
                           />
                           <span className="sr-only">
-                            <AppMessage message={commonMessages.loading} />
+                            <AppMessage
+                              message={runtimeMessages.loadingStatus}
+                            />
                           </span>
                         </>
                       ) : (
