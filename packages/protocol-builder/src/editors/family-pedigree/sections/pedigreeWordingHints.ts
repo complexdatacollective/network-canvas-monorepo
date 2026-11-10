@@ -22,7 +22,7 @@ export const pedigreeWordingHints = defineMessages({
   relativeTerm: {
     id: 'protocolBuilder.pedigree.wordingHint.relativeTerm',
     defaultMessage:
-      'Words for each kind of relative, such as Mother or Egg parent. Used in the labels of family members who have no name.',
+      'Words for each kind of relative, such as Mother or Egg parent. Used on the buttons that add a relative, in the labels of family members who have no name, and in the choice of words for family members.',
     description:
       'Hint under the setting holding the relative terms, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
   },
@@ -319,7 +319,7 @@ export const pedigreeWordingHints = defineMessages({
   carriedSiblingsPregnancyLabel: {
     id: 'protocolBuilder.pedigree.wordingHint.carriedSiblingsPregnancyLabel',
     defaultMessage:
-      'Question asking whether a parent carried the pregnancy of each new sibling.',
+      'Question shown while adding a parent to a family member, when the participant has also chosen some of the family member’s siblings as this parent’s children. It asks whether this parent was pregnant with those siblings, and only about the ones nobody is yet recorded as having carried.',
     description:
       'Hint under the setting holding the siblings’ pregnancy question, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
   },
@@ -431,7 +431,7 @@ export const pedigreeWordingHints = defineMessages({
   unavailableSameSexGeneticParent: {
     id: 'protocolBuilder.pedigree.wordingHint.unavailableSameSexGeneticParent',
     defaultMessage:
-      'Shown under the answers when some are unavailable because the child’s other genetic parent has the same sex at birth.',
+      'Shown under the question, and under the unavailable choice in the connect menu, when some answers are unavailable because the child’s other genetic parent has the same sex at birth as this family member.',
     description:
       'Hint under the setting holding the hint about the other genetic parent’s sex at birth, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
   },
@@ -445,21 +445,21 @@ export const pedigreeWordingHints = defineMessages({
   unavailableGeneticParentsFull: {
     id: 'protocolBuilder.pedigree.wordingHint.unavailableGeneticParentsFull',
     defaultMessage:
-      'Shown under the answers when some are unavailable because the child already has two genetic parents recorded.',
+      'Shown under the question, and under the unavailable choice in the connect menu, when some answers are unavailable because the child already has two genetic parents recorded.',
     description:
       'Hint under the setting holding the hint about two genetic parents, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
   },
   unavailableBothSameSex: {
     id: 'protocolBuilder.pedigree.wordingHint.unavailableBothSameSex',
     defaultMessage:
-      'Shown under the answers when both parents cannot be a new child’s genetic parents, because they have the same sex at birth.',
+      'Shown under the question when both parents cannot be a new child’s genetic parents, because they have the same sex at birth.',
     description:
       'Hint under the setting holding the hint about both parents having the same sex at birth, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
   },
   unavailableCarrierRecorded: {
     id: 'protocolBuilder.pedigree.wordingHint.unavailableCarrierRecorded',
     defaultMessage:
-      'Shown under the answers when some are unavailable because someone else is recorded as having carried the pregnancy.',
+      'Shown under the question, and under the unavailable choice in the connect menu, when some answers are unavailable because someone else is recorded as having carried the child.',
     description:
       'Hint under the setting holding the hint about someone else having carried, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
   },
@@ -473,14 +473,14 @@ export const pedigreeWordingHints = defineMessages({
   unavailableCannotCarry: {
     id: 'protocolBuilder.pedigree.wordingHint.unavailableCannotCarry',
     defaultMessage:
-      'Shown under the answers when some are unavailable because the family member’s sex at birth means they cannot have carried a pregnancy.',
+      'Shown under the question when some answers are unavailable because the family member’s sex at birth means they cannot have carried a pregnancy.',
     description:
       'Hint under the setting holding the hint about not being able to have carried, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
   },
   unavailableCarried: {
     id: 'protocolBuilder.pedigree.wordingHint.unavailableCarried',
     defaultMessage:
-      'Shown under the answers when a sex at birth is unavailable because the family member is recorded as having carried a pregnancy.',
+      'Shown under the question when an answer for sex at birth is unavailable because the family member is recorded as having carried a pregnancy.',
     description:
       'Hint under the setting holding the hint about having carried a child, in the Customize built-in wording section of the Family Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. A family member is someone the participant adds to their family tree; the side panel is where the participant adds or edits one.',
   },

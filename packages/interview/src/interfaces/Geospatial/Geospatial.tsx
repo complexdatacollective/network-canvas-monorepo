@@ -572,7 +572,7 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onZoomIn}
             icon={<ZoomIn />}
-            aria-label={intl.formatMessage(interfaceMessages.zoomIn)}
+            aria-label={intl.formatMessage(interfaceMessages.mapZoomIn)}
             color="dynamic"
             data-testid="map-zoom-in"
           />
@@ -580,7 +580,7 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onZoomOut}
             icon={<ZoomOut />}
-            aria-label={intl.formatMessage(interfaceMessages.zoomOut)}
+            aria-label={intl.formatMessage(interfaceMessages.mapZoomOut)}
             color="dynamic"
             data-testid="map-zoom-out"
           />

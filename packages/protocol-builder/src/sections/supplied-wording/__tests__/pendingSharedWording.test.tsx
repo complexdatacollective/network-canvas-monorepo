@@ -335,6 +335,16 @@ describe('a new stage of a kind the protocol has none of', () => {
       interfaceText,
     });
 
+    // A Categorical Bin shows its shared words only while nodes are placed by
+    // tapping, and a new one has them dragged: it brings none in until then.
+    const tapToPlace = await screen.findByRole('option', {
+      name: /Tap to place/,
+    });
+    expect(
+      screen.queryByRole('switch', { name: 'Customize built-in wording' }),
+    ).toBeNull();
+    await harness.user.click(tapToPlace);
+
     const section = await screen.findByRole('switch', {
       name: 'Customize built-in wording',
     });

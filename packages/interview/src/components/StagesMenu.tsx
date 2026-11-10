@@ -557,6 +557,8 @@ export default function StagesMenu({
           <div className="border-text/10 shrink-0 border-t p-4">
             <CollectionFilterInput
               placeholder={intl.formatMessage(messages.filter)}
+              loadingText={intl.formatMessage(messages.loadingStatus)}
+              indexingText={intl.formatMessage(messages.loadingStatus)}
               size="sm"
               showResultCount={false}
             />

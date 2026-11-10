@@ -56,11 +56,12 @@ missing placeholder and its version in the error.
 **Interface text.** The text several stages share is the protocol's
 `interfaceText`, translated in the translation table like the rest of the
 protocol, in six groups: interview navigation (Back, Continue, Exit interview
-and its explanation); buttons (Cancel, Done and Delete, and Yes and No when a
-stage shows a form); messages (the screen and item errors, and one error
-message that also stands in for a form that could not be submitted); the
-passphrase prompt; the discard-changes question and explanation, held with
-forms; and validation messages, one for each answer check, held only for the
+and its explanation); buttons (Cancel, Done on a Name Generator, Delete on a
+Family Pedigree or Network Composer, and Yes and No where a question is
+answered with them); messages (the screen error, the item error on an
+Information stage that shows a file, and one error message that also stands
+in for a form that could not be submitted); the passphrase prompt; the
+discard-changes question and explanation, held while a stage can ask it; and validation messages, one for each answer check, held only for the
 checks the protocol uses. The Yes answer is also the discard dialog's confirm
 button. The interview shows this text in the protocol's language; its own
 words, such as the language chooser, still follow the participant's browser.
