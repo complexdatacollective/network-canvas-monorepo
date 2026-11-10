@@ -56,8 +56,8 @@ Schema 9:
   have no `label`: participants never see a codebook name. A Network Composer
   field with no caption, or an empty or blank one, gets its attribute's name
   (or its ID) as its `label`, escaped so that markdown shows it as written, and
-  wrapped the same way: the schema 8 interview captioned a field with no
-  caption with that name, and a caption is a label, which may be repaired. An empty optional text that schema 9 requires to be
+  wrapped the same way: the schema 8 interview showed that name as the
+  caption of such a field. An empty optional text that schema 9 requires to be
   non-empty is removed, as are Network Composer scale end labels that were not
   strings. A required label or title that schema 8 accepted empty or blank is
   filled in: a stage name becomes `Stage` and its position (as the v7 to v8
