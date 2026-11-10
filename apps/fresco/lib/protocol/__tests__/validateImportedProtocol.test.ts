@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  createDefaultFinishSessionStage,
+  ProtocolValidationError,
+  withInterfaceText,
+} from '@codaco/protocol-validation';
+
 import { validateImportedProtocol } from '../validateImportedProtocol';
 
 const protocolWithRawColor = {
@@ -42,5 +48,39 @@ describe('validateImportedProtocol', () => {
       error: 'unsupported-version',
       version: 8,
     });
+  });
+
+  it('refuses a protocol written without the interface text it shows, naming each group', async () => {
+    const localization = { defaultLocale: 'en', locales: ['en'] };
+    const protocol = {
+      name: 'Hand-written protocol',
+      schemaVersion: 9,
+      localization,
+      codebook: { node: {}, edge: {}, ego: {} },
+      stages: [createDefaultFinishSessionStage({ id: 'finish', localization })],
+      assetManifest: {},
+    };
+
+    expect(
+      (await validateImportedProtocol(withInterfaceText(protocol))).success,
+    ).toBe(true);
+
+    const result = await validateImportedProtocol(protocol);
+    if (result.success || result.error !== 'validation-failed') {
+      throw new Error('Expected the protocol to fail validation');
+    }
+    const { validationResult } = result;
+    const error =
+      typeof validationResult === 'object' &&
+      validationResult !== null &&
+      'error' in validationResult
+        ? validationResult.error
+        : undefined;
+    if (!(error instanceof ProtocolValidationError)) {
+      throw new Error('Expected the validator’s issues');
+    }
+    expect(error.issues.map(({ path }) => path.join('.'))).toContain(
+      'interfaceText.navigation',
+    );
   });
 });

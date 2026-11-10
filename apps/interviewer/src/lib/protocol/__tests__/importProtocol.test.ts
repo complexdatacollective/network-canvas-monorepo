@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
-import { hashProtocol } from '@codaco/protocol-validation';
+import { hashProtocol, withInterfaceText } from '@codaco/protocol-validation';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
 import { importProtocolFromFile } from '../importProtocol';
@@ -154,8 +154,17 @@ describe('importProtocolFromFile error reporting', () => {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
     };
+    // The interface text a protocol with only a finish stage holds.
+    const { interfaceText } = withInterfaceText<{
+      localization: { defaultLocale: string; locales: string[] };
+      stages: unknown[];
+      interfaceText?: unknown;
+    }>({
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      stages: [{ type: 'FinishSession' }],
+    });
     const bytes = await buildArchive({
-      'protocol.json': `{"schemaVersion":${COMPATIBLE_PROTOCOL_SCHEMA_VERSION},"name":"Proto","description":"","localization":{"defaultLocale":"en","locales":["en"]},"stages":[{"id":"finish","type":"FinishSession","mode":"confirmation","label":{"en":"Finish"},"content":{"en":"# Finish\\n\\nThank you."},"finishedContent":{"en":"# Finished\\n\\nThank you."},"finishLabel":{"en":"Finish"},"finishConfirmation":{"en":"Finish?"},"finishFailed":{"en":"Not finished."},"outcome":"completed"}],"codebook":{"node":{"__proto__":${JSON.stringify(nodeType)}},"edge":{},"ego":{}},"assetManifest":{}}`,
+      'protocol.json': `{"schemaVersion":${COMPATIBLE_PROTOCOL_SCHEMA_VERSION},"name":"Proto","description":"","localization":{"defaultLocale":"en","locales":["en"]},"interfaceText":${JSON.stringify(interfaceText)},"stages":[{"id":"finish","type":"FinishSession","mode":"confirmation","label":{"en":"Finish"},"content":{"en":"# Finish\\n\\nThank you."},"finishedContent":{"en":"# Finished\\n\\nThank you."},"finishLabel":{"en":"Finish"},"finishConfirmation":{"en":"Finish?"},"finishFailed":{"en":"Not finished."},"outcome":"completed"}],"codebook":{"node":{"__proto__":${JSON.stringify(nodeType)}},"edge":{},"ego":{}},"assetManifest":{}}`,
     });
 
     const result = await importProtocolFromFile(asFile(bytes));
@@ -232,7 +241,7 @@ describe('importing a file below this app’s schema', () => {
   });
 
   it('imports a file at this app’s schema as it is', async () => {
-    const current = {
+    const current = withInterfaceText({
       schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
       name: 'Current study',
       description: '',
@@ -253,7 +262,7 @@ describe('importing a file below this app’s schema', () => {
       ],
       codebook: { node: {}, edge: {}, ego: {} },
       assetManifest: {},
-    };
+    });
     const bytes = await buildArchive({
       'protocol.json': JSON.stringify(current),
     });
@@ -266,6 +275,24 @@ describe('importing a file below this app’s schema', () => {
       COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     );
     expect(saveProtocolMock).toHaveBeenCalledTimes(1);
+
+    // Written by hand without the interview's own words, it is refused,
+    // naming each group it lacks.
+    saveProtocolMock.mockClear();
+    // JSON leaves out a property that is undefined.
+    const withoutText = { ...current, interfaceText: undefined };
+    const refused = await importProtocolFromFile(
+      asFile(
+        await buildArchive({ 'protocol.json': JSON.stringify(withoutText) }),
+      ),
+    );
+    expect(refused.success).toBe(false);
+    if (refused.success) return;
+    expect(refused.error).toBe('validation-failed');
+    expect(refused.issues?.map(({ path }) => path)).toContain(
+      'interfaceText.navigation',
+    );
+    expect(saveProtocolMock).not.toHaveBeenCalled();
   });
 });
 
