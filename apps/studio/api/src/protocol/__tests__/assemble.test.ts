@@ -63,7 +63,9 @@ describe('assembleProtocolSections', () => {
       form: { fields: [] },
     };
     sections.stageOrder = { stages: ['form', 'finish'] };
-    expect(groups()).toEqual([...ALWAYS, 'forms', 'egoForm']);
+    // An Ego Form can ask whether to discard changes. It shows no text of
+    // its own kind: its only such text was read only by screen readers.
+    expect(groups()).toEqual([...ALWAYS, 'forms']);
 
     sections.stageOrder = { stages: ['finish'] };
     delete sections['stage:form'];

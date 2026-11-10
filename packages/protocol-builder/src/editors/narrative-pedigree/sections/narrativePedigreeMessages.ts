@@ -466,7 +466,7 @@ export const narrativePedigreeMessages = defineMessages({
     id: 'protocolBuilder.narrativePedigree.saveSnapshotButtonLabel',
     defaultMessage: 'Save snapshot button',
     description:
-      'Label of the setting holding the text of the button, below the key, that saves an image of the pedigree.',
+      'Label of the setting holding the text of the button, in the pedigree’s toolbar, that saves an image of the pedigree.',
   },
   selectConditionLabel: {
     id: 'protocolBuilder.narrativePedigree.selectConditionLabel',
@@ -502,7 +502,8 @@ export const narrativePedigreeMessages = defineMessages({
   },
   saveSnapshotHint: {
     id: 'protocolBuilder.narrativePedigree.saveSnapshotHint',
-    defaultMessage: 'Button below the key that saves an image of the pedigree.',
+    defaultMessage:
+      'Button in the pedigree’s toolbar that saves an image of the pedigree.',
     description:
       'Hint under the setting holding the save snapshot button, in the Customize built-in wording section of the Narrative Pedigree stage editor. It tells the researcher where the participant sees this text and what it is for. The key explains the symbols on the pedigree; a family member is someone on it.',
   },

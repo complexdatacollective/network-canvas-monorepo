@@ -86,12 +86,12 @@ describe('the interface text a protocol must hold', () => {
 
   it('refuses a protocol missing the group of a kind of stage it has', async () => {
     const protocol: Document = completeProtocol();
-    expect(protocol.interfaceText?.categoricalBin).toBeDefined();
-    delete protocol.interfaceText?.categoricalBin;
+    expect(protocol.interfaceText?.quickAdd).toBeDefined();
+    delete protocol.interfaceText?.quickAdd;
 
     expect(
       (await interfaceTextIssues(protocol)).map(({ path }) => path),
-    ).toEqual([['interfaceText', 'categoricalBin']]);
+    ).toEqual([['interfaceText', 'quickAdd']]);
   });
 
   it('refuses a protocol missing the message of a validation rule it uses, though it holds others', async () => {
@@ -115,17 +115,17 @@ describe('the interface text a protocol must hold', () => {
   });
 
   it('refuses a protocol missing a button it shows', async () => {
-    // The base protocol's name generator has a form, so it shows Yes and No.
+    // The base protocol's name generator closes its form with Done.
     const protocol = baseProtocol();
-    delete protocol.interfaceText?.buttons?.yes;
+    delete protocol.interfaceText?.buttons?.done;
 
     expect(
       (await interfaceTextIssues(protocol)).map(({ path }) => path),
-    ).toEqual([['interfaceText', 'buttons', 'yes']]);
+    ).toEqual([['interfaceText', 'buttons', 'done']]);
   });
 
   /**
-   * The base protocol with Yes held as undefined, and the search group held
+   * The base protocol with Done held as undefined, and the search group held
    * as undefined: keys an object in memory may hold that a saved file drops.
    */
   const withUndefinedText = () => {
@@ -137,7 +137,7 @@ describe('the interface text a protocol must hold', () => {
         localization: { defaultLocale: 'en', locales: ['en'] },
         interfaceText: {
           ...held,
-          buttons: { ...held.buttons, yes: undefined },
+          buttons: { ...held.buttons, done: undefined },
           search: undefined,
         },
       },
@@ -154,7 +154,7 @@ describe('the interface text a protocol must hold', () => {
           ({ path }) => path,
         ),
       ).toEqual([
-        ['interfaceText', 'buttons', 'yes'],
+        ['interfaceText', 'buttons', 'done'],
         ['interfaceText', 'search'],
       ]);
     }
@@ -164,8 +164,8 @@ describe('the interface text a protocol must hold', () => {
     const { protocol, held } = withUndefinedText();
     const filled = interfaceTextFor(protocol);
 
-    expect(held.buttons?.yes).toBeDefined();
-    expect(filled.buttons?.yes).toEqual(held.buttons?.yes);
+    expect(held.buttons?.done).toBeDefined();
+    expect(filled.buttons?.done).toEqual(held.buttons?.done);
     expect(filled.search).toEqual(held.search);
     expect(withInterfaceText(protocol).interfaceText).toEqual(filled);
   });

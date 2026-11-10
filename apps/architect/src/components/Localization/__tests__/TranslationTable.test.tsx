@@ -203,14 +203,10 @@ describe('TranslationTable', () => {
       'Interviewer controls › Outside path explanation',
       'Interviewer controls › Show screen button',
       'Buttons › Cancel button',
-      'Buttons › Done button',
-      'Buttons › Delete button',
       'Buttons › Copy button',
       'Buttons › Copied message',
       'Messages › Screen error message',
-      'Messages › Missing item message',
       'Messages › Error message',
-      'Messages › Loading message',
       'Messages › Unnamed label',
       'Search › Search field',
       'Search › No results message',
@@ -461,14 +457,14 @@ describe('TranslationTable', () => {
     });
 
     await user.type(search, 'hola');
-    expect(shownCount()).toHaveTextContent('Showing 1 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 1 of 29 strings');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
       'Page content › Page heading',
     ]);
 
     await user.clear(search);
     await user.type(search, 'thanks');
-    expect(shownCount()).toHaveTextContent('Showing 3 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 3 of 29 strings');
 
     await user.clear(search);
     await user.type(search, 'nothing like this');
@@ -481,11 +477,11 @@ describe('TranslationTable', () => {
     const { user } = renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('All translations');
-    expect(shownCount()).toHaveTextContent('Showing 33 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 29 of 29 strings');
     await user.selectOptions(filterMenu(), 'Missing in any shown language');
 
     // Both stage labels are translated into every language.
-    expect(shownCount()).toHaveTextContent('Showing 5 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 5 of 29 strings');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
       'Page content › Page heading',
       'Page content › Item 1 › Content',
@@ -508,7 +504,7 @@ describe('TranslationTable', () => {
     expect(window.location.search).toBe('?missing=any');
 
     await user.selectOptions(filterMenu(), 'All translations');
-    expect(shownCount()).toHaveTextContent('Showing 33 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 29 of 29 strings');
     expect(window.location.search).toBe('');
   });
 
@@ -517,7 +513,7 @@ describe('TranslationTable', () => {
 
     await user.selectOptions(filterMenu(), 'Missing Spanish');
 
-    expect(shownCount()).toHaveTextContent('Showing 2 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 29 strings');
     expect(screen.getByRole('link', { name: 'Thanks' })).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Welcome' }),
@@ -539,7 +535,7 @@ describe('TranslationTable', () => {
     renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('Missing Spanish');
-    expect(shownCount()).toHaveTextContent('Showing 2 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 29 strings');
   });
 
   it('opens on one language beside the default language when a link asks for it', () => {
@@ -598,7 +594,7 @@ describe('TranslationTable', () => {
     renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('All translations');
-    expect(shownCount()).toHaveTextContent('Showing 33 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 29 of 29 strings');
   });
 
   it('shows the column of the language whose gaps it lists', async () => {

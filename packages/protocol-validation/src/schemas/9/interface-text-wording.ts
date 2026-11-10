@@ -39,7 +39,6 @@ import {
   GROUPS_HEADING,
   OVERTAKEN_EDIT_NOTICE,
 } from './stage-wording/network-composer.ts';
-import { SUBJECT_ARGUMENTS } from './stage-wording/subject.ts';
 import type { SuppliedWording } from './supplied-stage-setting.ts';
 
 // The wording Network Canvas supplies for the interface text a protocol holds
@@ -718,23 +717,6 @@ export const PASSPHRASE_INTERFACE_TEXT = {
       'zh-Hant': '您的回答尚未儲存。請輸入您的通關密語，然後再試一次。',
     },
   },
-  protectedAnswersUnavailable: {
-    ids: ['interview.runtime.protectedAnswersUnavailable'],
-    message: {
-      'en': 'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.',
-      'de': 'Durch eine Passphrase geschützte Antworten können in diesem Interview nicht angezeigt oder gespeichert werden. Bitte informieren Sie die Person, die Sie für diese Studie gewonnen hat.',
-      'es': 'Las respuestas protegidas por una frase de contraseña no se pueden mostrar ni guardar en esta entrevista. Avisa a la persona que te invitó a participar en este estudio.',
-      'fr': 'Les réponses protégées par une phrase secrète ne peuvent être ni affichées ni enregistrées dans cet entretien. Veuillez en informer la personne responsable de votre recrutement dans cette étude.',
-      'it': 'Le risposte protette da una passphrase non possono essere mostrate né salvate in questa intervista. Avvisa la persona che ti ha invitato a partecipare a questo studio.',
-      'nl': 'Antwoorden die met een wachtzin zijn beschermd, kunnen in dit interview niet worden getoond of opgeslagen. Laat het de persoon weten die je voor dit onderzoek heeft geworven.',
-      'pt-BR':
-        'Respostas protegidas por uma frase secreta não podem ser exibidas nem salvas nesta entrevista. Avise a pessoa que recrutou você para este estudo.',
-      'zh-Hans':
-        '本次访谈无法显示或保存受密码短语保护的回答。请告知招募您参与本研究的人员。',
-      'zh-Hant':
-        '本次訪談無法顯示或儲存受通關密語保護的回答。請告知邀請您參加本研究的人員。',
-    },
-  },
   answerUnavailable: {
     ids: ['interview.runtime.answerUnavailable'],
     message: {
@@ -792,20 +774,6 @@ export const PASSPHRASE_INTERFACE_TEXT = {
       'pt-BR': 'Frase secreta aceita! Clique em “Avançar” para continuar.',
       'zh-Hans': '密码短语验证通过！点击“下一步”继续。',
       'zh-Hant': '通關密語驗證成功！請點選「下一步」繼續。',
-    },
-  },
-  checkingPassphrase: {
-    ids: ['interview.runtime.checkingPassphrase'],
-    message: {
-      'en': 'Checking your passphrase…',
-      'de': 'Ihre Passphrase wird geprüft…',
-      'es': 'Comprobando tu frase de contraseña…',
-      'fr': 'Vérification de votre phrase secrète…',
-      'it': 'Verifica della passphrase in corso…',
-      'nl': 'Je wachtzin wordt gecontroleerd…',
-      'pt-BR': 'Verificando sua frase secreta…',
-      'zh-Hans': '正在检查您的密码短语…',
-      'zh-Hant': '正在檢查您的通關密語…',
     },
   },
   passwordPlaceholder: {
@@ -1341,7 +1309,10 @@ export const FAMILY_PEDIGREE_INTERFACE_TEXT = {
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
-/** Every Categorical Bin stage's own controls. */
+/**
+ * The button an opened bin shows on a Categorical Bin that places nodes by
+ * tapping, which places the node being placed in that bin.
+ */
 export const CATEGORICAL_BIN_INTERFACE_TEXT = {
   placeHere: {
     ids: ['interview.interfaces.binSelectPlaceHere'],
@@ -1359,28 +1330,6 @@ export const CATEGORICAL_BIN_INTERFACE_TEXT = {
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
-/**
- * Every roster name generator's own words. The message over the list while
- * an added node is dragged back may name the stage's node type.
- */
-export const ROSTER_INTERFACE_TEXT = {
-  dropToRemove: {
-    ids: ['interview.runtime.dropToRemove'],
-    arguments: SUBJECT_ARGUMENTS,
-    message: {
-      'en': 'Drop here to remove',
-      'de': 'Zum Entfernen hier ablegen',
-      'es': 'Suelta aquí para quitar',
-      'fr': 'Déposer ici pour retirer',
-      'it': 'Rilascia qui per rimuovere',
-      'nl': 'Hier neerzetten om weg te halen',
-      'pt-BR': 'Solte aqui para remover',
-      'zh-Hans': '放置到此处以移除',
-      'zh-Hant': '放到這裡即可移除',
-    },
-  },
-} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
-
 /** Every quick-add Name Generator stage's own words. */
 export const QUICK_ADD_INTERFACE_TEXT = {
   quickAddHint: {
@@ -1390,9 +1339,11 @@ export const QUICK_ADD_INTERFACE_TEXT = {
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
 /**
- * Every Network Composer stage's own words. The groups heading and the edge
- * tool's tooltip are shown only by a stage with groups and edge types (see
- * `INTERFACE_TEXT_GROUPS`).
+ * Every Network Composer stage's own words. The Groups tool's name and the
+ * edge tool's tooltip are shown only by a stage with groups and edge types,
+ * the notice about an overtaken edit only by one whose inspector has a form,
+ * and the name of a connection of another type only while the codebook has an
+ * edge type the stage does not draw (see `INTERFACE_TEXT_GROUPS`).
  */
 export const NETWORK_COMPOSER_INTERFACE_TEXT = {
   addNamePlaceholder: {
@@ -1431,24 +1382,6 @@ export const NETWORK_COMPOSER_INTERFACE_TEXT = {
       'pt-BR': 'Conexão',
       'zh-Hans': '连接',
       'zh-Hant': '連結',
-    },
-  },
-} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
-
-/** Every Ego Form stage's own words. */
-export const EGO_FORM_INTERFACE_TEXT = {
-  scrollForQuestions: {
-    ids: ['interview.interfaces.scrollForQuestions'],
-    message: {
-      'en': 'Scroll to see more questions',
-      'de': 'Scrollen Sie, um weitere Fragen zu sehen',
-      'es': 'Desplázate para ver más preguntas',
-      'fr': 'Faites défiler pour voir d’autres questions',
-      'it': 'Scorri per vedere altre domande',
-      'nl': 'Scroll om meer vragen te zien',
-      'pt-BR': 'Role para ver mais perguntas',
-      'zh-Hans': '向下滚动查看更多问题',
-      'zh-Hant': '向下捲動以查看更多問題',
     },
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;

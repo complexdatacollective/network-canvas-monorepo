@@ -4,18 +4,21 @@ import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { egoFormStageEditor } from '../../../editors/ego-form/EgoFormStageEditor.ts';
 import { familyPedigreeStageEditor } from '../../../editors/family-pedigree/FamilyPedigreeStageEditor.ts';
+import { networkComposerStageEditor } from '../../../editors/network-composer/NetworkComposerStageEditor.ts';
 import type { StageEditorRegistry } from '../../../stage-editor-contract.ts';
 import type { FixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 
 const FIXTURE_LANGUAGE = 'en-US';
 const SETTINGS = sectionId({ kind: 'settings' });
-const SUPPLIED_HINT = 'Scroll to see more questions';
+const SUPPLIED_HINT = 'Type a name, then press Enter';
 
-const mountEgoForm = () =>
-  renderStageEditor({ stageId: 'ego-form-1', registry: egoFormStageEditor });
+const mountComposer = () =>
+  renderStageEditor({
+    stageId: 'network-composer-1',
+    registry: networkComposerStageEditor,
+  });
 
 /**
  * A stage editor, with the first write it sends held until `release`, and the
@@ -57,12 +60,12 @@ const mountWithHeldWrite = (
   };
 };
 
-const mountEgoFormWithHeldWrite = () =>
-  mountWithHeldWrite('ego-form-1', egoFormStageEditor);
+const mountComposerWithHeldWrite = () =>
+  mountWithHeldWrite('network-composer-1', networkComposerStageEditor);
 
 /** One shared word as the protocol holds it. */
 const heldWord = (
-  harness: ReturnType<typeof mountEgoForm>,
+  harness: ReturnType<typeof mountComposer>,
   group: string,
   key: string,
 ): unknown => {
@@ -73,9 +76,9 @@ const heldWord = (
   return interfaceText?.[group]?.[key];
 };
 
-/** The ego form's shared hint as the protocol holds it. */
-const heldHint = (harness: ReturnType<typeof mountEgoForm>): unknown =>
-  heldWord(harness, 'egoForm', 'scrollForQuestions');
+/** The Network Composer's name box placeholder as the protocol holds it. */
+const heldHint = (harness: ReturnType<typeof mountComposer>): unknown =>
+  heldWord(harness, 'networkComposer', 'addNamePlaceholder');
 
 /**
  * The words every stage of a kind shares, edited where the stage is: a stage
@@ -85,13 +88,13 @@ const heldHint = (harness: ReturnType<typeof mountEgoForm>): unknown =>
  */
 describe('a stage whose only built-in wording is shared', () => {
   it('shows the shared words without a part for the stage’s own', async () => {
-    const harness = mountEgoForm();
+    const harness = mountComposer();
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Customize built-in wording' }),
     );
 
     expect(
-      await screen.findByRole('textbox', { name: 'More questions hint' }),
+      await screen.findByRole('textbox', { name: 'Name box placeholder' }),
     ).toHaveValue(SUPPLIED_HINT);
     expect(
       screen.queryByRole('button', { name: 'Specific to this stage' }),
@@ -104,33 +107,33 @@ describe('a stage whose only built-in wording is shared', () => {
   });
 
   it('writes a shared word to the protocol as the field is left, before the stage is saved', async () => {
-    const harness = mountEgoForm();
+    const harness = mountComposer();
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Customize built-in wording' }),
     );
     const hint = await screen.findByRole('textbox', {
-      name: 'More questions hint',
+      name: 'Name box placeholder',
     });
     await waitFor(() => expect(hint).not.toHaveAttribute('readonly'));
 
     await harness.user.clear(hint);
-    await harness.user.type(hint, 'More questions below');
+    await harness.user.type(hint, 'Enter a name');
     await harness.user.tab();
 
     await waitFor(() =>
       expect(heldHint(harness)).toEqual({
-        [FIXTURE_LANGUAGE]: 'More questions below',
+        [FIXTURE_LANGUAGE]: 'Enter a name',
       }),
     );
   });
 
   it('keeps a shared word the default language leaves empty out of the protocol', async () => {
-    const harness = mountEgoForm();
+    const harness = mountComposer();
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Customize built-in wording' }),
     );
     const hint = await screen.findByRole('textbox', {
-      name: 'More questions hint',
+      name: 'Name box placeholder',
     });
     await waitFor(() => expect(hint).not.toHaveAttribute('readonly'));
 
@@ -142,21 +145,21 @@ describe('a stage whose only built-in wording is shared', () => {
   });
 
   it('puts Network Canvas’s wording back when switched off, once the researcher agrees', async () => {
-    const harness = mountEgoForm();
+    const harness = mountComposer();
     const section = await screen.findByRole('switch', {
       name: 'Customize built-in wording',
     });
     await harness.user.click(section);
     const hint = await screen.findByRole('textbox', {
-      name: 'More questions hint',
+      name: 'Name box placeholder',
     });
     await waitFor(() => expect(hint).not.toHaveAttribute('readonly'));
     await harness.user.clear(hint);
-    await harness.user.type(hint, 'More questions below');
+    await harness.user.type(hint, 'Enter a name');
     await harness.user.tab();
     await waitFor(() =>
       expect(heldHint(harness)).toEqual({
-        [FIXTURE_LANGUAGE]: 'More questions below',
+        [FIXTURE_LANGUAGE]: 'Enter a name',
       }),
     );
 
@@ -174,17 +177,17 @@ describe('a stage whose only built-in wording is shared', () => {
   });
 
   it('waits for a shared word still being written before switching off, and resets it', async () => {
-    const { harness, release } = mountEgoFormWithHeldWrite();
+    const { harness, release } = mountComposerWithHeldWrite();
     const section = await screen.findByRole('switch', {
       name: 'Customize built-in wording',
     });
     await harness.user.click(section);
     const hint = await screen.findByRole('textbox', {
-      name: 'More questions hint',
+      name: 'Name box placeholder',
     });
     await waitFor(() => expect(hint).not.toHaveAttribute('readonly'));
     await harness.user.clear(hint);
-    await harness.user.type(hint, 'More questions below');
+    await harness.user.type(hint, 'Enter a name');
 
     // Leaving the field for the switch starts the write, which is still on
     // its way when the switch is pressed.
@@ -203,12 +206,12 @@ describe('a stage whose only built-in wording is shared', () => {
   });
 
   it('keeps a shared word put back while the change before it is still being written', async () => {
-    const { harness, release, applied } = mountEgoFormWithHeldWrite();
+    const { harness, release, applied } = mountComposerWithHeldWrite();
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Customize built-in wording' }),
     );
     const hint = await screen.findByRole('textbox', {
-      name: 'More questions hint',
+      name: 'Name box placeholder',
     });
     await waitFor(() => expect(hint).not.toHaveAttribute('readonly'));
 
@@ -284,13 +287,13 @@ describe('a stage whose shared wording comes in several groups', () => {
 describe('a protocol whose default language has no built-in wording', () => {
   it('shows the wording to write, with no switch to turn it off', async () => {
     renderStageEditor({
-      stageId: 'ego-form-1',
-      registry: egoFormStageEditor,
+      stageId: 'network-composer-1',
+      registry: networkComposerStageEditor,
       localization: { defaultLocale: 'en-GB', locales: ['en-GB'] },
     });
 
     expect(
-      await screen.findByRole('textbox', { name: 'More questions hint' }),
+      await screen.findByRole('textbox', { name: 'Name box placeholder' }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('switch', { name: 'Customize built-in wording' }),
