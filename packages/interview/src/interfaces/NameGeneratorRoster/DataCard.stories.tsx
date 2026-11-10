@@ -250,10 +250,10 @@ export const NarrowContainer: Story = {
  */
 export const RightToLeft: Story = {
   args: {
-    label: 'مريم كوهين',
+    label: 'مريم حداد',
     details: toDetails({
       العمر: 34,
-      المدينة: 'القدس',
+      المدينة: 'القاهرة',
     }),
   },
   render: (args) => (
