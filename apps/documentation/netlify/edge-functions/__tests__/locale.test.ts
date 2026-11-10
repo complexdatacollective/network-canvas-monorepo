@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { siteLocalePreferenceCookie } from '@codaco/shared-consts';
+import { sections } from '~/app/types';
 
 import localeRedirect, { config, detectLocale } from '../locale';
 
@@ -17,8 +18,11 @@ const request = (
 ) => new Request(url, { headers });
 
 describe('documentation locale edge function', () => {
-  it('runs only for the site root', () => {
-    expect(config.path).toBe('/');
+  it('runs for the site root and every section, with and without a page', () => {
+    expect(config.path).toEqual([
+      '/',
+      ...sections.flatMap((section) => [`/${section}`, `/${section}/*`]),
+    ]);
   });
 
   it.each([
@@ -67,6 +71,30 @@ describe('documentation locale edge function', () => {
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe(
       'https://documentation.networkcanvas.com/en?utm_source=architect',
+    );
+  });
+
+  it.each([
+    [
+      '/design-protocols/interface-documentation/network-composer',
+      '/en/design-protocols/interface-documentation/network-composer',
+    ],
+    ['/get-started', '/en/get-started'],
+    [
+      '/analyze-data/data-export?ref=fresco',
+      '/en/analyze-data/data-export?ref=fresco',
+    ],
+  ])('adds the language to %s, keeping the rest of the address', (from, to) => {
+    const response = localeRedirect(
+      request(
+        { 'accept-language': 'en-US' },
+        `https://documentation.networkcanvas.com${from}`,
+      ),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toBe(
+      `https://documentation.networkcanvas.com${to}`,
     );
   });
 

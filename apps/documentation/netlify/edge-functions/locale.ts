@@ -28,15 +28,31 @@ export function detectLocale(request: Request): Locale {
 }
 
 /**
- * Sends the site root to the reader's language. The redirect is temporary
- * because the answer depends on the request.
+ * Sends the site root, and any documentation page linked without a language,
+ * to the reader's language: `/design-protocols/x` becomes
+ * `/en/design-protocols/x`. The redirect is temporary because the answer
+ * depends on the request.
  */
 export default function localeRedirect(request: Request) {
   const url = new URL(request.url);
-  url.pathname = `/${detectLocale(request)}`;
+  const path = url.pathname === '/' ? '' : url.pathname;
+  url.pathname = `/${detectLocale(request)}${path}`;
   return Response.redirect(url, 307);
 }
 
+// Edge functions run before netlify.toml's redirects, so these paths never
+// reach its `/*` fallback. One entry pair per section in `app/types.ts`
+// (Deno cannot load that module); a test keeps the lists in step.
 export const config: Config = {
-  path: '/',
+  path: [
+    '/',
+    '/get-started',
+    '/get-started/*',
+    '/design-protocols',
+    '/design-protocols/*',
+    '/collect-data',
+    '/collect-data/*',
+    '/analyze-data',
+    '/analyze-data/*',
+  ],
 };
