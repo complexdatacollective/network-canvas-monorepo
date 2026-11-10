@@ -9,6 +9,7 @@ import {
   ANSWER_SIZE,
   ANSWER_SLOT,
   ANSWER_TRAIL,
+  cardScene,
   answerMarked,
   answerRecorded,
   answerSlotShown,
@@ -19,7 +20,7 @@ import {
   edges,
   FORM_BOXES,
   FORM_COLORS,
-  formAt,
+  FORM_SETTLED,
   formBlend,
   INSTITUTIONS,
   institutionShown,
@@ -36,7 +37,6 @@ import {
   PROMPT_BUBBLE,
   promptArrived,
   sceneryWeight,
-  scenePhase,
   SLOT_RADIUS,
   SLOT_STROKE,
   trailShown,
@@ -49,57 +49,56 @@ import {
 
 const cardCount = principles.length;
 
-// The form on screen while the reader is at `focus` (in cards; 0.5 is the
-// middle of the first) with the first card fully arrived.
-const formWhileReading = (focus: number) =>
-  formAt(scenePhase(1, focus, cardCount));
+// The two forms these principles show, by phase (card i shows form i + 2).
+const INTERVIEWER_CARD = INTERVIEWER_CONFIG - 2;
+const WORKFLOW_CARD = WORKFLOW_CONFIG - 2;
 
-describe('scenePhase', () => {
-  it('shows only the seed until the first card comes up to the reading line', () => {
-    expect(formAt(scenePhase(0, 0, cardCount))).toBe(0);
+describe('cardScene', () => {
+  it('shows the seed until the canvas is seen, then the plain network, before the first card', () => {
+    expect(cardScene(-1, false).form).toBe(0);
+    expect(cardScene(-1, true).form).toBe(1);
   });
 
   it('gives every principle its own form, the last included', () => {
     expect(cardCount).toBeGreaterThan(0);
-    const forms = principles.map((_, index) => formWhileReading(index + 0.5));
+    const forms = principles.map((_, index) => cardScene(index, true).form);
     // Form 0 is the seed and form 1 the plain network; card i shows i + 2.
     expect(forms).toEqual(principles.map((_, index) => index + 2));
   });
 
-  it('holds each form for most of its card', () => {
-    // The first card shows the plain network until its middle, so its hold
-    // starts there; every later card holds from 0.2 of the way in.
+  it("plays each card's own sequence to its end, and no further", () => {
+    // At rest on the interview's card every beat is done...
+    const interview = cardScene(INTERVIEWER_CARD, true);
+    expect(interviewBeats(interview.form, interview.reading)).toEqual({
+      ask: 1,
+      answer: 1,
+      record: 1,
+    });
+    // ...as is the workflow's line on its card...
+    const workflow = cardScene(WORKFLOW_CARD, true);
+    expect(workflowLine(workflow.form, workflow.reading).progress).toBe(1);
+    // ...and no card reads into the next one's.
     for (let index = 0; index < cardCount; index++) {
-      const from = index === 0 ? 0.5 : index + 0.2;
-      for (const focus of [from, index + 0.5, index + 0.8]) {
-        expect(formWhileReading(focus), `focus ${focus}`).toBe(index + 2);
-      }
+      expect(cardScene(index, true).reading).toBeLessThan(index + 1);
     }
   });
 
-  it('rests on the last form after the last card', () => {
-    expect(scenePhase(1, cardCount, cardCount)).toBe(cardCount + 1);
-    expect(formWhileReading(cardCount + 1)).toBe(cardCount + 1);
-  });
-
-  it('moves forward continuously as the reader scrolls', () => {
-    // Scrubbed by scroll, the scene must never jump or step backwards: sweep
-    // the whole section, entry first and then the cards.
-    const steps = 4000;
-    let previous = scenePhase(0, 0, cardCount);
-    let largestStep = 0;
-    for (let step = 1; step <= steps; step++) {
-      const t = step / steps;
-      // The first fifth of the sweep is the entry, the rest the reading.
-      const entry = Math.min(1, t * 5);
-      const focus = Math.max(0, (t - 0.2) / 0.8) * cardCount;
-      const phase = scenePhase(entry, focus, cardCount);
-      expect(phase, `t ${t}`).toBeGreaterThanOrEqual(previous);
-      largestStep = Math.max(largestStep, phase - previous);
-      previous = phase;
-    }
-    expect(previous).toBe(cardCount + 1);
-    expect(largestStep).toBeLessThan(0.02);
+  it('starts each sequence at its first beat, with no wait, as soon as the form has settled', () => {
+    const interview = cardScene(INTERVIEWER_CARD, true);
+    const workflow = cardScene(WORKFLOW_CARD, true);
+    const settled = (scene: { form: number }) => scene.form - FORM_SETTLED;
+    // Nothing has played where the sequence starts...
+    expect(interviewBeats(settled(interview), interview.from).ask).toBe(0);
+    expect(workflowLine(settled(workflow), workflow.from).progress).toBe(0);
+    // ...and a step of reading on, with the form only settled, it is under
+    // way: the interview's first beat at once, the workflow's line within a
+    // twentieth of a card.
+    expect(
+      interviewBeats(settled(interview), interview.from + 0.01).ask,
+    ).toBeGreaterThan(0);
+    expect(
+      workflowLine(settled(workflow), workflow.from + 0.05).progress,
+    ).toBeGreaterThan(0);
   });
 });
 
@@ -114,7 +113,7 @@ describe('the canvas light', () => {
 
   it('lights the canvas in a different colour for each principle', () => {
     const colours = principles.map((_, index) =>
-      litWith(scenePhase(1, index + 0.5, cardCount)),
+      litWith(cardScene(index, true).form),
     );
     expect(colours.every((colour) => colour !== null)).toBe(true);
     expect(new Set(colours).size).toBe(cardCount);
@@ -155,11 +154,10 @@ describe('nodeFrame and edgeFrame', () => {
   });
 });
 
-// The two forms these principles show, by phase (card i shows form i + 2).
-const INTERVIEWER_CARD = INTERVIEWER_CONFIG - 2;
-const WORKFLOW_CARD = WORKFLOW_CONFIG - 2;
 const NODE_COUNT = 9;
-const phaseWhileReading = (focus: number) => scenePhase(1, focus, cardCount);
+// While a card is read the scene holds its form.
+const phaseWhileReading = (focus: number) =>
+  cardScene(Math.min(cardCount - 1, Math.floor(focus)), true).form;
 
 type Point = { x: number; y: number };
 
