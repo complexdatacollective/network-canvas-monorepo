@@ -280,14 +280,12 @@ git commit -m "feat(website): add purpose-first get started flow"
 
 ---
 
-### Task 3: Reconcile Internationalisation Plans and Complete Verification
+### Task 3: Reconcile the Internationalisation Design and Complete Verification
 
 **Files:**
 
 - Modify:
   `docs/superpowers/specs/2026-07-12-networkcanvas-i18n-csv-content-design.md`
-- Modify:
-  `docs/superpowers/plans/2026-07-12-networkcanvas-i18n-csv-content.md`
 - Modify implementation files only if verification exposes a defect.
 
 **Interfaces:**
@@ -296,7 +294,7 @@ git commit -m "feat(website): add purpose-first get started flow"
 - The `Download` message namespace and page task become `GetStarted`.
 - Legacy download redirects are retained and adapted to locale routing.
 
-- [ ] **Step 1: Update the paused i18n design and plan**
+- [ ] **Step 1: Update the paused i18n design**
 
 Replace every intended current-page `/download` route, Download namespace,
 Download page file, and download-specific copy with Get Started equivalents.
@@ -311,7 +309,7 @@ content pipeline.
 pnpm --filter networkcanvas.com test
 pnpm --filter networkcanvas.com typecheck
 pnpm exec oxlint --fix apps/networkcanvas.com
-pnpm exec oxfmt apps/networkcanvas.com docs/superpowers/specs/2026-07-12-networkcanvas-i18n-csv-content-design.md docs/superpowers/plans/2026-07-12-networkcanvas-i18n-csv-content.md
+pnpm exec oxfmt apps/networkcanvas.com docs/superpowers/specs/2026-07-12-networkcanvas-i18n-csv-content-design.md
 pnpm knip
 pnpm --filter networkcanvas.com build
 git diff --check
@@ -323,8 +321,8 @@ server remains available for user review.
 - [ ] **Step 3: Commit Task 3**
 
 ```bash
-git add docs/superpowers/specs/2026-07-12-networkcanvas-i18n-csv-content-design.md docs/superpowers/plans/2026-07-12-networkcanvas-i18n-csv-content.md
-git commit -m "docs: align i18n plan with get started flow"
+git add docs/superpowers/specs/2026-07-12-networkcanvas-i18n-csv-content-design.md
+git commit -m "docs: align i18n design with get started flow"
 ```
 
 ---
