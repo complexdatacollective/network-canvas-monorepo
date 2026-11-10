@@ -130,7 +130,6 @@ export {
 export {
   MigrationChain,
   type ProtocolMigration as Migration,
-  protocolMigrations,
   type SessionMigrationStep,
 } from './migration/index.ts';
 export * from './migration/errors.ts';
@@ -141,6 +140,7 @@ export {
   type MigrationNote,
   migrateProtocol,
   migrateProtocolWithSessions,
+  protocolMigrations,
   type ProtocolWithSessionMigrator,
   ProtocolMigrator,
   protocolMigrator,

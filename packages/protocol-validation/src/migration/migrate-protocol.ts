@@ -23,12 +23,20 @@ import {
   ValidationError,
   VersionMismatchError,
 } from './errors.ts';
-import { type ProtocolDocument, protocolMigrations } from './index.ts';
+import { MigrationChain, type ProtocolDocument } from './index.ts';
 import {
   createSessionMigrator,
   type RecordedSessionStep,
   type SessionMigrator,
 } from './session.ts';
+
+// The chain is created in the same module that registers into it. If it lived
+// in `./index.ts`, a re-evaluation of this module alone — which is what a dev
+// server's hot reload does when a schema migration file changes, since
+// `./index.ts` is a dependency rather than an importer — would register every
+// step a second time into the surviving chain and throw "Migration from version
+// 1 already registered", failing every route that loads protocol-validation.
+export const protocolMigrations = new MigrationChain();
 
 protocolMigrations.register(migrationV1toV2);
 protocolMigrations.register(migrationV2toV3);

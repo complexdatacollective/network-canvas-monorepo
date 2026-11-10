@@ -396,5 +396,3 @@ export class MigrationChain {
     return notes;
   }
 }
-
-export const protocolMigrations = new MigrationChain();
