@@ -1575,14 +1575,6 @@
     "defaultMessage": "Today’s date",
     "description": "A value a researcher can insert into text a participant reads: the date on the day the participant reads it."
   },
-  "protocolBuilder.dynamicText.translationMissesValue": {
-    "defaultMessage": "Include “{value}” wherever the original text shows it.",
-    "description": "Problem shown under a translation that leaves out a value, such as the participant’s name, that the text in the protocol’s main language shows. value is the value’s name."
-  },
-  "protocolBuilder.dynamicText.translationTooComplex": {
-    "defaultMessage": "This text has too many versions to check its translation. Use fewer values that change the wording.",
-    "description": "Problem shown under a translated text whose versions are too many to compare with the original."
-  },
   "protocolBuilder.dynamicText.unreadable": {
     "defaultMessage": "This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.",
     "description": "Shown in place of a text field a participant reads when its stored text uses something the editor cannot display, such as a format it does not support. The text is not changed."
