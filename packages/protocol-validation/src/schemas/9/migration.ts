@@ -231,10 +231,16 @@ const distinguishDuplicateOptionLabels = (
         if (!isRecord(option) || !isRecord(option.label)) break;
         const { value } = option;
         const position = String(duplicate.index + 1);
+        // `duplicate.text` and every label compared below are markdown source,
+        // so the value is written as markdown that reads literally, and
+        // compared in that form: a label that is its own value, escaped,
+        // reads the same as the value.
+        const valueText =
+          typeof value === 'string' ? escapeMarkdownText(value) : undefined;
         const suffix =
-          typeof value === 'string' &&
-          labelComparisonKey(value) !== labelComparisonKey(duplicate.text)
-            ? value
+          valueText !== undefined &&
+          labelComparisonKey(valueText) !== labelComparisonKey(duplicate.text)
+            ? valueText
             : position;
         const taken = new Set(
           options.flatMap((other: unknown, index) => {

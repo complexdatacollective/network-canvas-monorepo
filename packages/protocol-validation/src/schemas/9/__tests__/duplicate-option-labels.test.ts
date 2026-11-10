@@ -223,4 +223,43 @@ describe('migrating options whose labels read the same from schema 8', () => {
         : null,
     ).toEqual([{ en: 'Family' }, { en: 'family (2 2)' }, { en: 'Family (2)' }]);
   });
+
+  // Option labels are markdown, so a value written into one has to read as
+  // typed: `*star*` must not turn into emphasis, nor `[link](…)` into a link.
+  it('adds a value the way it reads, whatever markdown or message syntax it holds', async () => {
+    const protocol = withCategoryLabels({ en: 'Same' }, { en: 'Same' });
+    const values = [
+      'first',
+      '*star*',
+      '_edge_',
+      '[link](http://x.test)',
+      '{brace}',
+    ];
+    protocol.codebook.node.person.variables.category.options = [
+      ...values.map((value) => ({ label: { en: 'Same' }, value })),
+      // Labels are markdown already: one that shows its own value, escaped,
+      // reads the same as that value, which cannot tell the two apart.
+      { label: { en: '\\*x\\*' }, value: 'x' },
+      { label: { en: '\\*x\\*' }, value: '*x*' },
+    ];
+    const upgraded = migrateProtocol(asSchema8Protocol(protocol), 9);
+    const variable = upgraded.codebook.node?.person?.variables?.category;
+
+    expect(
+      variable?.type === 'categorical'
+        ? variable.options.map(({ label }) => label.en)
+        : null,
+    ).toEqual([
+      'Same',
+      'Same (\\*star\\*)',
+      'Same (\\_edge\\_)',
+      'Same (\\[link\\](http://x.test))',
+      "Same ('{'brace'}')",
+      '\\*x\\*',
+      '\\*x\\* (7)',
+    ]);
+    expect((await validateProtocol(upgraded, { draft: true })).success).toBe(
+      true,
+    );
+  });
 });
