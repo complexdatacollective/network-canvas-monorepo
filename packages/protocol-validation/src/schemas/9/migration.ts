@@ -775,9 +775,14 @@ const addFieldCaptions = (
 };
 
 /**
- * A schema 8 Network Composer field with no caption, or an empty or blank one,
- * was captioned with its attribute's name, so the field keeps that name as its
- * caption, which schema 9 requires. The caption is markdown, so the name is
+ * A schema 8 Network Composer field with no caption was captioned with its
+ * attribute's name: the schema 8 interview built each field's caption as
+ * `authoredLabel ?? codebookEntry.name ?? variable` (`createFieldMetadata` in
+ * `@codaco/interview`, before its forms were localized). Writing that name records what participants saw, which
+ * schema 9 requires the field to carry. An empty or blank caption passed that
+ * `??` and showed as nothing; it gets the name too, as a label repair: the
+ * caption is a field's label, not a question, and a label may be repaired
+ * where a prompt may not. The caption is markdown, so the name is
  * escaped to render as written. The attribute is looked up on the stage
  * subject's node type for the node form and on each edge type for its form,
  * and its id stands in for a missing or empty name.

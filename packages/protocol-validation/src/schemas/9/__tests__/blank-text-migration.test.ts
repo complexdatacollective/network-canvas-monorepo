@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { escapeMessageText } from '../../../localization/messageSyntax.ts';
-import { MigrationResultInvalidError } from '../../../migration/errors.ts';
+import {
+  MigrationContentRefusedError,
+  MigrationResultInvalidError,
+} from '../../../migration/errors.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { collectLocalizedStringSites } from '../../../utils/collectLocalizedStrings.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
@@ -185,17 +188,30 @@ const migratedPathOf = (document: unknown, migrated: unknown, at: Path) => {
   return ['stages', index, ...below];
 };
 
-/** The places schema 9 reports when a migration fails. */
-const issuePathsOf = (run: () => unknown): Path[] => {
+/** The invalid result a migration threw, if it threw one. */
+const refusalOf = (run: () => unknown) => {
   try {
     run();
   } catch (error) {
-    if (error instanceof MigrationResultInvalidError) {
-      return error.issues.map(({ path }) => path);
-    }
+    if (error instanceof MigrationResultInvalidError) return error;
     throw error;
   }
-  return [];
+  return undefined;
+};
+
+/**
+ * The places schema 9 reports when a migration refuses the protocol's own
+ * content. Refused as content, not as a migration fault: a host tells the
+ * researcher what to correct only for `MigrationContentRefusedError`.
+ */
+const issuePathsOf = (run: () => unknown): Path[] => {
+  const refusal = refusalOf(run);
+  if (refusal === undefined) return [];
+  expect(refusal).toBeInstanceOf(MigrationContentRefusedError);
+  expect(
+    (refusal as MigrationContentRefusedError).problems.map(({ path }) => path),
+  ).toEqual(refusal.issues.map(({ path }) => path));
+  return refusal.issues.map(({ path }) => path);
 };
 
 /**
@@ -318,6 +334,72 @@ describe('blank content the migration does not invent', () => {
       const paths = issuePathsOf(() => migrateProtocol(document, 9));
       expect(paths).toContainEqual(at);
     });
+  });
+});
+
+/**
+ * A refusal names each place so a researcher can find it in the Architect that
+ * made the protocol: the stage by its name, and the type, attribute and option.
+ */
+describe('how a refusal names what to correct', () => {
+  const placesOf = (at: Path, blank = ' ') => {
+    const document = structuredClone(ecoGeneticTemplate);
+    setAt(document, at, blank);
+    const refusal = refusalOf(() => migrateProtocol(document, 9));
+    expect(refusal).toBeInstanceOf(MigrationContentRefusedError);
+    return (refusal as MigrationContentRefusedError).problems.map(
+      ({ place, message }) => `${place}: ${message}`,
+    );
+  };
+
+  it('names a prompt by its stage', () => {
+    expect(placesOf(['stages', 5, 'prompts', 1, 'text'])).toEqual([
+      'Stage “People in your life”, prompt 2: Text cannot be blank.',
+    ]);
+  });
+
+  it('names the question for an answer that is not listed', () => {
+    expect(
+      placesOf(['stages', 6, 'prompts', 0, 'otherVariablePrompt']),
+    ).toEqual([
+      expect.stringMatching(
+        /^Stage “How you know each person”, prompt 1, the question asking participants to describe an answer that is not listed: /,
+      ),
+    ]);
+  });
+
+  it('names an option value by its type, attribute and position', () => {
+    expect(
+      placesOf(
+        [
+          'codebook',
+          'node',
+          'person',
+          'variables',
+          'closeness',
+          'options',
+          1,
+          'value',
+        ],
+        '',
+      ),
+    ).toEqual([
+      expect.stringMatching(
+        /^Node type “Person”, attribute “closeness”, the value of option 2: /,
+      ),
+    ]);
+  });
+
+  it('names a type or attribute with no name by where it is', () => {
+    expect(placesOf(['codebook', 'node', 'person', 'name'], '')).toEqual([
+      expect.stringMatching(/^Node type with no name: /),
+    ]);
+    expect(
+      placesOf(
+        ['codebook', 'ego', 'variables', 'participant_consent', 'name'],
+        '',
+      ),
+    ).toEqual([expect.stringMatching(/^Ego, an attribute with no name: /)]);
   });
 });
 

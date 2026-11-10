@@ -20,6 +20,7 @@
   "protocolValidation.file.newerVersion": "This protocol was made with a newer version of Network Canvas. Update to the latest version to open it.",
   "protocolValidation.file.notArchive": "This file isn't a Network Canvas protocol. Check that you chose the right file, and that it finished downloading.",
   "protocolValidation.file.upgradeFailed": "This protocol could not be upgraded to the current version.",
+  "protocolValidation.file.upgradeRefusedContent": "This protocol cannot be upgraded to the current version, because it contains something the current version does not accept. In the version of Architect the protocol was made with, correct each problem listed, then open the protocol again. Nothing has been changed on this device.",
   "protocolValidation.file.upgradeStepFailed": "This protocol could not be upgraded to the current version. Nothing has been changed on this device.",
   "protocolValidation.migrationNotes.schema5.interviewScript": "Enable an 'Interview Script' section for each stage, where notes for the interviewer can be added.",
   "protocolValidation.migrationNotes.schema5.referenceValidation": "Add new validation options for form fields: `unique`, `sameAs`, and `differentFrom`.",

@@ -20,6 +20,7 @@
   "protocolValidation.file.newerVersion": "此協定是以較新版本的 Network Canvas 建立的。請更新至最新版本以開啟。",
   "protocolValidation.file.notArchive": "此檔案不是 Network Canvas 協定。請確認您選擇了正確的檔案，且檔案已下載完成。",
   "protocolValidation.file.upgradeFailed": "無法將此協定升級至目前版本。",
+  "protocolValidation.file.upgradeRefusedContent": "無法將此協定升級至目前版本，因為其中包含目前版本不接受的內容。請在建立該協定的 Architect 版本中逐一更正下列問題，然後重新開啟該協定。此裝置上的內容皆未變更。",
   "protocolValidation.file.upgradeStepFailed": "無法將此協定升級至目前版本。此裝置上的內容皆未變更。",
   "protocolValidation.migrationNotes.schema5.interviewScript": "為每個階段啟用「訪談腳本」區段，可在其中為訪員加入備註。",
   "protocolValidation.migrationNotes.schema5.referenceValidation": "為表單欄位新增驗證選項：`unique`、`sameAs` 與 `differentFrom`。",

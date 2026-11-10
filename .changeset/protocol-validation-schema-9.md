@@ -56,7 +56,8 @@ Schema 9:
   have no `label`: participants never see a codebook name. A Network Composer
   field with no caption, or an empty or blank one, gets its attribute's name
   (or its ID) as its `label`, escaped so that markdown shows it as written, and
-  wrapped the same way. An empty optional text that schema 9 requires to be
+  wrapped the same way: the schema 8 interview captioned a field with no
+  caption with that name, and a caption is a label, which may be repaired. An empty optional text that schema 9 requires to be
   non-empty is removed, as are Network Composer scale end labels that were not
   strings. A required label or title that schema 8 accepted empty or blank is
   filled in: a stage name becomes `Stage` and its position (as the v7 to v8
@@ -71,9 +72,18 @@ Schema 9:
   `prompt`, a Family Pedigree's prompt and nomination prompts, and a
   Categorical Bin's `otherVariablePrompt`), ordinal or categorical option
   value, or node type, edge type or attribute name is empty or blank is not
-  migrated. `migrateProtocol` throws `MigrationResultInvalidError` for it,
-  whose new `issues` list gives each problem's `code`, `message` and `path` in
-  the migrated document. Its migration notes tell researchers what the new
+  migrated. `migrateProtocol` throws the new `MigrationContentRefusedError`
+  for it, a `MigrationResultInvalidError` whose `problems` name each place in
+  plain English (the stage and prompt, or the type, attribute and option);
+  `formatRefusedContent` lists them one per line. It is thrown only when every
+  issue is such content, so any other invalid result still throws
+  `MigrationResultInvalidError`, whose new `issues` list gives each problem's
+  `code`, `message` and `path` in the migrated document.
+  `getProtocolFileErrorKind` classifies the refusal as the new
+  `upgradeRefusedContent`, a fault of the file rather than of the upgrade, and
+  `protocolFileErrorMessages.upgradeRefusedContent` (translated into every
+  catalog language) tells researchers to correct each listed problem in the
+  version of Architect that made the protocol. Its migration notes tell researchers what the new
   version allows, that the text is recorded as English, so they should confirm
   the default language and change it in Architect if the protocol is written
   in another one, and which empty content they must correct in the version of

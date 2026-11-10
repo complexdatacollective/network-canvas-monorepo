@@ -18,12 +18,14 @@ import {
 import { findPrototypeCodebookKeys } from '../validation/prototypeCodebookKeys.ts';
 import { formatProtocolValidationIssues } from '../validation/validate-protocol.ts';
 import {
+  MigrationContentRefusedError,
   MigrationResultInvalidError,
   SchemaVersionDetectionError,
   ValidationError,
   VersionMismatchError,
 } from './errors.ts';
 import { type ProtocolDocument, protocolMigrations } from './index.ts';
+import { findRefusedContent } from './refusedContent.ts';
 import {
   createSessionMigrator,
   type RecordedSessionStep,
@@ -134,20 +136,32 @@ function migrateAndValidate(
   const postValidationResult = VersionedProtocolSchema.safeParse(migrated);
   if (!postValidationResult.success) {
     // Not a `ValidationError`: the input passed its own version's checks above,
-    // so this says a migration of ours returned something invalid. Hosts use
-    // the distinction to decide what belongs in exception tracking.
-    throw new MigrationResultInvalidError(
-      `Migration resulted in invalid protocol: ${postValidationResult.error.message}`,
-      targetVersion,
-      postValidationResult.error.issues.map((issue) => ({
-        code: issue.code,
-        // Symbols cannot appear in protocol JSON; stringified to keep the type.
-        path: issue.path.map((segment) =>
-          typeof segment === 'symbol' ? String(segment) : segment,
-        ),
-        message: issue.message,
-      })),
-    );
+    // so this says a migration of ours returned something invalid — unless
+    // every issue is content the protocol left empty and the migration may not
+    // invent, which is the researcher's to correct. Hosts use the distinction
+    // to decide what belongs in exception tracking.
+    const issues = postValidationResult.error.issues.map((issue) => ({
+      code: issue.code,
+      // Symbols cannot appear in protocol JSON; stringified to keep the type.
+      path: issue.path.map((segment) =>
+        typeof segment === 'symbol' ? String(segment) : segment,
+      ),
+      message: issue.message,
+    }));
+    const message = `Migration resulted in invalid protocol: ${postValidationResult.error.message}`;
+    // The places it knows are schema 9's, whose migration is the one that
+    // refuses to invent content.
+    const refused =
+      targetVersion === 9 ? findRefusedContent(migrated, issues) : undefined;
+    if (refused !== undefined) {
+      throw new MigrationContentRefusedError(
+        message,
+        targetVersion,
+        issues,
+        refused,
+      );
+    }
+    throw new MigrationResultInvalidError(message, targetVersion, issues);
   }
   if (postValidationResult.data.schemaVersion !== targetVersion) {
     throw new MigrationResultInvalidError(

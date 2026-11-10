@@ -20,6 +20,7 @@
   "protocolValidation.file.newerVersion": "Este protocolo se creó con una versión más reciente de Network Canvas. Actualiza a la última versión para abrirlo.",
   "protocolValidation.file.notArchive": "Este archivo no es un protocolo de Network Canvas. Comprueba que has elegido el archivo correcto y que se ha descargado por completo.",
   "protocolValidation.file.upgradeFailed": "No se pudo actualizar este protocolo a la versión actual.",
+  "protocolValidation.file.upgradeRefusedContent": "Este protocolo no se puede actualizar a la versión actual porque contiene algo que la versión actual no acepta. En la versión de Architect con la que se creó el protocolo, corrige cada uno de los problemas indicados y después vuelve a abrir el protocolo. No se ha modificado nada en este dispositivo.",
   "protocolValidation.file.upgradeStepFailed": "No se pudo actualizar este protocolo a la versión actual. No se ha modificado nada en este dispositivo.",
   "protocolValidation.migrationNotes.schema5.interviewScript": "Se habilita una sección «Guion de la entrevista» en cada etapa, donde se pueden añadir notas para quien realiza la entrevista.",
   "protocolValidation.migrationNotes.schema5.referenceValidation": "Se añaden nuevas opciones de validación para los campos de formulario: `unique`, `sameAs` y `differentFrom`.",

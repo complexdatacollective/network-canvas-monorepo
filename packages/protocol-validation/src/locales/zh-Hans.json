@@ -20,6 +20,7 @@
   "protocolValidation.file.newerVersion": "此协议是用更新版本的 Network Canvas 创建的。请更新到最新版本后再打开。",
   "protocolValidation.file.notArchive": "此文件不是 Network Canvas 协议。请检查是否选择了正确的文件，以及文件是否已下载完成。",
   "protocolValidation.file.upgradeFailed": "无法将此协议升级到当前版本。",
+  "protocolValidation.file.upgradeRefusedContent": "无法将此协议升级到当前版本，因为其中包含当前版本不接受的内容。请在创建该协议的 Architect 版本中逐一更正下列问题，然后重新打开该协议。此设备上的内容未做任何更改。",
   "protocolValidation.file.upgradeStepFailed": "无法将此协议升级到当前版本。此设备上的内容未做任何更改。",
   "protocolValidation.migrationNotes.schema5.interviewScript": "为每个阶段启用“访谈脚本”部分，可在其中为访谈员添加备注。",
   "protocolValidation.migrationNotes.schema5.referenceValidation": "为表单字段添加新的验证选项：`unique`、`sameAs` 和 `differentFrom`。",

@@ -20,6 +20,7 @@
   "protocolValidation.file.newerVersion": "Dit protocol is gemaakt met een nieuwere versie van Network Canvas. Werk bij naar de nieuwste versie om het te openen.",
   "protocolValidation.file.notArchive": "Dit bestand is geen Network Canvas-protocol. Controleer of je het juiste bestand hebt gekozen en of het volledig is gedownload.",
   "protocolValidation.file.upgradeFailed": "Dit protocol kon niet worden bijgewerkt naar de huidige versie.",
+  "protocolValidation.file.upgradeRefusedContent": "Dit protocol kan niet worden bijgewerkt naar de huidige versie, omdat het iets bevat dat de huidige versie niet accepteert. Corrigeer in de versie van Architect waarmee het protocol is gemaakt elk vermeld probleem, en open het protocol daarna opnieuw. Er is niets gewijzigd op dit apparaat.",
   "protocolValidation.file.upgradeStepFailed": "Dit protocol kon niet worden bijgewerkt naar de huidige versie. Er is niets gewijzigd op dit apparaat.",
   "protocolValidation.migrationNotes.schema5.interviewScript": "Voor elke fase een sectie “Interviewscript” inschakelen, waarin notities voor de interviewer kunnen worden toegevoegd.",
   "protocolValidation.migrationNotes.schema5.referenceValidation": "Nieuwe validatieopties voor formuliervelden toevoegen: `unique`, `sameAs` en `differentFrom`.",

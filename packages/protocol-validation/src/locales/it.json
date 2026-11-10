@@ -20,6 +20,7 @@
   "protocolValidation.file.newerVersion": "Questo protocollo è stato creato con una versione più recente di Network Canvas. Aggiorna all’ultima versione per aprirlo.",
   "protocolValidation.file.notArchive": "Questo file non è un protocollo di Network Canvas. Verifica di aver scelto il file giusto e che il download sia stato completato.",
   "protocolValidation.file.upgradeFailed": "Non è stato possibile aggiornare questo protocollo alla versione attuale.",
+  "protocolValidation.file.upgradeRefusedContent": "Non è possibile aggiornare questo protocollo alla versione attuale perché contiene qualcosa che la versione attuale non accetta. Nella versione di Architect con cui è stato creato il protocollo, correggi ciascuno dei problemi elencati, poi apri di nuovo il protocollo. Su questo dispositivo non è stato modificato nulla.",
   "protocolValidation.file.upgradeStepFailed": "Non è stato possibile aggiornare questo protocollo alla versione attuale. Su questo dispositivo non è stato modificato nulla.",
   "protocolValidation.migrationNotes.schema5.interviewScript": "Attiva per ogni fase una sezione «Traccia per l’intervista», in cui aggiungere note per chi conduce l’intervista.",
   "protocolValidation.migrationNotes.schema5.referenceValidation": "Aggiunge nuove opzioni di convalida per i campi dei moduli: `unique`, `sameAs` e `differentFrom`.",

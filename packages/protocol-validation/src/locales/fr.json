@@ -20,6 +20,7 @@
   "protocolValidation.file.newerVersion": "Ce protocole a été créé avec une version plus récente de Network Canvas. Installez la dernière version pour l’ouvrir.",
   "protocolValidation.file.notArchive": "Ce fichier n’est pas un protocole Network Canvas. Vérifiez que vous avez choisi le bon fichier et que son téléchargement est terminé.",
   "protocolValidation.file.upgradeFailed": "Ce protocole n’a pas pu être mis à niveau vers la version actuelle.",
+  "protocolValidation.file.upgradeRefusedContent": "Ce protocole ne peut pas être mis à niveau vers la version actuelle, car il contient quelque chose que la version actuelle n’accepte pas. Dans la version d’Architect avec laquelle le protocole a été créé, corrigez chacun des problèmes indiqués, puis ouvrez à nouveau le protocole. Rien n’a été modifié sur cet appareil.",
   "protocolValidation.file.upgradeStepFailed": "Ce protocole n’a pas pu être mis à niveau vers la version actuelle. Rien n’a été modifié sur cet appareil.",
   "protocolValidation.migrationNotes.schema5.interviewScript": "Activation d’une section « Script d’entretien » pour chaque étape, dans laquelle des notes destinées à la personne qui mène l’entretien peuvent être ajoutées.",
   "protocolValidation.migrationNotes.schema5.referenceValidation": "Ajout de nouvelles options de validation pour les champs de formulaire : `unique`, `sameAs` et `differentFrom`.",

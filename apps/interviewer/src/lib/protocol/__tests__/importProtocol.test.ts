@@ -485,4 +485,46 @@ describe('keeping a file below this app’s schema on schema 8', () => {
     expect(result.protocol).toEqual(withStage);
     expect(saveProtocolMock).toHaveBeenCalledWith(withStage, result.hash, []);
   });
+
+  // The upgrade to the current schema refuses a blank prompt rather than
+  // inventing one. Interviewer never makes that upgrade: the file is kept, and
+  // interviewed, at schema 8, which accepted a prompt of only spaces.
+  it('keeps a file with a blank stage prompt on schema 8', async () => {
+    const withBlankPrompt = {
+      ...schema8,
+      codebook: {
+        ...schema8.codebook,
+        node: {
+          person: {
+            ...schema8.codebook.node.person,
+            variables: { name: { name: 'name', type: 'text' } },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 's1',
+          type: 'NameGeneratorQuickAdd',
+          label: 'Friends',
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          prompts: [{ id: 'p1', text: '   ' }],
+        },
+      ],
+    };
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(withBlankPrompt),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result).toMatchObject({ success: true });
+    if (!result.success) return;
+    expect(result.protocol).toEqual(withBlankPrompt);
+    expect(saveProtocolMock).toHaveBeenCalledWith(
+      withBlankPrompt,
+      result.hash,
+      [],
+    );
+  });
 });

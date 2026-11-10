@@ -20,6 +20,7 @@
   "protocolValidation.file.newerVersion": "Dieses Protokoll wurde mit einer neueren Version von Network Canvas erstellt. Aktualisieren Sie auf die neueste Version, um es zu öffnen.",
   "protocolValidation.file.notArchive": "Diese Datei ist kein Network-Canvas-Protokoll. Prüfen Sie, ob Sie die richtige Datei ausgewählt haben und ob sie vollständig heruntergeladen wurde.",
   "protocolValidation.file.upgradeFailed": "Dieses Protokoll konnte nicht auf die aktuelle Version aktualisiert werden.",
+  "protocolValidation.file.upgradeRefusedContent": "Dieses Protokoll kann nicht auf die aktuelle Version aktualisiert werden, weil es etwas enthält, das die aktuelle Version nicht akzeptiert. Korrigieren Sie in der Version von Architect, mit der das Protokoll erstellt wurde, jedes aufgeführte Problem, und öffnen Sie das Protokoll dann erneut. Auf diesem Gerät wurde nichts geändert.",
   "protocolValidation.file.upgradeStepFailed": "Dieses Protokoll konnte nicht auf die aktuelle Version aktualisiert werden. Auf diesem Gerät wurde nichts geändert.",
   "protocolValidation.migrationNotes.schema5.interviewScript": "Ermöglicht für jeden Abschnitt einen Bereich „Interviewskript“, in dem Notizen für die interviewende Person hinterlegt werden können.",
   "protocolValidation.migrationNotes.schema5.referenceValidation": "Fügt neue Validierungsoptionen für Formularfelder hinzu: `unique`, `sameAs` und `differentFrom`.",
