@@ -40,48 +40,15 @@ Use this stage when you want to build and edit a whole network from a single scr
 
 A palette of tools floats down the left of the canvas. A tool stays active until another is picked.
 
-**Select and move**, **Add node**, **Automatic layout**, **Undo** and **Redo** are always on the palette. The other two only appear once you set them up later in this editor:
+**Select and move**, **Add node**, **Automatic layout**, **Undo** and **Redo** are always on the palette. **Draw edge** and **Groups** only appear once you set them up later in this editor. The numbers match the palette above:
 
-- **Draw edge** appears once you add an edge type.
-- **Groups** appears once you choose a grouping attribute.
-
-The next steps go through each tool, showing what it does on the canvas.
-
-## Select and move
-
-<!-- scene: network-composer-tool-select -->
-
-Drag an alter to move it; its new place is saved to the layout attribute. Tap an alter or an edge to select it and open its attribute form in a panel on the right. Tap an empty part of the canvas to clear the selection.
-
-## Add node
-
-<!-- scene: network-composer-tool-add -->
-
-Opens the name field beside the palette. Type a name and press Enter to add an alter. Once added, it is placed on the next free spot of a grid (or arranged by the automatic layout, when that is on). The box stays open, so several can be added in a row.
-
-## Draw edge
-
-<!-- scene: network-composer-tool-edge -->
-
-Opens a menu of this stage's edge types. Pick one, and the button takes on that type's color while it is in use. Then tap one alter and then another to connect them. Tapping the same pair again removes the edge.
-
-## Groups
-
-<!-- scene: network-composer-tool-groups -->
-
-Shades the alters that share a value of a single categorical variable, chosen in Architect, as colored convex hulls behind them, making clusters such as "household" or "friendship group" easy to see. The hulls are always visible once the variable is configured, and the automatic layout gently pulls members of the same group together. The tool lists the groups alongside their colors. Pick one, and the button takes on that color while it is in use. Then tap alters to add them to the group, and tap one again to take it out.
-
-## Automatic layout
-
-<!-- scene: network-composer-tool-layout -->
-
-Switches the force-directed arrangement on and off. While it is on, alters spread out and members of the same group are pulled together. Switched off, they stay where they are.
-
-## Undo and redo
-
-<!-- scene: network-composer-tool-undo -->
-
-**Undo** reverses the last change: adding or removing alters and edges, editing attributes, group membership and moving alters. **Redo** replays what was undone. Both also work with the usual keyboard shortcuts.
+1. **Select and move**: drag an alter to move it; its new place is saved to the layout attribute. Tap an alter or an edge to select it and open its attribute form in a panel on the right. Tap an empty part of the canvas to clear the selection.
+2. **Add node**: opens the name field beside the palette. Type a name and press Enter to add an alter. Once added, it is placed on the next free spot of a grid (or arranged by the automatic layout, when that is on). The box stays open, so several can be added in a row.
+3. **Draw edge**, once you add an edge type: opens a menu of this stage's edge types. Pick one, and the button takes on that type's color while it is in use. Then tap one alter and then another to connect them. Tapping the same pair again removes the edge.
+4. **Groups**, once you choose a grouping attribute: shades the alters that share a value of a single categorical variable, chosen in Architect, as colored convex hulls behind them, making clusters such as "household" or "friendship group" easy to see. The hulls are always visible once the variable is configured, and the automatic layout gently pulls members of the same group together. The tool lists the groups alongside their colors. Pick one, and the button takes on that color while it is in use. Then tap alters to add them to the group, and tap one again to take it out.
+5. **Automatic layout**: switches the force-directed arrangement on and off. While it is on, alters spread out and members of the same group are pulled together. Switched off, they stay where they are.
+6. **Undo**: reverses the last change: adding or removing alters and edges, editing attributes, group membership and moving alters. It also works with the usual keyboard shortcut.
+7. **Redo**: replays what was undone, also with the usual keyboard shortcut.
 
 ## Choose what this stage builds
 

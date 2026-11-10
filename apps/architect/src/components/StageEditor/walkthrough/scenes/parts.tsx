@@ -280,7 +280,7 @@ type Rail = Readonly<{
  * The interview's navigation, as a vertical rail: settings, back, the
  * interview's progress, and the larger next arrow at the bottom.
  */
-export function NavigationRail({
+function NavigationRail({
   t,
   progress,
   pulse = false,
@@ -355,6 +355,91 @@ export function NavigationRail({
         />
       </g>
     </>
+  );
+}
+
+/**
+ * A numbered callout, as on an annotated diagram: a green pin with a leader
+ * line drawn out to the part it names. `lit` (0 to 1) enlarges the pin while
+ * the scene points it out.
+ */
+export function CalloutPin({
+  at,
+  to,
+  n,
+  k,
+  lit = 0,
+  label,
+  labelSide = 'right',
+}: {
+  at: Point;
+  to: Point;
+  n: number;
+  /** 0 to 1: the pin drops in and its leader draws out. */
+  k: number;
+  lit?: number;
+  /** The part's name, shown beside the pin while it is pointed out. */
+  label?: string;
+  labelSide?: 'right' | 'above';
+}) {
+  if (k <= 0) return null;
+  const labelSize = 13;
+  const labelWidth =
+    label === undefined ? 0 : textWidth(label, labelSize) + labelSize * 1.6;
+  const labelX =
+    labelSide === 'right'
+      ? at[0] + 22
+      : Math.min(
+          Math.max(at[0], CONTENT.x + labelWidth / 2 + 8),
+          CONTENT.right - labelWidth / 2 - 8,
+        );
+  const end: Point = [lerp(at[0], to[0], k), lerp(at[1], to[1], k)];
+  const scale = backOut(Math.min(1, k)) * (1 + 0.18 * lit);
+  return (
+    <g opacity={Math.min(1, k * 2)}>
+      <line
+        x1={at[0]}
+        y1={at[1]}
+        x2={end[0]}
+        y2={end[1]}
+        className="stroke-sea-green"
+        strokeWidth={3}
+      />
+      {lit > 0 ? (
+        <circle
+          cx={at[0]}
+          cy={at[1]}
+          r={14 + 9 * lit}
+          className="fill-sea-green"
+          opacity={0.3}
+        />
+      ) : null}
+      <g transform={pivot(at[0], at[1], scale)}>
+        <circle cx={at[0]} cy={at[1]} r={14} className="fill-sea-green" />
+        <text
+          x={at[0]}
+          y={at[1] + 4.5}
+          textAnchor="middle"
+          fontSize={13}
+          fontWeight={900}
+          className="fill-white"
+        >
+          {n}
+        </text>
+      </g>
+      {label !== undefined && lit > 0 ? (
+        <Chip
+          x={labelX}
+          y={labelSide === 'right' ? at[1] : at[1] - 36}
+          align={labelSide === 'right' ? 'start' : 'middle'}
+          text={label}
+          size={labelSize}
+          fill="fill-sea-green"
+          ink="fill-white"
+          k={lit}
+        />
+      ) : null}
+    </g>
   );
 }
 

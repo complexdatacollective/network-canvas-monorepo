@@ -15,14 +15,15 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { Hull } from './NarrativeScenes';
 import {
+  CalloutPin,
   Chip,
   Click,
   CONTENT,
   defineScene,
   lerp,
-  NavigationRail,
   smooth,
   STAGE,
+  STAGE_CENTER_X,
   type Point,
   type Stop,
 } from './parts';
@@ -34,14 +35,15 @@ const TEXT = {
   layout: 'Layout attribute: position',
   edgeTypes: ['Friends', 'Family'],
   groups: ['Family', 'Work'],
-  tools: {
-    select: 'Select and move',
-    add: 'Add node',
-    edge: 'Draw edge',
-    groups: 'Groups',
-    layout: 'Automatic layout',
-    undo: 'Undo and redo',
-  },
+  tools: [
+    'Select and move',
+    'Add node',
+    'Draw edge',
+    'Groups',
+    'Automatic layout',
+    'Undo',
+    'Redo',
+  ],
   closeness: 'How close are you?',
   nickname: 'Nickname',
   nicknameValue: 'Sammy',
@@ -172,7 +174,8 @@ function Palette({
         width={PALETTE.width}
         height={PALETTE.height}
         rx={PALETTE.width / 2}
-        className="fill-cyber-grape"
+        className="fill-white/10 stroke-white/20"
+        strokeWidth={2}
       />
       <line
         x1={PALETTE.x + 12}
@@ -195,7 +198,7 @@ function Palette({
                 cx={x}
                 cy={y}
                 r={18 * grow}
-                className={colored ? tint : 'fill-white/25'}
+                className={colored ? tint : 'fill-white'}
               />
             ) : null}
             <Glyph
@@ -204,7 +207,7 @@ function Palette({
               width={22}
               height={22}
               strokeWidth={2.4}
-              className="text-white"
+              className={on && !colored ? 'text-navy-taupe' : 'text-white'}
               opacity={dimmed.includes(key) ? 0.35 : 1}
             />
           </g>
@@ -724,401 +727,37 @@ export const NetworkComposerDataScene = defineScene(
 );
 
 /**
- * The palette on its own: each tool lights up in turn, from select at the
- * top to redo at the bottom.
+ * The palette with each tool numbered, as the list beside it in the
+ * walkthrough numbers them; each tool is pointed out in turn.
  */
-export const NetworkComposerToolsScene = defineScene(4.4, ({ t }) => {
-  const lit = TOOLS.findIndex(
-    (_, i) => t >= 0.6 + i * 0.45 && t < 1.05 + i * 0.45,
-  );
-  const tool = TOOLS[lit];
+export const NetworkComposerToolsScene = defineScene(9.6, ({ t }) => {
+  const dx = STAGE_CENTER_X - 120 - (PALETTE.x + PALETTE.width / 2);
+  const pinX = PALETTE_RIGHT + dx + 110;
+  const lit = t >= 2.2 ? Math.floor((t - 2.2) / 1.0) : -1;
+  const litTool = TOOLS[lit];
   return {
-    rail: { progress: 0.6 },
     body: (
       <>
-        <Circles n={4} opacity={0.5} />
-        {PEOPLE.slice(0, 4).map((p) => (
-          <CanvasNode key={p.label} at={p.at} label={p.label} r={24} />
-        ))}
-        <Palette
-          active={tool === undefined ? [] : [tool.key]}
-          {...(tool === undefined
-            ? {}
-            : {
-                pressed: {
-                  tool: tool.key,
-                  k: segment(t, 0.6 + lit * 0.45, 0.25),
-                },
-              })}
-        />
+        <g transform={`translate(${dx} 0)`}>
+          <Palette
+            active={litTool === undefined ? ['select'] : [litTool.key]}
+          />
+        </g>
+        {TOOLS.map(({ key }, i) => {
+          const [, y] = toolAt(key);
+          return (
+            <CalloutPin
+              key={key}
+              n={i + 1}
+              at={[pinX, y]}
+              to={[PALETTE_RIGHT + dx + 2, y]}
+              k={smooth(segment(t, 0.3 + i * 0.2, 0.35))}
+              lit={i === lit ? smooth(segment(t, 2.2 + i * 1.0, 0.2)) : 0}
+              label={TEXT.tools[i] ?? ''}
+            />
+          );
+        })}
       </>
-    ),
-  };
-});
-
-/** How far the closeup magnifies the palette. */
-const CLOSEUP = 5;
-/** When a tool's button is pressed in the closeup. */
-const PRESS_AT = 0.5;
-/** When the closeup starts pulling back to the whole screen. */
-const ZOOM_AT = 1.3;
-const ZOOM_FOR = 0.9;
-/** When the action begins, once the whole screen is in view. */
-const ACT_AT = ZOOM_AT + ZOOM_FOR + 0.1;
-const VIEW_CENTER: Point = [
-  (CONTENT.x + CONTENT.right) / 2,
-  (CONTENT.y + CONTENT.bottom) / 2,
-];
-
-/**
- * A camera that starts close on `focus`, a palette button, and pulls back to
- * the whole interview screen. The rail is drawn inside it, so it zooms with
- * the rest of the screen.
- */
-function Closeup({
-  t,
-  focus,
-  name,
-  nameAt = [VIEW_CENTER[0], VIEW_CENTER[1] + 130],
-  children,
-}: {
-  t: number;
-  focus: Point;
-  /** The tool's name, shown beside the button while it is close up. */
-  name: string;
-  nameAt?: Point;
-  children: ReactNode;
-}) {
-  const k = smooth(segment(t, ZOOM_AT, ZOOM_FOR));
-  const scale = CLOSEUP ** (1 - k);
-  const x = lerp(VIEW_CENTER[0], focus[0], k);
-  const y = lerp(VIEW_CENTER[1], focus[1], k);
-  const label = Math.min(
-    backOut(segment(t, 0.15, 0.35)),
-    1 - smooth(segment(t, ZOOM_AT - 0.15, 0.3)),
-  );
-  return (
-    <>
-      <g
-        transform={`translate(${x} ${y}) scale(${scale}) translate(${-focus[0]} ${-focus[1]})`}
-      >
-        <rect
-          x={CONTENT.x}
-          y={CONTENT.y}
-          width={CONTENT.right - CONTENT.x}
-          height={CONTENT.bottom - CONTENT.y}
-          className="fill-navy-taupe"
-        />
-        {children}
-        <NavigationRail t={t} progress={0.6} />
-      </g>
-      <Chip x={nameAt[0]} y={nameAt[1]} text={name} size={20} k={label} />
-    </>
-  );
-}
-
-/** The press on a tool's button while it is close up. */
-const pressedAt = (tool: Tool, t: number) => ({
-  tool,
-  k: segment(t, PRESS_AT, 0.35),
-});
-
-/**
- * Select and move: drag a node to a new place, tap a node to open its
- * form, tap the empty canvas to close it.
- */
-export const NetworkComposerSelectToolScene = defineScene(6.6, ({ t }) => {
-  const drag = smooth(segment(t, ACT_AT + 0.5, 0.9));
-  const joFrom = at(JO, SHIFT);
-  const joTo: Point = [joFrom[0] + 70, joFrom[1] + 40];
-  const jo: Point = [
-    lerp(joFrom[0], joTo[0], drag),
-    lerp(joFrom[1], joTo[1], drag),
-  ];
-  const selectAt = ACT_AT + 2.0;
-  const clearAt = ACT_AT + 3.3;
-  const open =
-    smooth(segment(t, selectAt + 0.1, 0.4)) *
-    (1 - smooth(segment(t, clearAt + 0.1, 0.4)));
-  const position = (label: string) => (label === JO ? jo : at(label, SHIFT));
-  const empty: Point = [CANVAS.x + SHIFT + 50, CANVAS.y + 130];
-  return {
-    body: null,
-    modal: (
-      <Closeup t={t} focus={toolAt('select')} name={TEXT.tools.select}>
-        <Circles n={4} x={CANVAS.x + SHIFT} />
-        <Edge from={position(SAM)} to={position(ANA)} />
-        <Edge from={position(JO)} to={position(KAI)} />
-        {PEOPLE.slice(0, 4).map((p) => (
-          <CanvasNode
-            key={p.label}
-            at={position(p.label)}
-            label={p.label}
-            r={24}
-            ring={
-              (p.label === JO && t >= ACT_AT + 0.4 && t < ACT_AT + 1.5) ||
-              (p.label === SAM && t >= selectAt && t < clearAt)
-                ? 1
-                : 0
-            }
-          />
-        ))}
-        <Palette active={['select']} pressed={pressedAt('select', t)} />
-        <Drawer k={open} title={SAM}>
-          <FieldLabel y={CONTENT.y + 86} text={TEXT.closeness} />
-          <Options
-            y={CONTENT.y + 96}
-            labels={['1', '2', '3']}
-            chosen={2}
-            k={0}
-          />
-        </Drawer>
-      </Closeup>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: joFrom, at: ACT_AT + 0.4, ring: false },
-          { to: joTo, at: ACT_AT + 1.4, glide: 0.9, ring: false },
-          { to: at(SAM, SHIFT), at: selectAt },
-          { to: empty, at: clearAt },
-        ]}
-        leave={clearAt + 0.5}
-      />
-    ),
-  };
-});
-
-/** Add node: the name box opens, and each name entered becomes an alter. */
-export const NetworkComposerAddToolScene = defineScene(6.0, ({ t }) => {
-  const names = [
-    { label: SAM, typing: ACT_AT + 0.2 },
-    { label: ANA, typing: ACT_AT + 1.1 },
-    { label: JO, typing: ACT_AT + 2.0 },
-  ].map((n) => ({ ...n, added: n.typing + 0.5 }));
-  const typing = names.find((n) => t >= n.typing && t < n.added);
-  return {
-    body: null,
-    modal: (
-      <Closeup t={t} focus={toolAt('add')} name={TEXT.tools.add}>
-        <Circles n={4} />
-        {names.map((n, i) => (
-          <CanvasNode
-            key={n.label}
-            at={gridCell(i)}
-            label={n.label}
-            r={22}
-            k={backOut(segment(t, n.added, 0.35))}
-          />
-        ))}
-        <Palette active={['add']} pressed={pressedAt('add', t)} />
-        <NameField
-          k={smooth(segment(t, PRESS_AT + 0.2, 0.3))}
-          text={typing ? typed(t, typing.label, typing.typing) : ''}
-        />
-      </Closeup>
-    ),
-  };
-});
-
-/**
- * Draw edge: pick a type from the menu, tap two alters to connect them, and
- * tap the same pair again to remove the edge.
- */
-export const NetworkComposerEdgeToolScene = defineScene(7.2, ({ t }) => {
-  const menuAt = ACT_AT + 0.1;
-  const pickAt = menuAt + 0.6;
-  const menu = t >= menuAt && t < pickAt ? 1 : 0;
-  const first = [pickAt + 0.5, pickAt + 1.0] as const;
-  const again = [pickAt + 1.8, pickAt + 2.3] as const;
-  const edge =
-    smooth(segment(t, first[1], 0.3)) * (1 - smooth(segment(t, again[1], 0.3)));
-  return {
-    body: null,
-    modal: (
-      <Closeup t={t} focus={toolAt('edge')} name={TEXT.tools.edge}>
-        <Circles n={4} />
-        <Edge from={at(SAM)} to={at(ANA)} k={edge} />
-        {PEOPLE.slice(0, 4).map((p) => (
-          <CanvasNode
-            key={p.label}
-            at={p.at}
-            label={p.label}
-            r={24}
-            pulse={
-              p.label === SAM
-                ? (pulseFor(t, first[0], first[1]) ??
-                  pulseFor(t, again[0], again[1]))
-                : undefined
-            }
-          />
-        ))}
-        <Palette
-          active={['edge']}
-          pressed={pressedAt('edge', t)}
-          {...(t >= pickAt ? { tint: EDGE_FILLS[0] } : {})}
-        />
-        <ToolMenu tool="edge" items={edgeMenu()} k={menu} />
-      </Closeup>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: toolAt('edge'), at: menuAt },
-          { to: menuItemAt('edge', 0), at: pickAt, glide: 0.4 },
-          { to: at(SAM), at: first[0], glide: 0.4 },
-          { to: at(ANA), at: first[1], glide: 0.4 },
-          { to: at(SAM), at: again[0], glide: 0.4 },
-          { to: at(ANA), at: again[1], glide: 0.4 },
-        ]}
-        leave={again[1] + 0.5}
-      />
-    ),
-  };
-});
-
-/**
- * Groups: pick a group, tap alters to put them in it, and tap one again to
- * take it out.
- */
-export const NetworkComposerGroupsToolScene = defineScene(7.0, ({ t }) => {
-  const menuAt = ACT_AT + 0.1;
-  const pickAt = menuAt + 0.6;
-  const menu = t >= menuAt && t < pickAt ? 1 : 0;
-  const taps = [
-    { label: SAM, at: pickAt + 0.5 },
-    { label: ANA, at: pickAt + 0.9 },
-    { label: JO, at: pickAt + 1.3 },
-  ];
-  const outAt = pickAt + 2.1;
-  const members = taps
-    .filter((m) => t >= m.at)
-    .filter((m) => !(m.label === ANA && t >= outAt));
-  return {
-    body: null,
-    modal: (
-      <Closeup t={t} focus={toolAt('groups')} name={TEXT.tools.groups}>
-        <Circles n={4} />
-        {members.length > 0 ? (
-          <Hull points={members.map((m) => at(m.label))} color={1} k={1} />
-        ) : null}
-        {PEOPLE.slice(0, 4).map((p) => (
-          <CanvasNode key={p.label} at={p.at} label={p.label} r={24} />
-        ))}
-        <Palette
-          active={['groups']}
-          pressed={pressedAt('groups', t)}
-          {...(t >= pickAt ? { tint: GROUP_FILLS[0] } : {})}
-        />
-        <ToolMenu tool="groups" items={groupMenu()} k={menu} />
-      </Closeup>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: toolAt('groups'), at: menuAt },
-          { to: menuItemAt('groups', 0), at: pickAt, glide: 0.4 },
-          ...taps.map((m) => ({ to: at(m.label), at: m.at, glide: 0.35 })),
-          { to: at(ANA), at: outAt, glide: 0.5 },
-        ]}
-        leave={outAt + 0.5}
-      />
-    ),
-  };
-});
-
-/**
- * Automatic layout: switched on, the alters spread out and grouped ones
- * draw together; switched off, they stay where they are.
- */
-export const NetworkComposerLayoutToolScene = defineScene(6.6, ({ t }) => {
-  const offAt = ACT_AT + 2.6;
-  const k = settle(Math.min(Math.max(t - ACT_AT, 0), offAt - ACT_AT) / 2.0);
-  const positions = PEOPLE.map((p, i) => ({
-    label: p.label,
-    at: [
-      lerp(gridCell(i)[0], p.at[0], k),
-      lerp(gridCell(i)[1], p.at[1], k),
-    ] as Point,
-  }));
-  const pos = (label: string) =>
-    positions.find((p) => p.label === label)?.at ?? [CANVAS.x, CANVAS.y];
-  return {
-    body: null,
-    modal: (
-      <Closeup t={t} focus={toolAt('layout')} name={TEXT.tools.layout}>
-        <Circles n={4} />
-        <Hull points={[pos(SAM), pos(ANA), pos(JO)]} color={1} k={1} />
-        <Edge from={pos(SAM)} to={pos(ANA)} />
-        <Edge from={pos(JO)} to={pos(KAI)} />
-        {positions.map((p) => (
-          <CanvasNode key={p.label} at={p.at} label={p.label} r={22} />
-        ))}
-        <Palette
-          active={t < offAt ? ['select', 'layout'] : ['select']}
-          pressed={pressedAt('layout', t)}
-        />
-      </Closeup>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[{ to: toolAt('layout'), at: offAt }]}
-        leave={offAt + 0.5}
-      />
-    ),
-  };
-});
-
-/**
- * Undo and redo: undo takes back the last edges drawn, one at a time, and
- * redo puts them back. Redo is greyed out until there is something to redo.
- */
-export const NetworkComposerUndoToolScene = defineScene(7.4, ({ t }) => {
-  const undo = [ACT_AT + 0.3, ACT_AT + 1.2] as const;
-  const redo = [ACT_AT + 2.3, ACT_AT + 3.2] as const;
-  const anaJo =
-    1 - smooth(segment(t, undo[0], 0.3)) + smooth(segment(t, redo[1], 0.3));
-  const samAna =
-    1 - smooth(segment(t, undo[1], 0.3)) + smooth(segment(t, redo[0], 0.3));
-  const nothingToRedo = t < undo[0] || t >= redo[1];
-  const focus = midpoint(toolAt('undo'), toolAt('redo'));
-  return {
-    body: null,
-    modal: (
-      <Closeup
-        t={t}
-        focus={focus}
-        name={TEXT.tools.undo}
-        nameAt={[VIEW_CENTER[0] + 200, VIEW_CENTER[1]]}
-      >
-        <Circles n={4} />
-        <Edge from={at(SAM)} to={at(ANA)} k={Math.min(1, samAna)} />
-        <Edge from={at(ANA)} to={at(JO)} k={Math.min(1, anaJo)} />
-        {PEOPLE.slice(0, 4).map((p) => (
-          <CanvasNode key={p.label} at={p.at} label={p.label} r={24} />
-        ))}
-        <Palette
-          active={['edge']}
-          tint={EDGE_FILLS[0]}
-          dimmed={nothingToRedo ? ['redo'] : []}
-        />
-      </Closeup>
-    ),
-    overlay: (
-      <Click
-        t={t}
-        stops={[
-          { to: toolAt('undo'), at: undo[0] },
-          { to: toolAt('undo'), at: undo[1], glide: 0.3 },
-          { to: toolAt('redo'), at: redo[0], glide: 0.4 },
-          { to: toolAt('redo'), at: redo[1], glide: 0.3 },
-        ]}
-        leave={redo[1] + 0.5}
-      />
     ),
   };
 });
