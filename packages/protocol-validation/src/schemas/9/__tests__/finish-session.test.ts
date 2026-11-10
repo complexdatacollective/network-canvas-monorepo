@@ -14,7 +14,6 @@ import {
   createDefaultFinishSessionStage,
   DEFAULT_FINISH_SESSION_TEXT,
   defaultFinishSessionText,
-  hasDefaultFinishSessionText,
 } from '../finish-session-defaults.ts';
 import { findFinishStageTextProblems } from '../finish-stage-text.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
@@ -446,8 +445,7 @@ describe('supplied finish text', () => {
   };
 
   describe('adding a language', () => {
-    it('fills in the new language while the default language text is still the supplied text', () => {
-      expect(hasDefaultFinishSessionText(stage, 'en')).toBe(true);
+    it('fills in the new language', () => {
       expect(afterChange(stage, addingFrench)).toEqual({
         ...stage,
         label: { ...stage.label, fr: DEFAULT_FINISH_SESSION_TEXT.fr.label },
@@ -479,7 +477,6 @@ describe('supplied finish text', () => {
         id: 'end',
         localization: mexican,
       });
-      expect(hasDefaultFinishSessionText(unwritten, 'es-MX')).toBe(true);
       expect(
         afterChange(unwritten, {
           before: mexican,
@@ -488,56 +485,55 @@ describe('supplied finish text', () => {
       ).toEqual({ es: DEFAULT_FINISH_SESSION_TEXT.es.content });
     });
 
-    it('leaves the new language untranslated once the researcher has changed any of the text', () => {
-      const edited = { ...stage, content: { en: 'Thanks for taking part.' } };
-      expect(hasDefaultFinishSessionText(edited, 'en')).toBe(false);
-      expect(
-        defaultFinishSessionTextAfterLanguageChange(edited, addingFrench),
-      ).toEqual({});
-    });
-
-    it('still fills in the text when only the stage was renamed, leaving the new name untranslated', () => {
-      const renamed = { ...stage, label: { en: 'End' } };
-      expect(hasDefaultFinishSessionText(renamed, 'en')).toBe(true);
-      expect(afterChange(renamed, addingFrench)).toEqual({
-        ...renamed,
+    it('fills in the new language even where the researcher has changed the text, and renamed the stage, in the default language', () => {
+      const edited = {
+        ...stage,
+        label: { en: 'End' },
+        content: { en: 'Thanks for taking part.' },
+        finishedContent: { en: 'All done.' },
+      };
+      expect(afterChange(edited, addingFrench)).toEqual({
+        ...edited,
+        label: { en: 'End', fr: DEFAULT_FINISH_SESSION_TEXT.fr.label },
         content: {
-          ...stage.content,
+          en: 'Thanks for taking part.',
           fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
         },
         finishedContent: {
-          ...stage.finishedContent,
+          en: 'All done.',
           fr: DEFAULT_FINISH_SESSION_TEXT.fr.finishedContent,
         },
       });
     });
 
-    it('decides an automatic stage by its finished screen alone', () => {
-      // Its closing screen is never shown, so it may be empty, or text the
-      // researcher wrote before switching the mode.
+    it('fills in every text an automatic stage holds, and leaves out a closing text it does not hold', () => {
       const automatic = {
         ...stage,
         mode: 'automatic' as const,
         content: { en: 'Written before the mode changed.' },
       };
-      expect(hasDefaultFinishSessionText(automatic, 'en')).toBe(true);
-      expect(afterChange(automatic, addingFrench)).toEqual({
-        ...automatic,
-        label: { ...stage.label, fr: DEFAULT_FINISH_SESSION_TEXT.fr.label },
-        finishedContent: {
-          ...stage.finishedContent,
-          fr: DEFAULT_FINISH_SESSION_TEXT.fr.finishedContent,
-        },
+      expect(afterChange(automatic, addingFrench).content).toEqual({
+        en: 'Written before the mode changed.',
+        fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
       });
 
-      const emptyClosing = { ...automatic, content: {} };
-      expect(hasDefaultFinishSessionText(emptyClosing, 'en')).toBe(true);
+      const { content: _cleared, ...withoutClosing } = automatic;
+      expect(
+        defaultFinishSessionTextAfterLanguageChange(
+          withoutClosing,
+          addingFrench,
+        ),
+      ).not.toHaveProperty('content');
+    });
 
-      const editedFinished = {
-        ...automatic,
-        finishedContent: { en: 'All done.' },
-      };
-      expect(hasDefaultFinishSessionText(editedFinished, 'en')).toBe(false);
+    it('gives a language the protocol already had nothing, as when the default changes', () => {
+      const both = { defaultLocale: 'en', locales: ['en', 'fr'] };
+      expect(
+        afterChange(stage, {
+          before: both,
+          after: { defaultLocale: 'fr', locales: ['en', 'fr'] },
+        }),
+      ).toEqual(stage);
     });
 
     it('leaves a language with no supplied text untranslated', () => {
