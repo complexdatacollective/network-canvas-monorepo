@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import { createElement, useCallback, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
@@ -17,9 +18,16 @@ import type {
   StageProblemsStore,
   StageSectionsStore,
 } from '@codaco/protocol-builder/stage-editor-contract';
-import { stageDocument } from '@codaco/protocol-builder/stageDocument';
+import {
+  stageDocument,
+  stageFieldsOf,
+} from '@codaco/protocol-builder/stageDocument';
 import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
-import { type Stage, validateProtocol } from '@codaco/protocol-validation';
+import {
+  type Stage,
+  suppliedInterfaceText,
+  validateProtocol,
+} from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import { launchPreview } from '~/components/PreviewHost/launchPreview';
 import { StageEditorToolbar } from '~/components/ProjectNav/StageEditorNav';
@@ -204,7 +212,8 @@ export function StageEditorHeader({
  * something nobody is looking at.
  */
 function StageDraftPublisher() {
-  const { liveDraft, storeApi, identity } = useStageEditorForm();
+  const { liveDraft, pendingSharedWording, storeApi, identity } =
+    useStageEditorForm();
   const { committedFields, access } = useStageEdit();
   const localization = useProtocolLocalization();
   const { withoutProposal } = useStandingStageNameProposal();
@@ -214,15 +223,32 @@ function StageDraftPublisher() {
     if (committedFields === undefined) return undefined;
     const publish = () => {
       const draft = liveDraft();
+      const words = pendingSharedWording();
       publishStageDraft(
         // As it would be saved, holding the wording a save writes in.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the draft is a plain record that may not satisfy the stage schema mid-edit; every reader validates the protocol built from it (validateProtocol) before relying on it
         stageDocument(identity, draft, localization) as unknown as Stage,
         committedFields,
         // Compared without a name the editor proposed and nobody has touched:
-        // that is not work the researcher would lose by leaving.
-        withoutProposal(draft, committedFields),
+        // that is not work the researcher would lose by leaving. The shared
+        // words held beside the stage are weighed on their own below.
+        withoutProposal(stageFieldsOf(draft), committedFields),
         editing,
+        {
+          words,
+          // Network Canvas's wording for an entry the stage brings in is what
+          // the protocol would gain anyway; only the researcher's is theirs
+          // to lose.
+          reworded:
+            localization !== undefined &&
+            words.some(
+              ({ group, key, value }) =>
+                !isEqual(
+                  value,
+                  suppliedInterfaceText(group, key, localization),
+                ),
+            ),
+        },
       );
     };
     publish();
@@ -237,6 +263,7 @@ function StageDraftPublisher() {
     identity,
     liveDraft,
     localization,
+    pendingSharedWording,
     storeApi,
     withoutProposal,
   ]);
@@ -265,9 +292,15 @@ function StageEditorActions({
   const [isStageValid, setIsStageValid] = useState(false);
 
   const stagePreviewProtocol = useCallback(() => {
-    const stage = readStageDraft().stage;
+    const { stage, interfaceText } = readStageDraft();
     if (protocol === null || stage === undefined) return undefined;
-    return buildProtocolWithStage(protocol, stage, stageId, insertAtIndex);
+    return buildProtocolWithStage(
+      protocol,
+      stage,
+      stageId,
+      insertAtIndex,
+      interfaceText,
+    );
   }, [insertAtIndex, protocol, stageId]);
 
   /**

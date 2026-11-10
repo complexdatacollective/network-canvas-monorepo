@@ -259,8 +259,19 @@ export {
 export {
   hasSuppliedWording,
   type LanguageChange,
+  SUPPLIED_LANGUAGES,
   suppliedBaseLanguage,
 } from './schemas/9/supplied-text.ts';
+// The wording a stage's proposed name is made from, in each language Network
+// Canvas supplies wording in.
+export {
+  type FinishKinds,
+  type MediaKinds,
+  type PanelSource,
+  type StageNameParts,
+  type StageNameWording,
+  stageNameWordingFor,
+} from './schemas/9/stage-wording/stage-names.ts';
 // The arguments of the Narrative Pedigree's snapshot titles, which the stage
 // editor offers the same placeholders as the schema declares.
 export {
@@ -285,6 +296,8 @@ export {
   interfaceTextAfterLanguageChange,
   interfaceTextArguments,
   type InterfaceTextUpdate,
+  interfaceTextWithUpdates,
+  sharedStageInterfaceTextUsed,
   STAGE_TYPE_INTERFACE_TEXT,
   suppliedInterfaceText,
   withInterfaceText,
@@ -430,6 +443,7 @@ export {
   type DuplicateLabel,
   findDuplicateLocalizedLabels,
   findDuplicateOptionLabels,
+  labelComparisonKey,
 } from './localization/duplicateLabels.ts';
 // Where a protocol breaks that rule, which refuses a protocol handed over but
 // not one being written.

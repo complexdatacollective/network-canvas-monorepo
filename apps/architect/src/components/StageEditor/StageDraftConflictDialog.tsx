@@ -177,13 +177,14 @@ const StageDraftConflictDialog = ({
       // Read at the moment the copy is built, from the editor's own form, so
       // the one download offered to save this work is not missing the last few
       // seconds of typing.
-      const stage = readStageDraft().stage;
+      const { stage, interfaceText } = readStageDraft();
       const withDraft = stage
         ? buildProtocolWithStage(
             protocol,
             stage,
             latest.current.stageId,
             latest.current.insertAtIndex,
+            interfaceText,
           )
         : protocol;
 

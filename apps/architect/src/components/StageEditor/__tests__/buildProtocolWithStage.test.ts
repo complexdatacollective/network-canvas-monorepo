@@ -212,4 +212,38 @@ describe('buildProtocolWithStage', () => {
     const result = await validateProtocol(built, { draft: true });
     expect(result.error?.issues).toBeUndefined();
   });
+
+  // Shared wording the stage editor holds with the stage, for entries the
+  // saved protocol does not hold yet, is what the preview has to show: the
+  // save writes it with the stage.
+  it('previews the shared wording held with the stage over Network Canvas’s', async () => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the committed all-interfaces fixture is a valid current protocol
+    const fixture = allInterfaces as unknown as CurrentProtocol;
+    const map = fixture.stages.find(({ id }) => id === 'geospatial-1');
+    if (map?.type !== 'Geospatial') throw new Error('No map stage');
+    expect(fixture.interfaceText?.geospatial).not.toHaveProperty(
+      'searchFailed',
+    );
+    const reworded = { 'en-US': 'No place matched that search' };
+    const searching = {
+      ...map,
+      mapOptions: { ...map.mapOptions, allowSearch: true },
+    };
+
+    const built = buildProtocolWithStage(
+      fixture,
+      searching,
+      map.id,
+      undefined,
+      [{ group: 'geospatial', key: 'searchFailed', value: reworded }],
+    );
+
+    expect(built.interfaceText?.geospatial?.searchFailed).toEqual(reworded);
+    expect(
+      buildProtocolWithStage(fixture, searching, map.id).interfaceText
+        ?.geospatial?.searchFailed,
+    ).not.toEqual(reworded);
+    const result = await validateProtocol(built, { draft: true });
+    expect(result.error?.issues).toBeUndefined();
+  });
 });

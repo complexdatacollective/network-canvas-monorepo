@@ -171,19 +171,26 @@ describe('the editor for the stage where a participant chooses a language', () =
     });
   });
 
-  it('starts a new stage without a heading in a language Network Canvas has no wording in', async () => {
+  it('starts a new stage without a heading or a proposed name in a language Network Canvas has no wording in', async () => {
+    const user = userEvent.setup();
     const harness = renderStageEditor({
       create: { type: 'LanguageChooser', position: 0 },
       editor: mountedAs(languageChooserStageEditor.LanguageChooser),
       localization: { defaultLocale: 'en-GB', locales: ['en-GB'] },
     });
-    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+    // en-GB is not a language Network Canvas supplies wording in, so no name
+    // is proposed: the researcher names the stage.
+    await waitFor(() =>
+      expect(stageNameInput()).not.toHaveAttribute('readonly'),
+    );
+    expect(stageNameInput()).toHaveValue('');
+    await user.type(stageNameInput(), 'Language');
 
     const saved = await harness.submit();
     // Built-in wording may hold no text while the protocol is being written;
     // the researcher writes it before the protocol can be downloaded.
     expect(saved?.stageDocument).toEqual(
-      expect.objectContaining({ title: {} }),
+      expect.objectContaining({ label: { 'en-GB': 'Language' }, title: {} }),
     );
   });
 });

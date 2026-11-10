@@ -8,13 +8,17 @@ import type {
   StageType,
 } from '@codaco/protocol-validation';
 
-import { resolveTranslation } from '../localization/localizedText.ts';
+import {
+  resolveTranslation,
+  translationText,
+} from '../localization/localizedText.ts';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
-import { generateStageLabel, STAGE_TYPE_NAMES } from './generateStageLabel.ts';
+import { generateStageLabel } from './generateStageLabel.ts';
 import {
   resolveStageQualifier,
   resolveStageSubjectName,
 } from './resolveStageNameParts.ts';
+import { stageNameLanguageOf } from './stageNameLanguage.ts';
 
 /**
  * The only part of a panel a proposed name reads — a slice of the schema's own
@@ -45,20 +49,28 @@ export type StageLabelDraft = Readonly<{
 }>;
 
 /**
- * What this stage would be called if nobody had named it.
+ * What this stage would be called if nobody had named it, or `undefined` when
+ * nothing is proposed.
  *
  * Pure, and callable without mounting anything, so a timeline, a create flow
  * and `useAutoStageName` all get the same answer. Whether the proposal is
  * WRITTEN is `useAutoStageName`'s and is deliberately not here.
  *
- * Always answers with a name, and always in English: it seeds a STORED value
- * rather than being copy — see `STAGE_TYPE_NAMES` in `generateStageLabel.ts`.
- * The answer is plain text, written as the name's default-language translation.
+ * The name is in the protocol's DEFAULT language when Network Canvas supplies
+ * wording in it (`stageNameWordingFor`), whatever language Architect itself is
+ * in, because it is written as that language's text of the stage's name. Where
+ * Network Canvas supplies none there is no proposal, rather than one in
+ * another language: the researcher names the stage. The answer is plain text,
+ * written as the name's default-language translation.
  */
 export function proposeStageLabel(
   stage: StageLabelDraft,
   context: ProtocolBuilderProtocolContext,
-): string {
+): string | undefined {
+  const language = stageNameLanguageOf(context.localization);
+  if (language === undefined) {
+    return undefined;
+  }
   const subjectName = resolveStageSubjectName(stage.subject, (entity, type) =>
     entityName(context.codebook, entity, type),
   );
@@ -73,9 +85,11 @@ export function proposeStageLabel(
     {
       resolveAssetType: (assetId) => context.assets[assetId]?.type ?? null,
     },
+    language,
   );
   return generateStageLabel({
-    typeName: STAGE_TYPE_NAMES[stage.type],
+    language,
+    typeName: language.wording.types[stage.type],
     subjectName,
     qualifier,
     existingLabels: existingStageLabels(context, stage.id),
@@ -93,21 +107,21 @@ function entityName(
 
 /**
  * The names already taken, so a proposal is unique in the interview. Compared
- * in the default language, the one a proposal is written in.
+ * as the default-language text of each name, the language a proposal is
+ * written in: a name that exists only in another language does not occupy it.
+ * Where the protocol's languages are not known, the first text a name holds.
  */
 function existingStageLabels(
   context: ProtocolBuilderProtocolContext,
   stageId: string | undefined,
 ): string[] {
+  const { localization } = context;
   return context.orderedStages
     .filter((stage) => stage.id !== stageId)
-    .map(
-      (stage) =>
-        resolveTranslation(
-          stage.label,
-          context.localization,
-          context.localization?.defaultLocale,
-        ).text,
+    .map((stage) =>
+      localization === undefined
+        ? resolveTranslation(stage.label, undefined, undefined).text
+        : translationText(stage.label, localization.defaultLocale),
     )
     .filter((label) => label !== '');
 }

@@ -26,6 +26,7 @@ import { timelineActions } from '../middleware/timeline';
 import { getProtocolOwnedHere } from './app';
 import assetManifest from './protocol/assetManifest';
 import codebook from './protocol/codebook';
+import { commitStage } from './protocol/commitStage';
 import {
   addLocales,
   changeLocale,
@@ -149,6 +150,14 @@ const activeProtocolSlice = createSlice({
   extraReducers: (builder) => {
     builder.addDefaultCase((state, action: UnknownAction) => {
       if (!state) return state;
+
+      // A saved stage's shared words, in the stage's own step.
+      if (
+        commitStage.match(action) &&
+        action.payload.interfaceText !== undefined
+      ) {
+        state.interfaceText = action.payload.interfaceText;
+      }
 
       // Apply sub-reducers to specific parts of the state.
       // Mutate the draft only when the sub-reducer produces a new reference.

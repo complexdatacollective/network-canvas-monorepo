@@ -47,6 +47,10 @@ Spanish no longer gets a Spanish protocol inside French buttons.
 - `STAGE_TYPE_INTERFACE_TEXT` names the groups each stage type shows, and
   `suppliedInterfaceText(group, key, localization)` gives Network Canvas's
   wording of one entry in a protocol's languages.
+- `sharedStageInterfaceTextUsed(protocol, stage)` names the shared interface
+  text a protocol would use with one stage saved as given, and
+  `interfaceTextWithUpdates(interfaceText, updates)` writes entries over a
+  protocol's interface text.
 
 **Architect**
 
@@ -63,8 +67,14 @@ Spanish no longer gets a Spanish protocol inside French buttons.
   its own, the section opens and closes two parts, "Specific to this stage"
   and "Shared by every stage of this kind". Shared wording is saved as you
   leave each field, because it changes every stage of that type, and switching
-  the section off resets it too. The Categorical Bin editor gains the section
-  for its shared wording.
+  the section off resets it too. The shared part follows the stage as you
+  edit it: turning on a setting that needs shared wording the protocol does
+  not hold yet, such as a map stage's search, lists that wording at once with
+  Network Canvas's text, and turning the setting off hides it again. That
+  wording is saved with the stage, as one step, and discarded if you cancel;
+  its field says so. If a collaborator saves a stage that uses the same
+  wording first, a change you made to it is saved straight away instead. The
+  Categorical Bin editor gains the section for its shared wording.
 - Every field in the section has a hint saying where the participant sees that
   text and what it is for, including when it is shown only as a tooltip.
 - The Family Pedigree editor lists all of its wording under "Specific to this
