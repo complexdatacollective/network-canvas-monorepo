@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getLocaleMetadata, sortByLanguageName } from '../localeMetadata.ts';
+import {
+  describableLocale,
+  getLocaleMetadata,
+  sortByLanguageName,
+} from '../localeMetadata.ts';
 
 const RealLocale = Intl.Locale;
 
@@ -254,6 +258,67 @@ describe('getLocaleMetadata', () => {
         },
       );
     });
+  });
+});
+
+describe('describableLocale', () => {
+  it.each([
+    ['haw', 'haw'],
+    ['yue', 'yue'],
+    ['fil', 'fil'],
+    ['chr', 'chr'],
+    ['ckb', 'ckb'],
+    ['es-419', 'es-419'],
+    ['fr-CA', 'fr-CA'],
+    ['ar-EG', 'ar-EG'],
+  ])('accepts %s', (typed, canonical) => {
+    expect(describableLocale(typed)).toBe(canonical);
+  });
+
+  it('answers the canonical tag, ignoring case and surrounding space', () => {
+    expect(describableLocale('ES-419')).toBe('es-419');
+    expect(describableLocale('zh-hant')).toBe('zh-Hant');
+    expect(describableLocale('  HAW ')).toBe('haw');
+    // An alias is answered as the tag it stands for.
+    expect(describableLocale('tl')).toBe('fil');
+  });
+
+  it.each([
+    'xx',
+    'qqq',
+    'zz',
+    'sgn',
+    'en-XX',
+    'not a tag',
+    'en_US',
+    '',
+    '   ',
+    'und',
+    'und-Latn',
+    'mul',
+    'zxx',
+    'mis',
+    'en-ZZ',
+    'en-Zzzz',
+    'en-u-ca-gregory',
+    'fr-CA-x-private',
+  ])(
+    'refuses %j, which a protocol cannot be written in or cannot be named',
+    (typed) => {
+      expect(describableLocale(typed)).toBeUndefined();
+    },
+  );
+
+  it('refuses a tag the runtime has no name for, even a well-formed one', () => {
+    stubDisplayNames(['en'], { 'en:fr': 'French' });
+    expect(describableLocale('haw')).toBeUndefined();
+    expect(describableLocale('fr')).toBe('fr');
+  });
+
+  it('names the ISO 639-1 languages from its own table without Intl.DisplayNames', () => {
+    stubIntl({ DisplayNames: undefined });
+    expect(describableLocale('de')).toBe('de');
+    expect(describableLocale('haw')).toBeUndefined();
   });
 });
 

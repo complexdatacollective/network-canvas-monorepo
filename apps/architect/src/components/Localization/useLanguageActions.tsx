@@ -238,6 +238,7 @@ export const useLanguageActions = (
         <LanguagePicker
           label={intl.formatMessage(messages.languagesLabel)}
           choices={availableChoices(declared)}
+          unavailable={declared}
           initialValue={[]}
         />
       ),
