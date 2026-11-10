@@ -11,7 +11,17 @@
 
 <!-- scene: family-pedigree-intro -->
 
-The Family Pedigree is a specialized interface designed for collecting family network data. On the Family Pedigree, the participant draws their family as a family tree on one canvas. They start as the only person on it, add each relative's parents, siblings, partners and children from the buttons around a person, and describe each new person in a side panel as they go. The interface lays the tree out as a standard pedigree.
+The Family Pedigree is a specialized interface designed for collecting family network data. It provides a structured, visual approach that allows participants to build their family tree by creating family members (nodes) and defining the relationships between them (edges).
+
+Unlike other name generators, the Family Pedigree uses a multi-step process that guides participants through building the structure of their family tree before adding detailed information about each family member.
+
+The process of building a family pedigree in Network Canvas is designed to be visual and intuitive, so that it can be completed by participants without face-to-face supervision.
+
+Participants begin with just themselves represented, and then build outwards one relative at a time, describing each person as they go.
+
+Once the pedigree is drawn, additional text or "prompts" can ask participants to nominate anyone who has a given attribute, such as a medical condition.
+
+The result is a structured record of the family that researchers and clinicians can analyze, export, or show back to the participant on the Narrative Pedigree.
 
 It suits both family-history taking, such as a quick survey of a condition across relatives, and studies of who a participant counts as family, biological, chosen or both.
 
@@ -21,9 +31,7 @@ Read the full [Family Pedigree documentation](https://documentation.networkcanva
 
 <!-- scene: family-pedigree-data -->
 
-Each family member becomes a node of the type you choose, with their name, sex assigned at birth and the other attributes you set up. Each partnership and parent-child relationship becomes an edge of one relationship type, with an attribute saying what kind it is. Siblings are not recorded directly: two people are siblings when they share a parent.
-
-Because it is ordinary network data, later stages can ask about the same people.
+Each family member becomes a node of the type you choose, with their name, sex assigned at birth and the other attributes you set up. Each partnership and parent-child relationship becomes an edge of one relationship type, with an attribute saying what kind it is. This allows the data to be used in subsequent interview steps.
 
 ## When to use it
 
@@ -99,7 +107,7 @@ The **Participant marker** is true on the participant's own node and blank on ev
 <!-- field: nodeConfiguration.genderIdentity.attribute -->
 <!-- scene: family-pedigree-gender -->
 
-A new stage asks each person's gender identity, and the participant must answer it before a person is saved. Choose the attribute that holds the answer, then **Edit options** to give each option its kinship words: feminine (mother, sister), masculine (father, brother), neutral (parent, sibling), or not known.
+With **Ask about gender identity** switched on, a new stage will ask each person's gender identity, and the participant must answer it before a person is saved. Choose the attribute that holds the answer, then **Edit options** to give each option its kinship words: feminine (mother, sister), masculine (father, brother), neutral (parent, sibling), or not known.
 
 With **Ask about gender identity** switched off, the question is not asked, and words such as mother or brother follow each person's sex assigned at birth instead.
 
