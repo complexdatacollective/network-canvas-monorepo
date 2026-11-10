@@ -242,7 +242,6 @@ export { familyPedigreeWordingIn } from './schemas/9/stage-wording/family-pedigr
 // The Family Pedigree option labels Network Canvas supplies, written into a
 // protocol by Architect.
 export {
-  hasSuppliedOptionLabels,
   isSuppliedOptionLabelSet,
   SUPPLIED_PEDIGREE_OPTION_LABELS,
   type SuppliedOptionLabelSet,
@@ -292,7 +291,6 @@ export {
   defaultFinishSessionFields,
   defaultFinishSessionText,
   type FinishSessionText,
-  hasDefaultFinishSessionText,
   defaultFinishSessionTextAfterLanguageChange,
 } from './schemas/9/finish-session-defaults.ts';
 export {

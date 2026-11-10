@@ -81,7 +81,7 @@ describe('the roster panel title Network Canvas supplies', () => {
       ]);
     });
 
-    it('is the researcher’s once they write it in that default language', () => {
+    it('is still filled into a new language once the researcher writes it in that default language', () => {
       const roster = {
         type: 'NameGeneratorRoster',
         panelTitle: { 'es-MX': 'Disponibles', 'es': 'Disponibles para añadir' },
@@ -91,7 +91,16 @@ describe('the roster panel title Network Canvas supplies', () => {
           before: { defaultLocale: 'es-MX', locales: ['es-MX', 'es'] },
           after: { defaultLocale: 'es-MX', locales: ['es-MX', 'es', 'fr'] },
         }),
-      ).toEqual([]);
+      ).toEqual([
+        {
+          path: ['panelTitle'],
+          value: {
+            'es-MX': 'Disponibles',
+            'es': 'Disponibles para añadir',
+            'fr': 'Éléments disponibles',
+          },
+        },
+      ]);
     });
   });
 
@@ -106,7 +115,7 @@ describe('the roster panel title Network Canvas supplies', () => {
     panelTitle,
   });
 
-  it('is filled into a new language while it is still the supplied text in the default language', () => {
+  it('is filled into a new language', () => {
     expect(
       suppliedStageTextAfterLanguageChange(roster({ en: 'Available to add' }), {
         before: english,
@@ -162,13 +171,108 @@ describe('the roster panel title Network Canvas supplies', () => {
     ]);
   });
 
-  it('is the researcher’s once they have reworded it', () => {
+  it('is filled into a new language even once the researcher has reworded it in the default language', () => {
     expect(
       suppliedStageTextAfterLanguageChange(roster({ en: 'Services' }), {
         before: english,
-        after: { defaultLocale: 'en', locales: ['en', 'fr'] },
+        after: { defaultLocale: 'en', locales: ['en', 'fr', 'de'] },
       }),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        path: ['panelTitle'],
+        value: {
+          en: 'Services',
+          fr: 'Éléments disponibles',
+          de: 'Zum Hinzufügen verfügbar',
+        },
+      },
+    ]);
+  });
+
+  it('never overwrites a translation', () => {
+    // French is the researcher's own; German was written before it was
+    // declared, as an open stage editor can hold it.
+    expect(
+      suppliedStageTextAfterLanguageChange(
+        roster({ en: 'Services', fr: 'Nos services', de: 'Dienste' }),
+        {
+          before: { defaultLocale: 'en', locales: ['en', 'fr'] },
+          after: { defaultLocale: 'en', locales: ['en', 'fr', 'de', 'es'] },
+        },
+      ),
+    ).toEqual([
+      {
+        path: ['panelTitle'],
+        value: {
+          en: 'Services',
+          fr: 'Nos services',
+          de: 'Dienste',
+          es: 'Disponibles para añadir',
+        },
+      },
+    ]);
+  });
+
+  it('moves the researcher’s own translation unchanged to a corrected language', () => {
+    expect(
+      suppliedStageTextAfterLanguageChange(
+        roster({ en: 'Available to add', fr: 'Nos services' }),
+        {
+          before: { defaultLocale: 'en', locales: ['en', 'fr'] },
+          after: { defaultLocale: 'en', locales: ['en', 'de'] },
+          renamed: { fr: 'de' },
+        },
+      ),
+    ).toEqual([
+      {
+        path: ['panelTitle'],
+        value: { en: 'Available to add', de: 'Nos services' },
+      },
+    ]);
+  });
+
+  it('gains nothing in a new language Network Canvas has no wording in', () => {
+    expect(
+      suppliedStageTextAfterLanguageChange(roster({ en: 'Services' }), {
+        before: english,
+        after: { defaultLocale: 'en', locales: ['en', 'ja', 'fr-CA'] },
+      }),
+    ).toEqual([{ path: ['panelTitle'], value: { en: 'Services' } }]);
+  });
+
+  it('becomes the corrected language’s text where it is Network Canvas’s, even beside reworded text in the default language', () => {
+    expect(
+      suppliedStageTextAfterLanguageChange(
+        roster({ en: 'Services', fr: 'Éléments disponibles' }),
+        {
+          before: { defaultLocale: 'en', locales: ['en', 'fr'] },
+          after: { defaultLocale: 'en', locales: ['en', 'de'] },
+          renamed: { fr: 'de' },
+        },
+      ),
+    ).toEqual([
+      {
+        path: ['panelTitle'],
+        value: { en: 'Services', de: 'Zum Hinzufügen verfügbar' },
+      },
+    ]);
+  });
+
+  it('fills no gap in a language the protocol already had, as when the default changes or another language is removed', () => {
+    const missingFrench = roster({ en: 'Available to add' });
+    const both = { defaultLocale: 'en', locales: ['en', 'fr'] };
+    expect(
+      suppliedStageTextAfterLanguageChange(missingFrench, {
+        before: both,
+        after: { defaultLocale: 'fr', locales: ['en', 'fr'] },
+      }),
+    ).toEqual([{ path: ['panelTitle'], value: { en: 'Available to add' } }]);
+    expect(
+      suppliedStageTextAfterLanguageChange(missingFrench, {
+        before: { defaultLocale: 'en', locales: ['en', 'fr', 'de'] },
+        after: both,
+      }),
+    ).toEqual([{ path: ['panelTitle'], value: { en: 'Available to add' } }]);
   });
 });
 

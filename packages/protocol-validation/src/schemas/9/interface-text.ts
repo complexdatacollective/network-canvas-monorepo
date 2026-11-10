@@ -39,7 +39,6 @@ import { showsAtRiskStatuses } from './stage-wording/narrative-pedigree.ts';
 import { hasEdgeTypes, hasGroups } from './stage-wording/network-composer.ts';
 import { requireSuppliedPlacements } from './supplied-stage-setting.ts';
 import {
-  isStillSupplied,
   type LanguageChange,
   suppliedTextAfterLanguageChange,
   suppliedTextFor,
@@ -743,35 +742,33 @@ export type InterfaceTextUpdate = Readonly<{
 }>;
 
 /**
- * The interface text that follows a change to the protocol's languages (see
- * `suppliedTextAfterLanguageChange`), as it reads after it: each entry whose
- * default-language text before the change is still Network Canvas's. One the
- * researcher has reworded is theirs, and is not among them.
+ * Every interface text entry the protocol holds, as it reads after a change
+ * to the protocol's languages (see `suppliedTextAfterLanguageChange`): a
+ * language the protocol did not have gains Network Canvas's wording for each
+ * entry with no translation in it, whether or not the researcher has reworded
+ * the entry, and Network Canvas's wording for a corrected language becomes its
+ * wording for the language as corrected.
  */
 export const interfaceTextAfterLanguageChange = (
   text: InterfaceText,
   change: LanguageChange,
-): readonly InterfaceTextUpdate[] => {
-  const { defaultLocale } = change.before;
-  return GROUP_NAMES.flatMap((group) =>
+): readonly InterfaceTextUpdate[] =>
+  GROUP_NAMES.flatMap((group) =>
     Object.entries(INTERFACE_TEXT_GROUPS[group].entries).flatMap(
       ([key, entry]: [string, InterfaceTextEntry]) => {
         const value = text[group]?.[key];
-        const supplied = (locale: LocaleTag) => writtenIn(entry, locale);
-        if (
-          value === undefined ||
-          !isStillSupplied(value, supplied, defaultLocale)
-        ) {
-          return [];
-        }
+        if (value === undefined) return [];
         return [
           {
             group,
             key,
-            value: suppliedTextAfterLanguageChange(value, supplied, change),
+            value: suppliedTextAfterLanguageChange(
+              value,
+              (locale: LocaleTag) => writtenIn(entry, locale),
+              change,
+            ),
           },
         ];
       },
     ),
   );
-};

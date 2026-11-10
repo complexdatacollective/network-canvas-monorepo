@@ -268,33 +268,42 @@ describe('addLocales', () => {
       expect((await validateProtocol(protocol)).success).toBe(true);
     });
 
-    it('stays untranslated once the researcher has rewritten it', () => {
+    it('gets that text in each new language even once the researcher has rewritten it, and keeps their translations', () => {
       const edited = withSuppliedFinish();
       const finish = edited.stages.at(-1);
       if (finish?.type !== 'FinishSession') throw new Error('No finish stage');
+      edited.localization = { defaultLocale: 'en', locales: ['en', 'fr'] };
       edited.stages = [
         ...edited.stages.slice(0, -1),
-        { ...finish, content: { en: 'Thanks for taking part.' } },
+        {
+          ...finish,
+          label: { en: 'Wrap up' },
+          content: { en: 'Thanks for taking part.', fr: 'Merci beaucoup.' },
+          finishedContent: { en: 'All done.' },
+        },
       ];
-      const protocol = protocolOf(addLocales(edited, ['fr']));
+      const protocol = protocolOf(addLocales(edited, ['de', 'ja']));
       const translated = protocol.stages.at(-1);
       if (translated?.type !== 'FinishSession') {
         throw new Error('No finish stage');
       }
-      // The researcher's text stays as written; the stage's own settings,
-      // which Network Canvas supplies, are translated.
       expect(protocol.stages.slice(0, -1)).toEqual(edited.stages.slice(0, -1));
+      // French was already there, so it is neither overwritten nor filled
+      // in; Japanese has no supplied text.
       expect(translated).toMatchObject({
-        content: { en: 'Thanks for taking part.' },
+        label: { en: 'Wrap up', de: DEFAULT_FINISH_SESSION_TEXT.de.label },
+        content: {
+          en: 'Thanks for taking part.',
+          fr: 'Merci beaucoup.',
+          de: DEFAULT_FINISH_SESSION_TEXT.de.content,
+        },
+        finishedContent: {
+          en: 'All done.',
+          de: DEFAULT_FINISH_SESSION_TEXT.de.finishedContent,
+        },
       });
-      expect(translated.content).not.toHaveProperty('fr');
-      for (const setting of [
-        'finishLabel',
-        'finishConfirmation',
-        'finishFailed',
-      ] as const) {
-        expect(translated[setting]).toHaveProperty('fr');
-      }
+      expect(Object.keys(translated.label)).toEqual(['en', 'de']);
+      expect(Object.keys(translated.finishedContent)).toEqual(['en', 'de']);
     });
   });
 
@@ -315,7 +324,7 @@ describe('addLocales', () => {
       );
     });
 
-    it('stay untranslated once the researcher has reworded one', () => {
+    it('get their supplied labels in each new language even once the researcher has reworded one', () => {
       const reworded = withPedigree((value) =>
         value === 'intersex'
           ? { en: 'Intersex or variation of sex' }
@@ -326,7 +335,13 @@ describe('addLocales', () => {
       );
       const protocol = protocolOf(addLocales(reworded, ['es']));
       expect(labelsOf(protocol, 'node', 'relative', 'sex')).toEqual(
-        labelsOf(reworded, 'node', 'relative', 'sex'),
+        PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+          en:
+            value === 'intersex'
+              ? 'Intersex or variation of sex'
+              : suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
+          es: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'es'),
+        })),
       );
     });
   });
@@ -686,7 +701,7 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
     expect((await validateProtocol(protocol)).success).toBe(true);
   });
 
-  it('moves unchanged with its language once the researcher has rewritten it', () => {
+  it('moves what the researcher wrote unchanged, and gives what is still Network Canvas’s the corrected language’s wording', () => {
     const reworded = withPedigree((value) =>
       value === 'intersex'
         ? { en: 'Intersex or variation of sex' }
@@ -697,10 +712,29 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
     );
     const protocol = protocolOf(changeLocale(reworded, 'en', 'de'));
     expect(labelsOf(protocol, 'node', 'relative', 'sex')).toEqual(
-      labelsOf(reworded, 'node', 'relative', 'sex')?.map((label) => ({
-        de: (label as Record<string, string>).en,
+      PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+        de:
+          value === 'intersex'
+            ? 'Intersex or variation of sex'
+            : suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'de'),
       })),
     );
+  });
+
+  it('changes nothing but the default when the default changes, and nothing but the removed translations when a language is removed', () => {
+    // A protocol whose French lacks the supplied labels, as when a researcher
+    // cleared them: neither operation adds a language, so neither fills them.
+    const english = withPedigree();
+    const french: CurrentProtocol = {
+      ...english,
+      localization: { defaultLocale: 'en', locales: ['en', 'fr', 'de'] },
+    };
+    const frenchDefault = protocolOf(setDefaultLocale(french, 'fr'));
+    expect(frenchDefault.codebook).toEqual(french.codebook);
+    expect(frenchDefault.stages).toEqual(french.stages);
+    const withoutGerman = protocolOf(removeLocale(french, 'de'));
+    expect(withoutGerman.codebook).toEqual(french.codebook);
+    expect(withoutGerman.stages).toEqual(french.stages);
   });
 
   it('leaves a new default language with no built-in labels without them, and still fills in a language added later', () => {
@@ -758,12 +792,12 @@ describe('a roster stage’s supplied panel title', () => {
     ).toEqual({ de: 'Zum Hinzufügen verfügbar' });
   });
 
-  it('is left to the researcher once they have changed it', () => {
+  it('is filled into a new language even once the researcher has changed it', () => {
     expect(
       panelTitleOf(
-        protocolOf(addLocales(withRoster({ en: 'Services' }), ['fr'])),
+        protocolOf(addLocales(withRoster({ en: 'Services' }), ['fr', 'ja'])),
       ),
-    ).toEqual({ en: 'Services' });
+    ).toEqual({ en: 'Services', fr: 'Éléments disponibles' });
   });
 
   // Network Canvas writes its wording only in a language it has it in, so
@@ -798,9 +832,30 @@ describe('the interview’s shared words', () => {
     ).toEqual({ de: 'Zurück' });
   });
 
-  it('are left to the researcher once they have reworded them', () => {
+  it('are filled into a new language even once the researcher has reworded them', () => {
     expect(
       backOf(protocolOf(addLocales(withBack({ en: 'Previous' }), ['fr']))),
+    ).toEqual({ en: 'Previous', fr: 'Retour' });
+  });
+
+  it('lose what is still Network Canvas’s, and keep the researcher’s own words, when their language is corrected to one Network Canvas has no wording in', () => {
+    const protocol = withBack({ en: 'Back' });
+    const reworded = {
+      ...protocol,
+      interfaceText: {
+        navigation: { back: { en: 'Back' }, continue: { en: 'Next' } },
+      },
+    } as unknown as CurrentProtocol;
+    const corrected = protocolOf(changeLocale(reworded, 'en', 'hu'));
+    expect(corrected.interfaceText?.navigation).toEqual({
+      back: {},
+      continue: { hu: 'Next' },
+    });
+  });
+
+  it('gain nothing in a new language Network Canvas has no wording in', () => {
+    expect(
+      backOf(protocolOf(addLocales(withBack({ en: 'Previous' }), ['ja']))),
     ).toEqual({ en: 'Previous' });
   });
 });
