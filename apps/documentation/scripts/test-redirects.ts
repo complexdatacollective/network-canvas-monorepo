@@ -62,9 +62,22 @@ const redirectTests: RedirectTest[] = [
     description: 'Installation guide redirect',
   },
   {
+    from: '/design-protocols/interface-documentation/network-composer',
+    expectedDestination:
+      '/en/design-protocols/interface-documentation/network-composer',
+    description: 'Page path without a language gains the reader language',
+  },
+  {
+    from: '/asd/design-protocols/interface-documentation/network-composer',
+    expectedDestination:
+      '/en/design-protocols/interface-documentation/network-composer',
+    description: 'Unsupported first segment is replaced by the reader language',
+  },
+  {
     from: '/some-new-page',
-    expectedDestination: '/en/get-started/network-canvas',
-    description: 'Catch-all fallback for unknown legacy paths',
+    expectedDestination: '/en',
+    description:
+      'Unknown single-segment path lands on the reader language home',
   },
 
   // Legacy flat splat rules (path-preserving) and the exact-match rules that
@@ -172,9 +185,9 @@ async function testRedirect(
       ? new URL(actualLocation).pathname
       : actualLocation;
 
-    // Check if redirect is correct (301 or 302 are both acceptable)
-    const isRedirect =
-      actualStatus === 301 || actualStatus === 302 || actualStatus === 308;
+    // Any redirect status is acceptable: netlify.toml answers 301, and the
+    // locale edge function answers 307 because its answer depends on the reader
+    const isRedirect = [301, 302, 307, 308].includes(actualStatus);
     const destinationMatches = normalizedActual === normalizedExpected;
 
     return {
