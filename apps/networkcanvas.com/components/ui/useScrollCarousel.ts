@@ -509,6 +509,10 @@ export function useScrollCarousel(
       const current = swipe;
       swipe = null;
       if (!current?.capturing) {
+        // The swipe and its momentum are one movement: one that started
+        // outside the section and is carried into it lands on the first
+        // card it reaches, even when the finger had already crossed in.
+        if (current) lastPosition = current.startPosition;
         flinging = true;
         return;
       }
