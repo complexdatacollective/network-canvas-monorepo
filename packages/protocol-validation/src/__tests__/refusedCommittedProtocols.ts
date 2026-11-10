@@ -14,7 +14,7 @@ const STAGE_NAME_TOO_LONG = `but a stage name may be at most ${STAGE_LABEL_MAX_L
  * Network Canvas does not shorten a stage name: its researcher does, in the
  * version of Architect that made the protocol. These are not edited here.
  */
-export const REFUSED_COMMITTED_PROTOCOLS: Readonly<Record<string, string>> = {
+const REFUSED_COMMITTED_PROTOCOLS: Readonly<Record<string, string>> = {
   'apps/networkcanvas.com/public/protocols/protocol-gallery/GATE_10-22-2025.netcanvas':
     STAGE_NAME_TOO_LONG,
   'apps/networkcanvas.com/public/protocols/protocol-gallery/ROBUST_10-22-2025.netcanvas':

@@ -127,11 +127,8 @@ const ruleMessages = {
  * Architect's words, where it has words of its own for one: the length a
  * stage's name may be (`STAGE_LABEL_TOO_LONG`).
  */
-const declaredRuleMessage = (
-  issue: Readonly<{ params?: unknown }>,
-  intl: IntlShape,
-) => {
-  const { params } = issue;
+const declaredRuleMessage = (issue: object, intl: IntlShape) => {
+  const params: unknown = Reflect.get(issue, 'params');
   return typeof params === 'object' &&
     params !== null &&
     Reflect.get(params, 'rule') === STAGE_LABEL_TOO_LONG

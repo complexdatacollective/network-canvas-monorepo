@@ -21,48 +21,48 @@ import { useLanguageName } from './Localization/useLanguageName';
 const messages = defineMessages({
   title: {
     id: 'architect.labelCollisions.title',
-    defaultMessage: 'Some labels read the same',
+    defaultMessage: 'Some labels are the same',
     description:
-      'Title of the warning on the stage list shown while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have labels a participant would read as the same text in one of the protocol’s languages. Researcher-facing.',
+      'Title of the warning on the stage list shown while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have the same label in one of the protocol’s languages: a participant would see the same text, perhaps differing only in capital letters or spaces at either end. Researcher-facing.',
   },
   description: {
     id: 'architect.labelCollisions.description',
     defaultMessage:
       'Participants could not tell these apart. The protocol can’t be downloaded until each pair has different labels.',
     description:
-      'Shown under the title of the warning about labels that read the same, above the list of pairs. “These” and “each pair” are the pairs of answer options or diseases listed below it. Researcher-facing.',
+      'Shown under the title of the warning about labels that are the same, above the list of pairs. “These” and “each pair” are the pairs of answer options or diseases listed below it. Researcher-facing.',
   },
   optionPair: {
     id: 'architect.labelCollisions.optionPair',
     defaultMessage:
-      'Options {first, number} and {second, number} of the attribute “{attribute}” read the same in {language}: “{firstLabel}” and “{secondLabel}”.',
+      'Options {first, number} and {second, number} of the attribute “{attribute}” have the same label in {language}: “{firstLabel}” and “{secondLabel}”.',
     description:
-      'One item in the warning about labels that read the same: two answer options of one attribute (a question in the codebook with a fixed list of answers) whose labels a participant reading the language would see as the same text. first and second are the options’ positions in the attribute’s list, counting from 1. attribute is the attribute’s name. language is the name of the language, for example “Spanish”. firstLabel and secondLabel are the two labels as a participant reads them in that language; they may differ only in capital letters or spaces.',
+      'One item in the warning about labels that are the same: two answer options of one attribute (a question in the codebook with a fixed list of answers) whose labels a participant reading the language would see as the same text. first and second are the options’ positions in the attribute’s list, counting from 1. attribute is the attribute’s name. language is the name of the language, for example “Spanish”. firstLabel and secondLabel are the two labels as a participant reads them in that language; they may differ only in capital letters or spaces.',
   },
   diseasePair: {
     id: 'architect.labelCollisions.diseasePair',
     defaultMessage:
-      'Diseases {first, number} and {second, number} of the stage “{stage}” read the same in {language}: “{firstLabel}” and “{secondLabel}”.',
+      'Diseases {first, number} and {second, number} of the stage “{stage}” have the same label in {language}: “{firstLabel}” and “{secondLabel}”.',
     description:
-      'One item in the warning about labels that read the same: two diseases (conditions a participant reports for their family members) of a Narrative Pedigree stage whose labels a participant reading the language would see as the same text. first and second are the diseases’ positions in the stage’s list, counting from 1. stage is the stage’s name. language is the name of the language, for example “Spanish”. firstLabel and secondLabel are the two labels as a participant reads them in that language; they may differ only in capital letters or spaces.',
+      'One item in the warning about labels that are the same: two diseases (conditions a participant reports for their family members) of a Narrative Pedigree stage whose labels a participant reading the language would see as the same text. first and second are the diseases’ positions in the stage’s list, counting from 1. stage is the stage’s name. language is the name of the language, for example “Spanish”. firstLabel and secondLabel are the two labels as a participant reads them in that language; they may differ only in capital letters or spaces.',
   },
   editAttribute: {
     id: 'architect.labelCollisions.editAttribute',
     defaultMessage: 'Edit the attribute “{attribute}”',
     description:
-      'Link after an item in the warning about labels that read the same, when the two options read the same in the protocol’s default language. It opens the codebook editor where the attribute’s options are edited. attribute is the attribute’s name.',
+      'Link after an item in the warning about labels that are the same, when the two options have the same label in the protocol’s default language. It opens the codebook editor where the attribute’s options are edited. attribute is the attribute’s name.',
   },
   editStage: {
     id: 'architect.labelCollisions.editStage',
     defaultMessage: 'Edit the stage “{stage}”',
     description:
-      'Link after an item in the warning about labels that read the same, when the two diseases read the same in the protocol’s default language. It opens the editor of the stage the diseases belong to. stage is the stage’s name.',
+      'Link after an item in the warning about labels that are the same, when the two diseases have the same label in the protocol’s default language. It opens the editor of the stage the diseases belong to. stage is the stage’s name.',
   },
   translate: {
     id: 'architect.labelCollisions.translate',
     defaultMessage: 'Edit the translations into {language}',
     description:
-      'Link after an item in the warning about labels that read the same, when the two labels read the same only in a language other than the protocol’s default language, often because one of them has no translation into it. It opens the translation table showing that language beside the default one. language is the name of that language, for example “Spanish”.',
+      'Link after an item in the warning about labels that are the same, when the two labels are the same only in a language other than the protocol’s default language, often because one of them has no translation into it. It opens the translation table showing that language beside the default one. language is the name of that language, for example “Spanish”.',
   },
 });
 

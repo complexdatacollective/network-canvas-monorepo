@@ -22,18 +22,18 @@ const utilityMessages = defineMessages({
       '{location, select, ego {Two attributes on the interviewee are both named "{name}".} named {Two attributes on "{ownerLabel}" are both named "{name}".} other {Two attributes are both named "{name}".}} That was allowed when this protocol was made, but they cannot both exist now — a researcher reading a dropdown could not tell them apart. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.',
     description: 'The message text in utils / describeMigrationFailure.',
   },
-  twoOptionsReadTheSame: {
-    id: 'architect.utility.utils.describeMigrationFailure.twoOptionsReadTheSame',
-    defaultMessage: 'Two options read the same',
+  twoOptionsHaveTheSameLabel: {
+    id: 'architect.utility.utils.describeMigrationFailure.twoOptionsHaveTheSameLabel',
+    defaultMessage: 'Two options have the same label',
     description:
-      'Title of the dialog shown when Architect cannot open a protocol made with an older version because two answer options of one attribute have labels a participant would read as the same text.',
+      'Title of the dialog shown when Architect cannot open a protocol made with an older version because two answer options of one attribute have the same label: a participant would see the same text, perhaps differing only in capital letters or spaces at either end.',
   },
-  optionsReadTheSameWhenMade: {
-    id: 'architect.utility.utils.describeMigrationFailure.optionsReadTheSameWhenMade',
+  optionsHaveTheSameLabelWhenMade: {
+    id: 'architect.utility.utils.describeMigrationFailure.optionsHaveTheSameLabelWhenMade',
     defaultMessage:
-      'Options {first, number} and {second, number} of the attribute “{attribute}” read the same: “{firstLabel}” and “{secondLabel}”. That was allowed when this protocol was made, but participants could not tell them apart. Open this protocol in the version of Architect that created it, give the options different labels, then open it here again.',
+      'Options {first, number} and {second, number} of the attribute “{attribute}” have the same label: “{firstLabel}” and “{secondLabel}”. That was allowed when this protocol was made, but participants could not tell them apart. Open this protocol in the version of Architect that created it, give the options different labels, then open it here again.',
     description:
-      'Shown when Architect cannot open a protocol made with an older version because two answer options of one attribute (a question in the codebook with a fixed list of answers) have labels a participant would read as the same text: written the same, or differing only in capital letters or spaces at either end. first and second are the options’ positions in the list, counting from 1. attribute is the attribute’s name. firstLabel and secondLabel are the two labels. Architect does not change the labels itself: the researcher changes them in the older Architect.',
+      'Shown when Architect cannot open a protocol made with an older version because two answer options of one attribute (a question in the codebook with a fixed list of answers) have the same label as a participant would see it: written the same, or differing only in capital letters or spaces at either end. first and second are the options’ positions in the list, counting from 1. attribute is the attribute’s name. firstLabel and secondLabel are the two labels. Architect does not change the labels itself: the researcher changes them in the older Architect.',
   },
   stageNameTooLong: {
     id: 'architect.utility.utils.describeMigrationFailure.stageNameTooLong',
@@ -145,7 +145,7 @@ const locateCollision = (
 /**
  * A refusal of something the protocol holds that its version allowed and the
  * current one does not, which Architect leaves to the researcher to change:
- * two options that read the same, or a stage name too long to show. Read from
+ * two options with the same label, or a stage name too long to show. Read from
  * the refused result's own issues (`MigrationResultInvalidError`), which carry
  * what the sentence names.
  */
@@ -163,9 +163,9 @@ const describeRefusedContent = (
     };
     if (code === DUPLICATE_LABEL && params.kind === 'option') {
       return {
-        title: createMessageError(utilityMessages.twoOptionsReadTheSame),
+        title: createMessageError(utilityMessages.twoOptionsHaveTheSameLabel),
         message: createMessageError(
-          utilityMessages.optionsReadTheSameWhenMade,
+          utilityMessages.optionsHaveTheSameLabelWhenMade,
           {
             first: text('first'),
             second: text('second'),

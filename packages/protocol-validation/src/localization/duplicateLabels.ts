@@ -16,7 +16,7 @@ import { resolveLocalizedString } from './resolveLocalizedString.ts';
  * participant. Surrounding spaces are trimmed: a rendered label shows none of
  * them, so `Close` and `Close ` read the same.
  */
-export const labelComparisonKey = (label: string): string =>
+const labelComparisonKey = (label: string): string =>
   normalizeForComparison(label.trim());
 
 export type DuplicateLabel = Readonly<{

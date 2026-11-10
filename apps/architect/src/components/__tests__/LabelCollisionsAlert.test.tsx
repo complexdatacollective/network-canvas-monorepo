@@ -132,10 +132,10 @@ describe('a change of default language that makes two labels read the same', () 
     store.dispatch(setProtocolDefaultLocale({ locale: 'fr' }));
     renderAlert(store);
 
-    expect(screen.getByText('Some labels read the same')).toBeVisible();
+    expect(screen.getByText('Some labels are the same')).toBeVisible();
     expect(
       screen.getByText(
-        'Options 1 and 2 of the attribute “living_status” read the same in Spanish: “B” and “B”.',
+        'Options 1 and 2 of the attribute “living_status” have the same label in Spanish: “B” and “B”.',
       ),
     ).toBeVisible();
     expect(
@@ -158,7 +158,7 @@ describe('a change of default language that makes two labels read the same', () 
     const store = makeStore();
     store.dispatch(setProtocolDefaultLocale({ locale: 'fr' }));
     renderAlert(store);
-    expect(screen.getByText('Some labels read the same')).toBeVisible();
+    expect(screen.getByText('Some labels are the same')).toBeVisible();
 
     act(() => {
       store.dispatch(
@@ -174,7 +174,7 @@ describe('a change of default language that makes two labels read the same', () 
     });
 
     expect(getLabelCollisions(store.getState())).toEqual([]);
-    expect(screen.queryByText('Some labels read the same')).toBeNull();
+    expect(screen.queryByText('Some labels are the same')).toBeNull();
     expect(findDownloadRefusal(current(store))).toBeNull();
     await expect(bundleProtocol(current(store))).resolves.toBeInstanceOf(Blob);
   });

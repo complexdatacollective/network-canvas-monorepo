@@ -158,9 +158,9 @@ describe('describeMigrationFailure', () => {
       };
     });
 
-    expect(messageText(title)).toBe('Two options read the same');
+    expect(messageText(title)).toBe('Two options have the same label');
     expect(messageText(message)).toBe(
-      'Options 1 and 2 of the attribute “Closeness” read the same: “Close” and “close ”. That was allowed when this protocol was made, but participants could not tell them apart. Open this protocol in the version of Architect that created it, give the options different labels, then open it here again.',
+      'Options 1 and 2 of the attribute “Closeness” have the same label: “Close” and “close ”. That was allowed when this protocol was made, but participants could not tell them apart. Open this protocol in the version of Architect that created it, give the options different labels, then open it here again.',
     );
     expect(detail).toContain('"Closeness"');
   });

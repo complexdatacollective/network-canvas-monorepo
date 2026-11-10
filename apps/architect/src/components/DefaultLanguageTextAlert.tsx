@@ -21,14 +21,14 @@ const messages = defineMessages({
     id: 'architect.finishStageText.cannotBeDownloadedYet',
     defaultMessage: 'This protocol can’t be downloaded yet',
     description:
-      'Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, while Network Canvas’s built-in wording has no text in that language, or while two labels participants choose between read the same.',
+      'Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, while Network Canvas’s built-in wording has no text in that language, or while two labels participants choose between are the same.',
   },
   labelCollisions: {
     id: 'architect.labelCollisions.downloadRefused',
     defaultMessage:
-      'Some answer options or diseases have labels that read the same in one of the protocol’s languages, so participants could not tell them apart. The Stages page lists them. The protocol can’t be downloaded until each pair has different labels.',
+      'Some answer options or diseases have the same label in one of the protocol’s languages, so participants could not tell them apart. The Stages page lists them. The protocol can’t be downloaded until each pair has different labels.',
     description:
-      'Shown in the dialog that refuses to download (or send) a protocol while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have labels a participant would read as the same text in one of the protocol’s languages: written the same, differing only in capital letters or spaces at either end, or because one has no translation in that language and shows another language’s text instead. Researcher-facing. “The Stages page” is the Architect page listing the protocol’s stages, where a notice names each pair.',
+      'Shown in the dialog that refuses to download (or send) a protocol while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have the same label in one of the protocol’s languages, as a participant would see it: written the same, differing only in capital letters or spaces at either end, or because one has no translation in that language and shows another language’s text instead. Researcher-facing. “The Stages page” is the Architect page listing the protocol’s stages, where a notice names each pair.',
   },
   missingBuiltInWording: {
     id: 'architect.builtInWording.missingInDefaultLanguage',
