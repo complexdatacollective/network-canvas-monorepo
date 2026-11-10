@@ -143,8 +143,9 @@ Localization:
   it, by one space and trims the ends, unless that would leave the text
   blank, and its migration notes say so. `collectLocalizedStrings` reports
   each string's `lines`. New exports: the `LocalizedTextLines` and
-  `LocalizedTextShape` types, `localizedTextShapeAt` (the shape a schema
-  declares at a path) and `asOneLine`.
+  `LocalizedTextShape` types and `localizedTextShapeAt` (the shape a schema
+  declares at a path). What counts as a line break is defined once, in
+  `@codaco/shared-consts`.
 - A localized string needs a translation in at least one declared language, not
   in every language and not necessarily in the default one. A missing
   translation, in the default language or any other, is a warning from
