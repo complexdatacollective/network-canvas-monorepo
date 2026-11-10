@@ -58,7 +58,17 @@ Schema 9:
   field's `prompt`), gets its attribute's name (or its ID) as one, escaped so
   that markdown shows it as written, and wrapped the same way. An empty
   optional text that schema 9 requires to be non-empty is removed, as are
-  Network Composer scale end labels that were not strings. Its migration notes
+  Network Composer scale end labels that were not strings. Required text that
+  schema 8 accepted empty or blank is filled in, so every protocol schema 8
+  accepted migrates: a stage name becomes `Stage` and its position (as the v7
+  to v8 migration names a stage with none); an option label becomes the
+  option's value (`Yes` or `No` for a Boolean attribute, else `Option` and its
+  position when the value is blank too); a prompt takes its stage's name; a
+  Name Generator side panel title becomes `Panel` and its position; a Name
+  Generator Roster card or sort label takes its attribute's name; and a
+  Narrative Pedigree condition label takes the name of the attribute that
+  records it, numbered if another condition on the stage already has that
+  label. Only text changes, never an option value or ID. Its migration notes
   tell researchers what the new version allows, that the text is recorded as
   English, so they should confirm the default language and change it in
   Architect if the protocol is written in another one, and which empty

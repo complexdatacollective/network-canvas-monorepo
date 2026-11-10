@@ -681,8 +681,8 @@ describe('v8 to v9 localization migration', () => {
     });
 
     // A participant chooses between options by their labels, so an empty one
-    // is wrapped like any other required text and validation reports it.
-    it('wraps an empty option label, so validation reports it', () => {
+    // takes the option's value, which schema 8 accepted and schema 9 needs.
+    it('gives an empty option label the option value', () => {
       const document = schema8Protocol();
       const option = [
         'codebook',
@@ -696,10 +696,9 @@ describe('v8 to v9 localization migration', () => {
       ];
       setAt(document, option, '');
 
-      expect(getAt(migrateStep(document), option)).toEqual({ en: '' });
-      expect(() => migrateProtocol(document, 9)).toThrow(
-        MigrationResultInvalidError,
-      );
+      expect(getAt(migrateProtocol(document, 9), option)).toEqual({
+        en: 'friend',
+      });
     });
 
     it('leaves out an optional field that may not be empty', () => {
@@ -713,15 +712,15 @@ describe('v8 to v9 localization migration', () => {
       expect(getAt(migrated, prompt)).not.toHaveProperty('otherVariablePrompt');
     });
 
-    it('wraps a required field that may not be empty, so validation reports it', () => {
+    it('gives an empty stage name "Stage" and its position', () => {
       const document = schema8Protocol();
-      const label = [...stagePath(document, 'information'), 'label'];
+      const stage = stagePath(document, 'information');
+      const label = [...stage, 'label'];
       setAt(document, label, '');
 
-      expect(getAt(migrateStep(document), label)).toEqual({ en: '' });
-      expect(() => migrateProtocol(document, 9)).toThrow(
-        MigrationResultInvalidError,
-      );
+      expect(getAt(migrateProtocol(document, 9), label)).toEqual({
+        en: `Stage ${Number(stage.at(-1)) + 1}`,
+      });
     });
   });
 

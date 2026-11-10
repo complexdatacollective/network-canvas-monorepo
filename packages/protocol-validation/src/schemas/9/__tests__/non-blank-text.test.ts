@@ -446,10 +446,19 @@ describe('option labels', () => {
       { label: localized('Blue'), value: 'blue' },
     ],
   });
+  const ordinalVariable = (label: Record<string, string>) => ({
+    name: 'Closeness',
+    type: 'ordinal',
+    options: [
+      { label, value: 1 },
+      { label: localized('Very close'), value: 2 },
+    ],
+  });
 
   it.each([
     ['a Boolean choice', booleanVariable],
     ['a categorical option', categoricalVariable],
+    ['an ordinal option', ordinalVariable],
   ])('%s accepts a label with text', (_n, variable) => {
     expect(VariableSchema.safeParse(variable({ en: 'Red' })).success).toBe(
       true,
@@ -461,6 +470,8 @@ describe('option labels', () => {
     ['a Boolean choice', '   ', booleanVariable],
     ['a categorical option', '', categoricalVariable],
     ['a categorical option', '   ', categoricalVariable],
+    ['an ordinal option', '', ordinalVariable],
+    ['an ordinal option', '   ', ordinalVariable],
   ])('%s rejects the label %j', (_n, text, variable) => {
     expect(
       VariableSchema.safeParse(variable({ en: 'Red', fr: text })).success,

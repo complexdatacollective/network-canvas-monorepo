@@ -457,6 +457,27 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: participantTextNotBlank. Narrative, Name Generator, Family Pedigree and Information are names of interfaces (stage types). A Narrative preset is a saved view of the network that participants can switch between. A node is a person or thing participants name; its node type is the kind of node, such as person. A Family Pedigree is a stage where participants draw their family tree; its nomination prompts then ask who in the family something applies to, each setting an attribute. A hint is extra guidance under a question; a scale is a slider participants answer on. "Preset", "Preset 1", "Add" and "Add Person" are literal English defaults written into protocol data: keep them in English.',
   },
+  schema9StageNames: {
+    id: 'protocolValidation.migrationNotes.schema9.stageNames',
+    defaultMessage:
+      'The name of a stage must now contain some text. Where it was empty or contained only spaces, it now reads "Stage" followed by the stage\'s position, such as "Stage 3".',
+    description:
+      'One nested Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol. A stage is one screen or step of an interview; its name is shown to participants in the list of stages. "Stage" and "Stage 3" are literal English defaults written into protocol data: keep them in English and in double quotes.',
+  },
+  schema9OptionLabels: {
+    id: 'protocolValidation.migrationNotes.schema9.optionLabels',
+    defaultMessage:
+      'The label of each option of a categorical, ordinal or Boolean attribute must now contain some text. Where it was empty or contained only spaces, it now shows the option\'s value; on a Boolean attribute it reads "Yes" for the true choice and "No" for the false one instead. An option whose value was empty too shows "Option" followed by its position, such as "Option 2". Answers already recorded are not changed.',
+    description:
+      'One nested Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol. A categorical, ordinal or Boolean attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. A Boolean attribute is a yes-or-no question, and each of its two options is a choice. "Yes", "No", "Option" and "Option 2" are literal English defaults written into protocol data: keep them in English and in double quotes.',
+  },
+  schema9PromptsAndLabels: {
+    id: 'protocolValidation.migrationNotes.schema9.promptsAndLabels',
+    defaultMessage:
+      'Prompts, and some other titles and labels that participants see, must now contain some text. Where one was empty or contained only spaces, a prompt now uses the name of its stage; the title of a side panel on a Name Generator stage now reads "Panel" followed by its position, such as "Panel 1"; the label of a property shown on the cards of a Name Generator Roster stage, or used to sort them, now uses the name of its attribute; and the label of a condition on a Narrative Pedigree stage now uses the name of the attribute that records it, followed by a number if another condition on the stage already has that label.',
+    description:
+      'One nested Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol. A prompt is the instruction or question shown at the top of a stage. Name Generator, Name Generator Roster and Narrative Pedigree are names of interfaces (stage types); translate them as the rest of the app does. A side panel is a list beside a Name Generator stage from which participants can add people. A Name Generator Roster shows people from a list as cards, each card showing some of the person\'s properties, and lets participants sort the cards by a property. A Narrative Pedigree shows a family tree and which relatives have a condition (an illness); each condition is recorded by an attribute. "Panel" and "Panel 1" are literal English defaults written into protocol data: keep them in English and in double quotes.',
+  },
   schema9EncryptedAttributeRules: {
     id: 'protocolValidation.migrationNotes.schema9.encryptedAttributeRules',
     defaultMessage:
@@ -644,6 +665,9 @@ const migrationNoteSets: Record<
           migrationNoteMessages.schema9TieStrengthDeclineLabel,
           migrationNoteMessages.schema9InformationTitle,
           migrationNoteMessages.schema9ParticipantTextNotBlank,
+          migrationNoteMessages.schema9StageNames,
+          migrationNoteMessages.schema9OptionLabels,
+          migrationNoteMessages.schema9PromptsAndLabels,
         ],
       },
       migrationNoteMessages.schema9EncryptedAttributeRules,

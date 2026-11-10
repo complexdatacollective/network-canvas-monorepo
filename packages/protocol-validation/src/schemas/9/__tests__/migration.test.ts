@@ -1273,13 +1273,19 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     },
   );
 
-  // Schema 9 refuses the blank label itself; the panel is still titled.
-  it('gives a blank title "Introduction" when the stage label is blank as well', () => {
+  // A blank stage label is first named "Stage" and its position, as the 7 to
+  // 8 migration names a stage with none, and the panel takes that name.
+  it('gives a blank title the repaired stage name when the stage label is blank as well', () => {
     const stages = stagesMigratedFrom(
       schema8WithStages(egoFormWithPanel({ title: ' ', text: ' ' }, ' ')),
     );
+    const position = stages.length - 1;
+    expect(stages.at(-2)).toHaveProperty(
+      'label',
+      localized(`Stage ${position}`),
+    );
     expect(stages.at(-2)).toHaveProperty('introductionPanel', {
-      title: localized('Introduction'),
+      title: localized(`Stage ${position}`),
     });
   });
 
