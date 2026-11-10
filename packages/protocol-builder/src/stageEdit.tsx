@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
 import type {
   InterfaceTextUpdate,
@@ -29,7 +30,7 @@ import {
   type StageFormDraft,
   type StageIdentity,
 } from './stageDocument.ts';
-import { attempt } from './state/attempt.ts';
+import { attempt, type Refusal } from './state/attempt.ts';
 import { useProtocolBuilderContext } from './state/context.ts';
 import {
   nonEmpty,
@@ -57,7 +58,15 @@ export type StageSaveOutcome =
   | Readonly<{ status: 'saved'; sectionId: ProtocolSectionId }>
   /** The stage is somebody else's now; this draft is gone and cannot be retried. */
   | Readonly<{ status: 'lost'; message: string }>
-  | Readonly<{ status: 'refused'; message: string }>;
+  /** The host answered, and wrote nothing; the draft stays to be saved again. */
+  | Readonly<{ status: 'refused'; message: string }>
+  /**
+   * No answer came, so the stage may or may not have been saved. Saving the
+   * same draft again is how to find out: the host answers that request with
+   * what the first one wrote, if it wrote anything (see `attempt`'s
+   * `answered`).
+   */
+  | Readonly<{ status: 'unanswered'; message: string }>;
 
 export type StageEdit = Readonly<{
   formId: string;
@@ -311,30 +320,11 @@ function CreatingStage({
         ...(promotion === undefined ? {} : { promote: promotion }),
         ...(words === undefined ? {} : { interfaceText: words }),
       });
-      if (created.isSuccess || created.refusal !== undefined) {
-        addKey.settled(requestId);
-      }
+      if (created.answered) addKey.settled(requestId);
       if (!created.isSuccess) {
-        const { refusal } = created;
-        // Every one of these left the protocol exactly as it was, so the draft
-        // stays: the stage was not added, and adding it again once the reason
-        // has passed is what the researcher will do next.
-        if (refusal?._tag === 'PromotionFailed') {
-          return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
-        }
-        if (refusal?._tag === 'SectionsLocked') {
-          return {
-            status: 'refused',
-            message: blockedMessage(blockedHolders(refusal.blocked)),
-          };
-        }
-        return {
-          status: 'refused',
-          message:
-            refusal?._tag === 'InvalidShape'
-              ? INVALID_SHAPE_MESSAGE
-              : ADD_FAILED_MESSAGE,
-        };
+        return created.answered
+          ? refusedAdd(created.refusal)
+          : { status: 'unanswered', message: ADD_FAILED_MESSAGE };
       }
       const { data } = created;
       staged.promoted();
@@ -378,21 +368,58 @@ function CreatingStage({
  * draft: the editor may not write, or what it wrote is not a stage. A refused
  * promotion and a section somebody else is holding are not — the submit wrote
  * nothing at all, and saving again once they are finished is a thing that can
- * work — so the draft stays where the researcher left it.
+ * work — so the draft stays where the researcher left it. A submit nobody
+ * answered leaves it too, to be saved again as it was.
  */
-function refusalFromHost(result: SubmitResult): StageSaveOutcome {
-  if (result.status === 'promotionFailed') {
-    return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
+function refusalFromHost(
+  result: Exclude<SubmitResult, Readonly<{ status: 'written' }>>,
+): StageSaveOutcome {
+  switch (result.status) {
+    case 'promotionFailed':
+      return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
+    case 'sectionsLocked':
+      return {
+        status: 'refused',
+        message: blockedMessage(blockedHolders(result.blocked)),
+      };
+    case 'notLockHolder':
+      return { status: 'lost', message: LOCK_LOST_MESSAGE };
+    case 'invalidShape':
+      return { status: 'lost', message: INVALID_SHAPE_MESSAGE };
+    case 'unanswered':
+      return { status: 'unanswered', message: SAVE_UNANSWERED_MESSAGE };
   }
-  if (result.status === 'sectionsLocked') {
-    return {
-      status: 'refused',
-      message: blockedMessage(blockedHolders(result.blocked)),
-    };
+  // Every result is placed above: a new one does not type-check here.
+  return result satisfies never;
+}
+
+/**
+ * What an add the host answered with a refusal does to the draft: nothing.
+ * Every one of these left the protocol exactly as it was, so the draft stays,
+ * and adding it again once the reason has passed is what the researcher will
+ * do next. `undefined` is a caller the host's session check turned away.
+ */
+function refusedAdd(refusal: Refusal<'Create'> | undefined): StageSaveOutcome {
+  if (refusal === undefined) {
+    return { status: 'refused', message: ADD_FAILED_MESSAGE };
   }
-  return result.status === 'notLockHolder'
-    ? { status: 'lost', message: LOCK_LOST_MESSAGE }
-    : { status: 'lost', message: INVALID_SHAPE_MESSAGE };
+  switch (refusal._tag) {
+    case 'PromotionFailed':
+      return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
+    case 'SectionsLocked':
+      return {
+        status: 'refused',
+        message: blockedMessage(blockedHolders(refusal.blocked)),
+      };
+    case 'InvalidShape':
+      return { status: 'refused', message: INVALID_SHAPE_MESSAGE };
+    case 'ProtocolNotFound':
+    case 'SectionNotFound':
+    case 'SectionExists':
+      return { status: 'refused', message: ADD_FAILED_MESSAGE };
+  }
+  // Every refusal is placed above: a new one does not type-check here.
+  return refusal satisfies never;
 }
 
 /**
@@ -485,3 +512,6 @@ const LOCK_LOST_MESSAGE = createMessageError(messages.lockLost);
 const INVALID_SHAPE_MESSAGE = createMessageError(messages.invalidShape);
 const ADD_FAILED_MESSAGE = createMessageError(messages.addFailed);
 const PROMOTION_FAILED_MESSAGE = createMessageError(messages.promotionFailed);
+// What the form says of a submit that threw, which is what this was before an
+// unanswered save was told apart from a refused one.
+const SAVE_UNANSWERED_MESSAGE = createMessageError(formMessages.submitFailed);

@@ -393,9 +393,8 @@ function StageEditorFormBody({
   );
 
   /**
-   * The shared words of the last save not known to have landed or been
-   * refused, kept with what the researcher had asked for then: see
-   * `handleSubmit`. Cleared by a save's definite answer.
+   * The shared words of the last save nobody answered, kept with what the
+   * researcher had asked for then: see `handleSubmit`. Any answer clears them.
    */
   const unresolvedWording = useRef<
     | Readonly<{ ask: string; wording: readonly InterfaceTextUpdate[] }>
@@ -509,7 +508,10 @@ function StageEditorFormBody({
       // would otherwise send different words when it is asked again, under a
       // different request id, and a stage being added would be added twice.
       // So while the researcher asks for the same thing (the same stage and
-      // the same words of their own), the same words go.
+      // the same words of their own) after a save nobody answered, the same
+      // words go. After an answer they are worked out again: a refused save
+      // wrote nothing, and a collaborator may have saved words for the same
+      // entries since.
       const ask = contentHash({
         stage: stageFieldsOf(fields),
         wording: sharedWordingAsk(storeApi),
@@ -517,7 +519,6 @@ function StageEditorFormBody({
       const kept = unresolvedWording.current;
       const wording =
         kept?.ask === ask ? kept.wording : sharedWordingToSave(fields);
-      unresolvedWording.current = { ask, wording };
       const wordingIssues =
         localization === undefined
           ? []
@@ -543,9 +544,12 @@ function StageEditorFormBody({
         };
       }
 
+      // Forgotten before the save, so that one which throws — a refusal there
+      // is no outcome for — is an answer like any other.
+      unresolvedWording.current = undefined;
       const outcome = await save(fields, wording);
-      if (outcome.status === 'saved' || outcome.status === 'lost') {
-        unresolvedWording.current = undefined;
+      if (outcome.status === 'unanswered') {
+        unresolvedWording.current = { ask, wording };
       }
       if (outcome.status === 'saved') {
         // A save is the only thing that may move the baselines the form's
