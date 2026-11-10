@@ -431,9 +431,9 @@ test('adds a language, keeps the default language from being removed, translates
     translationCell(page, 'Page heading', 'French'),
   ).toHaveAccessibleDescription(/^Welcome to the study Not translated yet\./);
 
-  // Enter moves to the next row from a text of one line, in plain and
-  // formatted text alike. Rows translated while the filter is on stay until it
-  // changes, and nothing reaches the protocol until the table is saved.
+  // Enter moves to the next row from a text its field declares one line.
+  // Rows translated while the filter is on stay until it changes, and nothing
+  // reaches the protocol until the table is saved.
   await translationCell(page, 'Stage name', 'French').click();
   await page.keyboard.type('Bienvenue');
   await page.keyboard.press('Enter');
@@ -441,12 +441,15 @@ test('adds a language, keeps the default language from being removed, translates
   await page.keyboard.type('Bienvenue dans l’étude');
   await page.keyboard.press('Enter');
   await expect(translationCell(page, 'Content', 'French')).toBeFocused();
-  // Text of more than one line, as the welcome text is in English, takes a
-  // new line on Enter; Ctrl+Enter moves on, and in the last row checks the
-  // text where it is.
+  // Information text may hold several lines, whatever this one holds, so
+  // Enter starts a new line in it; Ctrl+Enter moves on, and in the last row
+  // checks the text where it is.
   await page.keyboard.type('Merci de votre participation.');
   await page.keyboard.press('Enter');
   await expect(translationCell(page, 'Content', 'French')).toBeFocused();
+  await expect(
+    translationCell(page, 'Content', 'French').locator('p'),
+  ).toHaveCount(2);
   await page.keyboard.type('Cela prend dix minutes.');
   await page.keyboard.press('Control+Enter');
   await expect(table.locator('th[scope="row"]')).toHaveText(WELCOME_TEXT_ROWS);

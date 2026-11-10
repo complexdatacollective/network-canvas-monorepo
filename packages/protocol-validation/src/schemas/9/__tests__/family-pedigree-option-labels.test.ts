@@ -17,7 +17,10 @@ import { ProtocolSchemaV9 } from '../schema.ts';
 import type { LanguageChange } from '../supplied-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
-const labelSchema = localizedString(z.string().min(1), 'markdown');
+const labelSchema = localizedString(z.string().min(1), {
+  format: 'markdown',
+  lines: 'single',
+});
 
 describe('supplied Family Pedigree option labels', () => {
   it.each(Object.keys(SUPPLIED_PEDIGREE_OPTION_LABELS))(

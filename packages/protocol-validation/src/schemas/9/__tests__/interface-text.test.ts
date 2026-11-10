@@ -6,8 +6,10 @@ import {
   InterfaceTextSchema,
   interfaceTextAfterLanguageChange,
   interfaceTextFor,
+  suppliedInterfaceText,
   withInterfaceText,
 } from '../interface-text.ts';
+import { SUPPLIED_LANGUAGES } from '../supplied-text.ts';
 
 const ENGLISH_AND_FRENCH = { defaultLocale: 'en', locales: ['en', 'fr'] };
 
@@ -545,6 +547,26 @@ describe('the interface text a protocol holds', () => {
       InterfaceTextSchema.safeParse({ interview: { back: { en: 'Back' } } })
         .success,
     ).toBe(false);
+  });
+
+  it('is worded, in every language Network Canvas supplies, as each text declares its lines', () => {
+    const everyLanguage = {
+      defaultLocale: 'en',
+      locales: [...SUPPLIED_LANGUAGES],
+    };
+    const text: Record<string, Record<string, unknown>> = {};
+    for (const { group, key } of INTERFACE_TEXT_MESSAGES) {
+      const value = suppliedInterfaceText(group, key, everyLanguage);
+      expect({ group, key, languages: Object.keys(value ?? {}) }).toEqual({
+        group,
+        key,
+        languages: [...SUPPLIED_LANGUAGES],
+      });
+      text[group] = { ...text[group], [key]: value };
+    }
+
+    // A text declared one line refuses a line break in any language.
+    expect(InterfaceTextSchema.safeParse(text).error?.issues).toBeUndefined();
   });
 
   it('holds the screen error message as markdown, and the rest as plain text', () => {

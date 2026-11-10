@@ -38,7 +38,10 @@ const BLANK_TRANSLATIONS = [
 ] as const;
 
 describe('nonBlankText', () => {
-  const required = localizedString(nonBlankText(), 'markdown');
+  const required = localizedString(nonBlankText(), {
+    format: 'markdown',
+    lines: 'single',
+  });
 
   it('accepts a translation with text in it', () => {
     expect(required.safeParse({ en: 'How old are you?' }).success).toBe(true);

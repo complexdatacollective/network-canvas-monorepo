@@ -1,11 +1,15 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import { finishSessionStage } from '@codaco/protocol-validation';
 
 import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
+import { markdownTextShapeAt } from '../../../localization/textShape.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { finishSessionMessages } from './finishSessionMessages.ts';
 import { useFinishMode } from './useFinishMode.ts';
+
+const CONTENT_SHAPE = markdownTextShapeAt(finishSessionStage, ['content']);
 
 const CONTENT_FIELD = 'content';
 
@@ -36,6 +40,7 @@ export default function ClosingScreenSection() {
       <Field<typeof LocalizedRichTextField>
         name={CONTENT_FIELD}
         component={LocalizedRichTextField}
+        shape={CONTENT_SHAPE}
         dynamicValues="stageText"
         label={intl.formatMessage(finishSessionMessages.closingTextLabel)}
         required={REQUIRED}

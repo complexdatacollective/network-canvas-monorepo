@@ -6587,19 +6587,20 @@ describe('Migration V7 to V8', () => {
     it('keeps the first field for the repeated variable and drops the later one', () => {
       // The first row survives, so the prompt the researcher wrote first is the
       // one the participant sees; "sdfs\n" — the row that was already sharing
-      // its answer with the first — is gone.
+      // its answer with the first — is gone. A form field's question is one
+      // line in schema 9, so its trailing line break goes.
       expect(
         migrateAndParse(alterFormTestProtocol())?.filter(
           (field) => field.variable === NAME,
         ),
-      ).toEqual([{ variable: NAME, prompt: en('sdfsdf\n') }]);
+      ).toEqual([{ variable: NAME, prompt: en('sdfsdf') }]);
     });
 
     it('leaves every other field untouched and in order', () => {
       expect(migrateAndParse(alterFormTestProtocol())).toEqual([
-        { variable: NAME, prompt: en('sdfsdf\n') },
-        { variable: SCALE, prompt: en('sadasd\n') },
-        { variable: CATEGORICAL, prompt: en('asd\n') },
+        { variable: NAME, prompt: en('sdfsdf') },
+        { variable: SCALE, prompt: en('sadasd') },
+        { variable: CATEGORICAL, prompt: en('asd') },
       ]);
     });
 
@@ -6612,8 +6613,8 @@ describe('Migration V7 to V8', () => {
         { variable: NAME, prompt: 'third\n' },
       ];
       expect(migrateAndParse(protocol)).toEqual([
-        { variable: NAME, prompt: en('first\n') },
-        { variable: SCALE, prompt: en('sadasd\n') },
+        { variable: NAME, prompt: en('first') },
+        { variable: SCALE, prompt: en('sadasd') },
       ]);
     });
 

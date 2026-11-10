@@ -103,15 +103,22 @@ export const nameGeneratorRosterStage = baseStageSchema
     dataSource: assetReference(),
     // The heading above the people the participant can add. The roster IS the
     // panel, so it is named for what it heads rather than as the stage's title.
-    panelTitle: localizedString(nonBlankText(), 'plain', {
-      dynamicValues: 'stageText',
-    }),
+    panelTitle: localizedString(
+      nonBlankText(),
+      { format: 'plain', lines: 'single' },
+      {
+        dynamicValues: 'stageText',
+      },
+    ),
     cardOptions: z
       .strictObject({
         additionalProperties: z
           .array(
             z.strictObject({
-              label: localizedString(nonBlankText(), 'plain'),
+              label: localizedString(nonBlankText(), {
+                format: 'plain',
+                lines: 'single',
+              }),
               variable: rosterColumnReference(),
             }),
           )
@@ -124,7 +131,10 @@ export const nameGeneratorRosterStage = baseStageSchema
         sortableProperties: z
           .array(
             z.strictObject({
-              label: localizedString(nonBlankText(), 'plain'),
+              label: localizedString(nonBlankText(), {
+                format: 'plain',
+                lines: 'single',
+              }),
               variable: rosterColumnReference(),
             }),
           )

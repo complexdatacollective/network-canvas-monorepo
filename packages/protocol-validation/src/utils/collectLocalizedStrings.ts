@@ -6,6 +6,8 @@ import {
   getLocalizedStringDescriptor,
   type LocalizedString,
   type LocalizedStringFormat,
+  type LocalizedTextLines,
+  type LocalizedTextShape,
 } from '../schemas/9/localized-string.ts';
 // Imported from its own module for the reason given in
 // `collectEntityAttributeReferences.ts`.
@@ -15,6 +17,8 @@ export type LocalizedStringHit = Readonly<{
   path: (string | number)[];
   value: LocalizedString;
   format: LocalizedStringFormat;
+  /** One line or several (see `LocalizedTextShape`). */
+  lines: LocalizedTextLines;
   /** The arguments a localized message may use; absent for literal text. */
   arguments?: MessageArguments;
   /** Where text that may show dynamic values sits; absent where it may not. */
@@ -27,6 +31,8 @@ export type LocalizedStringSite = Readonly<{
   path: (string | number)[];
   value: unknown;
   format: LocalizedStringFormat;
+  /** One line or several (see `LocalizedTextShape`). */
+  lines: LocalizedTextLines;
   /** The arguments a localized message may use; absent for literal text. */
   arguments?: MessageArguments;
   /** Where text that may show dynamic values sits; absent where it may not. */
@@ -179,6 +185,7 @@ const walk = (
         path,
         value,
         format: descriptor.format,
+        lines: descriptor.lines,
         ...(descriptor.arguments === undefined
           ? {}
           : { arguments: descriptor.arguments }),
@@ -279,6 +286,7 @@ export const collectLocalizedStringsFromSchema = (
             path: site.path,
             value: site.value,
             format: site.format,
+            lines: site.lines,
             ...(site.arguments === undefined
               ? {}
               : { arguments: site.arguments }),
@@ -290,6 +298,41 @@ export const collectLocalizedStringsFromSchema = (
         ]
       : [],
   );
+
+const samePath = (
+  a: readonly (string | number)[],
+  b: readonly (string | number)[],
+) => a.length === b.length && a.every((part, index) => part === b[index]);
+
+/**
+ * The shape `schema` declares for the localized field at `path`, for an
+ * editor to configure itself from the declaration rather than restate it.
+ * A number in `path` stands for any element of an array.
+ *
+ * The field is found by the walk that finds a protocol's text for the
+ * translation table (`collectLocalizedStringSites`): a value holding only
+ * that field is walked against the schema, so optional fields, pipes and
+ * unions are read as they are there. Throws when nothing is declared at
+ * `path`, so an editor naming a field that does not exist fails as soon as
+ * it loads.
+ */
+export const localizedTextShapeAt = (
+  schema: z.ZodType,
+  path: readonly (string | number)[],
+): LocalizedTextShape => {
+  const probe = path.reduceRight<unknown>(
+    (inner, part) => (typeof part === 'number' ? [inner] : { [part]: inner }),
+    {},
+  );
+  const target = path.map((part) => (typeof part === 'number' ? 0 : part));
+  const site = collectLocalizedStringSites(schema, probe).find((candidate) =>
+    samePath(candidate.path, target),
+  );
+  if (site === undefined) {
+    throw new Error(`No localized text is declared at ${path.join('.')}.`);
+  }
+  return { format: site.format, lines: site.lines };
+};
 
 export const collectLocalizedStrings = (
   protocol: unknown,

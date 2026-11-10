@@ -113,8 +113,14 @@ export const NodeConfigurationSchema = z.strictObject({
   // The question asking that name, and the hint beneath it, worded like a
   // form field's prompt and hint. Network Canvas supplies both.
   nameField: z.strictObject({
-    prompt: localizedString(nonBlankText(), 'plain'),
-    hint: localizedString(nonBlankText(), 'markdown').optional(),
+    prompt: localizedString(nonBlankText(), {
+      format: 'plain',
+      lines: 'single',
+    }),
+    hint: localizedString(nonBlankText(), {
+      format: 'markdown',
+      lines: 'single',
+    }).optional(),
   }),
   // Optional: the gender identity question and the words it decides. See
   // `GenderIdentitySchema`.
@@ -275,7 +281,10 @@ export const CompletenessSchema = z.strictObject({
   itemText: CompletenessTextSchema,
   // Shown under the tracker when the family is only recommended. Kept under
   // either enforcement, so switching between them loses no wording.
-  recommendedNote: localizedString(nonBlankText(), 'plain'),
+  recommendedNote: localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }),
 });
 
 /**
@@ -298,9 +307,13 @@ const NominationPromptSchema = z.strictObject({
     .refine((id) => id !== FAMILY_PEDIGREE_BUILD_PROMPT_ID, {
       message: `Nomination prompt id "${FAMILY_PEDIGREE_BUILD_PROMPT_ID}" is reserved for building the family`,
     }),
-  text: localizedString(nonBlankText(), 'markdown', {
-    dynamicValues: 'prompt',
-  }),
+  text: localizedString(
+    nonBlankText(),
+    { format: 'markdown', lines: 'single' },
+    {
+      dynamicValues: 'prompt',
+    },
+  ),
   attribute: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'unvalidatedAttribute',
@@ -622,7 +635,8 @@ export const PEDIGREE_WORDING_ARGUMENTS = Object.fromEntries(
   ]),
 ) as Readonly<Record<WordingWithArguments, MessageArguments>>;
 
-const plainWording = () => localizedString(nonBlankText(), 'plain');
+const plainWording = () =>
+  localizedString(nonBlankText(), { format: 'plain', lines: 'single' });
 
 const argumentWording = (key: WordingWithArguments) =>
   localizedMessage(nonBlankText(), {
@@ -723,7 +737,11 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   zygosityIdentical: plainWording(),
   // The participant's own label, which may show their answers from earlier
   // in the interview, such as the name an Ego Form asked for.
-  you: localizedString(nonBlankText(), 'plain', { dynamicValues: 'stageText' }),
+  you: localizedString(
+    nonBlankText(),
+    { format: 'plain', lines: 'single' },
+    { dynamicValues: 'stageText' },
+  ),
 });
 
 export type FamilyPedigreeWording = z.infer<typeof FamilyPedigreeWordingSchema>;
@@ -757,9 +775,13 @@ export const familyPedigreeStage = baseStageSchema
   .extend({
     type: z.literal('FamilyPedigree'),
     subject: NodeStageSubjectSchema,
-    prompt: localizedString(nonBlankText(), 'markdown', {
-      dynamicValues: 'prompt',
-    }),
+    prompt: localizedString(
+      nonBlankText(),
+      { format: 'markdown', lines: 'single' },
+      {
+        dynamicValues: 'prompt',
+      },
+    ),
     nodeConfiguration: NodeConfigurationSchema,
     edgeConfiguration: EdgeConfigurationSchema,
     // Which words describe family members, or `participantPreference` to let
