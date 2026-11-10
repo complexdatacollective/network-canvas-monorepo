@@ -161,9 +161,12 @@ const observeHeights = (
 ) =>
   new ResizeObserver((entries) => {
     const changes = new Map<string, number>();
-    for (const { target } of entries) {
+    for (const { target, borderBoxSize } of entries) {
       const key = target.getAttribute(WINDOW_KEY_ATTRIBUTE);
-      const { height } = target.getBoundingClientRect();
+      // The size the row is laid out at, which a transform on the page does not
+      // change: the dialog this table opens in scales up as it appears, and a
+      // row measured by what is drawn would be kept at that size.
+      const height = borderBoxSize[0]?.blockSize ?? 0;
       if (key === null || height === 0) continue;
       changes.set(key, height);
     }

@@ -425,6 +425,8 @@ type TranslationTableRowProps = {
   groupId: string;
   /** The row's place among all the table's rows, which arrow keys follow. */
   currentRow: number;
+  /** Whether some of the table's rows are left undrawn, which keys the row. */
+  windowed: boolean;
   /** Where the row is among all the table's rows, when some are left undrawn. */
   ariaRowIndex: number | undefined;
   locales: readonly LocaleTag[];
@@ -446,6 +448,7 @@ const TranslationTableRow = memo(function TranslationTableRow({
   row,
   groupId,
   currentRow,
+  windowed,
   ariaRowIndex,
   locales,
   localization,
@@ -460,7 +463,7 @@ const TranslationTableRow = memo(function TranslationTableRow({
     <tr
       ref={measure}
       aria-rowindex={ariaRowIndex}
-      {...windowItemProps(rowItemKey(row.key))}
+      {...(windowed ? windowItemProps(rowItemKey(row.key)) : undefined)}
       onFocus={() => {
         if (filtering) onKeep(row.key);
       }}
@@ -731,6 +734,7 @@ const TranslationTableContent = ({
       numbered.push({ ...group, firstRow: nextRow });
       nextRow += group.rows.length;
       headingItems.push(items.length);
+      itemIndexes.set(headingItemKey(group.key), items.length);
       items.push({ key: headingItemKey(group.key), heading: true });
       for (const row of group.rows) {
         itemIndexes.set(rowItemKey(row.key), items.length);
@@ -804,7 +808,13 @@ const TranslationTableContent = ({
   // Counted from the column headings, which are row 1.
   const ariaRowIndex = (item: number) => (windowed ? item + 2 : undefined);
 
+  // Whether focus has reached the table and not left. React's focus events
+  // reach the table from a popup or menu an editor draws elsewhere in the
+  // page, which the table's own elements do not contain.
+  const focusInTable = useRef(false);
+
   const handleTableFocus = (event: FocusEvent<HTMLTableElement>) => {
+    focusInTable.current = true;
     if (!windowed) return;
     // Focus in a popup of a cell's editor is in no row of the table's own,
     // and leaves the row that had it held.
@@ -812,15 +822,16 @@ const TranslationTableContent = ({
     if (key) setFocusedItem(key);
   };
 
-  const handleTableBlur = (event: FocusEvent<HTMLTableElement>) => {
+  const handleTableBlur = () => {
+    focusInTable.current = false;
     if (!windowed) return;
-    const next = event.relatedTarget;
-    if (next instanceof Node && tableRef.current?.contains(next)) return;
-    // Focus that lands nowhere for a moment, as an editor replaces the cell
-    // that had it, is still in the table once it settles; and focus a window
-    // lost along with the window comes back to the same place.
+    // Focus moving from one element to another blurs the first before it
+    // focuses the second, and focus that lands nowhere for a moment, as an
+    // editor replaces the cell that had it, comes back. A window that lost
+    // focus keeps its place.
     queueMicrotask(() => {
       if (
+        !focusInTable.current &&
         document.hasFocus() &&
         !tableRef.current?.contains(document.activeElement)
       ) {
@@ -980,6 +991,7 @@ const TranslationTableContent = ({
           row={row}
           groupId={groupId}
           currentRow={group.firstRow + position}
+          windowed={windowed}
           ariaRowIndex={ariaRowIndex(rowItem(position))}
           locales={visible}
           localization={localization}
@@ -1004,7 +1016,9 @@ const TranslationTableContent = ({
         <tr
           ref={windowing.measure}
           aria-rowindex={ariaRowIndex(headingItem)}
-          {...windowItemProps(headingItemKey(group.key))}
+          {...(windowed
+            ? windowItemProps(headingItemKey(group.key))
+            : undefined)}
         >
           <th
             ref={groupHeadingRef}
@@ -1161,10 +1175,11 @@ const TranslationTableContent = ({
         // overflows, rather than floating over its sticky cells and fading
         // away between scrolls.
         scrollerClassName={cx(
-          // The table keeps what is on the screen where it is itself, as it
-          // learns the height of rows scrolled past; the browser doing the same
-          // would move it twice.
-          '[overflow-anchor:none]',
+          // A windowed table keeps what is on the screen where it is itself, as
+          // it learns the height of rows scrolled past; the browser doing the
+          // same would move it twice. A table drawn whole leaves it to the
+          // browser, as nothing else does.
+          windowed && '[overflow-anchor:none]',
           '[&::-webkit-scrollbar-corner]:bg-surface-1 [&::-webkit-scrollbar-track]:bg-surface-1 [&::-webkit-scrollbar]:size-3.5',
           '[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-3 [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-current/40 [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb:hover]:bg-current/60',
         )}
