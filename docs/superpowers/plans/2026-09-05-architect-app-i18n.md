@@ -6,8 +6,8 @@ must merge first; this PR owns Architect and its normal-lane app changeset.
 The final review correction also adds a small default-label text helper beside
 the shared Markdown renderer, with a separate normal-lane library changeset.
 
-The accepted 2026-09-04 app UI design and 2026-08-27 protocol localization
-design govern the work. The user's amendment adds complete neutral Spanish
+The accepted 2026-09-04 app UI design governs the work, within the boundaries
+of protocol localization (`packages/protocol-validation/src/localization/`). The user's amendment adds complete neutral Spanish
 (`es`) alongside source English (`en`) and sparse British English (`en-GB`).
 The existing app-i18n APIs, Studio implementation and PR #1651 were inspected.
 

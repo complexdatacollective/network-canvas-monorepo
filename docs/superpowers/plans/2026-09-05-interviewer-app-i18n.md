@@ -4,7 +4,7 @@ Status: ready PR [#1703](https://github.com/complexdatacollective/network-canvas
 
 ## Contract and ownership
 
-The issue and its empty comments, both accepted localization designs (`2026-09-04-studio-ui-localization-design.md` and `2026-08-27-protocol-localization-design.md`), Studio adoption, and PR #1651 were read. App messages use explicit, described `interviewer.*` descriptors; genuinely universal actions use `common.*`. Production support is explicitly `en`, `en-GB`, and `es`. English is extracted, British English is a reviewed sparse override, and Spanish covers every app message.
+The issue and its empty comments, the accepted app localization design (`2026-09-04-studio-ui-localization-design.md`) and the protocol localization boundaries (`packages/protocol-validation/src/localization/`), Studio adoption, and PR #1651 were read. App messages use explicit, described `interviewer.*` descriptors; genuinely universal actions use `common.*`. Production support is explicitly `en`, `en-GB`, and `es`. English is extracted, British English is a reviewed sparse override, and Spanish covers every app message.
 
 This workstream owns `apps/interviewer/**`, this plan, its normal-lane Interviewer changeset, and the explicitly authorized three-line app dependency importer in `pnpm-lock.yaml`. The lead owns shared prerequisites and the separate PR/review sequence. Shared prerequisites and the runtime follow-up have been merged normally, preserving ancestry, through `5128f4942c67dee5e8690fd43852887b23a24593`. The user authorized PR merges; the lead owns GitHub merge sequencing and post-merge verification. No source or dependency symlinks point into another worktree. Commits use the user's configured identity.
 

@@ -4,8 +4,8 @@
 > it was planned. Its steps that migrate schema-8 text to the undetermined
 > language `und`, relabel `und`, or warn about it no longer describe the
 > product: a schema-9 protocol always has a real language, the migration
-> records English, and `und` is refused by validation. The design authority
-> below, revision 16, describes what was built.
+> records English, and `und` is refused by validation. The code in
+> `packages/protocol-validation/src/localization/` describes what was built.
 
 ## Overview
 
@@ -16,8 +16,9 @@ separate warning analysis, universal locale utilities, React resolution
 context, Architect authoring and coverage UX, Vite and Next.js host adapters,
 session persistence, and exported interview locale metadata.
 
-The design authority is
-`docs/superpowers/specs/2026-08-27-protocol-localization-design.md`. The schema
+The design specification for this work has been removed, since it no longer
+matches the implementation; the code in
+`packages/protocol-validation/src/localization/` is the authority. The schema
 8 corrections and migration invariants in
 `docs/superpowers/specs/2026-08-25-schema-8-corrections-design.md` remain in
 force. The accepted Dynamic Rosters design and epic (#1449, #1457) own schema

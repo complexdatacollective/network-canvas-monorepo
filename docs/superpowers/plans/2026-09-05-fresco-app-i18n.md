@@ -19,7 +19,7 @@ changeset `fresco-researcher-localization.md`.
 
 The contract is issue #1618 (no issue comments), the accepted
 [Studio application localization specification](../specs/2026-09-04-studio-ui-localization-design.md),
-the [protocol localization specification](../specs/2026-08-27-protocol-localization-design.md),
+the protocol localization boundaries (the specification has been removed; see `packages/protocol-validation/src/localization/`),
 and the user's production Spanish amendment. Related PRs #1648 and #1651,
 Studio's adoption, shared package APIs, and root/app instructions were inspected.
 
