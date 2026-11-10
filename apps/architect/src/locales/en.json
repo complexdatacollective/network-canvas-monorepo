@@ -3335,6 +3335,10 @@
     "defaultMessage": "OK",
     "description": "The label that dismisses a preview dialog in components / StageEditor / StageEditorChrome."
   },
+  "architect.stageEditor.stageEditorChrome.walkthrough": {
+    "defaultMessage": "Walk me through it",
+    "description": "Button above the list of sections of the stage being edited. It opens a step-by-step guide to the stage in a floating panel."
+  },
   "architect.stageEditor.stageEditorPage.otherTab": {
     "defaultMessage": "Another tab",
     "description": "What an editor calls the browser tab that holds the saved copy of this protocol, when it is not this one. Read as, for example, “Another tab is editing this stage”."
@@ -3346,6 +3350,86 @@
   "architect.stageEditor.stageTitle.position": {
     "defaultMessage": "Stage {index, number} of {total, number}",
     "description": "Where the stage being edited sits in the interview, shown above its name. index is one-based. A stage is one step of an interview."
+  },
+  "architect.stageEditor.walkthrough.avoid": {
+    "defaultMessage": "Avoid",
+    "description": "Heading over practices to avoid in the stage walkthrough."
+  },
+  "architect.stageEditor.walkthrough.back": {
+    "defaultMessage": "Back",
+    "description": "Button that returns to the previous walkthrough step."
+  },
+  "architect.stageEditor.walkthrough.chooseToContinue": {
+    "defaultMessage": "Make your choice here and this window closes by itself; the walkthrough will carry on.",
+    "description": "Shown on the last walkthrough step about an open dialog that has no save button, such as a picker that closes once something is chosen. The walkthrough resumes by itself once the dialog closes."
+  },
+  "architect.stageEditor.walkthrough.collapse": {
+    "defaultMessage": "Hide the walkthrough for now",
+    "description": "Button that folds the walkthrough panel down to a small bar, so the researcher can work on the page behind it."
+  },
+  "architect.stageEditor.walkthrough.do": {
+    "defaultMessage": "Do",
+    "description": "Heading over recommended practices in the stage walkthrough."
+  },
+  "architect.stageEditor.walkthrough.expand": {
+    "defaultMessage": "Make the walkthrough larger",
+    "description": "Tooltip and accessible name of the button in the walkthrough panel header that widens the panel, so its text and animations are easier to read."
+  },
+  "architect.stageEditor.walkthrough.eyebrow": {
+    "defaultMessage": "Walkthrough",
+    "description": "Small label above the name of the stage type at the top of the walkthrough, and on the minimized walkthrough."
+  },
+  "architect.stageEditor.walkthrough.finish": {
+    "defaultMessage": "Finish",
+    "description": "Button on the last walkthrough step that closes it."
+  },
+  "architect.stageEditor.walkthrough.inThisDialog": {
+    "defaultMessage": "In this window",
+    "description": "Eyebrow on walkthrough steps about the dialog the researcher has open, rather than the stage editor behind it."
+  },
+  "architect.stageEditor.walkthrough.move": {
+    "defaultMessage": "Move the walkthrough",
+    "description": "Grip on the walkthrough panel, used to move the panel out of the way."
+  },
+  "architect.stageEditor.walkthrough.moveHint": {
+    "defaultMessage": "Drag to move it, use the arrow keys, or activate to move it to the other side of the screen.",
+    "description": "Screen-reader description of the grip on the walkthrough panel, saying the ways it can be moved."
+  },
+  "architect.stageEditor.walkthrough.next": {
+    "defaultMessage": "Next",
+    "description": "Button that moves to the next walkthrough step."
+  },
+  "architect.stageEditor.walkthrough.progress": {
+    "defaultMessage": "Step {index, number} of {total, number}",
+    "description": "Position in the stage walkthrough. index is one-based."
+  },
+  "architect.stageEditor.walkthrough.progressShort": {
+    "defaultMessage": "{index, number}/{total, number}",
+    "description": "Compact step count inside the progress ring of the minimized walkthrough, e.g. \"1/8\". index is one-based."
+  },
+  "architect.stageEditor.walkthrough.resume": {
+    "defaultMessage": "Resume",
+    "description": "Button on the minimized walkthrough that opens it again at the step the researcher was on."
+  },
+  "architect.stageEditor.walkthrough.resumeEyebrow": {
+    "defaultMessage": "Resume walkthrough · {index} of {total}",
+    "description": "Small heading in the tooltip of the minimized walkthrough in the stage editor toolbar, above the title of the step the researcher was on."
+  },
+  "architect.stageEditor.walkthrough.resumeLabel": {
+    "defaultMessage": "Resume walkthrough, step {index} of {total}: {title}",
+    "description": "Accessible name of the minimized walkthrough button in the stage editor toolbar. It opens the walkthrough again at the step named."
+  },
+  "architect.stageEditor.walkthrough.saveToContinue": {
+    "defaultMessage": "Click <strong>{label}</strong> to save this, and the walkthrough will carry on.",
+    "description": "Shown on the last walkthrough step about an open dialog, in place of a Next button. label is the text of the dialog’s own save button, such as “Add” or “Save”. The walkthrough resumes by itself once the dialog closes."
+  },
+  "architect.stageEditor.walkthrough.saveToContinueUnlabelled": {
+    "defaultMessage": "Save this window, and the walkthrough will carry on.",
+    "description": "Shown on the last walkthrough step about an open dialog whose save button has no text. The walkthrough resumes by itself once the dialog closes."
+  },
+  "architect.stageEditor.walkthrough.shrink": {
+    "defaultMessage": "Make the walkthrough smaller",
+    "description": "Tooltip and accessible name of the button in the widened walkthrough panel header that returns it to its usual size."
   },
   "architect.storageUnavailableBanner.downloadFailed": {
     "defaultMessage": "Download failed",
