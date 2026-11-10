@@ -3,6 +3,16 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
+  InvalidShape,
+  PromotionFailed,
+  ProtocolNotFound,
+  SectionExists,
+  SectionNotFound,
+  SectionsLocked,
+} from '@codaco/protocol-builder-core/contract/errors';
+import { HostUnauthorized } from '@codaco/protocol-builder-core/contract/session';
+import {
+  type InterfaceTextUpdate,
   interfaceTextWithUpdates,
   type LocalizedString,
   suppliedInterfaceText,
@@ -707,4 +717,190 @@ describe('switching the wording section off', () => {
       supplied(FIXTURE),
     );
   });
+});
+
+/**
+ * A save the host refused, for a reason it gave, is over: nothing it carried
+ * was written, so the next save is worked out again from the protocol as it is
+ * by then. Only a save whose answer never came is asked again as it was.
+ */
+describe('a shared word held with a stage whose save was refused', () => {
+  /** Every word a save carried, by attempt. */
+  const wordsSent = (sent: readonly (readonly InterfaceTextUpdate[])[]) =>
+    sent.map((words) => words.map(({ group, key }) => `${group}.${key}`));
+
+  it('takes the wording a collaborator saved while they held the settings, when the researcher had not changed it', async () => {
+    const sent: (readonly InterfaceTextUpdate[])[] = [];
+    const harness = renderStageEditor({
+      stageId: 'geospatial-1',
+      sections: geospatialSections,
+      adapter: (host) =>
+        host.adapterWith({
+          Submit: (input) => {
+            sent.push(input.interfaceText ?? []);
+            return host.handle.Submit(input);
+          },
+        }),
+    });
+    await openSharedWording(harness);
+    await toggleSearch(harness);
+    await screen.findByRole('textbox', { name: SEARCH_FAILED });
+    const collaborator = harness.host.asCollaborator(COLLABORATOR);
+    const settingsLock = {
+      protocolId: harness.host.protocolId,
+      sectionId: SETTINGS,
+    };
+    await collaborator.rpcCall('AcquireLock', settingsLock);
+
+    expect(await harness.submit()).toBeNull();
+    expect(mapStageAllowsSearch(harness)).not.toBe(true);
+
+    collaboratorSaves(harness, { 'en-US': 'Their wording' });
+    await collaborator.rpcCall('ReleaseLock', settingsLock);
+
+    expect(await harness.submit()).not.toBeNull();
+    expect(mapStageAllowsSearch(harness)).toBe(true);
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+      'en-US': 'Their wording',
+    });
+    expect(wordsSent(sent)).toEqual([['geospatial.searchFailed'], []]);
+  });
+
+  it('still saves the researcher’s own wording for it, as theirs over the collaborator’s', async () => {
+    const harness = openMapStage();
+    await openSharedWording(harness);
+    await toggleSearch(harness);
+    const field = await screen.findByRole('textbox', { name: SEARCH_FAILED });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'No place matched');
+    await harness.user.tab();
+    const collaborator = harness.host.asCollaborator(COLLABORATOR);
+    const settingsLock = {
+      protocolId: harness.host.protocolId,
+      sectionId: SETTINGS,
+    };
+    await collaborator.rpcCall('AcquireLock', settingsLock);
+
+    expect(await harness.submit()).toBeNull();
+
+    collaboratorSaves(harness, { 'en-US': 'Their wording' });
+    await collaborator.rpcCall('ReleaseLock', settingsLock);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: SEARCH_FAILED }),
+      ).not.toHaveAccessibleDescription(/saved when you save the stage/),
+    );
+
+    expect(await harness.submit()).not.toBeNull();
+    expect(mapStageAllowsSearch(harness)).toBe(true);
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+      'en-US': 'No place matched',
+    });
+    expect(screen.getByRole('textbox', { name: SEARCH_FAILED })).toHaveValue(
+      'No place matched',
+    );
+  });
+
+  const failure = {
+    reason: 'promotion-failed',
+    message: 'the files could not be committed',
+    retryable: true,
+  } as const;
+
+  /** Every answer a submit can be refused with that leaves the draft open. */
+  const submitRefusals = {
+    SectionsLocked: () => new SectionsLocked({ blocked: [] }),
+    PromotionFailed: () => new PromotionFailed({ failure }),
+    ProtocolNotFound: () => new ProtocolNotFound({ protocolId: 'protocol' }),
+    SectionNotFound: () => new SectionNotFound({ sectionId: MAP_STAGE }),
+    HostUnauthorized: () => new HostUnauthorized({}),
+  };
+
+  it.each(Object.entries(submitRefusals))(
+    'takes the collaborator’s wording after a stage save refused with %s',
+    async (_name, refusal) => {
+      const sent: (readonly InterfaceTextUpdate[])[] = [];
+      const harness = renderStageEditor({
+        stageId: 'geospatial-1',
+        sections: geospatialSections,
+        adapter: (host) =>
+          host.adapterWith({
+            Submit: (input) => {
+              sent.push(input.interfaceText ?? []);
+              return sent.length === 1
+                ? Effect.fail(refusal())
+                : host.handle.Submit(input);
+            },
+          }),
+      });
+      await openSharedWording(harness);
+      await toggleSearch(harness);
+      await screen.findByRole('textbox', { name: SEARCH_FAILED });
+
+      expect(await harness.submit()).toBeNull();
+      collaboratorSaves(harness, { 'en-US': 'Their wording' });
+
+      expect(await harness.submit()).not.toBeNull();
+      expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+        'en-US': 'Their wording',
+      });
+      expect(wordsSent(sent)).toEqual([['geospatial.searchFailed'], []]);
+    },
+  );
+
+  /** Every answer an add can be refused with. */
+  const createRefusals = {
+    SectionsLocked: () => new SectionsLocked({ blocked: [] }),
+    PromotionFailed: () => new PromotionFailed({ failure }),
+    InvalidShape: () => new InvalidShape({ sectionId: SETTINGS, issues: [] }),
+    SectionExists: () => new SectionExists({ sectionId: SETTINGS }),
+    ProtocolNotFound: () => new ProtocolNotFound({ protocolId: 'protocol' }),
+    SectionNotFound: () => new SectionNotFound({ sectionId: SETTINGS }),
+    HostUnauthorized: () => new HostUnauthorized({}),
+  };
+
+  it.each(Object.entries(createRefusals))(
+    'takes the collaborator’s wording after adding the stage was refused with %s',
+    async (_name, refusal) => {
+      const sent: (readonly InterfaceTextUpdate[])[] = [];
+      const map = loadFixtureStage('geospatial-1');
+      const mapOptions = map.fields.mapOptions as Readonly<
+        Record<string, unknown>
+      >;
+      const harness = renderStageEditor({
+        create: {
+          type: 'Geospatial',
+          position: 1,
+          fields: {
+            ...map.fields,
+            mapOptions: { ...mapOptions, allowSearch: true },
+          },
+        },
+        sections: geospatialSections,
+        adapter: (host) =>
+          host.adapterWith({
+            Create: (input) => {
+              sent.push(input.interfaceText ?? []);
+              return sent.length === 1
+                ? Effect.fail(refusal())
+                : host.handle.Create(input);
+            },
+          }),
+      });
+      const before = stageOrder(harness).length;
+      await openSharedWording(harness);
+      await screen.findByRole('textbox', { name: SEARCH_FAILED });
+
+      expect(await harness.submit()).toBeNull();
+      expect(stageOrder(harness)).toHaveLength(before);
+      collaboratorSaves(harness, { 'en-US': 'Their wording' });
+
+      expect(await harness.submit()).not.toBeNull();
+      expect(stageOrder(harness)).toHaveLength(before + 1);
+      expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+        'en-US': 'Their wording',
+      });
+      expect(wordsSent(sent)).toEqual([['geospatial.searchFailed'], []]);
+    },
+  );
 });
