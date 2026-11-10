@@ -3035,6 +3035,9 @@ importers:
       es-toolkit:
         specifier: 'catalog:'
         version: 1.52.0
+      intl-messageformat:
+        specifier: 'catalog:'
+        version: 12.1.4
       lucide-react:
         specifier: 'catalog:'
         version: 1.61.0(@types/react@19.3.0)(react@19.3.1)

@@ -108,6 +108,7 @@
     "@tanstack/react-query": "catalog:",
     "effect": "catalog:",
     "es-toolkit": "catalog:",
+    "intl-messageformat": "catalog:",
     "lucide-react": "catalog:",
     "mapbox-gl": "^3.33.0",
     "remark-parse": "^11.0.0",
