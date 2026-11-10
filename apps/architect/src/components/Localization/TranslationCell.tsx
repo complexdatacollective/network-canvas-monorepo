@@ -34,6 +34,7 @@ import {
 import { ProtocolLocalizationProvider } from '@codaco/protocol-builder/localization/ProtocolLocalization';
 import { textFieldPropsFor } from '@codaco/protocol-builder/localization/textShape';
 import {
+  asOneLine,
   type DynamicValues,
   type DynamicValueSite,
   dynamicValueContextFor,
@@ -373,6 +374,11 @@ const PlainTextCell = ({
       if (!onMove(1)) draft.leave();
       return;
     }
+    // A one-line text holds no line break, so Shift+Enter adds none.
+    if (event.key === 'Enter' && singleLine) {
+      event.preventDefault();
+      return;
+    }
     if (
       (event.key === 'ArrowUp' && isCaretAt(event.currentTarget, 'start')) ||
       (event.key === 'ArrowDown' && isCaretAt(event.currentTarget, 'end'))
@@ -420,7 +426,12 @@ const PlainTextCell = ({
         <textarea
           rows={1}
           value={text}
-          onChange={(event) => draft.change(event.target.value)}
+          // Pasted line breaks in a one-line text become spaces.
+          onChange={(event) =>
+            draft.change(
+              singleLine ? asOneLine(event.target.value) : event.target.value,
+            )
+          }
           onBlur={draft.leave}
           onKeyDown={handleKeyDown}
           aria-labelledby={labelledBy}

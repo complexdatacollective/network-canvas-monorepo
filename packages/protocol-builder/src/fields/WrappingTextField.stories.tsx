@@ -83,5 +83,11 @@ export const StaysOneParagraph: Story = {
 
     await userEvent.paste('\nwhen things\nare hard');
     await expect(box).toHaveValue('Who you turn to when things are hard');
+
+    // Unicode's line and paragraph separators are line breaks too.
+    await userEvent.paste(' or  worried');
+    await expect(box).toHaveValue(
+      'Who you turn to when things are hard or worried',
+    );
   },
 };

@@ -365,6 +365,19 @@ describe('TranslationTable', () => {
     expect(stageTitle(store, 0)).toEqual({ en: 'Hello', es: 'Hola' });
   });
 
+  it('keeps a one-line text on one line, whatever is typed or pasted into it', async () => {
+    const { store, user } = renderTable();
+
+    await user.click(cell('2', 'Page heading', 'French'));
+    await user.keyboard('Merci{Shift>}{Enter}{/Shift}');
+    await user.paste('\n  beaucoup !');
+    await save(user);
+    expect(stageTitle(store, 1)).toEqual({
+      en: 'Thank you',
+      fr: 'Merci beaucoup !',
+    });
+  });
+
   it('does not count text participants would not see as another translation', async () => {
     const { user } = renderTable();
 
