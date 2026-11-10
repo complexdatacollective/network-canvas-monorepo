@@ -374,11 +374,6 @@ const PlainTextCell = ({
       if (!onMove(1)) draft.leave();
       return;
     }
-    // A one-line text holds no line break, so Shift+Enter adds none.
-    if (event.key === 'Enter' && singleLine) {
-      event.preventDefault();
-      return;
-    }
     if (
       (event.key === 'ArrowUp' && isCaretAt(event.currentTarget, 'start')) ||
       (event.key === 'ArrowDown' && isCaretAt(event.currentTarget, 'end'))
@@ -426,7 +421,8 @@ const PlainTextCell = ({
         <textarea
           rows={1}
           value={text}
-          // Pasted line breaks in a one-line text become spaces.
+          // A one-line text holds no line break: one typed with Shift+Enter
+          // or pasted becomes a space, as the migration joins them.
           onChange={(event) =>
             draft.change(
               singleLine ? asOneLine(event.target.value) : event.target.value,
