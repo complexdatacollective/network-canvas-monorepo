@@ -207,3 +207,72 @@ describe('ComboboxField single', () => {
     ).toHaveAttribute('aria-selected', 'true');
   });
 });
+
+describe('ComboboxField optionFromSearch with bulk selection', () => {
+  const Harness = ({ onChange }: { onChange: (value: unknown) => void }) => {
+    const [value, setValue] = useState<(string | number)[]>([]);
+    return (
+      <ComboboxField
+        name="topics"
+        aria-label="Topics"
+        options={OPTIONS}
+        optionFromSearch={(search) => ({
+          value: `new:${search}`,
+          label: `New ${search}`,
+        })}
+        searchPlaceholder="Find"
+        value={value}
+        onChange={(next) => {
+          setValue(next ?? []);
+          onChange(next);
+        }}
+      />
+    );
+  };
+
+  const triggerText = () =>
+    screen.getByRole('combobox', { name: 'Topics' }).textContent;
+
+  it('keeps an option chosen from the search text when Select All is pressed, and does not add one that is only offered', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Topics' }));
+    const search = await screen.findByPlaceholderText('Find');
+    await user.type(search, 'zzz');
+    await user.click(await screen.findByRole('option', { name: 'New zzz' }));
+    await user.clear(search);
+    await user.type(search, 'qqq');
+    expect(
+      await screen.findByRole('option', { name: 'New qqq' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Select All' }));
+
+    expect(onChange).toHaveBeenLastCalledWith(['a', 'b', 'new:zzz']);
+    await user.clear(search);
+    expect(screen.getByRole('option', { name: 'New zzz' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.queryByRole('option', { name: 'New qqq' })).toBeNull();
+  });
+
+  it('counts the options chosen from the search text in "All selected", and is not "all" while an offered one is unchosen', async () => {
+    const user = userEvent.setup();
+    render(<Harness onChange={vi.fn()} />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Topics' }));
+    const search = await screen.findByPlaceholderText('Find');
+    await user.type(search, 'zzz');
+    await user.click(await screen.findByRole('option', { name: 'New zzz' }));
+    await user.clear(search);
+    await user.click(screen.getByRole('button', { name: 'Select All' }));
+    expect(triggerText()).toContain('All items selected (3)');
+
+    await user.type(search, 'qqq');
+    await screen.findByRole('option', { name: 'New qqq' });
+    expect(triggerText()).toContain('3 items selected');
+  });
+});

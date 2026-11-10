@@ -99,7 +99,11 @@ type ComboboxFieldProps = FieldValueProps<(string | number)[]> &
      *
      * The option is listed after the matches for the text, and is listed
      * whatever its `label` is: it does not have to contain the search text.
-     * Once chosen it stays in the list for as long as it is selected.
+     * Once chosen it stays in the list for as long as it is selected. "Select
+     * All" chooses every enabled option in `options` and keeps the options
+     * already chosen from the search text; it does not choose one that is only
+     * being offered. For a list too long to select as a whole, such as one the
+     * search text extends, set `showSelectAll={false}`.
      */
     optionFromSearch?: (search: string) => ComboboxOption | undefined;
     /**
@@ -255,7 +259,12 @@ function ComboboxField(props: ComboboxFieldProps) {
   const handleSelectAll = () => {
     if (readOnly) return;
     const enabledOptions = options.filter((opt) => !opt.disabled);
-    onChange?.(enabledOptions.map((opt) => opt.value));
+    // The options chosen from the search text stay chosen; one that is only
+    // being offered is not chosen by this.
+    const keptFromSearch = selectedValues.filter(
+      (selected) => !options.some((opt) => opt.value === selected),
+    );
+    onChange?.([...enabledOptions.map((opt) => opt.value), ...keptFromSearch]);
   };
 
   const handleDeselectAll = () => {
@@ -323,12 +332,12 @@ function ComboboxField(props: ComboboxFieldProps) {
   const triggerLabel = useMemo(() => {
     if (selectedValues.length === 0) return null;
     if (
-      options.length > 0 &&
-      options.every((option) => selectedValues.includes(option.value))
+      allOptions.length > 0 &&
+      allOptions.every((option) => selectedValues.includes(option.value))
     ) {
       return intl.formatMessage(messages.allSelected, {
         plural,
-        count: options.length,
+        count: allOptions.length,
       });
     }
     return intl.formatMessage(messages.someSelected, {
@@ -336,7 +345,7 @@ function ComboboxField(props: ComboboxFieldProps) {
       singular,
       plural,
     });
-  }, [selectedValues, options, singular, plural, intl]);
+  }, [selectedValues, allOptions, singular, plural, intl]);
 
   const state = getInputState(props);
 
