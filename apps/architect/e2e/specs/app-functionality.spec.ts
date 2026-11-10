@@ -69,10 +69,8 @@ test('separates history controls and returns project subpages to the timeline', 
 
 // Undo and redo cover the protocol's own history and not typing inside an
 // editor: the stage editor holds its document in its form until it is saved,
-// and the save is the one step the timeline records
-// (docs/superpowers/plans/2026-09-09-protocol-builder-rework.md, "no undo
-// fencing"). Before this, the History toolbar appeared as soon as a stage name
-// was typed and undid keystrokes.
+// and the save is the one step the timeline records. Before this, the History
+// toolbar appeared as soon as a stage name was typed and undid keystrokes.
 test('keeps history to saved changes while a stage editor is open', async ({
   architectPage,
   seed,

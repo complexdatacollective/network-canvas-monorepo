@@ -5,7 +5,7 @@
       "manifestPath": "packages/app-i18n/package.json",
       "name": "@codaco/app-i18n",
       "version": "0.1.0",
-      "reason": "New shared app UI i18n infrastructure package (#1309); first publication from the Studio UI localization design (docs/superpowers/specs/2026-09-04-studio-ui-localization-design.md)."
+      "reason": "New shared app UI i18n infrastructure package (#1309); first publication, made for the Studio UI localization work."
     }
   ]
 }

@@ -184,8 +184,7 @@ edge.
   changeset may combine the Studio packages. Never mix Documentation, Website,
   or Studio with the normal lane or with another gated lane; the
   `pnpm check:changesets` guard rejects it.
-- See the `creating-a-changeset` skill and
-  `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
+- See the `creating-a-changeset` skill.
 
 #### Hotfix releases for Architect, Interviewer and Fresco
 
