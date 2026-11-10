@@ -84,8 +84,12 @@ export const StaysOneParagraph: Story = {
     await userEvent.paste('\nwhen things\nare hard');
     await expect(box).toHaveValue('Who you turn to when things are hard');
 
-    // Unicode's line and paragraph separators are line breaks too.
-    await userEvent.paste('\u2028or\u2029 worried');
+    // Unicode's line and paragraph separators are line breaks too, and the
+    // space a trailing one leaves stays, so the next word typed is its own.
+    await userEvent.paste(
+      `${String.fromCodePoint(0x2028)}or${String.fromCodePoint(0x2029)}`,
+    );
+    await userEvent.keyboard('worried');
     await expect(box).toHaveValue(
       'Who you turn to when things are hard or worried',
     );

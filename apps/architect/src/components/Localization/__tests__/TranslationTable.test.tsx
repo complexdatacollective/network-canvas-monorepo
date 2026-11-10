@@ -369,8 +369,10 @@ describe('TranslationTable', () => {
     const { store, user } = renderTable();
 
     await user.click(cell('2', 'Page heading', 'French'));
-    await user.keyboard('Merci{Shift>}{Enter}{/Shift}');
-    await user.paste('\n  beaucoup\u2028!');
+    // The space a break leaves stays while the text is being typed, so the
+    // next word typed is a word of its own.
+    await user.keyboard('Merci{Shift>}{Enter}{/Shift}beaucoup');
+    await user.paste(`${String.fromCodePoint(0x2029)}!`);
     await save(user);
     expect(stageTitle(store, 1)).toEqual({
       en: 'Thank you',

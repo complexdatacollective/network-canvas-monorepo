@@ -4,6 +4,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { asOneLine } from '@codaco/shared-consts';
+
 import { dynamicValueNamesIn } from '../../../localization/dynamicValueMessages.ts';
 import {
   escapeMessageText,
@@ -22,10 +24,7 @@ import { extractProtocol } from '../../../utils/extractProtocol.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
 import { interfaceTextFor } from '../interface-text.ts';
-import {
-  asOneLine,
-  getLocalizedStringDescriptor,
-} from '../localized-string.ts';
+import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import migrationV8toV9 from '../migration.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';

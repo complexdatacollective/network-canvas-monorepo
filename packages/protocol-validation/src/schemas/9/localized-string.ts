@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { holdsLineBreak } from '@codaco/shared-consts';
+
 import { isBlankMessage } from '../../localization/blankText.ts';
 import { findDynamicMessageSyntaxProblem } from '../../localization/dynamicValueMessages.ts';
 import {
@@ -39,7 +41,9 @@ export type LocalizedTextLines = 'single' | 'multiple';
  * `textFieldPropsFor`).
  *
  * A one-line field refuses a translation holding a line break; the
- * migration from schema 8 joins the lines of such text (see `asOneLine`).
+ * migration from schema 8 joins the lines of such text, and every editor
+ * turns a typed or pasted break into a space (see shared-consts'
+ * `line-breaks.ts`, the one definition of a line break they all use).
  */
 export type LocalizedTextShape = Readonly<{
   format: LocalizedStringFormat;
@@ -150,23 +154,6 @@ export const nonBlankText = () =>
     .refine((message) => message === '' || !isBlankMessage(message), {
       message: 'Text cannot be blank.',
     });
-
-/** A line break: LF, CR, or Unicode's line or paragraph separator. */
-const LINE_BREAK = /[\n\r\u2028\u2029]/;
-
-/** A run of line breaks and the spaces around it. */
-const LINE_BREAK_RUN = /\s*[\n\r\u2028\u2029]\s*/g;
-
-/** Whether `text` holds a line break, which a one-line field refuses. */
-export const holdsLineBreak = (text: string): boolean => LINE_BREAK.test(text);
-
-/**
- * `text` as one line: each run of line breaks, with the spaces around it,
- * becomes one space, and the ends are trimmed. Text with no line break is
- * returned as it is.
- */
-export const asOneLine = (text: string): string =>
-  holdsLineBreak(text) ? text.replace(LINE_BREAK_RUN, ' ').trim() : text;
 
 /**
  * A participant-facing string with one translation per protocol locale.

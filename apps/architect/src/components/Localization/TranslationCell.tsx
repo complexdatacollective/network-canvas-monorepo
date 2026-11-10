@@ -34,7 +34,6 @@ import {
 import { ProtocolLocalizationProvider } from '@codaco/protocol-builder/localization/ProtocolLocalization';
 import { textFieldPropsFor } from '@codaco/protocol-builder/localization/textShape';
 import {
-  asOneLine,
   type DynamicValues,
   type DynamicValueSite,
   dynamicValueContextFor,
@@ -43,6 +42,7 @@ import {
   type LocalizedStringFormat,
   type MessageArguments,
 } from '@codaco/protocol-validation';
+import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 import { useAppSelector } from '~/ducks/hooks';
 import type { TranslationRow } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
@@ -422,10 +422,12 @@ const PlainTextCell = ({
           rows={1}
           value={text}
           // A one-line text holds no line break: one typed with Shift+Enter
-          // or pasted becomes a space, as the migration joins them.
+          // or pasted becomes a space.
           onChange={(event) =>
             draft.change(
-              singleLine ? asOneLine(event.target.value) : event.target.value,
+              singleLine
+                ? lineBreaksAsSpaces(event.target.value)
+                : event.target.value,
             )
           }
           onBlur={draft.leave}

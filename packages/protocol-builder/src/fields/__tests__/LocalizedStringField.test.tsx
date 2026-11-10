@@ -138,7 +138,10 @@ describe('LocalizedStringField', () => {
     const paragraphSeparator = String.fromCodePoint(0x2029);
 
     await user.click(screen.getByRole('textbox', { name: 'Title' }));
-    await user.paste(`${lineSeparator}there${paragraphSeparator} again`);
+    await user.paste(`${lineSeparator}there${paragraphSeparator}`);
+    // The space the trailing separator leaves stays while the text is being
+    // typed, so the next word typed is a word of its own.
+    await user.keyboard('again');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>

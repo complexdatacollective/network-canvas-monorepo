@@ -5,11 +5,11 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import type { FieldValueProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
-  asOneLine,
   type DynamicValueSite,
   dynamicValueNamesIn,
   type LocalizedString,
 } from '@codaco/protocol-validation';
+import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 
 import {
   LocalizedStringField,
@@ -140,7 +140,9 @@ export function LocalizedInputField({
             // An input drops a pasted line feed, but keeps Unicode's line
             // and paragraph separators, which plain text cannot hold.
             onChange={(text) =>
-              translation.onChange(text === undefined ? text : asOneLine(text))
+              translation.onChange(
+                text === undefined ? text : lineBreaksAsSpaces(text),
+              )
             }
           />
         )

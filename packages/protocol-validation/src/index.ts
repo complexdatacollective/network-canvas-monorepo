@@ -185,7 +185,6 @@ export {
   type PedigreeSexAssignedAtBirth,
 } from './schemas/9/family-pedigree-values.ts';
 export {
-  asOneLine,
   type LocalizedString,
   type LocalizedStringFormat,
   type LocalizedTextLines,

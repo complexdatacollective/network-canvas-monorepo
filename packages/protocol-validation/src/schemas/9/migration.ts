@@ -1,6 +1,8 @@
 import {
+  asOneLine,
   CodebookNameSchema,
   entitySecureAttributesMeta,
+  holdsLineBreak,
   normalizeCodebookName,
 } from '@codaco/shared-consts';
 
@@ -30,11 +32,7 @@ import {
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { withInterfaceText } from './interface-text.ts';
-import {
-  asOneLine,
-  holdsLineBreak,
-  ProtocolLocalizationSchema,
-} from './localized-string.ts';
+import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { ProtocolSchemaV9 } from './schema.ts';
 import { freshStageId } from './stage-ids.ts';
 import { missingSuppliedStageText } from './supplied-stage-text.ts';

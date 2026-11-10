@@ -6,7 +6,6 @@ import { escapeMessageText } from '../../../localization/messageSyntax.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { VersionedProtocolSchema } from '../../index.ts';
 import {
-  asOneLine,
   getLocalizedStringDescriptor,
   LocaleTagSchema,
   localizedMessage,
@@ -308,22 +307,6 @@ describe('line breaks', () => {
       expect(issuesOf(severalLines, { en: text, fr: text })).toEqual([]);
     },
   );
-});
-
-describe('asOneLine', () => {
-  it('replaces each run of line breaks and the spaces around it with one space', () => {
-    expect(asOneLine('First \n\n  second\r\nthird\u2028fourth')).toBe(
-      'First second third fourth',
-    );
-  });
-
-  it('trims the ends of text it joins', () => {
-    expect(asOneLine('\n Welcome \n')).toBe('Welcome');
-  });
-
-  it('leaves text with no line break as it is', () => {
-    expect(asOneLine('  Two  spaces ')).toBe('  Two  spaces ');
-  });
 });
 
 describe('Information stage title', () => {
