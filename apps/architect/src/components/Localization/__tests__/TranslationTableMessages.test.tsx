@@ -33,13 +33,27 @@ const protocol = {
   ],
 } as unknown as CurrentProtocol;
 
-const renderTable = () => {
+/** A text whose last version has a choice of its own among its words. */
+const withChoiceInASentence = (listItem: string) => {
+  const shown = structuredClone(protocol);
+  const stage = shown.stages[0];
+  if (
+    stage !== undefined &&
+    'completeness' in stage &&
+    stage.completeness?.itemText?.siblings
+  ) {
+    stage.completeness.itemText.siblings.listItem = { en: listItem };
+  }
+  return shown;
+};
+
+const renderTable = (shown: CurrentProtocol = protocol) => {
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
-  store.dispatch(setActiveProtocol(structuredClone(protocol)));
+  store.dispatch(setActiveProtocol(structuredClone(shown)));
   render(
     <Provider store={store}>
       <FormStoreProvider>
@@ -305,5 +319,40 @@ describe('TranslationTable: texts with versions', () => {
 
     await save(user);
     expect(getProtocol(store.getState())).toBe(before);
+  });
+
+  it('moves on to the next cell from the last visible version, not into a folded set inside it', async () => {
+    const { user } = renderTable(
+      withChoiceInASentence(
+        '{isYou, select, true {Your brothers and sisters} other {Brothers and sisters of {name}{isYou, select, true { now} other { later}}}}',
+      ),
+    );
+
+    const cell = messageCell('English').closest('td');
+    await user.click(messageCell('English'));
+    await editedText('English');
+    const lastVisible = await screen.findByRole('textbox', {
+      name: 'About someone else',
+    });
+    // The folded number's rows are mounted, hidden, in that last version.
+    expect(
+      screen.getAllByRole('textbox', {
+        name: /^About someone else, /,
+        hidden: true,
+      }),
+    ).toHaveLength(2);
+
+    // The caret at the end of the last version, as the cell reads it.
+    lastVisible.focus();
+    const selection = lastVisible.ownerDocument.getSelection();
+    selection?.selectAllChildren(lastVisible);
+    selection?.collapseToEnd();
+    await user.keyboard('{ArrowDown}');
+
+    // The key goes on to the next cell rather than into a hidden row.
+    await waitFor(() =>
+      expect(cell?.contains(document.activeElement)).toBe(false),
+    );
+    expect(document.activeElement?.closest('td')).not.toBe(null);
   });
 });

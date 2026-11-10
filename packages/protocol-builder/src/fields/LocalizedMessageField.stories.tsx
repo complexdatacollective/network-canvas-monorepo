@@ -251,3 +251,54 @@ export const ChoiceInASentence: Story = {
     ).toBeVisible();
   },
 };
+
+/**
+ * A choice among the words of an open row folds to a pill. The rows inside it
+ * stay out of reach of Tab and the arrow keys until the pill is opened.
+ */
+export const ChoiceInASentenceInsideAnOpenRow: Story = {
+  args: {
+    children: (
+      <Field<typeof LocalizedMessageField>
+        name="completeness.itemText.parents.listItem"
+        component={LocalizedMessageField}
+        label="Missing parents item"
+        arguments={PARENTS_ARGUMENTS}
+        initialValue={{
+          'en-US':
+            '{isYou, select, true {Yours} other {Parents of {name}: {isYou, select, true {yours} other {theirs}}}}',
+        }}
+        required={REQUIRED}
+      />
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const last = await canvas.findByRole('textbox', {
+      name: 'About someone else',
+    });
+    const pill = within(last).getByRole('button', {
+      name: 'Participant or someone else',
+    });
+    await expect(pill).toHaveAttribute('aria-expanded', 'false');
+
+    // Tab walks on through the row and out of the field; it never lands in a
+    // row that is folded away.
+    await userEvent.click(last);
+    for (let press = 0; press < 4; press += 1) {
+      await userEvent.tab();
+      await expect(
+        canvasElement.ownerDocument.activeElement?.closest('[hidden]') ?? null,
+      ).toBeNull();
+    }
+
+    await userEvent.click(pill);
+    const opened = await canvas.findAllByRole('textbox', {
+      name: /^About someone else, /u,
+    });
+    await expect(opened).toHaveLength(2);
+    await expect(opened[0]).toBeVisible();
+  },
+};

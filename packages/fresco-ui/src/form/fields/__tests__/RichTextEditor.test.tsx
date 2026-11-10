@@ -17,7 +17,7 @@ import { EnclosingHeadingLevel } from '../../../typography/EnclosingHeadingLevel
 import Field from '../../Field/Field';
 import Form from '../../Form';
 import SubmitButton from '../../SubmitButton';
-import RichTextEditorField from '../RichTextEditor';
+import RichTextEditorField, { hasVersionRowBeside } from '../RichTextEditor';
 
 const documentWithText = {
   type: 'doc',
@@ -1569,6 +1569,109 @@ describe('versions that are the whole message', () => {
     // The first row has nothing above it.
     await user.keyboard('{ArrowUp}');
     expect(first).toHaveFocus();
+  });
+
+  describe('with a folded set of versions among the words of a row', () => {
+    const NAMED = {
+      type: 'versions',
+      attrs: {
+        label: 'Wording that changes with whether you are named',
+        summary: 'Named',
+        versions: [
+          { key: 'named', label: 'If named', content: [] },
+          { key: 'unnamed', label: 'If not named', content: [] },
+        ],
+      },
+    };
+    const wholeWith = (first: JSONContent[], second: JSONContent[]) =>
+      lineOf({
+        type: 'versions',
+        attrs: {
+          label: 'Wording that changes with a number',
+          versions: [
+            { key: 'one', label: 'When it is 1', content: first },
+            { key: 'other', label: 'When it is 0, 2, 3, …', content: second },
+          ],
+        },
+      });
+    const WORDS = { type: 'text', text: 'Add ' };
+
+    it('does not take its hidden rows for the row below the last visible one', async () => {
+      renderField({ value: wholeWith([], [WORDS, NAMED]) });
+      const other = await screen.findByRole('textbox', {
+        name: 'When it is 0, 2, 3, …',
+      });
+      const one = screen.getByRole('textbox', { name: 'When it is 1' });
+
+      // The folded set's rows are mounted but hidden: no row follows.
+      expect(
+        screen.getByRole('textbox', {
+          name: 'When it is 0, 2, 3, …, If named',
+          hidden: true,
+        }),
+      ).toBeInTheDocument();
+      expect(hasVersionRowBeside(other, 1)).toBe(false);
+      expect(hasVersionRowBeside(one, 1)).toBe(true);
+      expect(hasVersionRowBeside(other, -1)).toBe(true);
+    });
+
+    it('steps over its hidden rows, up and down', async () => {
+      const { user } = renderField({
+        value: wholeWith([WORDS, NAMED], []),
+      });
+      const one = await screen.findByRole('textbox', { name: 'When it is 1' });
+      const other = screen.getByRole('textbox', {
+        name: 'When it is 0, 2, 3, …',
+      });
+
+      // From the start of the row below, up is the row above, not the hidden
+      // rows inside it.
+      other.focus();
+      await user.keyboard('{ArrowUp}');
+      await waitFor(() => expect(one).toHaveFocus());
+      expect(hasVersionRowBeside(one, 1)).toBe(true);
+      expect(hasVersionRowBeside(one, -1)).toBe(false);
+    });
+
+    it('reaches its rows while it is open, and stops when it folds again', async () => {
+      const { user } = renderField({ value: wholeWith([], [WORDS, NAMED]) });
+      const other = await screen.findByRole('textbox', {
+        name: 'When it is 0, 2, 3, …',
+      });
+      expect(hasVersionRowBeside(other, 1)).toBe(false);
+
+      await user.click(screen.getByRole('button', { name: 'Named' }));
+      await screen.findByRole('textbox', {
+        name: 'When it is 0, 2, 3, …, If named',
+      });
+      expect(hasVersionRowBeside(other, 1)).toBe(true);
+
+      await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('textbox', {
+            name: 'When it is 0, 2, 3, …, If named',
+          }),
+        ).toBeNull(),
+      );
+      expect(hasVersionRowBeside(other, 1)).toBe(false);
+    });
+
+    it('leaves its hidden rows out of the Tab order', async () => {
+      const { user } = renderField({ value: wholeWith([], [WORDS, NAMED]) });
+      const other = await screen.findByRole('textbox', {
+        name: 'When it is 0, 2, 3, …',
+      });
+      const hiddenRow = screen.getByRole('textbox', {
+        name: 'When it is 0, 2, 3, …, If named',
+        hidden: true,
+      });
+
+      other.focus();
+      await user.tab();
+      expect(hiddenRow).not.toHaveFocus();
+      expect(hiddenRow.closest('[hidden]')).not.toBeNull();
+    });
   });
 
   describe('when the versions change while the field is shown', () => {

@@ -168,7 +168,8 @@ const isWholeMessageVersions = (doc: ProseMirrorNode): boolean => {
 /**
  * The rows that hold words, in the order they read, among the versions listed
  * open that `row` is one of: every row of the outermost such element that is
- * not itself only another set of versions listed open.
+ * not itself only another set of versions listed open, and not in a set that
+ * is folded away.
  */
 const wordRowsAround = (row: HTMLElement): HTMLElement[] => {
   let outermost: Element | null = row.closest('[data-always-open]');
@@ -179,8 +180,16 @@ const wordRowsAround = (row: HTMLElement): HTMLElement[] => {
     outermost = outer;
   }
   if (outermost === null) return [];
-  return [...outermost.querySelectorAll<HTMLElement>('[data-version]')].filter(
-    (each) => each.querySelector('[data-always-open]') === null,
+  const around = outermost;
+  return [...around.querySelectorAll<HTMLElement>('[data-version]')].filter(
+    (each) => {
+      // Not a frame for rows of its own.
+      if (each.querySelector('[data-always-open]') !== null) return false;
+      // Nor in a set folded to a pill among words: its rows stay mounted, but
+      // hidden, and are not there to step to until it is opened.
+      const hidden = each.closest('[hidden]');
+      return hidden === null || !around.contains(hidden);
+    },
   );
 };
 
