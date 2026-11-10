@@ -15,7 +15,6 @@ import { NARRATIVE_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/narrative-pedi
 import { NARRATIVE_SUPPLIED_TEXT } from './stage-wording/narrative.ts';
 import type { SuppliedStageSetting } from './supplied-stage-setting.ts';
 import {
-  isStillSupplied,
   type LanguageChange,
   suppliedTextAfterLanguageChange,
   suppliedTextFor,
@@ -25,8 +24,8 @@ import {
  * The stage settings whose wording Network Canvas supplies, by stage type.
  * Nothing reads these at interview time: the text is written into a stage
  * when it is made, then edited and translated like any protocol text, and
- * Architect fills it into a language added later while the researcher has
- * not changed it in the default language.
+ * Architect fills it into a language added later wherever that language has
+ * no translation of it.
  */
 const SUPPLIED_STAGE_TEXT: Readonly<
   Record<string, readonly SuppliedStageSetting[]>
@@ -103,10 +102,12 @@ export const suppliedStageText = (
   });
 
 /**
- * A stage's supplied settings as Network Canvas writes them after a change to
- * the protocol's languages (see `suppliedTextAfterLanguageChange`): each one
- * whose text in the default language before the change is still Network
- * Canvas's text there. A setting the researcher has reworded is theirs, and
+ * Every supplied setting a stage holds, as it reads after a change to the
+ * protocol's languages (see `suppliedTextAfterLanguageChange`): a language
+ * the protocol did not have gains Network Canvas's wording for each setting
+ * with no translation in it, whether or not the researcher has reworded the
+ * setting, and Network Canvas's wording for a corrected language becomes its
+ * wording for the language as corrected. A setting the stage does not hold
  * is left out.
  */
 export const suppliedStageTextAfterLanguageChange = (
@@ -116,15 +117,16 @@ export const suppliedStageTextAfterLanguageChange = (
   settingsOf(stage.type).flatMap((setting) => {
     const current = valueAt(stage, setting.path);
     if (typeof current !== 'object' || current === null) return [];
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a supplied setting's path holds a language-to-text map in a stage; an entry that is not text never equals the supplied wording below
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a supplied setting's path holds a language-to-text map in a stage; its translations are kept as they are, except one that equals the supplied wording below
     const held = current as LocalizedString;
-    const supplied = (locale: LocaleTag) => writtenIn(setting, locale);
-    if (!isStillSupplied(held, supplied, change.before.defaultLocale))
-      return [];
     return [
       {
         path: setting.path,
-        value: suppliedTextAfterLanguageChange(held, supplied, change),
+        value: suppliedTextAfterLanguageChange(
+          held,
+          (locale) => writtenIn(setting, locale),
+          change,
+        ),
       },
     ];
   });
