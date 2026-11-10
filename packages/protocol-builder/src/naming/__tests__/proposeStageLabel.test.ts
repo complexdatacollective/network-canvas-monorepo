@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { STAGE_LABEL_MAX_LENGTH } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -28,11 +29,13 @@ const informationStage = (
  */
 const contextWith = (
   sections: Readonly<Record<string, SectionDoc>> = {},
+  localization: Readonly<{ defaultLocale: string; locales: string[] }> = {
+    defaultLocale: 'en',
+    locales: ['en', 'es'],
+  },
 ): ProtocolBuilderProtocolContext =>
   protocolContextFromSections({
-    [sectionId({ kind: 'settings' })]: {
-      localization: { defaultLocale: 'en', locales: ['en', 'es'] },
-    },
+    [sectionId({ kind: 'settings' })]: { localization },
     [sectionId({ kind: 'stageOrder' })]: { stages: [] },
     [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
       name: 'Person',
@@ -222,5 +225,135 @@ describe('proposeStageLabel', () => {
         ),
       ),
     ).toBe('Information');
+  });
+});
+
+const inLanguage = (defaultLocale: string, locales = [defaultLocale]) => ({
+  defaultLocale,
+  locales,
+});
+
+describe('the language a proposal is in', () => {
+  it('is the protocol’s default language when Network Canvas has wording in it', () => {
+    expect(
+      proposeStageLabel(
+        {
+          id: 'stage-1',
+          type: 'NameGenerator',
+          subject: { entity: 'node', type: 'person' },
+        },
+        contextWith({}, inLanguage('es', ['es', 'en'])),
+      ),
+    ).toBe('Generador de nombres (con formularios): Person');
+    expect(
+      proposeStageLabel(
+        { id: 'stage-1', type: 'Sociogram' },
+        contextWith({}, inLanguage('zh-Hant', ['zh-Hant', 'en'])),
+      ),
+    ).toBe('社會關係圖');
+  });
+
+  it('is the same wording for a region of the language it supplies', () => {
+    for (const defaultLocale of ['es-ES', 'zh-TW', 'pt', 'en-US']) {
+      expect(
+        proposeStageLabel(
+          { id: 'stage-1', type: 'Sociogram' },
+          contextWith({}, inLanguage(defaultLocale)),
+        ),
+      ).toBeTypeOf('string');
+    }
+    expect(
+      proposeStageLabel(
+        { id: 'stage-1', type: 'Sociogram' },
+        contextWith({}, inLanguage('pt')),
+      ),
+    ).toBe('Sociograma');
+  });
+
+  // Network Canvas supplies the wording for these languages as written for
+  // one region, so another region of one, or any other language, has none.
+  it('is none at all for a default language Network Canvas has no wording in', () => {
+    for (const defaultLocale of ['sw', 'es-MX', 'en-GB', 'ar', 'hu']) {
+      expect(
+        proposeStageLabel(
+          { id: 'stage-1', type: 'Sociogram' },
+          // The protocol also has English; only the DEFAULT language counts.
+          contextWith({}, inLanguage(defaultLocale, [defaultLocale, 'en'])),
+        ),
+      ).toBeUndefined();
+    }
+  });
+
+  it('stays English when the protocol declares no languages', () => {
+    const context = protocolContextFromSections({
+      [sectionId({ kind: 'stageOrder' })]: { stages: [] },
+    });
+    expect(context.localization).toBeUndefined();
+    expect(proposeStageLabel({ id: 'stage-1', type: 'EgoForm' }, context)).toBe(
+      'Ego Form',
+    );
+  });
+
+  it('words the qualifiers in that language too', () => {
+    expect(
+      proposeStageLabel(
+        {
+          id: 'stage-1',
+          type: 'FinishSession',
+          mode: 'automatic',
+          outcome: 'terminated',
+        },
+        contextWith({}, inLanguage('de')),
+      ),
+    ).toBe(
+      'Abschlussbildschirm – Interview vorzeitig beendet, ohne Bestätigungsabfrage',
+    );
+  });
+
+  it('avoids a name already taken in the default language, not in another', () => {
+    const context = (label: Readonly<Record<string, string>>) =>
+      contextWith(
+        ordered(informationStage('stage-other', label)),
+        inLanguage('es', ['es', 'en']),
+      );
+    expect(
+      proposeStageLabel(
+        { id: 'stage-new', type: 'Information' },
+        context({ es: 'información' }),
+      ),
+    ).toBe('Información #2');
+    // The English text of another stage does not occupy the Spanish name.
+    expect(
+      proposeStageLabel(
+        { id: 'stage-new', type: 'Information' },
+        context({ es: 'Otra cosa', en: 'Información' }),
+      ),
+    ).toBe('Información');
+  });
+
+  it('holds to the schema’s limit in the language, dropping the subject that does not fit', () => {
+    const longName = 'Persona'.repeat(20);
+    const context = protocolContextFromSections({
+      [sectionId({ kind: 'settings' })]: {
+        localization: inLanguage('es'),
+      },
+      [sectionId({ kind: 'stageOrder' })]: { stages: [] },
+      [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
+        name: longName,
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        variables: {},
+      },
+    });
+    const label = proposeStageLabel(
+      {
+        id: 'stage-1',
+        type: 'NameGenerator',
+        subject: { entity: 'node', type: 'person' },
+      },
+      context,
+    );
+    expect(label).toBe('Generador de nombres (con formularios)');
+    expect(label?.length).toBeLessThanOrEqual(STAGE_LABEL_MAX_LENGTH);
   });
 });
