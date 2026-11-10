@@ -32,6 +32,13 @@ Spanish no longer gets a Spanish protocol inside French buttons.
   `roster`, `networkComposer` and `egoForm`, plus
   `familyTreeView` for the controls both pedigree stages share. Each group is
   held only while the protocol has a stage that shows it.
+- A protocol must hold all the interface text it shows. Validation refuses one
+  that lacks a group, or an entry of a group, that something in it shows,
+  naming each at its place in `interfaceText`. Architect, Studio and the
+  schema 8 migration write this text, so only a protocol written by hand can
+  lack it. An entry may still be held without text where Network Canvas has
+  no wording in the protocol's default language, until the researcher writes
+  it.
 - Buttons that any stage might show are worded once, among `buttons`: `undo`,
   `redo`, `skip`, `zoomIn` and `zoomOut` join `copy`.
 - `STAGE_TYPE_INTERFACE_TEXT` names the groups each stage type shows, and

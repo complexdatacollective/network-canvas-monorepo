@@ -25,8 +25,9 @@ export const ProtocolStructureSchema = z.strictObject({
   lastModified: z.string().datetime().optional(),
   codebook: CodebookSchema,
   // The interview's words that belong to no one stage (see
-  // `interface-text.ts`). Architect keeps it holding what the protocol
-  // uses; the interview shows its own words for anything it lacks.
+  // `interface-text.ts`). Optional here only so the root refinement can
+  // name each group and entry the protocol uses and lacks
+  // (`findMissingInterfaceText`): a protocol must hold all of them.
   interfaceText: InterfaceTextSchema.optional(),
   assetManifest: z.record(z.string(), assetSchema).optional(),
   stages: z.array(stageSchema).superRefine((stages, ctx) => {

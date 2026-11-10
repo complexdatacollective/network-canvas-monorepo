@@ -1,6 +1,9 @@
 import type { Page } from '@playwright/test';
 
-import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import {
+  CurrentProtocolSchema,
+  withInterfaceText,
+} from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
@@ -313,52 +316,54 @@ test('formats printed attribute order and updates linked-list grammar live while
 }) => {
   // Underscore/hyphen/dot distinguish locale collation from codepoint order.
   const names = ['alpha_name', 'alpha.name', 'alpha-name', 'Isabel'];
-  const protocol = CurrentProtocolSchema.parse({
-    ...emptyProtocol(),
-    codebook: {
-      ego: {
-        variables: Object.fromEntries(
-          names.map((name, index) => [
-            `attribute-${index}`,
-            { name, type: 'text', component: 'Text' },
-          ]),
-        ),
-      },
-    },
-    stages: [
-      {
-        id: 'sort',
-        type: 'EgoForm',
-        label: { en: 'Authored_sort' },
-        introductionPanel: {
-          title: { en: 'Authored introduction' },
-          text: { en: 'Authored content' },
-        },
-        form: {
-          fields: names.map((_, index) => ({
-            variable: `attribute-${index}`,
-            prompt: { en: `Authored_prompt_${index}` },
-          })),
+  const protocol = CurrentProtocolSchema.parse(
+    withInterfaceText({
+      ...emptyProtocol(),
+      codebook: {
+        ego: {
+          variables: Object.fromEntries(
+            names.map((name, index) => [
+              `attribute-${index}`,
+              { name, type: 'text', component: 'Text' },
+            ]),
+          ),
         },
       },
-      {
-        id: 'conjunction',
-        type: 'EgoForm',
-        label: { en: 'Authored_conjunction' },
-        introductionPanel: {
-          title: { en: 'Authored introduction' },
-          text: { en: 'Authored content' },
+      stages: [
+        {
+          id: 'sort',
+          type: 'EgoForm',
+          label: { en: 'Authored_sort' },
+          introductionPanel: {
+            title: { en: 'Authored introduction' },
+            text: { en: 'Authored content' },
+          },
+          form: {
+            fields: names.map((_, index) => ({
+              variable: `attribute-${index}`,
+              prompt: { en: `Authored_prompt_${index}` },
+            })),
+          },
         },
-        form: {
-          fields: [0, 3].map((index) => ({
-            variable: `attribute-${index}`,
-            prompt: { en: `Authored_prompt_${index}` },
-          })),
+        {
+          id: 'conjunction',
+          type: 'EgoForm',
+          label: { en: 'Authored_conjunction' },
+          introductionPanel: {
+            title: { en: 'Authored introduction' },
+            text: { en: 'Authored content' },
+          },
+          form: {
+            fields: [0, 3].map((index) => ({
+              variable: `attribute-${index}`,
+              prompt: { en: `Authored_prompt_${index}` },
+            })),
+          },
         },
-      },
-      ...emptyProtocol().stages,
-    ],
-  });
+        ...emptyProtocol().stages,
+      ],
+    }),
+  );
   await seed(protocol);
   await page.goto('/protocol/summary');
   const before = await readProtocolJson(page);

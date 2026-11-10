@@ -3019,13 +3019,15 @@ describe('validation rules on the generated ego', () => {
 // The builder's output carries no protocol name, which the schema requires;
 // everything else that is parsed came from the builder.
 const expectValid = (synth: SyntheticInterview) => {
-  const { localization, schemaVersion, codebook, stages } = synth.getProtocol();
+  const { localization, schemaVersion, codebook, stages, interfaceText } =
+    synth.getProtocol();
   const result = CurrentProtocolSchema.safeParse({
     name: 'Localized protocol',
     localization,
     schemaVersion,
     codebook,
     stages,
+    interfaceText,
   });
   expect(result.error?.issues ?? []).toEqual([]);
   if (!result.success) throw new Error('The built protocol is invalid');
