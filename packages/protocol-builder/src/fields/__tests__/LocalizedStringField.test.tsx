@@ -131,6 +131,21 @@ describe('LocalizedStringField', () => {
     );
   });
 
+  it('keeps plain text on one line, whatever separator is pasted into it', async () => {
+    const user = userEvent.setup();
+    const saved = renderTitle({ initialValue: { en: 'Hello' } });
+    const lineSeparator = String.fromCodePoint(0x2028);
+    const paragraphSeparator = String.fromCodePoint(0x2029);
+
+    await user.click(screen.getByRole('textbox', { name: 'Title' }));
+    await user.paste(`${lineSeparator}there${paragraphSeparator} again`);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(saved.current).toEqual({ title: { en: 'Hello there again' } }),
+    );
+  });
+
   it('removes a translation that is cleared rather than storing it empty', async () => {
     const user = userEvent.setup();
     const saved = renderTitle({ initialValue: { en: 'Hello', es: 'Hola' } });

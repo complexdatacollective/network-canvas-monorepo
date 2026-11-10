@@ -5,6 +5,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import type { FieldValueProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
+  asOneLine,
   type DynamicValueSite,
   dynamicValueNamesIn,
   type LocalizedString,
@@ -136,7 +137,11 @@ export function LocalizedInputField({
             {...props}
             readOnly={props.readOnly === true || translation.readOnly}
             value={translation.value}
-            onChange={(text) => translation.onChange(text)}
+            // An input drops a pasted line feed, but keeps Unicode's line
+            // and paragraph separators, which plain text cannot hold.
+            onChange={(text) =>
+              translation.onChange(text === undefined ? text : asOneLine(text))
+            }
           />
         )
       }
