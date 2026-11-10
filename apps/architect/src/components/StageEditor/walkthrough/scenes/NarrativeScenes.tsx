@@ -74,7 +74,7 @@ const HULL_STROKES = ['stroke-cat-1', 'stroke-cat-2'] as const;
  * A group as the interview draws it: the shape around its members, filled
  * and stroked wide and round in the category's color, half transparent.
  */
-function Hull({
+export function Hull({
   points,
   color,
   k,

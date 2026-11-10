@@ -280,7 +280,7 @@ type Rail = Readonly<{
  * The interview's navigation, as a vertical rail: settings, back, the
  * interview's progress, and the larger next arrow at the bottom.
  */
-function NavigationRail({
+export function NavigationRail({
   t,
   progress,
   pulse = false,
