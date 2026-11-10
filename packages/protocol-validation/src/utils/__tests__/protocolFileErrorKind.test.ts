@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MigrationNotPossibleError,
+  MigrationContentRefusedError,
   MigrationResultInvalidError,
   MigrationStepError,
   SchemaVersionDetectionError,
@@ -48,6 +49,30 @@ describe('isProtocolFileFault', () => {
 
     expect(getProtocolFileErrorKind(error)).toBe('upgradeStepFailed');
     expect(isProtocolFileFault(error)).toBe(false);
+  });
+
+  it("treats content the protocol left empty, which the upgrade may not invent, as the file's", () => {
+    const error = new MigrationContentRefusedError(
+      'bad output',
+      9,
+      [
+        {
+          code: 'custom',
+          path: ['stages', 0, 'prompts', 0, 'text'],
+          message: 'Text cannot be blank.',
+        },
+      ],
+      [
+        {
+          path: ['stages', 0, 'prompts', 0, 'text'],
+          place: 'Stage “Friends”, prompt 1',
+          message: 'Text cannot be blank.',
+        },
+      ],
+    );
+
+    expect(getProtocolFileErrorKind(error)).toBe('upgradeRefusedContent');
+    expect(isProtocolFileFault(error)).toBe(true);
   });
 
   it("does not treat a failed migration step as the file's fault", () => {

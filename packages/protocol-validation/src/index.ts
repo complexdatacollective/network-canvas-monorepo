@@ -133,6 +133,10 @@ export {
 } from './migration/index.ts';
 export * from './migration/errors.ts';
 export {
+  formatRefusedContent,
+  type RefusedContentProblem,
+} from './migration/refusedContent.ts';
+export {
   detectSchemaVersion,
   getMigrationInfo,
   type MigrationInfo,

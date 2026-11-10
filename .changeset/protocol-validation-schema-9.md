@@ -53,16 +53,46 @@ Schema 9:
   type's name (or its ID) and wrapped as `{ en: <text> }`. Each Network
   Composer edge entry gets a `label` taken from its edge type's name (or its
   ID) and wrapped the same way. Codebook node types, edge types and variables
-  have no `label`: participants never see a codebook name. A form field with no caption, or an
-  empty or blank one (a Network Composer field's `label`, or any other form
-  field's `prompt`), gets its attribute's name (or its ID) as one, escaped so
-  that markdown shows it as written, and wrapped the same way. An empty
-  optional text that schema 9 requires to be non-empty is removed, as are
-  Network Composer scale end labels that were not strings. Its migration notes
-  tell researchers what the new version allows, that the text is recorded as
-  English, so they should confirm the default language and change it in
-  Architect if the protocol is written in another one, and which empty
-  questions were filled in.
+  have no `label`: participants never see a codebook name. A Network Composer
+  field with no caption gets its attribute's name (or its ID) as its `label`,
+  escaped so that markdown shows it as written, and wrapped the same way: an
+  optional field that was left out gets the default the interview showed. A
+  caption given as empty or blank is the researcher's own content left blank,
+  and is refused like a blank prompt (below). An empty optional text that schema 9 requires to be
+  non-empty is removed, as are Network Composer scale end labels that were not
+  strings. A required label or title that schema 8 accepted empty or blank is
+  filled in: a stage name becomes `Stage` and its position (as the v7 to v8
+  migration names a stage with none); an option label becomes the option's
+  value (`Yes` or `No` for a Boolean attribute); a Name Generator side panel
+  title becomes `Panel` and its position; a Name Generator Roster card or sort
+  label takes its attribute's name; and a Narrative Pedigree condition label
+  takes the name of the attribute that records it, numbered if another
+  condition on the stage already has that label. Only text changes, never an
+  option value or ID. The migration never invents the instrument's own
+  content: a protocol whose prompt or question (including a form field's
+  `prompt`, a Network Composer field's caption given as blank, a Family
+  Pedigree's prompt and nomination prompts, and a Categorical Bin's
+  `otherVariablePrompt`), ordinal or categorical option value, or node type,
+  edge type or attribute name is empty or blank (line breaks and spaces only
+  included) is not migrated. `migrateProtocol` throws the new
+  `MigrationContentRefusedError` for it, a `MigrationResultInvalidError` whose
+  `problems` name each place in plain English (the stage and prompt, the stage,
+  form and field, or the type, attribute and option, with the option's label),
+  numbering a prompt, field or option by its position in the protocol as the
+  researcher made it, before the migration removed or added any;
+  `formatRefusedContent` lists them one per line. It is thrown only when every
+  issue is such content, so any other invalid result still throws
+  `MigrationResultInvalidError`, whose new `issues` list gives each problem's
+  `code`, `message` and `path` in the migrated document.
+  `getProtocolFileErrorKind` classifies the refusal as the new
+  `upgradeRefusedContent`, a fault of the file rather than of the upgrade, and
+  `protocolFileErrorMessages.upgradeRefusedContent` (translated into every
+  catalog language) tells researchers to correct each listed problem in the
+  version of Architect that made the protocol. Its migration notes tell researchers what the new
+  version allows, that the text is recorded as English, so they should confirm
+  the default language and change it in Architect if the protocol is written
+  in another one, and which empty content they must correct in the version of
+  Architect that made the protocol before upgrading.
 - Schema 9 keeps the optional `experiments` property, for features released
   within a schema version, but `encryptedVariables` is no longer one of them:
   an attribute marked `encrypted` is always encrypted. `ExperimentsSchema` and
@@ -109,9 +139,9 @@ Schema 9:
   migration removes text that is blank in every language, so the panel shows
   only its title, and gives a blank title the stage's label. A Categorical Bin
   prompt's `otherOptionLabel` and `otherVariablePrompt` must also contain text;
-  the migration gives a blank one the other's text, else `Other` or
-  `Please specify`. In a document already in schema 9 form, only the blank
-  translations of these fields are removed.
+  the migration gives a blank `otherOptionLabel` the text `Other`, and refuses
+  a blank `otherVariablePrompt`. In a document already in schema 9 form, only
+  the blank translations of these fields are removed.
 
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body
@@ -141,7 +171,10 @@ Localization:
   line break (LF, CR, U+2028 or U+2029) is refused. The v8 to v9 migration
   replaces each run of line breaks in one-line text, with the spaces around
   it, by one space and trims the ends, unless that would leave the text
-  blank, and its migration notes say so. `collectLocalizedStrings` reports
+  blank, and its migration notes say so. The join runs after the repairs and
+  refusals, and text of only line breaks and spaces is blank either way: a
+  stage named with only line breaks becomes `Stage` and its position, and such
+  a prompt is refused. `collectLocalizedStrings` reports
   each string's `lines`. New exports: the `LocalizedTextLines` and
   `LocalizedTextShape` types and `localizedTextShapeAt` (the shape a schema
   declares at a path). What counts as a line break is defined once, in
