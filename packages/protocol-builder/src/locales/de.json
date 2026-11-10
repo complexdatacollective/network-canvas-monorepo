@@ -393,8 +393,6 @@
   "protocolBuilder.dynamicText.secondNodeLabel": "Zweiter Knoten: Bezeichnung",
   "protocolBuilder.dynamicText.switchHasNoLabels": "Ein Toggle hat keine Bezeichnungen für seine Antworten. Verwenden Sie stattdessen für jede Antwort einen eigenen Wortlaut.",
   "protocolBuilder.dynamicText.today": "Heutiges Datum",
-  "protocolBuilder.dynamicText.translationMissesValue": "Fügen Sie den Wert „{value}“ in die Übersetzung überall dort ein, wo er im Originaltext vorkommt.",
-  "protocolBuilder.dynamicText.translationTooComplex": "Dieser Text hat zu viele Varianten, als dass Architect seine Übersetzung prüfen könnte. Verwenden Sie weniger Werte, von denen der Wortlaut abhängt.",
   "protocolBuilder.dynamicText.unreadable": "Dieser Text enthält etwas, das Architect hier nicht anzeigen kann, daher kann er in diesem Feld nicht bearbeitet werden. Er bleibt unverändert erhalten.",
   "protocolBuilder.dynamicText.versionKnown": "Wenn bekannt",
   "protocolBuilder.dynamicText.versionMissing": "Wenn unbekannt",

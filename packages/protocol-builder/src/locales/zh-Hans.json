@@ -393,8 +393,6 @@
   "protocolBuilder.dynamicText.secondNodeLabel": "第二个节点：标签",
   "protocolBuilder.dynamicText.switchHasNoLabels": "开关的回答没有标签。请改为每个回答使用不同的措辞。",
   "protocolBuilder.dynamicText.today": "今天的日期",
-  "protocolBuilder.dynamicText.translationMissesValue": "凡原文出现“{value}”之处，译文也须包含“{value}”。",
-  "protocolBuilder.dynamicText.translationTooComplex": "此文本的措辞版本过多，无法检查其翻译。请减少会改变措辞的值的数量。",
   "protocolBuilder.dynamicText.unreadable": "此文本包含 Architect 无法在此处显示的内容，因此无法在此字段中编辑。文本将保持原样。",
   "protocolBuilder.dynamicText.versionKnown": "已知时",
   "protocolBuilder.dynamicText.versionMissing": "未知时",
