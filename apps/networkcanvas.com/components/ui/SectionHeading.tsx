@@ -33,6 +33,16 @@ const bodyVariants: Variants = {
   }),
 };
 
+// How far in from the top and bottom of the screen a title has to come
+// before its entrance plays: 12% of the screen's height.
+const INSET = 0.12;
+
+/** The observer margin that keeps a title's entrance off the screen's edges. */
+export function headingMargin(viewportHeight: number) {
+  const inset = Math.round(viewportHeight * INSET);
+  return `${-inset}px 0px ${-inset}px 0px` as const;
+}
+
 type SectionHeadingProps = {
   title: string;
   children?: ReactNode;
@@ -57,16 +67,28 @@ export function SectionHeading({
     if (!element) return undefined;
     // The title counts as seen once half of it is inside the middle of the
     // screen, so the entrance plays where it can be watched rather than at
-    // the very edge. Once seen, it stays.
-    const stop = inView(
-      element,
-      () => {
-        setShown(true);
-        stop();
-      },
-      { amount: 0.5, margin: '-12% 0px -12% 0px' },
-    );
-    return stop;
+    // the very edge. Once seen, it stays. The inset is a share of the
+    // screen's height, in px: a percentage would be resolved against its
+    // width, and on a wide, short window leave nowhere to be seen.
+    let stop = () => {};
+    const observe = () => {
+      stop();
+      stop = inView(
+        element,
+        () => {
+          setShown(true);
+          stop();
+          window.removeEventListener('resize', observe);
+        },
+        { amount: 0.5, margin: headingMargin(window.innerHeight) },
+      );
+    };
+    observe();
+    window.addEventListener('resize', observe);
+    return () => {
+      stop();
+      window.removeEventListener('resize', observe);
+    };
   }, []);
   const state = shown ? 'shown' : 'hidden';
 

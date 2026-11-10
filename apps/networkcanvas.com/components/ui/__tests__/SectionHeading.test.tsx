@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SectionHeading } from '../SectionHeading';
+import { headingMargin, SectionHeading } from '../SectionHeading';
 
 const title = 'A selection of tools to facilitate your research';
 
@@ -11,14 +11,18 @@ const observers: ObservingStub[] = [];
 
 class ObservingStub implements IntersectionObserver {
   readonly root = null;
-  readonly rootMargin = '';
+  readonly rootMargin: string;
   readonly scrollMargin = '';
   readonly thresholds = [];
   readonly targets: Element[] = [];
   private readonly callback: IntersectionObserverCallback;
 
-  constructor(callback: IntersectionObserverCallback) {
+  constructor(
+    callback: IntersectionObserverCallback,
+    options?: IntersectionObserverInit,
+  ) {
     this.callback = callback;
+    this.rootMargin = options?.rootMargin ?? '';
     observers.push(this);
   }
 
@@ -110,5 +114,15 @@ describe('SectionHeading', () => {
       expect(word.style.transform).not.toContain('translateY');
     }
     expect(screen.getByText('Introduction').style.opacity).toBe('1');
+  });
+
+  it('insets where a title is seen by a share of the screen height, in px', () => {
+    // Observer margins in percent resolve against the screen's width, which
+    // on a wide, short window can leave no area to be seen in.
+    expect(headingMargin(400)).toBe('-48px 0px -48px 0px');
+    render(<SectionHeading title={title}>Introduction</SectionHeading>);
+    expect(observers.at(-1)?.rootMargin).toBe(
+      headingMargin(window.innerHeight),
+    );
   });
 });

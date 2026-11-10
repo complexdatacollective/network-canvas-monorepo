@@ -191,10 +191,12 @@ export function DesignPrinciples() {
     if (first === undefined) return;
     const second = stops[1];
     const lead =
-      second === undefined ? window.innerHeight / 2 : (second - first) / 2;
+      second === undefined
+        ? window.innerHeight / 2
+        : (second.start - first.end) / 2;
     const position = destinationRef.current ?? window.scrollY;
     const next =
-      position < first - lead ? -1 : (nearestStop(stops, position) ?? -1);
+      position < first.start - lead ? -1 : (nearestStop(stops, position) ?? -1);
     setCard((current) => (current === next ? current : next));
   }, []);
   const { scrollY } = useScroll();

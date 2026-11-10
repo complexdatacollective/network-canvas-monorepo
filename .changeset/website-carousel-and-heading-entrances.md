@@ -6,7 +6,8 @@ The homepage is easier to move through.
 
 - **Design Principles and Recent Publications** now page like a carousel: one
   scroll, swipe or arrow key moves exactly one card, however hard you scroll,
-  and the page carries on past the first and last cards. In Design Principles,
+  and the page carries on past the first and last cards. A card too tall for
+  the screen scrolls through to its end before the next one comes. In Design Principles,
   the illustration plays each card's animation when its card arrives, at its
   own pace, and plays it backwards as you go back.
 - **Section headings** rise in word by word when they come into view, and then
