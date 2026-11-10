@@ -7,7 +7,11 @@ import {
 } from '../localization/localizedText.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import type { StageFormDraft } from '../stageDocument.ts';
-import { LABEL, stageNameOwnership } from './stageNameInternals.ts';
+import {
+  generatedProposal,
+  LABEL,
+  stageNameOwnership,
+} from './stageNameInternals.ts';
 
 export type StandingStageNameProposal = Readonly<{
   /**
@@ -56,9 +60,10 @@ export function useStandingStageNameProposal(): StandingStageNameProposal {
   const standsIn = useCallback(
     (label: unknown) => {
       if (!isNewStage || defaultLocale === undefined) return false;
-      const { isCustom, lastGenerated } = stageNameOwnership(storeApi);
+      const ownership = stageNameOwnership(storeApi);
+      const lastGenerated = generatedProposal(ownership, defaultLocale);
       return (
-        !isCustom &&
+        !ownership.isCustom &&
         lastGenerated !== undefined &&
         translationText(label, defaultLocale) === lastGenerated
       );

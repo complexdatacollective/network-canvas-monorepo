@@ -270,3 +270,60 @@ describe('a spectator', () => {
     ).toBeInTheDocument();
   });
 });
+
+/**
+ * A stage being created is named in the protocol's default language when
+ * Network Canvas has wording in it, and left for the researcher to name when
+ * it has none.
+ */
+describe('a stage being created', () => {
+  it('is proposed a name in a default language Network Canvas has wording in', async () => {
+    const harness = renderStageEditor({
+      create: {
+        type: 'Information',
+        position: 0,
+        fields: { title: { es: 'Bienvenida' }, items: [] },
+      },
+      localization: { defaultLocale: 'es', locales: ['es', 'en'] },
+      sections: <></>,
+    });
+
+    const box = screen.getByRole('textbox', NAME);
+    await waitFor(() => expect(box).toHaveValue('Información'));
+    expect(box.closest('[lang]')).toHaveAttribute('lang', 'es');
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.label).toEqual({ es: 'Información' });
+  });
+
+  it('is told to be named, and saves only once it is, where Network Canvas has no wording', async () => {
+    const harness = renderStageEditor({
+      create: {
+        type: 'Information',
+        position: 0,
+        fields: { title: { sw: 'Karibu' }, items: [] },
+      },
+      localization: { defaultLocale: 'sw', locales: ['sw'] },
+      sections: <></>,
+    });
+
+    const box = screen.getByRole('textbox', NAME);
+    // Long enough for a proposal to have been written, if one were going to be.
+    await harness.opened();
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
+    expect(box).toHaveValue('');
+
+    // Not saved with a blank name, and the refusal says what is missing.
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText('This field is required.'),
+    ).toBeInTheDocument();
+    expect(box).toHaveAttribute('aria-invalid', 'true');
+
+    await harness.user.type(box, 'Marafiki');
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.label).toEqual({ sw: 'Marafiki' });
+  });
+});

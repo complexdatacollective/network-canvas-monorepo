@@ -8,6 +8,7 @@ import {
   type FinishOutcome,
   FinishOutcomeSchema,
   type Item,
+  type LocaleTag,
   type StageSubject,
 } from '@codaco/protocol-validation';
 
@@ -75,6 +76,12 @@ export type StageNameOwnership = {
    * text, the only translation a proposal writes.
    */
   lastGenerated: string | undefined;
+  /**
+   * The default language `lastGenerated` was written in. A proposal is in the
+   * protocol's default language, so one written before that language changed
+   * is no longer the proposal for this stage (see `generatedProposal`).
+   */
+  lastGeneratedIn: LocaleTag | undefined;
 };
 
 const ownershipByForm = new WeakMap<StageFormStoreApi, StageNameOwnership>();
@@ -87,9 +94,26 @@ export function stageNameOwnership(
   const fresh: StageNameOwnership = {
     isCustom: false,
     lastGenerated: undefined,
+    lastGeneratedIn: undefined,
   };
   ownershipByForm.set(storeApi, fresh);
   return fresh;
+}
+
+/**
+ * What this editor last proposed, if that was in `defaultLocale`: the only
+ * language a name it proposed is compared in. After the protocol's default
+ * language changes mid-edit there is nothing it has proposed in the new one,
+ * so the name still waiting to be saved is proposed afresh instead of being
+ * mistaken for the researcher's.
+ */
+export function generatedProposal(
+  ownership: StageNameOwnership,
+  defaultLocale: LocaleTag | undefined,
+): string | undefined {
+  return ownership.lastGeneratedIn === defaultLocale
+    ? ownership.lastGenerated
+    : undefined;
 }
 
 export function forgetStageNameOwnership(storeApi: StageFormStoreApi): void {
@@ -108,8 +132,9 @@ export function forgetStageNameOwnership(storeApi: StageFormStoreApi): void {
  * Either way `next` is plain text and only one translation is written, so the
  * name's other translations survive. A chosen name is written in the editing
  * language. A proposal is written in the default language, the one every
- * other language falls back to, because it is the editor's English rather than
- * anybody's translation.
+ * other language falls back to, and is in that language
+ * (`stageNameLanguageOf`). Once the researcher keeps it, it is theirs like a
+ * name they typed.
  */
 export type StageNameWriter = (next: string, as: 'proposed' | 'chosen') => void;
 
@@ -129,6 +154,7 @@ export function useStageNameWriter(): StageNameWriter {
       const ownership = stageNameOwnership(storeApi);
       if (as === 'proposed') {
         ownership.lastGenerated = next;
+        ownership.lastGeneratedIn = localization.defaultLocale;
         ownership.isCustom = false;
       }
       const state = storeApi.getState();
@@ -168,8 +194,12 @@ export function useStageNameRegistration(): ReturnType<typeof useField> {
   });
 }
 
-/** What this stage would be called if nobody had named it, right now. */
-export function useProposedStageLabel(): string {
+/**
+ * What this stage would be called if nobody had named it, right now; undefined
+ * when the protocol's default language is one Network Canvas supplies no
+ * wording for, in which case the researcher names the stage.
+ */
+export function useProposedStageLabel(): string | undefined {
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const draft = useStageNameSources();

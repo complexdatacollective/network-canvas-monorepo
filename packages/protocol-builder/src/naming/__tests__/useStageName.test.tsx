@@ -559,6 +559,113 @@ describe('a name written in more than one language', () => {
   });
 });
 
+const inDefaultLanguage = (
+  defaultLocale: string,
+  locales: string[] = [defaultLocale],
+) =>
+  protocolSections({
+    [sectionId({ kind: 'settings' })]: {
+      localization: { defaultLocale, locales },
+    },
+  });
+
+describe('a name in the protocol’s default language', () => {
+  it('is proposed in that language, and written as that language alone', async () => {
+    const { input, setValue, liveDraft } = renderEditor({
+      sections: inDefaultLanguage('es', ['es', 'en']),
+    });
+
+    await waitFor(() =>
+      expect(input).toHaveValue('Generador de nombres (con formularios)'),
+    );
+    expect(input.closest('[lang]')).toHaveAttribute('lang', 'es');
+
+    setValue('subject', { entity: 'node', type: 'person' });
+    await waitFor(() =>
+      expect(input).toHaveValue(
+        'Generador de nombres (con formularios): Person',
+      ),
+    );
+    expect(liveDraft()?.label).toEqual({
+      es: 'Generador de nombres (con formularios): Person',
+    });
+  });
+
+  // The standing proposal is what makes typing replace it: it must stand in
+  // the language it was written in.
+  it('stands as a proposal until the researcher changes it', async () => {
+    const { input, standing } = renderEditor({
+      sections: inDefaultLanguage('de'),
+    });
+    await waitFor(() =>
+      expect(input).toHaveValue('Namensgenerator (mit Formularen)'),
+    );
+    expect(standing()?.isStanding()).toBe(true);
+
+    fireEvent.change(input, { target: { value: 'Meine Etappe' } });
+    expect(standing()?.isStanding()).toBe(false);
+  });
+
+  describe('when Network Canvas has no wording in it', () => {
+    const swahili = () => inDefaultLanguage('sw', ['sw', 'en']);
+
+    it('proposes nothing and writes nothing', async () => {
+      const { input, liveDraft, standing } = renderEditor({
+        sections: swahili(),
+      });
+      await settle();
+
+      expect(input).toHaveValue('');
+      expect(liveDraft()?.label).toBeUndefined();
+      expect(standing()?.isStanding()).toBe(false);
+      // Not the English the protocol also has: only the default language counts.
+      expect(screen.queryByDisplayValue(/Name Generator/)).toBeNull();
+    });
+
+    it('leaves the name empty when it is clicked into and left', async () => {
+      const user = userEvent.setup();
+      const { input, liveDraft } = renderEditor({ sections: swahili() });
+      await settle();
+
+      await user.click(input);
+      await user.tab();
+      await settle();
+
+      expect(input).toHaveValue('');
+      expect(liveDraft()?.label).toBeUndefined();
+    });
+
+    it('leaves a name the researcher typed alone as the stage is configured', async () => {
+      const { input, setValue } = renderEditor({ sections: swahili() });
+      await settle();
+      fireEvent.change(input, { target: { value: 'Marafiki' } });
+
+      setValue('subject', { entity: 'node', type: 'person' });
+      await settle();
+
+      expect(input).toHaveValue('Marafiki');
+    });
+
+    it('offers no proposal to a host, and accepting it changes nothing', async () => {
+      const { name, liveDraft } = renderEditor({
+        existing: true,
+        headless: true,
+        type: 'Sociogram',
+        sections: swahili(),
+      });
+      await settle();
+      expect(name()?.proposal).toBeUndefined();
+
+      act(() => {
+        name()?.acceptProposal();
+      });
+      await settle();
+
+      expect(liveDraft()?.label).toBeUndefined();
+    });
+  });
+});
+
 /**
  * A proposed name is the editor's suggestion, not the researcher's work: it is
  * replaced by the first thing they type, and leaving a new stage that holds
