@@ -1,6 +1,10 @@
 import { v1 as uuid } from 'uuid';
 
-import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  type Stage,
+  withInterfaceText,
+} from '@codaco/protocol-validation';
 import { creationIndex } from '~/ducks/modules/protocol/stages';
 import prune from '~/utils/prune';
 
@@ -17,6 +21,10 @@ import prune from '~/utils/prune';
  * to a genuinely-invalid protocol (missing required `title`) rather than a
  * transient empty value, which keeps preview correctly disabled until a title
  * is entered.
+ *
+ * The result holds the interface text it uses (`withInterfaceText`), as the
+ * saved protocol will: a stage of a new kind brings text of its own, such as
+ * a Categorical Bin's or a Family Pedigree's.
  */
 export function buildProtocolWithStage(
   protocol: CurrentProtocol,
@@ -31,7 +39,7 @@ export function buildProtocolWithStage(
   // Where a save would put it: a new stage never lands after the finish stage.
   const insertAt = creationIndex(protocol.stages, prunedStage, insertAtIndex);
 
-  return {
+  return withInterfaceText({
     ...protocol,
     stages: stageId
       ? protocol.stages.map((s) => (s.id === stageId ? stageWithId : s))
@@ -40,5 +48,5 @@ export function buildProtocolWithStage(
           stageWithId,
           ...protocol.stages.slice(insertAt),
         ],
-  };
+  });
 }

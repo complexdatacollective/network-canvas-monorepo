@@ -5,7 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { Toaster } from '@codaco/fresco-ui/Toast';
-import { createDefaultFinishSessionStage } from '@codaco/protocol-validation';
+import {
+  createDefaultFinishSessionStage,
+  withInterfaceText,
+} from '@codaco/protocol-validation';
 import { useProtocolImport } from '~/hooks/useProtocolImport';
 import { frescoLocales } from '~/i18n/locales';
 import {
@@ -87,21 +90,23 @@ describe('truthful protocol import failure messages', () => {
     'does not blame a valid protocol for a rejected %s request and permits retry',
     async (operation) => {
       const file = await archiveFile(
-        JSON.stringify({
-          schemaVersion: 9,
-          name: 'Fixture',
-          lastModified: '2026-09-05T00:00:00.000Z',
-          // A schema-9 protocol ends at a finish stage.
-          stages: [
-            createDefaultFinishSessionStage({
-              id: 'finish',
-              localization: { defaultLocale: 'en', locales: ['en'] },
-            }),
-          ],
-          codebook: { node: {}, edge: {}, ego: {} },
-          localization: { defaultLocale: 'en', locales: ['en'] },
-          assetManifest: {},
-        }),
+        JSON.stringify(
+          withInterfaceText({
+            schemaVersion: 9,
+            name: 'Fixture',
+            lastModified: '2026-09-05T00:00:00.000Z',
+            // A schema-9 protocol ends at a finish stage.
+            stages: [
+              createDefaultFinishSessionStage({
+                id: 'finish',
+                localization: { defaultLocale: 'en', locales: ['en'] },
+              }),
+            ],
+            codebook: { node: {}, edge: {}, ego: {} },
+            localization: { defaultLocale: 'en', locales: ['en'] },
+            assetManifest: {},
+          }),
+        ),
       );
       const failing =
         operation === 'lookup'
@@ -259,20 +264,22 @@ describe('truthful protocol import failure messages', () => {
 
   it('imports a protocol at the current schema as it is', async () => {
     const file = await archiveFile(
-      JSON.stringify({
-        schemaVersion: 9,
-        name: 'Fixture',
-        lastModified: '2026-09-05T00:00:00.000Z',
-        stages: [
-          createDefaultFinishSessionStage({
-            id: 'finish',
-            localization: { defaultLocale: 'en', locales: ['en'] },
-          }),
-        ],
-        codebook: { node: {}, edge: {}, ego: {} },
-        localization: { defaultLocale: 'en', locales: ['en'] },
-        assetManifest: {},
-      }),
+      JSON.stringify(
+        withInterfaceText({
+          schemaVersion: 9,
+          name: 'Fixture',
+          lastModified: '2026-09-05T00:00:00.000Z',
+          stages: [
+            createDefaultFinishSessionStage({
+              id: 'finish',
+              localization: { defaultLocale: 'en', locales: ['en'] },
+            }),
+          ],
+          codebook: { node: {}, edge: {}, ego: {} },
+          localization: { defaultLocale: 'en', locales: ['en'] },
+          assetManifest: {},
+        }),
+      ),
     );
     render(view('en', file));
     fireEvent.click(screen.getByRole('button', { name: 'Start import' }));

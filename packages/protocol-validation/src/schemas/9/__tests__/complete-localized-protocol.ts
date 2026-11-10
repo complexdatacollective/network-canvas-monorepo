@@ -5,6 +5,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import { DEFAULT_FINISH_SESSION_TEXT } from '../finish-session-defaults.ts';
+import { interfaceTextFor } from '../interface-text.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   pedigreeCompletenessText,
@@ -19,9 +20,14 @@ const options = (...labels: [string, string | number][]) =>
 /**
  * One protocol holding every participant-facing field family the schema
  * declares, each carrying copy. `localization-coverage.test.ts` lists exactly
- * those values.
+ * those values. It holds the interface text it uses, as every protocol must.
  */
-export const completeProtocol = () => ({
+export const completeProtocol = () => {
+  const protocol = protocolDocument();
+  return { ...protocol, interfaceText: interfaceTextFor(protocol) };
+};
+
+const protocolDocument = () => ({
   name: 'Localization coverage',
   schemaVersion: 9 as const,
   localization: { defaultLocale: 'en', locales: ['en'] },

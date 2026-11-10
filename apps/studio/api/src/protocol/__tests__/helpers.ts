@@ -160,8 +160,8 @@ export const FIXTURES = [
  * shows, as every protocol Studio assembles does.
  */
 export function baseProtocol(): CurrentProtocol {
-  return withInterfaceText(
-    CurrentProtocolSchema.parse({
+  return CurrentProtocolSchema.parse(
+    withInterfaceText({
       name: 'Test Protocol',
       schemaVersion: 9,
       localization: { defaultLocale: 'en', locales: ['en'] },
