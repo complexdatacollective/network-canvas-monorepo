@@ -7,6 +7,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { isBlankMessage, isBlankText } from '../../localization/blankText.ts';
+import { labelComparisonKey } from '../../localization/duplicateLabels.ts';
 import { DYNAMIC_VALUE_MARKER } from '../../localization/dynamicValueMessages.ts';
 import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
@@ -35,7 +36,6 @@ import { withInterfaceText } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { ProtocolSchemaV9 } from './schema.ts';
 import { freshStageId } from './stage-ids.ts';
-import { diseaseLabelKey } from './stages/narrative-pedigree.ts';
 import { missingSuppliedStageText } from './supplied-stage-text.ts';
 import { findValidationContradictions } from './variables/validation-contradictions.ts';
 import { optionValueKey } from './variables/variable.ts';
@@ -1057,11 +1057,11 @@ const repairDiseaseLabels = (protocol: unknown) => {
           .filter((other) => other !== disease)
           .flatMap((other) => textsOf(other.label))
           .filter((text) => !isBlankText(text))
-          .map(diseaseLabelKey),
+          .map(labelComparisonKey),
       );
       const name = nameOrKey(variables[disease.attribute], disease.attribute);
       let label = name;
-      for (let suffix = 2; used.has(diseaseLabelKey(label)); suffix += 1) {
+      for (let suffix = 2; used.has(labelComparisonKey(label)); suffix += 1) {
         label = `${name} ${suffix}`;
       }
       disease.label = label;

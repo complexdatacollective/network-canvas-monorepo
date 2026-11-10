@@ -14,6 +14,7 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   interfaceTextArguments,
+  lacksDefaultLanguageText,
   type LocalizedString,
 } from '@codaco/protocol-validation';
 
@@ -57,7 +58,7 @@ const problemOf = (
   defaultLocale: string,
   intl: IntlShape,
 ): string | undefined => {
-  if ((value[defaultLocale] ?? '').trim() === '') return REQUIRED;
+  if (lacksDefaultLanguageText(value, defaultLocale)) return REQUIRED;
   const declaration = interfaceTextArguments(group, key);
   return declaration === undefined
     ? undefined

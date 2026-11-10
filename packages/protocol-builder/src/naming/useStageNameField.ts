@@ -2,7 +2,10 @@ import { useCallback } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { useField } from '@codaco/fresco-ui/form/hooks/useField';
-import type { LocalizedString } from '@codaco/protocol-validation';
+import {
+  type LocalizedString,
+  STAGE_LABEL_MAX_LENGTH,
+} from '@codaco/protocol-validation';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import {
@@ -11,7 +14,6 @@ import {
   translationText,
 } from '../localization/localizedText.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
-import { MAX_LABEL_LENGTH } from './generateStageLabel.ts';
 import {
   LABEL,
   stageNameMessages,
@@ -118,7 +120,7 @@ export function useStageNameField(): StageNameField {
         locale === undefined ? '' : translationText(fieldProps.value, locale),
       onChange,
       placeholder,
-      'characterLimit': MAX_LABEL_LENGTH,
+      'characterLimit': STAGE_LABEL_MAX_LENGTH,
       'disabled': fieldProps.disabled,
       // Nothing can be written until the protocol's languages are known.
       'readOnly': fieldProps.readOnly || locale === undefined,

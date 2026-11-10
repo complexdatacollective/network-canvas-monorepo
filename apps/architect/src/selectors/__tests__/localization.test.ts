@@ -114,6 +114,8 @@ describe('getTranslationGroups()', () => {
             format: 'plain',
             lines: 'single',
             value: { en: 'Welcome', fr: 'Bienvenue', de: 'Willkommen' },
+            // The declaration of the field it is in.
+            schema: expect.anything(),
           },
           {
             path: ['stages', 0, 'title'],
@@ -121,6 +123,8 @@ describe('getTranslationGroups()', () => {
             format: 'plain',
             lines: 'single',
             value: { en: 'Hello', fr: 'Bonjour' },
+            // The declaration of the field it is in.
+            schema: expect.anything(),
           },
         ],
       },
@@ -143,6 +147,8 @@ describe('getTranslationGroups()', () => {
             format: 'markdown',
             lines: 'single',
             value: { en: 'Close' },
+            // The declaration of the field it is in.
+            schema: expect.anything(),
           },
         ],
       },
@@ -181,6 +187,8 @@ describe('getTranslationGroups()', () => {
       format: 'markdown',
       lines: 'multiple',
       value: { en: 'Name **people**', fr: 'Nommez' },
+      // The declaration of the field it is in.
+      schema: expect.anything(),
     });
   });
 });

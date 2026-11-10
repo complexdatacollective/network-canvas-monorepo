@@ -98,14 +98,10 @@ describe('creating a quick-add name generator', () => {
 
     await addInterviewNetworkPanel(harness, 'People you already named');
 
-    // The type's own name is shed: `generateStageLabel` caps a proposal at 50
-    // characters and sheds detail rather than cutting a word off the end, and
-    // "Person Quick Add Name Generator with Network Panels" is 51. The
-    // qualifier is the part that survives, which is this stage's point — what
-    // it offers beside its question is what makes it a different stage.
+    // What it offers beside its question is what makes it a different stage.
     await waitFor(() =>
       expect(stageNameInput()).toHaveValue(
-        'Quick Add Name Generator with Network Panels',
+        'Person Quick Add Name Generator with Network Panels',
       ),
     );
   });

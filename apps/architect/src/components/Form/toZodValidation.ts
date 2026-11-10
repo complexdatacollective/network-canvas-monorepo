@@ -249,7 +249,7 @@ function partitionRules(
  *
  * Each validator keeps its `(value, allValues, props, name)` signature, so
  * cross-field rules read the reassembled form values and name-sensitive rules
- * (`uniqueArrayAttribute`) see the field's resolved bracket path. The first
+ * (`uniqueArrayName`) see the field's resolved bracket path. The first
  * failing rule wins — one error per field.
  *
  * Both the config and the field name are read through getters so a caller can
@@ -294,7 +294,7 @@ function makeCustomValidation(
  *
  * @param validation Architect's rule-name → parameter map.
  * @param fieldName The field's resolved name, passed to Architect validators
- *   as their fourth argument (`uniqueArrayAttribute` parses it for the
+ *   as their fourth argument (`uniqueArrayName` parses it for the
  *   `foo[3].bar` bracket path).
  */
 export function splitValidation(

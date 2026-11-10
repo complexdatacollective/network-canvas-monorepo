@@ -1,5 +1,5 @@
 import { isEqual } from 'es-toolkit';
-import { useContext, useLayoutEffect, useRef } from 'react';
+import { type ContextType, useContext, useLayoutEffect, useRef } from 'react';
 import { z } from 'zod/mini';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
@@ -11,7 +11,7 @@ import type {
   FieldValue,
   FormSubmissionResult,
 } from '@codaco/fresco-ui/form/store/types';
-import { localizedMessageValidation } from '@codaco/protocol-builder/fields/LocalizedMessageField';
+import { localizedMessageProblemText } from '@codaco/protocol-builder/fields/LocalizedMessageField';
 import {
   translationText,
   withMessage,
@@ -19,22 +19,32 @@ import {
 } from '@codaco/protocol-builder/localization/localizedText';
 import {
   type CurrentProtocol,
+  type FieldTextProblem,
+  type FieldTextRule,
   findDynamicValueProblems,
+  findFieldTextProblems,
   isBlankMessage,
   isBlankText,
   type LocaleTag,
   type LocalizedString,
+  type ProtocolValidationIssue,
+  STAGE_LABEL_TOO_LONG,
+  validateProtocol,
 } from '@codaco/protocol-validation';
 import { useAppStore } from '~/ducks/hooks';
-import { setProtocolLocalizedStrings } from '~/ducks/modules/activeProtocol';
+import activeProtocolReducer, {
+  setProtocolLocalizedStrings,
+} from '~/ducks/modules/activeProtocol';
 import type { AppDispatch, RootState } from '~/ducks/store';
 import {
   getTranslationGroups,
+  locateTranslation,
   type TranslationGroup,
   type TranslationRow,
 } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
 
+import { describePlace } from './textPlaces';
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
@@ -52,7 +62,80 @@ const messages = defineMessages({
     description:
       'Shown above the translation table when saving fails because a translation typed into it belongs to a localized string, or a language, that is no longer in the protocol.',
   },
+  duplicateDiseaseLabel: {
+    id: 'architect.localization.translationTable.duplicateDiseaseLabel',
+    defaultMessage:
+      'Another disease has the same name in {language}. Give each disease a name participants can tell apart.',
+    description:
+      'Shown in a cell of the translation table holding a disease’s name, on a Narrative Pedigree stage, when participants reading the cell’s language would see the same name for another disease, either because it is written the same or because one of them has no translation and shows another language’s text instead. language is the cell’s language.',
+  },
+  duplicateOptionLabel: {
+    id: 'architect.localization.translationTable.duplicateOptionLabel',
+    defaultMessage:
+      'Another option of this attribute has the same label in {language}. Give each option a label participants can tell apart.',
+    description:
+      'Shown in a cell of the translation table holding the label of one of an attribute’s answer options (including the two answers of a yes-or-no attribute), when participants reading the cell’s language would see the same label for another option of the same attribute, either because it is written the same or because one of them has no translation and shows another language’s text instead. language is the cell’s language.',
+  },
+  stageLabelTooLong: {
+    id: 'architect.localization.translationTable.stageLabelTooLong',
+    defaultMessage:
+      'A stage name can be at most {max, number} characters long. Shorten this one.',
+    description:
+      'Shown in a cell of the translation table holding a stage’s name when the name is longer than a stage name may be. max is the most characters it may have.',
+  },
+  interfaceTextWithoutDefaultLanguage: {
+    id: 'architect.localization.translationTable.interfaceTextWithoutDefaultLanguage',
+    defaultMessage:
+      'This text needs words in {language}, the protocol’s default language.',
+    description:
+      'Shown in a cell of the translation table holding words the interview itself shows, such as a button’s label, when the cell is in the protocol’s default language and has been emptied: those words always need a translation in the default language. language is the default language.',
+  },
+  textNotUsable: {
+    id: 'architect.localization.translationTable.textNotUsable',
+    defaultMessage:
+      'The protocol cannot hold this text as it is written. Details: {details}',
+    description:
+      'Shown in a cell of the translation table when its text breaks one of the protocol’s rules that Architect has no explanation of its own for. details is the technical description of the problem, in English, kept for support.',
+  },
+  problemInPlace: {
+    id: 'architect.localization.translationTable.problemInPlace',
+    defaultMessage:
+      'Saving these translations would leave a problem in {place}, so nothing was saved. Details: {details}',
+    description:
+      'Shown above the translation table when saving is refused because the translations would break a rule of the protocol in a place that is not one of the table’s cells. place names that place, such as “Stage 3” or “Node type”. details is the technical description of the problem, in English, kept for support.',
+  },
+  problemInNamedPlace: {
+    id: 'architect.localization.translationTable.problemInNamedPlace',
+    defaultMessage:
+      'Saving these translations would leave a problem in {place}, “{name}”, so nothing was saved. Details: {details}',
+    description:
+      'Shown above the translation table when saving is refused because the translations would break a rule of the protocol in a place that is not one of the table’s cells. place names the kind of place, such as “Stage 3” or “Node type”, and name is its name, such as the stage’s name. details is the technical description of the problem, in English, kept for support.',
+  },
 });
+
+/** What a cell says about each rule `findFieldTextProblems` applies. */
+const ruleMessages = {
+  duplicateDiseaseLabel: messages.duplicateDiseaseLabel,
+  duplicateOptionLabel: messages.duplicateOptionLabel,
+  interfaceTextWithoutDefaultLanguage:
+    messages.interfaceTextWithoutDefaultLanguage,
+} satisfies Record<FieldTextRule, unknown>;
+
+/**
+ * What a cell says about a rule its field's own declaration names, in
+ * Architect's words, where it has words of its own for one: the length a
+ * stage's name may be (`STAGE_LABEL_TOO_LONG`).
+ */
+const declaredRuleMessage = (issue: object, intl: IntlShape) => {
+  const params: unknown = Reflect.get(issue, 'params');
+  if (typeof params !== 'object' || params === null) return undefined;
+  const max: unknown = Reflect.get(params, 'max');
+  // The limit is the one the declaration refused the name by, as it says so.
+  return Reflect.get(params, 'rule') === STAGE_LABEL_TOO_LONG &&
+    typeof max === 'number'
+    ? intl.formatMessage(messages.stageLabelTooLong, { max })
+    : undefined;
+};
 
 type TextPath = TranslationRow['path'];
 
@@ -64,7 +147,7 @@ type TextKind = 'text' | 'message';
  * cell's language, spelled with letters and digits only, so the form store
  * reads it as one name rather than as a path of its own.
  */
-const translationFieldName = (path: TextPath, locale: LocaleTag) =>
+export const translationFieldName = (path: TextPath, locale: LocaleTag) =>
   `t${Array.from(JSON.stringify([path, locale]), (character) =>
     (character.codePointAt(0) ?? 0).toString(16).padStart(6, '0'),
   ).join('')}`;
@@ -99,16 +182,26 @@ export const readTranslationFieldName = (
 
 const rowKey = (path: TextPath) => JSON.stringify(path);
 
+/** Each set of groups' rows by path, made once per set. */
+const rowIndexes = new WeakMap<
+  readonly TranslationGroup[],
+  ReadonlyMap<string, TranslationRow>
+>();
+
 const findRow = (
   groups: readonly TranslationGroup[],
   path: TextPath,
 ): TranslationRow | undefined => {
-  const key = rowKey(path);
-  for (const group of groups) {
-    const found = group.rows.find((row) => rowKey(row.path) === key);
-    if (found) return found;
+  let index = rowIndexes.get(groups);
+  if (index === undefined) {
+    index = new Map(
+      groups.flatMap((group) =>
+        group.rows.map((row) => [rowKey(row.path), row] as const),
+      ),
+    );
+    rowIndexes.set(groups, index);
   }
-  return undefined;
+  return index.get(rowKey(path));
 };
 
 // Text that can show values is kept as written, like a localized message:
@@ -154,59 +247,214 @@ const withCellText = (
     : withTranslation(value, locale, isBlankTranslation(row, text) ? '' : text);
 
 /**
+ * The row's value with each of its cells as the table holds them now, saved
+ * or not, and the cell in `locale` holding `text`. A cell emptied in the table
+ * holds no translation in that language.
+ */
+const rowValueInTable = (
+  locales: readonly LocaleTag[],
+  row: TranslationRow,
+  formValues: Readonly<Record<string, FieldValue>>,
+  locale: LocaleTag,
+  text: string,
+): LocalizedString => {
+  const others = locales.reduce<LocalizedString>((held, other) => {
+    const name = translationFieldName(row.path, other);
+    return other === locale || !Object.hasOwn(formValues, name)
+      ? held
+      : (withCellText(row, held, other, asText(formValues[name])) ?? {});
+  }, row.value);
+  return withCellText(row, others, locale, text) ?? {};
+};
+
+/**
  * Why `text`, as the row's translation in `locale`, cannot show its values:
  * by the protocol's own check, against the stage's bindings and what the
  * text's place can show, with the row's other cells as the table holds them
  * now, saved or not.
  */
 const dynamicValueProblem = (
-  state: RootState,
+  protocol: CurrentProtocol,
   row: TranslationRow,
   locale: LocaleTag,
-  text: string,
-  formValues: Readonly<Record<string, FieldValue>>,
+  value: LocalizedString,
 ): string | undefined => {
-  const protocol = getProtocol(state);
-  if (!protocol || row.dynamicValues === undefined) return undefined;
-  // A cell emptied in the table holds no translation in that language.
-  const value = protocol.localization.locales.reduce<LocalizedString>(
-    (held, other) => {
-      const name = translationFieldName(row.path, other);
-      return other === locale || !Object.hasOwn(formValues, name)
-        ? held
-        : (withCellText(row, held, other, asText(formValues[name])) ?? {});
-    },
-    row.value,
-  );
+  if (row.dynamicValues === undefined) return undefined;
   const at = JSON.stringify([...row.path, locale]);
   return findDynamicValueProblems(
     {
       codebook: protocol.codebook,
       stages: protocol.stages,
     },
-    [
-      {
-        path: [...row.path],
-        value: { ...value, [locale]: text },
-        dynamicValues: row.dynamicValues,
-      },
-    ],
+    [{ path: [...row.path], value, dynamicValues: row.dynamicValues }],
   ).find((problem) => JSON.stringify(problem.path) === at)?.message;
 };
 
-type Words = Readonly<{
+export type Words = Readonly<{
   intl: IntlShape;
   languageName: (locale: LocaleTag) => string;
 }>;
 
+type FormStoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
+
+const isSamePath = (
+  a: readonly (string | number)[],
+  b: readonly (string | number)[],
+) => a.length === b.length && a.every((segment, index) => segment === b[index]);
+
+/** A cell's text: the translation in `locale` of the text at `path`. */
+type Cell = Readonly<{ path: TextPath; locale: LocaleTag; text: string }>;
+
+type RowDraft = { row: TranslationRow; value: LocalizedString };
+
+/**
+ * Each row `cells` change, with the value they leave it with, applied in
+ * order. `unknownRow` when a cell belongs to a text the protocol no longer
+ * has.
+ */
+const rowDrafts = (
+  groups: readonly TranslationGroup[],
+  cells: readonly Cell[],
+): { drafts: Map<string, RowDraft>; unknownRow: boolean } => {
+  const drafts = new Map<string, RowDraft>();
+  for (const cell of cells) {
+    const key = rowKey(cell.path);
+    const found =
+      drafts.get(key) ??
+      (() => {
+        const row = findRow(groups, cell.path);
+        return row === undefined ? undefined : { row, value: row.value };
+      })();
+    if (found === undefined) return { drafts, unknownRow: true };
+    // Empty for now, perhaps, while a later cell in the row adds the
+    // translation that replaces the one this cell clears.
+    drafts.set(key, {
+      row: found.row,
+      value: withCellText(found.row, found.value, cell.locale, cell.text) ?? {},
+    });
+  }
+  return { drafts, unknownRow: false };
+};
+
+/** The writes that give each changed row the value it is drafted with. */
+const updatesOf = (drafts: Map<string, RowDraft>) =>
+  Array.from(drafts.values())
+    .filter(({ row, value }) => !isEqual(value, row.value))
+    .map(({ row, value }) => ({ path: row.path, value }));
+
+/**
+ * The protocol `updates` would leave, made by the very reducer a save
+ * dispatches to, so it is the protocol the save would write: the protocol
+ * itself where it refuses them.
+ */
+const protocolAfter = (
+  protocol: CurrentProtocol,
+  updates: ReturnType<typeof updatesOf>,
+): CurrentProtocol =>
+  updates.length === 0
+    ? protocol
+    : (activeProtocolReducer(
+        protocol,
+        setProtocolLocalizedStrings({ updates }),
+      ) ?? protocol);
+
+/**
+ * The protocol as the table holds it now, and the field rules it breaks,
+ * kept for the cells checked against the same drafts: a change rechecks every
+ * cell already left, and each would otherwise build it again. Kept by the
+ * form's values as each check is handed them, which every cell rechecked
+ * after one change shares, and by the cells those values change, which a
+ * later change may leave as they were.
+ */
+let heldDrafts:
+  | Readonly<{
+      protocol: CurrentProtocol;
+      formValues: Readonly<Record<string, FieldValue>>;
+      key: string;
+      problems: readonly FieldTextProblem[];
+    }>
+  | undefined;
+
+/**
+ * The field rules (`findFieldTextProblems`) the protocol breaks with every
+ * cell as the table holds it now. A row whose cells would leave it with no
+ * translation at all is left as the protocol has it: the cell that empties it
+ * says so itself.
+ */
+export const fieldProblemsInTable = (
+  state: RootState,
+  formValues: Readonly<Record<string, FieldValue>>,
+): readonly FieldTextProblem[] => {
+  const protocol = getProtocol(state);
+  if (!protocol) return [];
+  if (
+    heldDrafts?.protocol === protocol &&
+    heldDrafts.formValues === formValues
+  ) {
+    return heldDrafts.problems;
+  }
+  const groups = getTranslationGroups(state);
+  const cells = Object.entries(formValues).flatMap(([name, value]) => {
+    const cell = readTranslationFieldName(name);
+    if (cell === undefined) return [];
+    const row = findRow(groups, cell.path);
+    const text = asText(value);
+    return row === undefined || text === storedTranslation(row, cell.locale)
+      ? []
+      : [{ ...cell, text }];
+  });
+  const key = JSON.stringify(cells);
+  if (heldDrafts?.protocol === protocol && heldDrafts.key === key) {
+    heldDrafts = { ...heldDrafts, formValues };
+    return heldDrafts.problems;
+  }
+  const { drafts } = rowDrafts(groups, cells);
+  for (const [draftKey, { value }] of drafts) {
+    if (Object.keys(value).length === 0) drafts.delete(draftKey);
+  }
+  const problems = findFieldTextProblems(
+    protocolAfter(protocol, updatesOf(drafts)),
+  );
+  heldDrafts = { protocol, formValues, key, problems };
+  return problems;
+};
+
+/** What a cell says about a field rule its text breaks. */
+const describeFieldProblem = (
+  problem: FieldTextProblem,
+  { intl, languageName }: Words,
+) =>
+  intl.formatMessage(ruleMessages[problem.rule], {
+    language: languageName(problem.locale),
+  });
+
+/**
+ * What the last refused save found wrong with cells, by field, and the text
+ * each held then. A cell keeps saying so until its text changes or Save is
+ * pressed again: the checks a cell makes on its own cannot see everything a
+ * whole protocol is checked for.
+ */
+const saveFindings = new WeakMap<
+  FormStoreApi,
+  Map<string, Readonly<{ text: string; message: string }>>
+>();
+
+/** Forgets what the last refused save found, before the next is checked. */
+export const clearSaveFindings = (formStore: FormStoreApi) => {
+  saveFindings.delete(formStore);
+};
+
 /**
  * The rules a cell's translation is held to before it can be saved, the ones
- * the protocol itself holds the text to: a localized message keeps its
- * setting's rule, and a text cannot lose its last translation. That one is
- * judged against what the row's other cells hold now, saved or not.
+ * the protocol and its editors hold the text to: the declaration of the
+ * text's field, the values a text can show, that a text cannot lose its last
+ * translation, and the rules the field shares with its neighbours
+ * (`findFieldTextProblems`). Each is judged against what the table's other
+ * cells hold now, saved or not.
  */
 const cellValidation =
   (
+    formStore: FormStoreApi,
     path: TextPath,
     locale: LocaleTag,
     getState: () => RootState,
@@ -215,60 +463,110 @@ const cellValidation =
   (formValues) =>
     z.unknown().check(
       z.superRefine((value, ctx) => {
-        const { intl, languageName } = getWords();
+        const words = getWords();
+        const { intl, languageName } = words;
         const fail = (message: string) =>
           ctx.addIssue({ code: 'custom', input: value, message, path: [] });
         const state = getState();
+        const protocol = getProtocol(state);
         const row = findRow(getTranslationGroups(state), path);
-        const locales = getProtocol(state)?.localization.locales;
         // A text or language gone from the protocol has no cell to show the
         // reason in; saving says so above the table instead.
-        if (row === undefined || locales?.includes(locale) !== true) return;
+        if (
+          protocol === null ||
+          row === undefined ||
+          !protocol.localization.locales.includes(locale)
+        ) {
+          return;
+        }
+        const { locales } = protocol.localization;
         const text = asText(value);
-        if (row.arguments !== undefined && !isBlankTranslation(row, text)) {
-          const result = localizedMessageValidation(row.arguments, intl).schema;
-          const parsed =
-            typeof result === 'function'
-              ? undefined
-              : result.safeParse({ [locale]: text });
-          const issue =
-            parsed?.success === false ? parsed.error.issues[0] : undefined;
+        const blank = isBlankTranslation(row, text);
+        const rowValue = rowValueInTable(
+          locales,
+          row,
+          formValues,
+          locale,
+          text,
+        );
+
+        if (!blank) {
+          // The field's own declaration, whatever rules it holds.
+          const parsed = row.schema.safeParse(rowValue);
+          const issue = parsed.success
+            ? undefined
+            : parsed.error.issues.find(
+                ({ path: at }) => at.length === 0 || at[0] === locale,
+              );
           if (issue !== undefined) {
-            fail(issue.message);
+            fail(
+              declaredRuleMessage(issue, intl) ??
+                (row.arguments === undefined
+                  ? undefined
+                  : localizedMessageProblemText(
+                      { [locale]: text },
+                      row.arguments,
+                      intl,
+                    )) ??
+                intl.formatMessage(messages.textNotUsable, {
+                  details: issue.message,
+                }),
+            );
             return;
           }
-        }
-        if (row.dynamicValues !== undefined && !isBlankTranslation(row, text)) {
-          const problem = dynamicValueProblem(
-            state,
-            row,
-            locale,
-            text,
-            formValues,
-          );
+          const problem = dynamicValueProblem(protocol, row, locale, rowValue);
           if (problem !== undefined) {
             fail(problem);
             return;
           }
-        }
-        if (!isBlankTranslation(row, text)) return;
-        const translatedElsewhere = locales.some((other) => {
-          if (other === locale) return false;
-          const name = translationFieldName(path, other);
-          const held = Object.hasOwn(formValues, name)
-            ? asText(formValues[name])
-            : storedTranslation(row, other);
-          return !isBlankTranslation(row, held);
-        });
-        if (!translatedElsewhere) {
+        } else if (Object.keys(rowValue).length === 0) {
           fail(
             intl.formatMessage(messages.onlyTranslation, {
               language: languageName(locale),
             }),
           );
+          return;
+        }
+
+        const fieldProblem = fieldProblemsInTable(state, formValues).find(
+          (problem) =>
+            problem.locale === locale && isSamePath(problem.path, path),
+        );
+        if (fieldProblem !== undefined) {
+          fail(describeFieldProblem(fieldProblem, words));
+          return;
+        }
+
+        const finding = saveFindings
+          .get(formStore)
+          ?.get(translationFieldName(path, locale));
+        if (finding !== undefined && finding.text === text) {
+          fail(finding.message);
         }
       }),
     );
+
+/**
+ * Gives the cell of `row` in `locale` a field in the table's form, holding the
+ * translation the protocol has, unless it has one already. Whether it did.
+ */
+const registerTranslationCell = (
+  formStore: FormStoreApi,
+  row: TranslationRow,
+  locale: LocaleTag,
+  getState: () => RootState,
+  getWords: () => Words,
+) => {
+  const state = formStore.getState();
+  const name = translationFieldName(row.path, locale);
+  if (state.fields.has(name)) return false;
+  state.registerField({
+    name,
+    initialValue: storedTranslation(row, locale),
+    validation: cellValidation(formStore, row.path, locale, getState, getWords),
+  });
+  return true;
+};
 
 /**
  * One cell's translation, held in the translation table's form until the
@@ -327,22 +625,14 @@ export const useTranslationDraft = ({
     }
   };
 
-  const registerCell = (cellLocale: LocaleTag) => {
-    const state = formStore.getState();
-    const cellName = translationFieldName(row.path, cellLocale);
-    if (state.fields.has(cellName)) return false;
-    state.registerField({
-      name: cellName,
-      initialValue: storedTranslation(row, cellLocale),
-      validation: cellValidation(
-        row.path,
-        cellLocale,
-        () => appStore.getState(),
-        () => words.current,
-      ),
-    });
-    return true;
-  };
+  const registerCell = (cellLocale: LocaleTag) =>
+    registerTranslationCell(
+      formStore,
+      row,
+      cellLocale,
+      () => appStore.getState(),
+      () => words.current,
+    );
 
   const register = () => {
     if (registerCell(locale)) recheckLeftCells();
@@ -424,77 +714,234 @@ export const useTranslationDraft = ({
   return { name, text, changed, error, change, leave, revert };
 };
 
-/**
- * Writes every changed translation the table's form holds into the protocol,
- * in one step: one undo takes the whole save back. The form has checked every
- * cell before this runs; a protocol that refuses the set anyway, as a
- * read-only one does, is said so above the table.
- */
-export const saveTranslations = ({
-  values,
-  getFieldState,
-  getState,
-  dispatch,
-  intl,
-}: {
-  values: Record<string, FieldValue>;
-  getFieldState: (
-    name: string,
-  ) => { value: FieldValue; initialValue?: FieldValue } | undefined;
-  getState: () => RootState;
-  dispatch: AppDispatch;
-  intl: IntlShape;
-}): FormSubmissionResult => {
-  const failed: FormSubmissionResult = {
-    success: false,
-    formErrors: [intl.formatMessage(messages.textRemoved)],
-  };
-  const before = getState();
-  const groups = getTranslationGroups(before);
-  const rows = new Map<
-    string,
-    { row: TranslationRow; value: LocalizedString }
-  >();
+/** The row whose text holds `path`: the one whose path is the longest prefix. */
+const rowAt = (
+  groups: readonly TranslationGroup[],
+  path: readonly (string | number)[],
+): TranslationRow | undefined => {
+  let found: TranslationRow | undefined;
+  for (const group of groups) {
+    for (const row of group.rows) {
+      if (
+        row.path.length <= path.length &&
+        row.path.every((segment, index) => segment === path[index]) &&
+        (found === undefined || row.path.length > found.path.length)
+      ) {
+        found = row;
+      }
+    }
+  }
+  return found;
+};
 
-  for (const name of Object.keys(values)) {
-    const cell = readTranslationFieldName(name);
-    const field = getFieldState(name);
-    if (cell === undefined || field === undefined) continue;
-    if (isEqual(asText(field.value), asText(field.initialValue))) continue;
-    const key = rowKey(cell.path);
-    const found =
-      rows.get(key) ??
-      (() => {
-        const row = findRow(groups, cell.path);
-        return row === undefined ? undefined : { row, value: row.value };
-      })();
-    if (found === undefined) return failed;
-    const next = withCellText(
-      found.row,
-      found.value,
-      cell.locale,
-      asText(field.value),
+const issueKey = (issue: ProtocolValidationIssue) =>
+  JSON.stringify([issue.path, issue.message]);
+
+const problemKey = (problem: FieldTextProblem) =>
+  JSON.stringify([problem.rule, problem.path, problem.locale]);
+
+type SaveFindings = {
+  /** What each cell is refused for, by the field holding it. */
+  cells: Map<
+    string,
+    { row: TranslationRow; locale: LocaleTag; message: string }
+  >;
+  /** What is refused somewhere that is not one of the table's cells. */
+  elsewhere: Set<string>;
+};
+
+/**
+ * Everything wrong with the protocol a save would write that the protocol it
+ * replaces does not have wrong: the field rules (`findFieldTextProblems`)
+ * the save would break, and the issues the protocol's validation finds, run
+ * as the validation of each protocol edit runs it (`validateProtocolAsync`,
+ * a draft).
+ * Each is placed on the cell it belongs to, by the text and the language in
+ * its path; one on a text but no language on each of the text's cells; one
+ * on no text above the table, naming where it is.
+ */
+const findSaveProblems = async (
+  before: CurrentProtocol,
+  after: CurrentProtocol,
+  groups: readonly TranslationGroup[],
+  words: Words,
+): Promise<SaveFindings> => {
+  const { intl } = words;
+  const { locales } = after.localization;
+  const findings: SaveFindings = { cells: new Map(), elsewhere: new Set() };
+  const flag = (row: TranslationRow, locale: LocaleTag, message: string) => {
+    const name = translationFieldName(row.path, locale);
+    if (!findings.cells.has(name)) {
+      findings.cells.set(name, { row, locale, message });
+    }
+  };
+  const flagged = (row: TranslationRow, locale?: LocaleTag) =>
+    (locale === undefined ? locales : [locale]).some((cellLocale) =>
+      findings.cells.has(translationFieldName(row.path, cellLocale)),
     );
-    // Empty for now, perhaps, while a later cell in the row adds the
-    // translation that replaces the one this cell clears.
-    rows.set(key, { row: found.row, value: next ?? {} });
+
+  const known = new Set(findFieldTextProblems(before).map(problemKey));
+  for (const problem of findFieldTextProblems(after)) {
+    if (known.has(problemKey(problem))) continue;
+    const row = findRow(groups, problem.path);
+    if (row !== undefined) {
+      flag(row, problem.locale, describeFieldProblem(problem, words));
+    }
   }
 
+  // What the protocol already fails is not the save's to answer for.
+  const [result, resultBefore] = await Promise.all([
+    validateProtocol(after, { draft: true }),
+    validateProtocol(before, { draft: true }),
+  ]);
+  const standing = new Set(
+    resultBefore.success ? [] : resultBefore.error.issues.map(issueKey),
+  );
+  const issues: readonly ProtocolValidationIssue[] = result.success
+    ? []
+    : result.error.issues.filter((issue) => !standing.has(issueKey(issue)));
+  for (const issue of issues) {
+    const details = issue.message;
+    const row = rowAt(groups, issue.path);
+    if (row !== undefined) {
+      const next = issue.path[row.path.length];
+      const locale =
+        typeof next === 'string' && locales.includes(next) ? next : undefined;
+      // A rule the table already explains, such as two diseases' names,
+      // is said once, in its own words.
+      if (flagged(row, locale)) continue;
+      for (const cellLocale of locale === undefined ? locales : [locale]) {
+        flag(
+          row,
+          cellLocale,
+          intl.formatMessage(messages.textNotUsable, { details }),
+        );
+      }
+      continue;
+    }
+    const place = describePlace(
+      intl,
+      after,
+      locateTranslation(after, issue.path).place,
+    );
+    findings.elsewhere.add(
+      place.name === null
+        ? intl.formatMessage(messages.problemInPlace, {
+            place: place.kind,
+            details,
+          })
+        : intl.formatMessage(messages.problemInNamedPlace, {
+            place: place.kind,
+            name: place.name.text,
+            details,
+          }),
+    );
+  }
+  return findings;
+};
+
+/** How many times a save starts again when the protocol changes under it. */
+const SAVE_ATTEMPTS = 3;
+
+/**
+ * Writes every changed translation the table's form holds into the protocol,
+ * in one step: one undo takes the whole save back.
+ *
+ * The form has checked every cell before this runs. The protocol the save
+ * would write is then checked whole, as each protocol edit is checked after
+ * it is made, and nothing is written while it fails: each problem is said on
+ * the cell it belongs to, which is given a field of its own if it has none,
+ * or above the table when it belongs to no cell. A protocol that refuses the
+ * set anyway, as a read-only one does, is said so above the table.
+ */
+export const saveTranslations = async ({
+  values,
+  formStore,
+  getState,
+  dispatch,
+  getWords,
+  attempt = 1,
+}: {
+  values: Record<string, FieldValue>;
+  formStore: FormStoreApi;
+  getState: () => RootState;
+  dispatch: AppDispatch;
+  getWords: () => Words;
+  attempt?: number;
+}): Promise<FormSubmissionResult> => {
+  const words = getWords();
+  const failed: FormSubmissionResult = {
+    success: false,
+    formErrors: [words.intl.formatMessage(messages.textRemoved)],
+  };
+  const before = getState();
+  const protocolBefore = getProtocol(before);
+  if (!protocolBefore) return failed;
+  const groups = getTranslationGroups(before);
+
+  const cells = Object.keys(values).flatMap((name) => {
+    const cell = readTranslationFieldName(name);
+    const field = formStore.getState().getFieldState(name);
+    if (cell === undefined || field === undefined) return [];
+    if (isEqual(asText(field.value), asText(field.initialValue))) return [];
+    return [{ ...cell, text: asText(field.value) }];
+  });
+  const { drafts, unknownRow } = rowDrafts(groups, cells);
   // Each cell was checked against the rest of its row, so a row left with no
   // translation at all is one the protocol changed under the table.
   if (
-    Array.from(rows.values()).some(
+    unknownRow ||
+    Array.from(drafts.values()).some(
       ({ value }) => Object.keys(value).length === 0,
     )
   ) {
     return failed;
   }
-  const updates = Array.from(rows.values())
-    .filter(({ row, value }) => !isEqual(value, row.value))
-    .map(({ row, value }) => ({ path: row.path, value }));
+  const updates = updatesOf(drafts);
   if (updates.length === 0) return { success: true };
 
-  const protocolBefore: CurrentProtocol | null = getProtocol(before);
+  const protocolAfterSave = protocolAfter(protocolBefore, updates);
+  if (protocolAfterSave === protocolBefore) return failed;
+  const findings = await findSaveProblems(
+    protocolBefore,
+    protocolAfterSave,
+    groups,
+    words,
+  );
+  // Checked against a protocol that has since changed: check again.
+  if (getProtocol(getState()) !== protocolBefore) {
+    return attempt < SAVE_ATTEMPTS
+      ? saveTranslations({
+          values,
+          formStore,
+          getState,
+          dispatch,
+          getWords,
+          attempt: attempt + 1,
+        })
+      : failed;
+  }
+
+  if (findings.cells.size > 0 || findings.elsewhere.size > 0) {
+    const held = new Map<string, Readonly<{ text: string; message: string }>>();
+    for (const [name, { row, locale, message }] of findings.cells) {
+      registerTranslationCell(formStore, row, locale, getState, getWords);
+      const field = formStore.getState().getFieldState(name);
+      held.set(name, {
+        text: field === undefined ? '' : asText(field.value),
+        message,
+      });
+    }
+    saveFindings.set(formStore, held);
+    return {
+      success: false,
+      formErrors: [...findings.elsewhere],
+      fieldErrors: Object.fromEntries(
+        Array.from(findings.cells, ([name, { message }]) => [name, [message]]),
+      ),
+    };
+  }
+
   dispatch(setProtocolLocalizedStrings({ updates }));
   return getProtocol(getState()) === protocolBefore
     ? failed

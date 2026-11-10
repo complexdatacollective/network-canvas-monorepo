@@ -123,8 +123,9 @@ const UnsavedMark = () => (
 
 // The text, the stand-in that shows through an empty cell, and the sizer that
 // grows the cell share one padding and wrapping, so each lines up over the
-// others.
-const CELL_TEXT_CLASSES = 'px-3 py-2 wrap-break-word';
+// others. A word longer than the column breaks wherever it must: the cell is a
+// grid item, which `break-word` would let widen past its column.
+const CELL_TEXT_CLASSES = 'px-3 py-2 wrap-anywhere';
 const PLAIN_TEXT_CLASSES = cx(CELL_TEXT_CLASSES, 'whitespace-pre-wrap');
 
 /** Every declared language the text has a translation in. */

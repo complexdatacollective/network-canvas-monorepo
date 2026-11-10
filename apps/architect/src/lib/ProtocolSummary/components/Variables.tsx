@@ -136,7 +136,11 @@ const Variables = ({ variables }: VariablesProps) => {
                   {getUsedIn(indexEntry).map((stage) => (
                     <React.Fragment key={stage.id}>
                       <DualLink to={`#stage-${stage.id}`}>
-                        <DefaultLanguageText value={stage.label} />
+                        {/* A stage name may be one long word; it breaks
+                            rather than widening the table. */}
+                        <span className="wrap-anywhere">
+                          <DefaultLanguageText value={stage.label} />
+                        </span>
                       </DualLink>
                       <br />
                     </React.Fragment>

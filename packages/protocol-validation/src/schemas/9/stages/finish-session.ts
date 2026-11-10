@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { localizedString, nonBlankText } from '../localized-string.ts';
-import { baseStageSchema } from './base.ts';
+import { baseStageSchema, stageLabelText } from './base.ts';
 
 /**
  * How an interview that ends at a finish stage ended. Every outcome ends the
@@ -73,9 +73,10 @@ export const finishSessionStage = baseStageSchema.extend({
   // language (`findFinishStageTextProblems`, checked by `validateProtocol`).
   //
   // A translation that is there is never blank: the interview would choose
-  // it over falling back, and show a participant nothing.
+  // it over falling back, and show a participant nothing. It is held to the
+  // length every stage name is (`STAGE_LABEL_MAX_LENGTH`).
   label: localizedString(
-    nonBlankText(),
+    stageLabelText(),
     { format: 'plain', lines: 'single' },
     { mayBeEmpty: true },
   ),

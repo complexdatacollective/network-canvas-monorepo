@@ -6,13 +6,13 @@ import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
 import {
-  DefaultLanguageTextRefusal,
-  DefaultLanguageTextRefusalTitle,
+  DownloadRefusalMessage,
+  DownloadRefusalTitle,
 } from '~/components/DefaultLanguageTextAlert';
 
 import {
   bundleProtocol,
-  MissingDefaultLanguageTextError,
+  DownloadRefusedError,
   UnresolvedAssetsError,
 } from './bundleProtocol';
 import { beginExport } from './criticalOperation';
@@ -126,12 +126,12 @@ export const sendProtocolToInterviewer = async (
       ({ protocol } = await prepared);
     } catch (error) {
       tab.window.close();
-      if (error instanceof MissingDefaultLanguageTextError) {
+      if (error instanceof DownloadRefusedError) {
         void openDialog({
           type: 'acknowledge',
           intent: 'destructive',
-          title: createElement(DefaultLanguageTextRefusalTitle),
-          description: createElement(DefaultLanguageTextRefusal, {
+          title: createElement(DownloadRefusalTitle),
+          description: createElement(DownloadRefusalMessage, {
             problem: error.problem,
           }),
           actions: {

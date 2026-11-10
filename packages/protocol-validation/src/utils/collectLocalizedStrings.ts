@@ -338,3 +338,32 @@ export const collectLocalizedStrings = (
   protocol: unknown,
 ): LocalizedStringHit[] =>
   collectLocalizedStringsFromSchema(ProtocolStructureSchema, protocol);
+
+/** A participant-facing string, with the declaration of the field it is in. */
+export type LocalizedStringField = LocalizedStringHit &
+  Readonly<{
+    /**
+     * The field's tagged declaration. Parsing a candidate value with it
+     * applies every rule the field declares, so a rule added to a declaration
+     * reaches each place that checks a value this way unchanged.
+     */
+    schema: z.ZodType;
+  }>;
+
+/**
+ * Every participant-facing string in a protocol, exactly as
+ * `collectLocalizedStrings` finds it, each with its field's declaration.
+ */
+export const collectLocalizedStringFields = (
+  protocol: unknown,
+): LocalizedStringField[] => {
+  const schemas = new Map(
+    collectLocalizedStringSites(ProtocolStructureSchema, protocol).map(
+      (site) => [JSON.stringify(site.path), site.schema],
+    ),
+  );
+  return collectLocalizedStrings(protocol).flatMap((hit) => {
+    const schema = schemas.get(JSON.stringify(hit.path));
+    return schema === undefined ? [] : [{ ...hit, schema }];
+  });
+};

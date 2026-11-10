@@ -4,6 +4,11 @@ import {
   createMessageError,
   defineMessages,
 } from '@codaco/app-i18n/messages';
+import {
+  DUPLICATE_LABEL,
+  MigrationResultInvalidError,
+  STAGE_LABEL_TOO_LONG,
+} from '@codaco/protocol-validation';
 
 const utilityMessages = defineMessages({
   twoAttributesShareAName: {
@@ -16,6 +21,32 @@ const utilityMessages = defineMessages({
     defaultMessage:
       '{location, select, ego {Two attributes on the interviewee are both named "{name}".} named {Two attributes on "{ownerLabel}" are both named "{name}".} other {Two attributes are both named "{name}".}} That was allowed when this protocol was made, but they cannot both exist now — a researcher reading a dropdown could not tell them apart. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.',
     description: 'The message text in utils / describeMigrationFailure.',
+  },
+  twoOptionsHaveTheSameLabel: {
+    id: 'architect.utility.utils.describeMigrationFailure.twoOptionsHaveTheSameLabel',
+    defaultMessage: 'Two options have the same label',
+    description:
+      'Title of the dialog shown when Architect cannot open a protocol made with an older version because two answer options of one attribute have the same label: a participant would see the same text, perhaps differing only in capital letters or spaces at either end.',
+  },
+  optionsHaveTheSameLabelWhenMade: {
+    id: 'architect.utility.utils.describeMigrationFailure.optionsHaveTheSameLabelWhenMade',
+    defaultMessage:
+      'Options {first, number} and {second, number} of the attribute “{attribute}” have the same label: “{firstLabel}” and “{secondLabel}”. That was allowed when this protocol was made, but participants could not tell them apart. Open this protocol in the version of Architect that created it, give the options different labels, then open it here again.',
+    description:
+      'Shown when Architect cannot open a protocol made with an older version because two answer options of one attribute (a question in the codebook with a fixed list of answers) have the same label as a participant would see it: written the same, or differing only in capital letters or spaces at either end. first and second are the options’ positions in the list, counting from 1. attribute is the attribute’s name. firstLabel and secondLabel are the two labels. Architect does not change the labels itself: the researcher changes them in the older Architect.',
+  },
+  stageNameTooLong: {
+    id: 'architect.utility.utils.describeMigrationFailure.stageNameTooLong',
+    defaultMessage: 'A stage name is too long',
+    description:
+      'Title of the dialog shown when Architect cannot open a protocol made with an older version because a stage’s name is longer than a stage name may now be.',
+  },
+  stageNameTooLongWhenMade: {
+    id: 'architect.utility.utils.describeMigrationFailure.stageNameTooLongWhenMade',
+    defaultMessage:
+      'The stage name “{name}” is longer than {max, number} characters. That was allowed when this protocol was made, but a longer name does not fit where stage names are shown. Open this protocol in the version of Architect that created it, shorten the name, then open it here again.',
+    description:
+      'Shown when Architect cannot open a protocol made with an older version because a stage’s name is longer than a stage name may now be. name is the stage’s name. max is the most characters a stage name may have. Architect does not shorten the name itself: the researcher does, in the older Architect.',
   },
   failedToOpenProtocol: {
     id: 'architect.utility.utils.describeMigrationFailure.failedToOpenProtocol',
@@ -111,11 +142,61 @@ const locateCollision = (
  * Unknown failures receive complete actionable guidance. The original reason
  * is retained separately for the labelled technical disclosure.
  */
+/**
+ * A refusal of something the protocol holds that its version allowed and the
+ * current one does not, which Architect leaves to the researcher to change:
+ * two options with the same label, or a stage name too long to show. Read from
+ * the refused result's own issues (`MigrationResultInvalidError`), which carry
+ * what the sentence names.
+ */
+const describeRefusedContent = (
+  error: Error,
+): { title: string; message: string } | undefined => {
+  if (!(error instanceof MigrationResultInvalidError)) return undefined;
+  for (const { code, params } of error.issues) {
+    if (params === undefined) continue;
+    const text = (key: string) => {
+      const value = params[key];
+      return typeof value === 'string' || typeof value === 'number'
+        ? value
+        : '';
+    };
+    if (code === DUPLICATE_LABEL && params.kind === 'option') {
+      return {
+        title: createMessageError(utilityMessages.twoOptionsHaveTheSameLabel),
+        message: createMessageError(
+          utilityMessages.optionsHaveTheSameLabelWhenMade,
+          {
+            first: text('first'),
+            second: text('second'),
+            attribute: text('name'),
+            firstLabel: text('firstLabel'),
+            secondLabel: text('secondLabel'),
+          },
+        ),
+      };
+    }
+    if (params.rule === STAGE_LABEL_TOO_LONG) {
+      return {
+        title: createMessageError(utilityMessages.stageNameTooLong),
+        message: createMessageError(utilityMessages.stageNameTooLongWhenMade, {
+          name: text('text'),
+          max: text('max'),
+        }),
+      };
+    }
+  }
+  return undefined;
+};
+
 export const describeMigrationFailure = (
   error: Error,
   protocol: unknown,
   _intl: IntlShape = defaultIntl,
 ): { title: string; message: string; detail?: string } => {
+  const refused = describeRefusedContent(error);
+  if (refused !== undefined) return { ...refused, detail: error.message };
+
   const duplicate = DUPLICATE_NAME.exec(error.message);
 
   if (duplicate?.[1]) {

@@ -1069,7 +1069,7 @@
   },
   "architect.finishStageText.cannotBeDownloadedYet": {
     "defaultMessage": "This protocol can’t be downloaded yet",
-    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, or while Network Canvas’s built-in wording has no text in that language."
+    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, while Network Canvas’s built-in wording has no text in that language, or while two labels participants choose between are the same."
   },
   "architect.finishStageText.editFinishStage": {
     "defaultMessage": "Edit the stage that ends the interview",
@@ -1671,6 +1671,38 @@
     "defaultMessage": "Copy",
     "description": "Visible text in components / JsonPreviewOverlay."
   },
+  "architect.labelCollisions.description": {
+    "defaultMessage": "Participants could not tell these apart. The protocol can’t be downloaded until each pair has different labels.",
+    "description": "Shown under the title of the warning about labels that are the same, above the list of pairs. “These” and “each pair” are the pairs of answer options or diseases listed below it. Researcher-facing."
+  },
+  "architect.labelCollisions.diseasePair": {
+    "defaultMessage": "Diseases {first, number} and {second, number} of the stage “{stage}” have the same label in {language}: “{firstLabel}” and “{secondLabel}”.",
+    "description": "One item in the warning about labels that are the same: two diseases (conditions a participant reports for their family members) of a Narrative Pedigree stage whose labels a participant reading the language would see as the same text. first and second are the diseases’ positions in the stage’s list, counting from 1. stage is the stage’s name. language is the name of the language, for example “Spanish”. firstLabel and secondLabel are the two labels as a participant reads them in that language; they may differ only in capital letters or spaces."
+  },
+  "architect.labelCollisions.downloadRefused": {
+    "defaultMessage": "Some answer options or diseases have the same label in one of the protocol’s languages, so participants could not tell them apart. The Stages page lists them. The protocol can’t be downloaded until each pair has different labels.",
+    "description": "Shown in the dialog that refuses to download (or send) a protocol while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have the same label in one of the protocol’s languages, as a participant would see it: written the same, differing only in capital letters or spaces at either end, or because one has no translation in that language and shows another language’s text instead. Researcher-facing. “The Stages page” is the Architect page listing the protocol’s stages, where a notice names each pair."
+  },
+  "architect.labelCollisions.editAttribute": {
+    "defaultMessage": "Edit the attribute “{attribute}”",
+    "description": "Link after an item in the warning about labels that are the same, when the two options have the same label in the protocol’s default language. It opens the codebook editor where the attribute’s options are edited. attribute is the attribute’s name."
+  },
+  "architect.labelCollisions.editStage": {
+    "defaultMessage": "Edit the stage “{stage}”",
+    "description": "Link after an item in the warning about labels that are the same, when the two diseases have the same label in the protocol’s default language. It opens the editor of the stage the diseases belong to. stage is the stage’s name."
+  },
+  "architect.labelCollisions.optionPair": {
+    "defaultMessage": "Options {first, number} and {second, number} of the attribute “{attribute}” have the same label in {language}: “{firstLabel}” and “{secondLabel}”.",
+    "description": "One item in the warning about labels that are the same: two answer options of one attribute (a question in the codebook with a fixed list of answers) whose labels a participant reading the language would see as the same text. first and second are the options’ positions in the attribute’s list, counting from 1. attribute is the attribute’s name. language is the name of the language, for example “Spanish”. firstLabel and secondLabel are the two labels as a participant reads them in that language; they may differ only in capital letters or spaces."
+  },
+  "architect.labelCollisions.title": {
+    "defaultMessage": "Some labels are the same",
+    "description": "Title of the warning on the stage list shown while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have the same label in one of the protocol’s languages: a participant would see the same text, perhaps differing only in capital letters or spaces at either end. Researcher-facing."
+  },
+  "architect.labelCollisions.translate": {
+    "defaultMessage": "Edit the translations into {language}",
+    "description": "Link after an item in the warning about labels that are the same, when the two labels are the same only in a language other than the protocol’s default language, often because one of them has no translation into it. It opens the translation table showing that language beside the default one. language is the name of that language, for example “Spanish”."
+  },
   "architect.legacyProtocol.couldNotOpenInArchitect": {
     "defaultMessage": "Could not open in Architect {version}",
     "description": "Title of the error dialog shown when a protocol file could not be passed to the previous version of Architect. {version} is that version’s number (for example 8)."
@@ -1971,6 +2003,14 @@
     "defaultMessage": "Default",
     "description": "Badge beside the name of the protocol’s default language, in the heading of its column in the translation table."
   },
+  "architect.localization.translationTable.duplicateDiseaseLabel": {
+    "defaultMessage": "Another disease has the same name in {language}. Give each disease a name participants can tell apart.",
+    "description": "Shown in a cell of the translation table holding a disease’s name, on a Narrative Pedigree stage, when participants reading the cell’s language would see the same name for another disease, either because it is written the same or because one of them has no translation and shows another language’s text instead. language is the cell’s language."
+  },
+  "architect.localization.translationTable.duplicateOptionLabel": {
+    "defaultMessage": "Another option of this attribute has the same label in {language}. Give each option a label participants can tell apart.",
+    "description": "Shown in a cell of the translation table holding the label of one of an attribute’s answer options (including the two answers of a yes-or-no attribute), when participants reading the cell’s language would see the same label for another option of the same attribute, either because it is written the same or because one of them has no translation and shows another language’s text instead. language is the cell’s language."
+  },
   "architect.localization.translationTable.filter": {
     "defaultMessage": "Translations to show",
     "description": "Accessible name of the menu above the translation table that chooses whether it shows every localized string or only those with a translation missing."
@@ -1986,6 +2026,10 @@
   "architect.localization.translationTable.help": {
     "defaultMessage": "Help",
     "description": "Button in the toolbar of the translation table that opens a short explanation of the table and how to edit it."
+  },
+  "architect.localization.translationTable.interfaceTextWithoutDefaultLanguage": {
+    "defaultMessage": "This text needs words in {language}, the protocol’s default language.",
+    "description": "Shown in a cell of the translation table holding words the interview itself shows, such as a button’s label, when the cell is in the protocol’s default language and has been emptied: those words always need a translation in the default language. language is the default language."
   },
   "architect.localization.translationTable.keyboardHelp": {
     "defaultMessage": "Select a cell to edit it. Your changes are kept in the table until you select Save, and each cell is checked when you leave it. Press Escape to undo your changes to a cell. When the cursor is on the first or last line of a cell, the up and down arrow keys move to the previous or next row. Ctrl+Enter (⌘+Enter on a Mac) also moves to the next row, as Enter does in a cell with one line. In a cell with formatting, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.",
@@ -2035,6 +2079,14 @@
     "defaultMessage": "This is the only translation, and it is in {language}. Add a translation in another language before clearing it.",
     "description": "Shown in a cell of the translation table when its translation is emptied but is the only translation the localized string has, which cannot be removed. language is the language of the cell."
   },
+  "architect.localization.translationTable.problemInNamedPlace": {
+    "defaultMessage": "Saving these translations would leave a problem in {place}, “{name}”, so nothing was saved. Details: {details}",
+    "description": "Shown above the translation table when saving is refused because the translations would break a rule of the protocol in a place that is not one of the table’s cells. place names the kind of place, such as “Stage 3” or “Node type”, and name is its name, such as the stage’s name. details is the technical description of the problem, in English, kept for support."
+  },
+  "architect.localization.translationTable.problemInPlace": {
+    "defaultMessage": "Saving these translations would leave a problem in {place}, so nothing was saved. Details: {details}",
+    "description": "Shown above the translation table when saving is refused because the translations would break a rule of the protocol in a place that is not one of the table’s cells. place names that place, such as “Stage 3” or “Node type”. details is the technical description of the problem, in English, kept for support."
+  },
   "architect.localization.translationTable.progress": {
     "defaultMessage": "{translated, number} of {total, number} translated",
     "description": "Read by screen readers in the heading of a language’s column in the translation table: how many of the protocol’s localized strings have a translation into it."
@@ -2063,9 +2115,17 @@
     "defaultMessage": "Shown in {language}*",
     "description": "Tag in an empty cell of the translation table, under the wording participants see instead of the missing translation, when they may see another language instead. The asterisk refers to a note below the table explaining that the participant’s browser can list a language that has a translation. language is the language of the wording shown."
   },
+  "architect.localization.translationTable.stageLabelTooLong": {
+    "defaultMessage": "A stage name can be at most {max, number} characters long. Shorten this one.",
+    "description": "Shown in a cell of the translation table holding a stage’s name when the name is longer than a stage name may be. max is the most characters it may have."
+  },
   "architect.localization.translationTable.textColumn": {
     "defaultMessage": "Location",
     "description": "Heading of the first column of the translation table, which names each localized string by where it is in the protocol."
+  },
+  "architect.localization.translationTable.textNotUsable": {
+    "defaultMessage": "The protocol cannot hold this text as it is written. Details: {details}",
+    "description": "Shown in a cell of the translation table when its text breaks one of the protocol’s rules that Architect has no explanation of its own for. details is the technical description of the problem, in English, kept for support."
   },
   "architect.localization.translationTable.textRemoved": {
     "defaultMessage": "This translation cannot be saved, because the wording it belongs to, or its language, has been removed from the protocol.",
@@ -3955,6 +4015,18 @@
     "defaultMessage": "Failed to Open Protocol",
     "description": "The title text in utils / describeMigrationFailure."
   },
+  "architect.utility.utils.describeMigrationFailure.optionsHaveTheSameLabelWhenMade": {
+    "defaultMessage": "Options {first, number} and {second, number} of the attribute “{attribute}” have the same label: “{firstLabel}” and “{secondLabel}”. That was allowed when this protocol was made, but participants could not tell them apart. Open this protocol in the version of Architect that created it, give the options different labels, then open it here again.",
+    "description": "Shown when Architect cannot open a protocol made with an older version because two answer options of one attribute (a question in the codebook with a fixed list of answers) have the same label as a participant would see it: written the same, or differing only in capital letters or spaces at either end. first and second are the options’ positions in the list, counting from 1. attribute is the attribute’s name. firstLabel and secondLabel are the two labels. Architect does not change the labels itself: the researcher changes them in the older Architect."
+  },
+  "architect.utility.utils.describeMigrationFailure.stageNameTooLong": {
+    "defaultMessage": "A stage name is too long",
+    "description": "Title of the dialog shown when Architect cannot open a protocol made with an older version because a stage’s name is longer than a stage name may now be."
+  },
+  "architect.utility.utils.describeMigrationFailure.stageNameTooLongWhenMade": {
+    "defaultMessage": "The stage name “{name}” is longer than {max, number} characters. That was allowed when this protocol was made, but a longer name does not fit where stage names are shown. Open this protocol in the version of Architect that created it, shorten the name, then open it here again.",
+    "description": "Shown when Architect cannot open a protocol made with an older version because a stage’s name is longer than a stage name may now be. name is the stage’s name. max is the most characters a stage name may have. Architect does not shorten the name itself: the researcher does, in the older Architect."
+  },
   "architect.utility.utils.describeMigrationFailure.thatWasAllowedWhen": {
     "defaultMessage": "{location, select, ego {Two attributes on the interviewee are both named \"{name}\".} named {Two attributes on \"{ownerLabel}\" are both named \"{name}\".} other {Two attributes are both named \"{name}\".}} That was allowed when this protocol was made, but they cannot both exist now — a researcher reading a dropdown could not tell them apart. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.",
     "description": "The message text in utils / describeMigrationFailure."
@@ -3966,6 +4038,10 @@
   "architect.utility.utils.describeMigrationFailure.twoAttributesShareAName": {
     "defaultMessage": "Two attributes share a name",
     "description": "The title text in utils / describeMigrationFailure."
+  },
+  "architect.utility.utils.describeMigrationFailure.twoOptionsHaveTheSameLabel": {
+    "defaultMessage": "Two options have the same label",
+    "description": "Title of the dialog shown when Architect cannot open a protocol made with an older version because two answer options of one attribute have the same label: a participant would see the same text, perhaps differing only in capital letters or spaces at either end."
   },
   "architect.utility.utils.downloadActiveProtocol.oK": {
     "defaultMessage": "OK",

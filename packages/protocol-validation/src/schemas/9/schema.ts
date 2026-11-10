@@ -56,7 +56,6 @@ import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { ProtocolStructureSchema } from './protocol-structure.ts';
 import { CATEGORICAL_BIN_MAX_BINS } from './stages/categorical-bin.ts';
 import type { Prompt, Stage } from './stages/index.ts';
-import { findDuplicateDiseaseLabels } from './stages/narrative-pedigree.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
 import {
   ComponentTypes,
@@ -1310,24 +1309,10 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     }
 
     // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree
-    // stage; disease attributes must resolve on the source node type; disease
-    // labels must differ in every language a participant can see them in.
+    // stage; disease attributes must resolve on the source node type. (Two
+    // diseases whose labels read the same are refused only of a protocol
+    // handed over: `labelCollisionIssues`.)
     if (stage.type === 'NarrativePedigree') {
-      if (localization) {
-        for (const duplicate of findDuplicateDiseaseLabels(
-          stage.diseases,
-          localization,
-        )) {
-          const language =
-            localization.locales.length > 1 ? ` (${duplicate.locale})` : '';
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Diseases contain duplicate label "${duplicate.text}"${language}`,
-            path: ['stages', stageIndex, 'diseases', duplicate.index, 'label'],
-          });
-        }
-      }
-
       const sourceStageIndex = protocol.stages.findIndex(
         (s) => s.id === stage.sourceStageId,
       );

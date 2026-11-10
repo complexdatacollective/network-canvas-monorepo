@@ -2236,10 +2236,10 @@ describe('the two answers a boolean offers', () => {
   });
 
   /**
-   * Both answers named the same words is the same failure by the other route,
-   * and the schema accepts it for the same reason: `booleanOptionsSchema.label`
-   * is a bare `z.string()` and nothing downstream compares the two. Two buttons
-   * a participant cannot tell apart is not an answerable question.
+   * Both answers named the same words is the same failure by the other route.
+   * Two buttons a participant cannot tell apart is not an answerable question,
+   * and the protocol schema refuses it as it refuses any two options of an
+   * attribute that read the same (`findDuplicateOptionLabels`).
    */
   it('refuses a pair whose two answers say the same thing', async () => {
     const user = withSafeTypingIntoRichText(userEvent.setup());
@@ -2271,12 +2271,11 @@ describe('the two answers a boolean offers', () => {
   });
 
   /**
-   * The control, and the reason the comparison is case-sensitive where a
-   * categorical option's is not: these two labels are rendered exactly as they
-   * were typed, so a participant CAN tell them apart. A categorical option's
-   * value becomes a key, which is why that rule folds case.
+   * Compared as every option label is, and as the schema compares them:
+   * regardless of case, which a participant does not read as a different
+   * answer.
    */
-  it('takes two answers that differ only in case', async () => {
+  it('refuses two answers that differ only in case', async () => {
     const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
@@ -2295,11 +2294,12 @@ describe('the two answers a boolean offers', () => {
     await user.type(negative, 'yes');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitDocument).options).toEqual([
-      { label: { en: 'YES' }, value: true },
-      { label: { en: 'yes' }, value: false },
-    ]);
+    expect(
+      await screen.findByText(
+        'Give this answer different words: two buttons saying the same thing cannot be told apart.',
+      ),
+    ).toBeVisible();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
   });
 
   /**

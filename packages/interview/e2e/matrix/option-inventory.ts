@@ -38,7 +38,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'empty-array-treated-as-unset',
     'ready-for-next-pulse',
     'bin-expand-collapse',
-    'duplicate-option-labels-index-keyed',
+    'similar-option-labels-value-keyed',
     'behaviours.requireCompletePlacement',
     'unplacedNodesNotice',
   ],

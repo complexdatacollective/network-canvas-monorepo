@@ -409,3 +409,32 @@ export {
   validateNames,
   validateProtocol,
 };
+
+// Each participant-facing string with its field's declaration, which the
+// translation table checks a cell's text against.
+export {
+  collectLocalizedStringFields,
+  type LocalizedStringField,
+} from './utils/collectLocalizedStrings.ts';
+// The rules some texts are held to beyond their own declaration, which every
+// place that edits them asks (see `localization/fieldTextRules.ts`).
+export {
+  type FieldTextProblem,
+  type FieldTextRule,
+  findFieldTextProblems,
+  lacksDefaultLanguageText,
+} from './localization/fieldTextRules.ts';
+// The rule every set of labels a participant tells apart is held to: a
+// Narrative Pedigree's diseases and an attribute's options.
+export {
+  type DuplicateLabel,
+  findDuplicateLocalizedLabels,
+  findDuplicateOptionLabels,
+} from './localization/duplicateLabels.ts';
+// Where a protocol breaks that rule, which refuses a protocol handed over but
+// not one being written.
+export {
+  DUPLICATE_LABEL,
+  findLabelCollisions,
+  type LabelCollision,
+} from './localization/labelCollisions.ts';

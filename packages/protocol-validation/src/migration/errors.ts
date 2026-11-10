@@ -49,6 +49,10 @@ export class MigrationStepError extends MigrationError {
  */
 export class MigrationResultInvalidError extends MigrationError {
   readonly targetVersion: number;
+  /**
+   * Why the result is refused, where the schema said: each issue, so a host
+   * can explain one it has words for, such as two options that read the same.
+   */
   readonly issues: readonly ProtocolValidationIssue[];
 
   constructor(

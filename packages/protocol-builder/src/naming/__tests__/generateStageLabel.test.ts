@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import type { StageType } from '@codaco/protocol-validation';
+import {
+  STAGE_LABEL_MAX_LENGTH,
+  type StageType,
+} from '@codaco/protocol-validation';
 
 import {
   composeStageName,
   dedupeStageLabel,
   generateStageLabel,
-  MAX_LABEL_LENGTH,
   STAGE_TYPE_NAMES,
 } from '../generateStageLabel.ts';
 
@@ -111,7 +113,7 @@ describe('generateStageLabel', () => {
       },
       existingLabels: [],
     });
-    expect(label.length).toBeLessThanOrEqual(MAX_LABEL_LENGTH);
+    expect(label.length).toBeLessThanOrEqual(STAGE_LABEL_MAX_LENGTH);
     expect(label).toContain('with Nominations');
   });
   it('never exceeds the length cap even with a dedup suffix', () => {
@@ -122,7 +124,7 @@ describe('generateStageLabel', () => {
       qualifier: null,
       existingLabels: [long.slice(0, 50)],
     });
-    expect(label.length).toBeLessThanOrEqual(MAX_LABEL_LENGTH);
+    expect(label.length).toBeLessThanOrEqual(STAGE_LABEL_MAX_LENGTH);
   });
 });
 

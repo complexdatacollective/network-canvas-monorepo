@@ -37,7 +37,7 @@ import {
 } from '~/utils/beforeUnloadGuard';
 import {
   downloadProtocolAsNetcanvas,
-  MissingDefaultLanguageTextError,
+  DownloadRefusedError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
 import { beginExport, setImportInProgress } from '~/utils/criticalOperation';
@@ -873,9 +873,9 @@ export const exportNetcanvas = createAppAsyncThunk(
           assetNames: error.assetNames,
         } as const;
       }
-      if (error instanceof MissingDefaultLanguageTextError) {
+      if (error instanceof DownloadRefusedError) {
         return {
-          status: 'missing-default-language-text',
+          status: 'download-refused',
           problem: error.problem,
         } as const;
       }

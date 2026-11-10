@@ -68,6 +68,7 @@ import { cx } from '~/utils/cva';
 import { describePlace, type PlaceDetails, textSteps } from './textPlaces';
 import TranslationCell, { fallbackFor } from './TranslationCell';
 import {
+  clearSaveFindings,
   readTranslationFieldName,
   saveTranslations,
 } from './translationDrafts';
@@ -420,7 +421,9 @@ type TranslationTableProps = {
  * The table is a form: what is typed into its cells is kept in the form, each
  * cell checked as focus leaves it, until Save writes every change into the
  * protocol together. Save refuses while any cell holds text the protocol
- * cannot take, and takes the researcher to the first.
+ * cannot take, or while the protocol it would write fails the checks every
+ * protocol edit is held to, and takes the researcher to the first cell at
+ * fault, shown whatever the search, filter or hidden columns would hide.
  *
  * Must be drawn inside the `FormStoreProvider` the cells keep their changes in.
  */
@@ -512,16 +515,16 @@ const TranslationTable = ({
   }, [unfocusedErrors, formScope]);
 
   const { formProps, formErrors } = useForm({
-    onSubmit: (values) => {
+    onSubmit: async (values) => {
       const refusal = refusedCommit();
       if (refusal) return { success: false, formErrors: [refusal] };
       if (!formStore) return { success: false };
-      const result = saveTranslations({
+      const result = await saveTranslations({
         values,
-        getFieldState: (name) => formStore.getState().getFieldState(name),
+        formStore,
         getState: () => store.getState(),
         dispatch,
-        intl,
+        getWords: () => ({ intl, languageName }),
       });
       if (result.success) {
         // What the cells hold is now what the protocol has, so closing the
@@ -792,7 +795,12 @@ const TranslationTable = ({
           <Button
             size="sm"
             color="primary"
-            onClick={(event) => void formProps.onSubmit(event)}
+            onClick={(event) => {
+              // Each save is checked afresh: what the last refused one found
+              // stops holding its cells back.
+              if (formStore) clearSaveFindings(formStore);
+              void formProps.onSubmit(event);
+            }}
             disabled={isSubmitting}
           >
             {intl.formatMessage(commonMessages.save)}
@@ -923,9 +931,13 @@ const TranslationTable = ({
         {numberedGroups.map((group, groupIndex) => {
           const groupId = `${baseId}-group-${groupIndex}`;
           return (
+            // A group's heading sticks against the whole table, so every
+            // heading scrolled past stays stuck under the next one; clipping
+            // the group to its own box hides a taller (wrapped) heading of an
+            // earlier group, which would otherwise show beneath a shorter one.
             <tbody
               key={group.key}
-              className="[--translation-table-sticky-top:calc(var(--translation-table-head,0px)+var(--translation-group-head,0px))]"
+              className="[--translation-table-sticky-top:calc(var(--translation-table-head,0px)+var(--translation-group-head,0px))] [clip-path:inset(0)]"
             >
               <tr>
                 <th
@@ -937,7 +949,7 @@ const TranslationTable = ({
                 >
                   {/* Stays at the start of the visible width as the table
                       scrolls sideways, so the heading is never cut off. */}
-                  <div className="sticky inset-s-0 w-max max-w-[min(calc(100vw-4rem),60rem)] px-3 py-2">
+                  <div className="sticky inset-s-0 w-max max-w-[min(calc(100vw-4rem),60rem)] px-3 py-2 wrap-anywhere">
                     <GroupHeading group={group} />
                   </div>
                 </th>

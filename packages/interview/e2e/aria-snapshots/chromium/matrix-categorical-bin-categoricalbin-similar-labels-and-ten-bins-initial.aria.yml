@@ -3,8 +3,8 @@
     - heading "Which categories does each person belong to?" [level=2]
   - button "Category Friend, 0 items":
     - heading "Friend" [level=4]
-  - button "Category Friend, 0 items":
-    - heading "Friend" [level=4]
+  - button "Category Friend (school), 0 items":
+    - heading "Friend (school)" [level=4]
   - button "1 unplaced Collapse drawer" [expanded]
   - button "Alex"
   - navigation:
