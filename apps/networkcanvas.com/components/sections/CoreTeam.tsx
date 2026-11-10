@@ -14,11 +14,7 @@ export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
 
   return (
     <Container as="section" className="">
-      <Reveal {...scrollDrivenRevealMotion}>
-        <SectionHeading title={t('heading')}>
-          {t('introduction')}
-        </SectionHeading>
-      </Reveal>
+      <SectionHeading title={t('heading')}>{t('introduction')}</SectionHeading>
 
       <div className="tablet-portrait:grid-cols-3 tablet-landscape:grid-cols-4 mt-14 grid grid-cols-2 gap-x-6 gap-y-12">
         {members.map((member, i) => (

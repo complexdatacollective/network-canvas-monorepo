@@ -22,7 +22,7 @@ import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { Container } from '~/components/ui/Container';
-import { Reveal } from '~/components/ui/Reveal';
+import { SectionHeading } from '~/components/ui/SectionHeading';
 import { cn } from '~/lib/cn';
 import type { Grant } from '~/lib/siteContent';
 
@@ -273,20 +273,15 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
           )}
         >
           <div ref={columnContentRef}>
-            <Reveal direction="up" distance={32} duration={0.8}>
-              <Heading
-                level="h2"
-                variant="section-heading"
-                margin="none"
-                id={headingId}
-                className="text-text laptop:text-5xl laptop:[@media(max-height:820px)]:text-4xl text-balance"
-              >
-                {t('heading')}
-              </Heading>
-              <p className="text-text/75 tablet-landscape:text-lg tablet-landscape:[@media(max-height:820px)]:text-base mt-6 max-w-xl text-base text-pretty">
-                {t('introduction')}
-              </p>
-            </Reveal>
+            <SectionHeading
+              id={headingId}
+              title={t('heading')}
+              className="mx-0 max-w-none text-start"
+              headingClassName="laptop:text-5xl laptop:[@media(max-height:820px)]:text-4xl text-balance"
+              bodyClassName="text-text/75 tablet-landscape:[@media(max-height:820px)]:text-base max-w-xl text-pretty"
+            >
+              {t('introduction')}
+            </SectionHeading>
 
             <ol className="tablet-landscape:flex relative mt-12 hidden flex-col gap-6 pl-10 [@media(max-height:820px)]:mt-8 [@media(max-height:820px)]:gap-4">
               <span

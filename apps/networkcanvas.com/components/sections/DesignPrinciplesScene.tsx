@@ -1018,9 +1018,14 @@ function NetworkEdge({
 
 // The node list's entrance, after the interview's NodeList: each item springs
 // up to full size from 60% scale and a fifth of its height below. The
-// network's nodes fly to that starting pose as the reader scrolls, so each
-// one is picked up by the spring where it lands; leaving, it hands straight
+// network's nodes fly to that starting pose on the way in, so each one is
+// picked up by the spring where it lands; leaving onward, it hands straight
 // back to its node, which sets off from where the item rests.
+//
+// The way back runs the hand-offs in reverse. Nodes returning from the
+// workflow arrive where the items rest, so the items appear there, already
+// settled; leaving back towards the interview, each item sinks to the
+// entrance pose as it fades, where its node is waiting.
 const listItem: Variants = {
   landed: { opacity: 1, ...LIST_ENTER },
   settled: {
@@ -1029,7 +1034,14 @@ const listItem: Variants = {
     scale: 1,
     transition: { type: 'spring', stiffness: 500, damping: 20 },
   },
-  leaving: { opacity: 0, transition: { duration: 0 } },
+  leaving: (rising: boolean) =>
+    rising
+      ? { opacity: 0, transition: { duration: 0 } }
+      : {
+          opacity: 0,
+          ...LIST_ENTER,
+          transition: { duration: 0.18, ease: 'easeIn' },
+        },
 };
 
 const listMask = (phase: number) =>
@@ -1047,24 +1059,32 @@ function NodeList({
   animated: boolean;
   gradientId: (color: NodeColor) => string;
 }) {
-  // Re-renders only when an item lands or leaves, not on every frame.
-  const [mask, setMask] = useState(() => listMask(phase.get()));
+  // Re-renders only when an item lands or leaves, not on every frame. Which
+  // way the scene was moving when it did decides how the hand-off runs.
+  const [{ mask, rising }, setList] = useState(() => ({
+    mask: listMask(phase.get()),
+    rising: true,
+  }));
   const maskRef = useRef(mask);
+  const previousRef = useRef(phase.get());
   useMotionValueEvent(phase, 'change', (p) => {
     const next = listMask(p);
+    const up = p >= previousRef.current;
+    previousRef.current = p;
     if (next !== maskRef.current) {
       maskRef.current = next;
-      setMask(next);
+      setList({ mask: next, rising: up });
     }
   });
   return (
-    <AnimatePresence>
+    <AnimatePresence custom={rising}>
       {LIST_SLOTS.map((slot, i) =>
         mask & (1 << i) ? (
           <motion.path
             key={`${slot.x}-${slot.y}`}
             variants={listItem}
-            initial={animated ? 'landed' : false}
+            custom={rising}
+            initial={animated && rising ? 'landed' : false}
             animate="settled"
             exit="leaving"
             d={listItemOutline(i)}

@@ -41,19 +41,17 @@ export function Institutions() {
 
   return (
     <Container maxWidth="full">
-      <Reveal {...scrollDrivenRevealMotion}>
-        <SectionHeading title={t('heading')}>
-          <Paragraph margin="none">
-            {t.rich('paragraph1', {
-              prior: renderPriorLink,
-              ongoing: renderOngoingLink,
-            })}
-          </Paragraph>
-          <Paragraph margin="none" className="mt-3">
-            {t('paragraph2')}
-          </Paragraph>
-        </SectionHeading>
-      </Reveal>
+      <SectionHeading title={t('heading')}>
+        <Paragraph margin="none">
+          {t.rich('paragraph1', {
+            prior: renderPriorLink,
+            ongoing: renderOngoingLink,
+          })}
+        </Paragraph>
+        <Paragraph margin="none" className="mt-3">
+          {t('paragraph2')}
+        </Paragraph>
+      </SectionHeading>
 
       <div className="laptop:gap-x-12 mx-auto mt-14 flex max-w-[1500px] flex-wrap items-center justify-center gap-x-10 gap-y-10">
         {institutions.map((inst, index) => (

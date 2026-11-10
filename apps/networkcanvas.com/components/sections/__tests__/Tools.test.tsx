@@ -145,11 +145,6 @@ function unstubLayout() {
   Reflect.deleteProperty(document, 'scrollingElement');
 }
 
-const nextFrame = () =>
-  new Promise<void>((resolve) => {
-    requestAnimationFrame(() => resolve());
-  });
-
 function scrollTo(offset: number) {
   scrolled = offset;
   act(() => {
@@ -235,7 +230,7 @@ describe('Tools', () => {
     beforeEach(stubLayout);
     afterEach(unstubLayout);
 
-    it('opens each card when the thread reaches it, and keeps it open', async () => {
+    it('opens each card as the thread runs past it, and closes it again on the way back', async () => {
       renderWithIntl(<Tools />);
 
       await waitFor(() => {
@@ -246,27 +241,34 @@ describe('Tools', () => {
         expect(bloomRadius(card('Architect'))).toBeGreaterThan(0);
       });
 
-      // The reading line passes the fork's nodes at 1000px.
+      // The reading line passes the fork's nodes at 1000px, and the cards
+      // open over the next 35% of the window (268.8px): part way open here.
       scrollTo(600);
       await waitFor(() => {
         expect(bloomRadius(card('Interviewer'))).toBeGreaterThan(0);
       });
       expect(threadNode('interviewerIn')).toHaveAttribute('data-reached');
       expect(bloomRadius(card('Fresco'))).toBeGreaterThan(0);
+      const partlyOpen = bloomRadius(card('Interviewer')) ?? 0;
 
-      // Back up the page the thread withdraws from the fork's nodes, but the
-      // cards it opened stay open.
+      // Further down they open wider.
+      scrollTo(800);
+      await waitFor(() => {
+        expect(bloomRadius(card('Interviewer'))).toBeGreaterThan(partlyOpen);
+      });
+
+      // Back up the page the thread withdraws from the fork's nodes and the
+      // cards close back onto them.
       scrollTo(0);
       await waitFor(() => {
         expect(threadNode('interviewerIn')).not.toHaveAttribute('data-reached');
       });
+      await waitFor(() => {
+        expect(bloomRadius(card('Interviewer'))).toBe(0);
+      });
+      expect(bloomRadius(card('Fresco'))).toBe(0);
       expect(threadNode('architectIn')).toHaveAttribute('data-reached');
-      // Motion writes a card's clip on its next frame; give a closing card
-      // that frame before checking it stayed open.
-      await act(nextFrame);
-      await act(nextFrame);
-      expect(bloomRadius(card('Interviewer'))).toBeGreaterThan(0);
-      expect(bloomRadius(card('Fresco'))).toBeGreaterThan(0);
+      expect(bloomRadius(card('Architect'))).toBeGreaterThan(0);
     });
 
     it('opens a card the thread has not reached when focus moves into it', async () => {
