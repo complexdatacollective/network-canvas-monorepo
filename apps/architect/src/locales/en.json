@@ -1971,6 +1971,14 @@
     "defaultMessage": "Default",
     "description": "Badge beside the name of the protocol’s default language, in the heading of its column in the translation table."
   },
+  "architect.localization.translationTable.duplicateDiseaseLabel": {
+    "defaultMessage": "Another disease has the same name in {language}. Give each disease a name participants can tell apart.",
+    "description": "Shown in a cell of the translation table holding a disease’s name, on a Narrative Pedigree stage, when participants reading the cell’s language would see the same name for another disease, either because it is written the same or because one of them has no translation and shows another language’s text instead. language is the cell’s language."
+  },
+  "architect.localization.translationTable.duplicateOptionLabel": {
+    "defaultMessage": "Another option of this attribute has the same label in {language}. Give each option a label participants can tell apart.",
+    "description": "Shown in a cell of the translation table holding the label of one of an attribute’s answer options (including the two answers of a yes-or-no attribute), when participants reading the cell’s language would see the same label for another option of the same attribute, either because it is written the same or because one of them has no translation and shows another language’s text instead. language is the cell’s language."
+  },
   "architect.localization.translationTable.filter": {
     "defaultMessage": "Translations to show",
     "description": "Accessible name of the menu above the translation table that chooses whether it shows every localized string or only those with a translation missing."
@@ -1986,6 +1994,10 @@
   "architect.localization.translationTable.help": {
     "defaultMessage": "Help",
     "description": "Button in the toolbar of the translation table that opens a short explanation of the table and how to edit it."
+  },
+  "architect.localization.translationTable.interfaceTextWithoutDefaultLanguage": {
+    "defaultMessage": "This text needs words in {language}, the protocol’s default language.",
+    "description": "Shown in a cell of the translation table holding words the interview itself shows, such as a button’s label, when the cell is in the protocol’s default language and has been emptied: those words always need a translation in the default language. language is the default language."
   },
   "architect.localization.translationTable.keyboardHelp": {
     "defaultMessage": "Select a cell to edit it. Your changes are kept in the table until you select Save, and each cell is checked when you leave it. Press Escape to undo your changes to a cell. When the cursor is on the first or last line of a cell, the up and down arrow keys move to the previous or next row. Ctrl+Enter (⌘+Enter on a Mac) also moves to the next row, as Enter does in a cell with one line. In a cell with formatting, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.",
@@ -2035,6 +2047,14 @@
     "defaultMessage": "This is the only translation, and it is in {language}. Add a translation in another language before clearing it.",
     "description": "Shown in a cell of the translation table when its translation is emptied but is the only translation the localized string has, which cannot be removed. language is the language of the cell."
   },
+  "architect.localization.translationTable.problemInNamedPlace": {
+    "defaultMessage": "Saving these translations would leave a problem in {place}, “{name}”, so nothing was saved. Details: {details}",
+    "description": "Shown above the translation table when saving is refused because the translations would break a rule of the protocol in a place that is not one of the table’s cells. place names the kind of place, such as “Stage 3” or “Node type”, and name is its name, such as the stage’s name. details is the technical description of the problem, in English, kept for support."
+  },
+  "architect.localization.translationTable.problemInPlace": {
+    "defaultMessage": "Saving these translations would leave a problem in {place}, so nothing was saved. Details: {details}",
+    "description": "Shown above the translation table when saving is refused because the translations would break a rule of the protocol in a place that is not one of the table’s cells. place names that place, such as “Stage 3” or “Node type”. details is the technical description of the problem, in English, kept for support."
+  },
   "architect.localization.translationTable.progress": {
     "defaultMessage": "{translated, number} of {total, number} translated",
     "description": "Read by screen readers in the heading of a language’s column in the translation table: how many of the protocol’s localized strings have a translation into it."
@@ -2063,9 +2083,17 @@
     "defaultMessage": "Shown in {language}*",
     "description": "Tag in an empty cell of the translation table, under the wording participants see instead of the missing translation, when they may see another language instead. The asterisk refers to a note below the table explaining that the participant’s browser can list a language that has a translation. language is the language of the wording shown."
   },
+  "architect.localization.translationTable.stageLabelTooLong": {
+    "defaultMessage": "A stage name can be at most {max, number} characters long. Shorten this one.",
+    "description": "Shown in a cell of the translation table holding a stage’s name when the name is longer than a stage name may be. max is the most characters it may have."
+  },
   "architect.localization.translationTable.textColumn": {
     "defaultMessage": "Location",
     "description": "Heading of the first column of the translation table, which names each localized string by where it is in the protocol."
+  },
+  "architect.localization.translationTable.textNotUsable": {
+    "defaultMessage": "The protocol cannot hold this text as it is written. Details: {details}",
+    "description": "Shown in a cell of the translation table when its text breaks one of the protocol’s rules that Architect has no explanation of its own for. details is the technical description of the problem, in English, kept for support."
   },
   "architect.localization.translationTable.textRemoved": {
     "defaultMessage": "This translation cannot be saved, because the wording it belongs to, or its language, has been removed from the protocol.",

@@ -2,12 +2,13 @@ import { createSelector } from '@reduxjs/toolkit';
 
 import {
   analyzeProtocolLocalization,
-  collectLocalizedStrings,
+  collectLocalizedStringFields,
   type CurrentProtocol,
   type DynamicValueSite,
   findVariableRoleConflicts,
   type LocaleTag,
   type LocalizedString,
+  type LocalizedStringField,
   type LocalizedStringFormat,
   type MessageArguments,
   type ProtocolLocalizationWarning,
@@ -200,9 +201,12 @@ const EMPTY_COVERAGE: LocalizationCoverage = {
   warnings: [],
 };
 
-/** Every participant-facing string, in protocol order, walked once per edit. */
+/**
+ * Every participant-facing string, in protocol order, with its field's
+ * declaration, walked once per edit.
+ */
 const getLocalizedStrings = createSelector([getProtocol], (protocol) =>
-  protocol ? collectLocalizedStrings(protocol) : [],
+  protocol ? collectLocalizedStringFields(protocol) : [],
 );
 
 export const getLocalizationCoverage = createSelector(
@@ -251,7 +255,11 @@ export type TranslationPlace =
   /** The words the interview itself shows, such as its buttons. */
   | { kind: 'interface' };
 
-const locateTranslation = (
+/**
+ * Where the text at `path`, or anything else the protocol holds there, is
+ * edited, and its path below that place.
+ */
+export const locateTranslation = (
   protocol: CurrentProtocol,
   path: readonly (string | number)[],
 ): { key: string; place: TranslationPlace; field: (string | number)[] } => {
@@ -308,6 +316,11 @@ export type TranslationRow = {
    * text like any other.
    */
   dynamicValues?: DynamicValueSite;
+  /**
+   * The declaration of the field the string is in: a candidate value parsed
+   * with it is held to every rule the field declares.
+   */
+  schema: LocalizedStringField['schema'];
 };
 
 export type TranslationGroup = {
@@ -363,6 +376,7 @@ export const getTranslationGroups = createSelector(
         field,
         format: hit.format,
         value: hit.value,
+        schema: hit.schema,
         ...(hit.arguments === undefined ? {} : { arguments: hit.arguments }),
         ...(hit.dynamicValues === undefined ||
         !stageBindsValues(protocol, hit.path)

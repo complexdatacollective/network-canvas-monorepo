@@ -701,11 +701,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       }
       return;
     }
-    // Judged here for the reason the parameters are, and one of its own: the
-    // schema takes any string as a label, so nothing downstream refuses an
-    // answer with no words on it.
+    // Judged here for the reason the parameters are: said on the answer it is
+    // about, before the protocol's own validation refuses the pair.
     if (optionsShape === 'boolean') {
-      const answerIssues = validateBooleanAnswers(draft.options);
+      const answerIssues = validateBooleanAnswers(draft.options, localization);
       if (hasBooleanAnswerIssues(answerIssues)) {
         setIssues(
           Object.entries(answerIssues).flatMap(([index, refusals]) =>
@@ -1067,17 +1066,14 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                             required
                             readOnly={interactionDisabled}
                             errors={optionLabelIssues(
-                              option.label,
+                              index,
                               options,
                               localization,
                             )}
                             showErrors={
                               hasEdited(labelCell(index)) &&
-                              optionLabelIssues(
-                                option.label,
-                                options,
-                                localization,
-                              ).length > 0
+                              optionLabelIssues(index, options, localization)
+                                .length > 0
                             }
                           />
                           <BesideEachOther beside={rowChoice !== undefined}>

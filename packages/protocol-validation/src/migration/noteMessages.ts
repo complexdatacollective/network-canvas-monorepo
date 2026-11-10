@@ -415,6 +415,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: optionValueNames. An ordinal or categorical attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. "One standard form" means Unicode normalization (the same letter is always stored with the same characters). "As above" refers to the previous bullet, which says options sharing a value are merged into the first. Skip logic decides whether a stage is shown; a filter decides which people a stage lists; node shapes are the shapes nodes are drawn in according to an answer. Keep "Option" in English and in double quotes: it is the literal text written into protocol data.',
   },
+  schema9DuplicateOptionLabels: {
+    id: 'protocolValidation.migrationNotes.schema9.duplicateOptionLabels',
+    defaultMessage:
+      'Two options of one attribute can no longer have labels that read the same. Where they did, the first option keeps its label and each later one has its value added in parentheses, or its position where the value reads the same as the label or is not text, such as "Yes (2)". Option values are not changed.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: duplicateOptionLabels. An attribute with options (categorical, ordinal or yes/no) offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. "Read the same" means the labels differ at most in capital letters or spaces at either end. Keep "Yes (2)" exactly as written: it is an example of a label as the upgrade rewrites it, in English.',
+  },
   schema9NonBlankText: {
     id: 'protocolValidation.migrationNotes.schema9.nonBlankText',
     defaultMessage:
@@ -637,6 +644,7 @@ const migrationNoteSets: Record<
       migrationNoteMessages.schema9ContradictoryPassphraseRules,
       migrationNoteMessages.schema9DuplicateOptionValues,
       migrationNoteMessages.schema9OptionValueNames,
+      migrationNoteMessages.schema9DuplicateOptionLabels,
       {
         message: migrationNoteMessages.schema9NonBlankText,
         children: [

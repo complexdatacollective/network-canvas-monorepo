@@ -11,14 +11,14 @@ import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import {
+  findDuplicateOptionLabels,
   type LocaleTag,
   type LocalizedString,
   MINIMUM_VARIABLE_OPTIONS,
 } from '@codaco/protocol-validation';
-import {
-  type ExportColumnEntity,
-  type ExportColumnVariable,
-  hasDuplicateOptionLabels,
+import type {
+  ExportColumnEntity,
+  ExportColumnVariable,
 } from '@codaco/shared-consts';
 import {
   isOptionComplete,
@@ -154,18 +154,9 @@ const isLocalizedString = (value: unknown): value is LocalizedString =>
   value !== null &&
   Object.values(value).every((text) => typeof text === 'string');
 
-// Labels are compared one language at a time: that is what a participant reads.
-const optionLabelLocales = (value: unknown) => [
-  ...new Set(
-    readOptions(value).flatMap((option) =>
-      Object.keys(readLabel(option) ?? {}),
-    ),
-  ),
-];
-
 /**
- * The options with each label replaced by its plain text in `locale`, the
- * shape the shared label rules compare.
+ * The options with each label replaced by its plain text in `locale`, which
+ * the rows show and compare as they are edited.
  */
 const optionsWithLabelText = (value: unknown, locale: LocaleTag) =>
   readOptions(value).map((option) => ({
@@ -174,19 +165,18 @@ const optionsWithLabelText = (value: unknown, locale: LocaleTag) =>
   }));
 
 /**
- * The label counterpart of `uniqueOptionValues`, asked of the one predicate
- * every surface that authors an option label asks — shared-consts'
- * `hasDuplicateOptionLabels`, which the protocol-builder editors and the
- * codebook write that records what they author ask as well, so a list this
- * rule lets through is never refused again further down.
+ * The label counterpart of `uniqueOptionValues`: the rule every place an
+ * option label is edited asks, `@codaco/protocol-validation`'s
+ * `findDuplicateOptionLabels` — the protocol-builder editors, the codebook
+ * write that records what they author, and the translation table — so a list
+ * this rule lets through is never refused again further down. Labels are
+ * compared one language at a time, in each language a label is written in.
  */
 export const uniqueOptionLabels = (
   value: unknown,
   intl: IntlShape = defaultIntl,
 ) =>
-  optionLabelLocales(value).some((locale) =>
-    hasDuplicateOptionLabels(optionsWithLabelText(value, locale)),
-  )
+  findDuplicateOptionLabels(readOptions(value)).length > 0
     ? intl.formatMessage(messages.uniqueLabels)
     : undefined;
 

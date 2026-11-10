@@ -115,5 +115,6 @@
   "protocolValidation.rule.requiredAcceptsNull": "Permitir respostas explicitamente ausentes",
   "protocolValidation.rule.sameAs": "Igual a outro atributo",
   "protocolValidation.rule.unique": "Valor único",
-  "protocolValidation.migrationNotes.schema9.nonBlankText": "Vários lugares que aceitavam texto vazio, ou texto composto apenas de espaços, agora exigem algum texto:"
+  "protocolValidation.migrationNotes.schema9.nonBlankText": "Vários lugares que aceitavam texto vazio, ou texto composto apenas de espaços, agora exigem algum texto:",
+  "protocolValidation.migrationNotes.schema9.duplicateOptionLabels": "Duas opções de um mesmo atributo não podem mais ter rótulos que se leiam da mesma forma. Onde isso acontecia, a primeira opção mantém seu rótulo e cada uma das seguintes tem seu valor acrescentado entre parênteses ou, quando o valor se lê igual ao rótulo ou não é texto, sua posição, como \"Yes (2)\". Os valores das opções não são alterados."
 }

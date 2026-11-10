@@ -355,6 +355,11 @@ const Option = ({
             ),
           });
         }}
+        // Says where the researcher is typing, in the language being edited,
+        // that another row reads the same. The list's own
+        // `uniqueOptionLabels` asks the shared rule
+        // (`findDuplicateOptionLabels`) in every language, and is what
+        // refuses the save.
         validation={{ required: true, uniqueArrayAttribute: true }}
         allValues={labelValues}
         forceShowErrors={forceShowErrors}

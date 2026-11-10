@@ -1,7 +1,14 @@
-import type { StageType } from '@codaco/protocol-validation';
+import {
+  STAGE_LABEL_MAX_LENGTH,
+  type StageType,
+} from '@codaco/protocol-validation';
 import { normalizeForComparison } from '@codaco/shared-consts';
 
-export const MAX_LABEL_LENGTH = 50;
+/**
+ * The most characters a stage's name may have, as every place that edits one
+ * holds it to (`STAGE_LABEL_MAX_LENGTH`).
+ */
+export const MAX_LABEL_LENGTH = STAGE_LABEL_MAX_LENGTH;
 
 export type Qualifier = { full: string; summary: string };
 

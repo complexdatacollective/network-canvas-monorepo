@@ -127,8 +127,15 @@ const stageTitle = (store: Rendered['store'], index: number) => {
 
 const shownCount = () => screen.getByText(/^Showing /);
 
-const save = (user: Rendered['user']) =>
-  user.click(screen.getByRole('button', { name: 'Save' }));
+/**
+ * Presses Save and waits for it to finish: Save checks the protocol it would
+ * write before writing it, which takes a moment.
+ */
+const save = async (user: Rendered['user']) => {
+  const button = screen.getByRole('button', { name: 'Save' });
+  await user.click(button);
+  await waitFor(() => expect(button).toBeEnabled());
+};
 
 const ONLY_ENGLISH =
   'This is the only translation, and it is in English. Add a translation in another language before clearing it.';

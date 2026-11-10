@@ -115,5 +115,6 @@
   "protocolValidation.rule.requiredAcceptsNull": "Permitir respuestas explícitas sin valor",
   "protocolValidation.rule.sameAs": "Igual que otro atributo",
   "protocolValidation.rule.unique": "Valor único",
-  "protocolValidation.migrationNotes.schema9.nonBlankText": "Varios lugares que aceptaban texto vacío, o texto formado solo por espacios, ahora exigen texto:"
+  "protocolValidation.migrationNotes.schema9.nonBlankText": "Varios lugares que aceptaban texto vacío, o texto formado solo por espacios, ahora exigen texto:",
+  "protocolValidation.migrationNotes.schema9.duplicateOptionLabels": "Dos opciones de un mismo atributo ya no pueden tener etiquetas que se lean igual. En los casos en que ya ocurría, la primera opción conserva su etiqueta y a cada una de las siguientes se le añade su valor entre paréntesis o, si el valor se lee igual que la etiqueta o no es texto, su posición, como en \"Yes (2)\". Los valores de las opciones no cambian."
 }

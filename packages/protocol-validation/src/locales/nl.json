@@ -115,5 +115,6 @@
   "protocolValidation.rule.requiredAcceptsNull": "Expliciet ontbrekende antwoorden toestaan",
   "protocolValidation.rule.sameAs": "Gelijk aan een ander attribuut",
   "protocolValidation.rule.unique": "Unieke waarde",
-  "protocolValidation.migrationNotes.schema9.nonBlankText": "Op verschillende plaatsen waar lege tekst, of tekst die alleen uit spaties bestond, was toegestaan, is nu tekst verplicht:"
+  "protocolValidation.migrationNotes.schema9.nonBlankText": "Op verschillende plaatsen waar lege tekst, of tekst die alleen uit spaties bestond, was toegestaan, is nu tekst verplicht:",
+  "protocolValidation.migrationNotes.schema9.duplicateOptionLabels": "Twee opties van één attribuut mogen geen labels meer hebben die hetzelfde luiden. Waar dat het geval was, behoudt de eerste optie haar label en krijgt elke volgende optie haar waarde tussen haakjes achter het label. Als de waarde hetzelfde luidt als het label of geen tekst is, komt in plaats daarvan de positie van de optie tussen haakjes, zoals \"Yes (2)\". Optiewaarden worden niet gewijzigd."
 }

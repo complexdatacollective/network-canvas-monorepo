@@ -69,6 +69,7 @@ import { cx } from '~/utils/cva';
 import { describePlace, type PlaceDetails, textSteps } from './textPlaces';
 import TranslationCell, { fallbackFor } from './TranslationCell';
 import {
+  clearSaveFindings,
   readTranslationFieldName,
   saveTranslations,
 } from './translationDrafts';
@@ -434,7 +435,9 @@ type TranslationTableProps = {
  * The table is a form: what is typed into its cells is kept in the form, each
  * cell checked as focus leaves it, until Save writes every change into the
  * protocol together. Save refuses while any cell holds text the protocol
- * cannot take, and takes the researcher to the first.
+ * cannot take, or while the protocol it would write fails the checks every
+ * protocol edit is held to, and takes the researcher to the first cell at
+ * fault, shown whatever the search, filter or hidden columns would hide.
  *
  * Must be drawn inside the `FormStoreProvider` the cells keep their changes in.
  */
@@ -526,16 +529,16 @@ const TranslationTable = ({
   }, [unfocusedErrors, formScope]);
 
   const { formProps, formErrors } = useForm({
-    onSubmit: (values) => {
+    onSubmit: async (values) => {
       const refusal = refusedCommit();
       if (refusal) return { success: false, formErrors: [refusal] };
       if (!formStore) return { success: false };
-      const result = saveTranslations({
+      const result = await saveTranslations({
         values,
-        getFieldState: (name) => formStore.getState().getFieldState(name),
+        formStore,
         getState: () => store.getState(),
         dispatch,
-        intl,
+        getWords: () => ({ intl, languageName }),
       });
       if (result.success) {
         // What the cells hold is now what the protocol has, so closing the
@@ -806,7 +809,12 @@ const TranslationTable = ({
           <Button
             size="sm"
             color="primary"
-            onClick={(event) => void formProps.onSubmit(event)}
+            onClick={(event) => {
+              // Each save is checked afresh: what the last refused one found
+              // stops holding its cells back.
+              if (formStore) clearSaveFindings(formStore);
+              void formProps.onSubmit(event);
+            }}
             disabled={isSubmitting}
           >
             {intl.formatMessage(commonMessages.save)}

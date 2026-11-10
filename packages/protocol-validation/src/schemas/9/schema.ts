@@ -41,6 +41,7 @@ export * from './interface-owned-options.ts';
 export * from './stages/index.ts';
 export * from './variables/index.ts';
 
+import { findDuplicateOptionLabels } from '../../localization/duplicateLabels.ts';
 import { findEmptyTextPaths } from './built-in-wording.ts';
 // Import what we need for the ProtocolSchema
 import type { Codebook, NodeDefinition } from './codebook/index.ts';
@@ -693,6 +694,51 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
           message: `Text has a translation for "${locale}", which is not one of the protocol's languages.`,
           path: [...hit.path, locale],
         });
+      }
+    }
+  }
+
+  // An attribute's options are answers a participant chooses between, so no
+  // two may read the same in any language a participant can see, fallback
+  // included: the rule a Narrative Pedigree's disease labels are held to.
+  if (localization) {
+    const codebooks: [StageSubject, Record<string, unknown> | undefined][] = [
+      ...(['node', 'edge'] as const).flatMap((entity) =>
+        Object.entries(protocol.codebook[entity] ?? {}).map(
+          ([type, definition]): [
+            StageSubject,
+            Record<string, unknown> | undefined,
+          ] => [{ entity, type }, definition.variables],
+        ),
+      ),
+      [{ entity: 'ego' }, protocol.codebook.ego?.variables],
+    ];
+    for (const [subject, variables] of codebooks) {
+      for (const [variableId, variable] of Object.entries(variables ?? {})) {
+        if (typeof variable !== 'object' || variable === null) continue;
+        const options: unknown = Reflect.get(variable, 'options');
+        for (const duplicate of findDuplicateOptionLabels(
+          options,
+          localization,
+        )) {
+          const language =
+            localization.locales.length > 1 ? ` (${duplicate.locale})` : '';
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Options of attribute "${variableNameFor(protocol, subject, variableId)}" contain duplicate label "${duplicate.text}"${language}. Each option needs a label participants can tell apart.`,
+            path: [
+              'codebook',
+              ...(subject.entity === 'ego'
+                ? ['ego']
+                : [subject.entity, subject.type]),
+              'variables',
+              variableId,
+              'options',
+              duplicate.index,
+              'label',
+            ],
+          });
+        }
       }
     }
   }

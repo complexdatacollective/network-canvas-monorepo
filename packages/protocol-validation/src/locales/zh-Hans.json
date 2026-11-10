@@ -115,5 +115,6 @@
   "protocolValidation.rule.requiredAcceptsNull": "允许明确的缺失回答",
   "protocolValidation.rule.sameAs": "与另一属性相同",
   "protocolValidation.rule.unique": "唯一值",
-  "protocolValidation.migrationNotes.schema9.nonBlankText": "以下几处原本接受空文本或只包含空格的文本，现在必须填写内容："
+  "protocolValidation.migrationNotes.schema9.nonBlankText": "以下几处原本接受空文本或只包含空格的文本，现在必须填写内容：",
+  "protocolValidation.migrationNotes.schema9.duplicateOptionLabels": "同一属性的两个选项不能再使用读起来相同的标签。若此前已有这种情况，则其中第一个选项保留其标签，之后的每个选项会在标签后以括号附上其选项值；若选项值与标签读起来相同，或选项值不是文本，则改为在括号内附上其位置序号，例如 \"Yes (2)\"。选项值不会改变。"
 }

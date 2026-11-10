@@ -115,5 +115,6 @@
   "protocolValidation.rule.requiredAcceptsNull": "Ausdrücklich fehlende Antworten zulassen",
   "protocolValidation.rule.sameAs": "Identisch mit einem anderen Attribut",
   "protocolValidation.rule.unique": "Eindeutiger Wert",
-  "protocolValidation.migrationNotes.schema9.nonBlankText": "An mehreren Stellen, an denen bisher leerer Text oder Text, der nur aus Leerzeichen besteht, zulässig war, ist jetzt Text erforderlich:"
+  "protocolValidation.migrationNotes.schema9.nonBlankText": "An mehreren Stellen, an denen bisher leerer Text oder Text, der nur aus Leerzeichen besteht, zulässig war, ist jetzt Text erforderlich:",
+  "protocolValidation.migrationNotes.schema9.duplicateOptionLabels": "Zwei Optionen desselben Attributs dürfen keine gleich lautenden Beschriftungen mehr haben. Wo das der Fall war, behält die erste Option ihre Beschriftung. Bei jeder späteren Option wird der Optionswert in Klammern an die Beschriftung angehängt oder, wenn der Wert genauso lautet wie die Beschriftung oder kein Text ist, die Position der Option in Klammern, zum Beispiel \"Yes (2)\". Optionswerte werden nicht geändert."
 }

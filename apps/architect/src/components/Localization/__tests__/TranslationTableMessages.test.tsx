@@ -57,8 +57,15 @@ const listItem = (store: ReturnType<typeof renderTable>['store']): unknown => {
     : undefined;
 };
 
-const save = (user: ReturnType<typeof renderTable>['user']) =>
-  user.click(screen.getByRole('button', { name: 'Save' }));
+/**
+ * Presses Save and waits for it to finish: Save checks the protocol it would
+ * write before writing it, which takes a moment.
+ */
+const save = async (user: ReturnType<typeof renderTable>['user']) => {
+  const button = screen.getByRole('button', { name: 'Save' });
+  await user.click(button);
+  await waitFor(() => expect(button).toBeEnabled());
+};
 
 const VERSIONS_BLANK = 'Write something in every version of this text.';
 

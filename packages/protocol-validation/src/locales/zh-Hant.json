@@ -115,5 +115,6 @@
   "protocolValidation.rule.requiredAcceptsNull": "允許明確的缺漏答案",
   "protocolValidation.rule.sameAs": "與另一個屬性相同",
   "protocolValidation.rule.unique": "唯一值",
-  "protocolValidation.migrationNotes.schema9.nonBlankText": "有幾處原本接受空白文字或只含空格之文字的地方，現在必須包含文字："
+  "protocolValidation.migrationNotes.schema9.nonBlankText": "有幾處原本接受空白文字或只含空格之文字的地方，現在必須包含文字：",
+  "protocolValidation.migrationNotes.schema9.duplicateOptionLabels": "同一屬性的兩個選項不能再使用讀起來相同的標籤。對於原本標籤相同的選項，第一個保留其標籤，之後每個標籤相同的選項會在標籤後加上以括號括住的選項值；若該值與標籤讀起來相同或不是文字，則改為加上該選項的位置序號，例如 \"Yes (2)\"。選項值不會變更。"
 }

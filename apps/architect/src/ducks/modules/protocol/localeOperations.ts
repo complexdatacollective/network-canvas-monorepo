@@ -388,43 +388,31 @@ export const setTranslation = (
   };
 };
 
-/**
- * Replaces every translation of one participant-facing text at once. `value`
- * holds stored messages, as the localized fields write them, and `path` must
- * be where `collectLocalizedStrings` finds that text. Every translation must
- * say something, as the schema requires: a language with nothing to show is
- * left out of `value`, never stored blank.
- */
-const setLocalizedString = (
+/** Why one text cannot be set to `value`, or undefined when it can. */
+const localizedStringRefusal = (
   protocol: CurrentProtocol,
-  path: readonly (string | number)[],
   value: LocalizedString,
-): LocaleOperationResult => {
+): LocaleOperationFailure | undefined => {
   const translations = Object.entries(value);
   if (translations.some(([locale]) => !isDeclared(protocol, locale))) {
-    return fail('not-declared');
+    return 'not-declared';
   }
   if (
     translations.length === 0 ||
     translations.some(([, message]) => isBlankMessage(message))
   ) {
-    return fail('blank-text');
+    return 'blank-text';
   }
-  const hit = collectLocalizedStrings(protocol).find((candidate) =>
-    isSamePath(candidate.path, path),
-  );
-  if (!hit) return fail('not-localized-string');
-  return {
-    ok: true,
-    protocol: createNextState(protocol, (draft) => {
-      setAtPath(draft, hit.path, value);
-    }),
-  };
+  return undefined;
 };
 
 /**
- * Several texts set as `setLocalizedString` sets one, together: every one is
- * set, or, when one cannot be, none is.
+ * Replaces every translation of several participant-facing texts at once:
+ * every one is set, or, when one cannot be, none is. Each `value` holds
+ * stored messages, as the localized fields write them, and each `path` must
+ * be where `collectLocalizedStrings` finds that text. Every translation must
+ * say something, as the schema requires: a language with nothing to show is
+ * left out of `value`, never stored blank.
  */
 export const setLocalizedStrings = (
   protocol: CurrentProtocol,
@@ -433,13 +421,27 @@ export const setLocalizedStrings = (
     value: LocalizedString;
   }>[],
 ): LocaleOperationResult => {
-  let next = protocol;
+  // Setting a text never adds or removes one, so the texts are found once.
+  const texts = new Map(
+    collectLocalizedStrings(protocol).map((hit) => [
+      JSON.stringify(hit.path),
+      hit,
+    ]),
+  );
+  const writes: { path: (string | number)[]; value: LocalizedString }[] = [];
   for (const { path, value } of updates) {
-    const result = setLocalizedString(next, path, value);
-    if (!result.ok) return result;
-    next = result.protocol;
+    const refusal = localizedStringRefusal(protocol, value);
+    if (refusal !== undefined) return fail(refusal);
+    const hit = texts.get(JSON.stringify(path));
+    if (!hit) return fail('not-localized-string');
+    writes.push({ path: hit.path, value });
   }
-  return { ok: true, protocol: next };
+  return {
+    ok: true,
+    protocol: createNextState(protocol, (draft) => {
+      for (const { path, value } of writes) setAtPath(draft, path, value);
+    }),
+  };
 };
 
 /**
