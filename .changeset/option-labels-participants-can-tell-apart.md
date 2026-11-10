@@ -14,10 +14,11 @@ but validation of a finished protocol refuses it, and so does upgrading an
 older protocol to schema 9: the upgrade stops with an error naming the
 attribute and both labels. Network Canvas does not change the labels for you.
 
-A stage name may now be at most 50 characters in every language, counted as a
-reader sees them. Upgrading an older protocol with a longer stage name to
+A stage name may now be at most 100 characters in every language, counted as
+a reader sees them. Upgrading an older protocol with a longer stage name to
 schema 9 stops with an error naming the stage; shorten the name in the version
-of Architect that made the protocol, then open it again.
+of Architect that made the protocol, then open it again. Architect's stage name
+field stops at 100 characters.
 
 In Architect:
 
@@ -31,7 +32,7 @@ In Architect:
   attribute or stage is at fault and how to fix it.
 - The translation table applies the same rules to each translation as the
   editor that owns the text. A repeated disease name or option label, a stage
-  name longer than 50 characters, and interview text with no words in the
+  name longer than 100 characters, and interview text with no words in the
   default language are each shown in the cell. Saving checks the whole
   protocol first: if the translations would leave it broken, nothing is saved,
   and Architect shows the cell at fault, even when a search or a hidden

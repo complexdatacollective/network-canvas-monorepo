@@ -1,13 +1,17 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { type ContextType, useContext } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import FormStoreProvider, {
+  FormStoreContext,
+} from '@codaco/fresco-ui/form/store/formStoreProvider';
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
+  STAGE_LABEL_MAX_LENGTH,
   validateProtocol,
 } from '@codaco/protocol-validation';
 import { timelineActions } from '~/ducks/middleware/timeline';
@@ -57,6 +61,8 @@ const bilingual = (): CurrentProtocol => {
   return protocol;
 };
 
+type TableForm = NonNullable<ContextType<typeof FormStoreContext>>;
+
 const renderTable = (protocol: CurrentProtocol) => {
   const store = configureStore({
     reducer: rootReducer,
@@ -65,14 +71,27 @@ const renderTable = (protocol: CurrentProtocol) => {
   });
   store.dispatch(setActiveProtocol(protocol));
   const onSaved = vi.fn();
+  const forms: TableForm[] = [];
+  const FormProbe = () => {
+    const form = useContext(FormStoreContext);
+    if (form && !forms.includes(form)) forms.push(form);
+    return null;
+  };
   render(
     <Provider store={store}>
       <FormStoreProvider>
+        <FormProbe />
         <TranslationTable onSaved={onSaved} onCancel={vi.fn()} />
       </FormStoreProvider>
     </Provider>,
   );
-  return { store, onSaved, user: userEvent.setup() };
+  /** The table's form, which holds each edited cell's text. */
+  const form = () => {
+    const [only] = forms;
+    if (!only) throw new Error('No form');
+    return only;
+  };
+  return { store, onSaved, form, user: userEvent.setup() };
 };
 
 type Rendered = ReturnType<typeof renderTable>;
@@ -249,5 +268,79 @@ describe('TranslationTable: the rules a field shares with its neighbours', () =>
       store.dispatch(timelineActions.undo());
     });
     expect(getProtocol(store.getState())).toEqual(before);
+  });
+});
+
+/** The second stage's name in `language`, a one-line field of plain text. */
+const stageName = (language: string) =>
+  screen.getByRole('textbox', {
+    name: new RegExp(`^Stage 2 · .* Stage name ${language}$`),
+  });
+
+describe('TranslationTable: a stage’s name', () => {
+  it(`refuses a name longer than ${STAGE_LABEL_MAX_LENGTH} characters in its cell, and saves one that long`, async () => {
+    const { store, onSaved, user } = renderTable(bilingual());
+    const before = getProtocol(store.getState());
+    const longest = 'x'.repeat(STAGE_LABEL_MAX_LENGTH);
+
+    await user.click(stageName('Spanish'));
+    await user.paste(`${longest}y`);
+    await user.click(disease(1, 'English'));
+
+    const refused = stageName('Spanish');
+    await waitFor(() =>
+      expect(refused).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(
+      within(cellOf(refused)).getByText(
+        `A stage name can be at most ${STAGE_LABEL_MAX_LENGTH} characters long. Shorten this one.`,
+      ),
+    ).toBeInTheDocument();
+    await save(user);
+    expect(getProtocol(store.getState())).toBe(before);
+    expect(onSaved).not.toHaveBeenCalled();
+
+    await user.click(refused);
+    await user.keyboard('{Backspace}');
+    await user.click(disease(1, 'English'));
+    await waitFor(() =>
+      expect(refused).toHaveAttribute('aria-invalid', 'false'),
+    );
+    await save(user);
+    expect(onSaved).toHaveBeenCalledTimes(1);
+    expect(getProtocol(store.getState())?.stages[1]?.label).toEqual({
+      en: 'Welcome and consent',
+      es: longest,
+    });
+  });
+
+  // Typing or pasting one becomes a space, so this is the rule behind that:
+  // the name's declaration, which is one line, refuses the text in the cell.
+  it('refuses a line break the cell holds, saying so in the cell', async () => {
+    const { store, onSaved, form, user } = renderTable(bilingual());
+    const before = getProtocol(store.getState());
+
+    await user.type(stageName('Spanish'), 'Bienvenida');
+    const name = cellOf(stageName('Spanish')).dataset.fieldPath;
+    if (name === undefined) throw new Error('The cell has no field');
+    act(() => {
+      const state = form().getState();
+      state.setFieldValue(name, 'Bienvenida\ny consentimiento');
+      state.setFieldBlurred(name);
+      void state.validateField(name);
+    });
+
+    const refused = stageName('Spanish');
+    await waitFor(() =>
+      expect(refused).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(
+      within(cellOf(refused)).getByText(
+        'The protocol cannot hold this text as it is written. Details: Text cannot contain a line break.',
+      ),
+    ).toBeInTheDocument();
+    await save(user);
+    expect(getProtocol(store.getState())).toBe(before);
+    expect(onSaved).not.toHaveBeenCalled();
   });
 });

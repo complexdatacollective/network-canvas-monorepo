@@ -52,6 +52,25 @@ describe('a stage name', () => {
     expect(await draftIssues(withStageLabel({ en: quoted }))).toEqual([]);
   });
 
+  it('is one line as well as no longer than that', async () => {
+    expect(
+      await draftIssues(withStageLabel({ en: 'Names', fr: 'Les\nnoms' })),
+    ).toEqual([
+      expect.objectContaining({
+        path: ['stages', 0, 'label', 'fr'],
+        message: 'Text cannot contain a line break.',
+      }),
+    ]);
+    expect(
+      (await draftIssues(withStageLabel({ en: `${longest}\ny` }))).map(
+        ({ message }) => message,
+      ),
+    ).toEqual([
+      `Stage name "${longest}\ny" is 102 characters long, but a stage name may be at most 100.`,
+      'Text cannot contain a line break.',
+    ]);
+  });
+
   it('holds the stage that ends the interview to the same length', async () => {
     const protocol = withStageLabel({ en: 'Names' });
     const finish = protocol.stages.at(-1);
