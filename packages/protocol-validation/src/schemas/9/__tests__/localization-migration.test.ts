@@ -22,7 +22,10 @@ import { extractProtocol } from '../../../utils/extractProtocol.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
 import { interfaceTextFor } from '../interface-text.ts';
-import { getLocalizedStringDescriptor } from '../localized-string.ts';
+import {
+  asOneLine,
+  getLocalizedStringDescriptor,
+} from '../localized-string.ts';
 import migrationV8toV9 from '../migration.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
@@ -926,11 +929,16 @@ describe('committed schema 8 protocols', () => {
         Object.keys(getAt(schema8, ['codebook', 'node']) ?? {}),
       );
 
-      for (const { path: at, value } of collectLocalizedStrings(migrated)) {
+      for (const { path: at, value, lines } of collectLocalizedStrings(
+        migrated,
+      )) {
         expect(Object.keys(value)).toEqual(['en']);
         const source = getAt(schema8, schema8PathOf(migrated, schema8, at));
         if (typeof source === 'string') {
-          expect(messageText(value.en ?? '')).toBe(source);
+          // Text declared one line has its lines joined.
+          expect(messageText(value.en ?? '')).toBe(
+            lines === 'single' ? asOneLine(source) : source,
+          );
         }
       }
     },

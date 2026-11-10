@@ -38,9 +38,8 @@ export type LocalizedTextLines = 'single' | 'multiple';
  * offers exactly this, whichever it is (see protocol-builder's
  * `textFieldPropsFor`).
  *
- * Nothing refuses a translation that does not fit: protocols written before
- * the shape was declared may hold a line break or block markdown in a
- * one-line field, and still load.
+ * A one-line field refuses a translation holding a line break; the
+ * migration from schema 8 joins the lines of such text (see `asOneLine`).
  */
 export type LocalizedTextShape = Readonly<{
   format: LocalizedStringFormat;
@@ -152,6 +151,23 @@ export const nonBlankText = () =>
       message: 'Text cannot be blank.',
     });
 
+/** A line break: LF, CR, or Unicode's line or paragraph separator. */
+const LINE_BREAK = /[\n\r\u2028\u2029]/;
+
+/** A run of line breaks and the spaces around it. */
+const LINE_BREAK_RUN = /\s*[\n\r\u2028\u2029]\s*/g;
+
+/** Whether `text` holds a line break, which a one-line field refuses. */
+export const holdsLineBreak = (text: string): boolean => LINE_BREAK.test(text);
+
+/**
+ * `text` as one line: each run of line breaks, with the spaces around it,
+ * becomes one space, and the ends are trimmed. Text with no line break is
+ * returned as it is.
+ */
+export const asOneLine = (text: string): string =>
+  holdsLineBreak(text) ? text.replace(LINE_BREAK_RUN, ' ').trim() : text;
+
 /**
  * A participant-facing string with one translation per protocol locale.
  *
@@ -167,12 +183,20 @@ export const nonBlankText = () =>
  */
 const localizedTranslations = (
   content: z.ZodString,
+  lines: LocalizedTextLines,
   findProblem: (message: string) => string | undefined,
 ) =>
   z
     .record(
       z.string(),
       content.superRefine((message, ctx) => {
+        // A field declared one line holds no line break in any language.
+        if (lines === 'single' && holdsLineBreak(message)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Text cannot contain a line break.',
+          });
+        }
         const problem = findProblem(message);
         if (problem) ctx.addIssue({ code: 'custom', message: problem });
       }),
@@ -218,6 +242,7 @@ export const localizedString = (
 ) =>
   localizedTranslations(
     content,
+    lines,
     dynamicValues === undefined
       ? findMessageSyntaxProblem
       : findDynamicMessageSyntaxProblem,
@@ -268,7 +293,7 @@ export const localizedMessage = (
   if (plurals.length > 1) {
     throw new Error('A localized message can declare at most one plural.');
   }
-  return localizedTranslations(content, (message) =>
+  return localizedTranslations(content, 'single', (message) =>
     findMessageArgumentProblem(message, declaration),
   )
     .superRefine((value, ctx) => {
