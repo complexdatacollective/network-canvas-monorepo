@@ -205,7 +205,9 @@ describe('v8 to v9 localization migration', () => {
   });
 
   it('produces the complete fixture with its copy in English', () => {
-    const expected: unknown = structuredClone(completeProtocol());
+    // The fixture's interface text is compared on its own, below.
+    const { interfaceText: _held, ...fixture } = completeProtocol();
+    const expected: unknown = structuredClone(fixture);
     for (const {
       path: at,
       value,
@@ -765,11 +767,8 @@ describe('v8 to v9 localization migration', () => {
       const text = collectLocalizedStrings(document);
       expect(text.map(({ path: at }) => at.at(-1))).toContain('minLabel');
 
-      expect(
-        collectLocalizedStrings(migrateStep(document)).filter(
-          ({ path: at }) => at[0] !== 'interfaceText',
-        ),
-      ).toEqual(text);
+      // The document holds the interface text it uses, which the step keeps.
+      expect(collectLocalizedStrings(migrateStep(document))).toEqual(text);
     });
 
     it('migrates to a protocol schema 9 accepts', () => {

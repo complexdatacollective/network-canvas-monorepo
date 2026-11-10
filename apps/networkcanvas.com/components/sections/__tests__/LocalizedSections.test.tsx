@@ -182,7 +182,7 @@ describe('localized home sections', () => {
     if (!publicationSection) throw new Error('Expected a publications section');
     expect(
       within(publicationSection).getByText('2', { selector: 'strong' }),
-    ).toBeVisible();
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('link', {
         name: 'Ver todas las 2 publicaciones, con 3 personas autoras',

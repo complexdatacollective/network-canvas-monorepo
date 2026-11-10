@@ -21,10 +21,10 @@ its answers have labels, so until then the menu lists it greyed out with a
 hint to add them (a Toggle, which has no labels, points to the
 different-wording entry instead). A number can give it a version for each plural form
 of the language. Values show as pills in the stage editors, the translation
-table and the protocol summary. A translation that leaves out a value is
-flagged with the value's name, and neither the table nor the stage editor
-will save it. Text that
-shows values a field cannot edit is shown as it is, with a note saying why.
+table and the protocol summary. Showing a value is optional in every
+language: a translation may leave out a value the default-language text
+shows. Text that shows values a field cannot edit is shown as it is, with a
+note saying why.
 
 - `@codaco/fresco-ui`'s rich text editor opens its insert menu from an icon
   button (a syringe icon, named and tipped by the menu's label), and every

@@ -183,7 +183,6 @@ const dynamicValueProblem = (
     {
       codebook: protocol.codebook,
       stages: protocol.stages,
-      defaultLocale: protocol.localization.defaultLocale,
     },
     [
       {

@@ -51,6 +51,7 @@ import {
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
 } from './interface-owned-options.ts';
+import { missingInterfaceTextIssues } from './interface-text-issues.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { ProtocolStructureSchema } from './protocol-structure.ts';
 import { CATEGORICAL_BIN_MAX_BINS } from './stages/categorical-bin.ts';
@@ -676,6 +677,12 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     });
   }
 
+  // The interview's own words come from the protocol: it must hold every
+  // interface text it shows (see `findMissingInterfaceText`).
+  for (const issue of missingInterfaceTextIssues(protocol)) {
+    ctx.addIssue({ code: 'custom' as const, ...issue });
+  }
+
   if (localization) {
     for (const hit of localizedStrings) {
       for (const locale of Object.keys(hit.value)) {
@@ -697,15 +704,10 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     }
   }
 
-  // The values each stage's text shows: bound, available where shown,
-  // guarded where they can be missing, and shown by every translation
-  // wherever the default-language text shows them.
+  // The values each stage's text shows: bound, available where shown, and
+  // guarded where they can be missing. Each language is checked on its own.
   for (const problem of findDynamicValueProblems(
-    {
-      codebook: protocol.codebook,
-      stages: protocol.stages,
-      defaultLocale: localization?.defaultLocale,
-    },
+    { codebook: protocol.codebook, stages: protocol.stages },
     localizedStrings,
   )) {
     ctx.addIssue({ code: 'custom' as const, ...problem });

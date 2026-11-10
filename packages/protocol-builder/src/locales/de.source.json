@@ -393,8 +393,6 @@
   "protocolBuilder.dynamicText.secondNodeLabel": "Second node: label",
   "protocolBuilder.dynamicText.switchHasNoLabels": "A Toggle has no labels for its answers. Use different wording for each answer instead.",
   "protocolBuilder.dynamicText.today": "Today’s date",
-  "protocolBuilder.dynamicText.translationMissesValue": "Include “{value}” wherever the original text shows it.",
-  "protocolBuilder.dynamicText.translationTooComplex": "This text has too many versions to check its translation. Use fewer values that change the wording.",
   "protocolBuilder.dynamicText.unreadable": "This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.",
   "protocolBuilder.dynamicText.versionKnown": "If known",
   "protocolBuilder.dynamicText.versionMissing": "If not known",

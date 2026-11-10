@@ -1,6 +1,7 @@
 import {
   CurrentProtocolSchema,
   type CurrentProtocol,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
@@ -43,102 +44,104 @@ const categoricalOptions = [
 // value from an unknown-typed input — and validates the fixture is
 // real-shape at the same time.
 function conflictProtocol(): CurrentProtocol {
-  return CurrentProtocolSchema.parse({
-    name: 'Variable Role Conflicts E2E',
-    schemaVersion: 9,
-    localization: { defaultLocale: 'en', locales: ['en'] },
-    codebook: {
-      node: {
-        person: {
-          name: 'Person',
-          color: 'node-color-seq-1',
-          shape: { default: 'circle' },
-          variables: {
-            sharedVar: {
-              name: 'sharedVar',
-              type: 'categorical',
-              // Referenced by an AlterForm field below — schema.ts's
-              // logic refinements reject a form-field variable with no
-              // `component` ("must define a component ... to be rendered
-              // as a form field").
-              component: 'CheckboxGroup',
-              options: categoricalOptions,
-            },
-            formOnlyVar: {
-              name: 'formOnlyVar',
-              type: 'categorical',
-              component: 'CheckboxGroup',
-              options: categoricalOptions,
-            },
-            binOnlyVar: {
-              name: 'binOnlyVar',
-              type: 'categorical',
-              options: categoricalOptions,
-            },
-            cleanVar: {
-              name: 'cleanVar',
-              type: 'categorical',
-              options: categoricalOptions,
+  return CurrentProtocolSchema.parse(
+    withInterfaceText({
+      name: 'Variable Role Conflicts E2E',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              sharedVar: {
+                name: 'sharedVar',
+                type: 'categorical',
+                // Referenced by an AlterForm field below — schema.ts's
+                // logic refinements reject a form-field variable with no
+                // `component` ("must define a component ... to be rendered
+                // as a form field").
+                component: 'CheckboxGroup',
+                options: categoricalOptions,
+              },
+              formOnlyVar: {
+                name: 'formOnlyVar',
+                type: 'categorical',
+                component: 'CheckboxGroup',
+                options: categoricalOptions,
+              },
+              binOnlyVar: {
+                name: 'binOnlyVar',
+                type: 'categorical',
+                options: categoricalOptions,
+              },
+              cleanVar: {
+                name: 'cleanVar',
+                type: 'categorical',
+                options: categoricalOptions,
+              },
             },
           },
         },
       },
-    },
-    stages: [
-      {
-        id: 'shared-field-form',
-        type: 'AlterForm',
-        label: { en: 'Person Details' },
-        subject: { entity: 'node', type: 'person' },
-        form: {
-          fields: [
-            { variable: 'sharedVar', prompt: { en: 'Shared field prompt' } },
-          ],
+      stages: [
+        {
+          id: 'shared-field-form',
+          type: 'AlterForm',
+          label: { en: 'Person Details' },
+          subject: { entity: 'node', type: 'person' },
+          form: {
+            fields: [
+              { variable: 'sharedVar', prompt: { en: 'Shared field prompt' } },
+            ],
+          },
         },
-      },
-      {
-        id: 'form-only-form',
-        type: 'AlterForm',
-        label: { en: 'Extra Person Form' },
-        subject: { entity: 'node', type: 'person' },
-        form: {
-          fields: [
+        {
+          id: 'form-only-form',
+          type: 'AlterForm',
+          label: { en: 'Extra Person Form' },
+          subject: { entity: 'node', type: 'person' },
+          form: {
+            fields: [
+              {
+                variable: 'formOnlyVar',
+                prompt: { en: 'Form only field prompt' },
+              },
+            ],
+          },
+        },
+        {
+          id: 'shared-bin',
+          type: 'CategoricalBin',
+          label: { en: 'Contact Category' },
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
             {
-              variable: 'formOnlyVar',
-              prompt: { en: 'Form only field prompt' },
+              id: 'shared-bin-prompt',
+              text: { en: 'Shared bin prompt' },
+              variable: 'sharedVar',
             },
           ],
         },
-      },
-      {
-        id: 'shared-bin',
-        type: 'CategoricalBin',
-        label: { en: 'Contact Category' },
-        subject: { entity: 'node', type: 'person' },
-        prompts: [
-          {
-            id: 'shared-bin-prompt',
-            text: { en: 'Shared bin prompt' },
-            variable: 'sharedVar',
-          },
-        ],
-      },
-      {
-        id: 'bin-only-bin',
-        type: 'CategoricalBin',
-        label: { en: 'Extra Category Bin' },
-        subject: { entity: 'node', type: 'person' },
-        prompts: [
-          {
-            id: 'bin-only-prompt',
-            text: { en: 'Bin only prompt' },
-            variable: 'binOnlyVar',
-          },
-        ],
-      },
-      ...emptyProtocol().stages,
-    ],
-  });
+        {
+          id: 'bin-only-bin',
+          type: 'CategoricalBin',
+          label: { en: 'Extra Category Bin' },
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            {
+              id: 'bin-only-prompt',
+              text: { en: 'Bin only prompt' },
+              variable: 'binOnlyVar',
+            },
+          ],
+        },
+        ...emptyProtocol().stages,
+      ],
+    }),
+  );
 }
 
 test('surfaces a form+bin variable role conflict in the timeline alert and Stages nav tab', async ({

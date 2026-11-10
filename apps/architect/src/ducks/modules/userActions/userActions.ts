@@ -16,6 +16,7 @@ import {
   NetcanvasInflationLimitError,
   type ProtocolValidationError,
   validateProtocol,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 import { protocolFileErrorMessages } from '@codaco/protocol-validation/messages';
 import { ensureError } from '@codaco/shared-consts';
@@ -637,7 +638,9 @@ export const createNetcanvas = createAppAsyncThunk(
     { name, description, localization }: CreateNetcanvasParams,
     { dispatch },
   ) => {
-    const newProtocol: CurrentProtocol = {
+    // It holds the interface text it uses from the start, as the library
+    // stores it as a valid protocol.
+    const newProtocol: CurrentProtocol = withInterfaceText({
       name,
       description,
       schemaVersion: APP_SCHEMA_VERSION,
@@ -651,7 +654,7 @@ export const createNetcanvas = createAppAsyncThunk(
         ego: {},
       },
       assetManifest: {},
-    };
+    });
 
     await instantiateProtocol(
       { protocol: newProtocol, name, description },

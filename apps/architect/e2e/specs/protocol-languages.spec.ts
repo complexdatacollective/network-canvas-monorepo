@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 import {
   type CurrentProtocol,
   CurrentProtocolSchema,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
@@ -91,34 +92,36 @@ const FINISHING_WORDS_FR = {
 };
 
 function englishProtocol(): CurrentProtocol {
-  return CurrentProtocolSchema.parse({
-    ...emptyProtocol(),
-    stages: [
-      {
-        id: 'welcome',
-        type: 'Information',
-        label: { en: STAGE_NAME },
-        title: { en: 'Welcome to the study' },
-        items: [
-          {
-            id: 'welcome-text',
-            type: 'text',
-            content: { en: 'Thank you for taking part.' },
-          },
-        ],
-      },
-      {
-        id: 'finish',
-        type: 'FinishSession',
-        label: { en: 'End' },
-        mode: 'confirmation',
-        content: { en: '# All done\n\nThanks again.' },
-        finishedContent: { en: '# Finished\n\nYour answers are saved.' },
-        ...FINISHING_WORDS_EN,
-        outcome: 'completed',
-      },
-    ],
-  });
+  return CurrentProtocolSchema.parse(
+    withInterfaceText({
+      ...emptyProtocol(),
+      stages: [
+        {
+          id: 'welcome',
+          type: 'Information',
+          label: { en: STAGE_NAME },
+          title: { en: 'Welcome to the study' },
+          items: [
+            {
+              id: 'welcome-text',
+              type: 'text',
+              content: { en: 'Thank you for taking part.' },
+            },
+          ],
+        },
+        {
+          id: 'finish',
+          type: 'FinishSession',
+          label: { en: 'End' },
+          mode: 'confirmation',
+          content: { en: '# All done\n\nThanks again.' },
+          finishedContent: { en: '# Finished\n\nYour answers are saved.' },
+          ...FINISHING_WORDS_EN,
+          outcome: 'completed',
+        },
+      ],
+    }),
+  );
 }
 
 function finishContent(protocol: CurrentProtocol) {
@@ -540,19 +543,21 @@ const CHOOSER_LABEL = {
 };
 
 function chooserProtocol(): CurrentProtocol {
-  return CurrentProtocolSchema.parse({
-    ...emptyProtocol(),
-    localization: { defaultLocale: 'en', locales: ['en', 'fr', 'es'] },
-    stages: [
-      {
-        id: 'choose-language',
-        type: 'LanguageChooser',
-        label: CHOOSER_LABEL,
-        title: CHOOSER_LABEL,
-      },
-      ...emptyProtocol().stages,
-    ],
-  });
+  return CurrentProtocolSchema.parse(
+    withInterfaceText({
+      ...emptyProtocol(),
+      localization: { defaultLocale: 'en', locales: ['en', 'fr', 'es'] },
+      stages: [
+        {
+          id: 'choose-language',
+          type: 'LanguageChooser',
+          label: CHOOSER_LABEL,
+          title: CHOOSER_LABEL,
+        },
+        ...emptyProtocol().stages,
+      ],
+    }),
+  );
 }
 
 /** One row of the language chooser stage's list of the protocol's languages. */
@@ -644,27 +649,33 @@ test('changes the protocol’s languages from the language chooser stage, and th
 
 /** In English and French, with only the researcher's six texts untranslated. */
 function bilingualProtocol(): CurrentProtocol {
-  const english = englishProtocol();
-  return CurrentProtocolSchema.parse({
-    ...english,
-    localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-    stages: english.stages.map((stage) =>
-      stage.type === 'FinishSession'
-        ? {
-            ...stage,
-            ...Object.fromEntries(
-              Object.entries(FINISHING_WORDS_FR).map(([key, fr]) => [
-                key,
-                {
-                  ...FINISHING_WORDS_EN[key as keyof typeof FINISHING_WORDS_EN],
-                  fr,
-                },
-              ]),
-            ),
-          }
-        : stage,
-    ),
-  });
+  // Its interface text is written for both languages, as Architect writes it
+  // when the protocol opens, rather than kept from the English one.
+  const { interfaceText: _english, ...english } = englishProtocol();
+  return CurrentProtocolSchema.parse(
+    withInterfaceText({
+      ...english,
+      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+      stages: english.stages.map((stage) =>
+        stage.type === 'FinishSession'
+          ? {
+              ...stage,
+              ...Object.fromEntries(
+                Object.entries(FINISHING_WORDS_FR).map(([key, fr]) => [
+                  key,
+                  {
+                    ...FINISHING_WORDS_EN[
+                      key as keyof typeof FINISHING_WORDS_EN
+                    ],
+                    fr,
+                  },
+                ]),
+              ),
+            }
+          : stage,
+      ),
+    }),
+  );
 }
 
 test('opens the translation table on every missing translation from the protocol’s note', async ({
@@ -709,29 +720,31 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
 }) => {
   const english = bilingualProtocol();
   await seed(
-    CurrentProtocolSchema.parse({
-      ...english,
-      codebook: {
-        ...english.codebook,
-        ego: {
-          variables: {
-            lastName: { name: 'last_name', type: 'text' },
+    CurrentProtocolSchema.parse(
+      withInterfaceText({
+        ...english,
+        codebook: {
+          ...english.codebook,
+          ego: {
+            variables: {
+              lastName: { name: 'last_name', type: 'text' },
+            },
           },
         },
-      },
-      stages: english.stages.map((stage) =>
-        stage.type === 'Information'
-          ? {
-              ...stage,
-              title: {
-                en: 'Hello{name, select, missing {} other {, {name}}}',
-                fr: 'Bonjour{name, select, missing {} other {, {name}}}',
-              },
-              dynamicValues: { name: { path: 'ego.lastName' } },
-            }
-          : stage,
-      ),
-    }),
+        stages: english.stages.map((stage) =>
+          stage.type === 'Information'
+            ? {
+                ...stage,
+                title: {
+                  en: 'Hello{name, select, missing {} other {, {name}}}',
+                  fr: 'Bonjour{name, select, missing {} other {, {name}}}',
+                },
+                dynamicValues: { name: { path: 'ego.lastName' } },
+              }
+            : stage,
+        ),
+      }),
+    ),
   );
   await page.goto('/protocol/localization?table=open');
 

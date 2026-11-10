@@ -5,6 +5,7 @@ import {
   type CurrentProtocol,
   DEFAULT_FINISH_SESSION_TEXT,
   ProtocolValidationError,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 import { messageFields } from '~/test/messageText';
 
@@ -338,10 +339,11 @@ describe('userActions', () => {
     });
 
     it('opens it when both are at the end', async () => {
-      const protocol: CurrentProtocol = {
+      // As a bundled template is: holding the interface text it uses.
+      const protocol: CurrentProtocol = withInterfaceText({
         ...makeProtocol(),
         stages: [finish('finish'), finish('finish-2')],
-      };
+      });
 
       const result = await runThunk(openBundledTemplate({ protocol }));
 
@@ -350,7 +352,7 @@ describe('userActions', () => {
     });
 
     it('refuses one with a stage between them, naming the rule', async () => {
-      const protocol: CurrentProtocol = {
+      const protocol: CurrentProtocol = withInterfaceText({
         ...makeProtocol(),
         stages: [
           finish('finish'),
@@ -363,7 +365,7 @@ describe('userActions', () => {
           },
           finish('finish-2'),
         ],
-      };
+      });
 
       const result = await runThunk(openBundledTemplate({ protocol }));
 
