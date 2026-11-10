@@ -84,6 +84,7 @@ export const PROTOCOL_FILE_ERROR_KINDS = [
   'newerVersion',
   'cannotUpgrade',
   'upgradeStepFailed',
+  'upgradeRefusedContent',
   'missingVersion',
   'invalidBeforeUpgrade',
   'upgradeFailed',

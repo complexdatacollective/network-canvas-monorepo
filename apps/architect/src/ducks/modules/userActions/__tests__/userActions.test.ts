@@ -131,6 +131,45 @@ const runThunk = (
     | ReturnType<typeof openSketchProtocol>,
 ) => thunk(dispatch, () => ({}) as never, undefined);
 
+const { migrateProtocol: realMigrateProtocol, MigrationStepError } =
+  await vi.importActual<typeof import('@codaco/protocol-validation')>(
+    '@codaco/protocol-validation',
+  );
+
+// A schema 8 protocol whose only prompt was left blank, which schema 8
+// accepted and the upgrade to schema 9 will not invent.
+const BLANK_PROMPT_SECRET = 'participant_hiv_status';
+const schema8WithBlankPrompt = () => ({
+  schemaVersion: 8,
+  name: 'Older study',
+  codebook: {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        variables: {
+          [BLANK_PROMPT_SECRET]: { name: BLANK_PROMPT_SECRET, type: 'text' },
+        },
+      },
+    },
+  },
+  stages: [
+    {
+      id: 'stage-1',
+      type: 'NameGeneratorQuickAdd',
+      label: 'Friends',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: BLANK_PROMPT_SECRET,
+      prompts: [{ id: 'prompt-1', text: '   ' }],
+    },
+  ],
+  assetManifest: {},
+});
+
+const REFUSED_CONTENT_MESSAGE =
+  'This protocol cannot be upgraded to the current version, because it contains something the current version does not accept. In the version of Architect the protocol was made with, correct each problem listed, then open the protocol again. Nothing has been changed on this device.';
+
 const makeProtocol = (): CurrentProtocol => ({
   name: 'My Study',
   schemaVersion: APP_SCHEMA_VERSION,
@@ -454,6 +493,56 @@ describe('userActions', () => {
       });
       expect(setActiveProtocol).toHaveBeenCalled();
       expect(reportError).not.toHaveBeenCalled();
+    });
+
+    it('lists the content an approved upgrade refused, stores nothing, and sends no protocol text', async () => {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      zip.file('protocol.json', JSON.stringify(schema8WithBlankPrompt()));
+      const file = new File(
+        [await zip.generateAsync({ type: 'arraybuffer' })],
+        'My Study.netcanvas',
+      );
+      migrateProtocol.mockImplementation(realMigrateProtocol);
+      validateProtocol.mockImplementation(
+        async (candidate: CurrentProtocol) => ({
+          success: true,
+          data: candidate,
+        }),
+      );
+
+      const result = await openLocalNetcanvas({
+        file,
+        migrationApproved: true,
+      })(dispatch, () => ({}) as never, undefined);
+
+      expect(result.payload).toMatchObject({
+        status: 'validation-error',
+        message: expect.stringMatching(/^Stage “Friends”, prompt 1: /),
+        showDetails: true,
+      });
+      expect(
+        (
+          result.payload as {
+            localizedMessage: { message: { defaultMessage: string } };
+          }
+        ).localizedMessage.message.defaultMessage,
+      ).toBe(REFUSED_CONTENT_MESSAGE);
+      expect(putStoredProtocol).not.toHaveBeenCalled();
+      expect(setActiveProtocol).not.toHaveBeenCalled();
+      expect(reportError).not.toHaveBeenCalled();
+
+      const failureCall = capture.mock.calls.find(
+        ([event]) => event === 'protocol_import_failed',
+      );
+      expect(failureCall?.[1]).toEqual({
+        source: 'local',
+        reason: 'file',
+        error_kind: 'upgradeRefusedContent',
+      });
+      expect(JSON.stringify(failureCall?.[1])).not.toContain(
+        BLANK_PROMPT_SECRET,
+      );
     });
 
     it('still reports a failure it cannot describe', async () => {
@@ -1025,6 +1114,66 @@ describe('userActions', () => {
       });
       expect(writeUpgradedLegacyCopy).not.toHaveBeenCalled();
       expect(setActiveProtocol).not.toHaveBeenCalled();
+    });
+
+    it('lists the content the upgrade refused, writes nothing, and reports no defect', async () => {
+      const blank = schema8WithBlankPrompt();
+      readLegacyProtocolSnapshot.mockResolvedValue({
+        ...snapshot,
+        row: { ...snapshot.row, protocol: blank },
+      });
+      migrateProtocol.mockImplementation(realMigrateProtocol);
+
+      const result = await runThunk(
+        upgradeLegacyProtocol({ legacyId: 'legacy-1' }),
+      );
+
+      expect(result.payload).toMatchObject({
+        status: 'validation-error',
+        message: expect.stringMatching(/^Stage “Friends”, prompt 1: /),
+        showDetails: true,
+      });
+      const payload = result.payload as {
+        localizedTitle: { message: { defaultMessage: string } };
+        localizedMessage: { message: { defaultMessage: string } };
+      };
+      expect(payload.localizedTitle.message.defaultMessage).toBe(
+        'Failed to Open Protocol',
+      );
+      expect(payload.localizedMessage.message.defaultMessage).toBe(
+        REFUSED_CONTENT_MESSAGE,
+      );
+      expect(writeUpgradedLegacyCopy).not.toHaveBeenCalled();
+      expect(setActiveProtocol).not.toHaveBeenCalled();
+      // The protocol's own content, not a defect in the upgrade.
+      expect(reportError).not.toHaveBeenCalled();
+      expect(capture).toHaveBeenCalledWith('protocol_import_failed', {
+        source: 'legacy-library',
+        reason: 'file',
+        error_kind: 'upgradeRefusedContent',
+      });
+    });
+
+    it('keeps the general sentence, and reports it, for a migration step that throws', async () => {
+      readLegacyProtocolSnapshot.mockResolvedValue(snapshot);
+      migrateProtocol.mockImplementation(() => {
+        throw new MigrationStepError(8, {
+          cause: new TypeError('cannot read properties of undefined'),
+        });
+      });
+
+      const result = await runThunk(
+        upgradeLegacyProtocol({ legacyId: 'legacy-1' }),
+      );
+
+      expect(messageFields(result.payload)).toMatchObject({
+        status: 'error',
+        title: 'Failed to Open Protocol',
+        message:
+          'This protocol could not be brought up to date. Open it in the version of Architect that created it, check its settings, and try again.',
+      });
+      expect(writeUpgradedLegacyCopy).not.toHaveBeenCalled();
+      expect(reportError).toHaveBeenCalled();
     });
 
     it('writes nothing when the upgraded protocol fails validation', async () => {

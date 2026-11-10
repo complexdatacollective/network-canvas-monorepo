@@ -370,17 +370,28 @@ export const showProtocolOpenResultDialog = async ({
       type: 'acknowledge',
       intent: 'destructive',
       finalFocus,
-      title: createElement(AppMessage, {
-        message: additionalMessages.protocolValidationFailed,
-      }),
+      title: result.localizedTitle ? (
+        <AppMessage {...result.localizedTitle} />
+      ) : (
+        createElement(AppMessage, {
+          message: additionalMessages.protocolValidationFailed,
+        })
+      ),
       children: (
         <>
           <Paragraph>
-            {createElement(AppMessage, {
-              message: additionalMessages.theProtocolCouldNotBeOpened,
-            })}
+            {result.localizedMessage ? (
+              <AppMessage {...result.localizedMessage} />
+            ) : (
+              createElement(AppMessage, {
+                message: additionalMessages.theProtocolCouldNotBeOpened,
+              })
+            )}
           </Paragraph>
-          <ProtocolFailureDetails detail={result.message} />
+          <ProtocolFailureDetails
+            detail={result.message}
+            open={result.showDetails}
+          />
           <Paragraph intent="smallText">
             {createElement(AppMessage, {
               message: additionalMessages.ifTheProblemPersistsReachOut,
@@ -455,15 +466,27 @@ export const showProtocolOpenResultDialog = async ({
  * whoever reads the bug report, not for the person who just wanted to open
  * their protocol — the dialog above it says everything they need in order to
  * decide what to do next.
+ *
+ * `open` starts it expanded, for details the researcher acts on: the problems
+ * an upgrade refused, which the dialog asks them to correct.
  */
-export const ProtocolFailureDetails = ({ detail }: { detail?: string }) => {
+export const ProtocolFailureDetails = ({
+  detail,
+  open = false,
+}: {
+  detail?: string;
+  open?: boolean;
+}) => {
   const intl = useAppIntl();
   if (!detail) {
     return null;
   }
 
   return (
-    <Accordion className="mt-4">
+    <Accordion
+      className="mt-4"
+      defaultValue={open ? ['technical-details'] : undefined}
+    >
       <AccordionItem value="technical-details">
         <AccordionHeader>
           <AccordionTrigger>

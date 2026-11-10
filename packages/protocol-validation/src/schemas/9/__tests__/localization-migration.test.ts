@@ -11,7 +11,10 @@ import {
   escapeMessageText,
   messageText,
 } from '../../../localization/messageSyntax.ts';
-import { MigrationResultInvalidError } from '../../../migration/errors.ts';
+import {
+  MigrationContentRefusedError,
+  MigrationResultInvalidError,
+} from '../../../migration/errors.ts';
 import {
   detectSchemaVersion,
   migrateProtocol,
@@ -316,11 +319,28 @@ describe('v8 to v9 localization migration', () => {
     }
   });
 
-  it('leaves text declared one line that would be blank once joined as it was', () => {
+  // Line breaks and spaces only are blank before the join as after it, so
+  // the rules on blank text settle them: a stage name is repaired, a prompt
+  // is refused.
+  it('names a stage whose name is only line breaks by its position', () => {
     const document = schema8Protocol();
-    const at = [...stagePath(document, 'information'), 'label'];
-    setAt(document, at, '\n \n');
-    expect(getAt(migrateStep(document), at)).toEqual({ en: '\n \n' });
+    const stage = stagePath(document, 'information');
+    setAt(document, [...stage, 'label'], '\n');
+    expect(getAt(migrateStep(document), [...stage, 'label'])).toEqual({
+      en: `Stage ${Number(stage[1]) + 1}`,
+    });
+  });
+
+  it('refuses a prompt that is only line breaks and spaces as blank content', () => {
+    const document = schema8Protocol();
+    setAt(
+      document,
+      [...stagePath(document, 'nameGenerator'), 'prompts', 0, 'text'],
+      '\n  \n',
+    );
+    expect(() => migrateProtocol(document, 9)).toThrow(
+      MigrationContentRefusedError,
+    );
   });
 
   it("keeps braces and the fork's {{fieldName}} literal where text may now show values", () => {
@@ -523,14 +543,46 @@ describe('v8 to v9 localization migration', () => {
       });
     });
 
-    it('replaces an empty caption rather than leaving the field without one', () => {
-      const document = schema8Protocol();
-      const field = nodeFieldPath(document, 0);
-      setAt(document, [...field, 'label'], '');
+    // A caption left out gets the name the interview showed; a caption given
+    // as nothing is the researcher's own blank content, and is refused.
+    const refusalOf = (document: unknown) => {
+      try {
+        migrateProtocol(document, 9);
+      } catch (error) {
+        if (error instanceof MigrationContentRefusedError) return error;
+        throw error;
+      }
+      throw new Error('Expected the migration to refuse the protocol');
+    };
 
-      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
-        en: 'Closeness',
-      });
+    it.each([
+      ['empty', ''],
+      ['only spaces', '   '],
+    ])(
+      'refuses a node field caption that is %s, naming the field',
+      (_, blank) => {
+        const document = schema8Protocol();
+        const field = nodeFieldPath(document, 0);
+        setAt(document, [...field, 'label'], blank);
+
+        const refusal = refusalOf(document);
+        expect(refusal.problems.map((problem) => problem.path)).toEqual([
+          ['stages', expect.any(Number), ...field.slice(2), 'label', 'en'],
+        ]);
+        expect(refusal.problems[0]?.place).toMatch(
+          /^Stage “.+”, node form, the label of field 1$/,
+        );
+      },
+    );
+
+    it('refuses an edge field caption of only spaces, naming the edge type', () => {
+      const document = schema8Protocol();
+      const field = edgeFieldPath(document);
+      setAt(document, [...field, 'label'], ' ');
+
+      expect(refusalOf(document).problems[0]?.place).toMatch(
+        /^Stage “.+”, form for edge type “.+”, the label of field 1$/,
+      );
     });
 
     it('keeps a caption the field already has', () => {
@@ -586,49 +638,57 @@ describe('v8 to v9 localization migration', () => {
       'fields',
       0,
     ];
-    const egoField = (document: unknown) =>
-      fieldPath(document, 'egoForm', ['form']);
     const alterField = (document: unknown) =>
       fieldPath(document, 'alterForm', ['form']);
     const promptOf = (document: unknown, at: Path) =>
       getAt(migrateProtocol(document, 9), [...at, 'prompt']);
 
+    // The places schema 9 reports. The migration may add stages before the
+    // field's, so its stage index is not compared.
+    const refusedAt = (document: unknown, field: Path) => {
+      let paths: Path[] = [];
+      try {
+        migrateProtocol(document, 9);
+      } catch (error) {
+        if (!(error instanceof MigrationResultInvalidError)) throw error;
+        paths = error.issues.map((issue) => issue.path);
+      }
+      const [, , ...below] = field;
+      expect(paths).toContainEqual([
+        'stages',
+        expect.any(Number),
+        ...below,
+        'prompt',
+        'en',
+      ]);
+    };
+
+    // A form field's question is the protocol's own content, which the
+    // migration never writes, so the document is refused at the question.
     it.each([
       ['an empty prompt', ''],
       ['a prompt of spaces', '   '],
       ['a prompt of tabs and line breaks', '\t\n '],
       ['a prompt of non-breaking spaces', '\u00a0\u00a0'],
       ['a prompt of zero-width spaces', '\u200b\u200b'],
-    ])('asks with the attribute name for %s', (_name, blank) => {
+    ])('refuses %s at the question', (_name, blank) => {
       const document = schema8Protocol();
       const field = alterField(document);
       setAt(document, [...field, 'prompt'], blank);
 
-      expect(promptOf(document, field)).toEqual({ en: 'Nickname' });
+      refusedAt(document, field);
     });
 
-    it('does so in an ego form, using the ego attribute', () => {
+    it.each([
+      ['an ego form', 'egoForm'],
+      ['a name generator form', 'nameGenerator'],
+      ['an edge form', 'alterEdgeForm'],
+    ])('does so in %s', (_name, id) => {
       const document = schema8Protocol();
-      const field = egoField(document);
+      const field = fieldPath(document, id, ['form']);
       setAt(document, [...field, 'prompt'], ' ');
 
-      expect(promptOf(document, field)).toEqual({ en: 'EgoName' });
-    });
-
-    it('does so in a name generator form', () => {
-      const document = schema8Protocol();
-      const field = fieldPath(document, 'nameGenerator', ['form']);
-      setAt(document, [...field, 'prompt'], ' ');
-
-      expect(promptOf(document, field)).toEqual({ en: 'Name' });
-    });
-
-    it('does so in an edge form, using the attribute of the edge type', () => {
-      const document = schema8Protocol();
-      const field = fieldPath(document, 'alterEdgeForm', ['form']);
-      setAt(document, [...field, 'prompt'], ' ');
-
-      expect(promptOf(document, field)).toEqual({ en: 'Note' });
+      refusedAt(document, field);
     });
 
     it('keeps a prompt with text in it, spaces around the text included', () => {
@@ -639,60 +699,15 @@ describe('v8 to v9 localization migration', () => {
       expect(promptOf(document, field)).toEqual({ en: '  Nickname?  ' });
     });
 
-    it('uses the attribute id when the attribute has no name or is missing', () => {
-      const document = schema8Protocol();
-      const named = alterField(document);
-      const missing = egoField(document);
-      setAt(document, [...named, 'prompt'], ' ');
-      setAt(document, [...missing, 'prompt'], ' ');
-      setAt(
-        document,
-        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
-        '  ',
-      );
-      setAt(document, [...missing, 'variable'], 'removed');
-
-      const migrated = migrateStep(document);
-      expect(getAt(migrated, [...named, 'prompt'])).toEqual({
-        en: 'nickname',
-      });
-      expect(getAt(migrated, [...missing, 'prompt'])).toEqual({
-        en: 'removed',
-      });
-    });
-
-    it('escapes the attribute name so markdown shows it as written', () => {
-      const document = schema8Protocol();
-      const field = alterField(document);
-      setAt(document, [...field, 'prompt'], ' ');
-      setAt(
-        document,
-        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
-        '*first_name* {nick}',
-      );
-
-      expect(getAt(migrateStep(document), [...field, 'prompt'])).toEqual({
-        en: escapeMessageText('\\*first\\_name\\* {nick}'),
-      });
-    });
-
-    it('migrates to a protocol schema 9 accepts', () => {
-      const document = schema8Protocol();
-      for (const id of ['egoForm', 'alterForm', 'nameGenerator']) {
-        const field = fieldPath(document, id, ['form']);
-        setAt(document, [...field, 'prompt'], ' ');
-      }
-
-      expect(
-        ProtocolSchemaV9.safeParse(migrateProtocol(document, 9)).success,
-      ).toBe(true);
-    });
-
     it('tells the researcher in the migration notes', () => {
-      expect(migrationV8toV9.notes).toContain('contained only spaces');
+      expect(migrationV8toV9.notes).toContain(
+        'A protocol cannot be upgraded while',
+      );
     });
 
-    it('captions a Network Composer field whose caption is only spaces', () => {
+    // A Network Composer field's caption is the form's question for that
+    // field: given as nothing, it is refused like a blank prompt.
+    it('refuses a Network Composer field whose caption is only spaces', () => {
       const document = schema8Protocol();
       const field = [
         ...stagePath(document, 'composer'),
@@ -702,9 +717,9 @@ describe('v8 to v9 localization migration', () => {
       ];
       setAt(document, [...field, 'label'], '   ');
 
-      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
-        en: 'Nickname',
-      });
+      expect(() => migrateProtocol(document, 9)).toThrow(
+        MigrationContentRefusedError,
+      );
     });
   });
 
@@ -721,8 +736,8 @@ describe('v8 to v9 localization migration', () => {
     });
 
     // A participant chooses between options by their labels, so an empty one
-    // is wrapped like any other required text and validation reports it.
-    it('wraps an empty option label, so validation reports it', () => {
+    // takes the option's value, which schema 8 accepted and schema 9 needs.
+    it('gives an empty option label the option value', () => {
       const document = schema8Protocol();
       const option = [
         'codebook',
@@ -736,10 +751,9 @@ describe('v8 to v9 localization migration', () => {
       ];
       setAt(document, option, '');
 
-      expect(getAt(migrateStep(document), option)).toEqual({ en: '' });
-      expect(() => migrateProtocol(document, 9)).toThrow(
-        MigrationResultInvalidError,
-      );
+      expect(getAt(migrateProtocol(document, 9), option)).toEqual({
+        en: 'friend',
+      });
     });
 
     it('leaves out an optional field that may not be empty', () => {
@@ -753,15 +767,15 @@ describe('v8 to v9 localization migration', () => {
       expect(getAt(migrated, prompt)).not.toHaveProperty('otherVariablePrompt');
     });
 
-    it('wraps a required field that may not be empty, so validation reports it', () => {
+    it('gives an empty stage name "Stage" and its position', () => {
       const document = schema8Protocol();
-      const label = [...stagePath(document, 'information'), 'label'];
+      const stage = stagePath(document, 'information');
+      const label = [...stage, 'label'];
       setAt(document, label, '');
 
-      expect(getAt(migrateStep(document), label)).toEqual({ en: '' });
-      expect(() => migrateProtocol(document, 9)).toThrow(
-        MigrationResultInvalidError,
-      );
+      expect(getAt(migrateProtocol(document, 9), label)).toEqual({
+        en: `Stage ${Number(stage.at(-1)) + 1}`,
+      });
     });
   });
 
