@@ -67,7 +67,10 @@ export type MapOptions = z.infer<typeof mapOptions>;
  * (`interface-text-wording.ts`).
  */
 const geospatialWording = {
-  outsideAreasLabel: localizedString(nonBlankText(), 'plain'),
+  outsideAreasLabel: localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }),
 };
 
 export const geospatialStage = baseStageSchema.extend({

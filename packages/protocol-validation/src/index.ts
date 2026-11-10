@@ -189,6 +189,8 @@ export {
 export {
   type LocalizedString,
   type LocalizedStringFormat,
+  type LocalizedTextLines,
+  type LocalizedTextShape,
 } from './schemas/9/localized-string.ts';
 // A stage's dynamic values: the bindings, the path vocabulary, and the one
 // table of what each site can show, which validation and Architect share.
@@ -246,7 +248,6 @@ export { familyPedigreeWordingIn } from './schemas/9/stage-wording/family-pedigr
 // The Family Pedigree option labels Network Canvas supplies, written into a
 // protocol by Architect.
 export {
-  hasSuppliedOptionLabels,
   isSuppliedOptionLabelSet,
   SUPPLIED_PEDIGREE_OPTION_LABELS,
   type SuppliedOptionLabelSet,
@@ -296,7 +297,6 @@ export {
   defaultFinishSessionFields,
   defaultFinishSessionText,
   type FinishSessionText,
-  hasDefaultFinishSessionText,
   defaultFinishSessionTextAfterLanguageChange,
 } from './schemas/9/finish-session-defaults.ts';
 export {
@@ -345,6 +345,7 @@ export {
 export {
   collectLocalizedStrings,
   collectLocalizedStringsFromSchema,
+  localizedTextShapeAt,
   type LocalizedStringHit,
 } from './utils/collectLocalizedStrings.ts';
 export { readRosterCsv } from './utils/readRosterCsv.ts';

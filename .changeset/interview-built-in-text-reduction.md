@@ -21,12 +21,14 @@ consistently:
   created and when a language is added, and gives a default language it has
   no wording for the English labels. The supplied English label for a donor
   is now "Egg or sperm donor".
-- When a researcher changes the language a protocol's text is recorded as,
-  or chooses another default language, text Network Canvas supplies and the
-  researcher has not changed (the finish screen's text and the Family
-  Pedigree answer labels) becomes the supplied text for the language chosen,
-  so a protocol upgraded as English and corrected to German reads the German
-  text.
+- When a researcher adds a language, text Network Canvas supplies (the
+  finish screen's text and name and the Family Pedigree answer labels) gets
+  its wording in that language wherever it has no translation there, even
+  where the researcher has reworded it in another language. When a researcher
+  changes the language a protocol's text is recorded as, each translation
+  that is still Network Canvas's wording becomes its wording for the language
+  chosen, so a protocol upgraded as English and corrected to German reads the
+  German text, while text the researcher wrote keeps their words.
 - The button that confirms finishing the interview says "Finish", like the
   button that opens the confirmation.
 - Several buttons and messages now use one wording instead of two: "Pause

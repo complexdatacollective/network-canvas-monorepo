@@ -2,7 +2,10 @@ import { get } from 'es-toolkit/compat';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import { FAMILY_PEDIGREE_SLOTS } from '@codaco/protocol-validation';
+import {
+  FAMILY_PEDIGREE_SLOTS,
+  NodeConfigurationSchema,
+} from '@codaco/protocol-validation';
 
 import {
   LocalizedInputField,
@@ -12,6 +15,7 @@ import SlotVariableField from '../../../fields/SlotVariableField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { asLocalizedString } from '../../../localization/localizedText.ts';
+import { markdownTextShapeAt } from '../../../localization/textShape.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import {
   startingWording,
@@ -26,6 +30,11 @@ import {
 } from './pedigreeSlots.ts';
 import PersonSymbolsControl from './PersonSymbolsControl.tsx';
 import RelationshipToParticipantSection from './RelationshipToParticipantSection.tsx';
+
+const NAME_HINT_SHAPE = markdownTextShapeAt(NodeConfigurationSchema, [
+  'nameField',
+  'hint',
+]);
 
 /**
  * The attributes of the person node type the interface records about every
@@ -110,9 +119,9 @@ export default function NodeConfigurationSection() {
               <Field<typeof LocalizedRichTextField>
                 name={NAME_FIELD_PATHS.hint}
                 component={LocalizedRichTextField}
+                shape={NAME_HINT_SHAPE}
                 label={intl.formatMessage(messages.nameHintTextLabel)}
                 hint={intl.formatMessage(messages.nameHintTextHint)}
-                singleLine
                 // A stage holding the question without guidance had it
                 // removed, so the supplied guidance is not put back.
                 initialValue={

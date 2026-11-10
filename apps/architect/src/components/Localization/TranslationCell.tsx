@@ -32,6 +32,7 @@ import {
   withTranslation,
 } from '@codaco/protocol-builder/localization/localizedText';
 import { ProtocolLocalizationProvider } from '@codaco/protocol-builder/localization/ProtocolLocalization';
+import { textFieldPropsFor } from '@codaco/protocol-builder/localization/textShape';
 import {
   type DynamicValues,
   type DynamicValueSite,
@@ -41,6 +42,7 @@ import {
   type LocalizedStringFormat,
   type MessageArguments,
 } from '@codaco/protocol-validation';
+import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 import { useAppSelector } from '~/ducks/hooks';
 import type { TranslationRow } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
@@ -86,8 +88,6 @@ const messages = defineMessages({
 export type TranslationCellProps = {
   /** The text, as the protocol has it. */
   row: TranslationRow;
-  /** True where no translation has a line break, so Enter moves on. */
-  singleLine: boolean;
   locale: LocaleTag;
   localization: ProtocolLocalization;
   /** The row header and column header that name the cell. */
@@ -342,7 +342,6 @@ const isCaretAt = (element: HTMLTextAreaElement, edge: 'start' | 'end') => {
  */
 const PlainTextCell = ({
   row,
-  singleLine,
   locale,
   localization,
   labelledBy,
@@ -353,6 +352,8 @@ const PlainTextCell = ({
   const fallbackId = useId();
   const noteId = useId();
   const formScope = useFormFieldScope();
+  // As the text's field declares it, so Enter in a one-line text moves on.
+  const { singleLine } = textFieldPropsFor(row);
   const draft = useTranslationDraft({ row, locale });
   const { text, error } = draft;
   const empty = isBlankTranslation(row, text);
@@ -420,7 +421,15 @@ const PlainTextCell = ({
         <textarea
           rows={1}
           value={text}
-          onChange={(event) => draft.change(event.target.value)}
+          // A one-line text holds no line break: one typed with Shift+Enter
+          // or pasted becomes a space.
+          onChange={(event) =>
+            draft.change(
+              singleLine
+                ? lineBreaksAsSpaces(event.target.value)
+                : event.target.value,
+            )
+          }
           onBlur={draft.leave}
           onKeyDown={handleKeyDown}
           aria-labelledby={labelledBy}
@@ -631,7 +640,6 @@ const CellOpener = ({
  */
 const RichTextCell = ({
   row,
-  singleLine,
   locale,
   localization,
   labelledBy,
@@ -643,6 +651,10 @@ const RichTextCell = ({
   const editorId = useId();
   const noteId = useId();
   const formScope = useFormFieldScope();
+  // The editor the text's field declares, as the stage editor offers it: a
+  // one-line text gets bold and italics, a text of several lines the whole
+  // toolbar, whatever its translations hold now.
+  const { singleLine } = textFieldPropsFor(row);
   const draft = useTranslationDraft({ row, locale });
   const { text, error } = draft;
   const { editing, revision, cellProps } = useEditedCell({
@@ -889,7 +901,6 @@ const useDynamicSite = (
  */
 const DynamicCell = ({
   row,
-  singleLine,
   locale,
   localization,
   labelledBy,
@@ -905,10 +916,11 @@ const DynamicCell = ({
   const site = useDynamicSite(row.path, dynamicValues);
   const draft = useTranslationDraft({ row, locale });
   const { text: message, error } = draft;
-  const markdown = row.format === 'markdown';
+  // As the text's field declares it (see `RichTextCell`).
+  const { markdown, singleLine } = textFieldPropsFor(row);
   const { editing, revision, cellProps } = useEditedCell({
     draft,
-    singleLine: !markdown || singleLine,
+    singleLine,
     onMove,
     isAtEdge: isEditableCaretAt,
   });
@@ -959,7 +971,7 @@ const DynamicCell = ({
               autoFocus
               readOnly={false}
               markdown={markdown}
-              singleLine={!markdown || singleLine}
+              singleLine={singleLine}
               message={message}
               onMessageChange={(next) => draft.change(next ?? '')}
               locale={locale}

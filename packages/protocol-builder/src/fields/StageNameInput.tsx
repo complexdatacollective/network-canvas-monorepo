@@ -3,6 +3,7 @@ import type { ChangeEvent, FocusEvent, KeyboardEvent } from 'react';
 import useSelectOnFocus from '@codaco/fresco-ui/hooks/useSelectOnFocus';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 
 /**
  * Type and box metrics the control and its sizing replica below MUST share:
@@ -122,7 +123,7 @@ const StageNameInput = ({
     // `maxLength` is the browser's, applied before this runs, so shortening
     // the string here spends cap characters the finished name had room for —
     // an indented 51-character paste normalising to 45 came back cut at 44.
-    onChange?.(event.target.value.replace(/[\r\n]/g, ' '));
+    onChange?.(lineBreaksAsSpaces(event.target.value));
   };
 
   const handleBlur = (_event: FocusEvent<HTMLTextAreaElement>) => {

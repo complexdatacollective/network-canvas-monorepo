@@ -5,6 +5,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
+import { geospatialStage } from '@codaco/protocol-validation';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import { DynamicTextPreview } from '../../../fields/DynamicTextPreview.tsx';
@@ -18,10 +19,17 @@ import type {
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { asLocalizedString } from '../../../localization/localizedText.ts';
 import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
+import { markdownTextShapeAt } from '../../../localization/textShape.ts';
 import { useVariableChoices } from '../../../sections/canvas/codebookChoices.ts';
 import { asText } from '../../../sections/canvas/rowValues.ts';
 import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
+
+const PROMPT_TEXT_SHAPE = markdownTextShapeAt(geospatialStage, [
+  'prompts',
+  0,
+  'text',
+]);
 
 const TEXT_FIELD = 'text';
 export const VARIABLE_FIELD = 'variable';
@@ -131,8 +139,8 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
         label={intl.formatMessage(geospatialMessages.promptTextLabel)}
         hint={intl.formatMessage(geospatialMessages.promptTextHint)}
         component={LocalizedRichTextField}
+        shape={PROMPT_TEXT_SHAPE}
         dynamicValues="prompt"
-        singleLine
         initialValue={asLocalizedString(item[TEXT_FIELD])}
         required={intl.formatMessage(geospatialMessages.promptTextRequired)}
       />

@@ -4,6 +4,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { asOneLine } from '@codaco/shared-consts';
+
 import { dynamicValueNamesIn } from '../../../localization/dynamicValueMessages.ts';
 import {
   escapeMessageText,
@@ -286,6 +288,42 @@ describe('v8 to v9 localization migration', () => {
       expect(Object.keys(value)).toEqual(['en']);
       expect(messageText(value.en ?? '')).toBe(expectedText);
     }
+  });
+
+  it('joins the lines of text declared one line, and leaves text of several lines as it was', () => {
+    const broken = (text: string) => `${text} \n\n second\r\nthird\u2028\n`;
+    const document = schema8Protocol(broken);
+    const migrated = migrateProtocol(document, 9);
+    const hits = collectLocalizedStrings(migrated).filter(
+      ({ path: at, arguments: declared }) =>
+        at[0] !== 'interfaceText' &&
+        declared === undefined &&
+        typeof getAt(document, at) === 'string',
+    );
+    const single = hits.filter(({ lines }) => lines === 'single');
+    const multiple = hits.filter(({ lines }) => lines === 'multiple');
+    expect(single.length).toBeGreaterThan(0);
+    expect(multiple.length).toBeGreaterThan(0);
+    for (const { path: at, value } of single) {
+      const source = getAt(document, at) as string;
+      expect({ at, text: messageText(value.en ?? '') }).toEqual({
+        at,
+        text: `${source.slice(0, source.indexOf(' \n'))} second third`,
+      });
+    }
+    for (const { path: at, value } of multiple) {
+      expect({ at, text: messageText(value.en ?? '') }).toEqual({
+        at,
+        text: getAt(document, at),
+      });
+    }
+  });
+
+  it('leaves text declared one line that would be blank once joined as it was', () => {
+    const document = schema8Protocol();
+    const at = [...stagePath(document, 'information'), 'label'];
+    setAt(document, at, '\n \n');
+    expect(getAt(migrateStep(document), at)).toEqual({ en: '\n \n' });
   });
 
   it("keeps braces and the fork's {{fieldName}} literal where text may now show values", () => {
@@ -922,11 +960,16 @@ describe('committed schema 8 protocols', () => {
         Object.keys(getAt(schema8, ['codebook', 'node']) ?? {}),
       );
 
-      for (const { path: at, value } of collectLocalizedStrings(migrated)) {
+      for (const { path: at, value, lines } of collectLocalizedStrings(
+        migrated,
+      )) {
         expect(Object.keys(value)).toEqual(['en']);
         const source = getAt(schema8, schema8PathOf(migrated, schema8, at));
         if (typeof source === 'string') {
-          expect(messageText(value.en ?? '')).toBe(source);
+          // Text declared one line has its lines joined.
+          expect(messageText(value.en ?? '')).toBe(
+            lines === 'single' ? asOneLine(source) : source,
+          );
         }
       }
     },

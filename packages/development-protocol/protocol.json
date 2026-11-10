@@ -130,8 +130,8 @@
           {
             "variable": "cc7d7fdb-c6e8-4c67-a3f3-e76c56511c41",
             "prompt": {
-              "en": "Pick your favourite day that is _after_ than the day above\n",
-              "es": "Elige tu día favorito que sea _posterior_ al día de arriba\n"
+              "en": "Pick your favourite day that is _after_ than the day above",
+              "es": "Elige tu día favorito que sea _posterior_ al día de arriba"
             }
           }
         ]
@@ -1105,8 +1105,8 @@
         {
           "id": "31f7ee2e-6ff8-4881-9db4-ee1fc369dc5f",
           "text": {
-            "en": "Which of these classmates would help you with homework?\n",
-            "es": "¿Cuáles de estos compañeros de clase te ayudarían con las tareas?\n"
+            "en": "Which of these classmates would help you with homework?",
+            "es": "¿Cuáles de estos compañeros de clase te ayudarían con las tareas?"
           },
           "additionalAttributes": [
             {

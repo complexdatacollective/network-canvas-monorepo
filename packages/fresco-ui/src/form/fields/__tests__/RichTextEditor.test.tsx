@@ -1742,6 +1742,24 @@ describe('a single-line RichTextEditorField', () => {
     expect(editor.textContent).toBe('Never met in person');
   });
 
+  it('treats pasted line and paragraph separators as line breaks', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+    const lineSeparator = String.fromCodePoint(0x2028);
+    const paragraphSeparator = String.fromCodePoint(0x2029);
+
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, {
+      clipboardData: clipboardOf({
+        'text/plain': `Who${lineSeparator}helps${paragraphSeparator}you?`,
+      }),
+    });
+
+    // The schema refuses either separator in one-line text, so a field
+    // that kept one would save a value the protocol then rejects.
+    expect(editor.textContent).toBe('Who helps you?');
+  });
+
   it('drops a pasted paragraph that says nothing rather than spelling it', async () => {
     const field = renderSingleLine();
     const editor = await field.editor();

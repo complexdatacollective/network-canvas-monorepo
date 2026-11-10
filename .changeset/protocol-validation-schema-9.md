@@ -158,6 +158,19 @@ Localization:
   hints, option labels, Information items, census and pedigree copy) is a
   `LocalizedString`: a record from a declared locale tag to that language's
   text. Markdown fields hold markdown in each language.
+- Each localized field declares its shape: plain or markdown, and one line or
+  several. Only Information text, an introduction panel's text, the finish
+  stage's text before and after finishing, the Anonymisation explanation and
+  the stage error message hold several lines; every other field, plain fields
+  and messages included, is one line, and a translation of it containing a
+  line break (LF, CR, U+2028 or U+2029) is refused. The v8 to v9 migration
+  replaces each run of line breaks in one-line text, with the spaces around
+  it, by one space and trims the ends, unless that would leave the text
+  blank, and its migration notes say so. `collectLocalizedStrings` reports
+  each string's `lines`. New exports: the `LocalizedTextLines` and
+  `LocalizedTextShape` types and `localizedTextShapeAt` (the shape a schema
+  declares at a path). What counts as a line break is defined once, in
+  `@codaco/shared-consts`.
 - A localized string needs a translation in at least one declared language, not
   in every language and not necessarily in the default one. A missing
   translation, in the default language or any other, is a warning from

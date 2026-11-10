@@ -395,6 +395,10 @@
     "defaultMessage": "A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, \"Available to add\".",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. \"Name Generator Roster\" is the name Architect gives the interface; use the same name Architect uses for it. \"Available to add\" is the English text written into the protocol: keep it in English, in quotation marks."
   },
+  "protocolValidation.migrationNotes.schema9.singleLineText": {
+    "defaultMessage": "Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.",
+    "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A stage is one step of an interview; a prompt is the question or instruction a stage shows above its activity; a form field is one question in a form, and its hint is extra guidance under the question; an answer is one of the fixed options a participant chooses from. A line break is where text continues on a new line."
+  },
   "protocolValidation.migrationNotes.schema9.stageNames": {
     "defaultMessage": "The name of a stage must now contain some text. Where it was empty or contained only spaces, it now reads \"Stage\" followed by the stage's position, such as \"Stage 3\".",
     "description": "One nested Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol. A stage is one screen or step of an interview; its name is shown to participants in the list of stages. \"Stage\" and \"Stage 3\" are literal English defaults written into protocol data: keep them in English and in double quotes."
