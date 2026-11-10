@@ -7,7 +7,6 @@ import { migrateProtocol } from '../migration/migrate-protocol.ts';
 import { CURRENT_SCHEMA_VERSION } from '../schemas/index.ts';
 import { extractProtocol } from '../utils/extractProtocol.ts';
 import validateProtocol from '../validation/validate-protocol.ts';
-import { expectCommittedRefusal } from './refusedCommittedProtocols.ts';
 
 /**
  * Every `.netcanvas` the documentation site offers for download, migrated to
@@ -47,19 +46,9 @@ describe('documentation protocol corpus', () => {
 
       // The v7→v8 step requires a `name`; Architect and Interviewer both pass
       // the file's own name, so this mirrors what a researcher's import does.
-      const migrate = () =>
-        migrateProtocol(protocol, CURRENT_SCHEMA_VERSION, {
-          name: file.replace(/\.netcanvas$/, ''),
-        });
-      if (
-        expectCommittedRefusal(
-          `packages/protocols/documentation/protocols/${file}`,
-          migrate,
-        )
-      ) {
-        return;
-      }
-      const migrated = migrate();
+      const migrated = migrateProtocol(protocol, CURRENT_SCHEMA_VERSION, {
+        name: file.replace(/\.netcanvas$/, ''),
+      });
       expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
 
       // `migrateProtocol` already checks the structural schema and throws.

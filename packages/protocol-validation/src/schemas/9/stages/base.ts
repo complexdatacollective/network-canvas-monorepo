@@ -24,7 +24,7 @@ export const MAX_STAGE_ID_LENGTH = 128;
  * `'{'` counts as one character), measured as JavaScript measures a string's
  * length (UTF-16 code units, so most emoji count as two).
  */
-export const STAGE_LABEL_MAX_LENGTH = 50;
+export const STAGE_LABEL_MAX_LENGTH = 100;
 
 /** The rule `STAGE_LABEL_MAX_LENGTH` names, as a refused name's issue carries it. */
 export const STAGE_LABEL_TOO_LONG = 'stageLabelTooLong';

@@ -28,7 +28,6 @@ import {
   type LocaleTag,
   type LocalizedString,
   type ProtocolValidationIssue,
-  STAGE_LABEL_MAX_LENGTH,
   STAGE_LABEL_TOO_LONG,
   validateProtocol,
 } from '@codaco/protocol-validation';
@@ -129,12 +128,12 @@ const ruleMessages = {
  */
 const declaredRuleMessage = (issue: object, intl: IntlShape) => {
   const params: unknown = Reflect.get(issue, 'params');
-  return typeof params === 'object' &&
-    params !== null &&
-    Reflect.get(params, 'rule') === STAGE_LABEL_TOO_LONG
-    ? intl.formatMessage(messages.stageLabelTooLong, {
-        max: STAGE_LABEL_MAX_LENGTH,
-      })
+  if (typeof params !== 'object' || params === null) return undefined;
+  const max: unknown = Reflect.get(params, 'max');
+  // The limit is the one the declaration refused the name by, as it says so.
+  return Reflect.get(params, 'rule') === STAGE_LABEL_TOO_LONG &&
+    typeof max === 'number'
+    ? intl.formatMessage(messages.stageLabelTooLong, { max })
     : undefined;
 };
 

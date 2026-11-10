@@ -18,23 +18,9 @@ const assetDirectory = join(
   'protocol-gallery',
 );
 
-/**
- * Gallery protocols schema 9 refuses: each has a stage name longer than a
- * stage name may be. Network Canvas does not shorten a name; the protocol's
- * authors do, in the version of Architect that made it, so these are not
- * edited here and cannot be previewed until they are.
- */
-const REFUSED_GALLERY_PROTOCOLS = [
-  'GATE_10-22-2025.netcanvas',
-  'ROBUST_10-22-2025.netcanvas',
-  'SNAAPS_v1.0.netcanvas',
-  'Test-to-PrEP_10-22-2025.netcanvas',
-];
-
 describe('installPreviewProtocol', () => {
   it('installs every shipped gallery protocol at the Shell schema version', async () => {
     const protocols = await loadProtocolGallery();
-    const refused: string[] = [];
 
     for (const protocol of protocols) {
       for (const download of protocol.downloads) {
@@ -45,15 +31,6 @@ describe('installPreviewProtocol', () => {
           bytes,
           download.protocolFilename,
         );
-
-        if (REFUSED_GALLERY_PROTOCOLS.includes(download.protocolFilename)) {
-          expect(result, download.protocolFilename).toEqual({
-            ok: false,
-            reason: 'invalid',
-          });
-          refused.push(download.protocolFilename);
-          continue;
-        }
 
         expect(result.ok, download.protocolFilename).toBe(true);
         if (!result.ok) continue;
@@ -94,9 +71,6 @@ describe('installPreviewProtocol', () => {
         }
       }
     }
-
-    // Each listed protocol is still in the gallery, so none is listed stale.
-    expect(refused.toSorted()).toEqual(REFUSED_GALLERY_PROTOCOLS.toSorted());
   });
 
   it('starts a fresh session for each preview run', async () => {

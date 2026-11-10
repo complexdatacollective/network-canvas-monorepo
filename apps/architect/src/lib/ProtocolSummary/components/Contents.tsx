@@ -100,7 +100,13 @@ const Contents = () => {
                   <DualLink to={`#stage-${id}`}>
                     {intl.formatMessage(messages.numberedStage, {
                       position: index + 1,
-                      label: <DefaultLanguageText value={label} />,
+                      // A stage name may be one long word; it breaks rather
+                      // than widening the page.
+                      label: (
+                        <span className="wrap-anywhere">
+                          <DefaultLanguageText value={label} />
+                        </span>
+                      ),
                     })}
                   </DualLink>
                 </li>

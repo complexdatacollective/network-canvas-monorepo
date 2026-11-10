@@ -282,7 +282,9 @@ const StageContent = ({
             className="before:bg-cyber-grape flex items-center text-2xl font-bold before:me-5 before:flex before:size-19 before:flex-none before:items-center before:justify-center before:rounded-full before:[font-family:var(--heading-font)] before:text-white before:content-[attr(data-number)]"
             data-number={intl.formatNumber(stageNumber)}
           >
-            <Heading level="h1">
+            {/* A stage name may be one long word; it breaks rather than
+                widening the page. */}
+            <Heading level="h1" className="min-w-0 wrap-anywhere">
               <DefaultLanguageText value={label} />
             </Heading>
           </div>
@@ -300,7 +302,9 @@ const StageContent = ({
                   ? [
                       [
                         intl.formatMessage(summaryMessages.name),
-                        <SummaryText key="name" value={label} />,
+                        <div key="name" className="wrap-anywhere">
+                          <SummaryText value={label} />
+                        </div>,
                       ],
                     ]
                   : []),

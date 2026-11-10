@@ -39,7 +39,7 @@ describe('a stage name', () => {
     ).toEqual([
       expect.objectContaining({
         path: ['stages', 0, 'label', 'fr'],
-        message: `Stage name "${name}" is 51 characters long, but a stage name may be at most 50.`,
+        message: `Stage name "${name}" is 101 characters long, but a stage name may be at most 100.`,
       }),
     ]);
   });
@@ -67,7 +67,9 @@ describe('a stage name', () => {
   // Network Canvas does not shorten a name: the researcher does, in the
   // version of Architect that made the protocol.
   it('refuses a schema 8 protocol with a longer one, naming the stage', () => {
-    const name = 'A name generator for everyone the participant knows well';
+    const name =
+      'A name generator for everyone the participant knows well, has known for a year, and sees every single week';
+    expect(name.length).toBeGreaterThan(STAGE_LABEL_MAX_LENGTH);
     const document = asSchema8Protocol(withStageLabel({ en: name }));
     expect(() => migrateProtocol(document, 9)).toThrow(
       MigrationResultInvalidError,

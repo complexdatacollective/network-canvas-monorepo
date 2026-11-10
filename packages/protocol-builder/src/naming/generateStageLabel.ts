@@ -4,12 +4,6 @@ import {
 } from '@codaco/protocol-validation';
 import { normalizeForComparison } from '@codaco/shared-consts';
 
-/**
- * The most characters a stage's name may have, as every place that edits one
- * holds it to (`STAGE_LABEL_MAX_LENGTH`).
- */
-export const MAX_LABEL_LENGTH = STAGE_LABEL_MAX_LENGTH;
-
 export type Qualifier = { full: string; summary: string };
 
 /**
@@ -31,7 +25,8 @@ export type Qualifier = { full: string; summary: string };
  *   named in one language stops colliding with the same stage named in another,
  *   so reopening a protocol elsewhere proposes a fresh name for a configuration
  *   that already has one, and ` #2` suffixes accumulate across languages.
- * - `MAX_LABEL_LENGTH` caps the STORED value at 50 characters, and
+ * - `STAGE_LABEL_MAX_LENGTH`, the schema's limit on a stage name, caps the
+ *   STORED value, and
  *   `truncateToWord` decides where it is cut. A longer translation is cut in a
  *   different place, so the same stage acquires a different stored name
  *   depending on who created it.
@@ -122,20 +117,20 @@ function fitTruncatedUniqueLabel(
   base: string,
   existingLabels: string[],
 ): string {
-  let max = MAX_LABEL_LENGTH;
+  let max = STAGE_LABEL_MAX_LENGTH;
   while (max > 0) {
     const candidate = dedupeStageLabel(
       truncateToWord(base, max),
       existingLabels,
     );
-    if (candidate.length <= MAX_LABEL_LENGTH) {
+    if (candidate.length <= STAGE_LABEL_MAX_LENGTH) {
       return candidate;
     }
-    max -= candidate.length - MAX_LABEL_LENGTH;
+    max -= candidate.length - STAGE_LABEL_MAX_LENGTH;
   }
   return dedupeStageLabel(base.slice(0, 1), existingLabels).slice(
     0,
-    MAX_LABEL_LENGTH,
+    STAGE_LABEL_MAX_LENGTH,
   );
 }
 
@@ -147,7 +142,7 @@ export function generateStageLabel(input: {
 }): string {
   const { typeName, subjectName, qualifier, existingLabels } = input;
 
-  // Most-informative first; each candidate sheds detail so a long name can fit 50 chars.
+  // Most-informative first; each candidate sheds detail so a long name can fit the schema's limit.
   const candidates: string[] = [];
   if (qualifier) {
     candidates.push(
@@ -180,7 +175,7 @@ export function generateStageLabel(input: {
 
   for (const base of candidates) {
     const deduped = dedupeStageLabel(base, existingLabels);
-    if (deduped.length <= MAX_LABEL_LENGTH) {
+    if (deduped.length <= STAGE_LABEL_MAX_LENGTH) {
       return deduped;
     }
   }

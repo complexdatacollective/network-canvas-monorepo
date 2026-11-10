@@ -597,8 +597,8 @@
       "type": "Information",
       "label": {
         "en": "Template notes (delete before deploying)",
-        "es": "Notas de plantilla (eliminar antes de entrevistar)",
-        "hu": "Sablonmegjegyzések (adatfelvétel előtt törölje)"
+        "es": "Notas de la plantilla (eliminar antes de la puesta en marcha)",
+        "hu": "Megjegyzések a sablonhoz (az adatfelvétel előtt törölje)"
       },
       "title": {
         "en": "Template notes",

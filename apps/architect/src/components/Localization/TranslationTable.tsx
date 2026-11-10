@@ -945,9 +945,13 @@ const TranslationTable = ({
         {numberedGroups.map((group, groupIndex) => {
           const groupId = `${baseId}-group-${groupIndex}`;
           return (
+            // A group's heading sticks against the whole table, so every
+            // heading scrolled past stays stuck under the next one; clipping
+            // the group to its own box hides a taller (wrapped) heading of an
+            // earlier group, which would otherwise show beneath a shorter one.
             <tbody
               key={group.key}
-              className="[--translation-table-sticky-top:calc(var(--translation-table-head,0px)+var(--translation-group-head,0px))]"
+              className="[--translation-table-sticky-top:calc(var(--translation-table-head,0px)+var(--translation-group-head,0px))] [clip-path:inset(0)]"
             >
               <tr>
                 <th
@@ -959,7 +963,7 @@ const TranslationTable = ({
                 >
                   {/* Stays at the start of the visible width as the table
                       scrolls sideways, so the heading is never cut off. */}
-                  <div className="sticky inset-s-0 w-max max-w-[min(calc(100vw-4rem),60rem)] px-3 py-2">
+                  <div className="sticky inset-s-0 w-max max-w-[min(calc(100vw-4rem),60rem)] px-3 py-2 wrap-anywhere">
                     <GroupHeading group={group} />
                   </div>
                 </th>

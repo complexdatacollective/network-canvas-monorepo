@@ -166,7 +166,8 @@ describe('describeMigrationFailure', () => {
   });
 
   it('names a stage whose name is too long, and where to shorten it', () => {
-    const name = 'A welcome to everyone who takes part in this study today';
+    const name =
+      'A welcome to everyone who takes part in this study today, and thanks for the hour you are giving us all';
     const { title, message } = refusalOf((document) => {
       const [first] = document.stages as Record<string, unknown>[];
       if (first) first.label = name;
@@ -174,7 +175,7 @@ describe('describeMigrationFailure', () => {
 
     expect(messageText(title)).toBe('A stage name is too long');
     expect(messageText(message)).toBe(
-      `The stage name “${name}” is longer than 50 characters. That was allowed when this protocol was made, but a longer name does not fit where stage names are shown. Open this protocol in the version of Architect that created it, shorten the name, then open it here again.`,
+      `The stage name “${name}” is longer than 100 characters. That was allowed when this protocol was made, but a longer name does not fit where stage names are shown. Open this protocol in the version of Architect that created it, shorten the name, then open it here again.`,
     );
   });
 });
