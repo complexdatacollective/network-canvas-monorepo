@@ -364,7 +364,7 @@ describe("a value inserted in a form field's question", () => {
 });
 
 describe('a value inserted in default-language text that is translated', () => {
-  it('refuses the stage save until the translation shows it too', async () => {
+  it('saves the stage, leaving the untouched translation as it was', async () => {
     const { type, fields } = loadFixtureStage('dyad-census-1');
     const harness = renderStageEditor({
       stage: {
@@ -390,12 +390,12 @@ describe('a value inserted in default-language text that is translated', () => {
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
     await dialogClosed();
 
-    // The French text, untouched, no longer shows every value the English
-    // text does; the protocol would not accept the stage.
-    expect(await harness.submit()).toBeNull();
-    expect(
-      (await screen.findAllByText(/This translation must show "\{today/))
-        .length,
-    ).toBeGreaterThan(0);
+    // Piped values are optional: the French text need not show the date.
+    const saved = await harness.submit();
+    expect(saved).not.toBeNull();
+    expect(screen.queryByText(/must show/)).not.toBeInTheDocument();
+    expect(JSON.stringify(saved?.stageDocument.prompts)).toContain(
+      'Qui connaissez-vous ?',
+    );
   });
 });

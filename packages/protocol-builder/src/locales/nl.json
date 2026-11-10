@@ -393,8 +393,6 @@
   "protocolBuilder.dynamicText.secondNodeLabel": "Tweede knooppunt: label",
   "protocolBuilder.dynamicText.switchHasNoLabels": "Een schakelaar heeft geen labels voor zijn antwoorden. Gebruik in plaats daarvan een formulering per antwoord.",
   "protocolBuilder.dynamicText.today": "Datum van vandaag",
-  "protocolBuilder.dynamicText.translationMissesValue": "Neem “{value}” overal op waar het in de oorspronkelijke tekst staat.",
-  "protocolBuilder.dynamicText.translationTooComplex": "Deze tekst heeft te veel versies om de vertaling te controleren. Gebruik minder waarden die de formulering veranderen.",
   "protocolBuilder.dynamicText.unreadable": "Deze tekst gebruikt iets wat Architect hier niet kan weergeven, dus je kunt hem niet in dit veld bewerken. Hij blijft ongewijzigd bewaard.",
   "protocolBuilder.dynamicText.versionKnown": "Indien bekend",
   "protocolBuilder.dynamicText.versionMissing": "Indien onbekend",

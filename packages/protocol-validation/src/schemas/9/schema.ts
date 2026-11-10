@@ -697,15 +697,10 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     }
   }
 
-  // The values each stage's text shows: bound, available where shown,
-  // guarded where they can be missing, and shown by every translation
-  // wherever the default-language text shows them.
+  // The values each stage's text shows: bound, available where shown, and
+  // guarded where they can be missing. Each language is checked on its own.
   for (const problem of findDynamicValueProblems(
-    {
-      codebook: protocol.codebook,
-      stages: protocol.stages,
-      defaultLocale: localization?.defaultLocale,
-    },
+    { codebook: protocol.codebook, stages: protocol.stages },
     localizedStrings,
   )) {
     ctx.addIssue({ code: 'custom' as const, ...problem });

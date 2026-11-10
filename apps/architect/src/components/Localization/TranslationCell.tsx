@@ -915,11 +915,6 @@ const DynamicCell = ({
   const empty = isBlankTranslation(row, message);
   const fallbackShown = empty && error === undefined;
   const value = withMessage(row.value, locale, empty ? undefined : message);
-  const originalMessage = row.value[localization.defaultLocale];
-  const original =
-    originalMessage === undefined
-      ? undefined
-      : { locale: localization.defaultLocale, message: originalMessage };
   const describedBy = [
     fallbackShown || !editing ? contentId : undefined,
     error === undefined ? undefined : noteId,
@@ -967,7 +962,6 @@ const DynamicCell = ({
               singleLine={!markdown || singleLine}
               message={message}
               onMessageChange={(next) => draft.change(next ?? '')}
-              original={original}
               locale={locale}
               site={site}
               showsProblems={false}
