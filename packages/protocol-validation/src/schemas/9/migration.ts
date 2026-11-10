@@ -762,12 +762,7 @@ const addFieldCaptions = (
   if (!isRecord(form) || !Array.isArray(form.fields)) return;
   for (const field of form.fields) {
     if (!isRecord(field) || typeof field.variable !== 'string') continue;
-    if (
-      field.label !== undefined &&
-      !(typeof field.label === 'string' && isBlankText(field.label))
-    ) {
-      continue;
-    }
+    if (field.label !== undefined) continue;
     field.label = escapeMarkdownText(
       nameOrKey(variables[field.variable], field.variable),
     );
@@ -775,18 +770,22 @@ const addFieldCaptions = (
 };
 
 /**
- * A schema 8 Network Composer field with no caption, or an empty or blank one,
- * is captioned with its attribute's name, as the schema 8 interview captioned
- * it: since `@codaco/interview` 9.0.0, and in 10.0.0, which Fresco and
- * Interviewer run schema 8 interviews with, `createFieldMetadata` treats a
- * caption that trims to nothing as unauthored and shows
- * `codebookEntry.name ?? variable`. Writing that name records what
- * participants read, and schema 9 requires the field to carry a caption.
- * (Releases up to 8.0.0 showed an empty or blank caption as nothing and only a
- * missing one as the name.) The caption is markdown, so the name is
- * escaped to render as written. The attribute is looked up on the stage
- * subject's node type for the node form and on each edge type for its form,
- * and its id stands in for a missing or empty name.
+ * An optional field the researcher left out gets the default the interview
+ * showed; a field the researcher filled with nothing is blank content, and is
+ * refused.
+ *
+ * A Network Composer field's caption was optional in schema 8, and the schema
+ * 8 interview captioned a field without one with its attribute's name
+ * (`createFieldMetadata`: `codebookEntry.name ?? variable`). Schema 9 requires
+ * the caption, so a field with none gets that name. The caption is markdown,
+ * so the name is escaped to render as written. The attribute is looked up on
+ * the stage subject's node type for the node form and on each edge type for
+ * its form, and its id stands in for a missing or empty name.
+ *
+ * A caption that is present but empty or only spaces is the question the form
+ * asks for that field, left blank, like a blank form field prompt. It is
+ * copied as written and schema 9 refuses it, so the protocol is corrected in
+ * the Architect that made it (see `findRefusedContent`).
  */
 const addComposerCaptions = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;

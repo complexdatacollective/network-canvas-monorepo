@@ -137,7 +137,6 @@ const STAGE_TEXT: readonly (readonly [RegExp, Outcome])[] = [
   [/^prompts\.\d+\.negativeLabel$/, 'repaired'],
   [/^prompts\.\d+\.otherOptionLabel$/, 'repaired'],
   [/^explanationText\.(title|body)$/, 'repaired'],
-  [/^(nodeForm|edges\.\d+\.form)\.fields\.\d+\.label$/, 'repaired'],
   // Optional text, left out when it says nothing.
   [/(^|\.)hint$/, 'repaired'],
   [/^introductionPanel\.text$/, 'repaired'],
@@ -149,6 +148,9 @@ const STAGE_TEXT: readonly (readonly [RegExp, Outcome])[] = [
   [/^nominationPrompts\.\d+\.text$/, 'refused'],
   [/^(form\.fields|nodeConfig\.form)\.\d+\.prompt$/, 'refused'],
   [/^prompts\.\d+\.otherVariablePrompt$/, 'refused'],
+  // A Network Composer field's caption, given but blank (one left out is
+  // given its attribute's name).
+  [/^(nodeForm|edges\.\d+\.form)\.fields\.\d+\.label$/, 'refused'],
 ];
 
 /** Text within the codebook: option labels with a value, scale end labels. */

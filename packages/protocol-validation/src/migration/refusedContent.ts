@@ -103,6 +103,25 @@ const attributePlace = (protocol: unknown, attribute: Path): string => {
     : `${owner}, an attribute with no name`;
 };
 
+/** A Network Composer stage's form for one edge type, named by that type. */
+const edgeFormPlace = (protocol: unknown, stage: number, edge: number) => {
+  const type = valueAt(protocol, [
+    'stages',
+    stage,
+    'edges',
+    edge,
+    'subject',
+    'type',
+  ]);
+  const name =
+    typeof type === 'string'
+      ? valueAt(protocol, ['codebook', 'edge', type, 'name'])
+      : undefined;
+  return typeof name === 'string' && name.trim() !== ''
+    ? `form for edge type ${quoted(name)}`
+    : `form for edge ${edge + 1}`;
+};
+
 const isIndex = (segment: unknown): segment is number =>
   typeof segment === 'number';
 const isKey = (segment: unknown): segment is string =>
@@ -151,6 +170,29 @@ const describePlace = (protocol: unknown, path: Path): string | undefined => {
       atEnd(5)
     ) {
       return `${stage}, the question of form field ${b + 1}`;
+    }
+    // A Network Composer field's caption, present but blank: one left out is
+    // given its attribute's name and never reaches here.
+    if (
+      field === 'nodeForm' &&
+      a === 'fields' &&
+      isIndex(b) &&
+      c === 'label' &&
+      atEnd(5)
+    ) {
+      return `${stage}, node form, the label of field ${b + 1}`;
+    }
+    const [, , , , , d, e] = rest;
+    if (
+      field === 'edges' &&
+      isIndex(a) &&
+      b === 'form' &&
+      c === 'fields' &&
+      isIndex(d) &&
+      e === 'label' &&
+      atEnd(7)
+    ) {
+      return `${stage}, ${edgeFormPlace(protocol, rest[0], a)}, the label of field ${d + 1}`;
     }
     return undefined;
   }

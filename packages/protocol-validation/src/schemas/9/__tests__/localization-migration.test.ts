@@ -9,7 +9,10 @@ import {
   escapeMessageText,
   messageText,
 } from '../../../localization/messageSyntax.ts';
-import { MigrationResultInvalidError } from '../../../migration/errors.ts';
+import {
+  MigrationContentRefusedError,
+  MigrationResultInvalidError,
+} from '../../../migration/errors.ts';
 import {
   detectSchemaVersion,
   migrateProtocol,
@@ -485,14 +488,46 @@ describe('v8 to v9 localization migration', () => {
       });
     });
 
-    it('replaces an empty caption rather than leaving the field without one', () => {
-      const document = schema8Protocol();
-      const field = nodeFieldPath(document, 0);
-      setAt(document, [...field, 'label'], '');
+    // A caption left out gets the name the interview showed; a caption given
+    // as nothing is the researcher's own blank content, and is refused.
+    const refusalOf = (document: unknown) => {
+      try {
+        migrateProtocol(document, 9);
+      } catch (error) {
+        if (error instanceof MigrationContentRefusedError) return error;
+        throw error;
+      }
+      throw new Error('Expected the migration to refuse the protocol');
+    };
 
-      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
-        en: 'Closeness',
-      });
+    it.each([
+      ['empty', ''],
+      ['only spaces', '   '],
+    ])(
+      'refuses a node field caption that is %s, naming the field',
+      (_, blank) => {
+        const document = schema8Protocol();
+        const field = nodeFieldPath(document, 0);
+        setAt(document, [...field, 'label'], blank);
+
+        const refusal = refusalOf(document);
+        expect(refusal.problems.map((problem) => problem.path)).toEqual([
+          ['stages', expect.any(Number), ...field.slice(2), 'label', 'en'],
+        ]);
+        expect(refusal.problems[0]?.place).toMatch(
+          /^Stage “.+”, node form, the label of field 1$/,
+        );
+      },
+    );
+
+    it('refuses an edge field caption of only spaces, naming the edge type', () => {
+      const document = schema8Protocol();
+      const field = edgeFieldPath(document);
+      setAt(document, [...field, 'label'], ' ');
+
+      expect(refusalOf(document).problems[0]?.place).toMatch(
+        /^Stage “.+”, form for edge type “.+”, the label of field 1$/,
+      );
     });
 
     it('keeps a caption the field already has', () => {
@@ -615,7 +650,9 @@ describe('v8 to v9 localization migration', () => {
       );
     });
 
-    it('captions a Network Composer field whose caption is only spaces', () => {
+    // A Network Composer field's caption is the form's question for that
+    // field: given as nothing, it is refused like a blank prompt.
+    it('refuses a Network Composer field whose caption is only spaces', () => {
       const document = schema8Protocol();
       const field = [
         ...stagePath(document, 'composer'),
@@ -625,9 +662,9 @@ describe('v8 to v9 localization migration', () => {
       ];
       setAt(document, [...field, 'label'], '   ');
 
-      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
-        en: 'Nickname',
-      });
+      expect(() => migrateProtocol(document, 9)).toThrow(
+        MigrationContentRefusedError,
+      );
     });
   });
 
