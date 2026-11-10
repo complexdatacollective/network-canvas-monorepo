@@ -2,11 +2,7 @@ import {
   dynamicValueNamesIn,
   findDynamicMessageSyntaxProblem,
   findDynamicValueProblem,
-  findMissingDynamicPlacement,
-  type MissingDynamicPlacement,
-  TOO_MANY_DYNAMIC_VERSIONS,
 } from '../../localization/dynamicValueMessages.ts';
-import type { LocaleTag } from '../../localization/localeTag.ts';
 import type { StageSubject } from './common/subjects.ts';
 import {
   CASED_VARIABLE_TYPES,
@@ -183,17 +179,6 @@ export const stageDynamicValueContext = ({
   };
 };
 
-const describeVersion = (when: MissingDynamicPlacement['when']): string =>
-  Object.entries(when)
-    .map(([name, state]) =>
-      state === 'missing'
-        ? `"${name}" is missing`
-        : state === 'other'
-          ? `"${name}" has a value`
-          : `"${name}" is ${state}`,
-    )
-    .join(', ');
-
 type SiteHit = Readonly<{
   path: Path;
   value: Readonly<Record<string, string>>;
@@ -289,8 +274,6 @@ const checkBindings = (
  * - at each site, a value that is not bound, not available there, or names
  *   an attribute that does not exist, and any misuse
  *   `findDynamicValueProblem` finds;
- * - each translation that leaves out a value the default-language text shows
- *   in some version;
  * - each binding case that stands for no option of its attribute, or for an
  *   option an earlier case already stands for.
  *
@@ -300,7 +283,6 @@ export const findDynamicValueProblems = (
   protocol: Readonly<{
     codebook: unknown;
     stages: readonly unknown[];
-    defaultLocale: LocaleTag | undefined;
   }>,
   hits: readonly SiteHit[],
 ): DynamicValueProblem[] => {
@@ -332,7 +314,6 @@ export const findDynamicValueProblems = (
     });
     const values = dynamicValueArgumentsAt(bindings, context);
 
-    const valid = new Set<LocaleTag>();
     for (const [locale, message] of Object.entries(hit.value)) {
       // The field's own check reports what needs no stage.
       if (findDynamicMessageSyntaxProblem(message) !== undefined) continue;
@@ -348,43 +329,9 @@ export const findDynamicValueProblems = (
       });
       const problem =
         unusable[0] ?? findDynamicValueProblem(message, values, locale);
-      if (problem === undefined) valid.add(locale);
-      else problems.push({ path: [...hit.path, locale], message: problem });
-    }
-
-    const defaultLocale = protocol.defaultLocale;
-    const original =
-      defaultLocale === undefined ? undefined : hit.value[defaultLocale];
-    if (
-      defaultLocale === undefined ||
-      original === undefined ||
-      !valid.has(defaultLocale)
-    ) {
-      continue;
-    }
-    for (const locale of valid) {
-      if (locale === defaultLocale) continue;
-      const translation = hit.value[locale];
-      if (translation === undefined) continue;
-      const missing = findMissingDynamicPlacement(
-        original,
-        defaultLocale,
-        translation,
-        locale,
-        values,
-      );
-      if (missing === undefined) continue;
-      if (missing === TOO_MANY_DYNAMIC_VERSIONS) {
-        problems.push({
-          path: [...hit.path, locale],
-          message: `This text and its translation choose between too many versions to check that the translation shows every value the ${defaultLocale} text does. Choose between fewer values in it.`,
-        });
-        continue;
+      if (problem !== undefined) {
+        problems.push({ path: [...hit.path, locale], message: problem });
       }
-      problems.push({
-        path: [...hit.path, locale],
-        message: `This translation must show "{${missing.argument}}" where the ${defaultLocale} text does, including in its version for when ${describeVersion(missing.when)}.`,
-      });
     }
   }
   return problems;

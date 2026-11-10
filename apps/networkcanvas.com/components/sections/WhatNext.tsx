@@ -7,6 +7,7 @@ import { MailingListForm } from '~/components/sections/MailingListForm';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
 import { scrollDrivenRevealMotion } from '~/components/ui/scrollDrivenMotion';
+import { SectionHeading } from '~/components/ui/SectionHeading';
 import { externalLinks } from '~/lib/content';
 
 export function WhatNext() {
@@ -82,9 +83,7 @@ export function WhatNext() {
 
   return (
     <Container className="">
-      <Reveal {...scrollDrivenRevealMotion}>
-        <SectionTitle title={t('heading')} />
-      </Reveal>
+      <SectionHeading title={t('heading')} />
       <div className="tablet-landscape:gap-12 mt-16 flex flex-col gap-8">
         {cards.map((card, index) => (
           <Reveal
@@ -121,18 +120,5 @@ export function WhatNext() {
         ))}
       </div>
     </Container>
-  );
-}
-
-function SectionTitle({ title }: { title: string }) {
-  return (
-    <Heading
-      level="h2"
-      variant="section-heading"
-      margin="none"
-      className="text-text text-center"
-    >
-      {title}
-    </Heading>
   );
 }

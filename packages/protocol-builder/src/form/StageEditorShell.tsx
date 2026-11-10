@@ -748,17 +748,11 @@ function stageProblems(
 
   // What the protocol's own check asks of the values a stage's text shows,
   // and which the stage's schema cannot: that each is bound and can be shown
-  // there, and that every translation shows each value the default-language
-  // text shows. An edit to the default-language text is what usually breaks
-  // the last of these, in translations nobody touched; a stage saved without
-  // asking would leave the protocol invalid until it is next checked whole.
+  // there. A stage saved without asking would leave the protocol invalid
+  // until it is next checked whole.
   const seen = new Set<string>();
   for (const problem of findDynamicValueProblems(
-    {
-      codebook,
-      stages: [document],
-      defaultLocale: localization?.defaultLocale,
-    },
+    { codebook, stages: [document] },
     collectLocalizedStringsFromSchema(stageSchema, document).map((hit) => ({
       ...hit,
       path: ['stages', 0, ...hit.path],

@@ -32,7 +32,6 @@ import {
   dynamicValueNamesIn,
   escapeMessageText,
   findDynamicValueProblem,
-  findMissingDynamicPlacement,
   type LocaleTag,
   type LocalizedString,
   type LocalizedTextShape,
@@ -42,7 +41,6 @@ import {
   messageStructure,
   pluralValueExamples,
   printMessageStructure,
-  TOO_MANY_DYNAMIC_VERSIONS,
 } from '@codaco/protocol-validation';
 
 import { variableTypeLabel } from '../codebook/variableTypeLabels.ts';
@@ -242,19 +240,6 @@ const messages = defineMessages({
     description:
       'Shown in place of a text field a participant reads when its stored text uses something the editor cannot display, such as a format it does not support. The text is not changed.',
   },
-  translationMissesValue: {
-    id: 'protocolBuilder.dynamicText.translationMissesValue',
-    defaultMessage: 'Include “{value}” wherever the original text shows it.',
-    description:
-      'Problem shown under a translation that leaves out a value, such as the participant’s name, that the text in the protocol’s main language shows. value is the value’s name.',
-  },
-  translationTooComplex: {
-    id: 'protocolBuilder.dynamicText.translationTooComplex',
-    defaultMessage:
-      'This text has too many versions to check its translation. Use fewer values that change the wording.',
-    description:
-      'Problem shown under a translated text whose versions are too many to compare with the original.',
-  },
 });
 
 /** How many examples a plural version's label gives of its numbers. */
@@ -453,7 +438,7 @@ const messageLabelsFor = ({
 /**
  * What a text's editor knows about where the text sits. Without
  * `setBindings` the editor offers only the values the stage already binds:
- * a translator works with the values the original text shows, and never
+ * a translator works with the values the stage already binds, and never
  * adds a binding of their own.
  */
 export type DynamicMessageSite = Readonly<{
@@ -478,8 +463,6 @@ export type DynamicMessageEditorProps = Readonly<{
   singleLine: boolean;
   message: string;
   onMessageChange: (message: string | undefined) => void;
-  /** The text in the protocol's main language, to check a translation against. */
-  original: Readonly<{ locale: LocaleTag; message: string }> | undefined;
   locale: LocaleTag;
   site: DynamicMessageSite;
   /**
@@ -513,7 +496,6 @@ export function DynamicMessageEditor({
   singleLine,
   message,
   onMessageChange,
-  original,
   locale,
   site,
   showsProblems = true,
@@ -821,42 +803,9 @@ export function DynamicMessageEditor({
       return undefined;
     }
     const values = dynamicValueArgumentsAt(bindings, context);
-    const own = findDynamicValueProblem(message, values, locale);
-    if (own !== undefined) return own;
-    if (original === undefined || original.locale === locale) return undefined;
-    if (
-      findDynamicValueProblem(original.message, values, original.locale) !==
-      undefined
-    ) {
-      return undefined;
-    }
-    const missing = findMissingDynamicPlacement(
-      original.message,
-      original.locale,
-      message,
-      locale,
-      values,
-    );
-    if (missing === undefined) return undefined;
-    if (missing === TOO_MANY_DYNAMIC_VERSIONS) {
-      return intl.formatMessage(messages.translationTooComplex);
-    }
-    const choice = choiceByName.get(missing.argument);
-    return intl.formatMessage(messages.translationMissesValue, {
-      value:
-        choice === undefined ? missing.argument : naming.valueLabel(choice),
-    });
+    return findDynamicValueProblem(message, values, locale);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    showsProblems,
-    message,
-    parsed,
-    bindings,
-    context,
-    original,
-    locale,
-    intl,
-  ]);
+  }, [showsProblems, message, parsed, bindings, context, locale]);
 
   if (parsed === undefined && message !== '') {
     return (
@@ -1316,15 +1265,6 @@ export default function DynamicTextField({
   const { markdown, singleLine } = textFieldPropsFor(shape);
   const { localization, locale } = useEditingLanguage();
   const defaultLocale = localization?.defaultLocale;
-  const originalMessage =
-    defaultLocale === undefined ? undefined : value?.[defaultLocale];
-  const original = useMemo(
-    () =>
-      defaultLocale === undefined || originalMessage === undefined
-        ? undefined
-        : { locale: defaultLocale, message: originalMessage },
-    [defaultLocale, originalMessage],
-  );
 
   return (
     <LocalizedStringField
@@ -1348,7 +1288,6 @@ export default function DynamicTextField({
           singleLine={singleLine}
           message={translation.message}
           onMessageChange={translation.onMessageChange}
-          original={original}
           locale={locale ?? defaultLocale ?? 'en'}
           site={site}
         />

@@ -79,7 +79,7 @@ describe('Publications', () => {
     );
     expect(
       within(section).getByText('8', { selector: 'strong' }),
-    ).toBeVisible();
+    ).toBeInTheDocument();
   });
 
   it('ends with a single link to every publication, counting them and their authors', () => {

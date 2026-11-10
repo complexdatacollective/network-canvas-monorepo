@@ -380,7 +380,11 @@ describe('localized string coverage', () => {
   });
 
   it('finds exactly the expected localized sites', () => {
+    // The interface text the protocol holds is Network Canvas's, by group,
+    // and covered in `interface-text.test.ts`; these are the field families
+    // a protocol's own copy is written in.
     const found = collectLocalizedStrings(completeProtocol())
+      .filter(({ path }) => path[0] !== 'interfaceText')
       .map(({ path, format, lines, arguments: declaration }) => ({
         path: pathKey(path),
         format,

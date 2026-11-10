@@ -62,8 +62,7 @@ catalog:
   # integration.
   '@formatjs/unplugin': ^1.2.14
   # BCP 47 best-fit matching for app locale negotiation (@codaco/app-i18n);
-  # the protocol localization design (§7.1) adopts this same entry when
-  # protocol-validation's locale helpers land.
+  # protocol-validation's locale helpers share this same entry.
   '@formatjs/intl-localematcher': ^0.10.1
   '@microsoft/api-extractor': ^7.59.4
   '@next/bundle-analyzer': ^16.4.2

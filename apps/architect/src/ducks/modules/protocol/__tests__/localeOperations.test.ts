@@ -14,6 +14,7 @@ import {
   suppliedOptionLabels,
   validateProtocol,
   familyPedigreeWordingIn,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 
 import {
@@ -47,58 +48,60 @@ const protocolIn = (
     title: Record<string, string>;
     options: [Record<string, string>, Record<string, string>];
   },
-): CurrentProtocol => ({
-  name: 'Study',
-  schemaVersion: 9,
-  localization,
-  assetManifest: {},
-  codebook: {
-    node: {
-      [NODE_TYPE]: {
-        name: 'Person',
-        color: 'node-color-seq-1',
-        shape: { default: 'circle' },
-        variables: {
-          [VARIABLE]: {
-            name: 'closeness',
-            type: 'categorical',
-            component: 'CheckboxGroup',
-            options: [
-              { label: text.options[0], value: 'close' },
-              { label: text.options[1], value: 'distant' },
-            ],
+): CurrentProtocol =>
+  // Holding the interface text it uses, as the active protocol always does.
+  withInterfaceText({
+    name: 'Study',
+    schemaVersion: 9,
+    localization,
+    assetManifest: {},
+    codebook: {
+      node: {
+        [NODE_TYPE]: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            [VARIABLE]: {
+              name: 'closeness',
+              type: 'categorical',
+              component: 'CheckboxGroup',
+              options: [
+                { label: text.options[0], value: 'close' },
+                { label: text.options[1], value: 'distant' },
+              ],
+            },
           },
         },
       },
+      edge: {},
+      ego: {},
     },
-    edge: {},
-    ego: {},
-  },
-  stages: [
-    {
-      id: 'welcome',
-      type: 'Information',
-      label: text.stage,
-      title: text.title,
-      items: [],
-    },
-    {
-      id: 'finish',
-      type: 'FinishSession',
-      mode: 'confirmation',
-      label: text.stage,
-      content: text.title,
-      finishedContent: text.title,
-      finishLabel: everyLocale(localization, 'Finish'),
-      finishConfirmation: everyLocale(localization, 'Finish this interview?'),
-      finishFailed: everyLocale(
-        localization,
-        'The interview could not be finished.',
-      ),
-      outcome: 'completed',
-    },
-  ],
-});
+    stages: [
+      {
+        id: 'welcome',
+        type: 'Information',
+        label: text.stage,
+        title: text.title,
+        items: [],
+      },
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        mode: 'confirmation',
+        label: text.stage,
+        content: text.title,
+        finishedContent: text.title,
+        finishLabel: everyLocale(localization, 'Finish'),
+        finishConfirmation: everyLocale(localization, 'Finish this interview?'),
+        finishFailed: everyLocale(
+          localization,
+          'The interview could not be finished.',
+        ),
+        outcome: 'completed',
+      },
+    ],
+  });
 
 const monolingual = () =>
   protocolIn(
@@ -358,13 +361,20 @@ describe('addLocales', () => {
 });
 
 describe('removeLocale', () => {
+  // The interface text the protocol holds in French, which Network Canvas
+  // supplies there.
+  const frenchInterfaceText = collectLocalizedStrings(bilingual()).filter(
+    ({ path, value }) => path[0] === 'interfaceText' && 'fr' in value,
+  ).length;
+
   it('counts the translations a removal deletes', () => {
+    expect(frenchInterfaceText).toBeGreaterThan(0);
     expect(
       getLocaleRemovalImpact(collectLocalizedStrings(bilingual()), 'fr')
         .translationCount,
-      // Six texts of the protocol's own, and the finish stage's three
-      // settings.
-    ).toBe(9);
+      // Six texts of the protocol's own, the finish stage's three settings,
+      // and its interface text.
+    ).toBe(9 + frenchInterfaceText);
   });
 
   it('counts each text once however many readings of it there are', () => {
@@ -381,7 +391,7 @@ describe('removeLocale', () => {
       'fr',
     );
 
-    expect(impact.translationCount).toBe(9);
+    expect(impact.translationCount).toBe(9 + frenchInterfaceText);
     expect(impact.strandedStrings).toEqual([unsaved]);
   });
 

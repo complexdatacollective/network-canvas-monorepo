@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
 import {
@@ -8,7 +9,10 @@ import {
   stageDynamicValueContext,
 } from '../dynamic-value-validation.ts';
 import { dynamicValueArgumentsAt } from '../dynamic-values.ts';
-import { getLocalizedStringDescriptor } from '../localized-string.ts';
+import {
+  getLocalizedStringDescriptor,
+  localizedMessage,
+} from '../localized-string.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
@@ -929,54 +933,103 @@ describe('dynamic values in stage text', () => {
       };
     };
 
-    it('accepts a translation showing what its original shows', () => {
+    const titleIssues = (titles: Record<string, string>) =>
+      issuesOf(twoLanguages(titles)).filter((issue) =>
+        issue.path.includes('title'),
+      );
+
+    it('accepts a translation showing what the default-language text shows', () => {
       expect(
-        issuesOf(
-          twoLanguages({
-            en: guarded('you'),
-            fr: '{you, select, missing {Parlez-nous d’eux.} other {Parlez-nous de {you}.}}',
-          }),
-        ).filter((issue) => issue.path.includes('title')),
+        titleIssues({
+          en: guarded('you'),
+          fr: '{you, select, missing {Parlez-nous d’eux.} other {Parlez-nous de {you}.}}',
+        }),
       ).toEqual([]);
     });
 
-    it('refuses a translation that drops a value in some version', () => {
-      const issues = issuesOf(
-        twoLanguages({
+    it('accepts a translation that leaves out a value the default-language text shows', () => {
+      // Piped values are optional: a translation may word the text without
+      // them, in some version or in all of them.
+      expect(
+        titleIssues({
           en: guarded('you'),
           fr: '{you, select, missing {Parlez-nous d’eux.} other {Parlez-nous de cette personne.}}',
         }),
-      ).filter((issue) => issue.path.includes('title'));
-      expect(issues).toEqual([
-        expect.objectContaining({
-          path: expect.stringMatching(/title\.fr$/),
-          message: expect.stringContaining('must show "{you}"'),
-        }),
-      ]);
+      ).toEqual([]);
+      expect(
+        titleIssues({ en: guarded('you'), fr: 'Parlez-nous d’eux.' }),
+      ).toEqual([]);
     });
 
-    it('lets a plural category for zero alone leave its number out, but not a category covering several', () => {
+    it('accepts a number left out of every plural version of a translation', () => {
       const english =
         '{count, select, missing {Some years.} other {{count, plural, one {# year.} other {# years.}}}}';
-      const translated = (translations: Record<string, string>) =>
-        issuesOf(twoLanguages({ en: english, ...translations })).filter(
-          (issue) => issue.path.includes('title'),
-        );
-      // Russian "one" also covers 21, which the English shows; German "one"
-      // covers -1 as well as 1, and a number answer can be negative.
       expect(
-        translated({
-          de: english.replace('# year.', 'A year.'),
-          ru: '{count, select, missing {Годы.} other {{count, plural, one {Один год.} few {# года.} many {# лет.} other {# года.}}}}',
+        titleIssues({
+          en: english,
+          de: 'Einige Jahre.',
+          ru: '{count, select, missing {Годы.} other {{count, plural, one {Один год.} few {Несколько лет.} many {Много лет.} other {Несколько лет.}}}}',
+          ar: '{count, select, missing {Some years.} other {{count, plural, zero {No years.} other {Some years.}}}}',
         }),
-      ).toEqual([
-        expect.objectContaining({ path: expect.stringMatching(/title\.de$/) }),
-        expect.objectContaining({ path: expect.stringMatching(/title\.ru$/) }),
-      ]);
-      // Arabic "zero" is only 0, so it may say "no years".
+      ).toEqual([]);
+    });
+
+    it('accepts text that shows a value only in a translation', () => {
       expect(
-        translated({
-          ar: '{count, select, missing {Some years.} other {{count, plural, zero {No years.} other {# years.}}}}',
+        titleIssues({
+          en: 'Tell us about them.',
+          fr: guarded('you'),
+        }),
+      ).toEqual([]);
+    });
+
+    it('still checks each translation on its own', () => {
+      // A value that can be missing, shown without a version for when it is.
+      expect(
+        titleIssues({ en: guarded('you'), fr: 'Parlez-nous de {you}.' }),
+      ).toEqual([
+        expect.objectContaining({
+          path: expect.stringMatching(/title\.fr$/),
+          message: expect.stringContaining('"you" can be missing'),
+        }),
+      ]);
+      // A value the stage does not bind.
+      expect(
+        titleIssues({ en: guarded('you'), fr: 'Parlez-nous de {other}.' }),
+      ).toEqual([
+        expect.objectContaining({ path: expect.stringMatching(/title\.fr$/) }),
+      ]);
+    });
+  });
+
+  describe('a required argument declared by a field', () => {
+    const NAMED: MessageArguments = {
+      name: { kind: 'text', required: [{}] },
+    };
+    const field = localizedMessage(z.string(), { arguments: NAMED });
+    const issuesIn = (value: Record<string, string>) => {
+      const result = field.safeParse(value);
+      return result.success
+        ? []
+        : result.error.issues.map((issue) => issue.path.join('.'));
+    };
+
+    it('is enforced alike in the default language and in every translation', () => {
+      expect(issuesIn({ en: 'Add parents for {name}' })).toEqual([]);
+      expect(issuesIn({ en: 'Add parents' })).toEqual(['en']);
+      expect(
+        issuesIn({ en: 'Add parents', fr: 'Ajoutez des parents' }),
+      ).toEqual(['en', 'fr']);
+    });
+
+    it('does not depend on what the default-language text shows', () => {
+      expect(
+        issuesIn({ en: 'Add parents for {name}', fr: 'Ajoutez des parents' }),
+      ).toEqual(['fr']);
+      expect(
+        issuesIn({
+          en: 'Add parents for {name}',
+          fr: 'Ajoutez les parents de {name}',
         }),
       ).toEqual([]);
     });

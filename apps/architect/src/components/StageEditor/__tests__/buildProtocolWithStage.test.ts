@@ -5,7 +5,9 @@ import {
   type LocalizedString,
   type Stage,
   validateProtocol,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
+import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 
 import { buildProtocolWithStage } from '../buildProtocolWithStage';
 
@@ -31,7 +33,8 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     ...stageOverrides,
   } as Stage;
 
-  return {
+  // As the active protocol always is: holding the interface text it uses.
+  return withInterfaceText({
     name: 'Test Protocol',
     schemaVersion: 9,
     localization: { defaultLocale: 'en', locales: ['en'] },
@@ -69,7 +72,7 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
         outcome: 'completed',
       },
     ],
-  };
+  });
 }
 
 describe('buildProtocolWithStage', () => {
@@ -180,5 +183,33 @@ describe('buildProtocolWithStage', () => {
         'FinishSession',
       ]);
     }
+  });
+
+  // A stage of a kind the protocol has none of brings interface text of its
+  // own, which the saved protocol will hold; the draft must hold it too, or
+  // the stage editor could never validate (or preview) the new stage.
+  it('validates a draft adding the first stage of a kind, with the text that kind shows', async () => {
+    const QUICK_ADD_ID = 'name-generator-quick-add-1';
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the committed all-interfaces fixture is a valid current protocol
+    const fixture = allInterfaces as unknown as CurrentProtocol;
+    const quickAdd = fixture.stages.find(({ id }) => id === QUICK_ADD_ID);
+    if (quickAdd === undefined) throw new Error('No quick-add stage');
+    const protocol = withInterfaceText({
+      ...fixture,
+      stages: fixture.stages.filter(
+        ({ type }) => type !== 'NameGeneratorQuickAdd',
+      ),
+    });
+    expect(protocol.interfaceText).not.toHaveProperty('quickAdd');
+    expect((await validateProtocol(protocol, { draft: true })).success).toBe(
+      true,
+    );
+
+    const { id: _id, ...newStage } = quickAdd;
+    const built = buildProtocolWithStage(protocol, newStage as Stage, null);
+
+    expect(built.interfaceText).toHaveProperty('quickAdd');
+    const result = await validateProtocol(built, { draft: true });
+    expect(result.error?.issues).toBeUndefined();
   });
 });

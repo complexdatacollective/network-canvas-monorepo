@@ -17,6 +17,7 @@ import {
   hasDefaultFinishSessionText,
 } from '../finish-session-defaults.ts';
 import { findFinishStageTextProblems } from '../finish-stage-text.ts';
+import { withInterfaceText } from '../interface-text.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { finishSessionStage } from '../stages/finish-session.ts';
 import {
@@ -59,10 +60,11 @@ const information = (id: string) => ({
   items: [{ id: `${id}-text`, type: 'text', content: { en: 'Text' } }],
 });
 
-const protocolWith = (stages: unknown[]) => ({
-  ...createBaseProtocol(),
-  stages,
-});
+const protocolWith = (stages: unknown[]) =>
+  withInterfaceText({
+    ...createBaseProtocol(),
+    stages,
+  });
 
 const issues = (stages: unknown[]) => {
   const result = ProtocolSchemaV9.safeParse(protocolWith(stages));
@@ -420,11 +422,13 @@ describe('supplied finish text', () => {
       localization: { defaultLocale: 'en', locales },
     });
     expect(
-      ProtocolSchemaV9.safeParse({
-        ...createBaseProtocol(),
-        localization: { defaultLocale: 'en', locales },
-        stages: [stage],
-      }).success,
+      ProtocolSchemaV9.safeParse(
+        withInterfaceText({
+          ...createBaseProtocol(),
+          localization: { defaultLocale: 'en', locales },
+          stages: [stage],
+        }),
+      ).success,
     ).toBe(true);
   });
 
@@ -591,15 +595,17 @@ describe('supplied finish text', () => {
 
 describe('closing text missing in the default language', () => {
   const japanese = { defaultLocale: 'ja', locales: ['ja'] };
-  // As Architect creates it: nothing in the codebook yet.
-  const japaneseProtocol = () => ({
-    ...createBaseProtocol(),
-    codebook: { node: {}, edge: {}, ego: {} },
-    localization: japanese,
-    stages: [
-      createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
-    ],
-  });
+  // As Architect creates it: nothing in the codebook yet, and the interface
+  // text it uses, which has no wording in Japanese either.
+  const japaneseProtocol = () =>
+    withInterfaceText({
+      ...createBaseProtocol(),
+      codebook: { node: {}, edge: {}, ego: {} },
+      localization: japanese,
+      stages: [
+        createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+      ],
+    });
 
   // Network Canvas writes its wording only in a language it has it in, so
   // the settings are left for the researcher to write too.
@@ -636,7 +642,20 @@ describe('closing text missing in the default language', () => {
       message:
         "Network Canvas has no built-in wording in the protocol's default language (ja), so this text must be written in it, or a language Network Canvas has wording in made the default.",
     });
-    expect(result.error?.issues).toEqual([
+    const found = result.error?.issues ?? [];
+    // The interface text has no Japanese wording either: each entry is
+    // built-in wording to write, like the finish stage's settings.
+    const interfaceTextIssues = found.filter(
+      ({ path }) => path[0] === 'interfaceText',
+    );
+    expect(interfaceTextIssues.length).toBeGreaterThan(0);
+    expect(
+      interfaceTextIssues.every(
+        ({ code, path }) =>
+          code === BUILT_IN_WORDING_MISSING && path.at(-1) === 'ja',
+      ),
+    ).toBe(true);
+    expect(found.filter(({ path }) => path[0] !== 'interfaceText')).toEqual([
       {
         code: FINISH_STAGE_TEXT_MISSING,
         path: ['stages', 0, 'content', 'ja'],

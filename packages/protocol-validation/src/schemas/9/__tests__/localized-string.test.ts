@@ -390,7 +390,9 @@ describe('schema version boundary', () => {
   it('accepts localized copy through the versioned schema', () => {
     expect(
       VersionedProtocolSchema.safeParse(
-        schema9Protocol(localized('Welcome'), localized('Hello')),
+        withFinishStage(
+          schema9Protocol(localized('Welcome'), localized('Hello')),
+        ),
       ).success,
     ).toBe(true);
   });

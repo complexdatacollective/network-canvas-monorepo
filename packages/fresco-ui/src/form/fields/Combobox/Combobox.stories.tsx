@@ -78,6 +78,23 @@ const meta: Meta<typeof ComboboxField> = {
         defaultValue: { summary: 'No items found.' },
       },
     },
+    'optionFromSearch': {
+      control: false,
+      description:
+        'An option that depends on the text typed into the search box, such as a value that can be entered but is too many to list. Return undefined when the text offers nothing.',
+      table: {
+        type: { summary: '(search: string) => ComboboxOption | undefined' },
+      },
+    },
+    'single': {
+      control: 'boolean',
+      description:
+        'Choose one option instead of several. Choosing an option replaces the choice and closes the list; the value is a list holding at most one value.',
+      table: {
+        type: { summary: 'boolean' },
+        defaultValue: { summary: 'false' },
+      },
+    },
     'showSearch': {
       control: 'boolean',
       description: 'Toggle search input visibility',
@@ -812,6 +829,128 @@ export const LocalizedOptions: Story = {
       'dir',
       'rtl',
     );
+  },
+};
+
+const topicOptions: ComboboxOption[] = [
+  { value: 'diet', label: 'Diet' },
+  { value: 'exercise', label: 'Exercise' },
+  { value: 'sleep', label: 'Sleep' },
+];
+
+/**
+ * `optionFromSearch` offers an option made from what was typed, after the
+ * options that match it: here any word can be added as a topic. It is not
+ * offered when the word is already a listed topic, and once chosen it stays
+ * chosen after the search is cleared.
+ */
+export const OptionFromSearch: Story = {
+  render: function OptionFromSearchStory() {
+    const [value, setValue] = useState<(string | number)[]>([]);
+
+    return (
+      <div className="w-80">
+        <ComboboxField
+          name="topics"
+          aria-label="Topics"
+          options={topicOptions}
+          searchPlaceholder="Search or type a new topic"
+          optionFromSearch={(search) =>
+            topicOptions.some((option) => option.value === search.toLowerCase())
+              ? undefined
+              : { value: search.toLowerCase(), label: `Add “${search}”` }
+          }
+          showSelectAll={false}
+          value={value}
+          onChange={(v) => setValue(v ?? [])}
+        />
+      </div>
+    );
+  },
+  play: async () => {
+    await userEvent.click(
+      await screen.findByRole('combobox', { name: 'Topics' }),
+    );
+    const search = await screen.findByPlaceholderText(
+      'Search or type a new topic',
+    );
+
+    await userEvent.type(search, 'sle');
+    const matching = await screen.findAllByRole('option');
+    await expect(matching.map((option) => option.textContent)).toEqual([
+      'Sleep',
+      'Add “sle”',
+    ]);
+
+    await userEvent.clear(search);
+    await userEvent.type(search, 'sleep');
+    await expect(
+      (await screen.findAllByRole('option')).map(
+        (option) => option.textContent,
+      ),
+    ).toEqual(['Sleep']);
+
+    await userEvent.clear(search);
+    await userEvent.type(search, 'reading');
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Add “reading”' }),
+    );
+    await userEvent.clear(search);
+    await userEvent.keyboard('{Escape}');
+
+    await expect(
+      screen.getByRole('combobox', { name: 'Topics' }),
+    ).toHaveTextContent('1 item selected');
+  },
+};
+
+/**
+ * With `single`, the field chooses one option: choosing another replaces the
+ * choice and closes the list. `optionFromSearch` works the same way.
+ */
+export const SingleChoice: Story = {
+  render: function SingleChoiceStory() {
+    const [value, setValue] = useState<(string | number)[]>([]);
+
+    return (
+      <div className="w-80">
+        <ComboboxField
+          name="single-topic"
+          aria-label="Main topic"
+          single
+          options={topicOptions}
+          optionFromSearch={(search) => ({
+            value: search.toLowerCase(),
+            label: `Add “${search}”`,
+          })}
+          renderValue={(selected) =>
+            selected.map((option) => presentationalTextValue(option.label))
+          }
+          searchPlaceholder="Search or type a new topic"
+          value={value}
+          onChange={(v) => setValue(v ?? [])}
+        />
+      </div>
+    );
+  },
+  play: async () => {
+    const trigger = await screen.findByRole('combobox', {
+      name: 'Main topic',
+    });
+    await userEvent.click(trigger);
+    await userEvent.click(await screen.findByRole('option', { name: 'Diet' }));
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+    await expect(trigger).toHaveTextContent('Diet');
+
+    await userEvent.click(trigger);
+    await userEvent.type(
+      await screen.findByPlaceholderText('Search or type a new topic'),
+      'reading',
+    );
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Add “reading”' }),
+    );
+    await waitFor(() => expect(trigger).toHaveTextContent('Add “reading”'));
   },
 };
 

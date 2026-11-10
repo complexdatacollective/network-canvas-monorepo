@@ -634,6 +634,25 @@ const heldText = (protocol: ProtocolDocument): InterfaceText =>
     : {};
 
 /**
+ * The groups `protocol` uses, each with the entries of it the protocol shows:
+ * the interface text it must hold (`findMissingInterfaceText`), and so what
+ * `interfaceTextFor` writes.
+ */
+const usedInterfaceText = (
+  protocol: ProtocolDocument,
+): readonly Readonly<{ group: GroupName; keys: readonly string[] }>[] =>
+  GROUP_NAMES.flatMap((group) => {
+    const { entries, usedBy, entriesUsedBy }: InterfaceTextGroup =
+      INTERFACE_TEXT_GROUPS[group];
+    if (!usedBy(protocol)) return [];
+    const shown = entriesUsedBy?.(protocol);
+    const keys = Object.keys(entries).filter(
+      (key) => shown === undefined || shown.has(key),
+    );
+    return [{ group, keys }];
+  });
+
+/**
  * The interface text `protocol` should hold: each group it uses, keeping
  * every entry it already has and gaining Network Canvas's wording for any it
  * lacks, and no group or entry it does not use.
@@ -641,19 +660,22 @@ const heldText = (protocol: ProtocolDocument): InterfaceText =>
 export const interfaceTextFor = (protocol: ProtocolDocument): InterfaceText => {
   const held = heldText(protocol);
   const next: Partial<Record<GroupName, Record<string, LocalizedString>>> = {};
-  for (const group of GROUP_NAMES) {
-    const { entries, usedBy, entriesUsedBy }: InterfaceTextGroup =
-      INTERFACE_TEXT_GROUPS[group];
-    if (!usedBy(protocol)) continue;
-    const shown = entriesUsedBy?.(protocol);
+  for (const { group, keys } of usedInterfaceText(protocol)) {
+    const entries: Readonly<Record<string, InterfaceTextEntry>> =
+      INTERFACE_TEXT_GROUPS[group].entries;
     const current = held[group] ?? {};
     next[group] = Object.fromEntries(
-      Object.entries(entries)
-        .filter(([key]) => shown === undefined || shown.has(key))
-        .map(([key, entry]) => [
-          key,
-          current[key] ?? suppliedValue(entry, protocol.localization),
-        ]),
+      keys.flatMap((key) => {
+        const entry = entries[key];
+        return entry === undefined
+          ? []
+          : [
+              [
+                key,
+                current[key] ?? suppliedValue(entry, protocol.localization),
+              ],
+            ];
+      }),
     );
   }
   return next;
@@ -675,6 +697,45 @@ export const withInterfaceText = <Protocol extends ProtocolDocument>(
     protocol.interfaceText !== undefined
     ? protocol
     : { ...protocol, interfaceText: next };
+};
+
+/**
+ * Interface text a protocol shows but does not hold: a whole group, with the
+ * entries of it the protocol shows, or one entry of a group it holds.
+ */
+type MissingInterfaceText = Readonly<{
+  group: string;
+  /** The entry missing, or undefined when the whole group is. */
+  key?: string;
+  /** The entries of the group the protocol shows, each of which it must hold. */
+  entries: readonly string[];
+}>;
+
+/**
+ * The interface text `protocol` shows but does not hold: each group it uses
+ * that it lacks, and each entry it shows of a group it holds that the group
+ * lacks — what `interfaceTextFor` would add (`usedInterfaceText`). A protocol
+ * must hold all of it, as the interview shows these words in the protocol's
+ * language from what it holds. An entry may hold no text yet where the rules
+ * for supplied wording allow (see `findEmptyTextPaths`), but it must be there.
+ * A group or entry held as undefined is missing, as `interfaceTextFor` fills
+ * it and a saved file drops it.
+ */
+export const findMissingInterfaceText = (
+  protocol: ProtocolDocument,
+): readonly MissingInterfaceText[] => {
+  const held = isRecord(protocol.interfaceText) ? protocol.interfaceText : {};
+  return usedInterfaceText(protocol).flatMap(
+    ({ group, keys }): MissingInterfaceText[] => {
+      const current = Object.hasOwn(held, group) ? held[group] : undefined;
+      if (!isRecord(current)) return [{ group, entries: keys }];
+      return keys
+        .filter(
+          (key) => !Object.hasOwn(current, key) || current[key] === undefined,
+        )
+        .map((key) => ({ group, key, entries: keys }));
+    },
+  );
 };
 
 /** One interface text, by group and name, as it reads after a change. */
