@@ -12,12 +12,12 @@ import {
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
+import ProgressRing from '@codaco/fresco-ui/ProgressRing';
 import {
   defineToolbarChild,
   ToolbarButton,
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
-import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { FamilyPedigreeStageDefinition } from '@codaco/protocol-validation';
 
 import { useLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
@@ -51,54 +51,20 @@ type CompletenessTrackerProps = {
 
 /** A ring that fills as the family nears completion, with the percentage in
  * its middle, or a tick once complete. It fills its button to the edge. */
-function ProgressRing({ fraction }: { fraction: number }) {
+function CompletenessRing({ fraction }: { fraction: number }) {
   // Shown among the protocol's text, so in its digits.
   const contentFormat = useContentFormat();
-  const strokeWidth = 3.5;
-  // The stroke's outer edge meets the edge of the 40-unit view box.
-  const radius = 20 - strokeWidth / 2;
-  const circumference = 2 * Math.PI * radius;
   const complete = fraction >= 1;
   return (
-    <span className="relative inline-flex size-full items-center justify-center">
-      <svg viewBox="0 0 40 40" className="size-full -rotate-90" aria-hidden>
-        <circle
-          cx="20"
-          cy="20"
-          r={radius}
-          fill="none"
-          strokeWidth={strokeWidth}
-          className="stroke-current opacity-20"
-        />
-        <circle
-          cx="20"
-          cy="20"
-          r={radius}
-          fill="none"
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - fraction)}
-          className={cx(
-            'transition-[stroke-dashoffset] duration-500',
-            complete ? 'stroke-success' : 'stroke-primary',
-          )}
-        />
-      </svg>
+    <ProgressRing value={fraction} complete={complete}>
       {complete ? (
-        <Check
-          aria-hidden
-          className="text-success absolute size-8 stroke-[4px]"
-        />
+        <Check aria-hidden className="text-success size-8 stroke-[4px]" />
       ) : (
-        <span
-          aria-hidden
-          className="absolute text-sm font-semibold tabular-nums"
-        >
+        <span aria-hidden className="text-sm font-semibold tabular-nums">
           {contentFormat.formatPercent(fraction)}
         </span>
       )}
-    </span>
+    </ProgressRing>
   );
 }
 
@@ -286,7 +252,7 @@ function CompletenessTracker({
           }}
           onBlur={blur}
         >
-          <ProgressRing fraction={fraction} />
+          <CompletenessRing fraction={fraction} />
         </ToolbarButton>
       }
       contentProps={{

@@ -8,7 +8,7 @@ import {
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 
-import { ProgressRing } from './StageWalkthrough';
+import { StepRing } from './StageWalkthrough';
 import {
   setWalkthroughCollapsed,
   takeWalkthroughFocus,
@@ -69,7 +69,7 @@ export const ResumeWalkthroughControl = defineToolbarChild(
       <ToolbarIconButton
         ref={setRef}
         aria-label={intl.formatMessage(messages.resumeLabel, values)}
-        icon={<ProgressRing index={index} total={total} />}
+        icon={<StepRing index={index} total={total} />}
         tooltip={
           <span className="flex flex-col gap-0.5">
             <Eyebrow render={<span />}>

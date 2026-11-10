@@ -35,6 +35,7 @@ import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
+import ProgressRing from '@codaco/fresco-ui/ProgressRing';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
@@ -354,7 +355,7 @@ function MinimizedPill({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={SPRING}
     >
-      <ProgressRing index={index} total={total} />
+      <StepRing index={index} total={total} />
       <span className="flex max-w-[min(14rem,calc(100vw-16rem))] min-w-0 flex-col">
         <Eyebrow render={<span />}>
           {intl.formatMessage(messages.walkthrough)}
@@ -374,42 +375,14 @@ function MinimizedPill({
   );
 }
 
-const RING_RADIUS = 16;
-const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
-
-export function ProgressRing({
+/** How far through the walkthrough the researcher is, as "3/18" in a ring. */
+export function StepRing({
   index,
   total,
 }: Readonly<{ index: number; total: number }>) {
   const intl = useAppIntl();
-  const done = (index + 1) / total;
   return (
-    <span className="relative grid size-10 shrink-0 place-items-center">
-      <svg
-        aria-hidden
-        viewBox="0 0 40 40"
-        className="absolute inset-0 -rotate-90"
-      >
-        <circle
-          cx={20}
-          cy={20}
-          r={RING_RADIUS}
-          fill="none"
-          className="stroke-current/12"
-          strokeWidth={3.5}
-        />
-        <circle
-          cx={20}
-          cy={20}
-          r={RING_RADIUS}
-          fill="none"
-          className="stroke-primary"
-          strokeWidth={3.5}
-          strokeLinecap="round"
-          strokeDasharray={RING_LENGTH}
-          strokeDashoffset={RING_LENGTH * (1 - done)}
-        />
-      </svg>
+    <ProgressRing value={(index + 1) / total} className="size-10 shrink-0">
       <span className="sr-only">
         {intl.formatMessage(messages.progress, { index: index + 1, total })}
       </span>
@@ -419,7 +392,7 @@ export function ProgressRing({
           total,
         })}
       </span>
-    </span>
+    </ProgressRing>
   );
 }
 
