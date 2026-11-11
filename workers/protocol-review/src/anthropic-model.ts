@@ -13,9 +13,13 @@ import {
 } from './constants.ts';
 import { REVIEW_OUTPUT_SCHEMA } from './findings.ts';
 import {
+  BILLING_UNKNOWN,
+  type FailedCallBilling,
   ModelCallError,
   type ModelFailureReason,
+  REJECTED,
   type ReviewModel,
+  reported,
 } from './model.ts';
 import type { TokenUsage } from './pricing.ts';
 
@@ -76,6 +80,20 @@ export const classifyProviderError = (
   return { reason: 'unknown', status: 0 };
 };
 
+/**
+ * Whether the provider refused the request outright: it answered with an HTTP
+ * error status, so no answer began. The SDK builds that error from the
+ * response (`APIError.generate`), and it is the only kind that carries a
+ * status. A lost connection, a timeout and an abort carry none, and neither
+ * does an error event in the middle of a stream; the provider may have billed
+ * for any of those.
+ */
+export const isConfirmedRejection = (error: unknown): boolean =>
+  error instanceof APIError &&
+  !(error instanceof APIConnectionError) &&
+  !(error instanceof APIUserAbortError) &&
+  typeof error.status === 'number';
+
 const toUsage = (
   usage: Anthropic.Usage,
   outputTokens: number | null,
@@ -86,18 +104,24 @@ const toUsage = (
   outputTokens,
 });
 
-export const createAnthropicModel = (apiKey: string): ReviewModel => {
+export const createAnthropicModel = (
+  apiKey: string,
+  options: { fetch?: typeof fetch } = {},
+): ReviewModel => {
   const client = new Anthropic({
     apiKey,
-    // One retry covers a passing overload before the answer starts; more
-    // would keep the researcher waiting on a provider that is down.
-    maxRetries: 1,
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+    // No retries. A retried call reports only the usage of the attempt that
+    // succeeded, so an earlier attempt that failed after the provider began
+    // work would be billed and never counted against the day's budget. The
+    // researcher is told the service is unavailable and can try again.
+    maxRetries: 0,
     timeout: MODEL_TIMEOUT_MS,
   });
 
   return async ({ system, user, signal, onStart, onText }) => {
-    // Input is billed once the provider starts answering; how much output
-    // it wrote is only known at the end.
+    // The input is reported when the provider starts answering; how much
+    // output it wrote is only known at the end.
     let started: TokenUsage | null = null;
     try {
       const stream = client.messages.stream(
@@ -144,7 +168,12 @@ export const createAnthropicModel = (apiKey: string): ReviewModel => {
       };
     } catch (error) {
       const { reason, status } = classifyProviderError(error);
-      throw new ModelCallError(reason, status, started);
+      const billing: FailedCallBilling = started
+        ? reported(started)
+        : isConfirmedRejection(error)
+          ? REJECTED
+          : BILLING_UNKNOWN;
+      throw new ModelCallError(reason, status, billing);
     }
   };
 };

@@ -27,12 +27,17 @@ is `src/contract.ts`. Architect imports it as
    `src/prompt/protocol-reference.ts`. While it writes, the service sends
    `progress` events; when it is done, one `result` event.
 5. The reservation is settled to what the review really cost, as reported by
-   the API.
+   the API. When a call fails without saying what it cost (a lost connection,
+   a timeout, a cancellation before the answer began), the whole reservation
+   is kept, because the provider may have billed for it. Only a request the
+   provider refused outright, with an HTTP error status before any answer
+   began, is settled to nothing.
 
 If the model provider fails (a bad key, no credit, overload, an outage, a
 refusal, an answer that does not parse, a timeout), the researcher gets
 `service_unavailable` and the review does not count against their hourly
-limit. The service logs a fixed reason code and the HTTP status, and sends the
+limit. The service does not retry a failed call: a retried call reports only
+the cost of its last attempt, so the researcher presses Try again instead. The service logs a fixed reason code and the HTTP status, and sends the
 team one PostHog event, `protocol_review_service_failure`, holding only that
 code and status.
 
@@ -51,16 +56,26 @@ code and status.
 
 An hourly window starts at the first review counted against an installation
 or address and lasts one hour. A review that fails or is refused gives its
-count back; a review the researcher cancels still counts. Every limit and
+count back; a review the researcher cancels still counts, including one
+cancelled before the model was called. A cancelled review stops the model
+call at once (or never starts it), whenever the researcher leaves: while the
+request is being read and admitted, before the answer begins, or while it
+streams. Every limit and
 price is a constant in source, never read from the environment, so the app
 that explains the limits and the service that enforces them cannot disagree.
 
 The limits are kept in one SQLite-backed Durable Object (`ReviewLimiter`),
 so the counts are exact even when reviews arrive together. Before calling the
-model, a review reserves its worst case from the day's budget (its prompt at
-two characters a token at the cache-write price, plus the whole answer cap);
-afterwards the reservation is replaced by the real cost. Concurrent reviews
-therefore cannot together overshoot the ceiling. When the day's remaining
+model, a review reserves its worst case from the day's budget: one token for
+every UTF-8 byte it sends (the instructions, the protocol and study details,
+and the answer's schema), since no token stands for less than a byte, plus
+1,000 tokens for the API's framing, all at the cache-write price, plus the
+whole answer cap. Afterwards the reservation is replaced by the real cost.
+Concurrent reviews therefore cannot together overshoot the ceiling. The bound
+is generous: the instructions alone reserve about $0.98, a typical protocol
+of 50–150 KB about $1.25–$1.75, and a review of the largest allowed request
+(750,000 bytes) about $4.75, so near the ceiling only a few large reviews can
+run at once, though each settles to its real cost when it ends. When the day's remaining
 budget cannot cover a reservation, the review is refused with
 `503 daily_limit` until the next midnight UTC.
 

@@ -13,9 +13,14 @@ import {
   ReviewRequestSchema,
 } from './contract.ts';
 import { allowedOrigin, corsHeaders, preflightHeaders } from './cors.ts';
-import { normaliseFindings } from './findings.ts';
+import { normaliseFindings, REVIEW_OUTPUT_SCHEMA } from './findings.ts';
 import type { AdmitRequest, AdmitResult, SettleRequest } from './limiter.ts';
-import { ModelCallError, type ReviewModel } from './model.ts';
+import {
+  BILLING_UNKNOWN,
+  type FailedCallBilling,
+  ModelCallError,
+  type ReviewModel,
+} from './model.ts';
 import type { FailureLog, FailureNotifier } from './notify.ts';
 import { costMicros, reservationMicros } from './pricing.ts';
 import { buildReviewMessage, REVIEW_SYSTEM_PROMPT } from './prompt/build.ts';
@@ -71,6 +76,24 @@ const errorResponse = (
     status,
     headers: { ...headers, 'Content-Type': 'application/json' },
   });
+
+/** The response to a client that went away before the review began. */
+const CLIENT_CLOSED_REQUEST = 499;
+
+/**
+ * What a failed call is recorded as having cost: nothing only when the
+ * provider refused it outright; what it reported, with any unreported output
+ * charged at the cap; and otherwise the whole reservation, which is the most
+ * the call could have cost.
+ */
+const mayHaveBilled = (
+  billing: FailedCallBilling,
+  reservedMicros: number,
+): number => {
+  if (billing.kind === 'rejected') return 0;
+  if (billing.kind === 'reported') return costMicros(billing.usage);
+  return reservedMicros;
+};
 
 const SERVICE_UNAVAILABLE: ReviewEvent = {
   type: 'error',
@@ -145,7 +168,13 @@ const review = async (
   const admitted = await deps.limiter.admit({
     installationKey,
     addressKey,
-    reservationMicros: reservationMicros(system.length + user.length),
+    // Everything the request carries: the instructions, the review request
+    // and the schema the answer must follow.
+    reservationMicros: reservationMicros([
+      system,
+      user,
+      JSON.stringify(REVIEW_OUTPUT_SCHEMA),
+    ]),
     now: receivedAt,
   });
   if (!admitted.ok) {
@@ -154,6 +183,25 @@ const review = async (
       : errorResponse(503, 'daily_limit', admitted.retryAt, cors);
   }
   const { admission, quota } = admitted;
+
+  // The client may have gone away while the body was read and the review
+  // admitted. An abort event is not repeated for a late listener, so the
+  // signal's state is checked as well as subscribed to, with no await between
+  // the two and the call. A review cancelled before its call started spent
+  // nothing, and still counts against the hourly limit, as any cancelled
+  // review does.
+  if (request.signal?.aborted) {
+    try {
+      await deps.limiter.settle({
+        admission,
+        actualMicros: 0,
+        refundHourly: false,
+      });
+    } catch {
+      deps.log({ reason: 'settle_failed', status: 0 });
+    }
+    return new Response(null, { status: CLIENT_CLOSED_REQUEST, headers: cors });
+  }
 
   const progressIntervalMs =
     deps.timing?.progressIntervalMs ?? PROGRESS_INTERVAL_MS;
@@ -167,7 +215,9 @@ const review = async (
     timedOut = true;
     abort.abort();
   }, timeoutMs);
-  request.signal?.addEventListener('abort', () => abort.abort());
+  request.signal?.addEventListener('abort', () => abort.abort(), {
+    once: true,
+  });
 
   // The stream, once the response has been returned. Until then, progress is
   // only counted.
@@ -242,11 +292,11 @@ const review = async (
       const failure =
         error instanceof ModelCallError
           ? error
-          : new ModelCallError('unknown', 0, null);
-      const cost = failure.usage ? costMicros(failure.usage) : 0;
+          : new ModelCallError('unknown', 0, BILLING_UNKNOWN);
+      const cost = mayHaveBilled(failure.billing, admission.reservationMicros);
       if (failure.reason === 'cancelled' && !timedOut) {
         // The client went away. The review still counts against the hourly
-        // limit; the budget keeps only what was spent.
+        // limit; the budget keeps what the call may have cost.
         await settle(cost, false);
         return null;
       }

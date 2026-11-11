@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { MAX_OUTPUT_TOKENS } from '../constants.ts';
+import {
+  MAX_OUTPUT_TOKENS,
+  RESERVATION_OVERHEAD_TOKENS,
+} from '../constants.ts';
 import { REVIEW_LIMITS, ReviewErrorSchema } from '../contract.ts';
 import { admit, settle, utcDay } from '../limiter.ts';
-import { ModelCallError } from '../model.ts';
+import { ModelCallError, REJECTED, reported } from '../model.ts';
 import {
   costMicros,
   DAILY_CEILING_MICROS,
@@ -125,7 +128,7 @@ describe('hourly limits', () => {
     const harness = createHarness(
       scriptedModel({
         start: false,
-        error: new ModelCallError('overloaded', 529, null),
+        error: new ModelCallError('overloaded', 529, REJECTED),
       }),
     );
     const failed = await runReview(harness);
@@ -137,10 +140,11 @@ describe('hourly limits', () => {
   it('keeps the count of a review the client walked away from', async () => {
     const model = scriptedModel({
       waitForAbort: {
-        abortError: new ModelCallError('cancelled', 0, {
-          ...USAGE,
-          outputTokens: null,
-        }),
+        abortError: new ModelCallError(
+          'cancelled',
+          0,
+          reported({ ...USAGE, outputTokens: null }),
+        ),
       },
     });
     const harness = createHarness(model);
@@ -283,13 +287,14 @@ describe('the daily spending ceiling', () => {
     expect(store.spend.get(utcDay(START))).toBe(100_000 + reservation);
   });
 
-  it('settles a failed review to what was billed, and nothing when nothing was', async () => {
+  it('settles a failed review to what it reported, and nothing when the provider refused it', async () => {
     const billed = createHarness(
       scriptedModel({
-        error: new ModelCallError('connection', 0, {
-          ...USAGE,
-          outputTokens: null,
-        }),
+        error: new ModelCallError(
+          'connection',
+          0,
+          reported({ ...USAGE, outputTokens: null }),
+        ),
       }),
     );
     await runReview(billed);
@@ -300,22 +305,21 @@ describe('the daily spending ceiling', () => {
     const unbilled = createHarness(
       scriptedModel({
         start: false,
-        error: new ModelCallError('authentication', 401, null),
+        error: new ModelCallError('authentication', 401, REJECTED),
       }),
     );
     await runReview(unbilled);
     expect(unbilled.store.spend.get(utcDay(START))).toBe(0);
   });
 
-  it('reserves at least the worst case of the prompt', () => {
-    const characters = 100_000;
-    const reserved = reservationMicros(characters);
-    // The reservation assumes two characters per token at the cache-write
-    // price, so it covers a prompt at a realistic four characters per token.
-    expect(reserved).toBeGreaterThan(
+  it('reserves one token per UTF-8 byte of every text, plus the framing', () => {
+    const texts = ['x'.repeat(100_000), '朋友😀'.repeat(1_000)];
+    // 100,000 one-byte characters, then 1,000 × (3 + 3 + 4) bytes.
+    const bytes = 100_000 + 10_000;
+    expect(reservationMicros(texts)).toBe(
       costMicros({
         inputTokens: 0,
-        cacheCreationInputTokens: characters / 4,
+        cacheCreationInputTokens: bytes + RESERVATION_OVERHEAD_TOKENS,
         cacheReadInputTokens: 0,
         outputTokens: MAX_OUTPUT_TOKENS,
       }),

@@ -63,14 +63,12 @@ export const PROGRESS_INTERVAL_MS = 250;
 export const HEARTBEAT_INTERVAL_MS = 15_000;
 
 /**
- * Characters of prompt per token assumed when reserving budget before the
- * call. Real English prose runs at about four characters a token; protocol
- * JSON, full of ids and punctuation, runs denser. Two is deliberately
- * pessimistic, so a reservation covers the real cost.
+ * Tokens added to every reservation for the framing the API puts around the
+ * text it is sent: role and turn markers, the thinking and structured-output
+ * settings. The text itself is reserved at one token per UTF-8 byte (see
+ * `reservationMicros`), which is already an upper bound; this allowance
+ * covers only what is not in that text.
  */
-export const RESERVATION_CHARS_PER_TOKEN = 2;
-
-/** Tokens added to every reservation for message framing. */
 export const RESERVATION_OVERHEAD_TOKENS = 1_000;
 
 /** The PostHog endpoint failure notices are sent to. */
