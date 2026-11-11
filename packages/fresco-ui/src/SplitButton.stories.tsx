@@ -51,13 +51,13 @@ function PopoverActions({
       </div>
       <div className="grid gap-2 text-sm">
         <button
-          className="focusable rounded px-3 py-2 text-left hover:bg-current/10"
+          className="focusable rounded px-3 py-2 text-start hover:bg-current/10"
           type="button"
         >
           {firstAction}
         </button>
         <button
-          className="focusable rounded px-3 py-2 text-left hover:bg-current/10"
+          className="focusable rounded px-3 py-2 text-start hover:bg-current/10"
           type="button"
         >
           {secondAction}

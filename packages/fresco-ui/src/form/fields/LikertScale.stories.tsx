@@ -649,3 +649,55 @@ export const AllStates: Story = {
     </div>
   ),
 };
+
+/**
+ * The scale runs from the right in a right-to-left language, and its labels
+ * have to run with it. At a width where the labels turn on their side, each is
+ * placed by its own position along the track rather than by the row's flow, so
+ * this is where a label could end up under the opposite end's value.
+ */
+export const RightToLeftRotatedLabels: Story = {
+  globals: { appDirection: 'rtl' },
+  args: {
+    options: agreementOptions,
+    value: 1,
+  },
+  render: (args) => (
+    <div style={{ width: 380 }}>
+      <ControlledLikert {...args} initialValue={args.value} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(document.documentElement.dir).toBe('rtl');
+
+    const firstLabel = agreementOptions[0]!.label;
+    const lastLabel = agreementOptions.at(-1)!.label;
+    const centre = (element: Element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.left + rect.width / 2;
+    };
+    // The field also renders each label in a hidden copy it measures, so the
+    // one on show is picked out by being placed along the track.
+    const rotatedLabel = async (text: string) => {
+      const label = (await canvas.findAllByText(text)).find(
+        (element) => element.style.insetInlineStart !== '',
+      );
+      await expect(label).toBeDefined();
+      return label!;
+    };
+
+    // The story is about the turned labels; fail if the width stops
+    // producing them.
+    const first = await rotatedLabel(firstLabel);
+    const last = await rotatedLabel(lastLabel);
+    await expect(getComputedStyle(first).rotate).toBe('-45deg');
+
+    // The thumb is on the first value, at the right-hand end of the track, and
+    // the first label is centred under it.
+    const thumb = canvasElement.querySelector('[data-index="0"]');
+    await expect(thumb).not.toBeNull();
+    await expect(centre(first)).toBeGreaterThan(centre(last));
+    await expect(Math.abs(centre(first) - centre(thumb!))).toBeLessThan(2);
+  },
+};

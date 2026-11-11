@@ -64,6 +64,7 @@ export const Presets: Story = {
                 </div>
                 <div className="bg-surface-1 relative h-12 flex-1 overflow-hidden rounded">
                   <div
+                    // oxlint-disable-next-line tailwindcss/enforce-logical -- the demo slides the box rightwards from the left edge
                     className={`bg-primary absolute top-0 left-0 h-12 w-12 rounded ${PRESET_CLASSES[preset]}`}
                     style={{
                       transform: shifted
@@ -171,6 +172,7 @@ export const ArbitraryValues: Story = {
                 </div>
                 <div className="bg-surface-1 relative h-12 overflow-hidden rounded">
                   <div
+                    // oxlint-disable-next-line tailwindcss/enforce-logical -- the demo slides the box rightwards from the left edge
                     className={`bg-primary absolute top-0 left-0 h-12 w-12 rounded ${className}`}
                     style={{
                       transform: shifted

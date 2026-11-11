@@ -283,7 +283,7 @@ export default function VisualAnalogScaleField(
               <div
                 className={cx(
                   controlLabelVariants({ size: 'sm' }),
-                  'max-w-24 text-left',
+                  'max-w-24 text-start',
                 )}
                 {...presentationalTextProps(minLabel)}
               >
@@ -296,7 +296,7 @@ export default function VisualAnalogScaleField(
               <div
                 className={cx(
                   controlLabelVariants({ size: 'sm' }),
-                  'max-w-24 text-right',
+                  'max-w-24 text-end',
                 )}
                 {...presentationalTextProps(maxLabel)}
               >

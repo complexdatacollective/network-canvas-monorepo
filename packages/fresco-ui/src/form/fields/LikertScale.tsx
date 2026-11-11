@@ -310,9 +310,9 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                         options.length === 1
                           ? 'text-center'
                           : isFirst
-                            ? 'text-left'
+                            ? 'text-start'
                             : isLast
-                              ? 'text-right'
+                              ? 'text-end'
                               : 'text-center',
                       )}
                     />
@@ -325,8 +325,11 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
 
         {options.length > 1 && layout.tier === 'rotated' && (
           // `mx-3` insets the band to match the track (which sits inside the
-          // control's `px-3`), so `left: %` maps onto the same axis as the ticks
-          // and each rotated label centres on its mark.
+          // control's `px-3`), so a percentage from the start edge maps onto
+          // the same axis as the thumb and each rotated label centres on its
+          // mark. From the start edge rather than the left: the slider runs
+          // from the right in a right-to-left language, and a label measured
+          // from the left would sit under the opposite end's value.
           <div
             className="relative mx-3 mt-1"
             style={{ height: layout.bandHeight }}
@@ -342,13 +345,15 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                     <div
                       className={cx(
                         controlLabelVariants({ size: 'sm' }),
-                        'absolute text-center',
+                        // Centred on its mark: back by half its own width
+                        // from the edge it is measured from, which is the
+                        // other way in a right-to-left language.
+                        'absolute top-1/2 -translate-1/2 text-center rtl:translate-x-1/2',
                         ROTATED_LABEL_WRAP_CLASS,
                       )}
                       style={{
-                        left: `${percentage}%`,
-                        top: '50%',
-                        transform: `translate(-50%, -50%) rotate(${layout.rotateDeg}deg)`,
+                        insetInlineStart: `${percentage}%`,
+                        rotate: `${layout.rotateDeg}deg`,
                       }}
                     />
                   }
@@ -366,7 +371,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 <div
                   className={cx(
                     controlLabelVariants({ size: 'sm' }),
-                    'max-w-24 text-left',
+                    'max-w-24 text-start',
                   )}
                 />
               }
@@ -377,7 +382,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 <div
                   className={cx(
                     controlLabelVariants({ size: 'sm' }),
-                    'max-w-24 text-right',
+                    'max-w-24 text-end',
                   )}
                 />
               }

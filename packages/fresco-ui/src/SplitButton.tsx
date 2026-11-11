@@ -136,21 +136,21 @@ function splitButtonGapClass(size: ButtonProps['size']): string {
 function mainButtonRadiusClass(
   segmentPosition: SplitButtonSegmentPosition,
 ): string {
-  return segmentPosition === 'left' ? 'rounded-l-none!' : 'rounded-r-none!';
+  return segmentPosition === 'left' ? 'rounded-s-none!' : 'rounded-e-none!';
 }
 
 function popoverSegmentRadiusClass(
   segmentPosition: SplitButtonSegmentPosition,
 ): string {
-  return segmentPosition === 'left' ? 'rounded-r-none!' : 'rounded-l-none!';
+  return segmentPosition === 'left' ? 'rounded-e-none!' : 'rounded-s-none!';
 }
 
 function iconOnlySegmentAlignmentClass(
   segmentPosition: SplitButtonSegmentPosition,
 ): string {
   return segmentPosition === 'left'
-    ? '[&>.lucide]:translate-x-0.5'
-    : '[&>.lucide]:-translate-x-0.5';
+    ? '[&>.lucide]:translate-x-0.5 rtl:[&>.lucide]:-translate-x-0.5'
+    : '[&>.lucide]:-translate-x-0.5 rtl:[&>.lucide]:translate-x-0.5';
 }
 
 const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
