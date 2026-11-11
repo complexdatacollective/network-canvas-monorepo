@@ -27,7 +27,7 @@ import { defaultLocale } from './locales';
  * once it is published, by being listed in `locales`.
  */
 
-export const TRANSLATED_FROM_FIELD = 'translatedFrom';
+const TRANSLATED_FROM_FIELD = 'translatedFrom';
 
 // The id git gives a file's content: `git hash-object <file>`.
 export function gitBlobId(content: Buffer | string): string {
@@ -85,7 +85,7 @@ export type DocPage = {
 const PAGE_FILE =
   /^(?<name>[^.]+)\.(?<locale>[A-Za-z]{2,3}(?:-[A-Za-z0-9]+)*)\.mdx?$/;
 
-export function listPages(docsDir: string): DocPage[] {
+function listPages(docsDir: string): DocPage[] {
   const pages = new Map<string, DocPage>();
 
   for (const entry of readdirSync(docsDir, {
@@ -140,10 +140,7 @@ export type TranslationProblem = {
 };
 
 /** Every locale that has at least one translated file, plus the published ones. */
-export function translationLocales({
-  root,
-  published,
-}: TranslationPaths): string[] {
+function translationLocales({ root, published }: TranslationPaths): string[] {
   const found = new Set(published.filter((l) => l !== defaultLocale));
   for (const page of listPages(join(root, 'docs')))
     for (const t of page.translations) found.add(t.locale);
