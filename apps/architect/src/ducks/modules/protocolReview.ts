@@ -487,6 +487,23 @@ export const syncProtocolReview =
     }
   };
 
+/**
+ * Reads the active protocol's record again, leaving the run alone. For a tab
+ * that has just become the protocol's owner: the tab that owned it until now
+ * may have saved decisions or a different sharing choice, and the copy this
+ * tab holds is from before. A choice of this tab's own that could not be
+ * saved still wins (see `readReviewRecord`).
+ */
+export const refreshProtocolReviewRecord =
+  (): Thunk<Promise<void>> => async (dispatch, getState) => {
+    const protocolId = getActiveProtocolId(getState());
+    if (protocolId === null) return;
+    const record = await readReviewRecord(protocolId);
+    if (!isStillActive(getState(), protocolId)) return;
+    dispatch(actions.recordReplaced(record));
+    void dispatch(checkFixAvailability());
+  };
+
 /** Whether `protocolId` is still the protocol open in this tab. */
 const isStillActive = (state: RootState, protocolId: string) =>
   getActiveProtocolId(state) === protocolId;
@@ -506,15 +523,23 @@ const activeRecord = async (
   return record;
 };
 
+/**
+ * Saves a protocol's review record, and answers whether it did. Only the tab
+ * that owns the protocol's saved copy writes anything about its review, as
+ * with the protocol itself: a tab that does not own it may be holding a
+ * record the owning tab has since changed, the sharing choice included.
+ */
 const saveRecord = async (
   dispatch: AppDispatch,
   getState: GetState,
   record: StoredReviewRecord,
-) => {
+): Promise<boolean> => {
+  if (!getProtocolOwnedHere(getState())) return false;
   if (getActiveProtocolId(getState()) === record.protocolId) {
     dispatch(actions.recordReplaced(record));
   }
   await writeReviewRecord(record);
+  return true;
 };
 
 export type StartReviewRefusal =
@@ -557,9 +582,16 @@ const refuse = (reason: StartReviewRefusal): StartReviewResult => ({
  * and the researcher moving between pages. The result is saved against the
  * protocol that was SENT — its targets recorded against that protocol, not
  * the one on screen when the answer arrives.
+ *
+ * `forProtocolId` is the protocol the researcher asked to have reviewed. A
+ * caller that waits for anything between that request and this call (the
+ * study details wizard saving) passes it, and a different protocol being
+ * active by then starts nothing: a review is never sent for a protocol the
+ * researcher did not ask about.
  */
 export const startReview =
-  (): Thunk<Promise<StartReviewResult>> => async (dispatch, getState) => {
+  (forProtocolId?: string): Thunk<Promise<StartReviewResult>> =>
+  async (dispatch, getState) => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return refuse('offline');
     }
@@ -567,6 +599,12 @@ export const startReview =
     if (protocolId === null || !getProtocol(getState())) {
       return refuse('no_protocol');
     }
+    if (forProtocolId !== undefined && forProtocolId !== protocolId) {
+      return { status: 'cancelled' };
+    }
+    // Only the owning tab reviews: the result could not be saved from here,
+    // and the sharing choice this tab holds may be out of date.
+    if (!getProtocolOwnedHere(getState())) return { status: 'cancelled' };
     if (inflight) return refuse('running');
     await activeRecord(dispatch, getState, protocolId);
 
@@ -575,6 +613,7 @@ export const startReview =
     // one. A switch while the record was being read sends nothing.
     const state = getState();
     if (!isStillActive(state, protocolId)) return { status: 'cancelled' };
+    if (!getProtocolOwnedHere(state)) return { status: 'cancelled' };
     const record = selectRecord(state);
     if (record?.protocolId !== protocolId) return { status: 'cancelled' };
     const block = getProtocolReviewStartBlock(state);
@@ -788,7 +827,7 @@ export const decideFinding =
     if (statusOf(found.stored, protocol) === 'fixed') return refused('fixed');
 
     if (decision !== 'fix') {
-      await saveRecord(
+      const saved = await saveRecord(
         dispatch,
         getState,
         withFinding(found.record, findingId, {
@@ -797,6 +836,7 @@ export const decideFinding =
           written: null,
         }),
       );
+      if (!saved) return refused('not_owned');
       captureReviewDecision(decisionPayload(decision, found.stored.finding));
       // A finding back on the list needs its fix checked, whatever is on
       // screen: after a reload nothing has checked it yet.

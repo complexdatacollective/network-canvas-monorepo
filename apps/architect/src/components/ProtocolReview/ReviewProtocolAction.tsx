@@ -18,6 +18,7 @@ import {
 import Spinner from '@codaco/fresco-ui/Spinner';
 import type { ProjectActionsMode } from '~/components/ProjectNav/ProjectActions';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import { getActiveProtocolId } from '~/ducks/modules/app';
 import {
   getProtocolReviewCounts,
   getProtocolReviewProgress,
@@ -104,6 +105,7 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
   const counts = useAppSelector(getProtocolReviewCounts);
   const summary = useAppSelector(getProtocolReviewSummary);
   const openWizard = useStudyDetailsWizard();
+  const protocolId = useAppSelector(getActiveProtocolId);
   const { announce } = useAccessibilityAnnouncements();
 
   const [open, setOpen] = useState(false);
@@ -137,12 +139,15 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
 
   // A refused start changes nothing on screen, so it is said aloud; the
   // popover shows why.
+  // Started for the protocol that was open when the researcher asked. The
+  // wizard waits on a save before it gets here, and a protocol opened in
+  // that time is not the one they asked to have reviewed.
   const start = useCallback(async () => {
-    const result = await dispatch(startReview());
+    const result = await dispatch(startReview(protocolId ?? undefined));
     if (result.status === 'refused') {
       announce(intl.formatMessage(messages.notStarted));
     }
-  }, [announce, dispatch, intl]);
+  }, [announce, dispatch, intl, protocolId]);
 
   const beginWithWizard = useCallback(async () => {
     const saved = await openWizard('start', returnToTrigger);

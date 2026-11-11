@@ -30,7 +30,10 @@ import {
 } from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
 import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
-import { readReviewRecord } from '~/protocolReview/reviewStore';
+import {
+  readReviewRecord,
+  writeReviewRecord,
+} from '~/protocolReview/reviewStore';
 
 /**
  * Rule G: a review thunk never acts for a protocol that is no longer the
@@ -360,5 +363,72 @@ describe('rule G', () => {
             .payload.protocolId !== b,
       ),
     ).toEqual([]);
+  });
+});
+
+/**
+ * Only the tab that owns a protocol's saved copy starts a review of it or
+ * saves anything about its review, and a tab that becomes the owner reads
+ * what the previous owner saved.
+ */
+describe('tab ownership', () => {
+  it('a tab that becomes the owner reads the sharing choice the other tab saved', async () => {
+    const a = await open(store);
+    await store.dispatch(setShareReviews(true));
+    expect(store.getState().protocolReview.record?.shareReviews).toBe(true);
+
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    // The owning tab opts out, then closes.
+    await writeReviewRecord({
+      ...(await readReviewRecord(a)),
+      shareReviews: false,
+    });
+    store.dispatch(setProtocolLockState('owned'));
+
+    await vi.waitFor(() =>
+      expect(store.getState().protocolReview.record?.shareReviews).toBe(false),
+    );
+  });
+
+  it('a tab that does not own the protocol starts no review and saves no choice', async () => {
+    const a = await open(store);
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+
+    expect(await store.dispatch(startReview())).toEqual({
+      status: 'cancelled',
+    });
+    expect(client.requestReview).not.toHaveBeenCalled();
+    await store.dispatch(setShareReviews(true));
+    expect((await readReviewRecord(a)).shareReviews).toBe(false);
+
+    // The control: the same protocol, owned, does send its review.
+    store.dispatch(setProtocolLockState('owned'));
+    client.requestReview.mockResolvedValueOnce({
+      kind: 'result',
+      result: RESULT,
+    } satisfies ReviewOutcome);
+    expect(await store.dispatch(startReview())).toMatchObject({
+      status: 'completed',
+    });
+    expect(client.requestReview).toHaveBeenCalledTimes(1);
+  });
+
+  it('a review asked for one protocol does not start for the one opened since', async () => {
+    const a = await open(store);
+    const b = await open(store, otherProtocol());
+
+    expect(await store.dispatch(startReview(a))).toEqual({
+      status: 'cancelled',
+    });
+    expect(client.requestReview).not.toHaveBeenCalled();
+
+    // The control: asked for the protocol that is open, it is sent.
+    client.requestReview.mockResolvedValueOnce({
+      kind: 'result',
+      result: RESULT,
+    } satisfies ReviewOutcome);
+    expect(await store.dispatch(startReview(b))).toMatchObject({
+      status: 'completed',
+    });
   });
 });
