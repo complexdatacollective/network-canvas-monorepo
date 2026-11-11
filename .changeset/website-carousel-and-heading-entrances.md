@@ -18,5 +18,6 @@ The homepage is easier to move through.
   more space around its title.
 
 With reduced motion turned on, Design Principles cards still page one at a time but jump
-straight to the next card, headings fade in without moving, and the
-illustration shows each card's finished scene.
+straight to the next card, headings fade in without moving, the
+illustration shows each card's finished scene, and links within the page jump
+straight to where they lead instead of gliding there.
