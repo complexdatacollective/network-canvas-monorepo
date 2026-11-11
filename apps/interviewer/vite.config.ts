@@ -182,6 +182,13 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
             // fills the runtime image cache, and the first offline launch
             // would show a broken image.
             '**/NC-Flat-*.png',
+            // Every bundled font face. A browser fetches a face only when
+            // text on the page needs it, and the installing page's requests
+            // never fill a runtime cache, so a device that had not yet shown
+            // a script (Arabic, Cyrillic, the accented Latin letters) would
+            // run its first offline interview in that script in a system
+            // font.
+            '**/*.woff2',
           ],
           // Nothing of this app is left out. The Sample protocol's chunk
           // (bundledSampleProtocol.ts) is lazy but must stay precached so the
@@ -331,7 +338,9 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
               },
             },
             {
-              // Self-hosted fonts. A function rather than a RegExp so it can
+              // Fonts this build does not precache: the faces of an older
+              // bundle a tab still runs, when the font files have changed
+              // since. A function rather than a RegExp so it can
               // leave Interviewer 8's fonts to its own worker; `sameOrigin`
               // keeps what the RegExp matched, since Workbox matches a RegExp
               // route cross-origin only from the start of the URL, which a
