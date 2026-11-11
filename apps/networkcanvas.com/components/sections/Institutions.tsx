@@ -91,7 +91,7 @@ function reporterLink(href: string) {
 
 export function Institutions() {
   const t = useTranslations('Institutions');
-  const { ref, play, timing } = useOnceInView<HTMLDivElement>(0.3);
+  const { ref, play, timing } = useOnceInView<HTMLDivElement>();
 
   // The hairline across the sheet, drawn once from the start edge.
   const rule = (className?: string) => (

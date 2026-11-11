@@ -86,7 +86,7 @@ function Door({
 
 export function WhatNext() {
   const t = useTranslations('WhatNext');
-  const { ref, play, timing } = useOnceInView<HTMLDivElement>(0.25);
+  const { ref, play, timing } = useOnceInView<HTMLDivElement>();
 
   return (
     <Container>

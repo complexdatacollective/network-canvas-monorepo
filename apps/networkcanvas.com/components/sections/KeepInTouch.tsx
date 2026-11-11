@@ -15,7 +15,7 @@ import { entranceEase, useOnceInView } from '~/components/ui/useOnceInView';
 
 export function KeepInTouch() {
   const t = useTranslations('WhatNext.keepInTouch');
-  const { ref, play, timing } = useOnceInView<HTMLElement>(0.35);
+  const { ref, play, timing } = useOnceInView<HTMLElement>();
   return (
     <article
       ref={ref}
@@ -52,9 +52,8 @@ export function KeepInTouch() {
           >
             {t('body')}
           </Paragraph>
-          {/* The form's own top margin gives way to the letter's spacing,
-              and the email field takes the row's spare width. */}
-          <div className="mt-7 [&_form]:mt-0 [&_form>div:first-child]:grow">
+          {/* The form's own top margin gives way to the letter's spacing. */}
+          <div className="mt-7 [&_form]:mt-0">
             <MailingListForm />
           </div>
         </motion.div>
