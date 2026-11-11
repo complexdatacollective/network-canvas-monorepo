@@ -25,14 +25,14 @@ const messages = defineMessages({
     id: 'architect.sendToInterviewer.notSentTitle',
     defaultMessage: 'Your protocol wasn’t sent to Interviewer',
     description:
-      'Title of the dialog shown when the "Send to Interviewer" button, which opens Interviewer (the app that runs interviews) in a new browser tab and passes it the protocol, did not manage to pass it on.',
+      'Title of the dialog shown when "Send to Interviewer" (an item in the Export menu), which opens Interviewer (the app that runs interviews) in a new browser tab and passes it the protocol, did not manage to pass it on.',
   },
   notReached: {
     id: 'architect.sendToInterviewer.notReached',
     defaultMessage:
       'Interviewer didn’t receive it. Check that your browser lets Architect open new tabs, then try again. You can also download the protocol and open the file in Interviewer.',
     description:
-      'Body of the dialog shown when Interviewer (the app that runs interviews) could not be opened in a new browser tab, or opened but did not receive the protocol. "Download" means saving the protocol as a .netcanvas file with the Download button.',
+      'Body of the dialog shown when Interviewer (the app that runs interviews) could not be opened in a new browser tab, or opened but did not receive the protocol. "Download" means saving the protocol as a .netcanvas file with Download in the Export menu.',
   },
   unresolvedAssets: {
     id: 'architect.sendToInterviewer.unresolvedAssets',

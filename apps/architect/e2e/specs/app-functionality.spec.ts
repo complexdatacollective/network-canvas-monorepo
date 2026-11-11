@@ -159,11 +159,11 @@ test('downloads the active protocol as a .netcanvas', async ({
     /^All_Interfaces-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}\.netcanvas$/,
   );
 
-  // ProjectActions.tsx swaps the button's label to "Downloaded" once the
-  // export promise resolves (reverting to "Download" after a 2s timeout), so
+  // ProjectActions.tsx swaps the Export button's label to "Downloaded" once
+  // the export promise resolves (reverting to "Export" after a 2s timeout), so
   // this proves the export actually completed rather than just that the
   // anchor's synchronous `.click()` fired.
-  await toolbar.expectLabel('download', 'Downloaded');
+  await toolbar.expectLabel('export', 'Downloaded');
 });
 
 test('downloads the active protocol while returning to the start screen', async ({

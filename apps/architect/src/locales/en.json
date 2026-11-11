@@ -2441,19 +2441,23 @@
   },
   "architect.projectNav.projectActions.download": {
     "defaultMessage": "Download",
-    "description": "Visible text in components / ProjectNav / ProjectActions."
-  },
-  "architect.projectNav.projectActions.downloadActions": {
-    "defaultMessage": "Download actions",
-    "description": "The aria-label text in components / ProjectNav / ProjectActions."
+    "description": "Item in the Export menu that saves the protocol as a .netcanvas file."
   },
   "architect.projectNav.projectActions.downloaded": {
     "defaultMessage": "Downloaded",
-    "description": "Visible text in components / ProjectNav / ProjectActions."
+    "description": "Label of the Export toolbar button for a moment after the protocol was saved as a file with Download."
   },
   "architect.projectNav.projectActions.downloading": {
     "defaultMessage": "Downloading...",
-    "description": "Visible text in components / ProjectNav / ProjectActions."
+    "description": "Label of the Export toolbar button while the protocol is being saved as a file with Download."
+  },
+  "architect.projectNav.projectActions.export": {
+    "defaultMessage": "Export",
+    "description": "Toolbar button that opens a menu of ways to get the protocol out of Architect: Download (save it as a file) and Send to Interviewer."
+  },
+  "architect.projectNav.projectActions.exportActions": {
+    "defaultMessage": "Export actions",
+    "description": "Accessible name, read by screen readers, of the toolbar group holding the Export button."
   },
   "architect.projectNav.projectActions.navigationActions": {
     "defaultMessage": "Navigation actions",
@@ -2485,15 +2489,15 @@
   },
   "architect.projectNav.projectActions.sendToInterviewer": {
     "defaultMessage": "Send to Interviewer",
-    "description": "Toolbar button beside Download. It opens Interviewer (the app that runs interviews) in a new browser tab and passes it this protocol to import."
+    "description": "Item in the Export menu, below Download. It opens Interviewer (the app that runs interviews) in a new browser tab and passes it this protocol to import."
   },
   "architect.projectNav.projectActions.sending": {
     "defaultMessage": "Sending...",
-    "description": "Label of the Send to Interviewer toolbar button while Interviewer opens in a new browser tab and the protocol is passed to it."
+    "description": "Label of the Export toolbar button while Interviewer opens in a new browser tab and the protocol is passed to it by Send to Interviewer."
   },
   "architect.projectNav.projectActions.sent": {
     "defaultMessage": "Sent",
-    "description": "Label of the Send to Interviewer toolbar button for a moment after Interviewer received the protocol."
+    "description": "Label of the Export toolbar button for a moment after Interviewer received the protocol from Send to Interviewer."
   },
   "architect.projectNav.projectActions.sourceActions": {
     "defaultMessage": "Source actions",
@@ -3181,11 +3185,11 @@
   },
   "architect.sendToInterviewer.notReached": {
     "defaultMessage": "Interviewer didn’t receive it. Check that your browser lets Architect open new tabs, then try again. You can also download the protocol and open the file in Interviewer.",
-    "description": "Body of the dialog shown when Interviewer (the app that runs interviews) could not be opened in a new browser tab, or opened but did not receive the protocol. \"Download\" means saving the protocol as a .netcanvas file with the Download button."
+    "description": "Body of the dialog shown when Interviewer (the app that runs interviews) could not be opened in a new browser tab, or opened but did not receive the protocol. \"Download\" means saving the protocol as a .netcanvas file with Download in the Export menu."
   },
   "architect.sendToInterviewer.notSentTitle": {
     "defaultMessage": "Your protocol wasn’t sent to Interviewer",
-    "description": "Title of the dialog shown when the \"Send to Interviewer\" button, which opens Interviewer (the app that runs interviews) in a new browser tab and passes it the protocol, did not manage to pass it on."
+    "description": "Title of the dialog shown when \"Send to Interviewer\" (an item in the Export menu), which opens Interviewer (the app that runs interviews) in a new browser tab and passes it the protocol, did not manage to pass it on."
   },
   "architect.sendToInterviewer.oK": {
     "defaultMessage": "OK",
