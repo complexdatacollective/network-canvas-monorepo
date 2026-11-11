@@ -49,7 +49,7 @@ vi.mock('~/protocolReview/reviewClient', async (importOriginal) => ({
 /** Awaits the test holds open: while `hold` is set, each call waits for release. */
 const gates = vi.hoisted(() => {
   const make = () => ({ hold: false, waiting: [] as (() => void)[] });
-  return { reads: make(), edits: make() };
+  return { reads: make(), edits: make(), writes: make() };
 });
 
 const passGate = async (gate: { hold: boolean; waiting: (() => void)[] }) => {
@@ -72,6 +72,12 @@ vi.mock('~/protocolReview/reviewStore', async (importOriginal) => {
     readReviewRecord: async (protocolId: string) => {
       await passGate(gates.reads);
       return actual.readReviewRecord(protocolId);
+    },
+    writeReviewRecord: async (
+      ...args: Parameters<typeof actual.writeReviewRecord>
+    ) => {
+      await passGate(gates.writes);
+      return actual.writeReviewRecord(...args);
     },
   };
 });
@@ -167,16 +173,51 @@ beforeEach(() => {
   store = makeStore();
   gates.reads.hold = false;
   gates.edits.hold = false;
+  gates.writes.hold = false;
   client.requestReview.mockReset();
 });
 
 afterEach(() => {
   release(gates.reads);
   release(gates.edits);
+  release(gates.writes);
   store.dispatch(cancelReview());
 });
 
 describe('rule G', () => {
+  it('a review still saving cannot end the run of the protocol opened after it', async () => {
+    await open(store);
+    client.requestReview.mockResolvedValueOnce({
+      kind: 'result',
+      result: RESULT,
+    } satisfies ReviewOutcome);
+    gates.writes.hold = true;
+    // A's answer has arrived and only its save is outstanding.
+    const first = store.dispatch(startReview());
+    await vi.waitFor(() =>
+      expect(gates.writes.waiting.length).toBeGreaterThan(0),
+    );
+    const savingA = gates.writes.waiting.splice(0);
+    gates.writes.hold = false;
+
+    await open(store, otherProtocol());
+    const { promise: answerB, resolve: answerBWith } =
+      Promise.withResolvers<ReviewOutcome>();
+    client.requestReview.mockReturnValueOnce(answerB);
+    const second = store.dispatch(startReview());
+    await vi.waitFor(() =>
+      expect(store.getState().protocolReview.run.status).toBe('running'),
+    );
+
+    for (const resume of savingA) resume();
+    await first;
+    // B's review is still in flight, so its run must still say so.
+    expect(store.getState().protocolReview.run.status).toBe('running');
+
+    answerBWith({ kind: 'aborted' });
+    await second;
+  });
+
   it('startReview sends nothing when the protocol changes while its record is read', async () => {
     const a = switchTo(store, makeProtocol());
     gates.reads.hold = true;

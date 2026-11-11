@@ -84,6 +84,13 @@ export type ReviewRun =
   | { status: 'idle' }
   | {
       status: 'running';
+      /**
+       * Which run this is. Every later word about a run names it, and the
+       * slice ignores one that is not about the run it holds: a review that
+       * is still finishing for a protocol since closed cannot touch the run
+       * of the protocol now open.
+       */
+      runId: number;
       /** Epoch milliseconds. */
       startedAt: number;
       /** Characters of the model's answer received so far. */
@@ -118,6 +125,12 @@ const initialState: ProtocolReviewState = {
   checks: {},
 };
 
+const isRun = (
+  run: ReviewRun,
+  runId: number,
+): run is Extract<ReviewRun, { status: 'running' }> =>
+  run.status === 'running' && run.runId === runId;
+
 const protocolReviewSlice = createSlice({
   name: 'protocolReview',
   initialState,
@@ -129,26 +142,47 @@ const protocolReviewSlice = createSlice({
       state.record = action.payload;
     },
     reviewCleared: (state) => ({ ...initialState, quota: state.quota }),
-    runStarted: (state, action: PayloadAction<{ startedAt: number }>) => {
+    runStarted: (
+      state,
+      action: PayloadAction<{ runId: number; startedAt: number }>,
+    ) => {
       state.run = {
         status: 'running',
+        runId: action.payload.runId,
         startedAt: action.payload.startedAt,
         received: 0,
       };
     },
-    runProgress: (state, action: PayloadAction<number>) => {
-      if (state.run.status === 'running') {
-        state.run.received = Math.max(state.run.received, action.payload);
-      }
+    // The three below are about one run, and do nothing unless it is the run
+    // the slice holds.
+    runProgress: (
+      state,
+      action: PayloadAction<{ runId: number; received: number }>,
+    ) => {
+      if (!isRun(state.run, action.payload.runId)) return;
+      state.run.received = Math.max(
+        state.run.received,
+        action.payload.received,
+      );
     },
-    runFinished: (state) => {
+    runFinished: (state, action: PayloadAction<{ runId: number }>) => {
+      if (!isRun(state.run, action.payload.runId)) return;
       state.run = { status: 'idle' };
     },
     runFailed: (
       state,
-      action: PayloadAction<{ code: ReviewErrorCode; retryAt: string | null }>,
+      action: PayloadAction<{
+        runId: number;
+        code: ReviewErrorCode;
+        retryAt: string | null;
+      }>,
     ) => {
-      state.run = { status: 'failed', ...action.payload };
+      const { runId, code, retryAt } = action.payload;
+      if (!isRun(state.run, runId)) return;
+      state.run = { status: 'failed', code, retryAt };
+    },
+    failureDismissed: (state) => {
+      if (state.run.status === 'failed') state.run = { status: 'idle' };
     },
     quotaUpdated: (state, action: PayloadAction<ReviewQuota | null>) => {
       state.quota = action.payload;
@@ -413,13 +447,21 @@ type GetState = () => RootState;
 type Thunk<Result> = (dispatch: AppDispatch, getState: GetState) => Result;
 
 /** The review in flight, outside Redux because its controller is not data. */
-let inflight: { controller: AbortController; protocolId: string } | null = null;
+type InflightRun = {
+  controller: AbortController;
+  protocolId: string;
+  runId: number;
+};
 
-const abortInflight = (): boolean => {
-  if (!inflight) return false;
-  inflight.controller.abort();
+let inflight: InflightRun | null = null;
+let lastRunId = 0;
+
+/** Aborts the review in flight and answers which run it was, if any. */
+const abortInflight = (): InflightRun | null => {
+  const aborted = inflight;
+  aborted?.controller.abort();
   inflight = null;
-  return true;
+  return aborted;
 };
 
 /**
@@ -544,12 +586,14 @@ export const startReview =
     if (inflight) return refuse('running');
 
     const controller = new AbortController();
-    const run = { controller, protocolId };
+    lastRunId += 1;
+    const run: InflightRun = { controller, protocolId, runId: lastRunId };
+    const { runId } = run;
     inflight = run;
     const startedAt = Date.now();
     const fingerprint = reviewFingerprint(protocol, studyContext);
     const locale = getArchitectIntl().locale;
-    dispatch(actions.runStarted({ startedAt }));
+    dispatch(actions.runStarted({ runId, startedAt }));
     captureReviewStarted({ share: record.shareReviews });
 
     const outcome = await requestReview({
@@ -562,7 +606,7 @@ export const startReview =
       },
       signal: controller.signal,
       onProgress: (received) => {
-        if (inflight === run) dispatch(actions.runProgress(received));
+        dispatch(actions.runProgress({ runId, received }));
       },
     });
 
@@ -573,10 +617,8 @@ export const startReview =
       outcome.kind === 'aborted' ||
       !isStillActive(getState(), protocolId)
     ) {
-      if (inflight === run) {
-        inflight = null;
-        dispatch(actions.runFinished());
-      }
+      if (inflight === run) inflight = null;
+      dispatch(actions.runFinished({ runId }));
       return { status: 'cancelled' };
     }
     inflight = null;
@@ -595,7 +637,11 @@ export const startReview =
         dispatch(actions.quotaUpdated(quota));
       }
       dispatch(
-        actions.runFailed({ code: outcome.code, retryAt: outcome.retryAt }),
+        actions.runFailed({
+          runId,
+          code: outcome.code,
+          retryAt: outcome.retryAt,
+        }),
       );
       captureReviewFailed(outcome.code);
       return { status: 'failed', code: outcome.code, retryAt: outcome.retryAt };
@@ -630,7 +676,7 @@ export const startReview =
         findings,
       },
     });
-    dispatch(actions.runFinished());
+    dispatch(actions.runFinished({ runId }));
     void dispatch(checkFixAvailability());
     captureReviewCompleted(
       completedPayload(result.findings, Date.now() - startedAt),
@@ -640,13 +686,14 @@ export const startReview =
 
 /** Stops the review in flight. Nothing is saved and nothing is counted. */
 export const cancelReview = (): Thunk<void> => (dispatch) => {
-  if (abortInflight()) dispatch(actions.runFinished());
+  const aborted = abortInflight();
+  if (aborted) dispatch(actions.runFinished({ runId: aborted.runId }));
 };
 
 /** Clears a failed run back to idle. */
 export const dismissReviewFailure = (): Thunk<void> => (dispatch, getState) => {
   if (selectReview(getState()).run.status === 'failed') {
-    dispatch(actions.runFinished());
+    dispatch(actions.failureDismissed());
   }
 };
 
