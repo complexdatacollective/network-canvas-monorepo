@@ -55,7 +55,7 @@ Read the full [One to Many Dyad Census documentation](https://documentation.netw
 
 <!-- scene: one-to-many-data -->
 
-This stage collects edges between alters already named. Each alter tapped is joined to the focal node by one edge, of the edge type set on the prompt. Each edge is one row in your exported edge list. Tapping a selected alter again removes its edge, so nothing is exported for that pair.
+This stage collects edges between alters already named. Each alter the participant taps is joined to the focal node by one edge of the edge type set on the prompt, and each edge is one row in your exported edge list. Tapping a selected alter again removes its edge, so nothing is exported for that pair.
 
 ## When to use it
 
@@ -71,7 +71,7 @@ This stage collects edges between alters already named. Each alter tapped is joi
 
 Choose the **node type** whose alters are asked about, such as _Person_. Each node of that type already in the participant's network takes a turn as the focal node. If there are fewer than two nodes of that type, the stage is skipped.
 
-Changing the node type later clears this stage's other settings, except its name and interviewer notes, because they depend on the node type. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
 
 <!-- include: node-type -->
 
@@ -83,7 +83,7 @@ Changing the node type later clears this stage's other settings, except its name
 
 <!-- section: Prompt collection -->
 
-Each prompt asks about one kind of relationship. The participant goes through every focal node for the first prompt, then through every focal node again for the next prompt.
+Each prompt asks about one kind of relationship. The participant goes through every focal node for the first prompt, then every focal node again for the next.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -92,14 +92,14 @@ Read more about [prompts](https://documentation.networkcanvas.com/en/design-prot
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: text -->
 
-This is the question shown above the focal node, such as _"Which of these people does Sam know?"_. Ask about the focal node and the whole list, rather than about a single pair. To name the focal node in the question, insert **Node label** with the syringe button in the toolbar.
+This is the question shown above the focal node, such as _"Which of these people does Sam know?"_. Ask about the focal node and the whole list, rather than about a single pair. To name the focal node in the question, use the syringe button in the toolbar to insert **Node label**.
 
 ## Choose the edge a tap creates
 
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: createEdge -->
 
-**Created edge type** sets which edge type a tap creates between the focal node and the alter tapped. If the two alters already have an edge of that type in either direction, for example from a sociogram, the alter appears already selected. Tapping that alter removes the edge.
+**Created edge type** sets which edge type a tap creates between the focal node and the alter tapped. If the two alters already have an edge of that type in either direction, for example from a sociogram, the alter appears already selected, and tapping it removes the edge.
 
 Once you choose an edge type, you can switch on the two sort orders below it, **Bucket order** and **Bin order**.
 
@@ -107,13 +107,13 @@ Once you choose an edge type, you can switch on the two sort orders below it, **
 
 <!-- dialog: create prompt | edit prompt -->
 
-Switch on **Bucket order** to set the order in which alters take their turn as the focal node. Sort them by one or more attributes, such as name. Without any rules, alters take their turn in the order they were added.
+Switch on **Bucket order** to set the order in which alters take their turn as the focal node, sorted by one or more attributes, such as name. Without sort rules, alters take their turn in the order they were added.
 
 ## Order the list of other alters
 
 <!-- dialog: create prompt | edit prompt -->
 
-Switch on **Bin order** to set the order in which the other alters are listed below the focal node. Without any rules, the other alters are listed in the order they were added.
+Switch on **Bin order** to set the order in which the other alters are listed below the focal node. Without sort rules, the other alters are listed in the order they were added.
 
 <!-- include: edge-type -->
 

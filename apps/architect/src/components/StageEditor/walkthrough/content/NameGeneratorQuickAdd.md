@@ -47,9 +47,9 @@
 
 <!-- scene: name-generator-intro -->
 
-Name generators are one of the fundamental parts of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations. Every alter named here is saved as a node. Later stages can then ask about these alters, place them, or connect them.
+Name generators are a fundamental part of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations. Each alter named on this stage is saved as a node, so later stages can ask about these alters, place them, or connect them.
 
-The form and quick-add name generators share the same parts: a **prompt** that explains the task, a **list** of the alters named so far, a **button** that adds an alter, and optionally one or two **side panels**.
+The form and quick-add name generators have the same parts: a **prompt** that explains the task, a **list** of the alters named so far, a **button** that adds an alter, and optionally one or two **side panels**.
 
 Read the full [Name Generator using Quick Add documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-quick-add).
 
@@ -61,7 +61,7 @@ If you also want to ask a few questions about each alter as it is named, use the
 
 ## What data it collects
 
-This stage collects new alters and a name or label for each one. Each alter named here is one row in your exported data. What the participant types is saved in a single column, named after the quick add attribute.
+This stage collects new alters and a name or label for each one. In your exported data, each alter named here is one row, and what the participant types is saved in a single column named after the quick add attribute.
 
 ## When to use it
 
@@ -75,9 +75,9 @@ Use this stage when you want participants to name alters quickly, without collec
 
 <!-- section: Node setup -->
 
-Choose what kind of node this stage creates, such as Person. Each alter named here becomes a node of that type, and what the participant types is saved as one of that type's attributes.
+Choose the **node type** this stage creates, such as _Person_. Each alter named here becomes a node of that type, and what the participant types is saved as one of that type's attributes.
 
-If the type you need does not exist yet, create it here.
+If the type you need does not exist yet, you can create it here.
 
 <!-- include: node-type -->
 
@@ -86,7 +86,7 @@ If the type you need does not exist yet, create it here.
 <!-- section: Quick add configuration -->
 <!-- field: quickAdd -->
 
-Whatever the participant types into the box is saved to one text **attribute**. Select an attribute this node type already has, or create a new one. The attribute picker lists only text attributes.
+Whatever the participant types into the box is saved to one text **attribute**. Select an attribute the node type already has, or create a new one. The attribute picker lists only text attributes.
 
 > Do: Use an attribute called `name` unless you have a good reason to use another. Keep in mind that Network Canvas will label nodes using this variable throughout the interview.
 
@@ -98,7 +98,7 @@ Read more about [node labeling](https://documentation.networkcanvas.com/en/desig
 
 The **Validation** section under the picker holds the rules for what the participant types. A new attribute created here starts out required, because it is the only thing recorded for each alter.
 
-These rules belong to the attribute in the codebook. A change applies wherever a value for this attribute is typed in, not only on this stage.
+These rules belong to the attribute in the codebook, so a change applies wherever a value for this attribute is typed in, not only on this stage.
 
 Read more about [field validation](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/field-validation).
 
@@ -109,7 +109,7 @@ Read more about [field validation](https://documentation.networkcanvas.com/en/de
 <!-- section: Prompt collection -->
 <!-- scene: name-generator-prompts -->
 
-The prompt is how you explain the task to the participant. It is the question shown at the top of the screen, such as "_Who have you discussed important matters with in the last six months?_" To ask several questions on one stage, add more prompts. They see one prompt at a time, in the order you set.
+The prompt explains the task to the participant. It is the question shown at the top of the screen, such as "_Who have you discussed important matters with in the last six months?_" To ask several questions on one stage, add more prompts. The participant sees one prompt at a time, in the order you set.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -126,20 +126,22 @@ Read more about [prompts](https://documentation.networkcanvas.com/en/design-prot
 <!-- section: Nomination limits -->
 <!-- scene: name-generator-limits -->
 
-Switch on this section to set a minimum or maximum number of alters that the participant can name. The limits count every alter named on the stage, across all of its prompts. If the participant names the maximum number of alters, the add button is switched off and the participant is prompted to continue to the next stage. If they haven't named the minimum number of alters, they can't move past the last prompt until they name more.
+Switch on this section to set a minimum or maximum number of alters the participant can name. The limits count every alter named on the stage, across all of its prompts.
+
+Once the participant reaches the maximum, the add button is switched off and they are prompted to continue to the next stage. Until they reach the minimum, they can't move past the last prompt.
 
 ## Customize built-in wording
 
 <!-- section: Customize built-in wording -->
 
-Network Canvas supplies the words this stage shows. This section lets you rewrite them for your study:
+Network Canvas supplies the wording this stage shows. This section lets you rewrite it for your study:
 
-- **Quick-add placeholder**: shown in the box until the participant starts typing. Say what to type for this node type, such as _a first name or nickname_.
+- **Quick-add placeholder**: shown in the box until the participant starts typing. Use it to say what to type for this node type, such as _a first name or nickname_.
 - **Minimum not reached** and **Maximum reached**: shown only when the stage has those limits.
 
 Each of these messages can include the node type's name, so give the node type a name that reads naturally to participants.
 
-If the participant doesn't press Enter after a few seconds, a hint tells them to. The wording of this hint is under **Shared by every stage of this kind**, so changing it changes every quick-add stage. **Shared by every stage of this kind** appears after the protocol has a quick-add stage saved.
+If the participant hasn't pressed Enter after a few seconds, a hint reminds them to. The wording of this hint is under **Shared by every stage of this kind**, so changing it changes it on every quick-add stage. **Shared by every stage of this kind** appears only after a quick-add stage has been saved to the protocol.
 
 Read more about [translating your protocol](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol).
 

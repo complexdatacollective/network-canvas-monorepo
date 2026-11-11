@@ -59,7 +59,7 @@ This stage asks for a passphrase but never saves it, and it creates no nodes or 
 
 Your exported data never contains these answers. In CSV and GraphML files, each encrypted answer is replaced by the text `ENCRYPTED`. In GraphML, a node whose label comes from an encrypted attribute gets the label `Encrypted`.
 
-No one can recover a forgotten passphrase, including you. The answers it protects stay unreadable.
+No one, including you, can recover a forgotten passphrase, and the answers it protects stay unreadable.
 
 ## When to use it
 
@@ -74,7 +74,7 @@ Use this stage when participants will give answers that no one else should read,
 <!-- section: Task explanation -->
 <!-- field: explanationText -->
 
-The **Explanation** is required. It is what the participant reads above the passphrase fields. Start it with a heading. Then tell participants what the passphrase protects, and that they will need it again if they come back to the interview.
+The **Explanation** is what the participant reads above the passphrase fields, and it is required. Start it with a heading, then tell participants what the passphrase protects and that they will need it again if they come back to the interview.
 
 > Do: Clearly communicate to participants how their data will be used and the importance of the passphrase for accessing their encrypted data, including that a forgotten passphrase cannot be recovered. This transparency builds trust and encourages participation.
 
@@ -84,11 +84,11 @@ The **Explanation** is required. It is what the participant reads above the pass
 <!-- field: validation -->
 <!-- scene: anonymisation-rules -->
 
-When this section is switched off, a passphrase must be at least 8 characters long, and there is no maximum length. Switch this section on to set a **Minimum text length**, a **Maximum text length**, or both. A minimum you set replaces the 8, even when it is shorter. If you set only a maximum and it is shorter than 8, the minimum becomes that maximum. The editor shows the minimum that applies.
+When this section is switched off, a passphrase must be at least 8 characters long, and there is no maximum length. Switch this section on to set a **Minimum text length**, a **Maximum text length**, or both. A minimum you set replaces the default of 8, even when it is shorter. If you set only a maximum and it is shorter than 8, the minimum becomes that maximum. The editor shows the minimum that applies.
 
 The minimum can't be longer than the maximum, and the maximum must be at least one character. Switching the section off discards the lengths. Architect asks you to confirm first.
 
-The lengths apply to both fields when the participant chooses their passphrase. They don't apply when the participant enters the same passphrase again later.
+The lengths apply to both fields when the participant chooses their passphrase, but not when they enter the same passphrase again later.
 
 > Do: Balance a strong passphrase that prevents unauthorized access to the encrypted data against the need for participants to remember it easily.
 
@@ -102,7 +102,7 @@ Each node type in your protocol has its own switch. Switch a node type on, then 
 
 <!-- section: Encrypted attributes -->
 
-Ticking an attribute changes the attribute itself in your codebook, not this stage. The attribute's answers are encrypted on every stage that collects them. The change is saved straight away, and canceling your edits to this stage doesn't undo it.
+Ticking an attribute changes the attribute itself in your codebook rather than this stage, so its answers are encrypted on every stage that collects them. The change is saved straight away, and canceling your edits to this stage doesn't undo it.
 
 Switching a node type off stops encrypting every attribute of that type at once. Architect asks you to confirm first.
 
@@ -117,7 +117,7 @@ Skip logic and filters are checked without the participant's passphrase, so they
 <!-- section: Encrypted attributes -->
 <!-- scene: anonymisation-return -->
 
-The key is held only while the interview is open. When the interview is opened again, for example after the page reloads, encrypted answers stay locked. A node whose label comes from an encrypted answer shows a lock. A key button appears in the navigation bar so the participant can enter their passphrase again. They enter it only once, with no confirmation. If the passphrase doesn't match the one that encrypted their earlier answers, it is rejected.
+The key is held only while the interview is open. When the interview is opened again, for example after the page reloads, encrypted answers stay locked. A node whose label comes from an encrypted answer shows a lock. A key button appears in the navigation bar so the participant can enter their passphrase again. They enter it only once, with no confirmation, and if the passphrase doesn't match the one that encrypted their earlier answers, it is rejected.
 
 <!-- include: skip-logic -->
 

@@ -15,4 +15,4 @@ Switch on **Bucket order** to sort the alters in the drawer by one or more attri
 
 <!-- dialog: create prompt | edit prompt -->
 
-Switch on **Bin order** to set the order alters are listed in once they are in a bin. To list them in the order the participant placed them, choose the property shown as `*`.
+Switch on **Bin order** to set the order in which alters are listed once they are in a bin. To list them in the order the participant placed them, choose the property shown as `*`.

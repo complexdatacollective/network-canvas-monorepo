@@ -70,7 +70,7 @@ Use this stage to introduce your study, or to explain the task on the stage that
 <!-- section: Page content -->
 <!-- field: title -->
 
-The **Page heading** is required. It is shown large and centered at the top of the page. To insert one of the participant's ego attributes or today's date, use the syringe button in the toolbar.
+The **Page heading** is required, and is shown large and centered at the top of the page. To insert one of the participant's ego attributes or today's date, use the syringe button in the toolbar.
 
 ## Build the page
 
@@ -78,7 +78,7 @@ The **Page heading** is required. It is shown large and centered at the top of t
 <!-- field: items -->
 <!-- scene: information-blocks -->
 
-Each item is one block of the page: text, an image, a video or audio. Items appear from top to bottom in the order listed here, and you can drag them to reorder them. A page needs at least one item. Add as many items as you need. Participants scroll if the page is longer than the screen.
+Each item is one block of the page: text, an image, a video or audio. Items appear from top to bottom in the order listed here, and you can drag them to reorder them. A page needs at least one item, and you can add as many as you need. Participants scroll if the page is longer than the screen.
 
 To tour the item window, click **Create new content item** or open an existing item.
 
@@ -87,7 +87,7 @@ To tour the item window, click **Create new content item** or open an existing i
 <!-- dialog: create item | edit item -->
 <!-- field: type -->
 
-Choose **Image**, **Video**, **Audio** or **Text**. If you switch to another type while the window is open, Architect keeps what you entered for the previous type. That content comes back if you switch back. Only the content for the type you end on is saved.
+Choose **Image**, **Video**, **Audio** or **Text**. If you switch to another type while the window is open, Architect keeps what you entered for the previous type and brings it back if you switch back. Only the content for the type you end on is saved.
 
 ## Write the text
 
@@ -101,7 +101,7 @@ For a text item, the **Content** is what the participant reads. The toolbar adds
 <!-- dialog: create item | edit item -->
 <!-- scene: information-media -->
 
-For an image, video or audio item, the **Content** is a file stored in the protocol. You import or choose the file in a separate window. Audio and video start playing as soon as the page opens, and the participant can use their controls to pause and replay them. Video starts muted and loops.
+For an image, video or audio item, the **Content** is a file stored in the protocol. You import or choose the file in a separate window. Audio and video start playing as soon as the page opens, and the participant can pause and replay them with the media controls. Video starts muted and loops.
 
 Read more about [resources](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/resources).
 

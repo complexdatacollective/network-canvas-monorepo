@@ -47,7 +47,7 @@
 
 <!-- scene: edge-form-intro -->
 
-The Per Alter Edge Form is an edge interpreter. It collects information about edges already in the network, rather than creating new ones. The participant completes the same [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) for each edge in turn. The two nodes the edge connects are shown above the form. The participant moves on to the next edge with the Next arrow.
+The Per Alter Edge Form is an edge interpreter: it collects information about edges already in the network, rather than creating new ones. The participant completes the same [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) for each edge in turn. The two nodes the edge connects are shown above the form, and the participant moves on to the next edge with the Next arrow.
 
 Read the full [Per Alter Edge Form documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-edge-form).
 
@@ -55,7 +55,7 @@ Read the full [Per Alter Edge Form documentation](https://documentation.networkc
 
 <!-- scene: edge-form-data -->
 
-This stage collects attributes about edges already in the network. Each field on the form records one attribute of the edge. In your exported edge list, each edge the form is shown for is one row, and each field is one column.
+This stage collects attributes of edges already in the network. Each field on the form records one attribute of the edge. In your exported edge list, each edge the form is shown for is one row, and each field is one column.
 
 ## When to use it
 
@@ -76,9 +76,9 @@ Use this stage to ask the same few questions about every edge of one type.
 <!-- section: Edge setup -->
 <!-- scene: edge-form-source -->
 
-Choose the **edge type** the form asks about, such as _Knows_. The form is shown once for every edge of that type already in the participant's network. If there are no edges of that type, the stage is empty, and the participant can skip it with the Next arrow.
+Choose the **edge type** the form asks about, such as _Knows_. The form is shown once for every edge of that type already in the participant's network. If there are no edges of that type, the stage is empty and the participant can skip it with the Next arrow.
 
-Changing the edge type later clears this stage's other settings, except its name and interviewer notes, because they depend on the edge type. Architect asks you to confirm first.
+Changing the edge type later clears this stage's other settings, because they depend on the edge type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
 
 <!-- include: edge-type -->
 
@@ -96,7 +96,7 @@ Read more about [network filtering](https://documentation.networkcanvas.com/en/d
 
 <!-- section: Form configuration -->
 
-These are the questions asked about each edge. Each field records one attribute of the edge, and the fields appear in the order listed here. The form has no title of its own. Instead, the two nodes the edge connects are shown above the form.
+The form holds the questions asked about each edge. Each field records one attribute of the edge, and the fields appear in the order listed here. The form has no title of its own. Instead, the two nodes the edge connects are shown above it.
 
 Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms). To tour the field editor, open a field or create a new one.
 

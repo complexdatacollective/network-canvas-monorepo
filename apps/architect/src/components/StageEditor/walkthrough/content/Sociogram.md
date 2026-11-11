@@ -47,9 +47,9 @@
 
 <!-- scene: sociogram-intro -->
 
-On the Sociogram, participants work with the alters they have already named. They place them on a canvas, draw edges between them, and tap alters to highlight them. Each edge is saved as one of the stage's edge types, and each highlight sets a true/false attribute to true for that alter. The Sociogram does not create new nodes.
+On the Sociogram, participants work with the alters they have already named. They position the alters on a canvas, draw edges between them, and tap an alter to highlight it. Each edge is saved as one of the stage's edge types, and highlighting an alter sets a true/false attribute to true for it. The Sociogram does not create new nodes.
 
-Its companion, the [Narrative](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/narrative) Interface, shows the participant a network they have already laid out, for discussion. The Narrative Interface collects no new data.
+Its companion, the [Narrative](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/narrative) Interface, displays a network the participant has already laid out so that it can be discussed. It collects no new data.
 
 Read the full [Sociogram documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram).
 
@@ -59,13 +59,13 @@ Read the full [Sociogram documentation](https://documentation.networkcanvas.com/
 
 This stage can collect three kinds of data: where alters are placed, the edges between them, and which alters are highlighted.
 
-- Positions: each alter's place on the canvas is saved to a layout attribute as a pair of coordinates. In exported data, the layout attribute is two columns named after it, such as position\_x and position\_y.
-- Edges: each edge the participant draws is saved as one of the stage's edge types, and is one row in the edge list.
-- Highlighted alters: tapping an alter highlights it and sets a true/false attribute to true. Tapping it again sets the attribute to false. An alter that is never tapped has no value for it.
+- Positions: each alter's position on the canvas is saved to a layout attribute as a pair of coordinates. In your exported data, a layout attribute becomes two columns named after it, such as position\_x and position\_y.
+- Edges: each edge the participant draws is saved as one of the stage's edge types, and becomes one row in the edge list.
+- Highlighted alters: tapping an alter highlights it and sets a true/false attribute to true. Tapping it again sets the attribute to false, and an alter that is never tapped has no value for the attribute.
 
 ## When to use it
 
-Use this stage when you want participants to build a visual picture of their network. They place alters on a canvas, draw the ties between them, and can mark a yes/no attribute, such as group membership, directly on the canvas.
+Use this stage when you want participants to build a visual picture of their network by positioning alters, drawing the ties between them, and marking a yes/no attribute, such as group membership, directly on the canvas.
 
 > Avoid: Nodes positioned too close together may visually occlude one another, or the edge between them. Caution participants not to place nodes directly on top of one another.
 
@@ -73,9 +73,9 @@ Use this stage when you want participants to build a visual picture of their net
 
 <!-- section: Node setup -->
 
-Choose the **node type** this stage places on the canvas, such as _Person_. Every node of that type already in the participant's network appears on this stage.
+Choose the **node type** this stage places on the canvas, such as _Person_. Every node of that type that is already in the participant's network appears on this stage.
 
-Changing the node type later clears this stage's other settings, except its name and interviewer notes, because they depend on the node type. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
 
 <!-- include: node-type -->
 
@@ -87,7 +87,7 @@ Changing the node type later clears this stage's other settings, except its name
 
 <!-- section: Prompt collection -->
 
-Each prompt sets one task on the canvas, such as placing nodes, drawing one kind of edge, or marking nodes with a characteristic. The participant sees one prompt at a time, in the order you set, on the same canvas.
+Each prompt sets one task on the canvas, such as placing nodes, drawing one kind of edge, or marking nodes with a characteristic. The participant works through the prompts one at a time, in the order you set, on the same canvas.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -106,7 +106,9 @@ This is the instruction shown in the prompt card over the canvas, such as _"Plac
 <!-- scene: sociogram-shared-layout -->
 <!-- field: layout.layoutVariable -->
 
-The **Layout attribute** stores where each node is placed while this prompt is on screen. Prompts that share a layout attribute share one arrangement, so positions carry over from one prompt to the next. A prompt with a different layout attribute starts a separate arrangement. To create a new layout attribute, type its name in the picker. A layout attribute needs only a name, so no window opens.
+The **Layout attribute** stores where each node is placed while this prompt is on screen. Prompts that use the same layout attribute share one arrangement, so positions carry over from one prompt to the next, while a prompt with a different layout attribute starts a separate arrangement.
+
+To create a new layout attribute, type its name in the picker. A layout attribute needs only a name, so no window opens.
 
 > Do: Keep the same layout attribute across a stage's prompts when you want participants to build up one arrangement of their network, so the positions they set on an early prompt are still there on later ones.
 
@@ -116,7 +118,7 @@ Read more about [variables](https://documentation.networkcanvas.com/en/design-pr
 
 <!-- dialog: create prompt | edit prompt -->
 
-In manual mode, the nodes not yet placed wait in a bucket at the bottom of the screen. Switch on **Sort unplaced nodes** to choose the order the nodes appear in the bucket, by one or more attributes. Without sort rules, the nodes appear in the order they were added.
+In manual mode, nodes that have not been placed yet wait in a bucket at the bottom of the screen. Switch on **Sort unplaced nodes** to order the bucket by one or more attributes. Without sort rules, the nodes appear in the order they were added.
 
 ## Choose what tapping does
 
@@ -126,11 +128,11 @@ In manual mode, the nodes not yet placed wait in a bucket at the bottom of the s
 Switch on **Node interaction** to make tapping a node do something:
 
 - **Edge creation**: the participant taps one node and then another to draw an edge of the chosen type between them. Tapping the same two nodes again removes the edge.
-- **Attribute toggling**: tapping a node switches a true or false attribute. Nodes whose value is true are highlighted.
+- **Attribute toggling**: tapping a node switches a true/false attribute between true and false, and nodes whose value is true are highlighted.
 
 For attribute toggling, pick a **Boolean attribute**, or type a new name in the picker to create one.
 
-Each prompt uses at most one of these. While the section is switched off, the prompt uses neither. Each edge-creation prompt creates one edge type, so ask about each kind of relationship on its own prompt.
+A prompt uses at most one of these, and neither while the section is switched off. Each edge-creation prompt creates one edge type, so ask about each kind of relationship on its own prompt.
 
 ## Choose which edges are shown
 
@@ -138,7 +140,7 @@ Each prompt uses at most one of these. While the section is switched off, the pr
 <!-- scene: sociogram-display-edges -->
 <!-- field: edges.display -->
 
-**Displayed edges** decides which edge types are drawn while this prompt is on screen, for example to show the edges drawn on an earlier prompt. When you choose an edge type for edge creation, Architect also ticks that edge type here, so participants see the edges they draw. Edges between the same two nodes are drawn on top of each other, so only one of those edges can be seen.
+**Displayed edges** sets which edge types are drawn while this prompt is on screen. You can use it, for example, to show the edges drawn on an earlier prompt. When you choose an edge type for edge creation, Architect also ticks that edge type here so that participants see the edges they draw. Edges between the same two nodes are drawn on top of each other, so only one of them can be seen.
 
 <!-- include: edge-type -->
 
@@ -147,7 +149,7 @@ Each prompt uses at most one of these. While the section is switched off, the pr
 <!-- section: Background -->
 <!-- scene: sociogram-background -->
 
-The background sits behind the whole stage. **Concentric Circles** draws rings, and you choose how many. **Skew circle sizes** makes the inner rings larger, which can reduce crowding in the center. **Image** uses a picture of your own.
+The background sits behind the whole stage. **Concentric Circles** draws a number of rings that you choose, and **Skew circle sizes** makes the inner rings larger, which can reduce crowding in the center. **Image** uses a picture of your own instead.
 
 > Do: Consider customizing the background to orient participants to the activity or to give the layout meaning, for example dividing the canvas into quadrants or social contexts that positions can then be read against.
 
@@ -167,9 +169,9 @@ Read more about [resources](https://documentation.networkcanvas.com/en/design-pr
 <!-- scene: sociogram-layout-mode -->
 <!-- field: behaviours.automaticLayout -->
 
-With **Manual mode**, the nodes not yet placed wait in a bucket at the bottom of the screen. The participant drags each node onto the canvas, and can drag a node back to the bucket to take it off the canvas.
+In **Manual mode**, nodes that have not been placed yet wait in a bucket at the bottom of the screen. The participant drags each node onto the canvas, and can drag a node back to the bucket to remove it from the canvas.
 
-With **Automatic mode**, Network Canvas arranges the nodes when the stage opens, by simulating attraction and repulsion. The participant can pause the simulation and move nodes while it is paused.
+In **Automatic mode**, Network Canvas arranges the nodes for the participant when the stage opens by simulating attraction and repulsion. The participant can pause the simulation and move nodes while it is paused.
 
 <!-- include: skip-logic -->
 

@@ -47,7 +47,7 @@
 
 <!-- scene: language-chooser-intro -->
 
-The Language Chooser is a screen where the participant chooses the language for the rest of the interview. They choose from the languages your protocol is written in. The screen shows a heading above a list of those languages. Each language is written in its own language, and the language the interview is currently in is already selected.
+The Language Chooser is a screen where the participant chooses the language for the rest of the interview. It shows a heading above a list of the languages your protocol is written in. Each language's name is written in that language, and the interview's current language is already selected.
 
 When the participant chooses a language, this screen and every screen after it switch to that language straight away. The participant can change their mind before moving on, and can move on without choosing anything.
 
@@ -59,7 +59,7 @@ Read the full [Language Chooser documentation](https://documentation.networkcanv
 
 This stage collects no data. It creates no nodes or edges, and the participant's choice is not saved with the interview or included in your exported data.
 
-The choice is kept in the browser tab running the interview, so it lasts if the page reloads. If the interview is resumed in another tab or on another device, it uses that browser's language settings instead.
+The choice is kept in the browser tab running the interview, so it is still there if the page reloads. If the interview is resumed in another tab or on another device, it uses that browser's language settings instead.
 
 ## When to use it
 
@@ -78,9 +78,9 @@ Use this stage whenever your protocol has more than one language and you can't b
 <!-- section: Customize built-in wording -->
 <!-- field: title -->
 
-The **Heading** is shown above the list of languages. A new Language Chooser starts with the heading _Choose a language_. Your protocol gets this heading in each of its languages, if Network Canvas has wording in that language. You can change the heading. The participant reads it in the language the interview is shown in, so the heading changes as soon as they choose.
+The **Heading** is shown above the list of languages. A new Language Chooser starts with the heading _Choose a language_, in each of your protocol's languages that Network Canvas has wording for, and you can change it. The participant reads the heading in the language the interview is currently shown in, so it changes as soon as they choose.
 
-When the **Customize built-in wording** section is switched off, the stage uses Network Canvas's wording. The section starts switched on when your protocol has more than one language, so you can check the heading in each language. If Network Canvas has no wording in your default language, the section can't be switched off. The protocol can't be downloaded until you write the heading in that language.
+When the **Customize built-in wording** section is switched off, the stage uses Network Canvas's wording. The section starts switched on when your protocol has more than one language, so you can check the heading in each language. If Network Canvas has no wording in your default language, the section can't be switched off, and the protocol can't be downloaded until you write the heading in that language.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
@@ -89,7 +89,7 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 <!-- section: Languages -->
 <!-- scene: language-chooser-languages -->
 
-Participants choose from every language your protocol is written in. You choose these languages when you create the protocol, and they belong to the whole protocol. This section shows the same list as the **Languages** page in the project navigation. A change made in either place applies to the whole protocol.
+Participants choose from every language your protocol is written in. You choose these languages when you create the protocol, and they belong to the whole protocol. This section shows the same list as the **Languages** page in the project navigation, and a change made in either place applies to the whole protocol.
 
 The interview sorts the languages alphabetically by their own names, so the order here makes no difference to participants.
 
@@ -110,7 +110,7 @@ Read more about [the default language](https://documentation.networkcanvas.com/e
 
 <!-- section: Languages -->
 
-Click **Add languages** to offer participants another language. Your own text has no translation in the new language yet. Wording that Network Canvas supplies, such as this stage's heading, is filled in for the new language if Network Canvas has wording in that language and you haven't changed that wording in your default language.
+Click **Add languages** to offer participants another language. Text you have written has no translation in the new language until you add one. Wording that Network Canvas supplies, such as this stage's heading, is filled in for the new language if Network Canvas has wording in that language and you haven't changed that wording in your default language.
 
 ## Choose languages to add
 
@@ -119,15 +119,15 @@ Click **Add languages** to offer participants another language. Your own text ha
 
 Search for each language by its name, its name in its own language, or its code. Choose as many languages as you need.
 
-You might choose a regional variant of a language that Network Canvas has wording in, such as Mexican Spanish. Architect then asks whether to add the main language too, such as Spanish. Participants using the variant then see Network Canvas's wording wherever you haven't written your own.
+If you choose a regional variant of a language that Network Canvas has wording in, such as Mexican Spanish, Architect asks whether to add the main language too, such as Spanish. Participants using the variant then see Network Canvas's wording wherever you haven't written your own.
 
 ## Remove or relabel a language
 
 <!-- section: Languages -->
 
-The delete button at the end of a language's row removes that language and deletes its translations. Architect asks you to confirm first. You can't delete the default language. You also can't delete a language that holds the only translation of some text, including text on this stage that isn't saved yet. Point to the delete button to see why it is unavailable.
+The delete button at the end of a language's row removes that language and deletes its translations. Architect asks you to confirm first. You can't delete the default language, or a language that holds the only translation of some text, including text on this stage that isn't saved yet. Point to the delete button to see why it is unavailable.
 
-If text was recorded under the wrong language, use the button with two arrows. It records that language's translations as a different language. Nothing is translated or deleted.
+If text was recorded under the wrong language, use the button with two arrows to record that language's translations as a different language. Nothing is translated or deleted.
 
 Read more about [removing a language](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#removing-a-language).
 

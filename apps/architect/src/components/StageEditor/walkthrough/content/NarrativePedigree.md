@@ -39,7 +39,7 @@ Use this stage to show a participant how a condition may run through their famil
 <!-- field: sourceStageId -->
 <!-- scene: narrative-pedigree-source -->
 
-Pick the **Source stage**: the Family Pedigree whose family this stage draws. Only Family Pedigree stages that come before this one are offered.
+Pick the **Source stage**, which is the Family Pedigree whose family this stage draws. Only Family Pedigree stages that come before this one are offered.
 
 Changing the source stage removes every condition you have added, because each condition reads that stage's nominations. Architect asks you to confirm first.
 
@@ -49,7 +49,7 @@ Changing the source stage removes every condition you have added, because each c
 <!-- field: diseases -->
 <!-- scene: narrative-pedigree-conditions -->
 
-The editor calls conditions diseases. Each condition you add appears in the menu on the participant's toolbar, drawn in its own color. Add at least one condition. Without any conditions, the participant sees an unmarked family.
+The editor calls conditions diseases. Each condition you add appears in the menu on the participant's toolbar, drawn in its own color. Add at least one condition, because without any, the participant sees an unmarked family.
 
 > Do: Name conditions in words participants recognize. The name is all the participant sees of the condition's definition.
 
@@ -74,7 +74,7 @@ The status symbols are drawn in this color while the participant has this condit
 
 Pick the true or false **Node attribute** that records who has the condition. A person is marked as having the condition when the attribute is true.
 
-Only attributes recorded by a nomination prompt on the source Family Pedigree are listed. You can't create an attribute here. Add the nomination prompt to the Family Pedigree first.
+Only attributes recorded by a nomination prompt on the source Family Pedigree are listed. You can't create an attribute here, so add the nomination prompt to the Family Pedigree first.
 
 ## Choose how the condition is inherited
 
@@ -84,7 +84,7 @@ Only attributes recorded by a nomination prompt on the source Family Pedigree ar
 
 The **Inheritance pattern** decides who else is marked: autosomal dominant or recessive, X-linked dominant or recessive, Y-linked, or mitochondrial. **Multifactorial** and **Unknown** mark only the people nominated, and infer nothing about anyone else.
 
-Statuses pass only through genetic links (biological parents and egg or sperm donors). They do not pass through adoptive or social parents or surrogates. The sex-linked patterns use each person's sex assigned at birth. Gender identity plays no part.
+Statuses pass only through genetic links (biological parents and egg or sperm donors). They do not pass through adoptive or social parents or surrogates. The sex-linked patterns use each person's sex assigned at birth, and gender identity plays no part.
 
 > Avoid: Choosing an inheritance pattern for a condition whose inheritance is not established. Choose **Unknown** or **Multifactorial** instead, so that only recorded statuses are shown.
 
@@ -96,7 +96,7 @@ Statuses pass only through genetic links (biological parents and egg or sperm do
 
 Some statuses are certain, such as a relative nominated as having the condition, or a parent who must carry it because of their children. Other statuses are only possible, such as a relative who **may develop** or **may carry** the condition. Possible statuses are marked with a question mark.
 
-Possible statuses are off by default. When **Show possible (at-risk) statuses** is off, relatives with only a possible status are shown as not known. Only the certain statuses appear.
+Possible statuses are off by default. While **Show possible (at-risk) statuses** is off, relatives with only a possible status are shown as not known, so only the certain statuses appear.
 
 > Avoid: Turning on possible statuses for participant-facing use without a clinician. Inferred "may develop" and "may carry" symbols can be mistaken for a diagnosis.
 
@@ -105,7 +105,7 @@ Possible statuses are off by default. When **Show possible (at-risk) statuses** 
 <!-- section: Customize built-in wording -->
 <!-- scene: narrative-pedigree-snapshot -->
 
-This section holds the words Network Canvas supplies for this stage: the **Save snapshot** button, the "Select a condition" choice in the menu, and the titles of saved snapshots. The zoom button labels, which this stage shares with the Family Pedigree, are under **Shared by every stage of this kind**.
+This section holds the wording Network Canvas supplies for this stage: the **Save snapshot** button, the "Select a condition" choice in the menu, and the titles of saved snapshots. The zoom button labels, which this stage shares with the Family Pedigree, are under **Shared by every stage of this kind**.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 

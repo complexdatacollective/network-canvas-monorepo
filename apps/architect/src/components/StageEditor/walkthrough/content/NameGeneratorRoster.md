@@ -45,9 +45,9 @@
 
 ## What a name generator is
 
-Name generators are one of the fundamental parts of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations. Every alter named here is saved as a node. Later stages can then ask about these alters, place them, or connect them.
+Name generators are a fundamental part of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations. Each alter named on this stage is saved as a node, so later stages can ask about these alters, place them, or connect them.
 
-Network Canvas has several name generators. Each one suits a different way of naming alters.
+Network Canvas has several name generators, each suited to a different way of naming alters.
 
 Read the full [Name Generator for Roster Data documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-roster).
 
@@ -55,7 +55,7 @@ Read the full [Name Generator for Roster Data documentation](https://documentati
 
 <!-- scene: roster-intro -->
 
-In the Name Generator for Roster Data, the participant does not type anything. The alters already exist in a **roster**, a data file you import, such as the members of a class or team. The screen is split in two. One side is a panel of **cards**, one for each entry in the roster. The other side is the participant's network. The participant drags a card across to add that alter, and can drag the alter back to remove it.
+In the Name Generator for Roster Data, the participant does not type anything. Instead, the alters already exist in a **roster**: a data file you import, such as the members of a class or team. The screen is split in two, with a panel of **cards** on one side, one for each entry in the roster, and the participant's network on the other. The participant drags a card across to add that alter, and can drag the alter back to remove it.
 
 If participants should name alters you can't list in advance, use the [Name Generator (using forms)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-forms) or the [Name Generator (using quick add)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-quick-add).
 
@@ -63,13 +63,13 @@ If participants should name alters you can't list in advance, use the [Name Gene
 
 <!-- scene: roster-data -->
 
-This stage collects alters from the roster, along with what the roster records about each one. Each card the participant adds becomes one node in the network, and one row in your exported data. Every column of the alter's roster row is copied onto the node as an attribute.
+This stage collects alters from the roster, along with what the roster records about each one. Each card the participant adds becomes one node in the network and one row in your exported data, and every column of the alter's roster row is copied onto the node as an attribute.
 
 Once an alter is added, its card leaves the list for the rest of the interview, so each roster entry can be added only once.
 
 ## When to use it
 
-Use this stage when you have a known set of alters your participant might nominate from, such as a class, a team or an organization.
+Use this stage when participants will nominate from a known set of alters, such as a class, a team or an organization.
 
 > Do: Make sure the roster file has a `name` attribute, so cards and nodes are labeled correctly. See [node labeling](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/node-labelling).
 
@@ -85,9 +85,9 @@ Use this stage when you have a known set of alters your participant might nomina
 
 <!-- section: Node setup -->
 
-Choose what kind of node this stage creates, such as Person. Each alter added here becomes a node of that type.
+Choose the **node type** this stage creates, such as _Person_. Each alter added here becomes a node of that type.
 
-If the type you need does not exist yet, create it here.
+If the type you need does not exist yet, you can create it here.
 
 <!-- include: node-type -->
 
@@ -96,7 +96,7 @@ If the type you need does not exist yet, create it here.
 <!-- section: Roster source -->
 <!-- field: dataSource -->
 
-The roster is the network data file that supplies this stage's alters. Every later roster setting, such as what cards show and what can be searched, is chosen from this file's columns, so choose the file first. Once you choose a file, the editor lists the attributes its entries carry.
+The roster is the network data file that supplies this stage's alters. Choose the file first, because the later roster settings, such as what the cards show and what can be searched, are chosen from its columns. Once you choose a file, the editor lists the attributes its entries have.
 
 Read more about [preparing a roster file](https://documentation.networkcanvas.com/en/design-protocols/tutorials/working-with-rosters#how-to-create-a-roster).
 
@@ -106,9 +106,9 @@ Read more about [preparing a roster file](https://documentation.networkcanvas.co
 
 <!-- section: Prompt collection -->
 
-The prompt is how you explain the task to the participant. It is the question shown at the top of the screen, such as "_Which of your classmates do you spend time with outside school?_" To ask several questions on one stage, add more prompts. They see one prompt at a time, in the order you set.
+The prompt explains the task to the participant. It is the question shown at the top of the screen, such as "_Which of your classmates do you spend time with outside school?_" To ask several questions on one stage, add more prompts. The participant sees one prompt at a time, in the order you set.
 
-Each roster entry can be added only once. An alter added under the first prompt is no longer on the list for the second prompt.
+Each roster entry can be added only once, so an alter added on the first prompt is no longer in the list on the second.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -119,7 +119,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/en/design-prot
 <!-- section: Roster panel -->
 <!-- field: panelTitle -->
 
-The title is shown above the cards, so participants know what the list is. A new stage's title is _Available to add_. Change it to say what the list holds, for example _Your classmates_.
+The title is shown above the cards, so participants know what the list is. A new stage starts with the title _Available to add_. Change it to say what the list holds, for example _Your classmates_.
 
 ## Choose what each card shows
 
@@ -128,7 +128,7 @@ The title is shown above the cards, so participants know what the list is. A new
 
 Every card is titled with the entry's name from the data file. Switch on **Card display** to list more of the entry's attributes under its name, such as class or department. Each attribute is shown with a label.
 
-Show whatever a participant needs to tell apart entries with similar names.
+Show whatever participants need to tell entries with similar names apart.
 
 Read more about [formatting the display of the roster](https://documentation.networkcanvas.com/en/design-protocols/tutorials/working-with-rosters#formatting-the-display-of-the-roster).
 
@@ -150,15 +150,15 @@ Each of the **Sortable properties** becomes a button above the cards, with the l
 <!-- section: Roster search -->
 <!-- scene: roster-search -->
 
-Switch on **Roster search** to put a search box above the cards. Under **Searchable attributes**, choose which attributes a search looks in. If this section is switched off, there is no search box, and participants find entries by scrolling.
+Switch on **Roster search** to put a search box above the cards. Under **Searchable attributes**, choose which attributes a search looks in. While this section is switched off, there is no search box and participants find entries by scrolling.
 
-Each attribute you add makes searching a long roster slower, and can make matches less accurate. Choose only the attributes participants are likely to search by.
+Each attribute you add makes searching a long roster slower and can make matches less accurate, so choose only the attributes participants are likely to search by.
 
 ## Choose how closely searches match
 
 <!-- section: Roster search -->
 
-**Search accuracy** sets how close the participant's typing must be to count as a match, from **Exact** to **Low accuracy**. Low accuracy forgives typos and spelling mistakes. Higher accuracy narrows the results when a roster has many similar names.
+**Search accuracy** sets how close what the participant types must be to an entry to count as a match, from **Exact** to **Low accuracy**. Low accuracy forgives typos and spelling mistakes. Higher accuracy narrows the results when a roster has many similar names.
 
 As a rule of thumb, the larger the roster, the higher the accuracy should be.
 
@@ -167,7 +167,9 @@ As a rule of thumb, the larger the roster, the higher the accuracy should be.
 <!-- section: Nomination limits -->
 <!-- scene: roster-limits -->
 
-Switch on this section to set a minimum or maximum number of alters that the participant can add. The limits count every alter added on the stage, across all of its prompts. If the participant adds the maximum number of alters, the cards can no longer be dragged and the participant is prompted to continue to the next stage. If they haven't added the minimum number of alters, they can't move past the last prompt until they add more.
+Switch on this section to set a minimum or maximum number of alters the participant can add. The limits count every alter added on the stage, across all of its prompts.
+
+Once the participant reaches the maximum, the cards can no longer be dragged and they are prompted to continue to the next stage. Until they reach the minimum, they can't move past the last prompt.
 
 ## Customize built-in wording
 
@@ -181,7 +183,7 @@ Network Canvas supplies the messages this stage shows. Switch on this section to
 
 These messages can include the node type's name, so give the node type a name that reads naturally to participants.
 
-When the participant drags an added alter back to remove it, a message appears. The wording of this message is under **Shared by every stage of this kind**, so changing it changes every roster stage. **Shared by every stage of this kind** appears after the protocol has a roster stage saved.
+A message also appears when the participant drags an added alter back to remove it. Its wording is under **Shared by every stage of this kind**, so changing it changes it on every roster stage. **Shared by every stage of this kind** appears only after a roster stage has been saved to the protocol.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 

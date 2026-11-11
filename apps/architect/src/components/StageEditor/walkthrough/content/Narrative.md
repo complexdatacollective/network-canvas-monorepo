@@ -47,7 +47,7 @@
 
 <!-- scene: narrative-intro -->
 
-The Narrative shows the participant's network back to them, for discussion. It replays an arrangement they made earlier. The interviewer or participant switches between **presets**. Each preset is a different view of the same network. A preset sets which edges are drawn, which nodes are grouped, and which nodes are highlighted. The Narrative does not create nodes or collect data.
+The Narrative shows the participant's network back to them for discussion, replaying an arrangement they made earlier. The interviewer or participant switches between **presets**, each a different view of the same network. A preset sets which edges are drawn, which nodes are grouped, and which nodes are highlighted. The Narrative does not create nodes or collect data.
 
 Its companion, the [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram), is where participants lay out the network this stage shows.
 
@@ -57,7 +57,7 @@ Read the full [Narrative documentation](https://documentation.networkcanvas.com/
 
 <!-- scene: narrative-data -->
 
-This stage collects no data. Nothing done on this stage is saved to the participant's network. Switching presets, moving nodes and drawing on the canvas all leave your exported data exactly as it was.
+This stage collects no data. Nothing done here is saved to the participant's network: switching presets, moving nodes and drawing on the canvas all leave your exported data exactly as it was.
 
 > Avoid: Relying on the Narrative to collect data. If you need to record an attribute or an edge a participant identifies while talking, gather it on a data-collecting stage such as the [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram) or a name interpreter.
 
@@ -71,9 +71,9 @@ This stage collects no data, so plan separately how you will capture the discuss
 
 <!-- section: Node setup -->
 
-Choose the **node type** this stage shows on the canvas, such as _Person_. Each preset has its own layout attribute. A node of that type appears only once it has a position saved in the layout attribute of the preset on screen.
+Choose the **node type** this stage shows on the canvas, such as _Person_. Each preset has its own layout attribute, and a node of that type appears only when it has a position saved in the layout attribute of the preset on screen.
 
-Changing the node type later clears this stage's other settings, except its name and interviewer notes, because they depend on the node type. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
 
 <!-- include: node-type -->
 
@@ -85,7 +85,7 @@ Changing the node type later clears this stage's other settings, except its name
 
 <!-- section: Visualization presets -->
 
-A preset is one view of the network. The participant sees the first preset when the stage opens. They step through the other presets in order with the arrows in the preset switcher at the bottom right of the screen. Every Narrative stage needs at least one preset. You can add presets once you have chosen a node type.
+A preset is one view of the network. The participant sees the first preset when the stage opens, and steps through the others in order with the arrows in the preset switcher at the bottom right of the screen. Every Narrative stage needs at least one preset, and you can add presets once you have chosen a node type.
 
 > Do: Give each preset a single focus that maps to one question, and label it accordingly, for example a _Support_ preset that highlights who provides support, or a _Groups_ preset that shows how the network divides into communities.
 
@@ -104,7 +104,7 @@ The **Preset label** names this view in the preset switcher. The participant see
 <!-- field: layoutVariable -->
 <!-- scene: narrative-layout -->
 
-The **Layout attribute** decides where each node is drawn. Only nodes with a value for this attribute appear. If no node has a value for the layout attribute, the canvas is empty.
+The **Layout attribute** decides where each node is drawn. Only nodes with a value for this attribute appear, so if no node has one, the canvas is empty.
 
 > Do: Reuse the layout attribute your participants filled in on an earlier [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram). This replays their own arrangement of the network rather than starting from an empty canvas.
 
@@ -114,14 +114,14 @@ The **Layout attribute** decides where each node is drawn. Only nodes with a val
 <!-- field: groupVariable -->
 <!-- scene: narrative-groups -->
 
-Pick a **Grouping attribute** to draw a shaded outline around the nodes that share a value of that attribute. Each value has its own color. A node with more than one value sits inside overlapping outlines. Only categorical attributes can be picked. You cannot create a new attribute here, so define the attribute before you build the preset.
+Pick a **Grouping attribute** to draw a shaded outline around the nodes that share a value of that attribute. Each value has its own color, and a node with more than one value sits inside overlapping outlines. Only categorical attributes can be picked, and you cannot create a new one here, so define the attribute before you build the preset.
 
 ## Choose which edges are shown
 
 <!-- dialog: create preset | edit preset -->
 <!-- field: edges.display -->
 
-Tick the **Edge types** this preset draws. If no edge type is ticked, the preset draws no edges. Each ticked edge type needs a label. The participant reads the label in the preset switcher's list of what this preset shows. The label starts as the edge type's name.
+Tick the **Edge types** this preset draws. If no edge type is ticked, the preset draws no edges. Each ticked edge type needs a label, which the participant reads in the preset switcher's list of what this preset shows. The label starts as the edge type's name.
 
 ## Choose what can be highlighted
 
@@ -129,7 +129,7 @@ Tick the **Edge types** this preset draws. If no edge type is ticked, the preset
 <!-- field: highlight -->
 <!-- scene: narrative-highlight -->
 
-Tick the **Highlight attributes** this preset offers. These are true or false attributes, such as one set by tapping nodes on a sociogram. Nodes whose value is true get a highlight ring. Each ticked attribute needs a label. The participant reads the label in the preset switcher, where they choose one attribute to highlight at a time.
+Tick the **Highlight attributes** this preset offers. These are true or false attributes, such as one set by tapping nodes on a sociogram. Nodes whose value is true get a highlight ring. Each ticked attribute needs a label, which the participant reads in the preset switcher, where they choose one attribute to highlight at a time.
 
 ## Choose the background
 
@@ -167,7 +167,7 @@ With **Free-draw** on, the interviewer or participant can draw on the canvas wit
 <!-- section: Narrative behaviors -->
 <!-- field: behaviours.allowRepositioning -->
 
-With **Allow repositioning** on, nodes can be dragged around the canvas while you talk. Moved nodes keep their new places only while the stage is on screen. The positions saved in the layout attribute never change.
+With **Allow repositioning** on, nodes can be dragged around the canvas while you talk. Moved nodes keep their new places only while the stage is on screen, and the positions saved in the layout attribute never change.
 
 ## Customize built-in wording
 

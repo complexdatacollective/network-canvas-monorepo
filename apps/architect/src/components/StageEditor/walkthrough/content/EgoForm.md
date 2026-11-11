@@ -47,7 +47,7 @@
 
 <!-- scene: ego-form-intro -->
 
-The Ego Form collects data about the participant, known as **ego**, rather than about any alter. The participant completes one [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) about themselves. An introduction above the form says what the form is for.
+The Ego Form collects data about the participant, known as **ego**, rather than about any alter. The participant completes one [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) about themselves. An introduction above the form explains what the form is for.
 
 Read the full [Ego Form documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ego-form).
 
@@ -55,7 +55,7 @@ Read the full [Ego Form documentation](https://documentation.networkcanvas.com/e
 
 <!-- scene: ego-form-data -->
 
-This stage collects attributes about the participant. Each field on the form records one attribute of ego. In your exported data, the answers go in the ego list, which has one row for the interview and one column for each field.
+This stage collects attributes of the participant. Each field on the form records one attribute of ego. In your exported data, the answers go in the ego list, which has one row for the interview and one column for each field.
 
 ## When to use it
 
@@ -80,7 +80,7 @@ The introduction sits above the form, so the participant knows what the question
 <!-- section: Form configuration -->
 <!-- scene: ego-form-intro -->
 
-These are the questions the participant answers about themselves. Each field records one attribute of ego. The fields appear in the order listed here, in one form the participant scrolls through.
+The form holds the questions the participant answers about themselves. Each field records one attribute of ego, and the fields appear in the order listed here, in a single form the participant scrolls through.
 
 Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms). To tour the field editor, open a field or create a new one.
 
@@ -107,7 +107,7 @@ This is the question the participant reads above the input, such as _"How old ar
 <!-- section: Customize built-in wording -->
 <!-- scene: ego-form-scroll -->
 
-This section changes the wording of the scroll button, which screen readers announce as **Scroll to see more questions**. When a form runs past the bottom of the screen and the participant has not used the form for 15 seconds, a button with bouncing arrows appears below the form. Pressing the button scrolls to the end of the form.
+When a form runs past the bottom of the screen and the participant has not used it for 15 seconds, a scroll button with bouncing arrows appears below the form. Pressing the button scrolls to the end of the form. This section changes the wording of that button, which screen readers announce as **Scroll to see more questions**.
 
 This wording is shared by every Ego Form stage, so changing it here changes it on all of them. This section appears only after an Ego Form stage has been saved to the protocol.
 

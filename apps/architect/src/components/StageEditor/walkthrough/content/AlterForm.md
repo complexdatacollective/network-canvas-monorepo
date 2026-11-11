@@ -47,7 +47,7 @@
 
 <!-- scene: alter-form-intro -->
 
-The Per Alter Form is a name interpreter. It collects information about alters already named, rather than creating new ones. The participant completes the same [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) for each alter in turn. The alter is shown beside the form, or above the form on a screen taller than it is wide. The participant moves on to the next alter with the Next arrow.
+The Per Alter Form is a name interpreter: it collects information about alters already named, rather than creating new ones. The participant completes the same [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) for each alter in turn. The alter is shown beside the form, or above it on a screen that is taller than it is wide, and the participant moves on to the next alter with the Next arrow.
 
 Read the full [Per Alter Form documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form).
 
@@ -55,7 +55,7 @@ Read the full [Per Alter Form documentation](https://documentation.networkcanvas
 
 <!-- scene: name-generator-data -->
 
-This stage collects attributes about alters already named. Each field on the form records one attribute of the alter. In your exported data, each alter the form is shown for is one row, and each field is one column.
+This stage collects attributes of alters already named. Each field on the form records one attribute of the alter. In your exported data, each alter the form is shown for is one row, and each field is one column.
 
 ## When to use it
 
@@ -73,7 +73,7 @@ Use this stage to ask the same few questions about every alter.
 
 Choose the **node type** the form asks about, such as _Person_. The form is shown once for every node of that type already in the participant's network.
 
-Changing the node type later clears this stage's other settings, except its name and interviewer notes, because they depend on the node type. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, because they depend on the node type. Only the stage's name and interviewer notes are kept. Architect asks you to confirm first.
 
 <!-- include: node-type -->
 
@@ -86,7 +86,7 @@ Changing the node type later clears this stage's other settings, except its name
 <!-- section: Form configuration -->
 <!-- scene: alter-form-intro -->
 
-These are the questions asked about each alter. Each field records one attribute of the alter, and the fields appear in the order listed here. The form has no title of its own. Instead, the alter the form asks about is shown beside it.
+The form holds the questions asked about each alter. Each field records one attribute of the alter, and the fields appear in the order listed here. The form has no title of its own. Instead, the alter it asks about is shown beside it.
 
 Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms). To tour the field editor, open a field or create a new one.
 

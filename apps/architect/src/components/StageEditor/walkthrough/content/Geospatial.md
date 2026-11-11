@@ -47,7 +47,7 @@
 
 <!-- scene: geospatial-intro -->
 
-The Geospatial stage is a name interpreter. It collects information about alters already named, and doesn't create new ones. It shows a map with outlined areas, such as neighborhoods or census tracts, and a panel naming one alter at a time. The participant selects the area that answers the prompt for that alter, then clicks Next to move on to the next alter.
+The Geospatial stage is a name interpreter: it collects information about alters already named, and doesn't create new ones. It shows a map with outlined areas, such as neighborhoods or census tracts, and a panel naming one alter at a time. The participant selects the area that answers the prompt for that alter, then clicks Next to move on to the next alter.
 
 The map is drawn by Mapbox, a map service, so the stage needs an internet connection during the interview.
 
@@ -57,7 +57,7 @@ Read the full [Geospatial documentation](https://documentation.networkcanvas.com
 
 <!-- scene: geospatial-data -->
 
-This stage collects a location for each alter. Each prompt records one location attribute. When the participant selects an area, the stage saves the value of one of that area's properties, such as its census tract ID. Each prompt fills one column of your exported data, with a value for every alter the participant placed. An alter marked as outside the selectable areas gets the value `outside-selectable-areas`.
+This stage collects a location for each alter. Each prompt records one location attribute, which fills one column of your exported data with a value for every alter the participant placed. When the participant selects an area, the stage saves the value of one of that area's properties, such as its census tract ID. An alter marked as outside the selectable areas gets the value `outside-selectable-areas`.
 
 > Do: Optionally merge all GeoJSON properties with your alter data during data cleaning and analysis. For example, you can match the `zipcode` to other attributes like `population` contained in the GeoJSON file.
 
@@ -71,9 +71,9 @@ Use this stage to record where alters are, such as the area each one lives or wo
 
 <!-- section: Node setup -->
 
-Choose the **node type** this stage asks about, for example _Person_. Every node of that type already in the participant's network is asked about in turn, on every prompt.
+Choose the **node type** this stage asks about, for example _Person_. The participant is asked about each node of that type already in their network, one at a time, on every prompt.
 
-Changing the node type later clears this stage's other settings, except its name, interviewer notes and built-in wording, because they depend on the node type. The map settings are cleared too. Architect asks you to confirm first.
+Changing the node type later clears this stage's other settings, including the map settings, because they depend on the node type. Only the stage's name, interviewer notes and built-in wording are kept. Architect asks you to confirm first.
 
 > Do: Consider using a **Stage filter** to narrow down nodes to only those that fall within the selectable map areas. An earlier stage, such as a [Categorical Bin](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/categorical-bin) or [Per Alter Form](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form), can capture the attribute to filter on, so participants are only asked about relevant nodes.
 
@@ -90,7 +90,7 @@ Changing the node type later clears this stage's other settings, except its name
 
 The map can only be drawn with an API key from your own [Mapbox](https://www.mapbox.com/) account. Mapbox offers a free tier that suits small projects. Create an account, copy the token from your account overview, and add it here.
 
-A key is stored with the protocol's resources, so every Geospatial stage in the protocol can use the same one.
+The key is stored with the protocol's resources, so every Geospatial stage in the protocol can use the same one.
 
 Read how to [get a Mapbox key](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/geospatial#mapbox-configuration).
 
@@ -100,14 +100,14 @@ Read how to [get a Mapbox key](https://documentation.networkcanvas.com/en/design
 
 Add a key by giving it a name and pasting the key itself, or choose a key already stored in this protocol. The key is saved inside your protocol as plain text, so anyone you give the protocol file to can read it.
 
-A protocol started from a template that has a map uses Network Canvas's shared testing key. This key is rate-limited and is for evaluation only. The protocol's timeline shows a warning while the testing key is in use. Replace it with your own key before you collect data.
+A protocol started from a template that has a map uses Network Canvas's shared testing key. This key is rate-limited and for evaluation only, and the protocol's timeline shows a warning while it is in use. Replace it with your own key before you collect data.
 
 ## Choose the selectable areas
 
 <!-- section: Map layers -->
 <!-- field: mapOptions.dataSourceAssetId -->
 
-The **Layer data source** is a [GeoJSON](https://geojson.org/) file that outlines the areas the participant can select, such as census tracts, ZIP codes or neighborhoods. Each area in it carries properties, such as its ID or name.
+The **Layer data source** is a [GeoJSON](https://geojson.org/) file that outlines the areas the participant can select, such as census tracts, ZIP codes or neighborhoods. Each area in the file carries properties, such as its ID or name.
 
 > Avoid: Excessively large GeoJSON files that contain areas far outside the intended selection areas. This can lead to slower performance when loading the map.
 
@@ -160,21 +160,21 @@ Each prompt needs its own attribute. Two prompts on one stage can't share an att
 <!-- section: Map appearance -->
 <!-- field: mapOptions.style -->
 
-The **Mapbox style** is the map drawn beneath the selectable areas, such as streets, outdoors, satellite imagery, or a light or dark map. Pick a style where participants can read the place names next to your outline color.
+The **Mapbox style** is the map drawn beneath the selectable areas, such as streets, outdoors, satellite imagery, or a light or dark map. Pick a style on which participants can still read the place names alongside your outline color.
 
 ## Choose the outline color
 
 <!-- section: Map appearance -->
 <!-- field: mapOptions.color -->
 
-This color outlines every selectable area, and fills the area the participant has selected. Use one that stands out against the map style.
+This color outlines every selectable area, and fills the area the participant has selected. Use a color that stands out against the map style.
 
 ## Show public transit
 
 <!-- section: Map appearance -->
 <!-- field: mapOptions.showTransit -->
 
-**Show public transit** draws rail lines and stations, with their names, on the map, which can help participants orient themselves when selecting areas.
+**Show public transit** draws rail lines and stations on the map, with their names, which can help participants orient themselves when selecting areas.
 
 ## Let participants search
 
@@ -188,7 +188,7 @@ This color outlines every selectable area, and fills the area the participant ha
 <!-- section: Map starting position -->
 <!-- field: mapOptions.center -->
 
-Type the longitude and latitude the map is centered on, and its **Starting zoom**. Or click **Set the starting view on a map** to find the view by moving a map. The recenter button on the participant's map returns to this view.
+Type the longitude and latitude the map is centered on and its **Starting zoom**, or click **Set the starting view on a map** to find the view by moving a map. The recenter button on the participant's map returns to this view.
 
 > Do: Make sure the selectable areas from your GeoJSON file are visible within the initial map view.
 
@@ -203,7 +203,7 @@ Pan and zoom the map to the view participants should see when the map first open
 <!-- section: Customize built-in wording -->
 <!-- scene: geospatial-outside -->
 
-This section holds the words Network Canvas supplies for the map, which you can change and translate. **Outside selectable areas** labels the button in the prompt panel that marks the alter as outside the areas the map allows. Selecting the map outside every area also marks the alter as outside.
+This section holds the wording Network Canvas supplies for the map, which you can change and translate. **Outside selectable areas** labels the button in the prompt panel that marks the alter as outside the areas the map allows. Selecting the map outside every area also marks the alter as outside.
 
 Under **Shared by every stage of this kind** are the messages shown when the map can't be used as usual: while the device is offline, when the map can't be drawn, and when a search fails. A change to these messages applies to every Geospatial stage.
 
