@@ -68,7 +68,7 @@ Experience enhanced productivity with our AI Assistant. Trained on the documenta
 
 ### 6. Language Localization
 
-Tailor your experience with language localization support. Currently supporting English and Russian, this feature ensures a global audience can access documentation in their preferred language.
+The site is built to serve each page in several languages; today it is published in English only. How translations are made, checked and kept in step with the English is described in [`translation/README.md`](./translation/README.md).
 
 ### 7. Dark and Light Modes
 
