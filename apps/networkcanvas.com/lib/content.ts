@@ -118,11 +118,24 @@ export const scientificAdvisors = [
   'Brian Mustanski',
 ];
 
+// In the order the Institutions section shows them.
 export const institutions = [
-  { name: 'University of Oxford', logo: '/images/logos/oxford.png' },
-  { name: 'Northwestern University', logo: '/images/logos/northwestern.svg' },
-  { name: 'Complex Data Collective', logo: '/images/logos/codaco.png' },
-];
+  {
+    id: 'northwestern',
+    name: 'Northwestern University',
+    logo: '/images/logos/northwestern.svg',
+  },
+  {
+    id: 'oxford',
+    name: 'University of Oxford',
+    logo: '/images/logos/oxford.png',
+  },
+  {
+    id: 'codaco',
+    name: 'Complex Data Collective',
+    logo: '/images/logos/codaco.png',
+  },
+] as const;
 
 export const footerLinks = [
   { id: 'privacy', href: externalLinks.privacy },
