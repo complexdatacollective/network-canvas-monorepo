@@ -1,4 +1,6 @@
+import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { renderHook } from '@testing-library/react';
+import { createElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useDeckKeyboard } from '../useDeckKeyboard';
@@ -19,6 +21,22 @@ describe('useDeckKeyboard', () => {
     expect(onStep).toHaveBeenCalledWith(1);
     pressOnWindow('Enter');
     expect(onActivate).toHaveBeenCalledTimes(1);
+  });
+
+  it('steps forward on the left arrow in a right-to-left language', () => {
+    const onStep = vi.fn();
+    renderHook(
+      () => useDeckKeyboard({ enabled: true, onStep, onActivate: vi.fn() }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) =>
+          createElement(DirectionProvider, { direction: 'rtl' }, children),
+      },
+    );
+
+    pressOnWindow('ArrowLeft');
+    expect(onStep).toHaveBeenLastCalledWith(1);
+    pressOnWindow('ArrowRight');
+    expect(onStep).toHaveBeenLastCalledWith(-1);
   });
 
   it('does nothing when disabled', () => {

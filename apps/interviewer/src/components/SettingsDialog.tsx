@@ -866,7 +866,7 @@ export function SettingsDialog({
         className="min-h-0 flex-1"
       >
         <ScrollArea
-          viewportClassName="@container pr-4"
+          viewportClassName="@container pe-4"
           className="min-w-0 flex-1"
         >
           <TabsPanel value="about">

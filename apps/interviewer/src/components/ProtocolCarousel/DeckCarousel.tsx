@@ -1,3 +1,4 @@
+import { useDirection } from '@base-ui/react/direction-provider';
 import {
   AnimatePresence,
   animate,
@@ -63,6 +64,16 @@ const SLIDE_EXIT = {
   transition: { duration: 0.3, ease: 'easeIn' },
 } as const;
 
+/**
+ * Which way along the screen the deck runs: 1 when each card's successor is
+ * to its right, -1 in a right-to-left language, where it is to its left. The
+ * deck is laid out, dragged and scrolled in physical distances, so every one
+ * of them that runs along the deck is multiplied by this.
+ */
+function useDeckRun(): 1 | -1 {
+  return useDirection() === 'rtl' ? -1 : 1;
+}
+
 export type DeckCarouselSlide = {
   key: string;
   // Primary action when the slide is tapped (or Enter-activated) while
@@ -122,6 +133,7 @@ export function DeckCarousel({
   const wheelAccum = useRef(0);
   const wheelLastStep = useRef(0);
   const stride = SLOT_TO_CARD_RATIO * cardWidth;
+  const run = useDeckRun();
 
   const settleTo = useCallback(
     (target: number, velocity = 0) => {
@@ -169,7 +181,7 @@ export function DeckCarousel({
   // ignored.
   const handlePan = (_event: PointerEvent, info: PanInfo) => {
     if (disabled || settleTarget.current !== null) return;
-    const raw = dragOrigin.current - info.offset.x / stride;
+    const raw = dragOrigin.current - (run * info.offset.x) / stride;
     position.set(rubberBand(raw, slides.length));
   };
 
@@ -182,7 +194,7 @@ export function DeckCarousel({
     if (settleTarget.current !== null) return;
     // Velocity in index units/s; project a little ahead so flicks advance
     // past the halfway point feel right.
-    const velocity = -info.velocity.x / stride;
+    const velocity = (-run * info.velocity.x) / stride;
     const projected = position.get() + velocity * FLICK_PROJECTION_S;
     const target = clampIndex(Math.round(projected), slides.length);
     settleTo(target, velocity);
@@ -199,9 +211,11 @@ export function DeckCarousel({
       wheelAccum.current = 0;
       return;
     }
+    // A sideways scroll moves along the deck, so it follows the way the deck
+    // runs. A vertical one always steps forward going down.
     const delta =
       Math.abs(event.deltaX) > Math.abs(event.deltaY)
-        ? event.deltaX
+        ? run * event.deltaX
         : event.deltaY;
     wheelAccum.current += delta;
     if (Math.abs(wheelAccum.current) < WHEEL_THRESHOLD) return;
@@ -282,8 +296,14 @@ function DeckSlide({
     slotIndex.set(index);
   }, [index, slotIndex]);
 
+  // The fan is the mirror image of itself in a right-to-left language: each
+  // card's offset along the deck, and the tilt that goes with it, change
+  // sign.
+  const run = useDeckRun();
   const x = useTransform(
-    () => slidePose(slotIndex.get() - position.get(), cardWidth, cardHeight).x,
+    () =>
+      run *
+      slidePose(slotIndex.get() - position.get(), cardWidth, cardHeight).x,
   );
   const y = useTransform(
     () => slidePose(slotIndex.get() - position.get(), cardWidth, cardHeight).y,
@@ -293,6 +313,7 @@ function DeckSlide({
   );
   const rotateZ = useTransform(
     () =>
+      run *
       slidePose(slotIndex.get() - position.get(), cardWidth, cardHeight)
         .rotateZ,
   );

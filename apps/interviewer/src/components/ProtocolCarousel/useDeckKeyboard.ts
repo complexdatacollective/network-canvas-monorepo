@@ -1,3 +1,4 @@
+import { useDirection } from '@base-ui/react/direction-provider';
 import { useEffect } from 'react';
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -26,18 +27,23 @@ type DeckKeyboardOptions = {
 
 // Window-level so the deck responds without holding focus (matching the
 // old Swiper keyboard module with onlyInViewport: false).
+//
+// An arrow key moves the deck towards the side it points at. The next card
+// is on the right, or on the left in a right-to-left language, so which key
+// steps forward depends on the reading direction.
 export function useDeckKeyboard({
   enabled,
   onStep,
   onActivate,
 }: DeckKeyboardOptions) {
+  const forwardKey = useDirection() === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
   useEffect(() => {
     if (!enabled) return undefined;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         if (isEditableTarget(event.target)) return;
         event.preventDefault();
-        onStep(event.key === 'ArrowLeft' ? -1 : 1);
+        onStep(event.key === forwardKey ? 1 : -1);
         return;
       }
       if (event.key === 'Enter') {
@@ -49,5 +55,5 @@ export function useDeckKeyboard({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [enabled, onStep, onActivate]);
+  }, [enabled, onStep, onActivate, forwardKey]);
 }

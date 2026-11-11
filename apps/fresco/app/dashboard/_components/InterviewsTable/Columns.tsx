@@ -136,7 +136,7 @@ export const getInterviewColumns = (
     {
       id: 'select',
       meta: {
-        className: 'sticky left-0',
+        className: 'sticky inset-s-0',
       },
       header: ({ table }) => <SelectAllHeader table={table} />,
       cell: ({ row }) => (
@@ -330,7 +330,7 @@ export const getInterviewColumns = (
               percentProgress={progress}
               nudge={false}
             />
-            <div className="ml-2 text-center">
+            <div className="ms-2 text-center">
               {intl.formatNumber(progress / 100, {
                 style: 'percent',
                 maximumFractionDigits: 0,
