@@ -32,13 +32,19 @@
   }
 
   /* Every scroll that does not name its own behaviour (anchor jumps, focus
-     following) glides, except for visitors who ask for reduced motion. */
+     following) glides, except under reduced motion. Reduced motion follows
+     AnimationProvider's `data-reduced-motion` override before the system
+     preference, as tooling/tailwind/fresco/reduced-motion.css does. */
   html {
     scroll-behavior: smooth;
   }
 
+  :root[data-reduced-motion='always'] {
+    scroll-behavior: auto;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    html {
+    :root:not([data-reduced-motion='never']) {
       scroll-behavior: auto;
     }
   }
