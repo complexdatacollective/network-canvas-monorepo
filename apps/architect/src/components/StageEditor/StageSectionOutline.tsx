@@ -217,7 +217,7 @@ function StageSectionOutlineItem({
       // whatever the page happens to have positioned — reaching, in a host
       // whose editor sits in a scrolling panel, past the right of the page and
       // giving it a horizontal scrollbar.
-      className="focusable relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-left text-sm hover:bg-current/5"
+      className="focusable relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-start text-sm hover:bg-current/5"
     >
       <StatusIcon
         aria-hidden

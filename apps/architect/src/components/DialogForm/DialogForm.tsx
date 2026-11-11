@@ -204,11 +204,11 @@ const DialogFormBody = ({
           <FormWithoutProvider
             id={domFormId}
             onSubmit={handleSubmit}
-            className="min-w-0 @min-[60rem]:pr-4"
+            className="min-w-0 @min-[60rem]:pe-4"
           >
             {children}
           </FormWithoutProvider>
-          <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+          <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:ps-4">
             {aside}
           </aside>
         </ResizableFlexPanel>

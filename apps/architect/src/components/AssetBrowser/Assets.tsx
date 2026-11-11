@@ -232,7 +232,7 @@ const Assets = ({
         animate
         animationKey={selectedAssetType}
         className="!flex-none"
-        viewportClassName="pr-3"
+        viewportClassName="pe-3"
         emptyState={
           <Paragraph emphasis="muted" margin="none" className="py-10">
             {intl.formatMessage(messages.noResourcesToDisplay)}

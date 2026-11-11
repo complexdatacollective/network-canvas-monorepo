@@ -298,7 +298,7 @@ const ThresholdItem = ({
         size="sm"
         color="destructive"
         variant="text"
-        className="ml-auto"
+        className="ms-auto"
         onClick={onDelete}
         aria-label={intl.formatMessage(messages.removeThreshold, {
           value1: index + 1,
@@ -496,7 +496,7 @@ const ShapeMappingEditor = ({
               value={defaultShape}
               aria-label={intl.formatMessage(messages.defaultShape)}
             />
-            <span className="ml-auto text-xs text-current/70">
+            <span className="ms-auto text-xs text-current/70">
               {intl.formatMessage(messages.usesDefaultShape)}
             </span>
             <IconButton

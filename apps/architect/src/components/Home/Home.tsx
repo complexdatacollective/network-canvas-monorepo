@@ -426,7 +426,7 @@ const Home = () => {
               />
             </div>
 
-            <div className="short:gap-3 laptop:gap-8 @container-size flex h-full min-w-0 flex-1 flex-col items-start justify-start gap-6 text-left">
+            <div className="short:gap-3 laptop:gap-8 @container-size flex h-full min-w-0 flex-1 flex-col items-start justify-start gap-6 text-start">
               <div className="flex w-full flex-col items-start gap-8">
                 <div className="flex w-full flex-col items-start gap-4">
                   <Heading

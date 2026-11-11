@@ -70,7 +70,7 @@ function RuleEntity({ entity }: { entity: RuleDescriptionEntity }) {
   return (
     <span className="inline" data-rule-entity={entity.kind}>
       <span
-        className="mr-2 inline-flex size-8 items-center justify-center align-middle"
+        className="me-2 inline-flex size-8 items-center justify-center align-middle"
         data-rule-entity-glyph={entity.kind}
         aria-hidden
       >

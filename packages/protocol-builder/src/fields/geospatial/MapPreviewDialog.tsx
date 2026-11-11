@@ -187,7 +187,9 @@ export default function MapPreviewDialog({
           {status === 'ready' && moved && (
             <Button
               color="primary"
-              icon={<ArrowRight aria-hidden="true" />}
+              icon={
+                <ArrowRight aria-hidden="true" className="rtl:rotate-180" />
+              }
               iconPosition="right"
               onClick={() => {
                 onSave(viewCenter, viewZoom);
