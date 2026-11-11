@@ -13,11 +13,9 @@
 
 The Family Pedigree is a specialized interface designed for collecting family network data. It provides a structured, visual approach that allows participants to build their family tree by creating family members (nodes) and defining the relationships between them (edges).
 
-Unlike other name generators, the Family Pedigree uses a multi-step process that guides participants through building the structure of their family tree before adding detailed information about each family member.
+Unlike other name generators, the Family Pedigree builds the structure of the family and the details of each person together. Participants begin with just themselves represented, and then build outwards one relative at a time; a side panel asks about each person as they are added.
 
 The process of building a family pedigree in Network Canvas is designed to be visual and intuitive, so that it can be completed by participants without face-to-face supervision.
-
-Participants begin with just themselves represented, and then build outwards one relative at a time, describing each person as they go.
 
 Once the pedigree is drawn, additional text or "prompts" can ask participants to nominate anyone who has a given attribute, such as a medical condition.
 
