@@ -186,6 +186,27 @@ describe.each(pseudoAppLocales.map((entry) => entry.locale))(
 
       expect(harness.preference).toBe(pseudoLocale);
     });
+
+    it('leaves the language saved on this device as it was', () => {
+      // The mirror is what the next page load opens in. Written here, a
+      // development aid would replace the researcher's real choice and come
+      // back on every reload.
+      window.localStorage.setItem(MIRROR_KEY, 'en-GB');
+      renderProvider({ signedIn: false, userId: undefined });
+
+      act(() => harness.setLocale(pseudoLocale));
+
+      expect(harness.preference).toBe(pseudoLocale);
+      expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
+    });
+
+    it('saves nothing on a device that had no language saved', () => {
+      renderProvider({ signedIn: false, userId: undefined });
+
+      act(() => harness.setLocale(pseudoLocale));
+
+      expect(window.localStorage.getItem(MIRROR_KEY)).toBeNull();
+    });
   },
 );
 

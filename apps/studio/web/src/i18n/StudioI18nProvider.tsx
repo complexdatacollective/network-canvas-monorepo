@@ -203,9 +203,11 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
       // acknowledge somebody else's locale.
       const generation = ++writeGeneration.current;
 
-      // The pseudo-locale is a development aid, never a stored preference
-      // (design §4.7); and with no session there is no account to store to —
-      // the mirror alone carries a signed-out device's choice. Neither leaves
+      // A pseudo-locale is a development aid, never a stored preference
+      // (design §4.7): the mirror write above skipped it, and it is not sent
+      // to the account either. And with no session there is no account to
+      // store to — the mirror alone carries a signed-out device's choice.
+      // Neither leaves
       // a pending marker: nothing will ever acknowledge one, and a permanent
       // marker means the account's own preference never applies at sign-in.
       const storable =
