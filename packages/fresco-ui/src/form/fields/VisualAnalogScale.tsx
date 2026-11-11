@@ -7,14 +7,8 @@ import { useRef, useState } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { type PresentationalText } from '../../PresentationalText';
 import {
-  type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
-} from '../../PresentationalText';
-import { RenderMarkdown } from '../../RenderMarkdown';
-import {
-  controlLabelVariants,
   sliderControlVariants,
   sliderRootVariants,
   sliderThumbSurfaceVariants,
@@ -26,6 +20,7 @@ import { type FieldValueFormat, useFieldValueFormat } from '../ContentLocale';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
+import ScaleLabel from './scale/ScaleLabel';
 import ScaleValuePopover from './scale/ScaleValuePopover';
 import { useSliderActive } from './scale/useSliderActive';
 
@@ -280,30 +275,10 @@ export default function VisualAnalogScaleField(
         {(minLabel ?? maxLabel) && (
           <div className="relative mt-2 flex justify-between px-3">
             {minLabel && (
-              <div
-                className={cx(
-                  controlLabelVariants({ size: 'sm' }),
-                  'max-w-24 text-start',
-                )}
-                {...presentationalTextProps(minLabel)}
-              >
-                <RenderMarkdown>
-                  {presentationalTextValue(minLabel)}
-                </RenderMarkdown>
-              </div>
+              <ScaleLabel label={minLabel} className="max-w-24 text-start" />
             )}
             {maxLabel && (
-              <div
-                className={cx(
-                  controlLabelVariants({ size: 'sm' }),
-                  'max-w-24 text-end',
-                )}
-                {...presentationalTextProps(maxLabel)}
-              >
-                <RenderMarkdown>
-                  {presentationalTextValue(maxLabel)}
-                </RenderMarkdown>
-              </div>
+              <ScaleLabel label={maxLabel} className="max-w-24 text-end" />
             )}
           </div>
         )}

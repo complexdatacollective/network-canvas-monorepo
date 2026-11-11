@@ -13,7 +13,6 @@ import {
   presentationalTextProps,
 } from '../../PresentationalText';
 import {
-  controlLabelVariants,
   sliderControlVariants,
   sliderRootVariants,
   sliderThumbSurfaceVariants,
@@ -26,6 +25,7 @@ import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
+import ScaleLabel from './scale/ScaleLabel';
 import ScaleValuePopover from './scale/ScaleValuePopover';
 import {
   ROTATED_LABEL_WRAP_CLASS,
@@ -300,22 +300,17 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
               const isFirst = index === 0;
               const isLast = index === options.length - 1;
               return (
-                <OptionLabel
+                <ScaleLabel
                   key={index}
                   label={option.label}
-                  render={
-                    <div
-                      className={cx(
-                        controlLabelVariants({ size: 'sm' }),
-                        options.length === 1
-                          ? 'text-center'
-                          : isFirst
-                            ? 'text-start'
-                            : isLast
-                              ? 'text-end'
-                              : 'text-center',
-                      )}
-                    />
+                  className={
+                    options.length === 1
+                      ? 'text-center'
+                      : isFirst
+                        ? 'text-start'
+                        : isLast
+                          ? 'text-end'
+                          : 'text-center'
                   }
                 />
               );
@@ -338,25 +333,20 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
               const percentage =
                 options.length > 1 ? (index / (options.length - 1)) * 100 : 50;
               return (
-                <OptionLabel
+                <ScaleLabel
                   key={index}
                   label={option.label}
-                  render={
-                    <div
-                      className={cx(
-                        controlLabelVariants({ size: 'sm' }),
-                        // Centred on its mark: back by half its own width
-                        // from the edge it is measured from, which is the
-                        // other way in a right-to-left language.
-                        'absolute top-1/2 -translate-1/2 text-center rtl:translate-x-1/2',
-                        ROTATED_LABEL_WRAP_CLASS,
-                      )}
-                      style={{
-                        insetInlineStart: `${percentage}%`,
-                        rotate: `${layout.rotateDeg}deg`,
-                      }}
-                    />
-                  }
+                  className={cx(
+                    // Centred on its mark: back by half its own width from
+                    // the edge it is measured from, which is the other way
+                    // in a right-to-left language.
+                    'absolute top-1/2 -translate-1/2 text-center rtl:translate-x-1/2',
+                    ROTATED_LABEL_WRAP_CLASS,
+                  )}
+                  style={{
+                    insetInlineStart: `${percentage}%`,
+                    rotate: `${layout.rotateDeg}deg`,
+                  }}
                 />
               );
             })}
@@ -365,27 +355,13 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
 
         {options.length > 1 && layout.tier === 'anchors' && (
           <div className="relative mt-2 flex justify-between px-3">
-            <OptionLabel
+            <ScaleLabel
               label={options[0]!.label}
-              render={
-                <div
-                  className={cx(
-                    controlLabelVariants({ size: 'sm' }),
-                    'max-w-24 text-start',
-                  )}
-                />
-              }
+              className="max-w-24 text-start"
             />
-            <OptionLabel
+            <ScaleLabel
               label={options[options.length - 1]!.label}
-              render={
-                <div
-                  className={cx(
-                    controlLabelVariants({ size: 'sm' }),
-                    'max-w-24 text-end',
-                  )}
-                />
-              }
+              className="max-w-24 text-end"
             />
           </div>
         )}
