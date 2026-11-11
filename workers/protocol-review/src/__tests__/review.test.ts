@@ -12,7 +12,13 @@ import {
   SERVICE_FAILURE_EVENT,
 } from '../constants.ts';
 import { REVIEW_LIMITS } from '../contract.ts';
-import { ModelCallError, type ModelFailureReason } from '../model.ts';
+import {
+  BILLING_UNKNOWN,
+  ModelCallError,
+  type ModelFailureReason,
+  REJECTED,
+  reported,
+} from '../model.ts';
 import { createPostHogNotifier, logFailure } from '../notify.ts';
 import { handleRequest } from '../review.ts';
 import {
@@ -156,7 +162,11 @@ describe('provider failures', () => {
       const harness = createHarness(
         scriptedModel({
           start: false,
-          error: new ModelCallError(reason, status, null),
+          error: new ModelCallError(
+            reason,
+            status,
+            status === 0 ? BILLING_UNKNOWN : REJECTED,
+          ),
         }),
       );
       const response = await handleRequest(
@@ -185,10 +195,11 @@ describe('provider failures', () => {
       const harness = createHarness(
         scriptedModel({
           chunks: ['{"findings":['],
-          error: new ModelCallError(reason, status, {
-            ...USAGE,
-            outputTokens: null,
-          }),
+          error: new ModelCallError(
+            reason,
+            status,
+            reported({ ...USAGE, outputTokens: null }),
+          ),
         }),
       );
       const response = await handleRequest(
@@ -249,10 +260,11 @@ describe('provider failures', () => {
   it('abandons a review that runs too long, as a timeout', async () => {
     const model = scriptedModel({
       waitForAbort: {
-        abortError: new ModelCallError('cancelled', 0, {
-          ...USAGE,
-          outputTokens: null,
-        }),
+        abortError: new ModelCallError(
+          'cancelled',
+          0,
+          reported({ ...USAGE, outputTokens: null }),
+        ),
       },
     });
     const harness = createHarness(model, { timing: { timeoutMs: 5 } });
@@ -385,7 +397,11 @@ describe('what leaves the service', () => {
       const harness = createHarness(
         scriptedModel({
           chunks: ['{"findings":[{"title":"Secret Study Name"'],
-          error: new ModelCallError('overloaded', 529, null),
+          error: new ModelCallError(
+            'overloaded',
+            529,
+            reported({ ...USAGE, outputTokens: null }),
+          ),
         }),
         { notify: createPostHogNotifier(fetcher), log: logFailure },
       );
@@ -434,7 +450,7 @@ describe('what leaves the service', () => {
       const harness = createHarness(
         scriptedModel({
           start: false,
-          error: new ModelCallError('billing', 402, null),
+          error: new ModelCallError('billing', 402, REJECTED),
         }),
         {
           notify: createPostHogNotifier(async () => {

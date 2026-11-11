@@ -6,6 +6,7 @@ import {
   FIX_OPERATION_KINDS,
 } from '../contract.ts';
 import { buildReviewMessage, REVIEW_SYSTEM_PROMPT } from '../prompt/build.ts';
+import { PROTOCOL_REFERENCE } from '../prompt/protocol-reference.ts';
 import { validRequest } from './helpers.ts';
 
 describe('the system prompt', () => {
@@ -26,6 +27,18 @@ describe('the system prompt', () => {
     const other = buildReviewMessage(validRequest({ locale: 'fr' }));
     expect(one).not.toBe(other);
     expect(REVIEW_SYSTEM_PROMPT).not.toContain('Secret Study Name');
+  });
+});
+
+describe('the protocol reference', () => {
+  // packages/protocol-validation/src/schemas/9/timeline-structure.ts reports
+  // every stage after the first FinishSession that is not itself a
+  // FinishSession as unreachable, whatever the skip logic says.
+  it('states the finish-stage rule as the validator enforces it, with no skip-logic exception', () => {
+    expect(PROTOCOL_REFERENCE).not.toMatch(/unless an earlier skip/u);
+    expect(PROTOCOL_REFERENCE).toContain(
+      'every stage after the first FinishSession must itself be a FinishSession',
+    );
   });
 });
 

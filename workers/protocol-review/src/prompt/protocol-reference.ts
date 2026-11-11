@@ -12,7 +12,7 @@
 // protocol it is given. Keep it as short as accuracy allows: it is sent with
 // every review. Bump the version when the text changes.
 
-export const PROTOCOL_REFERENCE = `# Protocol reference (schema 9), v1
+export const PROTOCOL_REFERENCE = `# Protocol reference (schema 9), v2
 
 This is what you need to write fixes that leave the protocol valid. For anything not described here, copy the shape the protocol already uses.
 
@@ -74,7 +74,7 @@ Every stage: { "id", "type", "label": { "en": "…" }, "skipLogic"?, "interviewS
 - CategoricalBin (filter?): "prompts": [{ "id", "text", "variable": <categorical variableId>, and optionally all three of "otherVariable": <text variableId>, "otherVariablePrompt": {…}, "otherOptionLabel": {…} }], "behaviours"?
 - Geospatial (filter?): "prompts": [{ "id", "text", "variable": <location variableId> }], "mapOptions", …
 - Narrative (filter?): "presets": [ … ], interviewer-led; NetworkComposer, FamilyPedigree, NarrativePedigree, Anonymisation, LanguageChooser: change only their text, and copy any other shape from the protocol.
-- FinishSession: ends the interview. It cannot have skipLogic. Never remove the last FinishSession, and never put a stage after it unless an earlier skip destination routes past it.
+- FinishSession: ends the interview. It cannot have skipLogic. The finish stages form the end of the stage list: the last stage is a FinishSession, and every stage after the first FinishSession must itself be a FinishSession, whatever the skip logic (a stage after it is unreachable and the protocol is invalid). Keep at least one FinishSession. Several in a row let routes end differently: a skip destination can send a route past the first to a later one.
 
 Name generator prompts: { "id", "text", "additionalAttributes"?: [{ "variable": <boolean variableId of the subject>, "value": true }] }. additionalAttributes tags everyone named at that prompt.
 
@@ -110,13 +110,13 @@ A fix is a list of operations, applied in order; a later operation may rely on a
 - path is a JSON Pointer from the protocol root (segments joined by /; inside a segment write ~1 for / and ~0 for ~), except that a segment addressing a member of an array whose members have an "id" (stages, prompts, form fields that have one, filter rules, Information items, panels, presets) is that member's id, not its index. Use an index only for arrays whose members have no id (option lists, form fields without an id, additionalAttributes). Codebook types and variables are object keys, so their id is the segment anyway.
 - set writes value at path, replacing what is there or adding the key. Use it for object keys, and to replace a whole array member.
 - remove deletes the key or array member at path; value is null.
-- insert adds value as a new array member. The last segment says where: - appends; an existing member's id (or index) inserts before that member.
+- insert adds value as a new array member. The last segment says where: - appends; an existing member's id (or index) inserts before that member. Never append a stage that is not a FinishSession with -: insert it before the first FinishSession, or before the stage it should precede.
 - value is the new content as JSON text: a string is written with its quotes ("\\"Close friends\\""), a number as "15", an object as "{…}". It must parse as JSON.
 - New ids (stages, prompts, form fields, rules, items, codebook types and variables) are fresh UUID v4s.
 - Change only the default-language key of a text; never touch another language's.
 - Make the smallest edit that fixes the problem, and leave the protocol valid: every id a fix refers to must exist (or be created by an earlier operation), and every required setting must be present.
 - Removing a stage or a variable: first check that nothing else refers to it (skip destinations, filters, forms, prompts, panels, other stages' settings), and change those too. Prefer removing a form field to deleting its variable.
-- Moving a stage: remove it, then insert an exact copy of it (same id, every key as the protocol has it) before the stage it should precede.
+- Moving a stage: remove it, then insert an exact copy of it (same id, every key as the protocol has it) before the stage it should precede. Afterwards every skip destination must still be a stage after the stage that names it, and no stage but a FinishSession may follow the first FinishSession.
 
 Worked examples (the protocol's default language is "en"; <…> stands for ids from the protocol, or new UUIDs):
 

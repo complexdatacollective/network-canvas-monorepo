@@ -2,7 +2,6 @@ import {
   DAILY_SPEND_CEILING_USD,
   MAX_OUTPUT_TOKENS,
   MODEL_PRICES_USD_PER_MILLION_TOKENS as PRICES,
-  RESERVATION_CHARS_PER_TOKEN,
   RESERVATION_OVERHEAD_TOKENS,
 } from './constants.ts';
 
@@ -35,13 +34,28 @@ export const costMicros = (usage: TokenUsage): number =>
   micros(usage.cacheReadInputTokens, PRICES.cacheRead) +
   micros(usage.outputTokens ?? MAX_OUTPUT_TOKENS, PRICES.output);
 
+const utf8 = new TextEncoder();
+
 /**
- * The most a review of a prompt this long can cost: every input token at the
+ * The most a call sending these texts can cost: every input token at the
  * highest input price (a cache write), and the whole output cap.
+ *
+ * The input is bounded by bytes, not by an average: the tokenizer works on
+ * UTF-8 bytes and every token stands for at least one of them, so a text
+ * cannot cost more tokens than its UTF-8 length, whatever its language or
+ * how dense it is (Chinese, emoji and random ids run near a token a
+ * character, and English near four characters a token). `texts` must be
+ * everything the request carries: the system prompt, the user message and
+ * the output schema. `RESERVATION_OVERHEAD_TOKENS` covers the framing the API
+ * adds around them.
+ *
+ * The bound over-reserves ordinary text two to four times, which costs only
+ * some concurrency near the ceiling: the reservation is settled down to the
+ * real cost when the call ends.
  */
-export const reservationMicros = (promptCharacters: number): number => {
+export const reservationMicros = (texts: readonly string[]): number => {
   const inputTokens =
-    Math.ceil(promptCharacters / RESERVATION_CHARS_PER_TOKEN) +
+    texts.reduce((bytes, text) => bytes + utf8.encode(text).byteLength, 0) +
     RESERVATION_OVERHEAD_TOKENS;
   return (
     micros(inputTokens, PRICES.cacheWrite) +

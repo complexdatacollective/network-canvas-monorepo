@@ -22,26 +22,44 @@ export type ModelFailureReason =
   | 'unknown';
 
 /**
- * A model call that failed. `usage` is what the provider had billed when it
- * failed, as far as the call saw it: `null` when the provider never started
- * answering (nothing was billed), and an `outputTokens` of `null` when it
- * started but did not say how much it wrote.
+ * What the provider may have billed for a call that failed.
+ *
+ * - `rejected`: the provider answered with an HTTP error status before any
+ *   answer began. That is the one failure confirmed to have billed nothing.
+ * - `reported`: the provider began answering and reported its input at the
+ *   start; `outputTokens` is `null` when it did not say how much it wrote.
+ * - `unknown`: anything else, such as a lost connection, a timeout or a
+ *   cancellation before the answer began. The request may have reached the
+ *   provider and been billed, so the whole reservation is kept.
  */
+export type FailedCallBilling =
+  | { kind: 'rejected' }
+  | { kind: 'reported'; usage: TokenUsage }
+  | { kind: 'unknown' };
+
+export const REJECTED: FailedCallBilling = { kind: 'rejected' };
+export const BILLING_UNKNOWN: FailedCallBilling = { kind: 'unknown' };
+export const reported = (usage: TokenUsage): FailedCallBilling => ({
+  kind: 'reported',
+  usage,
+});
+
+/** A model call that failed, and what the provider may have billed for it. */
 export class ModelCallError extends Error {
   readonly reason: ModelFailureReason;
   readonly status: number;
-  readonly usage: TokenUsage | null;
+  readonly billing: FailedCallBilling;
 
   constructor(
     reason: ModelFailureReason,
     status: number,
-    usage: TokenUsage | null,
+    billing: FailedCallBilling,
   ) {
     super(`Model call failed: ${reason} (${status})`);
     this.name = 'ModelCallError';
     this.reason = reason;
     this.status = status;
-    this.usage = usage;
+    this.billing = billing;
   }
 }
 
