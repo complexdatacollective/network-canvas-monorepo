@@ -46,9 +46,9 @@ from schema 8 gives each stage the wording it has always shown. Several
 settings read differently when they are about the participant and when they
 are about someone else, or show a name or a number; Architect's stage editor,
 translation table and protocol summary show each version separately, named,
-with placeholders as named pills. A translation must show each placeholder
-in the versions where Network Canvas's English shows it, so a translation
-cannot drop a person's name or a count by accident. A version for a plural
+with placeholders as named pills. Each setting says which placeholders a
+version must show, in every language, so a rewording or a translation cannot
+drop a person's name or a count by accident. A version for a plural
 form that only one number takes, such as English "one", may leave the number
 out. Architect marks the placeholders a version still needs, and names the
 missing placeholder and its version in the error.

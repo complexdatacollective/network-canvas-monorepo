@@ -87,13 +87,13 @@ const messages = defineMessages({
     id: 'protocolBuilder.localizedMessage.placementMissing',
     defaultMessage: 'Include “{placeholder}” in this text.',
     description:
-      'Refusal shown under a text when a translation leaves out a placeholder, such as a person’s name or a number, that the original text shows. placeholder is the placeholder’s name, such as “Name”.',
+      'Refusal shown under a text that leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”.',
   },
   placementMissingIn: {
     id: 'protocolBuilder.localizedMessage.placementMissingIn',
     defaultMessage: 'Include “{placeholder}” in this version: {version}.',
     description:
-      'Refusal shown under a text written in several versions when one version of a translation leaves out a placeholder, such as a person’s name or a number, that the original shows there. placeholder is the placeholder’s name, such as “Name”; version is the label of the version, such as “About someone else”.',
+      'Refusal shown under a text written in several versions when one version leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”; version is the label of the version, such as “About someone else”.',
   },
   unreadable: {
     id: 'protocolBuilder.localizedMessage.unreadable',

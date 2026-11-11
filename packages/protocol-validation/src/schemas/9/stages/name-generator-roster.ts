@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+import {
+  EVERY_VERSION,
+  type MessageArguments,
+} from '../../../localization/messageArguments.ts';
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { assetReference } from '../asset-reference.ts';
 import {
@@ -19,9 +23,7 @@ import {
   requireWhenShown,
   type StageRecord,
 } from '../stage-wording/conditions.ts';
-import { UNNAMED_LABEL } from '../stage-wording/name-generator-roster.ts';
 import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
-import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { baseStageSchema } from './base.ts';
 import {
   MAX_NODES_ARGUMENTS,
@@ -53,13 +55,13 @@ const rosterColumnReference = () =>
 
 /**
  * What the label of an item with no name may use: the number that tells it
- * from other unnamed items, which every translation must show where the
- * supplied wording does, and the name of the stage's node type.
+ * from other unnamed items, which it must show, and the name of the stage's
+ * node type.
  */
-export const UNNAMED_LABEL_ARGUMENTS = requireSuppliedPlacements(
-  { count: { kind: 'text' }, ...SUBJECT_ARGUMENTS },
-  UNNAMED_LABEL,
-);
+export const UNNAMED_LABEL_ARGUMENTS: MessageArguments = {
+  count: { kind: 'text', required: EVERY_VERSION },
+  ...SUBJECT_ARGUMENTS,
+};
 
 /**
  * The roster's own words (`stage-wording/name-generator-roster.ts`). The

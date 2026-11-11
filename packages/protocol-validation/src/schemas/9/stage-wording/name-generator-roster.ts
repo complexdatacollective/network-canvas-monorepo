@@ -38,7 +38,7 @@ const ALL_ADDED_NOTICE = {
  * The label of an item the roster has no name for, numbered to tell unnamed
  * items apart.
  */
-export const UNNAMED_LABEL = {
+const UNNAMED_LABEL = {
   'en': 'Unnamed {count}',
   'de': 'Ohne Namen {count}',
   'es': 'Sin nombre {count}',
