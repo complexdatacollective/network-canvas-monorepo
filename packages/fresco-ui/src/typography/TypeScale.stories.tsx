@@ -385,10 +385,12 @@ export const LineHeightDemo: Story = {
 };
 
 /**
- * Arabic-script text is set in Readex Pro, which follows the Latin face in
- * both the heading and the body stack. The sample is Article 1 of the
- * Universal Declaration of Human Rights, in the United Nations' Arabic and
- * English texts.
+ * Text marked as Arabic (`lang="ar"`) is set in Readex Pro, which follows the
+ * Latin face in the heading and the body stack. Text in another language that
+ * uses the Arabic script, such as Persian, is left to a system font: Readex
+ * Pro lacks its extra letters. The samples are Article 1 of the Universal
+ * Declaration of Human Rights in the United Nations' Arabic, English and
+ * Persian texts.
  */
 export const ArabicScript: Story = {
   render: () => (
@@ -402,13 +404,14 @@ export const ArabicScript: Story = {
         </Paragraph>
         <Heading level="h2">المادة 1</Heading>
         <Paragraph>
-          يولد جميع الناس أحرارًا متساوين في الكرامة والحقوق. وقد وهبوا عقلًا
-          وضميرًا وعليهم أن يعامل بعضهم بعضًا بروح الإخاء.
-        </Paragraph>
-        <Heading level="h3">المادة 1</Heading>
-        <Paragraph>
           <strong>يولد جميع الناس أحرارًا متساوين في الكرامة والحقوق.</strong>{' '}
           وقد وهبوا عقلًا وضميرًا وعليهم أن يعامل بعضهم بعضًا بروح الإخاء.
+        </Paragraph>
+        <Paragraph>
+          العربية ·{' '}
+          <span lang="fa" data-testid="persian-in-arabic">
+            فارسی
+          </span>
         </Paragraph>
       </section>
       <section lang="en" dir="ltr">
@@ -418,21 +421,72 @@ export const ArabicScript: Story = {
         <Paragraph intent="lead">
           All human beings are born free and equal in dignity and rights.
         </Paragraph>
-        <Heading level="h2">Article 1</Heading>
+        <Heading level="h2">
+          Arabic (
+          <span lang="ar" dir="rtl" data-testid="arabic-in-heading">
+            العربية
+          </span>
+          )
+        </Heading>
         <Paragraph>
-          All human beings are born free and equal in dignity and rights. They
-          are endowed with reason and conscience and should act towards one
-          another in a spirit of brotherhood.
+          An Arabic phrase inside English text takes Readex Pro where it is
+          marked:{' '}
+          <span lang="ar" dir="rtl" data-testid="arabic-in-paragraph">
+            المادة 1
+          </span>
+          .
+        </Paragraph>
+      </section>
+      <section lang="fa" dir="rtl" data-testid="persian">
+        <Heading level="h2">فارسی</Heading>
+        <Paragraph>
+          تمام افراد بشر آزاد به دنیا می‌آیند و از لحاظ حیثیت و حقوق با هم
+          برابرند.
         </Paragraph>
       </section>
     </div>
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const [heading] = canvas.getAllByRole('heading', { name: 'المادة 1' });
-    await expect(getComputedStyle(heading!).fontFamily).toContain(
+    const stack = (element: Element) =>
+      getComputedStyle(element)
+        .fontFamily.split(',')
+        .map((family) => family.trim().replaceAll(/['"]/g, ''));
+
+    // Arabic text: the Latin face of its role, then Readex Pro.
+    await expect(
+      stack(canvas.getByRole('heading', { name: 'المادة 1' })),
+    ).toEqual(['Nunito Variable', 'Readex Pro Variable', 'sans-serif']);
+    await expect(
+      stack(canvas.getByText(/وقد وهبوا عقلًا/).closest('p') ?? canvasElement),
+    ).toEqual(['Inclusive Sans Variable', 'Readex Pro Variable', 'sans-serif']);
+
+    // Arabic marked inside English text takes the stack of the text around it.
+    await expect(stack(canvas.getByTestId('arabic-in-heading'))).toEqual([
+      'Nunito Variable',
       'Readex Pro Variable',
-    );
+      'sans-serif',
+    ]);
+    await expect(stack(canvas.getByTestId('arabic-in-paragraph'))).toEqual([
+      'Inclusive Sans Variable',
+      'Readex Pro Variable',
+      'sans-serif',
+    ]);
+
+    // English and Persian are never offered Readex Pro, inside Arabic text
+    // or outside it.
+    await expect(
+      stack(canvas.getByRole('heading', { name: /^Universal Declaration/ })),
+    ).toEqual(['Nunito Variable', 'sans-serif']);
+    await expect(stack(canvas.getByTestId('persian-in-arabic'))).toEqual([
+      'Inclusive Sans Variable',
+      'sans-serif',
+    ]);
+    const persian = canvas.getByTestId('persian');
+    for (const element of persian.querySelectorAll('h2, p')) {
+      await expect(stack(element)).not.toContain('Readex Pro Variable');
+    }
+
     // A face limited by unicode-range is fetched only when rendered text
     // reaches it, so a loaded face means the Arabic text resolved to it.
     await waitFor(() =>

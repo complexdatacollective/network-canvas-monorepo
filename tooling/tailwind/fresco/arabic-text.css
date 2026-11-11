@@ -1,0 +1,43 @@
+/*
+ * Text marked as Arabic (`lang="ar"`, or a regional form such as `ar-EG`) is
+ * set in Readex Pro. Text in any other language keeps the theme's stacks, so
+ * Persian or Urdu, whose extra letters Readex Pro lacks, is drawn whole in a
+ * system font rather than in two faces.
+ *
+ * Every theme names the Latin face of its stacks (`--heading-face`,
+ * `--body-face`). `:lang()` matches each element of an Arabic subtree, so the
+ * first rule rebuilds both stacks with Readex Pro on every such element, from
+ * the nearest theme's faces. The second rule puts the plain stacks back for
+ * text in another language inside Arabic text, such as the name of Persian
+ * in a language list. Both are in `@layer base`, which wins over the themes'
+ * own declarations (`@layer theme`) on an element that is a theme scope too,
+ * such as `<html lang="ar">`.
+ *
+ * `font-family` is inherited already resolved, so an element whose language
+ * differs from its parent's would keep the stack resolved outside it. The
+ * last two rules resolve it again wherever the language changes into or out
+ * of Arabic: the heading stack inside a heading, the body stack anywhere
+ * else. A font utility on the element itself still wins, and preformatted
+ * text keeps its monospace face.
+ */
+@layer base {
+  :lang(ar) {
+    --heading-font: var(--heading-face), 'Readex Pro Variable', sans-serif;
+    --body-font: var(--body-face), 'Readex Pro Variable', sans-serif;
+  }
+
+  :lang(ar) :not(:lang(ar)) {
+    --heading-font: var(--heading-face), sans-serif;
+    --body-font: var(--body-face), sans-serif;
+  }
+
+  [lang]:lang(ar):not(pre, code, kbd, samp),
+  :lang(ar) [lang]:not(:lang(ar), pre, code, kbd, samp) {
+    font-family: var(--body-font);
+  }
+
+  .font-heading [lang]:lang(ar):not(pre, code, kbd, samp),
+  .font-heading:lang(ar) [lang]:not(:lang(ar), pre, code, kbd, samp) {
+    font-family: var(--heading-font);
+  }
+}

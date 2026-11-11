@@ -146,8 +146,14 @@
      */
     --base-hue: 60;
 
-    --heading-font: 'Nunito Variable', 'Readex Pro Variable', sans-serif;
-    --body-font: 'Inclusive Sans Variable', 'Readex Pro Variable', sans-serif;
+    /*
+     * The Latin face of each stack, named on its own so that text marked as
+     * Arabic can add Readex Pro after it (see ../arabic-text.css).
+     */
+    --heading-face: 'Nunito Variable';
+    --body-face: 'Inclusive Sans Variable';
+    --heading-font: var(--heading-face), sans-serif;
+    --body-font: var(--body-face), sans-serif;
 
     /*
      * Redeclared (not inherited) so the calc resolves against THIS region's

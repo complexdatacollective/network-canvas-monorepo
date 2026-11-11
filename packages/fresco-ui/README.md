@@ -66,7 +66,7 @@ separately, from the app's entry module:
 ```ts
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
-import '@codaco/tailwind-config/fonts/readex-pro.css'; // Arabic-script text
+import '@codaco/tailwind-config/fonts/readex-pro.css'; // text marked lang="ar"
 ```
 
 The interview theme is activated by the `data-theme-interview` attribute. Hosts typically apply it via the `<ThemedRegion theme="interview">` component (exported from `@codaco/fresco-ui/ThemedRegion`), which also wires up a `<PortalContainerProvider>` so dialogs, popovers, dropdowns, tooltips, toasts, selects, and comboboxes portal into a node inside the themed subtree (and therefore inherit the theme's CSS variables) instead of into `document.body`.

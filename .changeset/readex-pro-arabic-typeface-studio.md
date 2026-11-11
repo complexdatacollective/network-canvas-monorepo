@@ -3,6 +3,6 @@
 '@codaco/studio-api': patch
 ---
 
-Arabic text in Studio is now set in Readex Pro, a typeface that ships with
-Studio, so it looks the same on every device. Text in other scripts is
-unchanged.
+Text marked as Arabic in Studio is now set in Readex Pro, a typeface that
+ships with Studio, so it looks the same on every device. Text in every other
+language is unchanged.

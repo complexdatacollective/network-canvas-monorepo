@@ -58,25 +58,76 @@ describe('the Arabic-script face', () => {
   });
 });
 
+const declaration = (css: string, property: string) =>
+  new RegExp(`${property}:\\s*([^;]+);`).exec(css)?.[1]?.replace(/\s+/g, ' ');
+
+// Readex Pro has the letters of Arabic and not those Persian, Urdu and others
+// add to the script, so it is offered only to text marked as Arabic.
 describe.each(['default', 'interview', 'studio'])(
   'the %s theme font stacks',
   (theme) => {
     const css = read(`../fresco/themes/${theme}.css`);
 
-    it.each(['--heading-font', '--body-font'])(
-      'set %s in a Latin face first, then Readex Pro',
-      (property) => {
-        const value = new RegExp(`${property}:\\s*([^;]+);`).exec(css)?.[1];
-        const families = (value ?? '')
-          .split(',')
-          .map((family) => family.trim());
-        expect(families).toHaveLength(3);
-        expect(families[0]).toMatch(/^'(Nunito|Inclusive Sans) Variable'$/);
-        expect(families.slice(1)).toEqual([
-          "'Readex Pro Variable'",
-          'sans-serif',
-        ]);
+    it.each(['heading', 'body'])(
+      'name the %s face and keep Readex Pro out of its stack',
+      (role) => {
+        expect(declaration(css, `--${role}-face`)).toMatch(
+          /^'(Nunito|Inclusive Sans) Variable'$/,
+        );
+        expect(declaration(css, `--${role}-font`)).toBe(
+          `var(--${role}-face), sans-serif`,
+        );
       },
     );
   },
 );
+
+describe('the rules for text marked as Arabic', () => {
+  const css = read('../fresco/arabic-text.css').replace(
+    /\/\*[\s\S]*?\*\//g,
+    '',
+  );
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]+)\}/g)].map(
+    ([, selector = '', body = '']) => ({
+      selector: selector
+        .replace(/@layer base \{/, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+      body: body.replace(/\s+/g, ' ').trim(),
+    }),
+  );
+  const withReadex =
+    "--heading-font: var(--heading-face), 'Readex Pro Variable', sans-serif; --body-font: var(--body-face), 'Readex Pro Variable', sans-serif;";
+  const plain =
+    '--heading-font: var(--heading-face), sans-serif; --body-font: var(--body-face), sans-serif;';
+
+  it('add Readex Pro to both stacks inside Arabic text and nowhere else', () => {
+    expect(rules.find((rule) => rule.body === withReadex)?.selector).toBe(
+      ':lang(ar)',
+    );
+    expect(css.match(/Readex Pro Variable/g)).toHaveLength(2);
+  });
+
+  it('put the plain stacks back for another language inside Arabic text', () => {
+    expect(rules.find((rule) => rule.body === plain)?.selector).toBe(
+      ':lang(ar) :not(:lang(ar))',
+    );
+  });
+
+  it('name no language but Arabic', () => {
+    expect(
+      new Set([...css.matchAll(/:lang\(([^)]+)\)/g)].map(([, tag]) => tag)),
+    ).toEqual(new Set(['ar']));
+  });
+
+  it.each(['fresco', 'studio'])(
+    'ship in the %s barrel, after the themes',
+    (barrel) => {
+      const imports = [
+        ...read(`../fresco/${barrel}.css`).matchAll(/@import '([^']+)'/g),
+      ].map(([, path]) => path);
+      expect(imports.at(-1)).toBe('./arabic-text.css');
+      expect(imports).toContain('./themes/studio.css');
+    },
+  );
+});

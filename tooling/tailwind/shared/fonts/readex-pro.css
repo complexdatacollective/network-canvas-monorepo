@@ -1,7 +1,8 @@
 /*
- * Readex Pro carries Arabic-script text. It follows the Latin face in every
- * font stack, and only its Arabic subset is loaded, so Latin text never
- * reaches it and the file is fetched only by a page that shows Arabic.
+ * Readex Pro sets text marked as Arabic: ../../fresco/arabic-text.css adds it
+ * to the font stacks, after the Latin face, for `lang="ar"` alone. Only its
+ * Arabic subset is loaded, so Latin text never reaches it and the file is
+ * fetched only by a page that shows Arabic.
  *
  * The range is fontsource's Arabic subset without its general punctuation
  * (U+200C-200E, U+2010-2011, U+204F, U+2E41). Latin text uses those code
