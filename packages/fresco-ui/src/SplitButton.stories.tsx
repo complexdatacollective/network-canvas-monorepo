@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Check, ChevronDown, Download, Plus, Settings } from 'lucide-react';
+import { expect, within } from 'storybook/test';
 
 import { BUTTON_COLORS, BUTTON_VARIANTS } from './button-constants';
 import { type SplitButtonProps, SplitButton } from './SplitButton';
@@ -396,5 +397,40 @@ export const Disabled: Story = {
     disabled: true,
     segmentAriaLabel: 'Open save options',
     segmentIcon: 'chevronDown',
+  },
+};
+
+/**
+ * The segment sits after the main button, which is to its left in a
+ * right-to-left language. The two halves square off the corners where they
+ * meet, wherever that is, and keep the rounded ones on the outside.
+ */
+export const RightToLeft: Story = {
+  globals: { appDirection: 'rtl' },
+  args: {
+    children: 'Import',
+    segmentAriaLabel: 'Open import options',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(document.documentElement.dir).toBe('rtl');
+
+    const main = canvas.getByRole('button', { name: 'Import' });
+    const segment = canvas.getByRole('button', {
+      name: 'Open import options',
+    });
+    await expect(segment.getBoundingClientRect().left).toBeLessThan(
+      main.getBoundingClientRect().left,
+    );
+
+    const mainCorners = getComputedStyle(main);
+    await expect(mainCorners.borderTopLeftRadius).toBe('0px');
+    await expect(mainCorners.borderBottomLeftRadius).toBe('0px');
+    await expect(mainCorners.borderTopRightRadius).not.toBe('0px');
+
+    const segmentCorners = getComputedStyle(segment);
+    await expect(segmentCorners.borderTopRightRadius).toBe('0px');
+    await expect(segmentCorners.borderBottomRightRadius).toBe('0px');
+    await expect(segmentCorners.borderTopLeftRadius).not.toBe('0px');
   },
 };

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, fireEvent, userEvent, within } from 'storybook/test';
 
+import { withPointerCaptureStubbed } from './form/fields/sliderTestHelpers';
 import { ResizableFlexPanel } from './ResizableFlexPanel';
 import Paragraph from './typography/Paragraph';
 import { UnorderedList } from './typography/UnorderedList';
@@ -225,8 +226,10 @@ export const RightToLeft: Story = {
     await expect(document.documentElement.dir).toBe('rtl');
 
     const handle = canvas.getByRole('slider');
-    // The split is remembered between visits; start from the default.
-    await userEvent.dblClick(handle);
+    // The split is remembered between visits; start from the default. The
+    // handle captures the pointer on press, which Firefox refuses for a
+    // pointer no device produced, so capture is stubbed around each press.
+    await withPointerCaptureStubbed(() => userEvent.dblClick(handle));
     await expect(handle).toHaveAttribute('aria-valuenow', '50');
 
     const first = canvas.getByText('First panel');
@@ -247,16 +250,18 @@ export const RightToLeft: Story = {
     // to the pointer's right, which is where the first panel is.
     const row = handle.parentElement!.getBoundingClientRect();
     const pointer = { pointerId: 1, pointerType: 'mouse', button: 0 };
-    await fireEvent.pointerDown(handle, { ...pointer, buttons: 1 });
-    await fireEvent.pointerMove(handle, {
-      ...pointer,
-      buttons: 1,
-      clientX: row.left + row.width * 0.25,
-      clientY: row.top + row.height / 2,
+    await withPointerCaptureStubbed(async () => {
+      await fireEvent.pointerDown(handle, { ...pointer, buttons: 1 });
+      await fireEvent.pointerMove(handle, {
+        ...pointer,
+        buttons: 1,
+        clientX: row.left + row.width * 0.25,
+        clientY: row.top + row.height / 2,
+      });
+      await fireEvent.pointerUp(handle, pointer);
     });
-    await fireEvent.pointerUp(handle, pointer);
     await expect(handle).toHaveAttribute('aria-valuenow', '75');
 
-    await userEvent.dblClick(handle);
+    await withPointerCaptureStubbed(() => userEvent.dblClick(handle));
   },
 };

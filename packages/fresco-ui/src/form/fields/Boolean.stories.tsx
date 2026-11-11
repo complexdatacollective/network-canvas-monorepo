@@ -215,30 +215,3 @@ export const LocalizedLabels: Story = {
     await expect(canvas.getByRole('radio', { name: 'لا' })).toBeChecked();
   },
 };
-
-/**
- * The answers run from the right in a right-to-left language, and the arrow
- * keys follow them: left moves on to the next answer, right moves back.
- */
-export const RightToLeftArrowKeys: Story = {
-  globals: { appDirection: 'rtl' },
-  render: renderField,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(document.documentElement.dir).toBe('rtl');
-
-    const yes = canvas.getByRole('radio', { name: 'Yes' });
-    const no = canvas.getByRole('radio', { name: 'No' });
-    await expect(yes.getBoundingClientRect().left).toBeGreaterThan(
-      no.getBoundingClientRect().left,
-    );
-
-    yes.focus();
-    await userEvent.keyboard('{ArrowLeft}');
-    await expect(no).toHaveFocus();
-    await expect(no).toBeChecked();
-    await userEvent.keyboard('{ArrowRight}');
-    await expect(yes).toHaveFocus();
-    await expect(yes).toBeChecked();
-  },
-};

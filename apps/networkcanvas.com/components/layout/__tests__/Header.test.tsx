@@ -154,7 +154,7 @@ describe('localized layout navigation', () => {
       name: 'Color theme: System',
     });
     expect(trigger).toHaveClass('h-16');
-    expect(trigger).toHaveClass('[&>.lucide]:[stroke-width:3.5]');
+    expect(trigger).toHaveClass('[&>.lucide]:stroke-[3.5]');
     expect(trigger.querySelector('.lucide-sun-moon')).toBeInTheDocument();
   });
 
