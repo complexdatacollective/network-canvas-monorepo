@@ -8,6 +8,7 @@ import {
   createCatalogSource,
   defineAppLocales,
   pseudoAppLocale,
+  pseudoRtlAppLocale,
 } from '../locales.ts';
 import type { CatalogMessages, CatalogSource } from '../locales.ts';
 import { defineMessages } from '../messages.ts';
@@ -361,6 +362,63 @@ describe('AppI18nProvider', () => {
       </AppI18nProvider>,
     );
     expect(view.getByText(/résûlts/).textContent).toContain('3');
+  });
+});
+
+describe('the right-to-left pseudo-locale', () => {
+  const RLO = '\u202E';
+  const PDF = '\u202C';
+
+  const inPseudoRtl = (children: ReactNode) =>
+    render(
+      <AppI18nProvider
+        locale={pseudoRtlAppLocale.locale}
+        locales={[...registry, pseudoRtlAppLocale]}
+      >
+        {children}
+      </AppI18nProvider>,
+    );
+
+  afterEach(() => {
+    document.documentElement.removeAttribute('dir');
+    document.documentElement.removeAttribute('lang');
+  });
+
+  it('lays the document out right to left', () => {
+    inPseudoRtl(<Greeting name="Ada" />);
+    expect(document.documentElement.dir).toBe('rtl');
+    expect(document.documentElement.lang).toBe('ar-XB');
+  });
+
+  it('runs a message’s own text right to left and leaves its values alone', () => {
+    // The words are the message's, so they take the override; the name is the
+    // reader's data and keeps its own direction, as it would inside an Arabic
+    // sentence.
+    const view = inPseudoRtl(<Greeting name="Ada" />);
+    expect(view.container.textContent).toBe(`${RLO}Hello ${PDF}Ada`);
+  });
+
+  it('runs text inside rich-text tags right to left', () => {
+    function Guide() {
+      const intl = useAppIntl();
+      return (
+        <p>{intl.formatMessage(messages.guide, { link: renderGuideLink })}</p>
+      );
+    }
+    const view = inPseudoRtl(<Guide />);
+    expect(within(view.container).getByRole('link').textContent).toBe(
+      `${RLO}the guide${PDF}`,
+    );
+  });
+
+  it('chooses a plural arm the English message has', () => {
+    // Arabic has six plural categories and English messages write two. A
+    // count Arabic calls "few" or "two" has to fall through to `other`, not
+    // render nothing.
+    const one = inPseudoRtl(<Count count={1} />);
+    expect(one.container.textContent).toBe(`1${RLO} result${PDF}`);
+    const few = inPseudoRtl(<Count count={3} />);
+    expect(few.container.textContent).toBe(`3${RLO} results${PDF}`);
   });
 });
 

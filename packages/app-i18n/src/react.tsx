@@ -19,7 +19,7 @@ import {
 import type { ReactNode } from 'react';
 import type { IntlShape } from 'react-intl';
 
-import { PSEUDO_LOCALE } from './locales.ts';
+import { isPseudoLocale } from './locales.ts';
 import type { AppLocale, CatalogMessages, CatalogSource } from './locales.ts';
 import { createAppIntl, formatMessageError } from './messages.ts';
 import type { AppIntlErrorHandler, MessageDescriptor } from './messages.ts';
@@ -81,7 +81,7 @@ const getDefaultIntl = (): IntlShape => {
 
 export type AppI18nProviderProps = Readonly<{
   /**
-   * Active locale tag: one of `locales`, or the pseudo-locale.
+   * Active locale tag: one of `locales`, or a pseudo-locale.
    *
    * A tag the registry does not declare renders as `locales[0]` rather than
    * throwing. A provider wraps the whole application, so a bad tag — a stored
@@ -155,8 +155,13 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
 
   const intl = useMemo(
     () =>
-      active.locale === PSEUDO_LOCALE
-        ? createPseudoIntl({ messages: activeMessages, onError, timeZone })
+      isPseudoLocale(active.locale)
+        ? createPseudoIntl({
+            locale: active.locale,
+            messages: activeMessages,
+            onError,
+            timeZone,
+          })
         : createAppIntl({
             locale: active.locale,
             messages: activeMessages,

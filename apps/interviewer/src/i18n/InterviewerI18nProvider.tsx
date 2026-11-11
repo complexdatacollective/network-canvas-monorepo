@@ -7,7 +7,7 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 
-import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import { isPseudoLocale } from '@codaco/app-i18n/locales';
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
 import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 
@@ -64,7 +64,7 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
     )
       return;
     setCurrentPreference(next);
-    if (next === PSEUDO_LOCALE) {
+    if (isPseudoLocale(next)) {
       // Development inspection must not replace a real device preference.
       setSaveState('idle');
       return;
@@ -91,7 +91,7 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const requestedLocale =
-    preference === PSEUDO_LOCALE
+    preference !== null && isPseudoLocale(preference)
       ? preference
       : negotiateLocale(preference, requested);
   const automaticLocale = negotiateLocale(null, requested);

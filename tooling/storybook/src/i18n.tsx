@@ -5,8 +5,7 @@ import { type ReactNode, useEffect, useLayoutEffect } from 'react';
 import {
   type AppLocale,
   type CatalogMessages,
-  PSEUDO_LOCALE,
-  pseudoAppLocale,
+  pseudoAppLocales,
 } from '@codaco/app-i18n/locales';
 import { AppDirectionOverride, AppI18nProvider } from '@codaco/app-i18n/react';
 
@@ -25,13 +24,13 @@ import { AppDirectionOverride, AppI18nProvider } from '@codaco/app-i18n/react';
  *
  * - **Language** proves a component reads its copy from a catalog. Switching
  *   it should visibly change every string a component owns; anything that
- *   stays in English is hardcoded. The pseudo-locale makes that verdict
- *   available before any translation exists.
+ *   stays in English is hardcoded. The accented pseudo-locale makes that
+ *   verdict available before any translation exists.
  * - **Direction** proves a component lays out with logical properties. It is
- *   a separate axis on purpose: no right-to-left locale ships yet, so binding
- *   direction to language would leave RTL untestable until one does. Left on
- *   "Automatic" it follows the selected locale's declared direction, which is
- *   what a real host does.
+ *   a separate axis on purpose: it mirrors a story in any language, real
+ *   words included, where the right-to-left pseudo-locale brings its own
+ *   right-to-left text with it. Left on "Automatic" it follows the selected
+ *   locale's declared direction, which is what a real host does.
  */
 
 const LOCALE_KEY = 'appLocale';
@@ -64,8 +63,9 @@ export type StorybookI18nOptions = Readonly<{
   /** Which locale a Storybook with no stored preference opens in. */
   defaultLocale?: string;
   /**
-   * Whether to offer the pseudo-locale. On by default: it is the only way to
-   * see untranslated strings and clipped layouts before translations exist.
+   * Whether to offer the pseudo-locales. On by default: they are the only way
+   * to see untranslated strings, clipped layouts and right-to-left text
+   * before translations exist.
    */
   includePseudoLocale?: boolean;
 }>;
@@ -144,14 +144,17 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     throw new Error('storybookI18n: the locale registry is empty');
   }
 
-  // The pseudo-locale is appended rather than expected in the registry: a
-  // production registry must never contain it, so every caller would
+  // The pseudo-locales are appended rather than expected in the registry: a
+  // production registry must never contain them, so every caller would
   // otherwise have to build a Storybook-only copy of its own list.
-  const offered: readonly AppLocale[] =
-    includePseudoLocale &&
-    !locales.some((entry) => entry.locale === PSEUDO_LOCALE)
-      ? [...locales, pseudoAppLocale]
-      : locales;
+  const offered: readonly AppLocale[] = includePseudoLocale
+    ? [
+        ...locales,
+        ...pseudoAppLocales.filter(
+          (pseudo) => !locales.some((entry) => entry.locale === pseudo.locale),
+        ),
+      ]
+    : locales;
 
   const isOffered = (value: string): value is string =>
     offered.some((entry) => entry.locale === value);
