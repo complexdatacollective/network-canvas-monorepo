@@ -659,10 +659,10 @@ async function placedLabel(canvas: ReturnType<typeof within>, text: string) {
   // The scale settles on a label layout after measuring, a frame or two
   // after it first renders.
   return waitFor(() => {
-    const label = canvas
-      .getAllByText(text)
+    const matches: HTMLElement[] = canvas.getAllByText(text);
+    const label = matches
       .map((element) => element.parentElement)
-      .find((parent) => parent?.style.insetInlineStart);
+      .find((parent) => Boolean(parent?.style.insetInlineStart));
     if (!label) throw new Error(`"${text}" is not placed along the track`);
     return label;
   });
