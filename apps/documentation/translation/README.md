@@ -12,8 +12,9 @@ language is published every change to the English must update it too. A test
 - **Navigation labels and section index pages**: the `localeLabels` and
   `localeIndexFiles` entries in each `docs/**/metadata.json`.
 - **Interface text** (header, footer, search, buttons): `messages/<locale>.json`.
-- **Glossaries**: `translation/glossary.<locale>.md`, the terms each language
-  uses, taken from the apps' own translations.
+- **Terminology**: the shared glossary for each language in
+  [`packages/app-i18n/glossary/`](../../../packages/app-i18n/glossary/), which
+  the apps and the website use too. Translate with it.
 
 ## What the guard checks
 
@@ -61,7 +62,8 @@ by native speakers follows as it becomes available.
 
 1. Pick the language by reader numbers (PostHog browser languages on the
    documentation site).
-2. Write `translation/glossary.<locale>.md` from the apps' catalogs.
+2. Make sure the language has a verified glossary in
+   `packages/app-i18n/glossary/<locale>.md`.
 3. Translate and stamp the pages, labels and messages, section by section.
    Until the locale is published, the files are checked for staleness but not
    shown to readers.
