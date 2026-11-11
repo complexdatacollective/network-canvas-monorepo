@@ -536,6 +536,9 @@ importers:
       '@codaco/e2e-helpers':
         specifier: workspace:^
         version: link:../../tooling/e2e
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/vitest-config':
         specifier: workspace:^
         version: link:../../tooling/vitest
@@ -1284,6 +1287,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.6.0(storybook@10.6.3(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
@@ -1492,6 +1498,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.6.0(storybook@10.6.3(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/vitest-config':
         specifier: workspace:^
         version: link:../../tooling/vitest
@@ -2808,6 +2817,9 @@ importers:
       '@codaco/protocols':
         specifier: workspace:^
         version: link:../protocols
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript

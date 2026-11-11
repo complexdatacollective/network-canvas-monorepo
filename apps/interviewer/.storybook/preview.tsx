@@ -13,6 +13,7 @@ import { type PropsWithChildren, StrictMode } from 'react';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 import './preview.css';
+import { globalTypes, initialGlobals, withAppI18n } from './i18n';
 import Providers from './Providers';
 
 // Network Canvas Interviewer renders its entire UI inside a single
@@ -62,14 +63,26 @@ export default definePreview({
     },
   },
   decorators: [
+    // Three decorators, innermost first. The language and direction sit
+    // between the other two: inside the root element, so that element is
+    // still the first thing in the canvas, as it was before the toolbar and
+    // as a play function that sizes the canvas's first child relies on; and
+    // around the providers, so a dialog or toast they render is in the
+    // toolbar's language and direction too.
+    (Story) => (
+      <Providers>
+        <Story />
+      </Providers>
+    ),
+    withAppI18n,
     (Story) => (
       <StrictMode>
         <ThemedRegion theme="interview" className="root h-full">
-          <Providers>
-            <Story />
-          </Providers>
+          <Story />
         </ThemedRegion>
       </StrictMode>
     ),
   ],
+  globalTypes,
+  initialGlobals,
 });

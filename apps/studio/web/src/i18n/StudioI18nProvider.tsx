@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
+import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
 import type { SupportedStudioLocale } from '@codaco/studio-contract/locales';
 import type { Me } from '@codaco/studio-contract/schema/account';
@@ -345,7 +346,7 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
         messages={catalog.messages}
         onLocaleChange={setLocale}
       >
-        {children}
+        <LocaleDirectionProvider>{children}</LocaleDirectionProvider>
       </AppI18nProvider>
     </StudioLocaleContext.Provider>
   );

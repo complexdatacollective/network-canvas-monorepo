@@ -12,9 +12,11 @@ import {
 import type { CatalogMessages, CatalogSource } from '../locales.ts';
 import { defineMessages } from '../messages.ts';
 import {
+  AppDirectionOverride,
   AppI18nProvider,
   AppIntlOverlay,
   AppMessage,
+  useAppDirection,
   useAppIntl,
   useAppLocale,
   useLocaleCatalog,
@@ -376,6 +378,93 @@ describe('useAppLocale without a provider', () => {
       return null;
     }
     expect(() => render(<Bare />)).toThrow(/AppI18nProvider/);
+  });
+});
+
+describe('useAppDirection', () => {
+  function Direction() {
+    return <output>{useAppDirection()}</output>;
+  }
+
+  it('is the direction of the language on screen', () => {
+    const { container } = render(
+      <AppI18nProvider locale="ar" locales={registry}>
+        <Direction />
+      </AppI18nProvider>,
+    );
+    expect(container.textContent).toBe('rtl');
+  });
+
+  it('is left to right without a provider', () => {
+    const { container } = render(<Direction />);
+    expect(container.textContent).toBe('ltr');
+  });
+});
+
+describe('AppDirectionOverride', () => {
+  function Reported() {
+    const { locale, direction } = useAppLocale();
+    return (
+      <output>
+        {locale}:{direction}:{useAppDirection()}
+      </output>
+    );
+  }
+
+  afterEach(() => {
+    document.documentElement.removeAttribute('dir');
+    document.documentElement.removeAttribute('lang');
+  });
+
+  it('shows a language in the overriding direction, down through nested providers', () => {
+    const { container } = render(
+      <AppDirectionOverride direction="rtl">
+        <AppI18nProvider locale="en" locales={registry} manageDocument={false}>
+          <AppI18nProvider locale="en-GB" locales={registry}>
+            <Reported />
+          </AppI18nProvider>
+        </AppI18nProvider>
+      </AppDirectionOverride>,
+    );
+    expect(container.textContent).toBe('en-GB:rtl:rtl');
+    expect(document.documentElement.dir).toBe('rtl');
+    expect(document.documentElement.lang).toBe('en-GB');
+  });
+
+  it('overrides a right-to-left language too', () => {
+    const { container } = render(
+      <AppDirectionOverride direction="ltr">
+        <AppI18nProvider locale="ar" locales={registry}>
+          <Reported />
+        </AppI18nProvider>
+      </AppDirectionOverride>,
+    );
+    expect(container.textContent).toBe('ar:ltr:ltr');
+    expect(document.documentElement.dir).toBe('ltr');
+  });
+
+  it('leaves each language in its own direction when given none', () => {
+    const { container } = render(
+      <AppDirectionOverride direction={null}>
+        <AppI18nProvider locale="ar" locales={registry}>
+          <Reported />
+        </AppI18nProvider>
+      </AppDirectionOverride>,
+    );
+    expect(container.textContent).toBe('ar:rtl:rtl');
+    expect(document.documentElement.dir).toBe('rtl');
+  });
+
+  it('reaches useAppDirection without a provider', () => {
+    function Direction() {
+      return <output>{useAppDirection()}</output>;
+    }
+    const { container } = render(
+      <AppDirectionOverride direction="rtl">
+        <Direction />
+      </AppDirectionOverride>,
+    );
+    expect(container.textContent).toBe('rtl');
   });
 });
 

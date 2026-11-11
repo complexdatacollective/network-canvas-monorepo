@@ -8,7 +8,7 @@ import {
   PSEUDO_LOCALE,
   pseudoAppLocale,
 } from '@codaco/app-i18n/locales';
-import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { AppDirectionOverride, AppI18nProvider } from '@codaco/app-i18n/react';
 
 /**
  * Storybook's language and writing-direction controls, shared by every
@@ -210,34 +210,42 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     }, [locale, direction]);
 
     return (
-      <AppI18nProvider
-        locale={locale}
-        locales={offered}
-        messages={catalogs[locale]}
-        // The effect above owns `<html lang>`/`<html dir>` instead, because
-        // the toolbar's direction is an override the provider cannot see: it
-        // would write the locale's own direction and undo an explicit RTL
-        // selection on every render.
-        manageDocument={false}
-      >
-        {/*
+      // An explicit LTR or RTL is an override for every language provider in
+      // the story, not only the one below. A story that mounts a host's own
+      // provider stack (`ArchitectI18nProvider`, say) puts that host's
+      // registry and its `LocaleDirectionProvider` nearer the components than
+      // anything here, and without the override they would write the
+      // language's own direction to the document and hand it to Base UI: the
+      // CSS and the controls would disagree. On Automatic there is nothing to
+      // override, and each language keeps its own direction.
+      <AppDirectionOverride direction={mode === 'auto' ? null : mode}>
+        <AppI18nProvider
+          locale={locale}
+          locales={offered}
+          messages={catalogs[locale]}
+          // The effect above owns `<html lang>`/`<html dir>`: it is what the
+          // comment there explains, and two writers would be one too many.
+          manageDocument={false}
+        >
+          {/*
           Base UI reads direction from context, not from the DOM, and uses it
           for popover placement and for which arrow key moves where. Without
           this provider a story's CSS mirrors while its dropdowns, tabs and
           menus keep behaving as LTR — so the switcher would show a layout
           that looks right and hide the interaction bugs it exists to find.
         */}
-        <DirectionProvider direction={direction}>
-          {/*
+          <DirectionProvider direction={direction}>
+            {/*
             `contents` so the wrapper contributes no box of its own: a story
             laid out by its parent (a grid cell, a flex child) must not gain
             an anonymous block between it and that parent.
           */}
-          <div dir={direction} className="contents">
-            {children}
-          </div>
-        </DirectionProvider>
-      </AppI18nProvider>
+            <div dir={direction} className="contents">
+              {children}
+            </div>
+          </DirectionProvider>
+        </AppI18nProvider>
+      </AppDirectionOverride>
     );
   }
 
