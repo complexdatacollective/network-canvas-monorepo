@@ -62,7 +62,7 @@ const INDEX_PATTERN = /^(0|[1-9]\d*)$/u;
  * least one of them has a string id. The contract allows an index only for
  * arrays whose members have no id.
  */
-const isAddressedByIds = (array: readonly unknown[]): boolean =>
+export const isAddressedByIds = (array: readonly unknown[]): boolean =>
   array.some(hasStringId);
 
 /**

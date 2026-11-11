@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { describeFixTextEdits } from '../describeFix';
-import { applyOperations, fixFits } from '../fixEngine';
+import { applyOperations, fixFits, writtenHolds } from '../fixEngine';
 import { readPath } from '../fixPath';
-import { editProtocol, recordFix } from '../protocolFix';
+import { editProtocol, protocolReplacement, recordFix } from '../protocolFix';
 import { makeProtocol, op } from './fixtures';
 
 /**
@@ -196,5 +196,34 @@ describe('F: the preview shows every text change a fix makes', () => {
         otherTranslations: ['fr'],
       },
     ]);
+  });
+});
+
+describe('B on a real protocol (the family is in fixFamily.test.ts)', () => {
+  it('sees an edit to the first of two options inserted at one index', async () => {
+    const options = '/codebook/node/person/variables/freq/options';
+    const edit = await editProtocol(makeProtocol(), [
+      op('insert', `${options}/0`, { label: { en: 'A', fr: 'A' }, value: 3 }),
+      op('insert', `${options}/0`, { label: { en: 'B', fr: 'B' }, value: 4 }),
+    ]);
+    if (!edit.ok) throw new Error('setup');
+    const changed = applyOperations(edit.protocol, [
+      op('set', `${options}/1/value`, 9),
+    ]);
+    if (!changed.ok) throw new Error('setup');
+    expect(writtenHolds(changed.result, edit.written)).toBe(false);
+  });
+
+  it('undoes the removal of an optional top-level key, stored as undefined', async () => {
+    const protocol = makeProtocol({ description: 'About' });
+    const edit = await editProtocol(protocol, [op('remove', '/description')]);
+    if (!edit.ok) throw new Error('setup');
+    const stored = {
+      ...protocol,
+      ...protocolReplacement(protocol, edit.protocol),
+    };
+    expect(Object.hasOwn(stored, 'description')).toBe(true);
+    const undo = await editProtocol(stored, edit.inverse);
+    expect(undo.ok && undo.protocol.description).toBe('About');
   });
 });

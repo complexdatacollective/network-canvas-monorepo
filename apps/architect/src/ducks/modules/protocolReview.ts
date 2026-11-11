@@ -445,6 +445,10 @@ export const syncProtocolReview =
     }
   };
 
+/** Whether `protocolId` is still the protocol open in this tab. */
+const isStillActive = (state: RootState, protocolId: string) =>
+  getActiveProtocolId(state) === protocolId;
+
 /** The active protocol's record, reading it if the slice does not hold it yet. */
 const activeRecord = async (
   dispatch: AppDispatch,
@@ -522,9 +526,15 @@ export const startReview =
       return refuse('no_protocol');
     }
     if (inflight) return refuse('running');
-    const record = await activeRecord(dispatch, getState, protocolId);
+    await activeRecord(dispatch, getState, protocolId);
 
+    // Everything sent comes from one protocol at one moment: this state, and
+    // only while the protocol the review was asked for is still the active
+    // one. A switch while the record was being read sends nothing.
     const state = getState();
+    if (!isStillActive(state, protocolId)) return { status: 'cancelled' };
+    const record = selectRecord(state);
+    if (record?.protocolId !== protocolId) return { status: 'cancelled' };
     const block = getProtocolReviewStartBlock(state);
     if (block !== null) return refuse(block.code);
     const protocol = getProtocol(state);
@@ -556,8 +566,13 @@ export const startReview =
       },
     });
 
-    // Cancelled, or the protocol closed: whoever aborted has reset the run.
-    if (inflight !== run || outcome.kind === 'aborted') {
+    // Cancelled, or the protocol closed or changed: whoever aborted has reset
+    // the run, and nothing is saved for a protocol no longer open.
+    if (
+      inflight !== run ||
+      outcome.kind === 'aborted' ||
+      !isStillActive(getState(), protocolId)
+    ) {
       if (inflight === run) {
         inflight = null;
         dispatch(actions.runFinished());
@@ -597,14 +612,16 @@ export const startReview =
         inverse: null,
       }),
     );
-    // The share choice may have changed while the review ran.
-    const latest =
-      selectRecord(getState())?.protocolId === protocolId
-        ? selectRecord(getState())
-        : await readReviewRecord(protocolId);
+    // The share choice may have changed while the review ran. The protocol
+    // is still the active one (checked above, with no await since), so the
+    // slice holds its record.
+    const latest = selectRecord(getState());
     await saveRecord(dispatch, getState, {
       protocolId,
-      shareReviews: latest?.shareReviews ?? record.shareReviews,
+      shareReviews:
+        latest?.protocolId === protocolId
+          ? latest.shareReviews
+          : record.shareReviews,
       review: {
         reviewId: result.reviewId,
         createdAt: Date.now(),
@@ -749,6 +766,11 @@ export const decideFinding =
       return refused('changed');
     }
     const edit = await editProtocol(protocol, stored.operations);
+    // Another protocol opened while the edit was worked out: nothing here is
+    // about it, so nothing is dispatched or saved.
+    if (!isStillActive(getState(), found.record.protocolId)) {
+      return refused('no_review');
+    }
     if (!edit.ok) {
       dispatch(
         actions.fixChecked({
@@ -808,6 +830,11 @@ export const undoFix =
     }
     if (!getProtocolOwnedHere(getState())) return refused('not_owned');
     const edit = await editProtocol(protocol, stored.inverse);
+    // Another protocol opened while the edit was worked out: nothing here is
+    // about it, so nothing is dispatched or saved.
+    if (!isStillActive(getState(), found.record.protocolId)) {
+      return refused('no_review');
+    }
     if (!edit.ok) {
       dispatch(
         actions.fixChecked({
@@ -852,6 +879,8 @@ export const setShareReviews =
     const protocolId = getActiveProtocolId(getState());
     if (protocolId === null) return;
     const record = await activeRecord(dispatch, getState, protocolId);
+    // The choice was made for this protocol; one opened meanwhile is not it.
+    if (!isStillActive(getState(), protocolId)) return;
     await saveRecord(dispatch, getState, { ...record, shareReviews: share });
   };
 
@@ -918,6 +947,17 @@ const runChecks = async (dispatch: AppDispatch, getState: GetState) => {
     }
     // oxlint-disable-next-line no-await-in-loop -- one validation at a time keeps the editor responsive
     const valid = await checkEdit(protocol, operations);
+    // The answer is about `protocol` and this review only: if either moved
+    // on while it was worked out (another protocol opened, an edit, a new
+    // review), it answers nothing now, and whoever moved it asks again.
+    const now = selectRecord(getState());
+    if (
+      getProtocol(getState()) !== protocol ||
+      now?.protocolId !== record.protocolId ||
+      now.review?.reviewId !== record.review.reviewId
+    ) {
+      return;
+    }
     dispatch(
       actions.fixChecked({ findingId: id, check: { protocol, kind, valid } }),
     );

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyOperations,
   fixFits,
-  snapshotAt,
+  planFix,
   type StoredOperation,
   writtenHolds,
 } from '../fixEngine';
@@ -270,13 +270,11 @@ describe('fixFits', () => {
   });
 });
 
-/** What a fix wrote, read from where each operation left its change. */
+/** A fix planned with no normalisation: its result, inverse and what it wrote. */
 const writtenBy = (root: unknown, operations: StoredOperation[]) => {
-  const applied = apply(root, operations);
-  return {
-    ...applied,
-    written: applied.placed.map((path) => snapshotAt(applied.result, path)),
-  };
+  const plan = planFix(root, operations, (raw) => raw);
+  if (!plan.ok) throw new Error(`failed: ${plan.reason}`);
+  return plan;
 };
 
 describe('writtenHolds', () => {

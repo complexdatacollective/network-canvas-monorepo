@@ -6,6 +6,7 @@ import {
   findArrayMember,
   formatPath,
   hasOwnValue,
+  isAddressedByIds,
   isIdArray,
   isJsonObject,
   type JsonObject,
@@ -76,10 +77,11 @@ export type ApplyResult =
       /** One per operation, in order. */
       targets: TargetSnapshot[];
       /**
-       * One per operation, in order: where its change can be read just after
-       * it applied (an inserted member under its id, or its index).
+       * Where everything the operations wrote can be read in `result`: paths
+       * made only of object keys and member ids, which name the same place
+       * whatever else the operations moved (see `writeLocations`).
        */
-      placed: string[];
+      anchors: string[];
     }
   | { ok: false; failure: FixFailure };
 
@@ -89,7 +91,6 @@ type StepResult =
       root: unknown;
       inverse: StoredOperation;
       target: TargetSnapshot;
-      placed: string;
     }
   | { ok: false; kind: FixFailureKind };
 
@@ -109,10 +110,30 @@ const parseValue = (
 const hasStringId = (value: unknown): value is JsonObject & { id: string } =>
   isJsonObject(value) && typeof value.id === 'string';
 
-/** Structural equality that answers false where comparing fails outright. */
-const safeIsEqual = (a: unknown, b: unknown): boolean => {
+/**
+ * A value in the form the protocol is stored and validated in, where a key
+ * holding `undefined` is no key at all. (The store's merge-style update
+ * leaves a removed top-level key as `undefined`; JSON, IndexedDB's copy and
+ * validation all read it as absent.) Every comparison in the engine goes
+ * through `sameStored`, so the two can never be told apart.
+ */
+const storedForm = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(storedForm);
+  if (!isJsonObject(value)) return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, member]) => member !== undefined)
+      .map(([key, member]) => [key, storedForm(member)]),
+  );
+};
+
+/**
+ * Whether two values are the same as stored. False where comparing fails
+ * outright (a value nested too deep to walk), never an exception.
+ */
+const sameStored = (a: unknown, b: unknown): boolean => {
   try {
-    return isEqual(a, b);
+    return isEqual(storedForm(a), storedForm(b));
   } catch {
     return false;
   }
@@ -209,7 +230,6 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
         value: null,
       },
       target: { op: 'insert' },
-      placed: pathOf(back),
     };
   }
 
@@ -251,7 +271,6 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
           value: JSON.stringify(old),
         },
         target: { op: 'set', present: true, value: old },
-        placed: pathOf(back),
       };
     }
     if (!isJsonObject(parent)) return fail('wrong_container');
@@ -272,7 +291,6 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
       target: present
         ? { op: 'set', present: true, value: old }
         : { op: 'set', present: false, value: null },
-      placed: operation.path,
     };
   }
 
@@ -295,7 +313,6 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
         value: JSON.stringify(old),
       },
       target: { op: 'remove', value: old },
-      placed: operation.path,
     };
   }
   if (!isJsonObject(parent)) return fail('wrong_container');
@@ -317,8 +334,63 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
       keyIndex: Object.keys(parent).indexOf(last),
     },
     target: { op: 'remove', value: old },
-    placed: operation.path,
   };
+};
+
+/**
+ * The part of `segments` that names one place however members of arrays
+ * move: object keys and member ids, up to (and stopping at) the first array
+ * whose members have no ids — the array itself, then, since a position in it
+ * is not an identity.
+ */
+const stableLocation = (
+  root: unknown,
+  segments: readonly string[],
+): string[] => {
+  let node: unknown = root;
+  const location: string[] = [];
+  for (const segment of segments) {
+    if (Array.isArray(node) && !isAddressedByIds(node)) return location;
+    location.push(segment);
+    const read = readPath(node, [segment]);
+    node = read.found ? read.value : undefined;
+  }
+  return location;
+};
+
+/**
+ * Where what `operation` writes to `root` can be read once the whole fix has
+ * applied. Each location is made of object keys and member ids only, so later
+ * operations of the same fix — inserting before it, removing beside it —
+ * cannot move what it names; a write into an array without ids is located by
+ * the whole array. A member placed by id is located by its id.
+ */
+const writeLocations = (
+  root: unknown,
+  operation: StoredOperation,
+): string[][] => {
+  const segments = parsePath(operation.path);
+  if (segments === null) return [];
+  const parentSegments = segments.slice(0, -1);
+  const parentLocation = stableLocation(root, parentSegments);
+  const parentIsStable = parentLocation.length === parentSegments.length;
+  const parent = readPath(root, parentSegments);
+  const parsed = parseValue(operation.value);
+  const placesMember =
+    operation.op !== 'remove' &&
+    parentIsStable &&
+    parent.found &&
+    Array.isArray(parent.value) &&
+    parsed.ok &&
+    hasStringId(parsed.value);
+  const member =
+    placesMember && parsed.ok && hasStringId(parsed.value)
+      ? [[...parentLocation, parsed.value.id]]
+      : [];
+  if (operation.op === 'insert') {
+    return member.length > 0 ? member : [parentLocation];
+  }
+  return [stableLocation(root, segments), ...member];
 };
 
 /**
@@ -332,10 +404,13 @@ export const applyOperations = (
   let current = root;
   const inverse: StoredOperation[] = [];
   const targets: TargetSnapshot[] = [];
-  const placed: string[] = [];
+  const anchors = new Set<string>();
   for (const [index, operation] of operations.entries()) {
     let step: StepResult;
     try {
+      for (const location of writeLocations(current, operation)) {
+        anchors.add(formatPath(location));
+      }
       step = applyStep(current, operation);
     } catch {
       step = fail('unworkable');
@@ -346,9 +421,8 @@ export const applyOperations = (
     current = step.root;
     inverse.unshift(step.inverse);
     targets.push(step.target);
-    placed.push(step.placed);
   }
-  return { ok: true, result: current, inverse, targets, placed };
+  return { ok: true, result: current, inverse, targets, anchors: [...anchors] };
 };
 
 /**
@@ -363,7 +437,7 @@ export const fixFits = (
 ): boolean => {
   if (operations.length === 0) return false;
   const applied = applyOperations(root, operations);
-  return applied.ok && safeIsEqual(applied.targets, recorded);
+  return applied.ok && sameStored(applied.targets, recorded);
 };
 
 /**
@@ -378,7 +452,7 @@ export type WrittenSnapshot = {
 };
 
 /** What `root` holds at `path`, as a snapshot. */
-export const snapshotAt = (root: unknown, path: string): WrittenSnapshot => {
+const snapshotAt = (root: unknown, path: string): WrittenSnapshot => {
   const segments = parsePath(path);
   const read =
     segments === null ? { found: false as const } : readPath(root, segments);
@@ -399,9 +473,88 @@ export const writtenHolds = (
   if (written.length === 0) return false;
   try {
     return written.every((snapshot) =>
-      isEqual(snapshotAt(root, snapshot.path), snapshot),
+      sameStored(snapshotAt(root, snapshot.path), snapshot),
     );
   } catch {
     return false;
+  }
+};
+
+export type FixPlan =
+  | {
+      ok: true;
+      /** The fixed document, as `normalize` leaves it. */
+      result: unknown;
+      /** Applied to `result`, these give back the document planned from. */
+      inverse: StoredOperation[];
+      /** Everything the fix wrote, as `result` holds it (see `writtenHolds`). */
+      written: WrittenSnapshot[];
+    }
+  | { ok: false; reason: 'changed' | 'invalid' };
+
+const topLevel = (key: string) => formatPath([key]);
+
+const isUnderKey = (path: string, key: string) =>
+  path === topLevel(key) || path.startsWith(`${topLevel(key)}/`);
+
+/**
+ * A fix planned against `root`: applied, passed through `normalize` (what
+ * the store does to every document it is given), and paired with what
+ * undoes it and what it wrote. Two things hold for any sequence of
+ * operations, or the plan is refused:
+ *
+ * - its inverse, applied to the result and normalised again, gives back
+ *   `root` as stored (`sameStored`) — so it also puts back, whole, every
+ *   top-level key normalisation changed;
+ * - `written` names every place the fix wrote by key and id only, read from
+ *   the final result, so any later change to any of it is seen.
+ *
+ * Never throws.
+ */
+export const planFix = (
+  root: unknown,
+  operations: readonly StoredOperation[],
+  normalize: (raw: unknown) => unknown,
+): FixPlan => {
+  const applied = applyOperations(root, operations);
+  if (!applied.ok) return { ok: false, reason: 'changed' };
+  try {
+    const raw = applied.result;
+    const normalized = normalize(raw);
+    if (
+      !isJsonObject(root) ||
+      !isJsonObject(raw) ||
+      !isJsonObject(normalized)
+    ) {
+      return { ok: false, reason: 'invalid' };
+    }
+    const keys = [
+      ...new Set([...Object.keys(raw), ...Object.keys(normalized)]),
+    ].filter((key) => !sameStored(raw[key], normalized[key]));
+    const inverse: StoredOperation[] = [
+      ...applied.inverse.filter(
+        (operation) => !keys.some((key) => isUnderKey(operation.path, key)),
+      ),
+      ...keys.map((key): StoredOperation =>
+        hasOwnValue(root, key)
+          ? {
+              op: 'set',
+              path: topLevel(key),
+              value: JSON.stringify(root[key]),
+              keyIndex: Object.keys(root).indexOf(key),
+            }
+          : { op: 'remove', path: topLevel(key), value: null },
+      ),
+    ];
+    const undone = applyOperations(normalized, inverse);
+    if (!undone.ok || !sameStored(normalize(undone.result), root)) {
+      return { ok: false, reason: 'invalid' };
+    }
+    const written = [
+      ...new Set([...applied.anchors, ...keys.map(topLevel)]),
+    ].map((path) => snapshotAt(normalized, path));
+    return { ok: true, result: normalized, inverse, written };
+  } catch {
+    return { ok: false, reason: 'invalid' };
   }
 };

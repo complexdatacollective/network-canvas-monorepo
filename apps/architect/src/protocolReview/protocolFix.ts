@@ -1,5 +1,3 @@
-import { isEqual } from 'es-toolkit';
-
 import type { FixOperation } from '@codaco/protocol-review-worker/contract';
 import {
   type CurrentProtocol,
@@ -9,7 +7,7 @@ import {
 
 import {
   applyOperations,
-  snapshotAt,
+  planFix,
   type StoredOperation,
   type TargetSnapshot,
   type WrittenSnapshot,
@@ -133,21 +131,32 @@ export const recordFix = (
 };
 
 /**
- * `candidate` as the store would hold it — with the interview's shared
- * wording brought in line (`withInterfaceText`, which the store's reducer
- * applies to every change) — when it is a valid protocol being written;
- * otherwise null. Validated as a draft, as Architect validates every protocol
- * in its editor. Never throws: model-written content reaches both steps.
+ * What the store does to every protocol it is given: bring the interview's
+ * shared wording in line (`withInterfaceText`, applied by the store's
+ * reducer). A document that is not a schema 9 protocol is left as it is, for
+ * validation to refuse.
+ */
+const normalizeProtocol = (raw: unknown): unknown =>
+  isJsonObject(raw) && raw.schemaVersion === 9
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- withInterfaceText reads the protocol's stages and localization; a document whose shape it cannot read throws, which planFix catches, and the result is validated before it is trusted
+      withInterfaceText(raw as unknown as CurrentProtocol)
+    : raw;
+
+/**
+ * `candidate` as a protocol, when it is a valid one being written; otherwise
+ * null. Validated as a draft, as Architect validates every protocol in its
+ * editor. Never throws.
  */
 const validProtocolOrNull = async (
   candidate: unknown,
 ): Promise<CurrentProtocol | null> => {
   if (!isJsonObject(candidate) || candidate.schemaVersion !== 9) return null;
   try {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- withInterfaceText reads the protocol's stages and localization; a candidate whose shape it cannot read throws, which is caught here, and the result is validated before it is trusted
-    const withText = withInterfaceText(candidate as unknown as CurrentProtocol);
-    const result = await validateProtocol(withText, { draft: true });
-    return result.success && result.data.schemaVersion === 9 ? withText : null;
+    const result = await validateProtocol(candidate, { draft: true });
+    return result.success && result.data.schemaVersion === 9
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- validated just above as a schema 9 protocol; the document is kept as written rather than as the schema's parse, which can drop what validation refuses
+        (candidate as unknown as CurrentProtocol)
+      : null;
   } catch {
     return null;
   }
@@ -164,75 +173,28 @@ export type ProtocolEdit =
     }
   | { ok: false; reason: 'changed' | 'invalid' };
 
-const topLevelPath = (key: string) => formatPath([key]);
-
 /**
- * The top-level keys whose value the store's normalisation changed: the
- * edit's own result `raw` against `normalized`, as the store will hold it.
- */
-const normalizedKeys = (raw: JsonRecord, normalized: JsonRecord): string[] =>
-  [...new Set([...Object.keys(raw), ...Object.keys(normalized)])].filter(
-    (key) => !isEqual(raw[key], normalized[key]),
-  );
-
-type JsonRecord = Record<string, unknown>;
-
-const isUnder = (path: string, key: string) => {
-  const top = topLevelPath(key);
-  return path === top || path.startsWith(`${top}/`);
-};
-
-/**
- * `protocol` with `operations` applied, when they apply and the result is a
- * valid protocol, with what undoes it exactly and what it wrote.
- *
- * The store normalises every protocol it is given (`withInterfaceText`), and
- * that can change more than the operations did: removing the last Quick Add
- * stage also takes the researcher's Quick Add wording. So the inverse also
- * puts back every top-level key normalisation changed, whole, after the
- * operations' own inverses for the rest; and the edit is refused when its
- * inverse would not give back exactly the protocol it was applied to.
+ * `protocol` with `operations` applied as the store would hold it, when they
+ * apply and the result is a valid protocol, with what undoes it exactly and
+ * what it wrote (`planFix`, with the store's normalisation: removing the
+ * last Quick Add stage also takes the researcher's Quick Add wording, and
+ * the inverse puts it back). Never throws.
  */
 export const editProtocol = async (
   protocol: CurrentProtocol,
   operations: readonly StoredOperation[],
 ): Promise<ProtocolEdit> => {
-  const applied = applyOperations(protocol, operations);
-  if (!applied.ok) return { ok: false, reason: 'changed' };
-  const valid = await validProtocolOrNull(applied.result);
-  if (valid === null || !isJsonObject(applied.result)) {
-    return { ok: false, reason: 'invalid' };
-  }
-  try {
-    const original: JsonRecord = protocol;
-    const normalized: JsonRecord = valid;
-    const keys = normalizedKeys(applied.result, normalized);
-    const inverse: StoredOperation[] = [
-      ...applied.inverse.filter(
-        (operation) => !keys.some((key) => isUnder(operation.path, key)),
-      ),
-      ...keys.map((key): StoredOperation =>
-        Object.hasOwn(original, key) && original[key] !== undefined
-          ? {
-              op: 'set',
-              path: topLevelPath(key),
-              value: JSON.stringify(original[key]),
-              keyIndex: Object.keys(original).indexOf(key),
-            }
-          : { op: 'remove', path: topLevelPath(key), value: null },
-      ),
-    ];
-    const undone = applyOperations(valid, inverse);
-    if (!undone.ok || !isEqual(undone.result, protocol)) {
-      return { ok: false, reason: 'invalid' };
-    }
-    const written = [...applied.placed, ...keys.map(topLevelPath)].map((path) =>
-      snapshotAt(valid, path),
-    );
-    return { ok: true, protocol: valid, inverse, written };
-  } catch {
-    return { ok: false, reason: 'invalid' };
-  }
+  const plan = planFix(protocol, operations, normalizeProtocol);
+  if (!plan.ok) return plan;
+  const valid = await validProtocolOrNull(plan.result);
+  return valid === null
+    ? { ok: false, reason: 'invalid' }
+    : {
+        ok: true,
+        protocol: valid,
+        inverse: plan.inverse,
+        written: plan.written,
+      };
 };
 
 /**
