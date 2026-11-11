@@ -1,7 +1,7 @@
 import {
   defineAppLocales,
   ecosystemLocales,
-  pseudoAppLocale,
+  pseudoAppLocales,
 } from '@codaco/app-i18n/locales';
 import type { AppLocale } from '@codaco/app-i18n/locales';
 import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
@@ -28,13 +28,14 @@ export const studioProductionLocales = defineAppLocales(
 );
 
 /**
- * The registry the app mounts. Development builds append the accented,
- * expanded pseudo-locale (`en-XA`) so hardcoded-string leaks and clipped
- * layouts are visible by eye; it never enters a production registry and is
- * never sent to the server as a preference.
+ * The registry the app mounts. Development builds append the pseudo-locales:
+ * the accented, expanded one (`en-XA`), so hardcoded-string leaks and clipped
+ * layouts are visible by eye, and the right-to-left one (`ar-XB`), so a
+ * layout that does not mirror is. Neither enters a production registry or is
+ * sent to the server as a preference.
  */
 export const studioLocales: readonly AppLocale[] = import.meta.env.DEV
-  ? [...studioProductionLocales, pseudoAppLocale]
+  ? [...studioProductionLocales, ...pseudoAppLocales]
   : studioProductionLocales;
 
 export const studioDefaultLocale = 'en';

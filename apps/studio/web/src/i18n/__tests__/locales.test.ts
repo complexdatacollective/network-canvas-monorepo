@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { ecosystemLocales, PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import {
+  ecosystemLocales,
+  isPseudoLocale,
+  PSEUDO_LOCALE,
+  pseudoAppLocales,
+} from '@codaco/app-i18n/locales';
 import { supportedSiteLocales } from '@codaco/shared-consts';
 import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
 
@@ -43,17 +48,17 @@ describe('the Studio locale registry', () => {
     // literals it declares, which would make a direct comparison a type error
     // rather than the runtime check this is.
     expect(
-      studioProductionLocales.map((entry) => entry.locale as string),
-    ).not.toContain(PSEUDO_LOCALE);
+      studioProductionLocales.filter((entry) => isPseudoLocale(entry.locale)),
+    ).toEqual([]);
   });
 
-  it('adds the pseudo-locale to the registry a development build mounts', () => {
+  it('adds the pseudo-locales to the registry a development build mounts', () => {
     // Vitest runs with `import.meta.env.DEV` true, which is the same branch a
     // `vite dev` bundle takes: the mounted registry is the production one plus
-    // the pseudo-locale, in that order.
+    // the pseudo-locales, in that order.
     expect(studioLocales.map((entry) => entry.locale)).toEqual([
       ...studioProductionLocales.map((entry) => entry.locale),
-      PSEUDO_LOCALE,
+      ...pseudoAppLocales.map((entry) => entry.locale),
     ]);
   });
 });

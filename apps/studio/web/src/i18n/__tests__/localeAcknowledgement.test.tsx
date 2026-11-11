@@ -4,7 +4,7 @@ import { act, render, waitFor } from '@testing-library/react';
 import { Effect } from 'effect';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import { pseudoAppLocales } from '@codaco/app-i18n/locales';
 import { type UpdateAccountLocaleResult } from '@codaco/studio-contract/schema/account';
 
 import { sessionQueryOptions } from '../../lib/session.ts';
@@ -170,21 +170,24 @@ describe('a choice that never reached the account', () => {
   });
 });
 
-describe('the pseudo-locale', () => {
-  it('is not clobbered by the account preference', () => {
-    // A development aid is never stored, so the server can only ever disagree
-    // with it. Letting that disagreement win would end the session it was
-    // turned on for.
-    renderProvider({ signedIn: true, userId: 'user-1' });
+describe.each(pseudoAppLocales.map((entry) => entry.locale))(
+  'the pseudo-locale %s',
+  (pseudoLocale) => {
+    it('is not clobbered by the account preference', () => {
+      // A development aid is never stored, so the server can only ever
+      // disagree with it. Letting that disagreement win would end the session
+      // it was turned on for.
+      renderProvider({ signedIn: true, userId: 'user-1' });
 
-    act(() => harness.setLocale(PSEUDO_LOCALE));
-    expect(updateLocale).not.toHaveBeenCalled();
+      act(() => harness.setLocale(pseudoLocale));
+      expect(updateLocale).not.toHaveBeenCalled();
 
-    act(() => harness.applyServerPreference('en-GB', 'user-1'));
+      act(() => harness.applyServerPreference('en-GB', 'user-1'));
 
-    expect(harness.preference).toBe(PSEUDO_LOCALE);
-  });
-});
+      expect(harness.preference).toBe(pseudoLocale);
+    });
+  },
+);
 
 describe('an unacknowledged write', () => {
   it('holds against a stale payload for the account that made it', async () => {

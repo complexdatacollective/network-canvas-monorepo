@@ -1,6 +1,6 @@
 import {
   defineAppLocales,
-  pseudoAppLocale,
+  pseudoAppLocales,
   type AppLocale,
 } from '@codaco/app-i18n/locales';
 
@@ -19,7 +19,7 @@ export const architectProductionLocales = defineAppLocales([
 ]);
 
 export const architectLocales: readonly AppLocale[] = import.meta.env.DEV
-  ? [...architectProductionLocales, pseudoAppLocale]
+  ? [...architectProductionLocales, ...pseudoAppLocales]
   : architectProductionLocales;
 
 export const architectDefaultLocale = 'en';

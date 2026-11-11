@@ -11,7 +11,7 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 
-import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import { isPseudoLocale } from '@codaco/app-i18n/locales';
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
 import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
@@ -209,7 +209,7 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
       // a pending marker: nothing will ever acknowledge one, and a permanent
       // marker means the account's own preference never applies at sign-in.
       const storable =
-        locale !== PSEUDO_LOCALE &&
+        !isPseudoLocale(locale) &&
         (locale === null || isSupportedStudioLocale(locale));
       const signedIn =
         queryClient.getQueryData(sessionQueryOptions.queryKey) === 'signedIn';
@@ -282,7 +282,7 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
       // A development aid outranks the account: the pseudo-locale is never
       // stored, so the server can only ever disagree with it, and letting that
       // disagreement win would end the session it was turned on for.
-      if (preferenceRef.current === PSEUDO_LOCALE) return;
+      if (isPseudoLocale(preferenceRef.current)) return;
 
       const pending = pendingServerAck.current;
       if (pending !== null) {
