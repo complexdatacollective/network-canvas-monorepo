@@ -312,6 +312,13 @@ export const inertReadOnlyVariants = cva({
 //      No-op for wrapper <div>s around inputs since they aren't tabbable.
 const keyboardFocusRing = cx(
   'has-[input:focus-visible,textarea:focus-visible,select:focus-visible]:focus-styles focus-visible:focus-styles outline-(--focus-color,currentColor)',
+  // Safari builds a date or time input out of separate fields for the day,
+  // the month and so on, and puts focus on those. The input itself then
+  // matches `:focus` and never `:focus-visible`, however focus reached it, so
+  // the selector above leaves it with no ring. These inputs take typing, and
+  // an input that takes typing rings however it was focused (a text input
+  // rings on a click too), so `:focus` is the right test for them.
+  'has-[input:is([type=date],[type=time],[type=datetime-local],[type=month],[type=week]):focus]:focus-styles',
 );
 
 export const interactiveStateVariants = cva({
