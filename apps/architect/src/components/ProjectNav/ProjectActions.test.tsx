@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -91,6 +91,12 @@ const clickTwiceInOneTick = async (control: HTMLElement) => {
   });
 };
 
+// Download lives in the Export menu, which renders its items only while open.
+const openExportItem = async (name: string) => {
+  fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+  return screen.findByRole('menuitem', { name });
+};
+
 describe('ProjectActions', () => {
   beforeEach(() => {
     mockedDownload.mockReset();
@@ -115,7 +121,7 @@ describe('ProjectActions', () => {
   */
   it('exports once however many times Download is activated', async () => {
     await renderActions();
-    await clickTwiceInOneTick(screen.getByRole('button', { name: 'Download' }));
+    await clickTwiceInOneTick(await openExportItem('Download'));
 
     expect(mockedDownload).toHaveBeenCalledTimes(1);
   });
@@ -131,11 +137,15 @@ describe('ProjectActions', () => {
   // the component: a researcher who downloads twice on purpose gets two files.
   it('exports again once the first export has finished', async () => {
     await renderActions();
-    const download = screen.getByRole('button', { name: 'Download' });
 
-    await clickTwiceInOneTick(download);
+    await clickTwiceInOneTick(await openExportItem('Download'));
+    // The trigger is disabled while the first download runs, so the menu can
+    // be opened again only once it has settled.
+    await screen.findByRole('button', { name: 'Downloaded' });
+    fireEvent.click(screen.getByRole('button', { name: 'Downloaded' }));
+    const again = await screen.findByRole('menuitem', { name: 'Download' });
     await act(async () => {
-      download.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      again.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
 
     expect(mockedDownload).toHaveBeenCalledTimes(2);
