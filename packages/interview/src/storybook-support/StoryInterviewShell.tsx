@@ -3,9 +3,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { SuperJSON } from 'superjson';
 
-import { useAppDirection } from '@codaco/app-i18n/react';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { StageMetadataSchema } from '@codaco/shared-consts';
+import {
+  type DirectionMode,
+  useStorybookDirectionMode,
+} from '@codaco/storybook-config/i18n';
 
 import {
   type AssetRequestHandler,
@@ -69,7 +72,7 @@ function inferAssetType(asset: RawAsset): ResolvedAsset['type'] {
 
 function buildPayload(
   raw: RawSyntheticPayload,
-  direction: 'ltr' | 'rtl',
+  directionMode: DirectionMode,
 ): {
   payload: InterviewPayload;
   initialStep: number;
@@ -120,12 +123,14 @@ function buildPayload(
       : {}),
     // `Shell` takes its direction from the interview's language and from
     // nothing else, so Storybook's direction control reaches an interview
-    // here: the story's languages are described as written right to left.
-    // Their words stay as the story wrote them.
+    // here: set to LTR or RTL, the story's languages are described as
+    // written that way, whichever way they are really written. Their words
+    // stay as the story wrote them. Left on Automatic, each language keeps
+    // its own direction.
     localeOptions: localization.locales.map((locale) =>
-      direction === 'rtl'
-        ? { ...getLocaleMetadata(locale), direction }
-        : getLocaleMetadata(locale),
+      directionMode === 'auto'
+        ? getLocaleMetadata(locale)
+        : { ...getLocaleMetadata(locale), direction: directionMode },
     ),
   };
 
@@ -175,16 +180,14 @@ const StoryInterviewShell = (props: {
   preparePayload?: (payload: InterviewPayload) => InterviewPayload;
 }) => {
   const { preparePayload } = props;
-  // Storybook's direction control, or the direction of the language chosen
-  // beside it.
-  const direction = useAppDirection();
+  const directionMode = useStorybookDirectionMode();
   const { payload, initialStep, assetUrls } = useMemo(() => {
     const raw = SuperJSON.parse<RawSyntheticPayload>(props.rawPayload);
-    const built = buildPayload(raw, direction);
+    const built = buildPayload(raw, directionMode);
     return preparePayload
       ? { ...built, payload: preparePayload(built.payload) }
       : built;
-  }, [props.rawPayload, preparePayload, direction]);
+  }, [props.rawPayload, preparePayload, directionMode]);
 
   const [currentStep, setCurrentStep] = useState<number>(
     props.initialStep ?? initialStep,
@@ -219,7 +222,7 @@ const StoryInterviewShell = (props: {
   return (
     <Shell
       // The interview reads its languages once, when it starts.
-      key={direction}
+      key={directionMode}
       payload={payload}
       currentStep={currentStep}
       onStepChange={onStepChange}
