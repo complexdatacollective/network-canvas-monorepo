@@ -143,3 +143,12 @@
   // The page header sits flat on the page, as the shared header does.
   --shadow-header: none;
 }
+
+// Readex Pro only for a forum shown in Arabic, as in the apps
+// (tooling/tailwind/fresco/arabic-text.css). Text in other languages that
+// use the Arabic script lacks letters in that face, so it stays in a system
+// font. The more specific selector wins over the generated tokens on :root.
+:root:lang(ar) {
+  --nc-heading-font: var(--nc-heading-face), 'Readex Pro Variable', sans-serif;
+  --nc-body-font: var(--nc-body-face), 'Readex Pro Variable', sans-serif;
+}
