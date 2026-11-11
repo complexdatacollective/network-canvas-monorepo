@@ -47,6 +47,27 @@ const wideQuery = '(min-width: 1024px)';
 // Where the reading line sits, as a fraction of the viewport height.
 const FOCAL = 0.5;
 
+// Space left above a stop too tall to centre, so its start is not flush with
+// the top of the screen.
+const TALL_STOP_GAP = 24;
+
+/**
+ * Where to scroll so a focused stop sits on the reading line. A stop taller
+ * than the screen cannot be centred without pushing its start (the card's
+ * title) above the screen, so it is brought to the top instead.
+ */
+export function readingScrollTop(
+  scrollY: number,
+  stopTop: number,
+  stopHeight: number,
+  viewportHeight: number,
+): number {
+  if (stopHeight > viewportHeight - TALL_STOP_GAP * 2) {
+    return scrollY + stopTop - TALL_STOP_GAP;
+  }
+  return scrollY + stopTop + stopHeight / 2 - viewportHeight * FOCAL;
+}
+
 type Stage = { kind: StageKind; index: number };
 type HubStyle = CSSProperties & { '--hub': string };
 
@@ -158,11 +179,12 @@ export function PublicationsNetwork({
     if (!stop) return;
     const rect = stop.getBoundingClientRect();
     window.scrollTo({
-      top:
-        window.scrollY +
-        rect.top +
-        rect.height / 2 -
-        window.innerHeight * FOCAL,
+      top: readingScrollTop(
+        window.scrollY,
+        rect.top,
+        rect.height,
+        window.innerHeight,
+      ),
     });
   };
 
