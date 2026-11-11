@@ -6,7 +6,7 @@
       "entryPoint": "tooling/tailwind/fresco/fresco.css",
       "variablePatterns": [
         "[a-z](?:Class|ClassNames?|Classes)$",
-        "_CLASS(?:_NAME)?$"
+        "_CLASS(?:ES|_NAMES?)?$"
       ],
       "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
     }
