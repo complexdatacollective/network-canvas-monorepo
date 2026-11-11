@@ -92,6 +92,34 @@ export const pseudoAppLocale: AppLocale = {
 };
 
 /**
+ * Development-only right-to-left pseudo-locale: the interface is laid out
+ * right to left and every message's own text runs right to left too, while
+ * interpolated values keep their own direction, as a name or a number does
+ * inside an Arabic sentence. It shows what a right-to-left language does to a
+ * layout before any translation into one exists. The tag is the one Android
+ * gives its own right-to-left pseudo-locale; like `en-XA`, never include it in
+ * a production registry and never persist it.
+ */
+export const PSEUDO_RTL_LOCALE = 'ar-XB';
+
+export const pseudoRtlAppLocale: AppLocale = {
+  locale: PSEUDO_RTL_LOCALE,
+  label: 'Pseudo right-to-left (ar-XB)',
+  direction: 'rtl',
+};
+
+/** Every development pseudo-locale, in the order a language list shows them. */
+export const pseudoAppLocales: readonly AppLocale[] = [
+  pseudoAppLocale,
+  pseudoRtlAppLocale,
+];
+
+/** Whether a tag is one of the development pseudo-locales. */
+export function isPseudoLocale(locale: string | null | undefined): boolean {
+  return pseudoAppLocales.some((entry) => entry.locale === locale);
+}
+
+/**
  * Merges catalogs for one locale. Merge order at a host is
  * common → shared packages → app; ids are dot-namespaced per workspace, so
  * later-wins shallow merging is a formality rather than a conflict policy.

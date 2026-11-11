@@ -45,8 +45,10 @@ build-time compilation.
 
 An app declares the subset it actually supports; adding a locale to the
 ecosystem does not require another app to advertise it. `defineAppLocales`
-adds the diagnostic pseudo-locale only when explicitly enabled. Do not persist
-that diagnostic choice as a production preference.
+adds no diagnostic pseudo-locale: a development build appends
+`pseudoAppLocales` to its own registry. There are two, `en-XA` (accented and
+expanded) and `ar-XB` (right to left). Do not persist either choice as a
+production preference; `isPseudoLocale` is the test for one.
 
 Use `AppMessage` from `@codaco/app-i18n/react` for queued dialogs or toasts:
 

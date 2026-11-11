@@ -43,7 +43,7 @@ consumers import them in order:
 
 ```css
 /* styles/globals.css */
-@import '@codaco/tailwind-config/fresco.css'; /* Tailwind v4 + theme + plugins + fonts */
+@import '@codaco/tailwind-config/fresco.css'; /* Tailwind v4 + theme + plugins */
 @import '@codaco/fresco-ui/styles.css'; /* @source glue for fresco-ui's classes */
 @import '@codaco/interview/styles.css'; /* @source glue for interview's classes */
 ```

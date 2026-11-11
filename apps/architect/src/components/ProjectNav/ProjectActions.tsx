@@ -1,4 +1,11 @@
-import { ArrowLeftToLine, Check, Download, Save, Send } from 'lucide-react';
+import {
+  ArrowLeftToLine,
+  Check,
+  Download,
+  Save,
+  Send,
+  Share,
+} from 'lucide-react';
 import {
   createElement,
   type ReactNode,
@@ -13,9 +20,11 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { DropdownMenuItem } from '@codaco/fresco-ui/DropdownMenu';
 import {
   ToolbarButton,
   ToolbarGroup,
+  ToolbarMenu,
   ToolbarSeparator,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
@@ -112,44 +121,53 @@ const messages = defineMessages({
     description:
       'The aria-label text in components / ProjectNav / ProjectActions.',
   },
-  downloadActions: {
-    id: 'architect.projectNav.projectActions.downloadActions',
-    defaultMessage: 'Download actions',
+  exportActions: {
+    id: 'architect.projectNav.projectActions.exportActions',
+    defaultMessage: 'Export actions',
     description:
-      'The aria-label text in components / ProjectNav / ProjectActions.',
+      'Accessible name, read by screen readers, of the toolbar group holding the Export button.',
+  },
+  export: {
+    id: 'architect.projectNav.projectActions.export',
+    defaultMessage: 'Export',
+    description:
+      'Toolbar button that opens a menu of ways to get the protocol out of Architect: Download (save it as a file) and Send to Interviewer.',
   },
   downloaded: {
     id: 'architect.projectNav.projectActions.downloaded',
     defaultMessage: 'Downloaded',
-    description: 'Visible text in components / ProjectNav / ProjectActions.',
+    description:
+      'Label of the Export toolbar button for a moment after the protocol was saved as a file with Download.',
   },
   downloading: {
     id: 'architect.projectNav.projectActions.downloading',
     defaultMessage: 'Downloading...',
-    description: 'Visible text in components / ProjectNav / ProjectActions.',
+    description:
+      'Label of the Export toolbar button while the protocol is being saved as a file with Download.',
   },
   download: {
     id: 'architect.projectNav.projectActions.download',
     defaultMessage: 'Download',
-    description: 'Visible text in components / ProjectNav / ProjectActions.',
+    description:
+      'Item in the Export menu that saves the protocol as a .netcanvas file.',
   },
   sendToInterviewer: {
     id: 'architect.projectNav.projectActions.sendToInterviewer',
     defaultMessage: 'Send to Interviewer',
     description:
-      'Toolbar button beside Download. It opens Interviewer (the app that runs interviews) in a new browser tab and passes it this protocol to import.',
+      'Item in the Export menu, below Download. It opens Interviewer (the app that runs interviews) in a new browser tab and passes it this protocol to import.',
   },
   sending: {
     id: 'architect.projectNav.projectActions.sending',
     defaultMessage: 'Sending...',
     description:
-      'Label of the Send to Interviewer toolbar button while Interviewer opens in a new browser tab and the protocol is passed to it.',
+      'Label of the Export toolbar button while Interviewer opens in a new browser tab and the protocol is passed to it by Send to Interviewer.',
   },
   sent: {
     id: 'architect.projectNav.projectActions.sent',
     defaultMessage: 'Sent',
     description:
-      'Label of the Send to Interviewer toolbar button for a moment after Interviewer received the protocol.',
+      'Label of the Export toolbar button for a moment after Interviewer received the protocol from Send to Interviewer.',
   },
   sourceActions: {
     id: 'architect.projectNav.projectActions.sourceActions',
@@ -229,6 +247,8 @@ const ProjectActions = ({
 
   const [isExporting, setIsExporting] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
   // Held against the protocol it was read for, and matched against the active
   // one below. A protocol whose row has not been read yet therefore has no
   // source ref — rather than briefly carrying the previous protocol's, which
@@ -257,6 +277,8 @@ const ProjectActions = ({
     something to run twice by accident.
   */
   const runDownload = useCallback(async () => {
+    // Both items report on the one Export button; only the latest may.
+    setSendSuccess(false);
     setIsExporting(true);
     try {
       // Reading, so offered in every mode — but a tab that does not own the
@@ -274,11 +296,10 @@ const ProjectActions = ({
   }, [activeProtocolId, dispatch, mode, openDialog]);
   const handleDownload = useSingleFlight(runDownload);
 
-  const [isSending, setIsSending] = useState(false);
-  const [sendSuccess, setSendSuccess] = useState(false);
   // Opens Interviewer's tab synchronously, inside this click, before anything
   // is awaited: a tab opened later is blocked as a pop-up.
   const runSend = useCallback(async () => {
+    setDownloadSuccess(false);
     setIsSending(true);
     try {
       // Like Download: a tab that does not own the saved copy sends that copy.
@@ -509,35 +530,39 @@ const ProjectActions = ({
           <ToolbarSeparator key="additional-separator" />
         ) : null,
         <ToolbarGroup
-          key="download"
-          aria-label={intl.formatMessage(messages.downloadActions)}
+          key="export"
+          aria-label={intl.formatMessage(messages.exportActions)}
         >
-          <ToolbarButton
-            icon={sendSuccess ? <Check /> : <Send />}
-            disabled={isSending}
-            onClick={handleSend}
+          {/* Export stays last: it is the action an overflowing toolbar
+              keeps in view. While an item runs, or just after, the button
+              says how it went in place of its own name. */}
+          <ToolbarMenu
+            trigger={
+              <ToolbarButton
+                icon={downloadSuccess || sendSuccess ? <Check /> : <Share />}
+                variant="default"
+                className="bg-sea-green text-white"
+                disabled={isExporting || isSending}
+              >
+                {downloadSuccess
+                  ? intl.formatMessage(messages.downloaded)
+                  : sendSuccess
+                    ? intl.formatMessage(messages.sent)
+                    : isExporting
+                      ? intl.formatMessage(messages.downloading)
+                      : isSending
+                        ? intl.formatMessage(messages.sending)
+                        : intl.formatMessage(messages.export)}
+              </ToolbarButton>
+            }
           >
-            {sendSuccess
-              ? intl.formatMessage(messages.sent)
-              : isSending
-                ? intl.formatMessage(messages.sending)
-                : intl.formatMessage(messages.sendToInterviewer)}
-          </ToolbarButton>
-          {/* Download stays last: it is the action an overflowing toolbar
-              keeps in view. */}
-          <ToolbarButton
-            icon={downloadSuccess ? <Check /> : <Download />}
-            variant="default"
-            className="bg-sea-green text-white"
-            disabled={isExporting}
-            onClick={handleDownload}
-          >
-            {downloadSuccess
-              ? intl.formatMessage(messages.downloaded)
-              : isExporting
-                ? intl.formatMessage(messages.downloading)
-                : intl.formatMessage(messages.download)}
-          </ToolbarButton>
+            <DropdownMenuItem icon={<Download />} onClick={handleDownload}>
+              {intl.formatMessage(messages.download)}
+            </DropdownMenuItem>
+            <DropdownMenuItem icon={<Send />} onClick={handleSend}>
+              {intl.formatMessage(messages.sendToInterviewer)}
+            </DropdownMenuItem>
+          </ToolbarMenu>
         </ToolbarGroup>,
         canSaveToSource ? <ToolbarSeparator key="source-separator" /> : null,
         canSaveToSource ? (

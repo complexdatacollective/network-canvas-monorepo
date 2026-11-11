@@ -63,6 +63,9 @@ catalogs:
     '@fontsource-variable/nunito':
       specifier: ^5.3.0
       version: 5.3.0
+    '@fontsource-variable/readex-pro':
+      specifier: ^5.3.0
+      version: 5.3.0
     '@formatjs/cli-lib':
       specifier: ^10.0.11
       version: 10.0.11
@@ -536,6 +539,9 @@ importers:
       '@codaco/e2e-helpers':
         specifier: workspace:^
         version: link:../../tooling/e2e
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/vitest-config':
         specifier: workspace:^
         version: link:../../tooling/vitest
@@ -1284,6 +1290,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.6.0(storybook@10.6.3(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
@@ -1492,6 +1501,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.6.0(storybook@10.6.3(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/vitest-config':
         specifier: workspace:^
         version: link:../../tooling/vitest
@@ -2808,6 +2820,9 @@ importers:
       '@codaco/protocols':
         specifier: workspace:^
         version: link:../protocols
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
@@ -3341,6 +3356,9 @@ importers:
       '@fontsource-variable/nunito':
         specifier: 'catalog:'
         version: 5.3.0
+      '@fontsource-variable/readex-pro':
+        specifier: 'catalog:'
+        version: 5.3.0
       '@tailwindcss/cli':
         specifier: 'catalog:'
         version: 4.3.3
@@ -3504,6 +3522,9 @@ importers:
         specifier: 'catalog:'
         version: 5.3.0
       '@fontsource-variable/nunito':
+        specifier: 'catalog:'
+        version: 5.3.0
+      '@fontsource-variable/readex-pro':
         specifier: 'catalog:'
         version: 5.3.0
       motion:
@@ -5663,6 +5684,9 @@ packages:
 
   '@fontsource-variable/nunito@5.3.0':
     resolution: {integrity: sha512-tw0ch7evIDSwoeUy+0XzocYHfbRWLeCRPJy22KgbrLjDLAbNw/fErBiil10Ssrs3Sjr55zaZrr36a975j8cBkQ==}
+
+  '@fontsource-variable/readex-pro@5.3.0':
+    resolution: {integrity: sha512-ebrEcz8sjzQk92x6K3WtYzOgEKTIDe5D+iPqef0YYvPdqCfxzVkRgpsog5POX4sWa7e4wccCQ1IhmMuRka2hZg==}
 
   '@formatjs/cli-lib@10.0.11':
     resolution: {integrity: sha512-bHTMOpbGR1G1E9s12AgkZBQRDR2ZB//wNVqeEeYHJoh5xm/+QLqSNmLLrYrI1n1dGzUZwNyywvU9g0prftt3lw==}
@@ -20814,6 +20838,8 @@ snapshots:
   '@fontsource-variable/inclusive-sans@5.3.0': {}
 
   '@fontsource-variable/nunito@5.3.0': {}
+
+  '@fontsource-variable/readex-pro@5.3.0': {}
 
   '@formatjs/cli-lib@10.0.11':
     dependencies:

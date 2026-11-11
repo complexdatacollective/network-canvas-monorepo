@@ -2393,6 +2393,8 @@ export default function RichTextEditorField({
                       align="start"
                       side="bottom"
                       aria-label={insertMenu.label}
+                      // A list of options, padded as menus and comboboxes are.
+                      spacing="xs"
                       anchor={triggered === null ? undefined : caretAnchorRef}
                       // Closed by a pick, the menu hands the caret to the text
                       // the item went into; opened by typing, back to the

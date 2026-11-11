@@ -428,7 +428,7 @@ describe('fonts', () => {
         (match) => match[1],
       ),
     );
-    expect(referenced.size).toBe(16);
+    expect(referenced.size).toBe(17);
     const fonts = Object.entries(assets).filter(([name]) =>
       name.startsWith('nc-font-'),
     );

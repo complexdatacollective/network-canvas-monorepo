@@ -25,8 +25,10 @@ describe('ensureDocumentStyles', () => {
       '';
     expect(css).toContain("font-family: 'Nunito Variable'");
     expect(css).toContain("font-family: 'Inclusive Sans Variable'");
+    expect(css).toContain("font-family: 'Readex Pro Variable'");
     expect(css).toContain('@property');
     expect(css).not.toContain('__NC_FONT_BASE__');
     expect(css).toContain('/fonts/nunito-latin-wght-normal.woff2');
+    expect(css).toContain('/fonts/readex-pro-arabic-wght-normal.woff2');
   });
 });

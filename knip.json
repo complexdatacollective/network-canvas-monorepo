@@ -202,6 +202,7 @@
       "ignoreDependencies": [
         "@fontsource-variable/inclusive-sans",
         "@fontsource-variable/nunito",
+        "@fontsource-variable/readex-pro",
         "@tailwindcss/cli"
       ]
     },
@@ -218,7 +219,8 @@
       "project": ["shared/**/*.ts"],
       "ignoreDependencies": [
         "@fontsource-variable/inclusive-sans",
-        "@fontsource-variable/nunito"
+        "@fontsource-variable/nunito",
+        "@fontsource-variable/readex-pro"
       ]
     },
     "tooling/vitest": {

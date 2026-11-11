@@ -185,6 +185,11 @@ type PopoverContentProps = Omit<
   keepMounted?: boolean;
   align?: 'start' | 'center' | 'end';
   anchor?: Element | React.RefObject<Element | null> | null;
+  /**
+   * Padding around the content. The default suits prose and forms; a popup
+   * that holds a list of options takes `xs`, as menus and comboboxes do.
+   */
+  spacing?: ComponentPropsWithoutRef<typeof MotionSurface>['spacing'];
 };
 
 function PopoverContent({
@@ -196,6 +201,7 @@ function PopoverContent({
   className,
   align = 'center',
   anchor,
+  spacing = 'md',
   ...props
 }: PopoverContentProps) {
   const { mounted } = usePopoverContext();
@@ -220,7 +226,7 @@ function PopoverContent({
               render={
                 <BaseUISharedPopoverContainer
                   className={className}
-                  spacing="md"
+                  spacing={spacing}
                 />
               }
               {...props}
