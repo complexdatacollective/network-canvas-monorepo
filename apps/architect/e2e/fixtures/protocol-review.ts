@@ -1,15 +1,10 @@
-import type { BrowserContext, Page, Route } from '@playwright/test';
+import type { BrowserContext, Route } from '@playwright/test';
 
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
   withInterfaceText,
 } from '@codaco/protocol-validation';
-
-import {
-  PROTOCOL_REVIEW_INSTALLATION_ID_KEY,
-  PROTOCOL_REVIEW_QUOTA_KEY,
-} from '../../src/utils/storageNames.js';
 
 // The fixtures of the Automated Protocol Review specs: a small protocol whose
 // real stage and prompt ids the mocked findings address, and a stand-in for
@@ -19,9 +14,7 @@ import {
 // to the wire format.
 
 /** The only origin the built app's Content-Security-Policy lets it call. */
-export const REVIEW_SERVICE_ORIGIN =
-  'https://protocol-review.networkcanvas.com';
-export const REVIEW_URL = `${REVIEW_SERVICE_ORIGIN}/review`;
+const REVIEW_SERVICE_ORIGIN = 'https://protocol-review.networkcanvas.com';
 
 /** Fixed so the mocked result is the same on every run. */
 export const REVIEW_ID = '0b8f4c1e-9d0a-4a3e-8f8f-1f2e3d4c5b6a';
@@ -218,28 +211,6 @@ export const FINDINGS: MockFinding[] = [
   },
 ];
 
-/** Eight problems with long titles, to see the popover list fit and scroll. */
-export const MANY_FINDINGS: MockFinding[] = Array.from(
-  { length: 9 },
-  (_, index): MockFinding => ({
-    id: `many-${index}`,
-    severity:
-      (['serious', 'worth_fixing', 'suggestion'] as const)[index % 3] ??
-      'suggestion',
-    category: 'wording',
-    title: `Problem ${index + 1}: the wording of this prompt could be read in more than one way by participants who are interviewed in a second language`,
-    explanation: 'Participants may misread this.',
-    stageId: index % 2 === 0 ? 'names' : 'welcome',
-    codebookEntity: null,
-    codebookTypeId: null,
-    fix: {
-      summary: 'Reword it.',
-      changes: ['Reword the text'],
-      operations: [],
-    },
-  }),
-);
-
 type ReviewBody = {
   installationId: string;
   locale: string;
@@ -348,18 +319,4 @@ export async function mockReviewService(
       reply = next;
     },
   };
-}
-
-/** Forgets what a previous review left in this browser (not the protocol). */
-export async function clearReviewBrowserState(page: Page): Promise<void> {
-  await page.evaluate(
-    ({ installation, quota }) => {
-      localStorage.removeItem(installation);
-      localStorage.removeItem(quota);
-    },
-    {
-      installation: PROTOCOL_REVIEW_INSTALLATION_ID_KEY,
-      quota: PROTOCOL_REVIEW_QUOTA_KEY,
-    },
-  );
 }
