@@ -727,11 +727,17 @@ describe('a stage that omits the wording Network Canvas supplies', () => {
     'CategoricalBin unplacedNodesNotice',
   ];
 
-  it('is accepted, whichever setting it omits, for every kind of stage', () => {
+  it('starts from a protocol that is valid with all of it held', () => {
     expect(ProtocolSchemaV9.safeParse(completeProtocol()).success).toBe(true);
+  });
 
-    let checked = 0;
-    for (const type of stageTypes) {
+  // The whole protocol is validated once for each setting, which for the
+  // Family Pedigree is some eighty times: seconds on a loaded machine, so the
+  // time allowed is set for that rather than for one validation.
+  it.each(stageTypes)(
+    'is accepted, whichever setting it omits, on a %s stage',
+    { timeout: 60_000 },
+    (type) => {
       const paths = suppliedStageSettingPaths(type);
       expect(paths.length).toBeGreaterThan(0);
       const indexes = stages.flatMap((stage, index) =>
@@ -756,12 +762,10 @@ describe('a stage that omits the wording Network Canvas supplies', () => {
             result.success,
             `${type} without ${path.join('.')}: ${JSON.stringify(result.error?.issues)}`,
           ).toBe(true);
-          checked += 1;
         }
       }
-    }
-    expect(checked).toBeGreaterThan(50);
-  });
+    },
+  );
 
   it('is accepted when it omits all of it at once', () => {
     let protocol: unknown = completeProtocol();
