@@ -28,15 +28,15 @@ const messages = defineMessages({
   },
   nextReviewAt: {
     id: 'architect.protocolReview.availability.nextReviewAt',
-    defaultMessage: 'Next review at {when}',
+    defaultMessage: 'Next review {when}',
     description:
       'Why Review again is unavailable: the hourly limit is used up. {when} is a time such as "today at 15:32".',
   },
   availableAgainAt: {
     id: 'architect.protocolReview.availability.availableAgainAt',
-    defaultMessage: 'Available again at {when}',
+    defaultMessage: 'Available again {when}',
     description:
-      'Why Review again is unavailable: the service’s shared daily budget is spent. {when} is a time such as "01:00 tomorrow".',
+      'Why Review again is unavailable: the service’s shared daily budget is spent. {when} is a moment such as "tomorrow at 01:00".',
   },
 });
 

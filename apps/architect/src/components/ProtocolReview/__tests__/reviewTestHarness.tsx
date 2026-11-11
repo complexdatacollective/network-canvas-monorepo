@@ -28,18 +28,19 @@ import {
   op,
 } from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
-import { protocolReviewListenerMiddleware } from '~/protocolReview/reviewListener';
+import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 
 import { useReviewProtocolToolbarAction } from '../ReviewProtocolAction';
 
-export const makeStore = () =>
-  configureStore({
+export const makeStore = () => {
+  const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }).prepend(
-        protocolReviewListenerMiddleware.middleware,
-      ),
+      getDefaultMiddleware({ serializableCheck: false }),
   });
+  keepProtocolReviewOnActiveProtocol(store);
+  return store;
+};
 
 export type TestStore = ReturnType<typeof makeStore>;
 

@@ -42,7 +42,7 @@ import {
   op,
   STUDY_CONTEXT,
 } from '~/protocolReview/__tests__/fixtures';
-import { protocolReviewListenerMiddleware } from '~/protocolReview/reviewListener';
+import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 import {
   FINDING_DECISIONS,
   readReviewRecord,
@@ -51,14 +51,15 @@ import { PROTOCOL_REVIEW_QUOTA_KEY } from '~/utils/storageNames';
 
 vi.mock('~/analytics', () => ({ posthog: { capture: vi.fn() } }));
 
-const makeStore = () =>
-  configureStore({
+const makeStore = () => {
+  const created = configureStore({
     reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }).prepend(
-        protocolReviewListenerMiddleware.middleware,
-      ),
+      getDefaultMiddleware({ serializableCheck: false }),
   });
+  keepProtocolReviewOnActiveProtocol(created);
+  return created;
+};
 
 type Store = ReturnType<typeof makeStore>;
 

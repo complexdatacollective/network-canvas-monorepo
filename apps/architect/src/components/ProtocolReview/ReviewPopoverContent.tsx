@@ -83,7 +83,7 @@ const messages = defineMessages({
   runningBody: {
     id: 'architect.protocolReview.popover.runningBody',
     defaultMessage:
-      'This can take a few minutes. You can close this and keep working. The button shows how far the review has got, then a count of the problems found.',
+      'This can take a few minutes. You can close this panel and keep working. The button shows how far the review has got, then a count of the problems found.',
     description:
       'Text while an automated review runs. "The button" is the Review protocol toolbar button.',
   },
@@ -219,7 +219,15 @@ const messages = defineMessages({
     id: 'architect.protocolReview.notice.offlineBody',
     defaultMessage:
       'Protocol review needs an internet connection. Your last review is still here, and you can keep working through it.',
-    description: 'Text of the offline notice.',
+    description:
+      'Text of the offline notice when this protocol has an earlier review, which stays on screen below the notice.',
+  },
+  offlineBodyNoReview: {
+    id: 'architect.protocolReview.notice.offlineBodyNoReview',
+    defaultMessage:
+      'Protocol review needs an internet connection. You can review this protocol when you are back online.',
+    description:
+      'Text of the offline notice when this protocol has not been reviewed yet.',
   },
   hourlyTitle: {
     id: 'architect.protocolReview.notice.hourlyTitle',
@@ -231,9 +239,9 @@ const messages = defineMessages({
   hourlyBody: {
     id: 'architect.protocolReview.notice.hourlyBody',
     defaultMessage:
-      'You can review again at {when}. The limit keeps this free service available to everyone.',
+      'You can review again {when}. The limit keeps this free service available to everyone.',
     description:
-      'Text of the hourly limit notice. {when} is a time such as "15:32".',
+      'Text of the hourly limit notice. {when} is a moment such as "today at 15:32".',
   },
   dailyTitle: {
     id: 'architect.protocolReview.notice.dailyTitle',
@@ -244,9 +252,9 @@ const messages = defineMessages({
   dailyBodyWithTime: {
     id: 'architect.protocolReview.notice.dailyBodyWithTime',
     defaultMessage:
-      'This is a free experimental service with a fixed daily budget shared by everyone who uses it, and today’s has been spent. It starts again at {when}. Nothing in your protocol was changed.',
+      'This is a free experimental service with a fixed daily budget shared by everyone who uses it, and today’s has been spent. It starts again {when}. Nothing in your protocol was changed.',
     description:
-      'Text of the daily limit notice when the service said when it restarts. {when} is a time such as "01:00 tomorrow".',
+      'Text of the daily limit notice when the service said when it restarts. {when} is a moment such as "tomorrow at 01:00".',
   },
   dailyBody: {
     id: 'architect.protocolReview.notice.dailyBody',
@@ -405,7 +413,9 @@ const ReviewPopoverContent = ({
       {
         offline: {
           title: intl.formatMessage(messages.offlineTitle),
-          body: intl.formatMessage(messages.offlineBody),
+          body: intl.formatMessage(
+            summary ? messages.offlineBody : messages.offlineBodyNoReview,
+          ),
         },
         hourly: {
           title: intl.formatMessage(messages.hourlyTitle, { limit }),

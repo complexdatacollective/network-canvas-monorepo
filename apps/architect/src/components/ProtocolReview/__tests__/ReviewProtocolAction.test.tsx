@@ -427,18 +427,23 @@ describe('notices', () => {
     ).toBeVisible();
     expect(
       within(popover).getByText(
-        /^You can review again at .+\. The limit keeps this free service available to everyone\.$/,
+        /^You can review again (?!at ).+ at \d.+\. The limit keeps this free service available to everyone\.$/,
       ),
     ).toBeVisible();
     expect(
       within(popover).getByRole('button', { name: 'Review again' }),
     ).toHaveAttribute('aria-disabled', 'true');
-    expect(within(popover).getByText(/^Next review at /)).toBeVisible();
+    expect(
+      within(popover).getByText(/^Next review (?!at ).+ at \d/),
+    ).toBeVisible();
     expect(within(popover).getByText(/^Last reviewed /)).toBeVisible();
   });
 
   it.each([
-    [FUTURE, /It starts again at .+\. Nothing in your protocol was changed\.$/],
+    [
+      FUTURE,
+      /It starts again (?!at ).+ at \d.+\. Nothing in your protocol was changed\.$/,
+    ],
     [null, /today’s has been spent\. Nothing in your protocol was changed\.$/],
   ])('explains the daily limit (retry at %s)', async (retryAt, body) => {
     await reviewedThenChanged();

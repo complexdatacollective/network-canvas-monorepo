@@ -7,7 +7,7 @@ import {
   rememberReducer,
 } from 'redux-remember';
 
-import { protocolReviewListenerMiddleware } from '~/protocolReview/reviewListener';
+import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 import { setActiveProtocolScope } from '~/utils/activeProtocolScope';
 import { reportError } from '~/utils/reportError';
 import { createSessionStorageDriver } from '~/utils/sessionStorageDriver';
@@ -75,8 +75,7 @@ const store = configureStore({
       .prepend(protocolValidationListenerMiddleware.middleware)
       .prepend(protocolLibraryListenerMiddleware.middleware)
       .prepend(analyticsListenerMiddleware.middleware)
-      .prepend(scrollPositionsListenerMiddleware.middleware)
-      .prepend(protocolReviewListenerMiddleware.middleware),
+      .prepend(scrollPositionsListenerMiddleware.middleware),
   enhancers: (getDefaultEnhancers) =>
     getDefaultEnhancers().concat(
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- redux-remember's enhancer is typed for a plain store; RTK's enhancer tuple type here is built from the middleware above and cannot be matched to it
@@ -103,6 +102,10 @@ store.subscribe(() => {
     setActiveProtocolScope(id);
   }
 });
+
+// The stored review follows the active protocol the same way, and for the same
+// reason: rehydration changes the id without passing through middleware.
+keepProtocolReviewOnActiveProtocol(store);
 
 export { store };
 

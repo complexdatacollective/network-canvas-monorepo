@@ -204,7 +204,7 @@ describe('study details wizard, first use', () => {
     await stepHeading('Before your protocol is sent');
     expect(
       wizard().getByText(
-        /for 90 days, and use them only to improve this feature/,
+        /We keep them for 90 days and use them only to improve this feature/,
       ),
     ).toBeVisible();
     const share = wizard().getByRole('checkbox', {

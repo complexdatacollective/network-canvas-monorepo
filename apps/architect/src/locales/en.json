@@ -2712,11 +2712,11 @@
     "description": "Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy at the current schema and opens it, and that the original protocol stays as it was."
   },
   "architect.protocolReview.availability.availableAgainAt": {
-    "defaultMessage": "Available again at {when}",
-    "description": "Why Review again is unavailable: the service’s shared daily budget is spent. {when} is a time such as \"01:00 tomorrow\"."
+    "defaultMessage": "Available again {when}",
+    "description": "Why Review again is unavailable: the service’s shared daily budget is spent. {when} is a moment such as \"tomorrow at 01:00\"."
   },
   "architect.protocolReview.availability.nextReviewAt": {
-    "defaultMessage": "Next review at {when}",
+    "defaultMessage": "Next review {when}",
     "description": "Why Review again is unavailable: the hourly limit is used up. {when} is a time such as \"today at 15:32\"."
   },
   "architect.protocolReview.availability.offline": {
@@ -2756,7 +2756,7 @@
     "description": "Which part of the study design a problem found by the automated protocol review is about: the variables recorded and the forms that ask for them. Shown as a label on one problem."
   },
   "architect.protocolReview.category.burden": {
-    "defaultMessage": "Burden",
+    "defaultMessage": "Participant burden",
     "description": "Which part of the study design a problem found by the automated protocol review is about: how long or tiring the interview is for participants. Shown as a label on one problem."
   },
   "architect.protocolReview.category.entities": {
@@ -2916,8 +2916,8 @@
     "description": "Text of the daily limit notice when the service did not say when it restarts."
   },
   "architect.protocolReview.notice.dailyBodyWithTime": {
-    "defaultMessage": "This is a free experimental service with a fixed daily budget shared by everyone who uses it, and today’s has been spent. It starts again at {when}. Nothing in your protocol was changed.",
-    "description": "Text of the daily limit notice when the service said when it restarts. {when} is a time such as \"01:00 tomorrow\"."
+    "defaultMessage": "This is a free experimental service with a fixed daily budget shared by everyone who uses it, and today’s has been spent. It starts again {when}. Nothing in your protocol was changed.",
+    "description": "Text of the daily limit notice when the service said when it restarts. {when} is a moment such as \"tomorrow at 01:00\"."
   },
   "architect.protocolReview.notice.dailyTitle": {
     "defaultMessage": "Protocol review has reached its limit for today",
@@ -2928,8 +2928,8 @@
     "description": "Button that hides the notice about a review that could not be completed."
   },
   "architect.protocolReview.notice.hourlyBody": {
-    "defaultMessage": "You can review again at {when}. The limit keeps this free service available to everyone.",
-    "description": "Text of the hourly limit notice. {when} is a time such as \"15:32\"."
+    "defaultMessage": "You can review again {when}. The limit keeps this free service available to everyone.",
+    "description": "Text of the hourly limit notice. {when} is a moment such as \"today at 15:32\"."
   },
   "architect.protocolReview.notice.hourlyTitle": {
     "defaultMessage": "You have used your {limit, plural, one {# review} other {# reviews}} for this hour",
@@ -2937,7 +2937,11 @@
   },
   "architect.protocolReview.notice.offlineBody": {
     "defaultMessage": "Protocol review needs an internet connection. Your last review is still here, and you can keep working through it.",
-    "description": "Text of the offline notice."
+    "description": "Text of the offline notice when this protocol has an earlier review, which stays on screen below the notice."
+  },
+  "architect.protocolReview.notice.offlineBodyNoReview": {
+    "defaultMessage": "Protocol review needs an internet connection. You can review this protocol when you are back online.",
+    "description": "Text of the offline notice when this protocol has not been reviewed yet."
   },
   "architect.protocolReview.notice.offlineTitle": {
     "defaultMessage": "You’re offline",
@@ -3036,7 +3040,7 @@
     "description": "Line under the Protocol review heading once a review found nothing. {when} is a moment such as \"today at 14:32\". The dot is a separator."
   },
   "architect.protocolReview.popover.runningBody": {
-    "defaultMessage": "This can take a few minutes. You can close this and keep working. The button shows how far the review has got, then a count of the problems found.",
+    "defaultMessage": "This can take a few minutes. You can close this panel and keep working. The button shows how far the review has got, then a count of the problems found.",
     "description": "Text while an automated review runs. \"The button\" is the Review protocol toolbar button."
   },
   "architect.protocolReview.popover.runningCaption": {
@@ -3128,8 +3132,8 @@
     "description": "Note in the review summary, shown when at least one fix was made for the researcher. \"Review protocol\" is the name of the toolbar button."
   },
   "architect.protocolReview.when": {
-    "defaultMessage": "{day, select, today {today at {time}} yesterday {yesterday at {time}} tomorrow {{time} tomorrow} other {{date} at {time}}}",
-    "description": "A moment, said relative to today, used inside other protocol review sentences such as \"Reviewed {when}\" and \"You can review again at {when}\". {time} is a time of day and {date} a date, both already formatted for the reader’s language. Keep the four cases (today, yesterday, tomorrow, other) as they are; translate only the words inside them."
+    "defaultMessage": "{day, select, today {today at {time}} yesterday {yesterday at {time}} tomorrow {tomorrow at {time}} other {{date} at {time}}}",
+    "description": "A moment, said relative to today, used inside other protocol review sentences such as \"Reviewed {when}\" and \"You can review again {when}\". The sentence around it adds no \"at\" or \"on\" of its own. {time} is a time of day and {date} a date, both already formatted for the reader’s language. Keep the four cases (today, yesterday, tomorrow, other) as they are; translate only the words inside them."
   },
   "architect.protocolReview.wizard.participants.administrationLabel": {
     "defaultMessage": "How is the interview administered?",
@@ -3228,7 +3232,7 @@
     "description": "Closing note of the last step of the study details dialog, under the two lists."
   },
   "architect.protocolReview.wizard.sending.sentCodebook": {
-    "defaultMessage": "The codebook: types, attributes and their options",
+    "defaultMessage": "The codebook: node types, edge types, attributes and their options",
     "description": "Item in the list of what is sent for review. \"Codebook\" is the name of a page in Architect."
   },
   "architect.protocolReview.wizard.sending.sentStages": {
@@ -3236,11 +3240,11 @@
     "description": "Item in the list of what is sent for review."
   },
   "architect.protocolReview.wizard.sending.sentStudyDetails": {
-    "defaultMessage": "Your study details from the last three steps",
-    "description": "Item in the list of what is sent for review."
+    "defaultMessage": "Your study details from the first three steps",
+    "description": "Item in the list of what is sent for review, shown on the fourth and last step of the study details wizard. The first three steps are where the researcher typed the study details."
   },
   "architect.protocolReview.wizard.sending.shareHint": {
-    "defaultMessage": "If you tick this, we keep each protocol you send, your study details and the problems found for {days, plural, one {# day} other {# days}}, and use them only to improve this feature. You can change this at any time from the Review protocol button.",
+    "defaultMessage": "If you tick this, we keep each protocol you send, your study details and the problems found. We keep them for {days, plural, one {# day} other {# days}} and use them only to improve this feature. You can change this at any time from the Review protocol button.",
     "description": "Explanation under the share checkbox. {days} is how long shared reviews are kept. \"Review protocol\" is the name of the toolbar button that opens the review."
   },
   "architect.protocolReview.wizard.sending.shareLabel": {

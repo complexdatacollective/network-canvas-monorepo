@@ -81,7 +81,7 @@ const categoryMessages = defineMessages({
   },
   burden: {
     id: 'architect.protocolReview.category.burden',
-    defaultMessage: 'Burden',
+    defaultMessage: 'Participant burden',
     description:
       'Which part of the study design a problem found by the automated protocol review is about: how long or tiring the interview is for participants. Shown as a label on one problem.',
   },
@@ -267,13 +267,13 @@ const whenMessages = defineMessages({
   when: {
     id: 'architect.protocolReview.when',
     defaultMessage:
-      '{day, select, today {today at {time}} yesterday {yesterday at {time}} tomorrow {{time} tomorrow} other {{date} at {time}}}',
+      '{day, select, today {today at {time}} yesterday {yesterday at {time}} tomorrow {tomorrow at {time}} other {{date} at {time}}}',
     description:
-      'A moment, said relative to today, used inside other protocol review sentences such as "Reviewed {when}" and "You can review again at {when}". {time} is a time of day and {date} a date, both already formatted for the reader’s language. Keep the four cases (today, yesterday, tomorrow, other) as they are; translate only the words inside them.',
+      'A moment, said relative to today, used inside other protocol review sentences such as "Reviewed {when}" and "You can review again {when}". The sentence around it adds no "at" or "on" of its own. {time} is a time of day and {date} a date, both already formatted for the reader’s language. Keep the four cases (today, yesterday, tomorrow, other) as they are; translate only the words inside them.',
   },
 });
 
-/** A moment as "today at 14:32", "14:32 tomorrow" or "12/11/2026 at 14:32". */
+/** A moment as "today at 14:32", "tomorrow at 14:32" or "12/11/2026 at 14:32". */
 export const formatWhen = (
   intl: IntlShape,
   time: number,

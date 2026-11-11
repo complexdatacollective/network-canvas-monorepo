@@ -422,7 +422,7 @@ const abortInflight = (): boolean => {
  * Brings the slice into line with the active protocol: reads its record when
  * one becomes active, clears the slice when it closes, and aborts a review in
  * flight for a protocol that is no longer the active one. Dispatched by
- * `reviewListener` whenever the active protocol id changes.
+ * `keepProtocolReviewOnActiveProtocol` whenever the active protocol id changes.
  */
 export const syncProtocolReview =
   (): Thunk<Promise<void>> => async (dispatch, getState) => {

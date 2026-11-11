@@ -213,14 +213,16 @@ const messages = defineMessages({
   },
   sentCodebook: {
     id: 'architect.protocolReview.wizard.sending.sentCodebook',
-    defaultMessage: 'The codebook: types, attributes and their options',
+    defaultMessage:
+      'The codebook: node types, edge types, attributes and their options',
     description:
       'Item in the list of what is sent for review. "Codebook" is the name of a page in Architect.',
   },
   sentStudyDetails: {
     id: 'architect.protocolReview.wizard.sending.sentStudyDetails',
-    defaultMessage: 'Your study details from the last three steps',
-    description: 'Item in the list of what is sent for review.',
+    defaultMessage: 'Your study details from the first three steps',
+    description:
+      'Item in the list of what is sent for review, shown on the fourth and last step of the study details wizard. The first three steps are where the researcher typed the study details.',
   },
   whatIsNeverSent: {
     id: 'architect.protocolReview.wizard.sending.whatIsNeverSent',
@@ -260,7 +262,7 @@ const messages = defineMessages({
   shareHint: {
     id: 'architect.protocolReview.wizard.sending.shareHint',
     defaultMessage:
-      'If you tick this, we keep each protocol you send, your study details and the problems found for {days, plural, one {# day} other {# days}}, and use them only to improve this feature. You can change this at any time from the Review protocol button.',
+      'If you tick this, we keep each protocol you send, your study details and the problems found. We keep them for {days, plural, one {# day} other {# days}} and use them only to improve this feature. You can change this at any time from the Review protocol button.',
     description:
       'Explanation under the share checkbox. {days} is how long shared reviews are kept. "Review protocol" is the name of the toolbar button that opens the review.',
   },
@@ -388,7 +390,10 @@ function QuestionsStep() {
               ref={(row) => {
                 if (row === null || focusKey.current !== key) return;
                 focusKey.current = null;
-                row.querySelector('textarea')?.focus();
+                row.querySelector('textarea')?.focus({ preventScroll: true });
+                // The browser's own scroll on focus stops as soon as part of
+                // the box shows; the whole row should.
+                row.scrollIntoView({ block: 'nearest' });
               }}
             >
               <div className="min-w-0 flex-1">
