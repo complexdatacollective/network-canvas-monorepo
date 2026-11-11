@@ -15,6 +15,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { EnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { DialogDraftRegistrarContext } from '@codaco/protocol-builder/form/dialogDraftRegistrar';
+import { SectionHeaderActionContext } from '@codaco/protocol-builder/form/sectionHeaderAction';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
 import { isStageType } from '@codaco/protocol-builder/stage-types';
@@ -34,6 +35,7 @@ import StageEditorChrome, {
   StageEditorHeader,
 } from '~/components/StageEditor/StageEditorChrome';
 import { STAGE_FORM_ID } from '~/components/StageEditor/stageFormId';
+import { renderSectionWalkthroughButton } from '~/components/StageEditor/walkthrough/SectionWalkthroughButton';
 import { getActiveProtocolId, getProtocolOwnedHere } from '~/ducks/modules/app';
 import { creationIndex } from '~/ducks/modules/protocol/stages';
 import type { RootState } from '~/ducks/store';
@@ -427,17 +429,21 @@ const StageEditorPage = () => {
                 <DialogDraftRegistrarContext.Provider
                   value={registerStageDialogDraft}
                 >
-                  <EnclosingHeadingLevel level="h2">
-                    <StageEditor
-                      key={editorGeneration}
-                      target={target}
-                      formId={STAGE_FORM_ID}
-                      actions={renderChrome}
-                      header={renderHeader}
-                      onSaved={handleSaved}
-                      registry={architectStageEditors}
-                    />
-                  </EnclosingHeadingLevel>
+                  <SectionHeaderActionContext
+                    value={renderSectionWalkthroughButton}
+                  >
+                    <EnclosingHeadingLevel level="h2">
+                      <StageEditor
+                        key={editorGeneration}
+                        target={target}
+                        formId={STAGE_FORM_ID}
+                        actions={renderChrome}
+                        header={renderHeader}
+                        onSaved={handleSaved}
+                        registry={architectStageEditors}
+                      />
+                    </EnclosingHeadingLevel>
+                  </SectionHeaderActionContext>
                 </DialogDraftRegistrarContext.Provider>
               </ProtocolBuilder>
             </div>

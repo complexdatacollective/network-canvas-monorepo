@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useContext, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -6,6 +6,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Section from '@codaco/fresco-ui/Section';
 
+import { SectionHeaderActionContext } from '../form/sectionHeaderAction.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import {
   useDiscardStageValues,
@@ -264,6 +265,7 @@ export default function BuilderSection({
   });
 
   const body = children;
+  const headerAction = useContext(SectionHeaderActionContext)?.(title);
 
   if (capability === undefined && optional === undefined) {
     return (
@@ -272,6 +274,7 @@ export default function BuilderSection({
         title={title}
         description={description}
         disabled={isDisabled}
+        headerAction={headerAction}
       >
         {body}
       </Section>
@@ -296,6 +299,7 @@ export default function BuilderSection({
         title={title}
         description={description}
         disabled={isDisabled}
+        headerAction={headerAction}
         toggleable
         /**
          * `Section` reads this when it mounts, and again whenever the form is

@@ -69,21 +69,33 @@ export function useWalkthroughState(): WalkthroughState {
 }
 
 /**
- * Opens the walkthrough for `stage` where the researcher left it. Already
- * open, it is restored if minimised and brought to their attention.
+ * Opens the walkthrough for `stage` at `step`, or where the researcher left
+ * it. Already open, it moves to `step` if one is given, is restored if
+ * minimised, and is brought to their attention.
  */
-export function openWalkthrough(launcher: HTMLElement | null, stage: string) {
+export function openWalkthrough(
+  launcher: HTMLElement | null,
+  stage: string,
+  step?: number,
+) {
   returnFocusTo = launcher;
   focusPending = true;
+  if (step !== undefined) progress.set(stage, step);
   if (state.open && state.stage === stage) {
     set({
       ...state,
+      ...(step === undefined ? {} : { step }),
       collapsed: false,
       focusRequest: state.focusRequest + 1,
     });
     return;
   }
-  set({ ...CLOSED, open: true, stage, step: progress.get(stage) ?? 0 });
+  set({
+    ...CLOSED,
+    open: true,
+    stage,
+    step: step ?? progress.get(stage) ?? 0,
+  });
 }
 
 /**

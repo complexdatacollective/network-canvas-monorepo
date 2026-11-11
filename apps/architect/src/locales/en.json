@@ -3367,6 +3367,10 @@
     "defaultMessage": "Save this window, and the walkthrough will carry on.",
     "description": "Shown on the last walkthrough step about an open dialog whose save button has no text. The walkthrough resumes by itself once the dialog closes."
   },
+  "architect.stageEditor.walkthrough.sectionWalkthrough": {
+    "defaultMessage": "Walk me through {section}",
+    "description": "Accessible name and tooltip of the info button beside the title of a section of the stage being edited. It opens the step-by-step guide to the stage at the step about that section. section is the section’s title, such as “Prompts”."
+  },
   "architect.stageEditor.walkthrough.shrink": {
     "defaultMessage": "Make the walkthrough smaller",
     "description": "Tooltip and accessible name of the button in the widened walkthrough panel header that returns it to its usual size."

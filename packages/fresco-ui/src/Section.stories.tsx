@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { Info } from 'lucide-react';
 import { action } from 'storybook/actions';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
+import { IconButton } from './Button';
 import useDialog from './dialogs/useDialog';
 import Field from './form/Field/Field';
 import InputField from './form/fields/InputField';
@@ -35,7 +37,7 @@ const meta = {
 </Section>
 \`\`\`
 
-Props: \`title\`, \`description?\`, \`toggleable?\`, \`defaultOpen?\` and \`onOpenChange?\` (only accepted when \`toggleable\` is true), \`disabled?\`, and \`children\`.`,
+Props: \`title\`, \`description?\`, \`toggleable?\`, \`defaultOpen?\` and \`onOpenChange?\` (only accepted when \`toggleable\` is true), \`disabled?\`, \`headerAction?\` (a small control beside the title), and \`children\`.`,
       },
     },
   },
@@ -92,6 +94,7 @@ function SectionPreview({
   toggleable,
   defaultOpen,
   disabled,
+  headerAction,
 }: NonNullable<Story['args']>) {
   const toggleProps = toggleable
     ? {
@@ -113,6 +116,7 @@ function SectionPreview({
         description={description}
         {...toggleProps}
         disabled={disabled}
+        headerAction={headerAction}
         key={`${String(toggleable)}-${String(defaultOpen)}`}
       >
         <Field
@@ -267,6 +271,25 @@ export const AlwaysOpen: Story = {
     description:
       'Provide the API key used to load Mapbox maps in this interface.',
     toggleable: false,
+  },
+  render: (args) => <SectionPreview {...args} />,
+};
+
+export const HeaderAction: Story = {
+  args: {
+    title: 'Mapbox API key',
+    description:
+      'Provide the API key used to load Mapbox maps in this interface.',
+    toggleable: false,
+    headerAction: (
+      <IconButton
+        size="sm"
+        variant="text"
+        icon={<Info aria-hidden />}
+        aria-label="About the Mapbox API key"
+        onClick={action('headerAction')}
+      />
+    ),
   },
   render: (args) => <SectionPreview {...args} />,
 };
