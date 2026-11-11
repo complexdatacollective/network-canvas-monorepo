@@ -4,7 +4,7 @@ import { codebookHref } from '~/components/Codebook/codebookLinks';
 import { localizedText } from '~/utils/localizedText';
 
 import type { StoredOperation } from './fixEngine';
-import { parsePath, readPath } from './fixPath';
+import { formatPath, parsePath, readPath } from './fixPath';
 import { isLocalizedValue } from './protocolFix';
 
 /**
@@ -31,54 +31,99 @@ export type FixTextEdit = {
 const plainText = (value: string, isTranslation: boolean) =>
   isTranslation ? messageText(value) : value;
 
-/** The string-valued `set` operations of a fix, read against `protocol`. */
+const parsed = (value: string | null): unknown => {
+  if (value === null) return undefined;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return undefined;
+  }
+};
+
+/** One `set` operation's text edits, read against `protocol`. */
+const describeSet = (
+  protocol: CurrentProtocol,
+  operation: StoredOperation,
+): FixTextEdit[] => {
+  const { locales } = protocol.localization;
+  const after = parsed(operation.value);
+  const segments = parsePath(operation.path);
+  if (segments === null) return [];
+  const target = readPath(protocol, segments);
+
+  // A whole localized string: one edit per translation it changes, and the
+  // translations it keeps as they are named beside each.
+  if (isLocalizedValue(after, locales)) {
+    const before =
+      target.found && isLocalizedValue(target.value, locales)
+        ? target.value
+        : {};
+    const changed = Object.keys(after)
+      .filter((locale) => before[locale] !== after[locale])
+      .toSorted();
+    const kept = Object.keys(before)
+      .filter((locale) => !changed.includes(locale))
+      .toSorted();
+    return changed.map((locale) => {
+      const now = before[locale];
+      return {
+        path: formatPath([...segments, locale]),
+        now: now === undefined ? null : plainText(now, true),
+        after: plainText(after[locale] ?? '', true),
+        locale,
+        otherTranslations: kept,
+      };
+    });
+  }
+
+  if (typeof after !== 'string') return [];
+  const last = segments.at(-1) ?? '';
+  const parent = readPath(protocol, segments.slice(0, -1));
+  const isTranslation =
+    parent.found &&
+    locales.includes(last) &&
+    (isLocalizedValue(parent.value, locales) ||
+      (typeof parent.value === 'object' &&
+        parent.value !== null &&
+        Object.keys(parent.value).length === 0));
+  const now =
+    target.found && typeof target.value === 'string'
+      ? plainText(target.value, isTranslation)
+      : null;
+  const otherTranslations =
+    isTranslation && parent.found && isLocalizedValue(parent.value, locales)
+      ? Object.keys(parent.value)
+          .filter((locale) => locale !== last)
+          .toSorted()
+      : [];
+  return [
+    {
+      path: operation.path,
+      now,
+      after: plainText(after, isTranslation),
+      locale: isTranslation ? last : null,
+      otherTranslations,
+    },
+  ];
+};
+
+/**
+ * Every text a fix's `set` operations write, read against `protocol`: a
+ * string, or each translation a whole localized string changes. An
+ * operation that cannot be read is left out rather than allowed to throw.
+ */
 export const describeFixTextEdits = (
   protocol: CurrentProtocol,
   operations: readonly StoredOperation[],
-): FixTextEdit[] => {
-  const { locales } = protocol.localization;
-  return operations.flatMap((operation): FixTextEdit[] => {
-    if (operation.op !== 'set' || operation.value === null) return [];
-    let after: unknown;
+): FixTextEdit[] =>
+  operations.flatMap((operation): FixTextEdit[] => {
+    if (operation.op !== 'set') return [];
     try {
-      after = JSON.parse(operation.value) as unknown;
+      return describeSet(protocol, operation);
     } catch {
       return [];
     }
-    if (typeof after !== 'string') return [];
-    const segments = parsePath(operation.path);
-    if (segments === null) return [];
-    const last = segments.at(-1) ?? '';
-    const parent = readPath(protocol, segments.slice(0, -1));
-    const isTranslation =
-      parent.found &&
-      locales.includes(last) &&
-      (isLocalizedValue(parent.value, locales) ||
-        (typeof parent.value === 'object' &&
-          parent.value !== null &&
-          Object.keys(parent.value).length === 0));
-    const target = readPath(protocol, segments);
-    const now =
-      target.found && typeof target.value === 'string'
-        ? plainText(target.value, isTranslation)
-        : null;
-    const otherTranslations =
-      isTranslation && parent.found && isLocalizedValue(parent.value, locales)
-        ? Object.keys(parent.value)
-            .filter((locale) => locale !== last)
-            .toSorted()
-        : [];
-    return [
-      {
-        path: operation.path,
-        now,
-        after: plainText(after, isTranslation),
-        locale: isTranslation ? last : null,
-        otherTranslations,
-      },
-    ];
   });
-};
 
 /** Where a finding is, for display and for a link to it. */
 export type FindingLocation =

@@ -1,5 +1,5 @@
 import { ArrowRight, CircleCheck, PenLine, RefreshCw, X } from 'lucide-react';
-import { type ReactNode, useEffect, useId } from 'react';
+import { type ReactNode, useId } from 'react';
 
 import {
   defineMessages,
@@ -18,7 +18,6 @@ import type { ReviewErrorCode } from '@codaco/protocol-review-worker/contract';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   cancelReview,
-  checkFixAvailability,
   decideFinding,
   dismissReviewFailure,
   getProtocolReviewCounts,
@@ -368,11 +367,6 @@ const ReviewPopoverContent = ({
     reason: blockedReason,
   } = useReviewAvailability();
   const captionId = useId();
-
-  // Whether each fix can still be made, for the protocol as it stands.
-  useEffect(() => {
-    if (protocol && summary) void dispatch(checkFixAvailability());
-  }, [dispatch, protocol, summary]);
 
   const notice = noticeOf(online, run, hourlyResetsAt !== null);
   const running = run.status === 'running';

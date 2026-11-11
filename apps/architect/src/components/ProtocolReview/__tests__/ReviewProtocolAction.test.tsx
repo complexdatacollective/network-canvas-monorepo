@@ -5,8 +5,11 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { timelineActions } from '~/ducks/middleware/timeline';
-import { setProtocolTranslation } from '~/ducks/modules/activeProtocol';
-import { setProtocolLockState } from '~/ducks/modules/app';
+import {
+  setProtocolTranslation,
+  setActiveProtocol,
+} from '~/ducks/modules/activeProtocol';
+import { setActiveProtocolId, setProtocolLockState } from '~/ducks/modules/app';
 import {
   cancelReview,
   checkFixAvailability,
@@ -15,7 +18,11 @@ import {
   getProtocolReviewRun,
   startReview,
 } from '~/ducks/modules/protocolReview';
-import { makeProtocol } from '~/protocolReview/__tests__/fixtures';
+import {
+  makeFinding,
+  makeProtocol,
+  op,
+} from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
 
 import {
@@ -704,5 +711,82 @@ describe('one problem at a time', () => {
     expect(
       within(dialog).getByRole('button', { name: 'Dismiss' }),
     ).toBeVisible();
+  });
+
+  it('checks a problem restored after a reload, though nothing checked it while dismissed', async () => {
+    await reviewed(store);
+    await store.dispatch(decideFinding('title', 'dismissed'));
+    const id = store.getState().app.activeProtocolId;
+    const protocol = store.getState().activeProtocol.present;
+    if (typeof id !== 'string' || !protocol) throw new Error('setup');
+
+    // A reload: a new store reads the saved review, with nothing checked.
+    const reloaded = makeStore();
+    reloaded.dispatch(setProtocolLockState('owned'));
+    reloaded.dispatch(setActiveProtocolId(id));
+    reloaded.dispatch(setActiveProtocol(protocol));
+    await waitFor(() =>
+      expect(reloaded.getState().protocolReview.record?.protocolId).toBe(id),
+    );
+    renderToolbar(reloaded);
+
+    const dialog = await openProblemFromList('The welcome title is unclear');
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Restore' }),
+    );
+    await waitFor(() =>
+      expect(findingOf(reloaded, 'title').availability).toBe('available'),
+    );
+    expect(
+      within(dialog).getByRole('button', { name: 'Fix for me' }),
+    ).toBeEnabled();
+  });
+
+  it('previews a fix that replaces a whole localized text, translation by translation', async () => {
+    await reviewed(store, {
+      ...RESULT,
+      findings: [
+        makeFinding(
+          'whole',
+          [
+            op('set', '/stages/names/prompts/p1/text', {
+              en: 'Name everyone you know',
+            }),
+          ],
+          { stageId: 'names', title: 'The prompt is vague' },
+        ),
+        makeFinding(
+          'both',
+          [
+            op('set', '/stages/welcome/title', {
+              en: 'Welcome to our study',
+              fr: 'Bienvenue dans notre étude',
+            }),
+          ],
+          { stageId: 'welcome', title: 'The welcome title is unclear' },
+        ),
+      ],
+    });
+    renderToolbar(store);
+
+    let dialog = await openProblemFromList('The prompt is vague');
+    expect(within(dialog).getByText('Name people')).toBeVisible();
+    expect(within(dialog).getByText('Name everyone you know')).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        'This protocol also has this text in French. Fix for me does not change that version, so check it after the fix.',
+      ),
+    ).toBeVisible();
+    await userEvent.keyboard('{Escape}');
+
+    dialog = await openProblemFromList('The welcome title is unclear');
+    expect(within(dialog).getByText('Hello')).toBeVisible();
+    expect(within(dialog).getByText('Welcome to our study')).toBeVisible();
+    expect(within(dialog).getByText('Bonjour')).toBeVisible();
+    expect(
+      within(dialog).getByText('Bienvenue dans notre étude'),
+    ).toBeVisible();
+    expect(within(dialog).getByText('English')).toBeVisible();
+    expect(within(dialog).getByText('French')).toBeVisible();
   });
 });

@@ -28,7 +28,11 @@ import {
   resolveFindingLocation,
 } from '~/protocolReview/describeFix';
 import { reviewFingerprint } from '~/protocolReview/fingerprint';
-import { applyOperations, fixFits, fixHolds } from '~/protocolReview/fixEngine';
+import {
+  applyOperations,
+  fixFits,
+  writtenHolds,
+} from '~/protocolReview/fixEngine';
 import {
   editProtocol,
   protocolReplacement,
@@ -306,10 +310,10 @@ const statusOf = (
   protocol: CurrentProtocol,
 ): FindingDisplayStatus => {
   // Undecided, mine and dismissed show as they are; a fix shows as fixed only
-  // while it holds, so the app's own Undo returns it to undecided.
+  // while everything it wrote is as it left it, so the app's own Undo — or
+  // the researcher editing what the fix wrote — returns it to undecided.
   if (stored.decision !== 'fix') return stored.decision;
-  return stored.targets !== null &&
-    fixHolds(protocol, stored.operations, stored.targets)
+  return stored.written && writtenHolds(protocol, stored.written)
     ? 'fixed'
     : 'undecided';
 };
@@ -436,6 +440,8 @@ export const syncProtocolReview =
     const record = await readReviewRecord(protocolId);
     if (getActiveProtocolId(getState()) === protocolId) {
       dispatch(actions.recordReplaced(record));
+      // Nothing has checked this protocol's fixes in this session yet.
+      void dispatch(checkFixAvailability());
     }
   };
 
@@ -608,6 +614,7 @@ export const startReview =
       },
     });
     dispatch(actions.runFinished());
+    void dispatch(checkFixAvailability());
     captureReviewCompleted(
       completedPayload(result.findings, Date.now() - startedAt),
     );
@@ -663,7 +670,7 @@ const findStored = (getState: GetState, findingId: string) => {
 const withFinding = (
   record: StoredReviewRecord,
   findingId: string,
-  update: Pick<StoredFinding, 'decision' | 'inverse'>,
+  update: Pick<StoredFinding, 'decision' | 'inverse' | 'written'>,
 ): StoredReviewRecord => ({
   ...record,
   review: record.review
@@ -720,9 +727,16 @@ export const decideFinding =
       await saveRecord(
         dispatch,
         getState,
-        withFinding(found.record, findingId, { decision, inverse: null }),
+        withFinding(found.record, findingId, {
+          decision,
+          inverse: null,
+          written: null,
+        }),
       );
       captureReviewDecision(decisionPayload(decision, found.stored.finding));
+      // A finding back on the list needs its fix checked, whatever is on
+      // screen: after a reload nothing has checked it yet.
+      void dispatch(checkFixAvailability());
       return { ok: true };
     }
 
@@ -767,6 +781,7 @@ export const decideFinding =
       withFinding(latest?.record ?? found.record, findingId, {
         decision: 'fix',
         inverse: edit.inverse,
+        written: edit.written,
       }),
     );
     captureReviewDecision(decisionPayload('fix', stored.finding));
@@ -822,9 +837,11 @@ export const undoFix =
       withFinding(latest?.record ?? found.record, findingId, {
         decision: 'undecided',
         inverse: null,
+        written: null,
       }),
     );
     captureReviewDecision(decisionPayload('undecided', stored.finding));
+    void dispatch(checkFixAvailability());
     return { ok: true };
   };
 
@@ -841,6 +858,22 @@ export const setShareReviews =
 let checking: Promise<void> | null = null;
 let checkAgain = false;
 
+/**
+ * Whether applying `operations` to `protocol` leaves a valid protocol. Never
+ * throws: a finding whose edits cannot even be worked through is not
+ * available, and the pass goes on to the next.
+ */
+const checkEdit = async (
+  protocol: CurrentProtocol,
+  operations: StoredFinding['operations'],
+): Promise<boolean> => {
+  try {
+    return (await editProtocol(protocol, operations)).ok;
+  } catch {
+    return false;
+  }
+};
+
 const runChecks = async (dispatch: AppDispatch, getState: GetState) => {
   const protocol = getProtocol(getState());
   const record = selectRecord(getState());
@@ -851,37 +884,42 @@ const runChecks = async (dispatch: AppDispatch, getState: GetState) => {
     if (getProtocol(getState()) !== protocol) return;
     const { checks } = selectReview(getState());
     const id = stored.finding.id;
-    const status = statusOf(stored, protocol);
-    if (status === 'fixed') {
-      if (
-        stored.inverse === null ||
-        checkResult(checks, id, protocol, 'undo') !== null
-      ) {
-        continue;
+    let kind: FixCheck['kind'];
+    let operations: StoredFinding['operations'];
+    try {
+      const status = statusOf(stored, protocol);
+      if (status === 'fixed') {
+        if (
+          stored.inverse === null ||
+          checkResult(checks, id, protocol, 'undo') !== null
+        ) {
+          continue;
+        }
+        kind = 'undo';
+        operations = stored.inverse;
+      } else {
+        if (
+          status === 'dismissed' ||
+          availabilityOf(stored, protocol, checks) !== 'checking'
+        ) {
+          continue;
+        }
+        kind = 'fix';
+        operations = stored.operations;
       }
-      // oxlint-disable-next-line no-await-in-loop -- one validation at a time keeps the editor responsive
-      const edit = await editProtocol(protocol, stored.inverse);
+    } catch {
       dispatch(
         actions.fixChecked({
           findingId: id,
-          check: { protocol, kind: 'undo', valid: edit.ok },
+          check: { protocol, kind: 'fix', valid: false },
         }),
       );
       continue;
     }
-    if (
-      status === 'dismissed' ||
-      availabilityOf(stored, protocol, checks) !== 'checking'
-    ) {
-      continue;
-    }
     // oxlint-disable-next-line no-await-in-loop -- one validation at a time keeps the editor responsive
-    const edit = await editProtocol(protocol, stored.operations);
+    const valid = await checkEdit(protocol, operations);
     dispatch(
-      actions.fixChecked({
-        findingId: id,
-        check: { protocol, kind: 'fix', valid: edit.ok },
-      }),
+      actions.fixChecked({ findingId: id, check: { protocol, kind, valid } }),
     );
   }
 };

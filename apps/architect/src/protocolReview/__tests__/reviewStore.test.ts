@@ -1,7 +1,7 @@
 // fake-indexeddb must be installed before Dexie opens a database.
 import 'fake-indexeddb/auto';
 import { Dexie } from 'dexie';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { deleteStoredProtocol } from '~/utils/protocolLibrary';
 import { PROTOCOL_REVIEW_DB_NAME } from '~/utils/storageNames';
@@ -72,5 +72,42 @@ describe('review store', () => {
     await writeReviewRecord(record('p4'));
     await deleteStoredProtocol('p4');
     expect(await readFromDisk('p4')).toBeUndefined();
+  });
+});
+
+/** Writes the database directly, as another tab would. */
+const writeToDisk = async (value: StoredReviewRecord) => {
+  const db = new Dexie(PROTOCOL_REVIEW_DB_NAME);
+  db.version(1).stores({ reviews: 'protocolId' });
+  try {
+    await db.table('reviews').put(value);
+  } finally {
+    db.close();
+  }
+};
+
+describe('D: the session’s newest record wins until it has been saved', () => {
+  const failWrites = () =>
+    vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(() => {
+      throw new DOMException('The disk is full', 'QuotaExceededError');
+    });
+
+  it('reads back a record whose write failed, not the older one stored', async () => {
+    await writeReviewRecord(record('d1'));
+    const writes = failWrites();
+    await writeReviewRecord({ ...record('d1'), shareReviews: false });
+    writes.mockRestore();
+    expect(await readFromDisk('d1')).toMatchObject({ shareReviews: true });
+    expect(await readReviewRecord('d1')).toMatchObject({ shareReviews: false });
+  });
+
+  it('refreshes from storage again once the newest record is saved', async () => {
+    const writes = failWrites();
+    await writeReviewRecord({ ...record('d2'), shareReviews: false });
+    writes.mockRestore();
+    await writeReviewRecord({ ...record('d2'), shareReviews: false });
+    // Another tab changes the stored record; a clean session copy follows it.
+    await writeToDisk({ ...record('d2'), shareReviews: true });
+    expect(await readReviewRecord('d2')).toMatchObject({ shareReviews: true });
   });
 });

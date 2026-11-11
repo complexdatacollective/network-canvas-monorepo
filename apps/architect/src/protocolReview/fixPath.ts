@@ -1,7 +1,7 @@
 /**
  * The review service's paths: RFC 6901 JSON Pointers in which a segment that
  * addresses a member of an array is that member's `id` whenever the members
- * have ids, and an index only where they have none (see `FixOperation` in
+ * have ids, and an index only where none of them has one (see `FixOperation` in
  * `@codaco/protocol-review-worker/contract`).
  *
  * Pure: nothing here changes the value it is handed.
@@ -58,18 +58,29 @@ export const isIdArray = (array: readonly unknown[]): boolean =>
 const INDEX_PATTERN = /^(0|[1-9]\d*)$/u;
 
 /**
- * The position of the member `segment` names, or -1: a member whose `id` it
- * is first, and only then a member at that index. Some arrays (a form's
- * `fields`) mix members with and without ids, so both forms are needed.
+ * Whether an array's members are addressed by id rather than by index: at
+ * least one of them has a string id. The contract allows an index only for
+ * arrays whose members have no id.
+ */
+const isAddressedByIds = (array: readonly unknown[]): boolean =>
+  array.some(hasStringId);
+
+/**
+ * The position of the member `segment` names, or -1. In an array whose
+ * members have ids, only the member with that id: a segment that names no id
+ * reaches nothing, never the member that happens to stand at that index (a
+ * stage whose id is `0` is deleted, and `/stages/0` must not then reach the
+ * new first stage). In an array whose members have none, the index.
  */
 export const findArrayMember = (
   array: readonly unknown[],
   segment: string,
 ): number => {
-  const byId = array.findIndex(
-    (member) => hasStringId(member) && member.id === segment,
-  );
-  if (byId !== -1) return byId;
+  if (isAddressedByIds(array)) {
+    return array.findIndex(
+      (member) => hasStringId(member) && member.id === segment,
+    );
+  }
   if (!INDEX_PATTERN.test(segment)) return -1;
   const index = Number(segment);
   return index < array.length ? index : -1;

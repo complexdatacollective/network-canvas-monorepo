@@ -46,7 +46,13 @@ export type FixFailureKind =
    * no id, and its index is another member's id. Without one there is no
    * inverse, so the edit is refused rather than made irreversible.
    */
-  | 'ambiguous_path';
+  | 'ambiguous_path'
+  /**
+   * Working with the edit failed outright: a value nested too deeply to
+   * walk, for one. Model-written content can be anything, so whatever goes
+   * wrong is a failure of the edit, never an exception.
+   */
+  | 'unworkable';
 
 export type FixFailure = { kind: FixFailureKind; operation: number };
 
@@ -69,6 +75,11 @@ export type ApplyResult =
       inverse: StoredOperation[];
       /** One per operation, in order. */
       targets: TargetSnapshot[];
+      /**
+       * One per operation, in order: where its change can be read just after
+       * it applied (an inserted member under its id, or its index).
+       */
+      placed: string[];
     }
   | { ok: false; failure: FixFailure };
 
@@ -78,6 +89,7 @@ type StepResult =
       root: unknown;
       inverse: StoredOperation;
       target: TargetSnapshot;
+      placed: string;
     }
   | { ok: false; kind: FixFailureKind };
 
@@ -96,6 +108,15 @@ const parseValue = (
 
 const hasStringId = (value: unknown): value is JsonObject & { id: string } =>
   isJsonObject(value) && typeof value.id === 'string';
+
+/** Structural equality that answers false where comparing fails outright. */
+const safeIsEqual = (a: unknown, b: unknown): boolean => {
+  try {
+    return isEqual(a, b);
+  } catch {
+    return false;
+  }
+};
 
 /** `object` with `key` set to `value`, at `keyIndex` when it is new. */
 const withKey = (
@@ -188,6 +209,7 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
         value: null,
       },
       target: { op: 'insert' },
+      placed: pathOf(back),
     };
   }
 
@@ -229,6 +251,7 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
           value: JSON.stringify(old),
         },
         target: { op: 'set', present: true, value: old },
+        placed: pathOf(back),
       };
     }
     if (!isJsonObject(parent)) return fail('wrong_container');
@@ -249,6 +272,7 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
       target: present
         ? { op: 'set', present: true, value: old }
         : { op: 'set', present: false, value: null },
+      placed: operation.path,
     };
   }
 
@@ -271,6 +295,7 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
         value: JSON.stringify(old),
       },
       target: { op: 'remove', value: old },
+      placed: operation.path,
     };
   }
   if (!isJsonObject(parent)) return fail('wrong_container');
@@ -292,6 +317,7 @@ const applyStep = (root: unknown, operation: StoredOperation): StepResult => {
       keyIndex: Object.keys(parent).indexOf(last),
     },
     target: { op: 'remove', value: old },
+    placed: operation.path,
   };
 };
 
@@ -306,16 +332,23 @@ export const applyOperations = (
   let current = root;
   const inverse: StoredOperation[] = [];
   const targets: TargetSnapshot[] = [];
+  const placed: string[] = [];
   for (const [index, operation] of operations.entries()) {
-    const step = applyStep(current, operation);
+    let step: StepResult;
+    try {
+      step = applyStep(current, operation);
+    } catch {
+      step = fail('unworkable');
+    }
     if (!step.ok) {
       return { ok: false, failure: { kind: step.kind, operation: index } };
     }
     current = step.root;
     inverse.unshift(step.inverse);
     targets.push(step.target);
+    placed.push(step.placed);
   }
-  return { ok: true, result: current, inverse, targets };
+  return { ok: true, result: current, inverse, targets, placed };
 };
 
 /**
@@ -330,79 +363,45 @@ export const fixFits = (
 ): boolean => {
   if (operations.length === 0) return false;
   const applied = applyOperations(root, operations);
-  return applied.ok && isEqual(applied.targets, recorded);
+  return applied.ok && safeIsEqual(applied.targets, recorded);
 };
 
 /**
- * Whether operation `index` is overridden by a later one that sets or removes
- * the same place or one that contains it, so the end state says nothing about
- * it.
+ * What one place in the protocol held just after a fix was applied: the
+ * value at `path`, or its absence. Together they are everything the fix
+ * wrote, normalisation included (see `editProtocol`).
  */
-const isSuperseded = (
-  operations: readonly StoredOperation[],
-  index: number,
-): boolean => {
-  const path = operations[index]?.path ?? '';
-  return operations
-    .slice(index + 1)
-    .some(
-      (later) =>
-        later.op !== 'insert' &&
-        (later.path === path || path.startsWith(`${later.path}/`)),
-    );
+export type WrittenSnapshot = {
+  path: string;
+  present: boolean;
+  value: unknown;
+};
+
+/** What `root` holds at `path`, as a snapshot. */
+export const snapshotAt = (root: unknown, path: string): WrittenSnapshot => {
+  const segments = parsePath(path);
+  const read =
+    segments === null ? { found: false as const } : readPath(root, segments);
+  return read.found
+    ? { path, present: true, value: read.value }
+    : { path, present: false, value: null };
 };
 
 /**
- * Whether `root` already reflects every operation of a fix: what `set` wrote
- * is there, what `remove` removed is absent, and what `insert` added is
- * present. `recorded` supplies the removed values of members of arrays without
- * ids, which only their content can identify.
+ * Whether everything a fix wrote is still as the fix left it. Only then does
+ * an applied fix count as holding, and only then may its inverse be applied:
+ * an inverse applied over the researcher's later edits would take them too.
  */
-export const fixHolds = (
+export const writtenHolds = (
   root: unknown,
-  operations: readonly StoredOperation[],
-  recorded: readonly TargetSnapshot[],
+  written: readonly WrittenSnapshot[],
 ): boolean => {
-  if (operations.length === 0) return false;
-  return operations.every((operation, index) => {
-    if (isSuperseded(operations, index)) return true;
-    const segments = parsePath(operation.path);
-    if (segments === null) return false;
-    const parentSegments = segments.slice(0, -1);
-
-    if (operation.op === 'set') {
-      const parsed = parseValue(operation.value);
-      const read = readPath(root, segments);
-      return parsed.ok && read.found && isEqual(read.value, parsed.value);
-    }
-
-    const parent = readPath(root, parentSegments);
-    if (!parent.found) return operation.op === 'remove';
-
-    if (operation.op === 'remove') {
-      if (Array.isArray(parent.value)) {
-        // A member with an id is gone when its id is; one without is known
-        // only by its content.
-        const target = recorded[index];
-        const removed = target?.op === 'remove' ? target.value : undefined;
-        return hasStringId(removed)
-          ? !parent.value.some(
-              (member) => hasStringId(member) && member.id === removed.id,
-            )
-          : !parent.value.some((member) => isEqual(member, removed));
-      }
-      return !readPath(root, segments).found;
-    }
-
-    // insert
-    const parsed = parseValue(operation.value);
-    if (!parsed.ok || !Array.isArray(parent.value)) return false;
-    const inserted = parsed.value;
-    if (hasStringId(inserted)) {
-      return parent.value.some(
-        (member) => hasStringId(member) && member.id === inserted.id,
-      );
-    }
-    return parent.value.some((member) => isEqual(member, inserted));
-  });
+  if (written.length === 0) return false;
+  try {
+    return written.every((snapshot) =>
+      isEqual(snapshotAt(root, snapshot.path), snapshot),
+    );
+  } catch {
+    return false;
+  }
 };

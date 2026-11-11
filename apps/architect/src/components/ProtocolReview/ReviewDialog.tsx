@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import {
   defineMessages,
@@ -15,7 +15,6 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import {
-  checkFixAvailability,
   type DecisionRefusal,
   decideFinding,
   getProtocolReviewCounts,
@@ -24,7 +23,6 @@ import {
   undoFix,
 } from '~/ducks/modules/protocolReview';
 import type { FindingDecision } from '~/protocolReview/reviewStore';
-import { getProtocol } from '~/selectors/protocol';
 
 import { GuardedButton, ProtocolPlaceLink } from './reviewControls';
 import {
@@ -338,7 +336,6 @@ const ReviewDialog = ({
   const languageName = useLanguageName();
   const findings = useAppSelector(getProtocolReviewFindings);
   const counts = useAppSelector(getProtocolReviewCounts);
-  const protocol = useAppSelector(getProtocol);
   const captionId = useId();
   const checkingId = useId();
   const reviewAgainReasonId = useId();
@@ -350,11 +347,6 @@ const ReviewDialog = ({
 
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
-
-  // Whether each fix can still be made, for the protocol as it stands.
-  useEffect(() => {
-    if (open && protocol) void dispatch(checkFixAvailability());
-  }, [dispatch, open, protocol]);
 
   const close = () => onViewChange(null);
 
@@ -541,6 +533,15 @@ const ReviewDialog = ({
             )}
             {current.textEdits.map((edit) => (
               <div key={edit.path} className="flex flex-col gap-2">
+                {/* A fix that rewrites one text in several languages shows
+                    each, so each pair says which language it is. */}
+                {edit.locale !== null &&
+                  new Set(current.textEdits.map((other) => other.locale)).size >
+                    1 && (
+                    <span className="text-sm font-bold">
+                      {languageName(edit.locale)}
+                    </span>
+                  )}
                 <div className="grid gap-3 @min-[36rem]:grid-cols-2">
                   {edit.now !== null && (
                     <div className="bg-surface border-outline flex flex-col gap-1 rounded border p-3">

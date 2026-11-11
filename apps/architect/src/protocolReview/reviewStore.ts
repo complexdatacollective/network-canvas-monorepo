@@ -5,7 +5,11 @@ import { reportError } from '~/utils/reportError';
 import { isStorageUnavailableError } from '~/utils/storageErrors';
 import { PROTOCOL_REVIEW_DB_NAME } from '~/utils/storageNames';
 
-import type { StoredOperation, TargetSnapshot } from './fixEngine';
+import type {
+  StoredOperation,
+  TargetSnapshot,
+  WrittenSnapshot,
+} from './fixEngine';
 
 /**
  * Each protocol's automated review and the researcher's choices about it,
@@ -33,6 +37,12 @@ export type StoredFinding = {
   decision: FindingDecision;
   /** The edits that take an applied fix back out; null until it is applied. */
   inverse: StoredOperation[] | null;
+  /**
+   * Everything the applied fix wrote, as it left it; null until it is
+   * applied. The fix holds, and may be undone, only while all of it is still
+   * so. Absent from records written before it existed, which read as null.
+   */
+  written?: WrittenSnapshot[] | null;
 };
 
 export type StoredReview = {
@@ -85,6 +95,14 @@ const getReviewDb = (): ReviewDb => {
  */
 const memory = new Map<string, StoredReviewRecord>();
 
+/**
+ * The protocols whose session copy is newer than what storage holds, because
+ * writing it failed. Until a write succeeds the session copy is the record:
+ * reading storage would bring back an older one — older decisions, and a
+ * sharing choice the researcher has since withdrawn.
+ */
+const unsaved = new Set<string>();
+
 const noteFailure = (error: unknown, operation: string) => {
   if (!isStorageUnavailableError(error)) {
     reportError(error, { operation });
@@ -95,6 +113,8 @@ const noteFailure = (error: unknown, operation: string) => {
 export const readReviewRecord = async (
   protocolId: string,
 ): Promise<StoredReviewRecord> => {
+  const pending = unsaved.has(protocolId) ? memory.get(protocolId) : undefined;
+  if (pending) return pending;
   try {
     const stored = await getReviewDb().reviews.get(protocolId);
     if (stored) {
@@ -112,8 +132,13 @@ export const writeReviewRecord = async (
   record: StoredReviewRecord,
 ): Promise<void> => {
   memory.set(record.protocolId, record);
+  unsaved.add(record.protocolId);
   try {
     await getReviewDb().reviews.put(record);
+    // Only if no newer write was made meanwhile is this one the latest.
+    if (memory.get(record.protocolId) === record) {
+      unsaved.delete(record.protocolId);
+    }
   } catch (error) {
     noteFailure(error, 'protocolReviewWrite');
   }
@@ -126,12 +151,14 @@ export const writeReviewRecord = async (
  */
 export const clearReviewRecords = async (): Promise<void> => {
   memory.clear();
+  unsaved.clear();
   await getReviewDb().reviews.clear();
 };
 
 /** Removes the protocol's record, with the protocol. Never throws. */
 export const deleteReviewRecord = async (protocolId: string): Promise<void> => {
   memory.delete(protocolId);
+  unsaved.delete(protocolId);
   try {
     await getReviewDb().reviews.delete(protocolId);
   } catch (error) {

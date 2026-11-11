@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   applyOperations,
   fixFits,
-  fixHolds,
+  snapshotAt,
   type StoredOperation,
+  writtenHolds,
 } from '../fixEngine';
 import { formatPath, parsePath, readPath } from '../fixPath';
 import { op } from './fixtures';
@@ -48,14 +49,13 @@ describe('paths', () => {
     expect(parsePath('/codebook/constructor')).toBeNull();
   });
 
-  it('addresses array members by id first, and then by index', () => {
+  it('addresses array members by id where they have ids, and by index only where they have none', () => {
     expect(readPath(doc(), ['stages', 'b/c', 'label'])).toEqual({
       found: true,
       value: 'B',
     });
     expect(readPath(doc(), ['stages', '0', 'label'])).toEqual({
-      found: true,
-      value: 'A',
+      found: false,
     });
     expect(
       readPath(doc(), ['codebook', 'node', 'person', 'options', '1']),
@@ -270,49 +270,73 @@ describe('fixFits', () => {
   });
 });
 
-describe('fixHolds', () => {
+/** What a fix wrote, read from where each operation left its change. */
+const writtenBy = (root: unknown, operations: StoredOperation[]) => {
+  const applied = apply(root, operations);
+  return {
+    ...applied,
+    written: applied.placed.map((path) => snapshotAt(applied.result, path)),
+  };
+};
+
+describe('writtenHolds', () => {
   it('holds once applied, and not after the inverse', () => {
-    const operations = [
+    const { result, inverse, written } = writtenBy(doc(), [
       op('set', '/stages/a/label', 'Better'),
       op('remove', '/codebook/node/person/variables/v2'),
       op('insert', '/stages/-', { id: 'n', label: 'N' }),
       op('remove', '/codebook/node/person/options/0'),
       op('insert', '/codebook/node/person/options/-', 'w'),
-    ];
-    const { result, inverse, targets } = apply(doc(), operations);
-    expect(fixHolds(doc(), operations, targets)).toBe(false);
-    expect(fixHolds(result, operations, targets)).toBe(true);
-    expect(fixHolds(apply(result, inverse).result, operations, targets)).toBe(
-      false,
-    );
+    ]);
+    expect(writtenHolds(doc(), written)).toBe(false);
+    expect(writtenHolds(result, written)).toBe(true);
+    expect(writtenHolds(apply(result, inverse).result, written)).toBe(false);
   });
 
   it('stops holding when the researcher overwrites what the fix wrote', () => {
-    const operations = [op('set', '/stages/a/label', 'Better')];
-    const { result, targets } = apply(doc(), operations);
+    const { result, written } = writtenBy(doc(), [
+      op('set', '/stages/a/label', 'Better'),
+    ]);
     const rewritten = apply(result, [
       op('set', '/stages/a/label', 'Mine'),
     ]).result;
-    expect(fixHolds(rewritten, operations, targets)).toBe(false);
+    expect(writtenHolds(rewritten, written)).toBe(false);
   });
 
-  it('judges an operation a later one overrides by the later one alone', () => {
-    const operations = [
+  it('stops holding when the researcher edits a member the fix inserted', () => {
+    const { result, written } = writtenBy(doc(), [
+      op('insert', '/stages/-', { id: 'n', label: 'N' }),
+    ]);
+    const edited = apply(result, [op('set', '/stages/n/label', 'Mine')]).result;
+    expect(writtenHolds(edited, written)).toBe(false);
+  });
+
+  it('stops holding when the researcher re-creates what the fix removed', () => {
+    const { result, written } = writtenBy(doc(), [
+      op('remove', '/codebook/node/person/variables/v2'),
+    ]);
+    const recreated = apply(result, [
+      op('set', '/codebook/node/person/variables/v2', { name: 'again' }),
+    ]).result;
+    expect(writtenHolds(recreated, written)).toBe(false);
+  });
+
+  it('reads what a later operation left, where two touch one place', () => {
+    const { result, written } = writtenBy(doc(), [
       op('set', '/stages/a/label', 'First'),
       op('remove', '/stages/a'),
-    ];
-    const { result, targets } = apply(doc(), operations);
-    expect(fixHolds(result, operations, targets)).toBe(true);
+    ]);
+    expect(writtenHolds(result, written)).toBe(true);
   });
 
   it('never holds for a fix with no edits', () => {
-    expect(fixHolds(doc(), [], [])).toBe(false);
+    expect(writtenHolds(doc(), [])).toBe(false);
     expect(fixFits(doc(), [], [])).toBe(false);
   });
 });
 
 describe('arrays that mix members with and without ids', () => {
-  // A form's `fields` can hold both.
+  // A form's `fields` can hold both; its members are addressed by id.
   const mixed = () => ({
     fields: [
       { id: '1', prompt: 'id one' },
@@ -321,7 +345,7 @@ describe('arrays that mix members with and without ids', () => {
     ],
   });
 
-  it('reads a segment as an id before reading it as an index', () => {
+  it('reads a segment only as an id', () => {
     expect(readPath(mixed(), ['fields', '0', 'prompt'])).toEqual({
       found: true,
       value: 'id zero',
@@ -330,42 +354,32 @@ describe('arrays that mix members with and without ids', () => {
       found: true,
       value: 'id one',
     });
-    // No member has id 2, so it is the member at index 2.
+    // No member has id 2, and an index never addresses a member here.
     expect(readPath(mixed(), ['fields', '2', 'prompt'])).toEqual({
-      found: true,
-      value: 'id zero',
+      found: false,
     });
   });
 
-  it('removes and inserts members of either kind and inverts cleanly', () => {
+  it('inserts and edits members with ids and inverts cleanly', () => {
     const original = mixed();
     const operations = [
-      op('insert', '/fields/-', { prompt: 'another without id' }),
       op('insert', '/fields/0', { id: 'new', prompt: 'with id' }),
       op('set', '/fields/1/prompt', 'replaced'),
+      op('remove', '/fields/0'),
     ];
-    const result = apply(original, operations);
+    const result = writtenBy(original, operations);
     expect(
       (result.result as ReturnType<typeof mixed>).fields.map((f) => f.prompt),
-    ).toEqual([
-      'replaced',
-      'no id',
-      'with id',
-      'id zero',
-      'another without id',
-    ]);
+    ).toEqual(['replaced', 'no id', 'with id']);
     expect(apply(result.result, result.inverse).result).toEqual(original);
-    expect(fixHolds(result.result, operations, result.targets)).toBe(true);
-    expect(fixHolds(original, operations, result.targets)).toBe(false);
+    expect(writtenHolds(result.result, result.written)).toBe(true);
+    expect(writtenHolds(original, result.written)).toBe(false);
   });
 
-  it('refuses an edit that would leave a member no path back, rather than make it irreversible', () => {
-    // Removing id 1 leaves the member without an id at index 0, and 0 is
-    // another member's id.
-    expect(applyOperations(mixed(), [op('remove', '/fields/1')])).toEqual({
-      ok: false,
-      failure: { kind: 'ambiguous_path', operation: 0 },
-    });
+  it('refuses to add a member that no path could reach again', () => {
+    expect(
+      applyOperations(mixed(), [op('insert', '/fields/-', { prompt: 'x' })]),
+    ).toEqual({ ok: false, failure: { kind: 'ambiguous_path', operation: 0 } });
   });
 
   it('refuses a duplicate id even where some members have none', () => {
