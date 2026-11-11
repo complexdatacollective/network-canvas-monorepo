@@ -334,7 +334,7 @@
       "bestFor": "最适合",
       "downloadVersion": "下载 {version} 版",
       "platformAccessibleName": "适用于 {platform} 的 {app}",
-      "schemaVersionInfo": "Architect Classic 和 Interviewer Classic 支持架构 7 协议。基于浏览器的 Architect、Interviewer 和 Fresco 使用架构 9，其中包含最新功能。协议升级是单向的，因此如果您仍需使用 Classic 应用，请保留原始的架构 7 文件。",
+      "schemaVersionInfo": "Architect Classic 和 Interviewer Classic 支持使用旧版架构的协议。基于浏览器的 Architect、Interviewer 和 Fresco 使用最新版架构，其中包含所有新功能。协议升级是单向的，因此如果您仍需使用 Classic 应用，请保留原始协议文件的副本。",
       "schemaVersionLink": "了解架构版本"
     },
     "platforms": {
@@ -387,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · 维护模式",
-        "description": "仅在您的研究必须保持与 Interviewer Classic 和架构 7 兼容时使用。",
+        "description": "仅在您的研究必须保持与 Interviewer Classic 及其旧版架构兼容时使用。",
         "bestFor": {
           "classicCompatibility": "必须保持与 Interviewer Classic 兼容的现有研究",
-          "editWithoutMigration": "需要在不迁移的情况下继续编辑的架构 7 协议"
+          "editWithoutMigration": "使用旧版架构、且需要在不迁移的情况下继续编辑的协议"
         }
       },
       "interviewerClassic": {
         "status": "Classic · 现有研究",
-        "description": "适用于已在进行的架构 7 研究，以及离线的桌面或平板电脑工作流程。为保持兼容性和修复错误而继续维护。",
+        "description": "适用于基于旧版架构、已在进行的研究，以及离线的桌面或平板电脑工作流程。为保持兼容性和修复错误而继续维护。",
         "bestFor": {
-          "schema7Study": "依赖架构 7 的现有研究",
+          "schema7Study": "依赖旧版架构的现有研究",
           "desktopTablet": "保留现有的桌面或平板电脑工作流程",
           "offlineCollection": "需要旧版离线收集工作流程的研究"
         }

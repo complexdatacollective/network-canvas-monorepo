@@ -334,7 +334,7 @@
       "bestFor": "Ideal para",
       "downloadVersion": "Descargar la versión {version}",
       "platformAccessibleName": "{platform} para {app}",
-      "schemaVersionInfo": "Architect Classic e Interviewer Classic admiten protocolos de esquema 7. Architect, Interviewer y Fresco basados en el navegador utilizan el esquema 9, que incluye las funciones más recientes. La actualización de un protocolo es unidireccional, así que conserva el archivo original de esquema 7 si todavía necesitas las aplicaciones Classic.",
+      "schemaVersionInfo": "Architect Classic e Interviewer Classic admiten protocolos que usan un esquema anterior. Las aplicaciones Architect, Interviewer y Fresco basadas en el navegador utilizan el esquema más reciente, que incluye todas las novedades. Actualizar un protocolo al esquema más reciente es un proceso unidireccional, así que conserva una copia del archivo original si todavía necesitas las aplicaciones Classic.",
       "schemaVersionLink": "Más información sobre las versiones del esquema"
     },
     "platforms": {
@@ -387,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · Modo de mantenimiento",
-        "description": "Utilízalo únicamente cuando tu estudio deba seguir siendo compatible con Interviewer Classic y el esquema 7.",
+        "description": "Utilízalo únicamente cuando tu estudio deba seguir siendo compatible con Interviewer Classic y su esquema anterior.",
         "bestFor": {
           "classicCompatibility": "Un estudio existente que debe seguir siendo compatible con Interviewer Classic",
-          "editWithoutMigration": "Un protocolo de esquema 7 que debe seguir editándose sin migración"
+          "editWithoutMigration": "Un protocolo que usa un esquema anterior y que debes seguir editando sin migrarlo"
         }
       },
       "interviewerClassic": {
         "status": "Classic · Estudios existentes",
-        "description": "Para estudios consolidados con esquema 7 y flujos de trabajo sin conexión en computadoras de escritorio o tabletas. Se mantiene para ofrecer compatibilidad y corregir errores.",
+        "description": "Para estudios consolidados que usan un esquema anterior y para flujos de trabajo sin conexión en computadoras de escritorio o tabletas. Se mantiene para ofrecer compatibilidad y corregir errores.",
         "bestFor": {
-          "schema7Study": "Un estudio consolidado que depende del esquema 7",
+          "schema7Study": "Un estudio consolidado que depende de un esquema anterior",
           "desktopTablet": "Conservar un flujo de trabajo existente en una computadora de escritorio o tableta",
           "offlineCollection": "Estudios que requieren el flujo de trabajo anterior de recopilación sin conexión"
         }
