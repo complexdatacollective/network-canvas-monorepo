@@ -119,6 +119,16 @@ export const writeReviewRecord = async (
   }
 };
 
+/**
+ * Removes every protocol's record, with the whole library (Clear all).
+ * Throws when storage refuses, so the caller can say the library was not
+ * cleared; the session copy is emptied either way.
+ */
+export const clearReviewRecords = async (): Promise<void> => {
+  memory.clear();
+  await getReviewDb().reviews.clear();
+};
+
 /** Removes the protocol's record, with the protocol. Never throws. */
 export const deleteReviewRecord = async (protocolId: string): Promise<void> => {
   memory.delete(protocolId);

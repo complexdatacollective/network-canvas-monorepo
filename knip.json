@@ -342,6 +342,8 @@
     },
     "workers/development-protocol": {},
     "workers/posthog-proxy": {},
-    "workers/protocol-review": {}
+    "workers/protocol-review": {
+      "ignoreDependencies": ["cloudflare"]
+    }
   }
 }

@@ -19,7 +19,7 @@ import type { FailureNotice } from '../notify.ts';
 import type { ReviewDependencies } from '../review.ts';
 
 /** A one-way stand-in for SHA-256 (FNV-1a), so keys never hold the input. */
-export const fakeHash = (value: string): string => {
+const fakeHash = (value: string): string => {
   let hash = 0x811c9dc5;
   for (let index = 0; index < value.length; index += 1) {
     hash ^= value.charCodeAt(index);

@@ -4,9 +4,10 @@
 
 The documentation now describes encrypted attributes as a standard feature
 of schema 9, not an experiment. The Anonymisation interface page no longer
-says it must be turned on from Architect's Experimental Features page, which
-Architect no longer has, and the Interfaces, Variables and Export Data Dictionary
-pages no longer call it experimental. The Anonymisation page also now gives
+says it must be turned on from Architect's Experimental features page, and
+the Interfaces, Variables and Export Data Dictionary pages no longer call it
+experimental. The protocol schema page names the one experiment schema 9 has,
+Automated Protocol Review. The Anonymisation page also now gives
 the exported placeholder for an encrypted value as `ENCRYPTED`, the string
 exports actually write.
 

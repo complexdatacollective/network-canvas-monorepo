@@ -121,7 +121,7 @@ export const recordFix = (
  * written; otherwise null. Validated as a draft, as Architect validates every
  * protocol in its editor.
  */
-export const validProtocolOrNull = async (
+const validProtocolOrNull = async (
   candidate: unknown,
 ): Promise<CurrentProtocol | null> => {
   if (!isJsonObject(candidate) || candidate.schemaVersion !== 9) return null;

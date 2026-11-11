@@ -96,9 +96,13 @@ Schema 9:
 - Schema 9 keeps the optional `experiments` property, for features released
   within a schema version, but `encryptedVariables` is no longer one of them:
   an attribute marked `encrypted` is always encrypted. `ExperimentsSchema` and
-  the `Experiments` type now describe schema 9's experiments, and none is
-  defined yet, so schema 9 refuses `encryptedVariables` or any other key in
-  `experiments`. Schema 8 still accepts `experiments.encryptedVariables`.
+  the `Experiments` type now describe schema 9's experiments. There is one,
+  `protocolReview` (Architect's Automated Protocol Review), which is on when
+  the key is present. Its value is any JSON object: what is inside belongs to
+  the app that implements the experiment and can change between app versions
+  without a schema change, so a host must not rely on its shape. Schema 9
+  refuses `encryptedVariables` or any other key in `experiments`. Schema 8
+  still accepts `experiments.encryptedVariables`.
 - The v8 to v9 migration keeps `experiments` but removes `encryptedVariables`
   from it, and leaves a protocol without `experiments` without it. If
   `experiments.encryptedVariables` was not `true`, it also removes `encrypted`

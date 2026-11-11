@@ -3,6 +3,7 @@ import type React from 'react';
 import { useLocation } from 'wouter';
 
 import ProjectNav from '~/components/ProjectNav/ProjectNav';
+import { useReviewProtocolToolbarAction } from '~/components/ProtocolReview/ReviewProtocolAction';
 import StorageUnavailableBanner from '~/components/StorageUnavailableBanner';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { cx } from '~/utils/cva';
@@ -47,6 +48,8 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       : location === '/protocol/summary'
         ? 'report'
         : 'authoring';
+  // Offered on the Stages screen only, and only to a tab that may edit.
+  const reviewAction = useReviewProtocolToolbarAction(location, mode);
 
   return (
     <div
@@ -63,7 +66,11 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       <ProjectActions
         mode={mode}
         additionalActions={
-          location === '/protocol/summary' ? <PrintProtocolAction /> : undefined
+          location === '/protocol/summary' ? (
+            <PrintProtocolAction />
+          ) : (
+            reviewAction
+          )
         }
       />
     </div>

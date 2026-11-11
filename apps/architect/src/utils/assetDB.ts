@@ -1,6 +1,7 @@
 import { Dexie, type EntityTable } from 'dexie';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { clearReviewRecords } from '~/protocolReview/reviewStore';
 import type { ProtocolSourceRef } from '~/templates';
 
 import { PROTOCOL_DB_NAME } from './storageNames';
@@ -70,7 +71,8 @@ assetDb.version(1).stores({
 });
 
 /**
- * Remove every protocol this app stores, then reload.
+ * Remove every protocol this app stores, and every protocol's automated
+ * review (kept in a database of its own, beside the protocols), then reload.
  *
  * Only this app's own library. Architect 8's library on the same origin is not
  * this app's to delete — its protocols stay listed, and Architect 8's own
@@ -91,5 +93,8 @@ export async function clearAllStorage(): Promise<void> {
       ]);
     },
   );
+  // A review describes a protocol that no longer exists once the library is
+  // empty; nothing else would ever read or remove it.
+  await clearReviewRecords();
   window.location.reload();
 }

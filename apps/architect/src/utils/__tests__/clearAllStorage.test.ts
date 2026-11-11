@@ -4,6 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { APP_SCHEMA_VERSION } from '~/config';
+import {
+  emptyReviewRecord,
+  readReviewRecord,
+  writeReviewRecord,
+} from '~/protocolReview/reviewStore';
 
 import { assetDb, clearAllStorage } from '../assetDB';
 import { LEGACY_LIBRARIES } from '../storageNames';
@@ -108,6 +113,22 @@ describe('clearAllStorage', () => {
     expect(await assetDb.assets.count()).toBe(0);
     expect(await assetDb.legacyProtocolChoices.count()).toBe(0);
     expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('removes every protocol’s automated review with the library', async () => {
+    await writeReviewRecord({
+      protocolId: 'v9-row',
+      shareReviews: true,
+      review: null,
+    });
+    expect((await readReviewRecord('v9-row')).shareReviews).toBe(true);
+
+    await clearAllStorage();
+
+    // An empty record is what a protocol that was never reviewed reads as.
+    expect(await readReviewRecord('v9-row')).toEqual(
+      emptyReviewRecord('v9-row'),
+    );
   });
 
   // Architect 8 at `/v8/` shares this origin: its library and every
