@@ -48,7 +48,10 @@ const CONTENT_SECURITY_POLICY = [
   "font-src 'self' data:",
   "img-src 'self' data: blob:",
   "media-src 'self' blob:",
-  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com",
+  // protocol-review.networkcanvas.com is the automated protocol review
+  // service (PROTOCOL_REVIEW_SERVICE_URL in workers/protocol-review's
+  // contract; a test beside src/protocolReview keeps the two in step).
+  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://protocol-review.networkcanvas.com",
   "worker-src 'self' blob:",
   "frame-src 'self'",
   "base-uri 'none'",

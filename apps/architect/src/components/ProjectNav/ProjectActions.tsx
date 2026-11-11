@@ -233,6 +233,7 @@ const ProjectActions = ({
   const returnsToTimeline = [
     '/protocol/assets',
     '/protocol/codebook',
+    '/protocol/experiments',
     '/protocol/localization',
     '/protocol/summary',
   ].includes(location);

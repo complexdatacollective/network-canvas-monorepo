@@ -5,6 +5,7 @@ import { combineReducers, type UnknownAction } from '@reduxjs/toolkit';
 import createTimeline from '../middleware/timeline';
 import activeProtocol from './activeProtocol';
 import app from './app';
+import protocolReview from './protocolReview';
 import protocols from './protocols';
 import protocolValidation from './protocolValidation';
 
@@ -37,6 +38,8 @@ export const rootReducer = combineReducers({
   activeProtocol: createTimeline(activeProtocol, timelineOptions),
   protocols,
   protocolValidation,
+  // Neither remembered nor in the undo history: see `protocolReview`.
+  protocolReview,
 });
 
 // Export the root state type

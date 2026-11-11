@@ -14,6 +14,22 @@
 export const PROTOCOL_DB_NAME = 'ArchitectProtocolDB-v9';
 
 /**
+ * The Dexie database that keeps each protocol's automated review, beside the
+ * library rather than in it: a review is never part of the protocol file.
+ */
+export const PROTOCOL_REVIEW_DB_NAME = 'ArchitectProtocolReviewDB-v9';
+
+/**
+ * localStorage keys for the protocol review service, per browser. Its own
+ * random installation id (never the analytics one) and the last hourly quota
+ * the service reported. Architect 8 has no protocol review, so these names
+ * are not shared with it.
+ */
+export const PROTOCOL_REVIEW_INSTALLATION_ID_KEY =
+  'architect-v9-protocol-review-installation-id';
+export const PROTOCOL_REVIEW_QUOTA_KEY = 'architect-v9-protocol-review-quota';
+
+/**
  * redux-remember's key prefix. Its default, `@@remember-`, is what Architect 8
  * keeps using — and a tab that moves between `/` and `/v8/` shares one
  * sessionStorage, so the same prefix would hand each app the other's session.

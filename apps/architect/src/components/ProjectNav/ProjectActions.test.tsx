@@ -2,6 +2,8 @@ import { configureStore } from '@reduxjs/toolkit';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Router } from 'wouter';
+import { memoryLocation } from 'wouter/memory-location';
 
 import appReducer, { setActiveProtocolId } from '~/ducks/modules/app';
 import type { StoredProtocolRow } from '~/utils/assetDB';
@@ -149,5 +151,37 @@ describe('ProjectActions', () => {
     });
 
     expect(mockedDownload).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('ProjectActions return button', () => {
+  const returnLabelAt = (path: string) => {
+    const store = createTestStore();
+    store.dispatch(setActiveProtocolId('protocol-1'));
+    render(
+      <Provider store={store}>
+        <Router hook={memoryLocation({ path }).hook}>
+          <ActionToolbarProvider>
+            <ProjectActions />
+          </ActionToolbarProvider>
+        </Router>
+      </Provider>,
+    );
+  };
+
+  it('returns to Stages from the experimental features page', () => {
+    returnLabelAt('/protocol/experiments');
+
+    expect(
+      screen.getByRole('button', { name: 'Return to Stages' }),
+    ).toBeInTheDocument();
+  });
+
+  it('returns to the start screen from an address that is not a protocol page', () => {
+    returnLabelAt('/protocol/unknown-page');
+
+    expect(
+      screen.queryByRole('button', { name: 'Return to Stages' }),
+    ).not.toBeInTheDocument();
   });
 });
