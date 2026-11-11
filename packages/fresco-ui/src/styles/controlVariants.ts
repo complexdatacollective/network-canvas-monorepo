@@ -310,15 +310,23 @@ export const inertReadOnlyVariants = cva({
 //      variants are applied to *is itself* focusable, e.g. Base UI's
 //      `Select.Trigger` renders a <button> with these classes applied directly.
 //      No-op for wrapper <div>s around inputs since they aren't tabbable.
+const keyboardFocusRing = cx(
+  'has-[input:focus-visible,textarea:focus-visible,select:focus-visible]:focus-styles focus-visible:focus-styles outline-(--focus-color,currentColor)',
+);
+
 export const interactiveStateVariants = cva({
   base: cx('transition-colors duration-200'),
   variants: {
     state: {
+      // A disabled control takes no focus, so it has no ring.
       disabled: cx('focus-within:border-input-contrast/50'),
+      // A read-only control does take focus, and shows it by darkening its
+      // border rather than with the ring.
       readOnly: cx('focus-within:border-input-contrast/70'),
-      invalid: '',
-      normal:
-        'has-[input:focus-visible,textarea:focus-visible,select:focus-visible]:focus-styles focus-visible:focus-styles outline-(--focus-color,currentColor)',
+      // The red border says the value is wrong, not which field the keyboard
+      // is in, so an invalid control rings exactly as a valid one does.
+      invalid: keyboardFocusRing,
+      normal: keyboardFocusRing,
     },
   },
   defaultVariants: {
