@@ -90,6 +90,19 @@ Useful exemplars include `packages/fresco-ui/src/dnd/useAccessibilityAnnouncemen
 
 Tone rules apply to participant-facing surfaces. Accessibility and internationalisation apply to all UI.
 
+### Right-to-left layouts
+
+Arabic is a supported language, so every layout is read in both directions. Write it against the reading direction, not against a side of the screen.
+
+- **Use logical utilities.** `ms-*`/`me-*`, `ps-*`/`pe-*`, `start-*`/`end-*`, `border-s`/`border-e`, `rounded-s`/`rounded-e`, `text-start`/`text-end`, `float-start`. In `@codaco/fresco-ui` the `tailwindcss/enforce-logical` lint rule rewrites the physical spellings on save.
+- **Keep a physical side only when a physical side is meant**: an element placed from measured or pointer coordinates, one of a mirrored pair, or a value Base UI reports from the left. Say which in an `oxlint-disable-next-line tailwindcss/enforce-logical -- reason` comment. `left-1/2` with `-translate-x-1/2` centres in either direction and is allowed as it stands.
+- **Transforms and `background-position` have no logical form.** Flip them with the `rtl:` variant, or with a custom property the `rtl:` variant changes when Motion animates the value (see `NavDrawer`).
+- **Icons that point along the reading order turn round** (`rtl:rotate-180` on a "next" chevron). Icons that depict a thing do not.
+- **Arrow keys follow the layout.** Base UI components do this from the direction context. A hand-written key handler reads the element's own direction (`isRightToLeft` in `utils/horizontalOverflow`): the key pointing towards the end of a row moves forward.
+- **Pointer geometry is measured from the start edge**, which is the right in a right-to-left language.
+- **Content that is left-to-right in every language stays so**: codes, numbers in boxes, coordinates on a canvas. Set `dir="ltr"` on it.
+- **Check it.** Storybook's Direction toolbar mirrors any story, and the "Pseudo right-to-left" language does the same in the development build of Architect, Interviewer and Studio. A story that pins `globals: { appDirection: 'rtl' }` can assert the behaviour in its `play` function.
+
 ## Visual style
 
 - **Use design tokens.** Use semantic Tailwind utilities backed by CSS variables (`bg-primary`, `text-text`, surfaces, input and selection colours, and data-visualisation palettes). Do not add hex or `rgb()` values.

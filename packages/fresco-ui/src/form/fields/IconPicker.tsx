@@ -223,7 +223,7 @@ export default function IconPicker({
         })}
       >
         {selectedName === undefined ? (
-          <span className="text-input-contrast/50 min-w-0 flex-1 truncate text-left italic">
+          <span className="text-input-contrast/50 min-w-0 flex-1 truncate text-start italic">
             {intl.formatMessage(messages.selectAnIcon)}
           </span>
         ) : (
@@ -231,7 +231,7 @@ export default function IconPicker({
             <span className="flex size-6 shrink-0 items-center justify-center">
               <Icon name={selectedName} className="size-6" aria-hidden />
             </span>
-            <span className="min-w-0 flex-1 truncate text-left">
+            <span className="min-w-0 flex-1 truncate text-start">
               {selectedName}
             </span>
           </>

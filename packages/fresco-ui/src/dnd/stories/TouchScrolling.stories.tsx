@@ -63,7 +63,7 @@ function Instructions({
       <Heading level="h4" margin="none">
         {title}
       </Heading>
-      <ul className="mt-2 list-disc pl-6">{children}</ul>
+      <ul className="mt-2 list-disc ps-6">{children}</ul>
     </div>
   );
 }

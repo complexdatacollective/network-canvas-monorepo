@@ -11,5 +11,9 @@ export const POPOVER_ARROW_PADDING = 28;
 // measure the drawing's real span; it also leaves the box overhanging the
 // padding by 17px, hence `pointer-events-none`. The cross-axis margin corrects
 // Base UI centring the arrow against the positioner, which includes the border.
+// Every side here is a physical one: Base UI reports the side the popup ended up
+// on and places the arrow by a distance from the left or the top, in either
+// writing direction.
 export const POPOVER_ARROW_CLASS_NAME =
+  // oxlint-disable-next-line tailwindcss/enforce-logical -- sides and offsets follow Base UI's physical placement; see above
   'pointer-events-none aspect-square data-[side=bottom]:top-[-13px] data-[side=bottom]:ml-[-2px] data-[side=left]:right-[-13px] data-[side=left]:mt-[-2px] data-[side=left]:rotate-90 data-[side=right]:left-[-13px] data-[side=right]:mt-[-2px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-13px] data-[side=top]:ml-[-2px] data-[side=top]:rotate-180';
