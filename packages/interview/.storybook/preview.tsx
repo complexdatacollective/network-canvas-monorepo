@@ -120,27 +120,34 @@ export default definePreview({
     ...i18nInitialGlobals,
   },
   decorators: [
+    // Three decorators, innermost first. The language and direction sit
+    // between the other two: inside the root element, so that element is
+    // still the first thing in the canvas, as it was before the toolbar and
+    // as a play function that sizes the canvas's first child relies on; and
+    // around the providers, so a dialog or toast they render is in the
+    // toolbar's language and direction too.
     (Story, { globals }) => (
+      <Providers
+        reducedMotion={
+          isReducedMotion(globals.reducedMotion)
+            ? globals.reducedMotion
+            : 'user'
+        }
+      >
+        <Story />
+      </Providers>
+    ),
+    withAppI18n,
+    (Story) => (
       <StrictMode>
         {/*
          * Required by Base UI's portal-based dialogs/popovers:
          * https://base-ui.com/react/overview/quick-start#portals
          */}
         <ThemedRegion theme="interview" className="root h-full">
-          <Providers
-            reducedMotion={
-              isReducedMotion(globals.reducedMotion)
-                ? globals.reducedMotion
-                : 'user'
-            }
-          >
-            <Story />
-          </Providers>
+          <Story />
         </ThemedRegion>
       </StrictMode>
     ),
-    // Last, so outermost: the language and direction are around everything
-    // the decorator above mounts.
-    withAppI18n,
   ],
 });
