@@ -1,5 +1,6 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import { MousePointer2, Redo2, Undo2, Unlink, Waypoints } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
@@ -779,6 +780,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const contentRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  // The panel is on the end edge of the screen, as `PersonDrawer` places it.
+  const panelOnTheLeft = useDirection() === 'rtl';
   const [stepNavigation, setStepNavigation] = useState<HTMLElement | null>(
     null,
   );
@@ -1244,19 +1247,28 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           (other): other is HTMLButtonElement =>
             other !== undefined && other !== element,
         );
+      // The panel covers the end of the screen: its right, or its left in a
+      // right-to-left interview. The person is centred in what it leaves
+      // uncovered. The panel is measured by its width, not by where it is
+      // drawn, because it is still sliding in.
+      const covered = drawer?.offsetWidth ?? 0;
+      const canvas = viewportRef.current?.getBoundingClientRect();
+      const visible = panelOnTheLeft
+        ? { left: covered }
+        : { right: window.innerWidth - covered };
+      const roomBeside = panelOnTheLeft
+        ? (canvas?.right ?? window.innerWidth) - covered
+        : window.innerWidth - covered - (canvas?.left ?? 0);
       // A panel as wide as the screen leaves nothing beside it, so the
       // person is centred on the whole canvas.
-      const visibleRight = window.innerWidth - (drawer?.offsetWidth ?? 0);
-      const canvasLeft = viewportRef.current?.getBoundingClientRect().left ?? 0;
       panZoom.centreOn([element, ...new Set(closeFamily)], {
-        visibleRight:
-          visibleRight - canvasLeft > 160 ? visibleRight : undefined,
+        visible: roomBeside > 160 ? visible : undefined,
         insets: clearInsets(),
       });
     };
     frame = requestAnimationFrame(centre);
     return () => cancelAnimationFrame(frame);
-  }, [selectedId, panelAnchorId, panZoom, clearInsets]);
+  }, [selectedId, panelAnchorId, panZoom, clearInsets, panelOnTheLeft]);
 
   // Closing the panel, once someone is added or edited (or the panel is
   // cancelled), shows the whole family again.

@@ -477,6 +477,19 @@ export const PersonPanelInARightToLeftInterview: Story = {
     );
     await expect(exitOffsetOf(panel)).toBeLessThan(0);
     await expect(panel).toHaveAttribute('data-swipe-direction', 'left');
+
+    // The person the relative is added to, and their close family, are
+    // brought into what the panel leaves uncovered, which is to its right.
+    await settled(canvasElement);
+    const stage = canvasBox(canvasElement);
+    const shown = ['ego', 'mum', 'dad'].map((id) =>
+      boxOf(personSymbol(canvasElement, id)),
+    );
+    const left = Math.min(...shown.map((box) => box.left));
+    const right = Math.max(...shown.map((box) => box.right));
+    const edge = panel.getBoundingClientRect().right;
+    await expect(left).toBeGreaterThan(edge);
+    await expect(right).toBeLessThan(stage.right);
   },
 };
 
