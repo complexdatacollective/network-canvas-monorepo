@@ -47,7 +47,7 @@
 
 <!-- scene: one-to-many-intro -->
 
-The One to Many Dyad Census is a name interpreter that collects edges between alters already named. Instead of asking about one pair at a time, as the [Dyad Census](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/dyad-census) does, it shows the participant one alter, the **focal node**, above a list of the others. The participant taps each of the others that the question applies to, then moves on to the next focal node.
+The One to Many Dyad Census is a name interpreter that collects edges between alters already named. Unlike the [Dyad Census](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/dyad-census), it does not ask about one pair at a time. Instead, it shows the participant one alter, the **focal node**, above a list of the other alters. The participant taps every alter in the list that the question applies to, then moves on to the next focal node.
 
 Read the full [One to Many Dyad Census documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/one-to-many-dyad-census).
 
@@ -55,7 +55,7 @@ Read the full [One to Many Dyad Census documentation](https://documentation.netw
 
 <!-- scene: one-to-many-data -->
 
-Each alter tapped is joined to the focal node by one edge of the prompt's edge type, and each edge becomes one row in your exported edge list. Tapping a selected alter again removes its edge, and leaves nothing in the data.
+This stage collects edges between alters already named. Each alter tapped is joined to the focal node by one edge, of the edge type set on the prompt. Each edge is one row in your exported edge list. Tapping a selected alter again removes its edge, so nothing is exported for that pair.
 
 ## When to use it
 
@@ -69,9 +69,9 @@ Each alter tapped is joined to the focal node by one edge of the prompt's edge t
 
 <!-- section: Node setup -->
 
-Pick the **node type** whose alters are asked about, for example _Person_. Each node of that type already in the participant's network takes a turn as the focal node. With fewer than two, the stage is skipped.
+Choose the **node type** whose alters are asked about, such as _Person_. Each node of that type already in the participant's network takes a turn as the focal node. If there are fewer than two nodes of that type, the stage is skipped.
 
-Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
+Changing the node type later clears this stage's other settings, except its name and interviewer notes, because they depend on the node type. Architect asks you to confirm first.
 
 <!-- include: node-type -->
 
@@ -83,7 +83,7 @@ Changing the node type later removes the rest of this stage's settings, apart fr
 
 <!-- section: Prompt collection -->
 
-Each prompt asks about one kind of relationship. The participant goes through every focal node for the first prompt, then through them again for the next.
+Each prompt asks about one kind of relationship. The participant goes through every focal node for the first prompt, then through every focal node again for the next prompt.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -92,28 +92,28 @@ Read more about [prompts](https://documentation.networkcanvas.com/en/design-prot
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: text -->
 
-This is the question shown above the focal node. Write it about that one node and the others as a group, rather than about a single pair, such as _"Which of these people does Sam know?"_. To name the focal node in the question, insert **Node label** with the syringe button in the toolbar.
+This is the question shown above the focal node, such as _"Which of these people does Sam know?"_. Ask about the focal node and the whole list, rather than about a single pair. To name the focal node in the question, insert **Node label** with the syringe button in the toolbar.
 
 ## Choose the edge a tap creates
 
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: createEdge -->
 
-**Created edge type** is the edge type a tap creates between the focal node and the alter tapped. If they already have an edge of that type in either direction, for example from a sociogram, the alter appears already selected, and tapping it removes that edge.
+**Created edge type** sets which edge type a tap creates between the focal node and the alter tapped. If the two alters already have an edge of that type in either direction, for example from a sociogram, the alter appears already selected. Tapping that alter removes the edge.
 
-The two sort orders below it can be switched on once an edge type is chosen.
+Once you choose an edge type, you can switch on the two sort orders below it, **Bucket order** and **Bin order**.
 
 ## Order the focal nodes
 
 <!-- dialog: create prompt | edit prompt -->
 
-Switch on **Bucket order** to set the order alters take their turn as the focal node, by one or more attributes, such as by name. Without rules, they come in the order they were added.
+Switch on **Bucket order** to set the order in which alters take their turn as the focal node. Sort them by one or more attributes, such as name. Without any rules, alters take their turn in the order they were added.
 
 ## Order the list of other alters
 
 <!-- dialog: create prompt | edit prompt -->
 
-Switch on **Bin order** to set the order the other alters are listed in below the focal node. Without rules, they are listed in the order they were added.
+Switch on **Bin order** to set the order in which the other alters are listed below the focal node. Without any rules, the other alters are listed in the order they were added.
 
 <!-- include: edge-type -->
 
@@ -123,7 +123,12 @@ Switch on **Bin order** to set the order the other alters are listed in below th
 <!-- field: behaviours.removeAfterConsideration -->
 <!-- scene: one-to-many-remove -->
 
-**Removal behavior** decides whether an alter stays in the list once it has been the focal node. **Remove them from the list** means every pair is asked about only once, so each turn has a shorter list, and the last alter never takes a turn of its own. **Keep them in the list** shows every other alter on every turn, so each pair comes up twice, once from each side; the edges already made show as selected. New stages start with **Remove them from the list**.
+**Removal behavior** decides whether an alter stays in the list after it has been the focal node.
+
+- **Remove them from the list** asks about every pair only once. Each turn has a shorter list, and the last alter never takes a turn of its own.
+- **Keep them in the list** shows every other alter on every turn. Each pair comes up twice, once from each side, and edges already made show as selected.
+
+New stages start with **Remove them from the list**.
 
 <!-- include: skip-logic -->
 

@@ -53,7 +53,10 @@ const NAMES = { sam: 'Sam', alex: 'Alex' } as const;
 
 const ROW_Y = STAGE.y + 190;
 
-/** Participants name people one after another; each becomes a node. */
+/**
+ * Shows a name generator where the participant adds alters one at a time with
+ * the add button, and each one appears on screen as a node.
+ */
 export const NameGeneratorIntroScene = defineScene(3.6, ({ t, id }) => {
   const names = ['Sam', 'Ana', 'Jo'];
   const xs = row(3);
@@ -102,7 +105,10 @@ const CHIPS = ['Family', 'Friend', 'Work'];
 const chipX = (i: number) => FORM_CARD.x + 34 + i * 112 + 50;
 const CHIP_Y = FORM_CARD.y + 195;
 
-/** Each time a person is added, the form asks about them. */
+/**
+ * Shows a name generator where the participant clicks the add button, fills in
+ * a form about the new alter, and saves it to create the node.
+ */
 export const NameGeneratorFormScene = defineScene(4.4, ({ t, id }) => {
   const nodeAt: Point = [STAGE_CENTER_X + 90, ROW_Y + 30];
   const chosen: Point = [chipX(1), CHIP_Y];
@@ -171,7 +177,7 @@ export const NameGeneratorFormScene = defineScene(4.4, ({ t, id }) => {
   };
 });
 
-/** Several prompts on one stage, each collecting its own people. */
+/** Several prompts on one stage, each collecting its own nodes. */
 export const NameGeneratorPromptsScene = defineScene(4.4, ({ t, id }) => {
   const swap = smooth(segment(t, 1.9, 0.5));
   const span = 420;
@@ -218,9 +224,9 @@ export const NameGeneratorPromptsScene = defineScene(4.4, ({ t, id }) => {
 });
 
 /**
- * A minimum and a maximum. Moving on too soon brings up the stage's notice
- * by the Next arrow; at the maximum the add button stops working, the stage
- * says it is complete, and Next glows.
+ * Shows a name generator where trying to move on before naming the minimum
+ * number of alters brings up a notice, and naming the maximum turns off the add
+ * button and tells the participant to continue.
  */
 export const NameGeneratorLimitsScene = defineScene(6.2, ({ t, id }) => {
   const adds = [0.6, 3.2, 3.9];
@@ -302,10 +308,10 @@ const INTERVIEW_PEOPLE = ['Sam', 'Ana'] as const;
 const ROSTER_PEOPLE = ['Kwame', 'Lin', 'Rosa'] as const;
 
 /**
- * Where a side panel's people come from, as a diagram rather than the screen:
- * people already in this interview, or the rows of a roster file. Each flows
- * into its own panel, and dragging one out either adds the same person to
- * this prompt or creates someone new from the roster.
+ * Shows where a side panel's nodes come from: alters named earlier in the
+ * interview fill one panel and the rows of a roster file fill another, and
+ * dragging Sam from the first panel adds the same alter to this prompt while
+ * dragging Rosa from the second creates a new node from the roster.
  */
 export const NameGeneratorPanelSourcesScene = defineScene(
   6.4,

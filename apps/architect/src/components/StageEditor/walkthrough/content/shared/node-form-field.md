@@ -17,4 +17,4 @@ Each field saves its answer to an **attribute** of the node. Select an existing 
 <!-- dialog: form field -->
 <!-- field: prompt -->
 
-This is the question the participant reads above the input, such as _"What is this person's first name?"_. Keep it short; it is asked once for every alter.
+This is the question the participant reads above the input, such as "_What is this person's first name?_" Keep it short, because the participant answers it for every alter.

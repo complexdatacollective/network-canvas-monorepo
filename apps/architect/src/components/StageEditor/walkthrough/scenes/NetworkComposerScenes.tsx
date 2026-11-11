@@ -486,8 +486,9 @@ const pulseFor = (t: number, from: number, to: number) =>
   t >= from && t < to ? t - from : undefined;
 
 /**
- * Building a network on one screen: the interviewer adds alters by name,
- * draws edges between them and groups them, all on the same canvas.
+ * Shows a network composer where the interviewer types four names to add four
+ * alters, draws edges between two pairs of alters, and then puts two alters in
+ * a group, all on the same canvas.
  */
 export const NetworkComposerIntroScene = defineScene(8.0, ({ t }) => {
   const people = [
@@ -668,8 +669,9 @@ function Table({
 }
 
 /**
- * What the stage leaves in the data: a node row with its name, position,
- * group and answers, and an edge row for every edge, with its type.
+ * Shows how a network composer's data is exported: each node becomes a row with
+ * its name, its position and a true or false column for its group, and each
+ * edge becomes a row with the two alters it connects and its type.
  */
 export const NetworkComposerDataScene = defineScene(
   5.4,
@@ -727,8 +729,8 @@ export const NetworkComposerDataScene = defineScene(
 );
 
 /**
- * The palette with each tool numbered, as the list beside it in the
- * walkthrough numbers them; each tool is pointed out in turn.
+ * Shows the network composer's tool palette with a numbered pin beside each
+ * tool, matching the numbered list, and highlights each tool in turn.
  */
 export const NetworkComposerToolsScene = defineScene(9.6, ({ t }) => {
   const dx = STAGE_CENTER_X - 120 - (PALETTE.x + PALETTE.width / 2);
@@ -763,8 +765,10 @@ export const NetworkComposerToolsScene = defineScene(9.6, ({ t }) => {
 });
 
 /**
- * Quick add: each name typed and entered becomes a node on the next free
- * spot, and the box stays open for the next.
+ * Shows a network composer where the interviewer opens the name box with the
+ * add node tool and types three names, and each name is saved to the quick add
+ * attribute and becomes a node on the next free spot of the grid while the name
+ * box stays open.
  */
 export const NetworkComposerAddScene = defineScene(5.6, ({ t }) => {
   const names = [
@@ -821,7 +825,11 @@ export const NetworkComposerAddScene = defineScene(5.6, ({ t }) => {
   };
 });
 
-/** Moving a node writes its place on the canvas to the layout attribute. */
+/**
+ * Shows a network composer where the interviewer drags two nodes to new places,
+ * and the layout attribute shows each node's new position as x and y
+ * coordinates.
+ */
 export const NetworkComposerPositionsScene = defineScene(5.2, ({ t }) => {
   const sam = smooth(segment(t, 0.8, 1.0));
   const ana = smooth(segment(t, 2.6, 1.0));
@@ -883,8 +891,9 @@ export const NetworkComposerPositionsScene = defineScene(5.2, ({ t }) => {
 });
 
 /**
- * Automatic layout switched on spreads the network out, drawing grouped
- * nodes together; switched off, nodes stay where they are.
+ * Shows a network composer where switching on automatic layout spreads the
+ * nodes out from a grid while keeping grouped nodes together, and switching it
+ * off leaves the nodes where they are.
  */
 export const NetworkComposerAutoLayoutScene = defineScene(6.0, ({ t }) => {
   const running = t >= 0.6 && t < 4.0;
@@ -928,8 +937,9 @@ export const NetworkComposerAutoLayoutScene = defineScene(6.0, ({ t }) => {
 });
 
 /**
- * The groups tool: pick a group, tap nodes to put them in it, and the shaded
- * outline grows around them. A node can sit in more than one.
+ * Shows a network composer where the interviewer picks the Family group and
+ * taps three nodes, then picks the Work group and taps three more, and a shaded
+ * outline grows around each group, with one node in both groups.
  */
 export const NetworkComposerGroupsScene = defineScene(6.4, ({ t }) => {
   const family = [
@@ -1005,8 +1015,9 @@ const barButtonAt = (i: number): Point => [
 ];
 
 /**
- * Several nodes at once: a lasso selects them, and buttons for each group
- * rise from the bottom of the canvas to add them all in one tap.
+ * Shows a network composer where the interviewer draws a lasso around three
+ * nodes to select them, a row of group buttons rises from the bottom of the
+ * canvas, and one tap adds all three nodes to the Family group.
  */
 export const NetworkComposerLassoScene = defineScene(5.8, ({ t }) => {
   const drawn = segment(t, LASSO_START, LASSO_LENGTH);
@@ -1105,8 +1116,9 @@ export const NetworkComposerLassoScene = defineScene(5.8, ({ t }) => {
 });
 
 /**
- * Selecting a node opens the inspector with its form; answers are saved as
- * they are given.
+ * Shows a network composer where selecting a node opens a panel titled with its
+ * name, and the interviewer answers the panel's fields, which are saved as they
+ * are given.
  */
 export const NetworkComposerInspectorScene = defineScene(5.4, ({ t }) => {
   const open = smooth(segment(t, 0.8, 0.4));
@@ -1178,7 +1190,10 @@ export const NetworkComposerInspectorScene = defineScene(5.4, ({ t }) => {
   };
 });
 
-/** Selecting an edge opens the form for its type, titled with its label. */
+/**
+ * Shows a network composer where selecting an edge opens a panel titled with
+ * its connection type's label, and the interviewer answers the question in it.
+ */
 export const NetworkComposerEdgeInspectorScene = defineScene(4.6, ({ t }) => {
   const open = smooth(segment(t, 0.8, 0.4));
   const selected = t >= 0.7;
@@ -1237,8 +1252,9 @@ export const NetworkComposerEdgeInspectorScene = defineScene(4.6, ({ t }) => {
 });
 
 /**
- * Drawing edges: pick a type from the tool's menu, then tap two nodes. The
- * same pair tapped again removes the edge.
+ * Shows a network composer where the interviewer picks Friends from the draw
+ * edge menu, taps pairs of nodes to connect them, taps one pair again to remove
+ * its edge, and then picks Family to draw an edge of another type.
  */
 export const NetworkComposerEdgesScene = defineScene(7.2, ({ t }) => {
   const menu = (t >= 0.5 && t < 1.0) || (t >= 4.8 && t < 5.3) ? 1 : 0;

@@ -47,7 +47,7 @@
 
 <!-- scene: tie-strength-intro -->
 
-The Tie-Strength Census is a name interpreter that collects edges between alters already named, and how strong each one is. Like the [Dyad Census](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/dyad-census), it shows the participant two alters at a time, but instead of yes or no they choose a point on a scale, or an option that says there is no tie. Choosing moves straight on to the next pair, until every pair has been asked about.
+The Tie-Strength Census is a name interpreter that collects edges between alters already named, and how strong each tie is. Like the [Dyad Census](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/dyad-census), it shows the participant two alters at a time. Instead of answering yes or no, the participant chooses an option on a scale, or an option that says there is no tie. After the participant chooses, the next pair appears, until every pair has been asked about.
 
 Read the full [Tie-Strength Census documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/tie-strength-census).
 
@@ -55,13 +55,13 @@ Read the full [Tie-Strength Census documentation](https://documentation.networkc
 
 <!-- scene: tie-strength-data -->
 
-Each pair given a point on the scale is joined by one edge of the prompt's edge type, and the point chosen is saved on that edge in an ordinal attribute. Each edge becomes one row in your exported edge list, with a column named after the attribute holding the value of the point chosen. A pair given the no-tie option has no edge, and adds no row.
+This stage collects edges between alters already named, and how strong each tie is. Each pair given an option on the scale is joined by one edge, of the edge type set on the prompt. The option chosen is saved on that edge in an ordinal attribute. Each edge is one row in your exported edge list. The row has a column, named after the attribute, that holds the value of the option chosen. A pair given the no-tie option has no edge, and adds no row.
 
 ## When to use it
 
 <!-- scene: dyad-census-pairs -->
 
-Use this stage to ask about the relationships between alters systematically, and how strong each one is. Every pair is asked about, so each alter added means many more screens.
+Use this stage to ask about the relationships between alters systematically, and how strong each relationship is. Every pair is asked about, so each alter added means many more screens.
 
 > Do: Use this interface in scenarios where you are already using a Dyad Census and wish to also collect data about the strength of a tie.
 
@@ -71,9 +71,9 @@ Use this stage to ask about the relationships between alters systematically, and
 
 <!-- section: Node setup -->
 
-Pick the **node type** whose alters are paired up, for example _Person_. Every pair of nodes of that type already in the participant's network is asked about.
+Choose the **node type** whose alters are paired up, such as _Person_. Every pair of nodes of that type already in the participant's network is asked about.
 
-Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
+Changing the node type later clears this stage's other settings, except its name and interviewer notes, because they depend on the node type. Architect asks you to confirm first.
 
 <!-- include: node-type -->
 
@@ -85,7 +85,7 @@ Changing the node type later removes the rest of this stage's settings, apart fr
 
 <!-- section: Prompt collection -->
 
-Each prompt asks about one kind of relationship, on its own scale. The participant goes through every pair for the first prompt, then every pair again for the next, so each prompt adds as many screens as there are pairs.
+Each prompt asks about one kind of relationship, on its own scale. The participant goes through every pair for the first prompt, then every pair again for the next prompt. Each prompt adds as many screens as there are pairs.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -94,14 +94,14 @@ Read more about [prompts](https://documentation.networkcanvas.com/en/design-prot
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: text -->
 
-This is the question shown below each pair, such as _"How close are these two to each other?"_. Phrase it so that every point of the scale, and the no-tie option, is a sensible answer. To name the pair in the question, insert **First node: label** and **Second node: label** with the syringe button in the toolbar.
+This is the question shown below each pair, such as _"How close are these two to each other?"_. Phrase it so that every option on the scale, and the no-tie option, is a sensible answer. To name the pair in the question, insert **First node: label** and **Second node: label** with the syringe button in the toolbar.
 
 ## Choose the edge a rating creates
 
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: createEdge -->
 
-**Edge type** is the edge type created between the pair when the participant chooses a point on the scale. Choose it first: the scale is an attribute of this edge type, so choosing a different edge type later clears the attribute.
+**Edge type** sets which edge type is created between the pair when the participant chooses an option on the scale. Choose the edge type first. The scale is an attribute of this edge type, so choosing a different edge type later clears the attribute.
 
 ## Choose the scale
 
@@ -109,17 +109,17 @@ This is the question shown below each pair, such as _"How close are these two to
 <!-- field: edgeVariable -->
 <!-- scene: tie-strength-scale -->
 
-**Ordinal attribute** is the scale this prompt records, an ordinal attribute of the edge type. Its values become the options the participant chooses from, in the attribute's own order, left to right. The editor warns you when it has more than five.
+**Ordinal attribute** is the attribute of the edge type that holds this prompt's scale. Its values become the options the participant chooses from, in the attribute's own order, from left to right. Architect warns you if the attribute has more than five values.
 
 > Avoid: Ordinal variables with more than 5 options, since this will create a very crowded interface.
 
-If the pair already has an edge of this type with a value for this attribute, that option is already chosen when the pair appears. An edge without one, for example from a sociogram, is asked about as if it were new.
+If the pair already has an edge of this type with a value for this attribute, that option is already chosen when the pair appears. An edge with no value for this attribute, for example one from a sociogram, is asked about as if it were new.
 
 ## Set the scale labels
 
 <!-- dialog: create prompt | edit prompt -->
 
-The attribute's values are listed under it, and you edit them here: each has a label the participant reads on its option and a value saved in your data. They are saved when you save the prompt.
+The attribute's values are listed below the **Ordinal attribute** picker, and you can edit the values there. Each value has a label, which the participant reads on its option, and a value, which is saved in your data. Changes to the values are saved when you save the prompt.
 
 ## Name the no-tie option
 
@@ -127,7 +127,7 @@ The attribute's values are listed under it, and you edit them here: each has a l
 <!-- field: negativeLabel -->
 <!-- scene: tie-strength-decline -->
 
-The **Decline option** is the last option, on the far right, for a pair with no tie, such as _"Don't know each other"_. Choosing it creates no edge, and removes an edge of this type the pair already had. The participant must choose an option before moving on.
+The **Decline option** is for a pair with no tie, such as _"Don't know each other"_. It appears last, on the far right of the options. Choosing it creates no edge, and removes any edge of this type the pair already had. The participant must choose an option before moving on.
 
 <!-- include: edge-type -->
 
@@ -135,7 +135,7 @@ The **Decline option** is the last option, on the far right, for a pair with no 
 
 <!-- dialog: create a new attribute -->
 
-Typing a new name in the attribute picker opens this window with that name filled in, since an ordinal attribute is its list of values. Add its values in order, each with a label and a value.
+Typing a new name in the attribute picker opens this window with that name filled in. An ordinal attribute needs a list of values, so add its values here in order, each with a label and a value.
 
 <!-- include: attribute-search -->
 

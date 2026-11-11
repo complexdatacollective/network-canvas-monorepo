@@ -8,7 +8,7 @@
 
 <!-- dialog: =attribute | =ordinal attribute | =location attribute | =select an attribute | create or select an attribute -->
 
-Search the attributes already in the codebook for what this stage is about, or type a new name to create one. Reusing an attribute when you ask the same thing again keeps the answers in one column of your data.
+Search the codebook for an attribute that fits, or type a new name to create one. If this stage asks something you have asked before, reuse that attribute. The answers then stay in one column of your data.
 
 Read more about [variables and attributes](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/variables).
 
@@ -16,4 +16,4 @@ Read more about [variables and attributes](https://documentation.networkcanvas.c
 
 <!-- dialog: edit attribute name -->
 
-Renaming changes the attribute everywhere it is used in this protocol, and the column it becomes in your exported data, so data exported before and after a rename will not line up.
+Renaming updates the attribute everywhere it is used in this protocol, and renames its column in your exported data. Data exported before and after a rename will not line up.

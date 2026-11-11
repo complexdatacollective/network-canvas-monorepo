@@ -183,8 +183,9 @@ function Chooser({ picked, switched }: { picked: number; switched: number }) {
 /* ------------------------------------------------------------- scenes */
 
 /**
- * Choosing español switches the interview at once, this screen's heading
- * included, and the screens after it follow.
+ * Shows a language chooser where the participant chooses español, the screen
+ * switches to Spanish at once, and after the participant clicks Next the
+ * following screen is in Spanish too.
  */
 export const LanguageChooserIntroScene = defineScene(6.2, ({ t }) => {
   const chosen = t >= 1.4;
@@ -252,8 +253,9 @@ export const LanguageChooserIntroScene = defineScene(6.2, ({ t }) => {
 });
 
 /**
- * The choice stays in the browser tab, through a reload, and never reaches
- * the interview's data or the export.
+ * Shows how a language chooser's data is exported: the chosen language is kept
+ * in the browser tab through a reload and is gone once the tab closes, and no
+ * language is recorded in the exported data.
  */
 export const LanguageChooserDataScene = defineScene(
   4.6,
@@ -343,8 +345,9 @@ export const LanguageChooserDataScene = defineScene(
 );
 
 /**
- * The Language Chooser comes first: the participant chooses there, and every
- * screen after it is shown in that language.
+ * Shows a protocol that starts with a language chooser, where the participant
+ * chooses español on the first screen and every later screen is then shown in
+ * español.
  */
 export const LanguageChooserOrderScene = defineScene(
   5.6,
@@ -503,8 +506,9 @@ export const LanguageChooserOrderScene = defineScene(
 );
 
 /**
- * A language added to the protocol joins the chooser too, which lists each
- * language by its own name, alphabetically.
+ * Shows how a new language reaches the language chooser: clicking Add languages
+ * adds French to the protocol's Languages list, and français joins the
+ * chooser's list, which is sorted by each language's own name.
  */
 export const LanguageChooserLanguagesScene = defineScene(
   5.0,

@@ -10,9 +10,9 @@
 
 The type's name is how it appears in the [codebook](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/codebook) and in your exported data, for example _Person_, _Organization_ or _Place_.
 
-## Choose how it looks
+## Choose how the type looks
 
 <!-- dialog: create new node type | edit this node type -->
 <!-- field: color -->
 
-The color and shape decide how nodes of this type are drawn throughout the interview. On stages with an add button, the icon appears on that button.
+The color and shape decide how nodes of this type are drawn throughout the interview. On stages with an add button, the type's icon appears on that button.

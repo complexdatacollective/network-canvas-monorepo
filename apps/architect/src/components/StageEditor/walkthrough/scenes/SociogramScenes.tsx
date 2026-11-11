@@ -311,8 +311,9 @@ function placed(
 }
 
 /**
- * A sociogram: the participant drags each person out of the drawer onto the
- * circles, then taps two of them to draw an edge.
+ * Shows a sociogram where the participant drags three alters from the drawer
+ * onto the concentric circles, then taps one node and then another to draw an
+ * edge between them.
  */
 export const SociogramIntroScene = defineScene(5.4, ({ t }) => {
   const plan: Placement[] = [
@@ -375,8 +376,10 @@ export const SociogramIntroScene = defineScene(5.4, ({ t }) => {
 });
 
 /**
- * What a sociogram leaves in the data: each node's position as _x and _y
- * columns, each edge as a row of the edge list, and a marked node as true.
+ * Shows how a sociogram's data is exported: each node's position becomes
+ * position_x and position_y columns, the edge between two nodes becomes a row
+ * of the edge list, and each marked node gets true in its marked attribute's
+ * column.
  */
 export const SociogramDataScene = defineScene(
   5.2,
@@ -570,8 +573,11 @@ const SHARED_PLAN: Point[] = [
 const SHARED_NAMES = [SAM, ANA, CAFE];
 
 /**
- * Prompts that save to one layout attribute share one arrangement; a prompt
- * with another attribute starts with every node back in the drawer.
+ * Shows a sociogram where the participant places alters on the first prompt,
+ * the second prompt saves to the same layout attribute and keeps that
+ * arrangement while the participant draws an edge, and a third prompt that
+ * saves to a different layout attribute starts with every node back in the
+ * drawer.
  */
 export const SociogramSharedLayoutScene = defineScene(6.0, ({ t }) => {
   const second = t >= 2.2;
@@ -671,9 +677,10 @@ const TAP: readonly [Point, Point, Point, Point] = [
 const TAP_NAMES = [SAM, ANA, JO, KAI];
 
 /**
- * The two things tapping can do: on an edge prompt, tap one node then
- * another to draw an edge, and tap the pair again to remove it; on a
- * highlighting prompt, tap a node to mark it.
+ * Shows a sociogram where, on an edge-creation prompt, the participant taps two
+ * nodes to draw an edge and taps the same two nodes again to remove it, then,
+ * on an attribute-toggling prompt, taps two nodes to mark them with a highlight
+ * ring.
  */
 export const SociogramTapScene = defineScene(6.6, ({ t }) => {
   const [sam, ana, jo, kai] = TAP;
@@ -733,8 +740,9 @@ export const SociogramTapScene = defineScene(6.6, ({ t }) => {
 });
 
 /**
- * Displayed edges: the edges drawn on an earlier prompt stay on screen while
- * a later prompt draws another edge type.
+ * Shows a sociogram where the participant draws two edges on the first prompt,
+ * then moves to a prompt for a second edge type, where the earlier edges stay
+ * on screen while the participant draws new edges in another color.
  */
 export const SociogramDisplayEdgesScene = defineScene(6.0, ({ t }) => {
   const [sam, ana, jo, kai] = TAP;
@@ -801,8 +809,9 @@ export const SociogramDisplayEdgesScene = defineScene(6.0, ({ t }) => {
 });
 
 /**
- * The background options: the number of circles, skewing them so the inner
- * rings grow, and an image of your own, such as one divided into regions.
+ * Shows a sociogram where the background changes from three concentric circles
+ * to five, the circles are skewed so the inner rings grow, and then an image
+ * divided into Home, Work, School and Online regions replaces the circles.
  */
 export const SociogramBackgroundScene = defineScene(6.4, ({ t }) => {
   const n = t < 0.9 ? 3 : t < 1.7 ? 4 : 5;
@@ -859,7 +868,12 @@ export const SociogramBackgroundScene = defineScene(6.4, ({ t }) => {
 /** A simulation settling: overshoots a little, then comes to rest. */
 const settle = (k: number) => 1 - Math.exp(-3 * k) * Math.cos(k * 5);
 
-/** The two layouts, side by side. */
+/**
+ * Shows a sociogram where, side by side, the participant drags alters from the
+ * drawer onto a canvas in manual layout, while the nodes on a canvas in
+ * automatic layout settle into place on their own until the participant presses
+ * pause.
+ */
 export const SociogramLayoutModeScene = defineScene(6.2, ({ t }) => {
   const width = (CONTENT.right - CONTENT.x) / 2;
   const left = { x: CONTENT.x + width / 2, y: CONTENT.y + 170, r: 120 };

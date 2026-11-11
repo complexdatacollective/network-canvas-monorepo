@@ -47,7 +47,7 @@
 
 <!-- scene: dyad-census-intro -->
 
-The Dyad Census is a name interpreter that collects edges between alters already named. It shows the participant two alters at a time and asks a yes or no question about them. A yes creates an edge between the pair, and answering moves straight on to the next pair, until every pair has been asked about.
+The Dyad Census is a name interpreter that collects edges between alters already named. It shows the participant two alters at a time and asks a yes or no question about them. Answering yes creates an edge between the two alters. Either answer moves the participant straight on to the next pair, until every pair has been asked about.
 
 Read the full [Dyad Census documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/dyad-census).
 
@@ -55,13 +55,13 @@ Read the full [Dyad Census documentation](https://documentation.networkcanvas.co
 
 <!-- scene: dyad-census-data -->
 
-Each pair answered yes is joined by one edge of the prompt's edge type, and each edge becomes one row in your exported edge list. A no leaves the pair without that edge, and the no itself is not exported.
+This stage collects edges between alters already named. Each yes creates one edge, of the edge type set on the prompt. Each edge is one row in your exported edge list. A no leaves the pair without that edge, and answers of no are not exported.
 
 ## When to use it
 
 <!-- scene: dyad-census-pairs -->
 
-Use this stage to ask about the relationships between alters systematically. The participant needs to know what the task is before they start, so place an [Information](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/information) stage before it.
+Use this stage to ask about the relationships between alters systematically. The participant needs to know what the task is before they start, so place an [Information](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/information) stage before this one.
 
 > Do: Use it to encourage participants to add edges they might not have considered.
 
@@ -71,9 +71,9 @@ Use this stage to ask about the relationships between alters systematically. The
 
 <!-- section: Node setup -->
 
-Pick the **node type** whose alters are paired up, for example _Person_. Every pair of nodes of that type already in the participant's network is asked about.
+Choose the **node type** whose alters are paired up, such as _Person_. Every pair of nodes of that type already in the participant's network is asked about.
 
-Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
+Changing the node type later clears this stage's other settings, except its name and interviewer notes, because they depend on the node type. Architect asks you to confirm first.
 
 <!-- include: node-type -->
 
@@ -86,7 +86,7 @@ Changing the node type later removes the rest of this stage's settings, apart fr
 <!-- section: Prompt collection -->
 <!-- scene: dyad-census-prompts -->
 
-Each prompt asks about one kind of relationship. The participant goes through every pair for the first prompt, then every pair again for the next, so each prompt adds as many screens as there are pairs.
+Each prompt asks about one kind of relationship. The participant goes through every pair for the first prompt, then every pair again for the next prompt. Each prompt adds as many screens as there are pairs.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -95,7 +95,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/en/design-prot
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: text -->
 
-This is the question shown below each pair. Phrase it so that yes and no are both sensible answers, such as _"Do these two know each other?"_. To name the pair in the question, insert **First node: label** and **Second node: label** with the syringe button in the toolbar.
+This is the question shown below each pair, such as _"Do these two know each other?"_. Phrase it so that yes and no are both sensible answers. To name the pair in the question, insert **First node: label** and **Second node: label** with the syringe button in the toolbar.
 
 ## Choose the edge a yes creates
 
@@ -103,7 +103,7 @@ This is the question shown below each pair. Phrase it so that yes and no are bot
 <!-- field: createEdge -->
 <!-- scene: dyad-census-existing -->
 
-**Created edge type** is the edge type a yes creates between the pair. If a pair already has an edge of that type, for example from a sociogram, Yes is already selected when the pair appears, and answering No removes that edge.
+**Created edge type** sets which edge type a yes creates between the pair. If a pair already has an edge of that type, for example from a sociogram, **Yes** is already selected when the pair appears. Answering **No** removes that edge.
 
 <!-- include: edge-type -->
 

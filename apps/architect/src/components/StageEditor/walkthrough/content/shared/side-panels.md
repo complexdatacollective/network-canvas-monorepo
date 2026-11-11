@@ -10,7 +10,7 @@
 
 A side panel lists nodes beside the question, so the participant can drag them in instead of typing them again. Each panel draws from one of two places:
 
-- **The interview so far**: alters already named on earlier stages or prompts. Use this when several prompts may name the same alters, so they can be added again without duplicates.
+- **The interview so far**: alters already named on earlier stages or prompts. Use this when several prompts may name the same alters. The participant can then add an existing alter to another prompt without creating a duplicate.
 - **A network data file**: a roster you import, such as the members of a class or team. The same list is shown to every participant.
 
 A stage can have up to two panels, for example one of alters already named and one of the roster.
@@ -30,15 +30,15 @@ The title is shown at the top of the panel in the interview, for example _People
 <!-- field: dataSource -->
 <!-- scene: name-generator-panel-sources -->
 
-**Use the network from the in-progress interview** lists the nodes of this type already in the participant's network that aren't on this prompt yet. Dragging one in adds it to this prompt rather than creating a new node.
+**Use the network from the in-progress interview** lists the nodes of this type already in the participant's network. Nodes already on this prompt are left out. Dragging one of these nodes in adds it to this prompt rather than creating a new node.
 
-**Use a network data file** lists the rows of a roster you import as a CSV or JSON file. Dragging one in creates a node from that row, which then leaves the list: each roster entry can be named once.
+**Use a network data file** lists the rows of a roster you import as a CSV or JSON file. Dragging a row in creates a node and removes the row from the list, so each roster entry can be added only once.
 
 ## Filter what appears
 
 <!-- dialog: create panel | edit panel -->
 <!-- scene: name-generator-filter -->
 
-Switch on **Panel filter** to show only some nodes, for example only nodes whose `close_friend` attribute is true, or only roster rows for one class. The filter applies on every prompt of this stage. Without one, the panel shows every node in its source that isn't already on this prompt.
+Switch on **Panel filter** to show only some nodes, for example only nodes whose `close_friend` attribute is true, or only roster rows for one class. The filter applies on every prompt of this stage. Without a filter, the panel shows every node in its source that isn't already on this prompt.
 
 Read more about [network filtering](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/network-filtering).

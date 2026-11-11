@@ -216,8 +216,9 @@ function Spinner({ x, y, t }: { x: number; y: number; t: number }) {
 /* ------------------------------------------------------------- scenes */
 
 /**
- * Confirmation mode: Finish asks the question, and confirming ends the
- * interview on its finished screen, with no navigation left.
+ * Shows a finish screen where the participant presses Finish and confirms in
+ * the question that appears, and the closing screen is replaced by the finished
+ * screen with no way to go back.
  */
 export const FinishSessionIntroScene = defineScene(5.2, ({ t }) => {
   const asked =
@@ -256,8 +257,9 @@ export const FinishSessionIntroScene = defineScene(5.2, ({ t }) => {
 });
 
 /**
- * Each finished interview's finish time and outcome become two columns of
- * the ego list; an interview not yet finished leaves both empty.
+ * Shows how a finish screen's data is exported: each finished interview's
+ * finish time and outcome fill two columns of the ego list, an unfinished
+ * interview leaves both empty, and GraphML includes them as two attributes.
  */
 export const FinishSessionDataScene = defineScene(
   4.8,
@@ -308,8 +310,9 @@ export const FinishSessionDataScene = defineScene(
 );
 
 /**
- * Automatic mode: Next from the stage before reaches the finish stage, which
- * ends the interview at once and cannot be left backwards.
+ * Shows a finish screen set to finish automatically, where the participant
+ * clicks Next on the stage before it, the interview ends at once with no way
+ * back, and the finished screen appears.
  */
 export const FinishSessionAutomaticScene = defineScene(4.8, ({ t }) => {
   const arrived = t >= 1.3;
@@ -352,8 +355,9 @@ export const FinishSessionAutomaticScene = defineScene(4.8, ({ t }) => {
 });
 
 /**
- * When the interview cannot be ended, the question closes, the failure
- * message appears, and Finish can be tried again from the closing screen.
+ * Shows a finish screen where the participant presses Finish and confirms, the
+ * interview can't be finished and a failure message appears, and the
+ * participant presses Finish and confirms again to reach the finished screen.
  */
 export const FinishSessionFailedScene = defineScene(7.4, ({ t }) => {
   const asked =
@@ -410,8 +414,10 @@ export const FinishSessionFailedScene = defineScene(7.4, ({ t }) => {
 });
 
 /**
- * Two Finish Screens: the interview reaches the first, and an earlier stage's
- * skip logic sends some participants to the second, each with its outcome.
+ * Shows a protocol with two finish screens, where an eligible participant moves
+ * through every stage to the first finish screen with the outcome completed,
+ * and skip logic sends a participant who isn't eligible to the second finish
+ * screen with the outcome ineligible.
  */
 export const FinishSessionOutcomesScene = defineScene(
   6.0,

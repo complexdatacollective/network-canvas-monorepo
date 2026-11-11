@@ -47,7 +47,7 @@
 
 <!-- scene: ego-form-intro -->
 
-The Ego Form collects data about the participant, known as **ego**, rather than about any alter. The participant completes one [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) about themselves, below an introduction that says what the form is for.
+The Ego Form collects data about the participant, known as **ego**, rather than about any alter. The participant completes one [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) about themselves. An introduction above the form says what the form is for.
 
 Read the full [Ego Form documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ego-form).
 
@@ -55,7 +55,7 @@ Read the full [Ego Form documentation](https://documentation.networkcanvas.com/e
 
 <!-- scene: ego-form-data -->
 
-Each field on the form records one attribute of ego. In your exported data the answers go in the ego list: one row for the interview, with a column for each field.
+This stage collects attributes about the participant. Each field on the form records one attribute of ego. In your exported data, the answers go in the ego list, which has one row for the interview and one column for each field.
 
 ## When to use it
 
@@ -73,16 +73,16 @@ Use this stage to ask the participant a few questions about themselves.
 <!-- field: introductionPanel.title -->
 <!-- scene: ego-form-introduction -->
 
-The introduction sits above the form, so the participant knows what the questions are for before they start. The **Title** is required and shown as its heading. The **Introduction text** below it is optional.
+The introduction sits above the form, so the participant knows what the questions are for before they start. The **Title** is required and is shown as the introduction's heading. The **Introduction text** below the title is optional.
 
 ## Build the form
 
 <!-- section: Form configuration -->
 <!-- scene: ego-form-intro -->
 
-These are the questions the participant answers about themselves. Each field records one attribute of ego, and the fields appear in the order listed here, in one form the participant scrolls through.
+These are the questions the participant answers about themselves. Each field records one attribute of ego. The fields appear in the order listed here, in one form the participant scrolls through.
 
-Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms), and open a field, or create a new one, for a tour of the field editor.
+Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms). To tour the field editor, open a field or create a new one.
 
 ## Choose what this field records
 
@@ -96,7 +96,7 @@ Each field saves its answer to an **attribute** of ego. Select an ego attribute 
 <!-- dialog: form field -->
 <!-- field: prompt -->
 
-This is the question the participant reads above the input, such as _"How old are you?"_. It is asked once, about the participant themselves.
+This is the question the participant reads above the input, such as _"How old are you?"_. The question is asked only once, about the participant themselves.
 
 <!-- include: form-field-details -->
 
@@ -107,7 +107,9 @@ This is the question the participant reads above the input, such as _"How old ar
 <!-- section: Customize built-in wording -->
 <!-- scene: ego-form-scroll -->
 
-When a form runs below the bottom of the screen and the participant has not touched it for 15 seconds, a button with bouncing arrows appears below the form. Pressing it scrolls to the end, and screen readers announce **Scroll to see more questions**. That wording is shared by every Ego Form stage, so changing it here changes it on all of them. The section appears once an Ego Form stage has been saved to the protocol.
+This section changes the wording of the scroll button, which screen readers announce as **Scroll to see more questions**. When a form runs past the bottom of the screen and the participant has not used the form for 15 seconds, a button with bouncing arrows appears below the form. Pressing the button scrolls to the end of the form.
+
+This wording is shared by every Ego Form stage, so changing it here changes it on all of them. This section appears only after an Ego Form stage has been saved to the protocol.
 
 Read more about [translating your protocol](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol).
 

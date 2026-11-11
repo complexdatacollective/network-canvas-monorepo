@@ -47,7 +47,7 @@
 
 <!-- scene: information-intro -->
 
-The Information stage is a page the participant reads before moving on: a heading, followed by blocks of text, images, video and audio in the order you set. It asks no questions and does not create nodes or edges.
+The Information stage is a page the participant reads before moving on. It shows a heading, followed by blocks of text, images, video and audio in the order you set. It asks no questions and does not create nodes or edges.
 
 Read the full [Information documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/information).
 
@@ -55,7 +55,7 @@ Read the full [Information documentation](https://documentation.networkcanvas.co
 
 <!-- scene: information-data -->
 
-None. Reading the page, playing its media and moving on leave your exported data exactly as it was.
+This stage collects no data. Nothing the participant does here, such as reading the page or playing its media, is added to your exported data.
 
 ## When to use it
 
@@ -70,7 +70,7 @@ Use this stage to introduce your study, or to explain the task on the stage that
 <!-- section: Page content -->
 <!-- field: title -->
 
-The **Page heading** is required, and is shown large and centered at the top of the page. To include one of the participant's ego attributes or today's date, insert it with the syringe button in the toolbar.
+The **Page heading** is required. It is shown large and centered at the top of the page. To insert one of the participant's ego attributes or today's date, use the syringe button in the toolbar.
 
 ## Build the page
 
@@ -78,30 +78,30 @@ The **Page heading** is required, and is shown large and centered at the top of 
 <!-- field: items -->
 <!-- scene: information-blocks -->
 
-Each item is one block of the page: text, an image, a video or audio. They appear from top to bottom in the order listed here, and you can drag them to reorder. A page needs at least one item. Participants scroll if the page runs below the bottom of the screen, so add as many items as you need.
+Each item is one block of the page: text, an image, a video or audio. Items appear from top to bottom in the order listed here, and you can drag them to reorder them. A page needs at least one item. Add as many items as you need. Participants scroll if the page is longer than the screen.
 
-Click **Create new content item**, or open an existing one, for a tour of the item window.
+To tour the item window, click **Create new content item** or open an existing item.
 
 ## Choose the content type
 
 <!-- dialog: create item | edit item -->
 <!-- field: type -->
 
-Choose **Image**, **Video**, **Audio** or **Text**. Changing the type while the window is open keeps what you entered for the previous type, and brings it back if you change back. Only the chosen type is saved.
+Choose **Image**, **Video**, **Audio** or **Text**. If you switch to another type while the window is open, Architect keeps what you entered for the previous type. That content comes back if you switch back. Only the content for the type you end on is saved.
 
 ## Write the text
 
 <!-- dialog: create item | edit item -->
 <!-- field: contentText -->
 
-For a text item, the **Content** is what the participant reads. The toolbar adds bold, italics, headings, lists, links and dividing lines. As in the heading, the syringe button inserts an ego attribute or today's date.
+For a text item, the **Content** is what the participant reads. The toolbar adds bold, italics, headings, lists, links and dividing lines. As in the page heading, the syringe button inserts an ego attribute or today's date.
 
 ## Choose the file
 
 <!-- dialog: create item | edit item -->
 <!-- scene: information-media -->
 
-For an image, video or audio item, the **Content** is a file stored in the protocol, which you import or choose in a window of its own. Audio and video start playing as the page opens, with controls to pause and replay them. Video starts muted and loops.
+For an image, video or audio item, the **Content** is a file stored in the protocol. You import or choose the file in a separate window. Audio and video start playing as soon as the page opens, and the participant can use their controls to pause and replay them. Video starts muted and loops.
 
 Read more about [resources](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/resources).
 
@@ -118,13 +118,13 @@ The **Description** is read aloud to a participant using a screen reader, in pla
 <!-- field: size -->
 <!-- scene: information-size -->
 
-Images and videos have a **Display size**. **Full size** shows them at their natural height. **Small**, **Medium** and **Large** limit how tall they are drawn, and they keep their shape as they shrink.
+Images and videos have a **Display size**. **Full size** shows them at their natural height. **Small**, **Medium** and **Large** limit their height, and they keep their proportions as they shrink.
 
 ## Import or reuse a file
 
 <!-- dialog: choose an image | choose a video | choose an audio file -->
 
-Import a file from your computer, or choose one already stored in this protocol. Images can be JPG, GIF, PNG or SVG files; videos MP4 or MOV; audio MP3, M4A or AIFF.
+Import a file from your computer, or choose one already stored in this protocol. Images can be JPG, GIF, PNG or SVG files. Videos can be MP4 or MOV files, and audio can be MP3, M4A or AIFF files.
 
 Read more about [resources](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/resources).
 

@@ -275,7 +275,10 @@ function AudioBlock({
   );
 }
 
-/** The page: a heading, then text and an image, read before moving on. */
+/**
+ * Shows an information stage where a page appears with a heading, then lines of
+ * text and an image, and the participant clicks Next to move on.
+ */
 export const InformationIntroScene = defineScene(5.2, ({ t, id }) => {
   const title = TEXT.welcome.slice(
     0,
@@ -310,7 +313,10 @@ export const InformationIntroScene = defineScene(5.2, ({ t, id }) => {
   };
 });
 
-/** Reading the page and moving on leaves nothing behind to export. */
+/**
+ * Shows an information stage where the participant moves on from a page of text
+ * and video, and nothing is recorded: no nodes, edges or attributes.
+ */
 export const InformationDataScene = defineScene(5.4, ({ t, id }) => {
   const leave = smooth(segment(t, 2.4, 0.5));
   return {
@@ -354,7 +360,11 @@ export const InformationDataScene = defineScene(5.4, ({ t, id }) => {
   };
 });
 
-/** Blocks of each kind, added in order down the page, which then scrolls. */
+/**
+ * Shows an information stage where a text block, an image, a video and an audio
+ * player are added down the page in order, and the page then scrolls to show
+ * them all.
+ */
 export const InformationBlocksScene = defineScene(6.2, ({ t, id }) => {
   const blocks = [
     { at: 0.6, label: TEXT.text, top: 72, grow: 64 },
@@ -426,7 +436,11 @@ export const InformationBlocksScene = defineScene(6.2, ({ t, id }) => {
   };
 });
 
-/** Media plays as the page opens: video muted and looping, with controls. */
+/**
+ * Shows an information stage where a video and an audio player start playing as
+ * the page opens, with the video muted and looping until the participant clicks
+ * to unmute it.
+ */
 export const InformationMediaScene = defineScene(5.6, ({ t, id }) => {
   const videoTop = PAGE.y + 66;
   const videoHeight = 170;
@@ -471,7 +485,11 @@ export const InformationMediaScene = defineScene(5.6, ({ t, id }) => {
   };
 });
 
-/** Display size caps how tall an image is drawn; it keeps its shape. */
+/**
+ * Shows an information stage where an image changes between the Full size,
+ * Small, Medium and Large display sizes, getting shorter or taller but keeping
+ * its proportions.
+ */
 export const InformationSizeScene = defineScene(6.2, ({ t, id }) => {
   const heights = [200, 70, 120, 170] as const;
   const changes = [1.2, 2.6, 4.0] as const;

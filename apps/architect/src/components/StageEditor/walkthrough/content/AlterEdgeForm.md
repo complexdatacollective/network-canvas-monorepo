@@ -47,7 +47,7 @@
 
 <!-- scene: edge-form-intro -->
 
-The Per Alter Edge Form is an edge interpreter: it collects information about edges already in the network, rather than creating new ones. The participant completes the same [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) for each edge in turn, with the two nodes it connects shown above it, and moves on with the Next arrow.
+The Per Alter Edge Form is an edge interpreter. It collects information about edges already in the network, rather than creating new ones. The participant completes the same [form](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms) for each edge in turn. The two nodes the edge connects are shown above the form. The participant moves on to the next edge with the Next arrow.
 
 Read the full [Per Alter Edge Form documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-edge-form).
 
@@ -55,7 +55,7 @@ Read the full [Per Alter Edge Form documentation](https://documentation.networkc
 
 <!-- scene: edge-form-data -->
 
-Each field on the form records one attribute of every edge it is shown for, so in your exported edge list each field becomes a column, with a row for each edge.
+This stage collects attributes about edges already in the network. Each field on the form records one attribute of the edge. In your exported edge list, each edge the form is shown for is one row, and each field is one column.
 
 ## When to use it
 
@@ -65,7 +65,7 @@ Use this stage to ask the same few questions about every edge of one type.
 
 > Do: Place an [Information](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/information) stage before it, to orient participants to the form they will complete for each edge.
 
-> Do: Consider fields that capture temporal data, using [input controls](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/input-controls) like the **Date Picker**.
+> Do: Consider including fields that capture temporal data, using [input controls](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/input-controls) like the **Date Picker**.
 
 > Avoid: Overloading it with too many fields or text-heavy questions.
 
@@ -76,17 +76,17 @@ Use this stage to ask the same few questions about every edge of one type.
 <!-- section: Edge setup -->
 <!-- scene: edge-form-source -->
 
-Pick the **edge type** the form is about, for example _Knows_. The form is shown once for every edge of that type already in the participant's network. If there are none, the stage is empty and the participant can go straight on with the Next arrow.
+Choose the **edge type** the form asks about, such as _Knows_. The form is shown once for every edge of that type already in the participant's network. If there are no edges of that type, the stage is empty, and the participant can skip it with the Next arrow.
 
-Changing the edge type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
+Changing the edge type later clears this stage's other settings, except its name and interviewer notes, because they depend on the edge type. Architect asks you to confirm first.
 
 <!-- include: edge-type -->
 
-## Show only some of them
+## Show the form for only some edges
 
 <!-- section: Stage filter -->
 
-Switch on **Stage filter** to show the form only for some edges, for example only edges whose `close` attribute is true. Without a filter, every edge of the chosen type appears.
+Switch on **Stage filter** to show the form only for some edges, for example only edges whose `close` attribute is true. Without a filter, the form is shown for every edge of the chosen type.
 
 Read more about [network filtering](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/network-filtering).
 
@@ -96,9 +96,9 @@ Read more about [network filtering](https://documentation.networkcanvas.com/en/d
 
 <!-- section: Form configuration -->
 
-These are the questions asked about each edge. Each field records one attribute of the edge, and the fields appear in the order listed here. The form has no title of its own: the two nodes the edge connects are shown above it.
+These are the questions asked about each edge. Each field records one attribute of the edge, and the fields appear in the order listed here. The form has no title of its own. Instead, the two nodes the edge connects are shown above the form.
 
-Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms), and open a field, or create a new one, for a tour of the field editor.
+Read more about [forms](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/forms). To tour the field editor, open a field or create a new one.
 
 ## Choose what this field records
 
@@ -112,7 +112,7 @@ Each field saves its answer to an **attribute** of the edge. Select an attribute
 <!-- dialog: form field -->
 <!-- field: prompt -->
 
-This is the question the participant reads above the input, such as _"How long have you known each other?"_. Keep it short; it is asked once for every edge.
+This is the question the participant reads above the input, such as _"How long have you known each other?"_. Keep the question short, because the participant answers it for every edge.
 
 <!-- include: form-field-details -->
 

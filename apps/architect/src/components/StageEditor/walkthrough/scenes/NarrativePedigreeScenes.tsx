@@ -364,9 +364,10 @@ const KEY_SHIFT = -75;
 const TOOLBAR_SHIFT = -KEY.width / 2;
 
 /**
- * Picking a condition marks each relative with their status, and a key
- * explains the symbols; selecting a person highlights the relatives it
- * passes through.
+ * Shows a narrative pedigree where the participant picks a condition from the
+ * toolbar menu, each relative is marked with their status and a key appears,
+ * and selecting the participant's own node highlights the relatives the
+ * condition could have passed through.
  */
 export const NarrativePedigreeIntroScene = defineScene(7.2, ({ t }) => {
   const menu = t >= 0.9 && t < 1.7 ? 1 : 0;
@@ -456,8 +457,9 @@ function Row({
 }
 
 /**
- * The data a Narrative Pedigree reads is the Family Pedigree's; it adds
- * nothing of its own.
+ * Shows how a narrative pedigree's data is exported: the nodes and the
+ * condition attribute all come from the Family Pedigree, and this stage adds
+ * nothing.
  */
 export const NarrativePedigreeDataScene = defineScene(
   4.6,
@@ -573,8 +575,8 @@ function StageCard({
 }
 
 /**
- * The stage reads the family drawn on an earlier Family Pedigree; a Family
- * Pedigree later in the interview cannot be chosen.
+ * Shows a protocol where a narrative pedigree reads the family from an earlier
+ * Family Pedigree, and a Family Pedigree that comes later is not offered.
  */
 export const NarrativePedigreeSourceScene = defineScene(
   5.2,
@@ -653,8 +655,9 @@ export const NarrativePedigreeSourceScene = defineScene(
 );
 
 /**
- * The condition menu lists each condition by the name you give it; picking
- * another redraws the family in its colour.
+ * Shows a narrative pedigree where the participant picks three conditions in
+ * turn from the toolbar menu, and each pick redraws the family in that
+ * condition's color.
  */
 export const NarrativePedigreeConditionsScene = defineScene(8.4, ({ t }) => {
   const picks = [
@@ -693,8 +696,9 @@ export const NarrativePedigreeConditionsScene = defineScene(8.4, ({ t }) => {
 });
 
 /**
- * The same family under three inheritance patterns, with possible statuses
- * shown: who carries it and who may develop it depends on the pattern.
+ * Shows a narrative pedigree where the same family is marked under three
+ * inheritance patterns, with possible statuses shown, so who carries the
+ * condition and who may develop it changes with the pattern.
  */
 export const NarrativePedigreePatternsScene = defineScene(9.0, ({ t }) => {
   const index = t < 3 ? 0 : t < 6 ? 1 : 2;
@@ -724,8 +728,9 @@ export const NarrativePedigreePatternsScene = defineScene(9.0, ({ t }) => {
 const SWITCH: Point = [STAGE.x + 34, STAGE.bottom - 30];
 
 /**
- * Possible statuses switched on add "may develop" and "may carry" to the
- * certain ones; switched off, those relatives show as not known.
+ * Shows a narrative pedigree where switching on possible statuses adds "may
+ * develop" and "may carry" to the certain statuses, and switching them off
+ * again shows those relatives as not known.
  */
 export const NarrativePedigreeAtRiskScene = defineScene(6.4, ({ t }) => {
   const on = t >= 1.4 && t < 4.6;
@@ -795,7 +800,10 @@ const SNAPSHOT_ROWS: readonly PedigreeStatus[] = [
   'unknown',
 ];
 
-/** Save snapshot: an image of the pedigree, with its key, to keep or print. */
+/**
+ * Shows a narrative pedigree where the participant clicks the save snapshot
+ * button and an image of the pedigree with its key is saved.
+ */
 export const NarrativePedigreeSnapshotScene = defineScene(5.6, ({ t }) => {
   const sheet = smooth(segment(t, 1.3, 0.7));
   const page = {

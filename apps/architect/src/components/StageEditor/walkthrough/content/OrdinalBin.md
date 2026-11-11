@@ -47,7 +47,7 @@
 
 <!-- scene: ordinal-bin-intro -->
 
-The Ordinal Bin is a name interpreter: it collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into one of a row of **bins**, which run in order along a scale, such as from _Not close_ to _Extremely close_. Once placed, an alter can be moved to another bin.
+The Ordinal Bin is a name interpreter. It collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into a **bin**. The bins sit in a row, in order along a scale, such as from _Not close_ to _Extremely close_. After placing an alter, the participant can move it to another bin.
 
 Read the full [Ordinal Bin documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ordinal-bin).
 
@@ -55,7 +55,7 @@ Read the full [Ordinal Bin documentation](https://documentation.networkcanvas.co
 
 <!-- scene: ordinal-bin-data -->
 
-Each prompt records one ordinal attribute. The bin an alter is placed in sets that attribute's value, so each prompt fills one column of your exported data, with a value for every alter placed.
+This stage collects one ordinal attribute for each prompt. The bin an alter is placed in sets the value of that attribute. In exported data, each prompt's attribute is one column, with a value for every alter placed.
 
 ## When to use it
 
@@ -71,9 +71,9 @@ Use this stage to rate alters on an ordered scale.
 
 <!-- section: Node setup -->
 
-Pick the **node type** this stage sorts, for example _Person_. Every node of that type already in the participant's network waits in the drawer.
+Choose the **node type** this stage sorts, such as _Person_. Every node of that type already in the participant's network waits in the drawer.
 
-Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
+Changing the node type later clears this stage's other settings, except its name and interviewer notes, because they depend on the node type. Architect asks you to confirm first.
 
 <!-- include: node-type -->
 
@@ -85,7 +85,7 @@ Changing the node type later removes the rest of this stage's settings, apart fr
 
 <!-- section: Prompt collection -->
 
-Each prompt asks one question and sorts the alters by one ordinal attribute. The participant moves through the prompts in order. An alter waits in the drawer until it has a value for the current prompt's attribute, so a prompt that reuses an earlier prompt's attribute starts with those alters already placed.
+Each prompt asks one question and sorts the alters by one ordinal attribute. The participant sees one prompt at a time, in the order you set. An alter waits in the drawer until it has a value for the current prompt's attribute. If a prompt reuses an earlier prompt's attribute, the alters placed on the earlier prompt start in their bins.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -101,13 +101,13 @@ This is the question the participant reads above the bins, such as _"How close d
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: variable -->
 
-Under **Ordinal response**, pick the ordinal attribute this prompt records. Its values become the bins, in the attribute's own order: left to right, or top to bottom on a portrait screen. The editor warns you when the attribute has more than six values.
+Under **Ordinal response**, pick the ordinal attribute this prompt records. Its values become the bins, in the attribute's own order. The bins run left to right, or top to bottom on a portrait screen. Architect warns you when the attribute has more than six values.
 
 ## Set the bin labels
 
 <!-- dialog: create prompt | edit prompt -->
 
-The attribute's values are listed under it, and you edit them here: each has a label the participant reads on its bin and a value saved in your data. They are saved when you save the prompt. Labels can be a short sentence; check your longest one in [Preview](https://documentation.networkcanvas.com/en/design-protocols/preview-mode).
+The attribute's values are listed below the picker, and you can edit them here. Each value has a label, which the participant reads on its bin, and a value, which is saved in your data. Your edits are saved when you save the prompt. Labels can be a short sentence. Check your longest label in [Preview](https://documentation.networkcanvas.com/en/design-protocols/preview-mode).
 
 ## Choose the color gradient
 
@@ -115,7 +115,7 @@ The attribute's values are listed under it, and you edit them here: each has a l
 <!-- field: color -->
 <!-- scene: ordinal-bin-gradient -->
 
-**Color** picks the color the bins are shaded along: the first bin takes the full color, and each bin after it fades a step further into the background, so the scale reads as a scale.
+**Color** sets the color the bins are shaded with. The first bin has the full color, and each bin after it fades a step further into the background. This makes the bins look like a scale.
 
 <!-- include: bin-sort-orders -->
 
@@ -123,7 +123,7 @@ The attribute's values are listed under it, and you edit them here: each has a l
 
 <!-- dialog: create a new attribute -->
 
-Typing a new name in the attribute picker opens this window with that name filled in, since an ordinal attribute is its list of values. Add its values in order, each with a label and a value.
+Typing a new name in the attribute picker opens this window with that name filled in. An ordinal attribute needs a list of values, so add its values here in order, each with a label and a value.
 
 <!-- include: attribute-search -->
 
@@ -133,7 +133,7 @@ Typing a new name in the attribute picker opens this window with that name fille
 <!-- field: behaviours.interactionMode -->
 <!-- scene: ordinal-bin-tap -->
 
-**Interaction mode** decides how the participant puts each alter into a bin. With **Drag and drop**, they drag each one from the drawer at the bottom of the screen. With **Tap to place**, one alter in the drawer is selected, they tap the bin it belongs in, and the next alter is selected.
+**Interaction mode** decides how the participant puts each alter into a bin. With **Drag and drop**, the participant drags each alter from the drawer at the bottom of the screen. With **Tap to place**, Network Canvas selects one alter in the drawer. The participant taps the bin that alter belongs in, and the next alter is selected.
 
 ## Require every alter to be placed
 
@@ -141,13 +141,13 @@ Typing a new name in the attribute picker opens this window with that name fille
 <!-- field: behaviours.requireCompletePlacement -->
 <!-- scene: ordinal-bin-require -->
 
-Switch on **Require every node to be placed** to stop the participant leaving a prompt while any alter is still in the drawer. If they try, they are told to place every one first.
+Switch on **Require every node to be placed** to stop the participant from leaving a prompt while any alter is still in the drawer. If they try, they are told to place every alter first.
 
 ## Customize built-in wording
 
 <!-- section: Customize built-in wording -->
 
-This section appears only while **Require every node to be placed** is switched on. It holds **Nodes not yet placed**, the message shown when the participant tries to continue with alters still in the drawer. It can include the node type's name, so choose a name that reads naturally to participants.
+This section appears only while **Require every node to be placed** is switched on. It holds **Nodes not yet placed**, the message shown when the participant tries to continue with alters still in the drawer. The message can include the node type's name, so give the node type a name that reads naturally to participants.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 

@@ -358,7 +358,10 @@ function EgoIntro({
   );
 }
 
-/** The ego form: an introduction above one form about the participant. */
+/**
+ * Shows an ego form where the participant types their age and chooses Yes on
+ * the form below the introduction, then presses Next.
+ */
 export const EgoFormIntroScene = defineScene(5.4, ({ t }) => {
   const typed = TEXT.typedAge.slice(
     0,
@@ -404,7 +407,10 @@ export const EgoFormIntroScene = defineScene(5.4, ({ t }) => {
   };
 });
 
-/** The introduction: a required title, then optional text below it. */
+/**
+ * Shows an ego form where the introduction's required title is typed in first,
+ * and the optional introduction text then appears below the title.
+ */
 export const EgoFormIntroductionScene = defineScene(4.2, ({ t }) => {
   const title = TEXT.aboutYou.slice(
     0,
@@ -454,7 +460,11 @@ export const EgoFormIntroductionScene = defineScene(4.2, ({ t }) => {
   };
 });
 
-/** A long form: the arrow nudge appears, and following it shows the rest. */
+/**
+ * Shows an ego form where the form runs past the bottom of the screen, a button
+ * with bouncing arrows appears below the form, and clicking the button scrolls
+ * to the rest of the questions.
+ */
 export const EgoFormScrollScene = defineScene(5.8, ({ t, id }) => {
   const scroll = smooth(segment(t, 3.4, 0.8)) * 210;
   const nudge =
@@ -535,7 +545,10 @@ export const EgoFormScrollScene = defineScene(5.8, ({ t, id }) => {
   };
 });
 
-/** The answers become one row of the ego list. */
+/**
+ * Shows how an ego form's data is exported: the participant's answers fill one
+ * row of the ego list, with one column for each question.
+ */
 export const EgoFormDataScene = defineScene(
   4.4,
   ({ t }) => {
@@ -589,9 +602,9 @@ const EDGE_CARD = {
 } as const;
 
 /**
- * The edge form: the two nodes an edge joins, above the form. After Next, a
- * node in the same place in the next edge stays; the other leaves, the next
- * one arrives from above, and the edge is drawn again from the first node.
+ * Shows a per alter edge form where the participant answers the question about
+ * the edge between Sam and Ana and presses Next, then Sam stays while Jo
+ * replaces Ana and the edge is drawn again for the next form.
  */
 export const EdgeFormIntroScene = defineScene(5.8, ({ t }) => {
   const typed = TEXT.typedKnown.slice(
@@ -672,7 +685,10 @@ export const EdgeFormIntroScene = defineScene(5.8, ({ t }) => {
   };
 });
 
-/** Each edge's answers fill a new column of the edge list. */
+/**
+ * Shows how a per alter edge form's data is exported: each edge is one row of
+ * the edge list, and the answers from the form fill in one column, row by row.
+ */
 export const EdgeFormDataScene = defineScene(
   4.6,
   ({ t }) => {
@@ -712,7 +728,11 @@ export const EdgeFormDataScene = defineScene(
   { url: 'Exported data' },
 );
 
-/** One form for each edge of the type, and none for pairs with no edge. */
+/**
+ * Shows how a per alter edge form chooses what to ask about: the form is shown
+ * once for each of the three edges in the network, and a pair with no edge gets
+ * no form.
+ */
 export const EdgeFormSourceScene = defineScene(
   5.2,
   ({ t }) => {
@@ -912,7 +932,11 @@ function chosenAt(t: number, pairs: readonly DyadPair[]) {
   return current.existing ? 'yes' : undefined;
 }
 
-/** Pairs in turn: yes fills the edge between them, no leaves it empty. */
+/**
+ * Shows a dyad census where the participant answers Yes for the first pair and
+ * an edge fills in between the two alters, answers No for the next pair and no
+ * edge appears, and then a third pair arrives.
+ */
 export const DyadCensusIntroScene = defineScene(6.0, ({ t }) => {
   const pairs: readonly DyadPair[] = [
     { from: SAM, to: ANA, enter: 0, leave: 1.9, answer: 'yes', answerAt: 1.2 },
@@ -940,7 +964,10 @@ export const DyadCensusIntroScene = defineScene(6.0, ({ t }) => {
   };
 });
 
-/** A pair already joined arrives with Yes chosen; No removes the edge. */
+/**
+ * Shows a dyad census where a pair that is already connected appears with Yes
+ * selected, and choosing No removes the edge between the two alters.
+ */
 export const DyadCensusExistingScene = defineScene(4.6, ({ t }) => {
   const pairs: readonly DyadPair[] = [
     {
@@ -972,7 +999,11 @@ export const DyadCensusExistingScene = defineScene(4.6, ({ t }) => {
   };
 });
 
-/** The next prompt starts again from the first pair, with its own edge. */
+/**
+ * Shows a dyad census where the participant answers Yes for the last pair of
+ * the first prompt, and the second prompt starts again from the first pair,
+ * where answering Yes creates an edge of a different type.
+ */
 export const DyadCensusPromptsScene = defineScene(5.6, ({ t }) => {
   const second = t >= 1.9;
   const pairs: readonly DyadPair[] = [
@@ -1019,7 +1050,10 @@ export const DyadCensusPromptsScene = defineScene(5.6, ({ t }) => {
   };
 });
 
-/** Each yes becomes a row of the edge list; a no adds nothing. */
+/**
+ * Shows how a dyad census's data is exported: each pair answered yes becomes
+ * one row of the edge list, and the pair answered no adds no row.
+ */
 export const DyadCensusDataScene = defineScene(
   4.8,
   ({ t }) => {
@@ -1095,7 +1129,10 @@ function pairsOf(count: number): [number, number][] {
 const FOUR = ['Sam', 'Ana', 'Jo', 'Kai'];
 const SIX = ['Sam', 'Ana', 'Jo', 'Kai', 'Lin', 'Bo'];
 
-/** How fast the pairs grow: 4 alters make 6 pairs, 6 make 15. */
+/**
+ * Shows how quickly the number of pairs grows as alters are added: 4 alters
+ * make 6 pairs, and 6 alters make 15 pairs.
+ */
 export const DyadCensusPairsScene = defineScene(
   5.6,
   ({ t }) => {

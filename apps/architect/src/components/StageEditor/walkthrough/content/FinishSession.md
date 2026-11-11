@@ -47,7 +47,7 @@
 
 <!-- scene: finish-session-intro -->
 
-The Finish Screen is the last screen of an interview. It ends the interview, either once the participant confirms that they are finished or as soon as they reach it. The interview then shows its finished text, with no way to move back through the interview, and shows it again whenever the finished interview is opened.
+The Finish Screen is the last screen of an interview. It ends the interview, either when the participant confirms that they are finished or as soon as they reach it. The participant then sees the finished text and can't go back through the interview. The same finished text appears whenever the finished interview is opened again.
 
 Read the full [Finish Screen documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/finish-screen).
 
@@ -55,17 +55,17 @@ Read the full [Finish Screen documentation](https://documentation.networkcanvas.
 
 <!-- scene: finish-session-data -->
 
-It creates no nodes or edges and adds nothing to the participant's network. Finishing records two things with the interview: the time it finished, and the outcome you choose under **Outcome**.
+This stage records when the interview finished and how it ended. It creates no nodes or edges, and adds nothing to the participant's network. The outcome saved is the one you choose under **Outcome**.
 
-Both are in your exported data. The CSV ego list has a `sessionFinish` column for the time and a `networkCanvasFinishOutcome` column for the outcome, which is `completed`, `ineligible` or `terminated`. GraphML files carry them as `nc:sessionFinishTime` and `nc:finishOutcome`. An interview that hasn't been finished leaves both columns empty, and GraphML leaves them out.
+Both are in your exported data. The CSV ego list has a `sessionFinish` column for the time and a `networkCanvasFinishOutcome` column for the outcome, which is `completed`, `ineligible` or `terminated`. GraphML files include them as `nc:sessionFinishTime` and `nc:finishOutcome`. If an interview hasn't been finished, both CSV columns are empty and GraphML leaves them out.
 
 ## When to use it
 
 <!-- scene: finish-session-outcomes -->
 
-Every protocol ends with a Finish Screen. Add another when some interviews should end differently, for example a Finish Screen for participants who don't qualify, with its own text and the outcome **Ineligible**.
+Every protocol ends with a Finish Screen. Add another Finish Screen when some interviews should end differently. For example, add a Finish Screen for participants who don't qualify, with its own text and the outcome **Ineligible**.
 
-Only Finish Screens can come after a Finish Screen, so they stay together at the end of the protocol. The interview reaches the first one. To send participants to a later one, choose it as the destination in an earlier stage's skip logic. A Finish Screen has no skip logic of its own, because every route through the interview ends at one.
+Only Finish Screens can come after a Finish Screen, so they stay together at the end of the protocol. Participants who reach the end of the interview arrive at the first Finish Screen. To send participants to a later Finish Screen, choose it as the destination in an earlier stage's skip logic. A Finish Screen has no skip logic of its own, because every route through the interview ends at one.
 
 > Avoid: Asking participants for any further information on the Finish Screen. Finishing locks in their answers, and the finished screen allows no more input, so any question has to come on an earlier stage.
 
@@ -75,7 +75,7 @@ Only Finish Screens can come after a Finish Screen, so they stay together at the
 <!-- field: mode -->
 <!-- scene: finish-session-intro -->
 
-**Participants confirm** shows the closing screen with a **Finish** button. Pressing it asks the participant to confirm, and until they do, they can go back and change their answers. A new Finish Screen starts with this choice.
+When **Participants confirm** is selected, the closing screen shows a **Finish** button. When the participant presses it, they are asked to confirm. Until they confirm, they can go back and change their answers. This option is the default for a new Finish Screen.
 
 ## Or finish automatically
 
@@ -83,23 +83,23 @@ Only Finish Screens can come after a Finish Screen, so they stay together at the
 <!-- field: mode -->
 <!-- scene: finish-session-automatic -->
 
-**Finish automatically** ends the interview as soon as the participant reaches this screen, and they can't go back from it. There is no closing screen, button or question, so the editor hides the **Closing screen** section and the confirmation question.
+**Finish automatically** ends the interview as soon as the participant reaches this screen, and the participant can't go back from it. There is no closing screen, button or confirmation question. The editor hides the **Closing screen** section and the **Confirmation question** field.
 
 ## Write the closing screen
 
 <!-- section: Closing screen -->
 <!-- field: content -->
 
-**Closing text** is what the participant reads before they finish, above the **Finish** button. It is only shown when participants confirm. Start it with a heading, then the rest of the text.
+**Closing text** is what the participant reads before they finish, above the **Finish** button. It is shown only when the **Participants confirm** option is selected. Start the closing text with a heading, then add the rest of the text.
 
-A new Finish Screen starts with closing text Network Canvas supplies, which you can change. While participants confirm, the protocol can't be downloaded until it has closing text in your default language.
+A new Finish Screen starts with closing text that Network Canvas supplies, which you can change. When the **Participants confirm** option is selected, the protocol can't be downloaded until it has closing text in your default language.
 
 ## Write the finished screen
 
 <!-- section: Finished screen -->
 <!-- field: finishedContent -->
 
-**Finished text** is what the participant reads once the interview has finished, whichever way it finished. Like the closing text, it starts with a heading and begins with text Network Canvas supplies. The protocol can't be downloaded until it has finished text in your default language.
+**Finished text** is what the participant reads once the interview has finished, however it finished. Like the closing text, it starts with a heading. A new Finish Screen starts with finished text that Network Canvas supplies. The protocol can't be downloaded until it has finished text in your default language.
 
 > Do: Write finished text that tells participants what happens next: that their answers have been saved, whether they can close the window, and, if it applies, how they will receive any compensation or follow-up.
 
@@ -111,7 +111,7 @@ A new Finish Screen starts with closing text Network Canvas supplies, which you 
 
 <!-- section: Customize built-in wording -->
 
-This section holds the words the participant reads while finishing, apart from the closing and finished text. Each starts with wording Network Canvas supplies in each of your protocol's languages that it has wording for. Switched off, the stage uses that wording; switch it on to change it.
+This section holds the words the participant reads while finishing, apart from the closing text and the finished text. Network Canvas supplies starting wording for each of these words. Your protocol gets that wording in each of its languages, if Network Canvas has wording in that language. When the section is switched off, the stage uses Network Canvas's wording. Switch the section on to change the wording.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
@@ -122,14 +122,14 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 <!-- section: Customize built-in wording -->
 <!-- field: finishLabel -->
 
-**Finish button** is the words on the button that ends the interview, _Finish_ unless you change it. The same words label the button that confirms. When the interview finishes automatically, the participant only sees the button if finishing fails, to try again.
+**Finish button** sets the words on the button that ends the interview. The words are _Finish_ unless you change them. The same words label the button that confirms in the confirmation question. When the interview finishes automatically, the participant sees the button only if finishing fails, so they can try again.
 
 ## Word the confirmation question
 
 <!-- section: Customize built-in wording -->
 <!-- field: finishConfirmation -->
 
-**Confirmation question** is asked after the participant presses the button, before the interview ends, such as _"Are you sure you want to finish the interview?"_. **Cancel** takes them back to the closing screen. It is only asked when participants confirm, so the editor only shows it then.
+**Confirmation question** is asked after the participant presses the **Finish** button, before the interview ends, such as _"Are you sure you want to finish the interview?"_. **Cancel** takes the participant back to the closing screen. The question is asked only when the **Participants confirm** option is selected, so the editor shows this field only for that option.
 
 ## Word the message for when finishing fails
 
@@ -137,7 +137,7 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 <!-- field: finishFailed -->
 <!-- scene: finish-session-failed -->
 
-**If finishing fails** is shown when the interview could not be finished, for example because the participant's latest answers could not be saved. When participants confirm, they stay on the closing screen and can press the button again. When the interview finishes automatically, the button appears so they can try again.
+**If finishing fails** is the message shown when the interview could not be finished, for example because the participant's latest answers could not be saved. When the **Participants confirm** option is selected, the participant stays on the closing screen and can press the **Finish** button again. When the interview finishes automatically, the **Finish** button appears so the participant can try again.
 
 ## Record how the interview ended
 
@@ -145,7 +145,7 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 <!-- field: outcome -->
 <!-- scene: finish-session-outcomes -->
 
-**How the interview ended** is saved with every interview that finishes at this screen and included in your exported data. Participants never see it.
+**How the interview ended** is saved with every interview that finishes at this screen, and is included in your exported data. Participants never see it.
 
 - **Completed** (`completed`): the participant reached the normal end of the interview.
 - **Ineligible** (`ineligible`): the participant did not qualify for the study.

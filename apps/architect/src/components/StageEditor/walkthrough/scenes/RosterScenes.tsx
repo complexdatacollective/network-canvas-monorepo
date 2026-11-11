@@ -286,8 +286,9 @@ const INTRO_CARDS: readonly Entry[] = [
 ].map((label) => ({ key: label, label }));
 
 /**
- * The roster screen: cards beside the participant's network. A card dragged
- * across becomes a node and leaves the list; dragged back, it returns.
+ * Shows a roster name generator where the participant drags Rosa and then Lin
+ * from the cards into their network, each card becoming a node and leaving the
+ * list, and then drags Rosa back to the cards to remove that alter.
  */
 export const RosterIntroScene = defineScene(6.0, ({ t, id }) => {
   const order = INTRO_CARDS.map((c) => c.key);
@@ -393,8 +394,9 @@ const DISPLAY_CARDS: readonly Entry[] = [
 ];
 
 /**
- * Two cards with the same name, told apart once the card display shows each
- * one's class beneath it.
+ * Shows a roster name generator where two cards both read Alex until the card
+ * display adds each entry's class beneath the name, and the participant then
+ * drags the Alex in class 7B into the network.
  */
 export const RosterCardDisplayScene = defineScene(5.2, ({ t, id }) => {
   const detailK = smooth(segment(t, 1.4, 0.6));
@@ -541,7 +543,11 @@ function SortButton({
   );
 }
 
-/** Sort buttons reordering the cards, by name each way and then by class. */
+/**
+ * Shows a roster name generator where the participant clicks the Name sort
+ * button to sort the cards A to Z, clicks it again to reverse the order, and
+ * then clicks Class to sort the cards by class.
+ */
 export const RosterSortScene = defineScene(5.6, ({ t, id }) => {
   const clicks = [1.0, 2.4, 3.8];
   const states = [
@@ -673,8 +679,9 @@ const typedAt = (t: number, from: number, to: number) => {
 };
 
 /**
- * Typing filters the cards. A misspelled "Rossa" still finds Rosa at low
- * accuracy, and finds nothing at exact accuracy.
+ * Shows a roster name generator where typing the misspelled "Rossa" at low
+ * search accuracy still finds Rosa, but the same search at exact accuracy finds
+ * nothing.
  */
 export const RosterSearchScene = defineScene(7.0, ({ t, id }) => {
   const second = t >= 3.4;
@@ -748,9 +755,9 @@ export const RosterSearchScene = defineScene(7.0, ({ t, id }) => {
 const LIMIT_CARDS = ['Kwame', 'Lin', 'Rosa', 'Sam', 'Ana'];
 
 /**
- * The limits on a roster stage: under the minimum, the notice by Next; at
- * the maximum the cards stop dragging, the success notice appears and Next
- * glows.
+ * Shows a roster name generator where trying to move on before adding the
+ * minimum number of alters brings up a notice, and adding the maximum brings up
+ * a notice telling the participant to continue.
  */
 export const RosterLimitsScene = defineScene(6.4, ({ t, id }) => {
   const slot = (i: number) => gridSlot(i, GRID_TOP, cardHeight(0));
@@ -965,8 +972,9 @@ function Table({
 }
 
 /**
- * A roster row becomes a node that carries the row's columns as attributes,
- * and the node becomes a row of the exported data with the same columns.
+ * Shows how a roster name generator's data is exported: a row of the roster
+ * file becomes a node that carries the row's columns as attributes, and that
+ * node becomes a row of the exported data with the same columns.
  */
 export const RosterDataScene = defineScene(
   5.0,

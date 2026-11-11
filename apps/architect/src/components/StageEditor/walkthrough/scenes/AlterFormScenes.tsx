@@ -145,10 +145,9 @@ function Answers({
 }
 
 /**
- * A per alter form: the same form for each alter in turn. The participant
- * answers it and presses Next; the answers sink away, the alter shrinks out
- * where it is, the next alter drops in beside the card, and its empty
- * answers rise into place.
+ * Shows a per alter form where the participant types a nickname and chooses an
+ * answer for the alter Sam, then presses Next, and the form clears as the next
+ * alter, Ana, takes Sam's place beside the form.
  */
 export const AlterFormIntroScene = defineScene(5.4, ({ t }) => {
   const typed = TEXT.typed.slice(

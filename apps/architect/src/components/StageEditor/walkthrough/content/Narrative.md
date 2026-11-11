@@ -47,7 +47,7 @@
 
 <!-- scene: narrative-intro -->
 
-The Narrative shows the participant's network back to them, for discussion. It replays an arrangement they made earlier, and the interviewer or participant switches between **presets**, each a different view of the same network: which edges are drawn, which nodes are grouped, and which are highlighted. It does not create nodes or collect data.
+The Narrative shows the participant's network back to them, for discussion. It replays an arrangement they made earlier. The interviewer or participant switches between **presets**. Each preset is a different view of the same network. A preset sets which edges are drawn, which nodes are grouped, and which nodes are highlighted. The Narrative does not create nodes or collect data.
 
 Its companion, the [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram), is where participants lay out the network this stage shows.
 
@@ -57,7 +57,7 @@ Read the full [Narrative documentation](https://documentation.networkcanvas.com/
 
 <!-- scene: narrative-data -->
 
-None. Nothing done on this stage is written back to the participant's network: switching presets, moving nodes and drawing on the canvas all leave your exported data exactly as it was.
+This stage collects no data. Nothing done on this stage is saved to the participant's network. Switching presets, moving nodes and drawing on the canvas all leave your exported data exactly as it was.
 
 > Avoid: Relying on the Narrative to collect data. If you need to record an attribute or an edge a participant identifies while talking, gather it on a data-collecting stage such as the [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram) or a name interpreter.
 
@@ -65,15 +65,15 @@ None. Nothing done on this stage is written back to the participant's network: s
 
 Use this stage to talk through the network with the participant after they have built it, for example to ask about the groups in it or about who provides support.
 
-Because it collects nothing, plan separately for how you will capture the discussion it prompts, for example with screen and audio recording.
+This stage collects no data, so plan separately how you will capture the discussion, for example with screen and audio recording.
 
 ## Choose what this stage shows
 
 <!-- section: Node setup -->
 
-Pick the **node type** shown on this canvas, for example _Person_. Nodes of that type appear only once they have a position in the layout attribute of the preset on screen.
+Choose the **node type** this stage shows on the canvas, such as _Person_. Each preset has its own layout attribute. A node of that type appears only once it has a position saved in the layout attribute of the preset on screen.
 
-Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
+Changing the node type later clears this stage's other settings, except its name and interviewer notes, because they depend on the node type. Architect asks you to confirm first.
 
 <!-- include: node-type -->
 
@@ -85,7 +85,7 @@ Changing the node type later removes the rest of this stage's settings, apart fr
 
 <!-- section: Visualization presets -->
 
-A preset is one view of the network. The participant sees the first preset when the stage opens, and steps through the others in order with the arrows in the preset switcher at the bottom right of the screen. Every stage needs at least one preset. You can add presets once a node type is chosen.
+A preset is one view of the network. The participant sees the first preset when the stage opens. They step through the other presets in order with the arrows in the preset switcher at the bottom right of the screen. Every Narrative stage needs at least one preset. You can add presets once you have chosen a node type.
 
 > Do: Give each preset a single focus that maps to one question, and label it accordingly, for example a _Support_ preset that highlights who provides support, or a _Groups_ preset that shows how the network divides into communities.
 
@@ -104,7 +104,7 @@ The **Preset label** names this view in the preset switcher. The participant see
 <!-- field: layoutVariable -->
 <!-- scene: narrative-layout -->
 
-The **Layout attribute** decides where each node is drawn. Only nodes with a value for it appear, so a layout attribute nobody has filled in shows an empty canvas.
+The **Layout attribute** decides where each node is drawn. Only nodes with a value for this attribute appear. If no node has a value for the layout attribute, the canvas is empty.
 
 > Do: Reuse the layout attribute your participants filled in on an earlier [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram). This replays their own arrangement of the network rather than starting from an empty canvas.
 
@@ -114,14 +114,14 @@ The **Layout attribute** decides where each node is drawn. Only nodes with a val
 <!-- field: groupVariable -->
 <!-- scene: narrative-groups -->
 
-Pick a **Grouping attribute** to draw a shaded outline around the nodes that share each of its values, one color per value. A node with more than one value sits in overlapping outlines. Only categorical attributes can be picked, and none can be created here, so define the attribute before you build the preset.
+Pick a **Grouping attribute** to draw a shaded outline around the nodes that share a value of that attribute. Each value has its own color. A node with more than one value sits inside overlapping outlines. Only categorical attributes can be picked. You cannot create a new attribute here, so define the attribute before you build the preset.
 
 ## Choose which edges are shown
 
 <!-- dialog: create preset | edit preset -->
 <!-- field: edges.display -->
 
-Tick the **Edge types** this preset draws; with none ticked, it draws no edges. Each ticked type asks for a label, which the participant reads in the preset switcher's list of what this preset shows. It starts as the edge type's name.
+Tick the **Edge types** this preset draws. If no edge type is ticked, the preset draws no edges. Each ticked edge type needs a label. The participant reads the label in the preset switcher's list of what this preset shows. The label starts as the edge type's name.
 
 ## Choose what can be highlighted
 
@@ -129,13 +129,13 @@ Tick the **Edge types** this preset draws; with none ticked, it draws no edges. 
 <!-- field: highlight -->
 <!-- scene: narrative-highlight -->
 
-Tick the **Highlight attributes** this preset can highlight: true or false attributes, such as one set by tapping nodes on a sociogram. Nodes whose value is true get a highlight ring. Each ticked attribute needs a label, which the participant reads in the preset switcher, where they choose one attribute to highlight at a time.
+Tick the **Highlight attributes** this preset offers. These are true or false attributes, such as one set by tapping nodes on a sociogram. Nodes whose value is true get a highlight ring. Each ticked attribute needs a label. The participant reads the label in the preset switcher, where they choose one attribute to highlight at a time.
 
 ## Choose the background
 
 <!-- section: Background -->
 
-The background sits behind the whole stage. **Concentric Circles** draws rings, and you choose how many; **Skew circle sizes** makes the inner rings larger. **Image** uses a picture of your own.
+The background sits behind the whole stage. **Concentric Circles** draws rings, and you choose how many. **Skew circle sizes** makes the inner rings larger. **Image** uses a picture of your own.
 
 Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/en/design-protocols/responsive-svg-backgrounds).
 
@@ -152,28 +152,28 @@ Read more about [resources](https://documentation.networkcanvas.com/en/design-pr
 <!-- section: Narrative behaviors -->
 <!-- field: behaviours.automaticLayout -->
 
-With **Automatic layout** on, the nodes settle by simulating attraction and repulsion, starting from their saved positions and pulling grouped nodes together. A pause button in the toolbar at the bottom left stops and restarts it. With it off, nodes stay exactly where the layout attribute puts them. New Narrative stages start with **Automatic layout** and **Allow repositioning** switched on.
+With **Automatic layout** on, Network Canvas moves the nodes by simulating attraction and repulsion. The simulation starts from the nodes' saved positions and pulls grouped nodes together. A pause button in the toolbar at the bottom left stops and restarts the simulation. With **Automatic layout** off, nodes stay exactly where the layout attribute puts them. New Narrative stages start with **Automatic layout** and **Allow repositioning** switched on.
 
-## Let the canvas be drawn on
+## Allow drawing on the canvas
 
 <!-- section: Narrative behaviors -->
 <!-- field: behaviours.freeDraw -->
 <!-- scene: narrative-draw -->
 
-With **Free-draw** on, the pencil in the toolbar at the bottom left lets the interviewer or participant draw on the canvas. Each line fades away after it is drawn, unless the snowflake button freezes it; the reset button clears them all. Drawings are a live aid to discussion and are never saved.
+With **Free-draw** on, the interviewer or participant can draw on the canvas with the pencil in the toolbar at the bottom left. Each line fades away after it is drawn, unless the snowflake button is on. The reset button clears every line. Drawings are a live aid to discussion and are never saved.
 
-## Let nodes be moved
+## Allow moving nodes
 
 <!-- section: Narrative behaviors -->
 <!-- field: behaviours.allowRepositioning -->
 
-With **Allow repositioning** on, nodes can be dragged around the canvas while you talk. Their new places last only while the stage is on screen: the positions saved in the layout attribute never change.
+With **Allow repositioning** on, nodes can be dragged around the canvas while you talk. Moved nodes keep their new places only while the stage is on screen. The positions saved in the layout attribute never change.
 
 ## Customize built-in wording
 
 <!-- section: Customize built-in wording -->
 
-This section appears once a preset groups nodes, draws edges or highlights attributes, or free-draw is on. It holds the headings of the preset switcher's lists (**Attributes**, **Links** and **Groups**), and, while free-draw is on, the names of the drawing buttons.
+This section appears when any preset groups nodes, draws edges or highlights attributes, or when free-draw is on. It holds the headings of the preset switcher's lists: **Attributes**, **Links** and **Groups**. While free-draw is on, it also holds the names of the drawing buttons.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 

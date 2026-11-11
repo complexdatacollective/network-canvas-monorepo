@@ -47,7 +47,7 @@
 
 <!-- scene: name-generator-intro -->
 
-Name generators are one of the fundamental parts of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations, one of the two main things your network data describes. Each alter they add becomes a node, and later stages such as sociograms, bins and follow-up questions work with the alters named here.
+Name generators are one of the fundamental parts of a network interview. They let participants create **alters**: the members of their network, such as people, places or organizations. Every alter named here is saved as a node. Later stages can then ask about these alters, place them, or connect them.
 
 The form and quick-add name generators share the same parts: a **prompt** that explains the task, a **list** of the alters named so far, a **button** that adds one, and optionally one or two **side panels**.
 
@@ -57,7 +57,7 @@ Read the full [Name Generator using Forms documentation](https://documentation.n
 
 <!-- scene: name-generator-form -->
 
-In the Name Generator (using forms), the add button opens a **form** the participant fills in to create each node. The form can ask one or more questions, so this stage combines naming alters with collecting some basic information about each of them.
+In the Name Generator (using forms), the primary action button opens a **form** the participant fills in to create each node. This form can include one or more fields to capture specific attribute data on each node. This interface therefore combines the process of generating alters with the ability to do some basic attribute collection, or name interpreting, tasks.
 
 If you only need names, the [Name Generator (using quick add)](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-using-quick-add) is quicker for participants. If you already have a list of the alters they might name, use the [Name Generator for Roster Data](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/name-generator-roster).
 
@@ -65,23 +65,23 @@ If you only need names, the [Name Generator (using quick add)](https://documenta
 
 <!-- scene: name-generator-data -->
 
-Every alter named becomes one row in your exported data, and every question on the form becomes a column. Later stages add more columns to the same rows.
+This stage collects new alters and attributes about each one. Each alter named here is one row in your exported data, and each question on the form is one column.
 
 ## When to use it
 
 Use this stage when you want to collect a small amount of information about each alter at the moment they are named.
 
-> Do: Use it for a few attributes per alter. Asking them here can be more efficient than adding a [Per Alter Form](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form) stage, or other follow-up stages, later.
+> Do: Use this interface when you want to collect small amounts of attribute data at the same time as a node is elicited. This can be more efficient than adding additional [Per Alter Form](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form) Interfaces, or dedicated name interpreter Interfaces later.
 
-> Avoid: Long forms with many questions. They make naming each alter more work, which can discourage participants from naming more.
+> Avoid: Resist the urge to create long forms with many items. This may discourage participants from naming additional alters, as it will make the task of nominating an alter more burdensome.
 
-> Avoid: Attributes that are better judged against the other alters in the network. Perceptual scales, for example, may work better on an [Ordinal Bin](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ordinal-bin) stage.
+> Avoid: Avoid attributes that might be better considered relative to other nodes in the network. For example, perceptual scales may benefit from using the [Ordinal Bin](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/ordinal-bin) Interface.
 
 ## Choose what this stage creates
 
 <!-- section: Node setup -->
 
-Pick the **node type** the alters named here will be, for example _Person_. Every node added on this stage is created as that type, and the type decides which attributes the form can record.
+Choose what kind of node this stage creates, such as Person. Each alter named here becomes a node of that type, and the answers to the form are saved as that type's attributes.
 
 If the type you need does not exist yet, create it here.
 
@@ -110,7 +110,7 @@ Read more about [forms](https://documentation.networkcanvas.com/en/design-protoc
 <!-- section: Prompt collection -->
 <!-- scene: name-generator-prompts -->
 
-A prompt is the question shown beside the list, such as _"Who have you discussed important matters with in the last six months?"_. Add more than one prompt to ask several questions on the same stage; the participant moves through them in order.
+The prompt is how you explain the task to the participant. It is the question shown at the top of the screen, such as "_Who have you discussed important matters with in the last six months?_" To ask several questions on one stage, add more prompts. They see one prompt at a time, in the order you set.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -127,11 +127,9 @@ Read more about [prompts](https://documentation.networkcanvas.com/en/design-prot
 <!-- section: Nomination limits -->
 <!-- scene: name-generator-limits -->
 
-Switch on this section to set a minimum, a maximum, or both. The limits count every alter named on the stage, across all of its prompts.
+Switch on this section to set a minimum or maximum number of alters that the participant can name. The limits count every alter named on the stage, across all of its prompts.
 
-At the maximum, the add button is switched off and the participant is told to move on. Under the minimum, they cannot leave the last prompt until they have named enough.
-
-When a stage has several prompts, the editor suggests saying in the prompts themselves how many alters you are asking for.
+If the participant names the maximum number of alters, the add button is switched off and the participant is prompted to continue to the next stage. If they haven't named the minimum number of alters, they can't move past the last prompt until they name more.
 
 ## Customize built-in wording
 

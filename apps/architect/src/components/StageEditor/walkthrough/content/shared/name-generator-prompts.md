@@ -8,9 +8,9 @@
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: text -->
 
-This is the question the participant reads while adding alters. Ask about one relationship at a time, and say what counts, for example a time period.
+This is the question the participant reads while adding alters. Ask about one relationship at a time. Say which alters count, for example by giving a time period such as _"in the last six months"_.
 
-## Record which prompt named them
+## Record which prompt each alter came from
 
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: additionalAttributes -->

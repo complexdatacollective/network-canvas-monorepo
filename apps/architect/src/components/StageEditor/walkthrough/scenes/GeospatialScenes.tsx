@@ -348,8 +348,9 @@ function OutsideOverlay({ k }: { k: number }) {
 }
 
 /**
- * One alter at a time: the participant selects an area, Next brings the next
- * alter, and the map starts again with nothing selected.
+ * Shows a geospatial stage where the participant selects an area for one alter
+ * and clicks Next, and the next alter appears with nothing selected until the
+ * participant selects its area.
  */
 export const GeospatialIntroScene = defineScene(6.4, ({ t }) => {
   const first = centerOf('1702');
@@ -396,8 +397,9 @@ export const GeospatialIntroScene = defineScene(6.4, ({ t }) => {
 const answeredAt = (k: number) => 0.6 + k * 1.2;
 
 /**
- * The value of each selected area's property fills the alter's row, and an
- * alter marked outside the areas gets the outside value.
+ * Shows how a geospatial stage's data is exported: the property value of each
+ * alter's selected area fills that alter's row, and an alter marked outside the
+ * selectable areas gets the value outside-selectable-areas.
  */
 export const GeospatialDataScene = defineScene(
   5.4,
@@ -460,8 +462,9 @@ export const GeospatialDataScene = defineScene(
 );
 
 /**
- * An area carries several properties; the map selection property is the one
- * whose value is saved on the alter.
+ * Shows a geospatial stage's map layer, where a selected area carries several
+ * properties, and the map selection property, TRACTID, is the one whose value
+ * is saved on the alter.
  */
 export const GeospatialPropertyScene = defineScene(
   5.0,
@@ -554,8 +557,9 @@ export const GeospatialPropertyScene = defineScene(
 );
 
 /**
- * Selecting the map outside every area, or the button in the panel, marks the
- * alter as outside; the cross takes it back.
+ * Shows a geospatial stage where the participant selects the map outside every
+ * area to mark the alter as outside, takes that back with the cross, and then
+ * marks the alter as outside with the button in the panel.
  */
 export const GeospatialOutsideScene = defineScene(6.0, ({ t }) => {
   const outsidePoint: Point = [STAGE.right - 150, STAGE.bottom - 50];

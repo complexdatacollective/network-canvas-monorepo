@@ -206,8 +206,9 @@ function PresetSwitcher({
 }
 
 /**
- * The narrative: the participant's own arrangement, seen through one preset
- * after another, each drawing a different part of the network.
+ * Shows a narrative where the participant steps through three presets with the
+ * next arrow, from one that draws edges, to one that groups nodes, to one that
+ * highlights two nodes.
  */
 export const NarrativeIntroScene = defineScene(6.2, ({ t }) => {
   const toGroups = smooth(segment(t, 2.0, 0.5));
@@ -244,7 +245,11 @@ export const NarrativeIntroScene = defineScene(6.2, ({ t }) => {
   };
 });
 
-/** Moving nodes and drawing change nothing in the exported data. */
+/**
+ * Shows how a narrative's data is exported: the participant drags a node and
+ * draws a line on the canvas, and the exported positions stay exactly as they
+ * were.
+ */
 export const NarrativeDataScene = defineScene(
   5.4,
   ({ t }) => {
@@ -377,8 +382,9 @@ export const NarrativeDataScene = defineScene(
 );
 
 /**
- * The layout attribute filled in on a sociogram replays here; a node with no
- * position in it is not shown.
+ * Shows a narrative where the alters placed on a sociogram reappear in the same
+ * positions from the layout attribute they share, and an alter left unplaced on
+ * the sociogram is not shown.
  */
 export const NarrativeLayoutScene = defineScene(5.4, ({ t }) => {
   const width = (CONTENT.right - CONTENT.x) / 2;
@@ -453,7 +459,11 @@ export const NarrativeLayoutScene = defineScene(5.4, ({ t }) => {
   };
 });
 
-/** A grouping attribute shades its members, one color per value. */
+/**
+ * Shows a narrative where a grouping attribute draws a shaded outline around
+ * the nodes with each value, one color per value, with one node inside both
+ * outlines.
+ */
 export const NarrativeGroupsScene = defineScene(4.6, ({ t }) => ({
   rail: { progress: 0.85 },
   body: (
@@ -487,8 +497,9 @@ export const NarrativeGroupsScene = defineScene(4.6, ({ t }) => ({
 }));
 
 /**
- * Several highlight attributes: the participant picks one at a time from
- * the switcher's list, and its nodes are ringed.
+ * Shows a narrative where the participant picks a different attribute from the
+ * preset switcher's list, and the highlight rings move from the nodes with the
+ * first attribute to the nodes with the second.
  */
 export const NarrativeHighlightScene = defineScene(5.0, ({ t }) => {
   const switched = smooth(segment(t, 2.6, 0.4));
@@ -583,8 +594,9 @@ const toolAt = (i: number): Point => [
 ];
 
 /**
- * Free-draw: a line drawn around a group fades away; frozen, the next one
- * stays until it is reset.
+ * Shows a narrative where the participant turns on the pencil and draws a line
+ * around a group that fades away, then turns on the snowflake and draws an
+ * arrow that stays until the reset button clears it.
  */
 export const NarrativeDrawScene = defineScene(6.4, ({ t }) => {
   const pencilOn = t >= 0.6;

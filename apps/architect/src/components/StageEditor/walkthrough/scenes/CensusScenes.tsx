@@ -193,7 +193,11 @@ function chosenOption(t: number, rated: readonly Rated[]) {
   return current.preset;
 }
 
-/** Pairs in turn: a point on the scale fills the edge, the decline does not. */
+/**
+ * Shows a tie-strength census where the participant chooses an option on the
+ * scale for the first pair and an edge fills in, chooses No tie for the next
+ * pair and no edge appears, and then a third pair arrives.
+ */
 export const TieStrengthIntroScene = defineScene(6.0, ({ t }) => {
   const rated: readonly Rated[] = [
     {
@@ -227,7 +231,11 @@ export const TieStrengthIntroScene = defineScene(6.0, ({ t }) => {
   };
 });
 
-/** The attribute's values become the options, in order, the decline last. */
+/**
+ * Shows a tie-strength census where the attribute's values appear one by one as
+ * options in order, followed by the decline option, and the participant then
+ * chooses an option to create the edge.
+ */
 export const TieStrengthScaleScene = defineScene(5.0, ({ t }) => {
   const reveal = (i: number) => backOut(segment(t, 0.5 + i * 0.45, 0.4));
   const pair: DyadPair = {
@@ -272,7 +280,10 @@ export const TieStrengthScaleScene = defineScene(5.0, ({ t }) => {
   };
 });
 
-/** A pair already rated arrives with its point chosen; the decline removes it. */
+/**
+ * Shows a tie-strength census where a pair that is already rated appears with
+ * its option chosen, and choosing the decline option removes the edge.
+ */
 export const TieStrengthDeclineScene = defineScene(4.6, ({ t }) => {
   const rated: readonly Rated[] = [
     {
@@ -309,7 +320,11 @@ export const TieStrengthDeclineScene = defineScene(4.6, ({ t }) => {
   };
 });
 
-/** Each rated pair becomes a row with the value chosen; the decline adds none. */
+/**
+ * Shows how a tie-strength census's data is exported: each pair given an option
+ * on the scale becomes one row of the edge list, with the chosen value in its
+ * own column, and the pair given No tie adds no row.
+ */
 export const TieStrengthDataScene = defineScene(
   4.8,
   ({ t }) => {
@@ -439,9 +454,9 @@ function TargetPanel() {
 }
 
 /**
- * One focal node above the others: the participant taps each one the
- * question applies to, then Next brings the next focal node, without the
- * one just considered.
+ * Shows a one to many dyad census where the participant taps the alters the
+ * question applies to and presses Next, and the next focal node appears with a
+ * shorter list that leaves out the previous focal node.
  */
 export const OneToManyIntroScene = defineScene(6.4, ({ t }) => {
   const turn = smooth(segment(t, 3.6, 0.6));
@@ -493,7 +508,11 @@ export const OneToManyIntroScene = defineScene(6.4, ({ t }) => {
   };
 });
 
-/** Each alter tapped becomes a row of the edge list, from the focal node. */
+/**
+ * Shows how a one to many dyad census's data is exported: each alter tapped is
+ * joined to the focal node by an edge, and each edge becomes one row of the
+ * edge list.
+ */
 export const OneToManyDataScene = defineScene(
   4.6,
   ({ t }) => {
@@ -552,8 +571,10 @@ export const OneToManyDataScene = defineScene(
 );
 
 /**
- * The two removal behaviors side by side: removed, each turn's list is
- * shorter; kept, every alter is listed on every turn.
+ * Shows the two removal behaviors of a one to many dyad census side by side
+ * over three turns: with Remove them from the list, each turn's list is
+ * shorter, and with Keep them in the list, every other alter is listed on every
+ * turn.
  */
 export const OneToManyRemoveScene = defineScene(
   6.0,

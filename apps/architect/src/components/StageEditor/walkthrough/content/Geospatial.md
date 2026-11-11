@@ -47,7 +47,7 @@
 
 <!-- scene: geospatial-intro -->
 
-The Geospatial stage is a name interpreter: it collects information about alters already named, rather than creating new ones. It shows a map with outlined areas, such as neighborhoods or census tracts, and a panel naming one alter at a time. The participant selects the area that answers the prompt for that alter, then moves on to the next alter with Next.
+The Geospatial stage is a name interpreter. It collects information about alters already named, and doesn't create new ones. It shows a map with outlined areas, such as neighborhoods or census tracts, and a panel naming one alter at a time. The participant selects the area that answers the prompt for that alter, then clicks Next to move on to the next alter.
 
 The map is drawn by Mapbox, a map service, so the stage needs an internet connection during the interview.
 
@@ -57,7 +57,7 @@ Read the full [Geospatial documentation](https://documentation.networkcanvas.com
 
 <!-- scene: geospatial-data -->
 
-Each prompt records one location attribute. Selecting an area saves the value of one of that area's properties, such as its census tract ID, so each prompt fills one column of your exported data, with a value for every alter placed. An alter marked as outside the selectable areas gets the value `outside-selectable-areas`.
+This stage collects a location for each alter. Each prompt records one location attribute. When the participant selects an area, the stage saves the value of one of that area's properties, such as its census tract ID. Each prompt fills one column of your exported data, with a value for every alter the participant placed. An alter marked as outside the selectable areas gets the value `outside-selectable-areas`.
 
 > Do: Optionally merge all GeoJSON properties with your alter data during data cleaning and analysis. For example, you can match the `zipcode` to other attributes like `population` contained in the GeoJSON file.
 
@@ -67,13 +67,13 @@ Use this stage to record where alters are, such as the area each one lives or wo
 
 > Avoid: Using this stage if your study needs to run fully offline. Because it loads maps from Mapbox, it requires an internet connection during the interview.
 
-## Choose what this stage shows
+## Choose the node type
 
 <!-- section: Node setup -->
 
-Pick the **node type** this stage asks about, for example _Person_. Every node of that type already in the participant's network is asked about in turn, on every prompt.
+Choose the **node type** this stage asks about, for example _Person_. Every node of that type already in the participant's network is asked about in turn, on every prompt.
 
-Changing the node type later removes the rest of this stage's settings, map settings included, apart from its name, interviewer notes and built-in wording, since they all describe the type chosen now. Architect asks before it does.
+Changing the node type later clears this stage's other settings, except its name, interviewer notes and built-in wording, because they depend on the node type. The map settings are cleared too. Architect asks you to confirm first.
 
 > Do: Consider using a **Stage filter** to narrow down nodes to only those that fall within the selectable map areas. An earlier stage, such as a [Categorical Bin](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/categorical-bin) or [Per Alter Form](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/per-alter-form), can capture the attribute to filter on, so participants are only asked about relevant nodes.
 
@@ -98,9 +98,9 @@ Read how to [get a Mapbox key](https://documentation.networkcanvas.com/en/design
 
 <!-- dialog: choose an api key -->
 
-Add a key by giving it a name and pasting the key itself, or choose one already stored in this protocol. The key is saved inside your protocol as plain text, so anyone you give the protocol file to can read it.
+Add a key by giving it a name and pasting the key itself, or choose a key already stored in this protocol. The key is saved inside your protocol as plain text, so anyone you give the protocol file to can read it.
 
-A protocol started from a template that has a map uses Network Canvas's shared testing key, which is rate-limited and for evaluation only. The protocol's timeline warns you while it is in use; replace it with your own before you collect data.
+A protocol started from a template that has a map uses Network Canvas's shared testing key. This key is rate-limited and is for evaluation only. The protocol's timeline shows a warning while the testing key is in use. Replace it with your own key before you collect data.
 
 ## Choose the selectable areas
 
@@ -115,7 +115,7 @@ The **Layer data source** is a [GeoJSON](https://geojson.org/) file that outline
 
 <!-- dialog: choose a map layer -->
 
-Import a `.geojson` file from your computer, or choose one already stored in this protocol. The file travels inside the protocol, so every participant sees the same areas.
+Import a `.geojson` file from your computer, or choose one already stored in this protocol. The file is stored inside the protocol, so every participant sees the same areas.
 
 Read more about [resources](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/resources).
 
@@ -125,7 +125,7 @@ Read more about [resources](https://documentation.networkcanvas.com/en/design-pr
 <!-- field: mapOptions.targetFeatureProperty -->
 <!-- scene: geospatial-property -->
 
-The **Map selection property** is the property whose value is saved when the participant selects an area. The properties offered are the ones in the chosen layer, so choose the layer first. If you change the layer later, Architect won't save the stage until the property is one the new layer has.
+The **Map selection property** is the property whose value is saved when the participant selects an area. The properties offered are the ones in the chosen layer, so choose the layer first. If you change the layer later, Architect won't save the stage until you choose a property that the new layer has.
 
 > Do: Choose a unique property, such as `zipcode` or `census_tract`, so each area is clearly distinguishable.
 
@@ -133,7 +133,7 @@ The **Map selection property** is the property whose value is saved when the par
 
 <!-- section: Prompt collection -->
 
-Each prompt asks one question about where the alters are, and records the answer in its own location attribute. The participant places every alter for the first prompt, then every alter again for the next.
+Each prompt asks one question about where the alters are, and records the answer in its own location attribute. The participant answers the first prompt for every alter, then the next prompt for every alter.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -142,16 +142,16 @@ Read more about [prompts](https://documentation.networkcanvas.com/en/design-prot
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: text -->
 
-This is the question shown in the panel at the top right of the map, above the alter it asks about, such as _"Which area does this person live in?"_. To name the alter in the question, insert **Node label** with the syringe button in the toolbar.
+This is the question shown in the panel at the top right of the map, above the alter it asks about, such as _"Which area does this person live in?"_. To name the alter in the question, use the syringe button in the toolbar to insert **Node label**.
 
 ## Choose where the answer is saved
 
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: variable -->
 
-Under **Location response**, pick the **Location attribute** this prompt records. Only location attributes can hold a selected area.
+Under **Location response**, choose the **Location attribute** this prompt records. Only location attributes can hold a selected area.
 
-Each prompt needs an attribute of its own: two prompts on one stage can't share one, because the later answer would replace the earlier one. An attribute a form collects elsewhere in the protocol isn't offered either.
+Each prompt needs its own attribute. Two prompts on one stage can't share an attribute, because the later answer would replace the earlier one. Architect also doesn't offer an attribute that a form collects elsewhere in the protocol.
 
 <!-- include: attribute-search -->
 
@@ -160,7 +160,7 @@ Each prompt needs an attribute of its own: two prompts on one stage can't share 
 <!-- section: Map appearance -->
 <!-- field: mapOptions.style -->
 
-The **Mapbox style** is the map drawn beneath the selectable areas, such as streets, outdoors, satellite imagery, or a light or dark map. Pick one whose place names your participants can read against the outline color.
+The **Mapbox style** is the map drawn beneath the selectable areas, such as streets, outdoors, satellite imagery, or a light or dark map. Pick a style where participants can read the place names next to your outline color.
 
 ## Choose the outline color
 
@@ -188,7 +188,7 @@ This color outlines every selectable area, and fills the area the participant ha
 <!-- section: Map starting position -->
 <!-- field: mapOptions.center -->
 
-Type the longitude and latitude the map is centered on, and its **Starting zoom**, or click **Set the starting view on a map** to find the view by moving a map. The recenter button on the participant's map returns to this view.
+Type the longitude and latitude the map is centered on, and its **Starting zoom**. Or click **Set the starting view on a map** to find the view by moving a map. The recenter button on the participant's map returns to this view.
 
 > Do: Make sure the selectable areas from your GeoJSON file are visible within the initial map view.
 
@@ -203,9 +203,9 @@ Pan and zoom the map to the view participants should see when the map first open
 <!-- section: Customize built-in wording -->
 <!-- scene: geospatial-outside -->
 
-This section holds the words Network Canvas supplies for the map, which you can change and translate. **Outside selectable areas** labels the button in the prompt panel that marks a place outside the areas the map allows; selecting the map outside any area does the same.
+This section holds the words Network Canvas supplies for the map, which you can change and translate. **Outside selectable areas** labels the button in the prompt panel that marks the alter as outside the areas the map allows. Selecting the map outside every area also marks the alter as outside.
 
-Under **Shared by every stage of this kind** are the messages shown when the map can't be used as usual: while the device is offline, when the map can't be drawn, and when a search fails. A change to them applies to every Geospatial stage.
+Under **Shared by every stage of this kind** are the messages shown when the map can't be used as usual: while the device is offline, when the map can't be drawn, and when a search fails. A change to these messages applies to every Geospatial stage.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 

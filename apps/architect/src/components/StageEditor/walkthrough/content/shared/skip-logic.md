@@ -8,6 +8,6 @@
 <!-- section: Skip logic -->
 <!-- scene: skip-logic -->
 
-Skip logic shows or skips this whole stage based on rules, for example only showing it to participants who said earlier that they have a partner. When the stage is skipped, choose where the interview carries on.
+Skip logic shows or skips this whole stage based on rules. For example, you can show the stage only to participants who said earlier that they have a partner. You also choose where the interview goes when the stage is skipped.
 
 Read more about [skip logic](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/skip-logic).

@@ -11,9 +11,9 @@
 
 <!-- scene: network-composer-intro -->
 
-The Network Composer builds a whole network on one canvas. Instead of moving through separate stages to name alters, ask about them and draw the edges between them, the Network Composer brings these together in a single canvas, so you can create alters, record their attributes, draw relationships of several types, and reposition everything as the picture develops.
+The Network Composer builds a whole network on one canvas. Instead of moving through separate stages to name alters, ask about them and draw the edges between them, you do all of it in one place. You can create alters, record their attributes, draw relationships of several types, and reposition everything as the picture develops.
 
-It is a dense, fast tool, designed to be driven by a researcher or interviewer, either alongside a participant or alone, to sketch, pilot or model a network.
+The Network Composer is dense and fast to use. It is meant for a researcher or interviewer to use, with or without a participant, to sketch, pilot or model a network.
 
 Read the full [Network Composer documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/network-composer).
 
@@ -21,10 +21,10 @@ Read the full [Network Composer documentation](https://documentation.networkcanv
 
 <!-- scene: network-composer-data -->
 
-Everything made on this stage is saved to the participant's network:
+This stage collects alters, the edges between them, and attributes about both. Everything made on this stage is saved to the participant's network:
 
-- **Nodes** of the stage's node type, each with the name typed to add it, its position on the canvas, the groups it belongs to, and the answers to its attribute form.
-- **Edges** of each type you allow, with the answers to that type's attribute form. Every edge becomes one row in the edge list.
+- **Nodes** of the stage's node type. Each node has the name typed when it was added, its position on the canvas, the groups it belongs to, and the answers to its attribute form.
+- **Edges** of each type you allow. Each edge has the answers to its type's attribute form. In your exported data, each edge is one row in the edge list.
 
 ## When to use it
 
@@ -38,39 +38,39 @@ Use this stage when you want to build and edit a whole network from a single scr
 
 <!-- scene: network-composer-tools -->
 
-A palette of tools floats down the left of the canvas. A tool stays active until another is picked.
+A palette of tools runs down the left of the canvas. A tool stays active until the interviewer picks another one.
 
-**Select and move**, **Add node**, **Automatic layout**, **Undo** and **Redo** are always on the palette. **Draw edge** and **Groups** only appear once you set them up later in this editor. The numbers match the palette above:
+**Draw edge** and **Groups** appear only after you set them up later in this editor. The other tools are always there. The numbers match the illustration:
 
-1. **Select and move**: drag an alter to move it; its new place is saved to the layout attribute. Tap an alter or an edge to select it and open its attribute form in a panel on the right. Tap an empty part of the canvas to clear the selection.
-2. **Add node**: opens the name field beside the palette. Type a name and press Enter to add an alter. Once added, it is placed on the next free spot of a grid (or arranged by the automatic layout, when that is on). The box stays open, so several can be added in a row.
-3. **Draw edge**, once you add an edge type: opens a menu of this stage's edge types. Pick one, and the button takes on that type's color while it is in use. Then tap one alter and then another to connect them. Tapping the same pair again removes the edge.
-4. **Groups**, once you choose a grouping attribute: shades the alters that share a value of a single categorical variable, chosen in Architect, as colored convex hulls behind them, making clusters such as "household" or "friendship group" easy to see. The hulls are always visible once the variable is configured, and the automatic layout gently pulls members of the same group together. The tool lists the groups alongside their colors. Pick one, and the button takes on that color while it is in use. Then tap alters to add them to the group, and tap one again to take it out.
-5. **Automatic layout**: switches the force-directed arrangement on and off. While it is on, alters spread out and members of the same group are pulled together. Switched off, they stay where they are.
-6. **Undo**: reverses the last change: adding or removing alters and edges, editing attributes, group membership and moving alters. It also works with the usual keyboard shortcut.
-7. **Redo**: replays what was undone, also with the usual keyboard shortcut.
+1. **Select and move**: drag an alter to move it. Tap an alter or an edge to open its form in a panel on the right. Tap an empty part of the canvas to clear the selection.
+2. **Add node**: opens the name box. Type a name and press Enter to add an alter.
+3. **Draw edge**: pick an edge type, then tap two alters to connect them.
+4. **Groups**: pick a group, then tap an alter to add it to the group or take it out.
+5. **Automatic layout**: switches the automatic layout on or off.
+6. **Undo**: reverses the last change, such as adding an edge, changing a group or moving an alter. The usual keyboard shortcut also works.
+7. **Redo**: replays what was undone. The usual keyboard shortcut also works.
 
 ## Choose what this stage builds
 
 <!-- section: Node setup -->
 
-Pick the **node type** this canvas creates, for example _Person_. Every node of that type already in the participant's network, such as alters named on an earlier stage, appears on the canvas too, ready to be moved, connected and grouped.
+Choose what kind of node this canvas creates, such as _Person_. Every node of that type already in the participant's network, such as alters named on an earlier stage, also appears on the canvas. The interviewer can move, connect and group those nodes too.
 
-Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
+Changing the node type later clears this stage's other settings, except its name and interviewer notes, because they depend on the node type. Architect asks you to confirm first.
 
 <!-- include: node-type -->
 
-## Choose what the name box fills in
+## Choose where typed names are saved
 
 <!-- section: Node configuration -->
 <!-- field: quickAdd -->
 <!-- scene: network-composer-add -->
 
-The **Add node** tool opens a box beside the palette. Typing a name and pressing Enter adds a node with that name saved in the **quick add attribute**, usually a name or label. The box stays open, so several alters can be added in a row.
+The **Add node** tool opens the name box beside the palette. When the interviewer types a name and presses Enter, a node is added with that name saved in the **quick add attribute**. The quick add attribute is usually a name or label. The name box stays open, so the interviewer can add several alters in a row.
 
-With automatic layout off, each new node lands on the next free spot of a grid from the top left. With it on, the layout places it.
+With automatic layout off, each new node is placed on the next free spot of a grid, starting from the top left. With automatic layout on, the layout positions the new node.
 
-Pick a text attribute, or type a new name in the picker to create one; no window opens. A new attribute made here starts out required, so a node cannot be added with an empty name.
+Pick a text attribute, or type a new name in the picker to create one. No window opens for a new attribute. A new attribute made here starts out required, so a node cannot be added with an empty name.
 
 ## Choose where positions are saved
 
@@ -78,7 +78,7 @@ Pick a text attribute, or type a new name in the picker to create one; no window
 <!-- field: layoutVariable -->
 <!-- scene: network-composer-positions -->
 
-The **layout attribute** stores where each node sits on the canvas, as a pair of coordinates from 0 to 1. It updates every time a node is moved. Reusing the same layout attribute on a later [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram) or [Narrative](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/narrative) carries the arrangement over.
+The **layout attribute** stores where each node sits on the canvas, as a pair of coordinates from 0 to 1. It updates every time a node is moved. Reusing the same layout attribute on a later [Sociogram](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/sociogram) or [Narrative](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/narrative) stage carries the arrangement over.
 
 > Avoid: Treating where alters sit as if it were measured data. On-screen position is soft and is interpreted differently by different people. If ring or zone membership matters to your analysis, capture it as an explicit attribute instead of inferring it from coordinates.
 
@@ -88,9 +88,9 @@ The **layout attribute** stores where each node sits on the canvas, as a pair of
 <!-- field: behaviours.automaticLayout -->
 <!-- scene: network-composer-auto-layout -->
 
-With automatic layout on, the nodes spread out by simulating attraction and repulsion, and members of the same group are pulled together. With it off, nodes stay exactly where they are put.
+With automatic layout on, the nodes spread out by simulating attraction and repulsion, and members of the same group are pulled together. With automatic layout off, nodes stay exactly where the interviewer puts them.
 
-Unlike the Sociogram, this is not fixed at design time: the interviewer can switch it on or off at any point with the **Automatic layout** tool. **Start with automatic layout switched on** only chooses how the stage opens, and whichever way it is switched during the interview is remembered for the stage.
+Unlike on the Sociogram, automatic layout is not fixed when you design the stage. The interviewer can switch it on or off at any time with the **Automatic layout** tool. **Start with automatic layout switched on** only chooses how the stage opens. If the interviewer switches automatic layout on or off during the interview, the stage remembers that choice.
 
 ## Group alters
 
@@ -98,11 +98,11 @@ Unlike the Sociogram, this is not fixed at design time: the interviewer can swit
 <!-- field: convexHullVariable -->
 <!-- scene: network-composer-groups -->
 
-Pick a **categorical attribute** to group by, such as _household_ or _friendship group_. Each of its options becomes a group, drawn as a shaded outline behind its members, one color per group.
+Pick a **categorical attribute** to group by, such as _household_ or _friendship group_. Each of its options becomes a group. Each group is drawn as a shaded outline behind its members, in its own color. Once the attribute is set, the shaded outlines are always shown.
 
-With the **Groups** tool, the interviewer picks a group and taps alters to add or remove them. An alter can belong to more than one group. In your data, the attribute becomes one true or false column for each group.
+The **Groups** tool lists the groups with their colors. The interviewer picks a group and taps alters to add them to the group or take them out. While a group is in use, the Groups button takes on that group's color. An alter can belong to more than one group. In your data, the attribute becomes one true or false column for each group.
 
-Grouping is optional. Without a grouping attribute the Groups tool is not shown.
+Grouping is optional. Without a grouping attribute, the Groups tool is not shown.
 
 ## Group several alters at once
 
@@ -110,13 +110,13 @@ Grouping is optional. Without a grouping attribute the Groups tool is not shown.
 <!-- field: convexHullVariable -->
 <!-- scene: network-composer-lasso -->
 
-Once the stage has a grouping attribute, the select tool can also draw a freehand lasso around several alters, or the interviewer can shift-click them. A row of group buttons then rises from the bottom of the canvas: one tap adds the whole selection to a group. The same selection can be deleted together.
+Once the stage has a grouping attribute, the interviewer can also select several alters at once with the select tool. They can draw a freehand lasso around the alters, or shift-click each one. A row of group buttons then rises from the bottom of the canvas. One tap on a group button adds the whole selection to that group. The interviewer can also delete the whole selection at once.
 
 ## Name the groups
 
 <!-- dialog: create a new grouping attribute -->
 
-Give the attribute a name, then use **Create new option** under **Choice values** to add one option for each group. Each option's label is what the interviewer sees in the Groups tool and on the group buttons; its value is what is saved in your data.
+Give the attribute a name, then use **Create new option** under **Choice values** to add one option for each group. Each option's label is what the interviewer sees in the Groups tool and on the group buttons. Its value is what is saved in your data.
 
 Read more about [variables and attributes](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/variables).
 
@@ -126,26 +126,26 @@ Read more about [variables and attributes](https://documentation.networkcanvas.c
 <!-- field: nodeForm.fields -->
 <!-- scene: network-composer-inspector -->
 
-Switch on **Editable attributes** to give nodes a form. Selecting a node opens a panel from the right edge of the screen, titled with its name, holding these fields and a button to delete the node. Answers are saved as they are given, and can be undone like any other change.
+Switch on **Editable attributes** to give nodes a form. When the interviewer selects a node, a panel opens from the right edge of the screen. The panel is titled with the node's name, and it holds these fields and a button to delete the node. Answers are saved as they are given, and can be undone like any other change.
 
-Drag the fields to set their order. Without any fields, the panel says there are no attributes to edit.
+Drag the fields to set their order. If there are no fields, the panel says there are no attributes to edit.
 
 ## Choose what this field records
 
 <!-- dialog: form field -->
 <!-- field: variable -->
 
-Each field saves its answer to an **attribute**. Use **Select attribute** to find one, or type a new name there to create it. Only attributes a form can collect are listed: positions and map locations are set by moving things, not by answering. An attribute can appear only once on a form.
+Each field saves its answer to an **attribute**. Use **Select attribute** to find one, or type a new name there to create it. Only attributes a form can collect are listed. Position and map location attributes are not listed, because they are set by moving things on screen, not by answering a question. An attribute can appear only once on a form.
 
-## Choose how they answer
+## Choose the input control
 
 <!-- dialog: form field -->
 <!-- field: component -->
 <!-- scene: form-field-input-controls -->
 
-The **input control** decides what the interviewer uses to answer: a text box, a set of options, a toggle, a slider and so on.
+The **input control** decides what the interviewer uses to answer, such as a text box, a set of options, a toggle or a slider.
 
-Unlike other forms, the control is chosen here, on the stage, rather than on the attribute, so the same attribute can be collected with a different control on another stage. For a new attribute, the control you pick also decides what kind of answer it holds.
+Unlike other forms, the input control is chosen here, on the stage, rather than on the attribute. This means the same attribute can be collected with a different input control on another stage. For a new attribute, the input control you pick also decides what kind of answer the attribute holds.
 
 Read more about [input controls](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/input-controls).
 
@@ -154,14 +154,14 @@ Read more about [input controls](https://documentation.networkcanvas.com/en/desi
 <!-- dialog: form field -->
 <!-- field: parameters -->
 
-Once an input control is chosen, some take settings, such as the two ends of a scale or the window a date must fall in. They start as the attribute's own; change any of them and this field keeps its own set, leaving the attribute and other stages as they were.
+Some input controls have settings, such as the two ends of a scale or the window a date must fall in. These settings start with the attribute's own values. If you change any of them, the change applies only to this field. The attribute and other stages stay as they were.
 
 ## Write the question
 
 <!-- dialog: form field -->
 <!-- field: label -->
 
-Every field needs a **question**. It starts as the attribute's name, so change it to the words that should be read, such as _"How close are you?"_. The question can be translated.
+Every field needs a **question**. The question starts as the attribute's name, so change it to the words you want shown, such as _"How close are you?"_. The question can be translated.
 
 ## Add help text
 
@@ -176,7 +176,7 @@ Every field needs a **question**. It starts as the attribute's name, so change i
 <!-- field: showValidationHints -->
 <!-- scene: form-field-validation -->
 
-The validation rules come from the attribute, such as being required or a minimum length. Switch on **Show validation hints** to say what a valid answer looks like before one is given.
+The validation rules come from the attribute, such as being required or having a minimum length. Switch on **Show validation hints** to show the interviewer what a valid answer looks like before they answer.
 
 Read more about [validation](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/field-validation).
 
@@ -184,16 +184,18 @@ Read more about [validation](https://documentation.networkcanvas.com/en/design-p
 
 <!-- dialog: form field -->
 
-The **Interactive preview**, the other half of this window, shows the field as it will be answered. Answer it there, and use **Check response** to test the validation rules.
+The **Interactive preview**, on the other half of this window, shows the field as it will appear in the interview. Answer the field there, and use **Check response** to test the validation rules.
 
 ## Choose the edges that can be drawn
 
 <!-- section: Edge configuration -->
 <!-- scene: network-composer-edges -->
 
-Add a **connection type** for each kind of relationship the interviewer can draw, such as _Friends_ or _Family_. The **Draw edge** tool opens a menu of these; after picking one, tapping one alter and then another connects them. Tapping the same pair again removes the edge, and tapping the first alter twice cancels a half-drawn one.
+Add a **connection type** for each kind of relationship the interviewer can draw, such as _Friends_ or _Family_. Each connection type uses one edge type from the codebook.
 
-Each type can be added once, and the Draw edge tool appears only once there is at least one.
+The **Draw edge** tool opens a menu of these connection types. After the interviewer picks one, the Draw edge button takes on that type's color, and tapping one alter and then another connects them. Tapping the same pair again removes the edge. Tapping the first alter twice cancels an edge that is only half drawn.
+
+Each edge type can be added only once. The Draw edge tool appears when the stage has at least one connection type.
 
 > Do: Prompt explicitly for alters who have no edges. A clustering, on-screen picture can shape what people report and tends to draw attention away from unconnected alters, so isolated members of the network are easily overlooked.
 
@@ -202,16 +204,16 @@ Each type can be added once, and the Draw edge tool appears only once there is a
 <!-- dialog: add a connection type | edit connection type -->
 <!-- field: subject -->
 
-Pick an **edge type** from the codebook, or create a new one. Its color is how the edges are drawn on the canvas.
+Pick an **edge type** from the codebook, or create a new one. Edges of this type are drawn on the canvas in the edge type's color.
 
-Changing the type of an existing connection type removes the fields of its attribute form, because they record attributes of the old edge type.
+If you change the edge type of an existing connection type, Architect removes the fields of its attribute form, because those fields record attributes of the old edge type.
 
-## Label it
+## Label the connection type
 
 <!-- dialog: add a connection type | edit connection type -->
 <!-- field: label -->
 
-The **label** is how this edge type is chosen in the Draw edge menu, and the title of its attribute form. Left empty, it is the edge type's name. It can be translated.
+The **label** is the name of this connection type in the Draw edge menu, and the title of its attribute form. If you leave the label empty, the edge type's name is used. The label can be translated.
 
 <!-- include: edge-type -->
 
@@ -220,15 +222,15 @@ The **label** is how this edge type is chosen in the Draw edge menu, and the tit
 <!-- section: Edge configuration -->
 <!-- scene: network-composer-edge-inspector -->
 
-Each connection type gets its own list of **editable attributes**, below the list of types. Selecting an edge on the canvas opens the same panel as for a node, titled with the type's label and holding its fields. Its fields are set up in the same window as a node's.
+Each connection type gets its own list of **editable attributes**, below the list of connection types. When the interviewer selects an edge on the canvas, the same panel opens as for a node. The panel is titled with the connection type's label and holds its fields. You set up these fields in the same window as node fields.
 
 ## Customize built-in wording
 
 <!-- section: Customize built-in wording -->
 
-This section holds the words Network Canvas supplies for the canvas, such as the name box placeholder, the tooltips of the add node, automatic layout and draw edge tools, and the heading of the groups list. Every Network Composer stage shows the same words, so a change here applies to every Network Composer stage in the protocol, and is saved as soon as you leave the field.
+This section holds the words Network Canvas supplies for the canvas. These include the name box placeholder, the tooltips of the add node, automatic layout and draw edge tools, and the heading of the groups list. Every Network Composer stage shows the same words, so a change here applies to all Network Composer stages in the protocol. A change is saved as soon as you leave the field.
 
-**Connection label** titles the panel of an edge whose type this stage does not draw, such as one drawn on an earlier stage.
+**Connection label** is the panel title for an edge whose type this stage does not draw, such as an edge drawn on an earlier stage.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
@@ -237,7 +239,7 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 <!-- section: Background -->
 <!-- scene: sociogram-background -->
 
-The background sits behind the whole canvas. **Concentric Circles** draws rings, and you choose how many; **Skew circle sizes** makes the inner rings larger. **Image** uses a picture of your own.
+The background sits behind the whole canvas. **Concentric Circles** draws rings, and you choose how many. **Skew circle sizes** makes the inner rings larger. **Image** uses a picture of your own.
 
 > Do: Customize the background to orient placement, for example using rings to suggest closeness. Position is stored as raw coordinates, so treat any spatial meaning as a cue for discussion rather than a measurement.
 

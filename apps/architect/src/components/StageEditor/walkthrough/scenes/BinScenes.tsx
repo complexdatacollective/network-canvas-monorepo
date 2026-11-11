@@ -279,7 +279,10 @@ function OrdinalBins({
   );
 }
 
-/** An ordinal bin stage: alters dragged from the drawer into bins on a scale. */
+/**
+ * Shows an ordinal bin where the participant drags three alters from the drawer
+ * into bins along a scale from Not close to Extremely.
+ */
 export const OrdinalBinIntroScene = defineScene(5.6, ({ t, id }) => {
   const moves: Move[] = [
     { label: SAM, to: ordSlot(2, 0), at: 0.7 },
@@ -309,7 +312,10 @@ const ordHeader = (i: number): Point => [
   ORD.top + ORD.header / 2,
 ];
 
-/** Tap to place: the selected alter goes to the bin tapped, the next is selected. */
+/**
+ * Shows an ordinal bin where the participant taps a bin to place the selected
+ * alter in it, and the next alter in the drawer is then selected.
+ */
 export const OrdinalBinTapScene = defineScene(5.2, ({ t, id }) => {
   const order = [SAM, ANA, JO];
   const moves: Move[] = [
@@ -430,9 +436,18 @@ function requireScene(kind: 'ordinal' | 'categorical') {
   });
 }
 
+/**
+ * Shows an ordinal bin where the participant tries to continue with an alter
+ * still in the drawer, a notice tells them to place every item first, and the
+ * participant then drags that alter into a bin so they can continue.
+ */
 export const OrdinalBinRequireScene = requireScene('ordinal');
 
-/** The colour gradient: the same bins shaded along three different colours. */
+/**
+ * Shows an ordinal bin where the bins switch between three color gradients,
+ * each with the full color in the first bin and a lighter shade in each bin
+ * after it.
+ */
 export const OrdinalBinGradientScene = defineScene(6.0, ({ t, id }) => {
   const steps = [0, 2, 5];
   const at = [0, 2.0, 4.0];
@@ -629,7 +644,11 @@ function ExpandedCategory({
   );
 }
 
-/** A categorical bin stage: alters dragged into circles, then a circle opened. */
+/**
+ * Shows a categorical bin where the participant drags three alters from the
+ * drawer into colored circles, then taps the Work circle to open it and see the
+ * alters inside.
+ */
 export const CategoricalBinIntroScene = defineScene(6.0, ({ t }) => {
   const moves: Move[] = [
     { label: SAM, to: catCentre(0), at: 0.7, bin: 0 },
@@ -682,7 +701,10 @@ export const CategoricalBinIntroScene = defineScene(6.0, ({ t }) => {
   };
 });
 
-/** Tap to place, on circles: the selected alter goes to the circle tapped. */
+/**
+ * Shows a categorical bin where the participant taps a circle to place the
+ * selected alter in it, and the next alter in the drawer is then selected.
+ */
 export const CategoricalBinTapScene = defineScene(5.2, ({ t }) => {
   const moves: Move[] = [
     { label: SAM, to: catCentre(0), at: 1.0, bin: 0 },
@@ -744,9 +766,18 @@ export const CategoricalBinTapScene = defineScene(5.2, ({ t }) => {
   };
 });
 
+/**
+ * Shows a categorical bin where the participant tries to continue with an alter
+ * still in the drawer, a notice tells them to place every item first, and the
+ * participant then drags that alter into a circle so they can continue.
+ */
 export const CategoricalBinRequireScene = requireScene('categorical');
 
-/** The other circle: dropping an alter there asks the follow-up question. */
+/**
+ * Shows a categorical bin where the participant drags an alter into the Other
+ * circle, types an answer to the follow-up question, and saves it, leaving the
+ * alter in the Other circle.
+ */
 export const CategoricalBinOtherScene = defineScene(6.4, ({ t }) => {
   const labels = [...TEXT.categories.slice(0, 4), TEXT.other];
   const drop: Move = { label: KAI, to: catCentre(4), at: 0.6, bin: 4 };
@@ -1008,7 +1039,16 @@ function binDataScene(kind: 'ordinal' | 'categorical') {
   );
 }
 
+/**
+ * Shows how an ordinal bin's data is exported: each alter is one row, and the
+ * bin the alter was placed in becomes a number in the closeness column.
+ */
 export const OrdinalBinDataScene = binDataScene('ordinal');
+/**
+ * Shows how a categorical bin's data is exported: each category becomes a true
+ * or false column, such as group_family, and each alter has true in the column
+ * for the circle it was placed in.
+ */
 export const CategoricalBinDataScene = binDataScene('categorical');
 
 const bucketSlot = (i: number): Point => [
@@ -1016,7 +1056,10 @@ const bucketSlot = (i: number): Point => [
   STAGE.bottom - 40,
 ];
 
-/** Bucket order: the alters in the drawer reordered by a sort rule. */
+/**
+ * Shows a bin stage where a Bucket order rule of name, A to Z, rearranges the
+ * alters waiting in the drawer into alphabetical order.
+ */
 export const BinBucketOrderScene = defineScene(4.8, ({ t }) => {
   const before = [KAI, ANA, SAM, JO];
   const after = [ANA, JO, KAI, SAM];
@@ -1053,7 +1096,11 @@ export const BinBucketOrderScene = defineScene(4.8, ({ t }) => {
   };
 });
 
-/** A stage filter: only the alters the rules match reach the stage. */
+/**
+ * Shows a stage filter of close_friend is true, where only the alters with that
+ * attribute move from the interview onto this stage and the others are left
+ * behind.
+ */
 export const StageFilterScene = defineScene(
   5.0,
   ({ t }) => {

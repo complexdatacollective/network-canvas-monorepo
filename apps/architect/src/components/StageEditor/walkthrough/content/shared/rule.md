@@ -7,7 +7,7 @@
 
 <!-- dialog: construct a rule -->
 
-A rule picks out the nodes, edges or the participant's own answers that should count. Choose what the rule looks at, then either an attribute and the value it must have, or simply whether something exists.
+A rule checks the nodes, edges or the participant's own answers. First choose what the rule checks. Then choose either an attribute and the value it must have, or simply whether something exists.
 
 When a filter has more than one rule, you choose whether all of them must match or any one is enough.
 

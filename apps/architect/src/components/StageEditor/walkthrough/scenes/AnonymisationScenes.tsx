@@ -274,8 +274,9 @@ function PassphraseScreen({
 /* ------------------------------------------------------------- scenes */
 
 /**
- * The participant types a passphrase, types it again to confirm it, and
- * presses Continue; once it is accepted, Next turns green.
+ * Shows an anonymisation stage where the participant types a passphrase, types
+ * it again to confirm it, and presses Continue, and once the passphrase is
+ * accepted the Next button is highlighted.
  */
 export const AnonymisationIntroScene = defineScene(6.2, ({ t }) => {
   const accepted = segment(t, 4.0, 0.7);
@@ -311,8 +312,9 @@ export const AnonymisationIntroScene = defineScene(6.2, ({ t }) => {
 });
 
 /**
- * A text answer is saved encrypted, the passphrase is never saved, and the
- * export carries ENCRYPTED in place of each encrypted answer.
+ * Shows how an anonymisation stage's data is exported: an alter's name is saved
+ * only in encrypted form, the passphrase is never saved, and the exported name
+ * column reads ENCRYPTED, so no one can read it if the passphrase is forgotten.
  */
 export const AnonymisationDataScene = defineScene(
   5.6,
@@ -397,8 +399,9 @@ export const AnonymisationDataScene = defineScene(
 );
 
 /**
- * A passphrase shorter than the minimum is refused under both fields, and a
- * longer one is accepted.
+ * Shows an anonymisation stage where a passphrase shorter than the minimum is
+ * refused with an error under both fields, and a longer passphrase is then
+ * accepted.
  */
 export const AnonymisationRulesScene = defineScene(7.4, ({ t }) => {
   const retyping = t >= 3.4;
@@ -583,9 +586,10 @@ function PassphraseDialog({
 }
 
 /**
- * On a later stage, after the interview has been reopened, encrypted node
- * labels stay locked until the key button takes the passphrase again; a
- * wrong one is turned away.
+ * Shows a later stage after the interview has been reopened, where nodes
+ * labeled by encrypted answers show a lock until the participant enters their
+ * passphrase with the key button, a wrong passphrase is rejected, and the right
+ * one reveals the names.
  */
 export const AnonymisationReturnScene = defineScene(7.6, ({ t }) => {
   const open =

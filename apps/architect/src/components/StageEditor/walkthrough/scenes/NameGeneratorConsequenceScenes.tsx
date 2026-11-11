@@ -62,8 +62,8 @@ const PEOPLE = [
 ] as const;
 
 /**
- * What a name generator leaves in the data: each person becomes a row, and
- * each field of the form a column.
+ * Shows how a name generator's data is exported: each alter becomes a row, and
+ * each question on the form becomes a column.
  */
 export const NameGeneratorDataScene = defineScene(
   5.0,
@@ -201,7 +201,11 @@ const PHASE = 2.2;
  * The input control decides what the participant uses to answer, and so what
  * kind of answer the attribute records.
  */
-/** The same question answered with different controls, on a form of any kind. */
+/**
+ * Shows a form where three questions are answered with different input controls
+ * in turn, a text input, a toggle and a Likert scale, and each answer shows the
+ * value it saves.
+ */
 export const FormFieldInputControlsScene = defineScene(
   CONTROLS.length * PHASE,
   ({ t }) => {
@@ -338,8 +342,9 @@ export const FormFieldInputControlsScene = defineScene(
 );
 
 /**
- * A required question left empty: Done shows the form's own message, and the
- * form stays open until it is answered.
+ * Shows a form where trying to move on without answering a required question
+ * brings up an error message, and the answer is accepted once the participant
+ * types a name.
  */
 export const FormFieldValidationScene = defineScene(4.8, ({ t }) => {
   const left = FORM_CARD.x + 34;
@@ -416,8 +421,9 @@ export const FormFieldValidationScene = defineScene(4.8, ({ t }) => {
 const TAGS = { first: 'discuss_matters', second: 'work_with' } as const;
 
 /**
- * An additional attribute on each prompt marks the people named for it, so
- * the data says which question named whom.
+ * Shows a name generator with two prompts where each alter named on the first
+ * prompt is tagged discuss_matters and each alter named on the second is tagged
+ * work_with, so the data records which prompt each alter came from.
  */
 export const NameGeneratorAdditionalAttributesScene = defineScene(
   5.0,
@@ -490,8 +496,9 @@ const ROSTER = [
 ] as const;
 
 /**
- * Without a filter, a roster panel lists everyone on every prompt. A filter
- * narrows it, on every prompt of the stage.
+ * Shows a name generator where a roster side panel lists the same classmates on
+ * both prompts until the filter "class is 7B" narrows the panel to only the
+ * matching nodes.
  */
 export const NameGeneratorFilterScene = defineScene(6.0, ({ t, id }) => {
   const swap = smooth(segment(t, 1.7, 0.5));
@@ -562,8 +569,9 @@ export const NameGeneratorFilterScene = defineScene(6.0, ({ t, id }) => {
 });
 
 /**
- * Skip logic decides, for each participant, whether the stage is shown. When
- * its rule is not met the interview goes straight past it.
+ * Shows skip logic on a protocol's stages: the interview visits this stage for
+ * a participant who has a partner, and goes straight past it to the next stage
+ * for a participant who does not.
  */
 export const NameGeneratorSkipLogicScene = defineScene(
   5.8,

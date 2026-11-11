@@ -47,7 +47,7 @@
 
 <!-- scene: categorical-bin-intro -->
 
-The Categorical Bin is a name interpreter: it collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into one of a set of colored circles, each one category, such as _Family_, _Work_ or _School_. Tapping a circle opens it, so the alters inside can be moved to another category.
+The Categorical Bin is a name interpreter. It collects information about alters already named, rather than creating new ones. Participants drag each alter from the drawer at the bottom of the screen into a colored circle. Each circle stands for one category, such as _Family_, _Work_ or _School_. Tapping a circle opens it, so the participant can move the alters inside to another category.
 
 Read the full [Categorical Bin documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/categorical-bin).
 
@@ -55,7 +55,7 @@ Read the full [Categorical Bin documentation](https://documentation.networkcanva
 
 <!-- scene: categorical-bin-data -->
 
-Each prompt records one categorical attribute. The circle an alter is placed in sets that attribute's value. In exported data the attribute becomes one true or false column for each category, named after the attribute and the category's value, such as `group_family`, so a placed alter has true in the column for its circle. An answer typed into the other circle is kept in its own column.
+This stage collects one categorical attribute for each prompt. The circle an alter is placed in sets the value of that attribute. In exported data, the attribute is one true or false column for each category. Each column is named after the attribute and the category's value, such as `group_family`. A placed alter has true in the column for its circle. If a prompt offers an Other circle, the answer the participant types for it is kept in its own column.
 
 ## When to use it
 
@@ -71,9 +71,9 @@ Use this stage to sort alters into categories that have no order.
 
 <!-- section: Node setup -->
 
-Pick the **node type** this stage sorts, for example _Person_. Every node of that type already in the participant's network waits in the drawer.
+Choose the **node type** this stage sorts, such as _Person_. Every node of that type already in the participant's network waits in the drawer.
 
-Changing the node type later removes the rest of this stage's settings, apart from its name and interviewer notes, since they all describe the type chosen now. Architect asks before it does.
+Changing the node type later clears this stage's other settings, except its name and interviewer notes, because they depend on the node type. Architect asks you to confirm first.
 
 <!-- include: node-type -->
 
@@ -85,7 +85,7 @@ Changing the node type later removes the rest of this stage's settings, apart fr
 
 <!-- section: Prompt collection -->
 
-Each prompt asks one question and sorts the alters by one categorical attribute. The participant moves through the prompts in order. An alter waits in the drawer until it has a value for the current prompt's attribute, or an answer for its other circle.
+Each prompt asks one question and sorts the alters by one categorical attribute. The participant sees one prompt at a time, in the order you set. An alter waits in the drawer until it has a value for the current prompt's attribute, or an answer for the prompt's Other circle.
 
 Read more about [prompts](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/prompts).
 
@@ -101,26 +101,26 @@ This is the question the participant reads above the circles, such as _"Which of
 <!-- dialog: create prompt | edit prompt -->
 <!-- field: variable -->
 
-Under **Categorical response**, pick the categorical attribute this prompt records. Each of its values becomes a circle. A prompt can have at most ten circles, counting the other circle below if it is switched on, and the editor will not save one with more.
+Under **Categorical response**, pick the categorical attribute this prompt records. Each of its values becomes a circle. A prompt can have at most ten circles, including the Other circle if you switch it on. Architect will not save a prompt with more than ten.
 
 ## Set the category labels
 
 <!-- dialog: create prompt | edit prompt -->
 
-The attribute's values are listed under it, and you edit them here: each has a label the participant reads on its circle and a value saved in your data. They are saved when you save the prompt. Labels can be a short sentence; check your longest one in [Preview](https://documentation.networkcanvas.com/en/design-protocols/preview-mode).
+The attribute's values are listed below the picker, and you can edit them here. Each value has a label, which the participant reads on its circle, and a value, which is saved in your data. Your edits are saved when you save the prompt. Labels can be a short sentence. Check your longest label in [Preview](https://documentation.networkcanvas.com/en/design-protocols/preview-mode).
 
-## Offer an other bin
+## Add an Other circle
 
 <!-- dialog: create prompt | edit prompt -->
 <!-- scene: categorical-bin-other -->
 
-Switch on **Follow-up other option** to add one more circle for alters none of the categories describe. Choose the **Other attribute**, a text attribute that stores what the participant types, and give the circle an **Other bin label**, such as _Other_.
+Switch on **Follow-up other option** to add one more circle, the Other circle, for alters that none of the categories describe. Choose the **Other attribute**, a text attribute that stores what the participant types. Then give the circle an **Other bin label**, such as _Other_.
 
 ## Ask the follow-up question
 
 <!-- dialog: create prompt | edit prompt -->
 
-The **Follow-up question** appears as soon as an alter is dropped in the other circle, with a box for the participant's answer. Ask for the detail you need, such as _"How do you know this person?"_.
+The **Follow-up question** appears as soon as the participant drops an alter in the Other circle, with a box for the participant's answer. Ask for the detail you need, such as _"How do you know this person?"_.
 
 <!-- include: bin-sort-orders -->
 
@@ -128,7 +128,7 @@ The **Follow-up question** appears as soon as an alter is dropped in the other c
 
 <!-- dialog: create a new attribute -->
 
-Typing a new name in the attribute picker opens this window with that name filled in, since a categorical attribute is its list of values. Add its values, each with a label and a value.
+Typing a new name in the attribute picker opens this window with that name filled in. A categorical attribute needs a list of values, so add its values here, each with a label and a value.
 
 <!-- include: attribute-search -->
 
@@ -138,7 +138,7 @@ Typing a new name in the attribute picker opens this window with that name fille
 <!-- field: behaviours.interactionMode -->
 <!-- scene: categorical-bin-tap -->
 
-**Interaction mode** decides how the participant puts each alter into a bin. With **Drag and drop**, they drag each one from the drawer at the bottom of the screen. With **Tap to place**, one alter in the drawer is selected, they tap the circle it belongs in, and the next alter is selected.
+**Interaction mode** decides how the participant puts each alter into a circle. With **Drag and drop**, the participant drags each alter from the drawer at the bottom of the screen. With **Tap to place**, Network Canvas selects one alter in the drawer. The participant taps the circle that alter belongs in, and the next alter is selected.
 
 ## Require every alter to be placed
 
@@ -146,15 +146,15 @@ Typing a new name in the attribute picker opens this window with that name fille
 <!-- field: behaviours.requireCompletePlacement -->
 <!-- scene: categorical-bin-require -->
 
-Switch on **Require every node to be placed** to stop the participant leaving a prompt while any alter is still in the drawer. If they try, they are told to place every one first.
+Switch on **Require every node to be placed** to stop the participant from leaving a prompt while any alter is still in the drawer. If they try, they are told to place every alter first.
 
 ## Customize built-in wording
 
 <!-- section: Customize built-in wording -->
 
-While **Require every node to be placed** is switched on, this section holds **Nodes not yet placed**, the message shown when the participant tries to continue with alters still in the drawer. It can include the node type's name, so choose a name that reads naturally to participants.
+While **Require every node to be placed** is switched on, this section holds **Nodes not yet placed**, the message shown when the participant tries to continue with alters still in the drawer. The message can include the node type's name, so give the node type a name that reads naturally to participants.
 
-Once the protocol has a Categorical Bin stage, the section also holds **Place here**, the button on an opened circle while **Tap to place** is on. It is under **Shared by every stage of this kind**, so changing it changes every Categorical Bin stage.
+Once the protocol has a Categorical Bin stage, the section also holds **Place here**. This is the button on an opened circle while **Tap to place** is on. **Place here** is under **Shared by every stage of this kind**, so changing it changes every Categorical Bin stage.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 

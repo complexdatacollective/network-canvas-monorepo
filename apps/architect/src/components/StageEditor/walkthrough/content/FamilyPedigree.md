@@ -11,17 +11,11 @@
 
 <!-- scene: family-pedigree-intro -->
 
-The Family Pedigree is a specialized interface designed for collecting family network data. It provides a structured, visual approach that allows participants to build their family tree by creating family members (nodes) and defining the relationships between them (edges).
+The Family Pedigree lets participants build their family tree. Each family member they add is saved as a node, and each relationship between family members is saved as an edge. Participants start with only themselves on the canvas and add one relative at a time. A side panel asks about each person as they are added. Unlike other name generators, this stage builds the structure of the family and the details of each person together. It is designed to be visual and intuitive, so participants can complete it without face-to-face supervision.
 
-Unlike other name generators, the Family Pedigree builds the structure of the family and the details of each person together. Participants begin with just themselves represented, and then build outwards one relative at a time; a side panel asks about each person as they are added.
+Once the family is drawn, nomination prompts can ask participants to select anyone with a given attribute, such as a medical condition. The result is a structured record of the family. Researchers and clinicians can analyze it, export it, or show it back to the participant on a Narrative Pedigree.
 
-The process of building a family pedigree in Network Canvas is designed to be visual and intuitive, so that it can be completed by participants without face-to-face supervision.
-
-Once the pedigree is drawn, additional text or "prompts" can ask participants to nominate anyone who has a given attribute, such as a medical condition.
-
-The result is a structured record of the family that researchers and clinicians can analyze, export, or show back to the participant on the Narrative Pedigree.
-
-It suits both family-history taking, such as a quick survey of a condition across relatives, and studies of who a participant counts as family, biological, chosen or both.
+The stage suits family-history taking, such as a quick survey of a condition across relatives. It also suits studies of who a participant counts as family, whether biological, chosen or both.
 
 Read the full [Family Pedigree documentation](https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/family-pedigree).
 
@@ -29,7 +23,7 @@ Read the full [Family Pedigree documentation](https://documentation.networkcanva
 
 <!-- scene: family-pedigree-data -->
 
-Each family member becomes a node of the type you choose, with their name, sex assigned at birth and the other attributes you set up. Each partnership and parent-child relationship becomes an edge of one relationship type, with an attribute saying what kind it is. This allows the data to be used in subsequent interview steps.
+This stage collects a participant's family: its members and the relationships between them. In your exported data, each family member is a node of the type you choose, with their name, sex assigned at birth and the other attributes you set up. Each partnership and parent-child relationship is an edge. All of these edges have the same edge type, and an attribute on each edge says what kind of relationship it is. Later stages can use this data.
 
 ## When to use it
 
@@ -39,17 +33,17 @@ Use this stage when you need a participant's family as a structure: who is relat
 
 <!-- scene: family-pedigree-tools -->
 
-The toolbar sits at the bottom of the canvas, with the view controls in a toolbar of their own beside it. The numbers match the toolbar above:
+The toolbar sits at the bottom of the canvas. The view controls sit beside it, in a toolbar of their own. The numbers match the toolbar above:
 
-1. **Add and edit** (the default): point at a person to add relatives, or select them to edit their details.
+1. **Add and edit** (the default): point at a person to add relatives, or select a person to edit their details.
 2. **Connect**: join two people who are both already drawn, as partners or as parent and child. Use it for relationships between people already on the canvas, such as a step-parent or a second parent shared by half-siblings. Choices that would contradict the family already drawn, such as a third biological parent, are unavailable, with a note saying why.
-3. **Disconnect**: remove the connection between two people, after a confirmation. Both stay in the family. A removal that would cut someone off from the participant is refused.
-4. **Wording**: shown when the participant chooses the words used for their family, so they can change them at any time.
-5. **Undo**: takes back the participant's last change to the family. It also works with the usual keyboard shortcut, and is unavailable while the side panel is open.
+3. **Disconnect**: remove the connection between two people. The participant confirms first, and both people stay in the family. The stage refuses a removal that would cut someone off from the participant.
+4. **Wording**: shown when the stage lets the participant choose the words used for their family. The participant can use it to change their choice at any time.
+5. **Undo**: takes back the participant's last change to the family. It also works with the usual keyboard shortcut. Undo is unavailable while the side panel is open.
 6. **Redo**: brings back a change that was undone.
-7. **Progress ring**: shown when you set a completeness requirement. Pointing at it lists what is still needed.
-8. **Zoom out**, in the separate view toolbar.
-9. **Zoom in**.
+7. **Progress ring**: shown when you set a completeness requirement. Pointing at the ring lists what is still needed.
+8. **Zoom out**: the first button in the separate view toolbar.
+9. **Zoom in**: the second button in the view toolbar.
 10. **Show the whole family**: fits everyone on the screen at once.
 
 The participant can also drag the canvas to move around, and zoom with the mouse wheel, a pinch, or the + and − keys.
@@ -58,13 +52,13 @@ The participant can also drag the canvas to move around, and zoom with the mouse
 
 <!-- scene: family-pedigree-add -->
 
-Pointing at a person shows four buttons: a parent above, a sibling to the left, a partner to the right and a child below. Choosing one opens the side panel, which asks about the new person and their relationship before they are saved. Selecting a person opens the same panel to edit their details.
+Pointing at a person shows four buttons for adding a relative: a parent above, a sibling to the left, a partner to the right and a child below. When the participant chooses a button, the side panel opens. It asks about the new person and their relationship before the new person is saved. Selecting a person opens the same panel to edit their details.
 
 ## Choose who the family members are
 
 <!-- section: Node setup -->
 
-Pick the **node type** each family member is saved as, for example _Person_. While a Narrative Pedigree reads this stage's family, the node type cannot be changed.
+Pick the **node type** each family member is saved as, for example _Person_. If a Narrative Pedigree reads this stage's family, you can't change the node type.
 
 <!-- include: node-type -->
 
@@ -73,7 +67,7 @@ Pick the **node type** each family member is saved as, for example _Person_. Whi
 <!-- section: Prompt -->
 <!-- field: prompt -->
 
-The prompt appears above the canvas while the participant draws their family. Use it to invite them to add the people in their family, and to say how.
+The prompt appears above the canvas while the participant draws their family. Use it to invite the participant to add the people in their family, and to tell them how.
 
 > Do: Tell participants how to add relatives in your prompt. The add buttons appear when the participant hovers over a person, or after they tap a person and close their details, and a participant who has not been told may not find them.
 
@@ -83,21 +77,21 @@ The prompt appears above the canvas while the participant draws their family. Us
 <!-- field: nodeConfiguration.nameAttribute -->
 <!-- scene: family-pedigree-labels -->
 
-The **Name** attribute holds the name typed in the side panel. Names are optional: a relative left unnamed is labeled by how they are related to the participant, such as "Maternal aunt", and that label is saved as their name when the participant leaves the stage. The participant is labeled "You".
+The **Name** attribute holds the name typed in the side panel. Names are optional. A relative left unnamed is labeled by how they are related to the participant, such as "Maternal aunt". That label is saved as their name when the participant leaves the stage. The participant is labeled "You".
 
 ## Record sex assigned at birth
 
 <!-- section: Person attributes -->
 <!-- field: nodeConfiguration.sexAssignedAtBirthAttribute -->
 
-**Sex assigned at birth** is always asked, because it decides who can be a genetic parent of whom, and a Narrative Pedigree reads it to trace sex-linked conditions. The interface sets this attribute's options; you can reword and translate their labels.
+**Sex assigned at birth** is always asked. It decides who can be a genetic parent of whom, and a Narrative Pedigree reads it to trace sex-linked conditions. The stage sets this attribute's options. You can reword and translate their labels.
 
 ## Mark the participant
 
 <!-- section: Person attributes -->
 <!-- field: nodeConfiguration.egoAttribute -->
 
-The **Participant marker** is true on the participant's own node and blank on everyone else. Use it in a stage filter to keep the participant out of later stages about their relatives. Because it is blank, not false, on everyone else, filter on "is not" true.
+The **Participant marker** is true on the participant's own node and blank on everyone else. Use it in a stage filter to keep the participant out of later stages about their relatives. Everyone else has no value rather than false, so filter for "is not" true.
 
 ## Ask about gender identity
 
@@ -105,9 +99,9 @@ The **Participant marker** is true on the participant's own node and blank on ev
 <!-- field: nodeConfiguration.genderIdentity.attribute -->
 <!-- scene: family-pedigree-gender -->
 
-With **Ask about gender identity** switched on, a new stage will ask each person's gender identity, and the participant must answer it before a person is saved. Choose the attribute that holds the answer, then **Edit options** to give each option its kinship words: feminine (mother, sister), masculine (father, brother), neutral (parent, sibling), or not known.
+With **Ask about gender identity** switched on, the side panel asks about each person's gender identity. The participant must answer before the person is saved. Choose the attribute that holds the answer. Then use **Edit options** to give each option its kinship words: feminine (mother, sister), masculine (father, brother), neutral (parent, sibling), or not known.
 
-With **Ask about gender identity** switched off, the question is not asked, and words such as mother or brother follow each person's sex assigned at birth instead.
+With **Ask about gender identity** switched off, the question is not asked. Words such as mother or brother follow each person's sex assigned at birth instead.
 
 > Do: Give the gender identity attribute an option such as "Don't know" when the stage asks about it. The question must be answered for every person the participant adds, and many participants do not know every relative's gender identity.
 
@@ -115,7 +109,7 @@ With **Ask about gender identity** switched off, the question is not asked, and 
 
 <!-- dialog: create a new gender identity attribute | edit gender identity options -->
 
-Each option is a gender identity the participant can choose. For each, pick the words a person with that option is called by when they are left unnamed. The options belong to this stage, because it decides their words, so another Family Pedigree stage needs an attribute of its own.
+Each option is a gender identity the participant can choose. For each option, pick the kinship words used for an unnamed person with that gender identity. The options belong to this stage, because this stage decides their words. Another Family Pedigree stage needs a gender identity attribute of its own.
 
 ## Choose the symbols
 
@@ -126,10 +120,10 @@ Each option is a gender identity the participant can choose. For each, pick the 
 **Symbols** sets the shape each person is drawn as, following standard pedigree nomenclature:
 
 - **Sex assigned at birth**: a circle for female, a square for male and a diamond for everyone else.
-- **Gender identity**: a circle for options with feminine words, a square for masculine words and a diamond for everyone else.
+- **Gender identity**: a circle for options with feminine words, a square for options with masculine words and a diamond for all other options.
 - **Set in the codebook**: any other shape mapping, made in the codebook.
 
-The choice changes the codebook straight away, so it applies wherever people of this type are drawn, on other stages too.
+The choice changes the codebook straight away. It applies wherever nodes of this type are drawn, including on other stages.
 
 ## Record how each person is related
 
@@ -137,7 +131,7 @@ The choice changes the codebook straight away, so it applies wherever people of 
 <!-- field: nodeConfiguration.relationshipToParticipantAttribute -->
 <!-- scene: family-pedigree-relationship -->
 
-Switch on **Record each person’s relationship to the participant** to save a fixed value on everyone in the family, such as `parent`, `sibling` or `grandparent`. The interview works it out from the family each time the participant leaves the stage; it is never asked. Later stages can then filter or skip on it.
+Switch on **Record each person’s relationship to the participant** to save each person's relationship to the participant as a fixed value, such as `parent`, `sibling` or `grandparent`. The participant is never asked. The interview works out each relationship from the family each time the participant leaves the stage. Later stages can then filter or skip on this attribute.
 
 > Avoid: Reading how people are related from their names or kinship words. A label saved for an unnamed person is worded for the participant, in their language and the stage's wording, and a named person has no kinship word saved at all. To analyze or filter on how people are related, record the relationship to the participant.
 
@@ -147,13 +141,13 @@ Switch on **Record each person’s relationship to the participant** to save a f
 <!-- field: edgeConfiguration.type -->
 <!-- scene: family-pedigree-relationships -->
 
-Pick the **Relationship edge type** every partnership and parent-child relationship is saved as. Then choose the attributes the interface writes on each:
+Pick the **Relationship edge type** used to save every partnership and parent-child relationship. Then choose the attributes the stage saves on each edge:
 
 - **Relationship kind**: partner, biological, adoptive, step or social parent, egg or sperm donor, surrogate, or twin.
 - **Gestational carrier**: whether a parent carried the pregnancy.
 - **Current partner**: whether a partnership is current or has ended.
 
-Changing the edge type clears these attributes from the stage, because they belong to the type.
+Changing the edge type clears these attributes from the stage, because they depend on the edge type.
 
 ## Choose the words for family members
 
@@ -164,17 +158,17 @@ Changing the edge type clears these attributes from the stage, because they belo
 People the participant does not name are labeled by their relationship, so the words matter:
 
 - **Everyday kinship words** (the default): mother, father, sister, aunt.
-- **Egg parent and sperm parent**: biological parents are named by the gamete they gave, and every other relative gets a neutral word, such as grandparent or sibling.
-- **Let the participant choose**: the question is asked before anything else on the stage, and the family cannot be drawn until it is answered. The participant can change their answer from the toolbar at any time.
+- **Egg parent and sperm parent**: biological parents are named by the gamete they gave. Every other relative gets a neutral word, such as grandparent or sibling.
+- **Let the participant choose**: the participant is asked which words to use before anything else on the stage. They cannot draw their family until they answer. The participant can change their answer from the toolbar at any time.
 
-The choice changes only the words participants read; it adds nothing to your exported data.
+The choice changes only the words participants read. It adds nothing to your exported data.
 
 ## Ask more about each person
 
 <!-- section: Additional person fields -->
 <!-- field: form.fields -->
 
-Switch on **Additional person fields** to ask more about each family member, such as whether they are still living. These questions come last in the side panel, and the participant answers them for every person they add, and for themselves.
+Switch on **Additional person fields** to ask more about each family member, such as whether they are still living. These questions come last in the side panel. The participant answers them for every person they add, and for themselves.
 
 > Do: Word an additional person field for the participant as well as for their relatives with **Participant or someone else**, so that a question such as "Is this person still living?" reads "Are you still living?" in the participant's own panel.
 
@@ -190,13 +184,13 @@ Switch on **Additional person fields** to ask more about each family member, suc
 <!-- field: completeness.scope -->
 <!-- scene: family-pedigree-completeness -->
 
-Switch on **Completeness** to check that participants have recorded a minimum part of their family, and every required detail about each person. Choose the **Relatives to record**, from both biological parents up to three generations with first cousins. Only biological relatives count.
+Switch on **Completeness** to check that participants have recorded at least the part of their family you choose, and every required detail about each person. Choose that part under **Relatives to record**. The choices range from both biological parents to three generations, including first cousins. Only biological relatives count.
 
-A ring in the toolbar fills as the family nears what you require; pointing at it lists what is still needed. People missing a required detail carry a warning symbol. Participants can say that someone has no siblings or children, or that they do not know, so a requirement never forces a guess.
+A ring in the toolbar fills as the family nears what you require. Pointing at the ring lists what is still needed. People missing a required detail carry a warning symbol. Participants can say that someone has no siblings or children, or that they do not know. This way, a requirement never forces a guess.
 
 > Do: Check how much family history your analysis needs before you set a completeness requirement. Required completeness asks for more of every participant, and a participant who knows little about their relatives cannot continue until each missing person is added or answered.
 
-## Decide whether it is required
+## Make completeness required or recommended
 
 <!-- section: Completeness -->
 <!-- field: completeness.enforcement -->
@@ -210,7 +204,7 @@ A ring in the toolbar fills as the family nears what you require; pointing at it
 
 <!-- section: Customize built-in wording -->
 
-This section holds the words Network Canvas supplies for this stage, such as the side panel's questions, the connect and disconnect messages, and, while completeness is on, the checklist. Many read differently about the participant and about someone else. The words every Family Pedigree stage shows alike, such as the tool names, are under **Shared by every stage of this kind**, where a change applies to every stage that shows them.
+This section holds the words Network Canvas supplies for this stage. These include the side panel's questions, the connect and disconnect messages, and the completeness checklist when completeness is switched on. Many of these words have one version about the participant and another about someone else. Words that every Family Pedigree stage shows, such as the tool names, are under **Shared by every stage of this kind**. A change there applies to every stage that shows them.
 
 Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/en/design-protocols/translating-your-protocol#words-network-canvas-supplies).
 
@@ -220,9 +214,9 @@ Read more about [words Network Canvas supplies](https://documentation.networkcan
 <!-- field: nominationPrompts -->
 <!-- scene: family-pedigree-nomination -->
 
-Nomination prompts ask questions about the whole family once it is drawn, such as "Who in your family has had heart disease?". The participant selects everyone the question applies to. Participants see them in order, after drawing the family.
+Nomination prompts ask questions about the whole family once it is drawn, such as "Who in your family has had heart disease?" The participant selects everyone the question applies to. Participants see the prompts in order, after drawing the family.
 
-The attribute each prompt records is what a Narrative Pedigree reads to show who has a condition.
+A Narrative Pedigree reads the attribute each prompt records to show who has a condition.
 
 > Do: Use a nomination prompt when you want to know which relatives a condition applies to. The participant looks over the whole family and selects everyone it applies to, instead of answering the same question for each person one at a time.
 
@@ -245,7 +239,7 @@ Pick a true or false **Attribute**. It is set to true on everyone the participan
 <!-- dialog: create nomination prompt | edit nomination prompt -->
 <!-- field: onlyForSexAssignedAtBirth -->
 
-**Who can be selected** can leave out people assigned male or female at birth, for a condition only people of one sex can have. They are shown as unavailable; everyone else, including people whose sex at birth is not known, can still be selected.
+Use **Who can be selected** to leave out people assigned male at birth or people assigned female at birth, for a condition that only people of one sex can have. The people left out are shown as unavailable. Everyone else can still be selected, including people whose sex at birth is not known.
 
 <!-- include: skip-logic -->
 

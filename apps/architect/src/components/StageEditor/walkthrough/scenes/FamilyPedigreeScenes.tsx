@@ -592,9 +592,9 @@ const showing = (t: number, windows: readonly (readonly [number, number])[]) =>
   windows.some(([from, to]) => t >= from && t < to) ? 1 : 0;
 
 /**
- * Drawing a family: starting from the participant, each relative is added
- * from the buttons around a person, and the family is laid out as a
- * pedigree.
+ * Shows a family pedigree where the participant adds a parent, a sibling, a
+ * partner and a child one at a time from the buttons around their own node, and
+ * each relative appears in its place on the pedigree.
  */
 export const FamilyPedigreeIntroScene = defineScene(7.4, ({ t }) => {
   const adds = [
@@ -731,8 +731,10 @@ function Table({
 }
 
 /**
- * What the stage leaves in the data: a node for each person, with their
- * details, and an edge for each partnership and parent, with its kind.
+ * Shows how a family pedigree's data is exported: each family member becomes a
+ * row in the nodes table, each partnership and parent-child relationship
+ * becomes a row in the edges table with its kind, and siblings have no edge
+ * between them because they share a parent.
  */
 export const FamilyPedigreeDataScene = defineScene(
   5.2,
@@ -802,8 +804,8 @@ const NUMBERED: readonly ToolKey[] = [
 ];
 
 /**
- * Every button the toolbars can show, numbered as the list beside it in the
- * walkthrough numbers them; each is pointed out in turn.
+ * Shows every button a family pedigree's two toolbars can show, numbered to
+ * match the list, and highlights each button in turn.
  */
 export const FamilyPedigreeToolsScene = defineScene(13.0, ({ t }) => {
   const scale = 1.25;
@@ -849,8 +851,9 @@ export const FamilyPedigreeToolsScene = defineScene(13.0, ({ t }) => {
 });
 
 /**
- * Adding a relative: the buttons around a person, then the side panel that
- * asks about the new person before they are saved.
+ * Shows a family pedigree where the participant points at their own node,
+ * chooses the sibling button, types a name and picks a sex assigned at birth in
+ * the side panel, then saves to add the sibling.
  */
 export const FamilyPedigreeAddScene = defineScene(6.2, ({ t }) => {
   const hoverAt = 0.6;
@@ -974,8 +977,9 @@ const menuItemAt = (at: Point, i: number): Point => [
 ];
 
 /**
- * A relative left unnamed is labeled by how they are related; given a name,
- * they are shown by it.
+ * Shows a family pedigree where unnamed relatives are labeled by their
+ * relationship, and the participant selects their mother, types the name Rose
+ * and saves, so she is shown by her name instead.
  */
 export const FamilyPedigreeLabelsScene = defineScene(6.0, ({ t }) => {
   const openAt = 0.8;
@@ -1048,8 +1052,9 @@ const GENDER_OPTIONS = [
 ] as const;
 
 /**
- * Each gender identity option takes a set of kinship words, and a parent
- * left unnamed is called by the words of the option chosen for them.
+ * Shows a family pedigree where each gender identity option is highlighted in
+ * turn with its kinship words, and the participant's unnamed parent changes to
+ * Mother, Father or Parent to match the option.
  */
 export const FamilyPedigreeGenderScene = defineScene(7.0, ({ t }) => {
   const current = Math.min(
@@ -1132,8 +1137,9 @@ const eliAt = (label: string): Point =>
   ELI.find((p) => p.label === label)?.at ?? [CX, G1];
 
 /**
- * Symbols following gender identity, then sex assigned at birth: the same
- * family, drawn two ways.
+ * Shows a family pedigree drawn with symbols that follow gender identity, then
+ * redrawn with symbols that follow sex assigned at birth, so some relatives
+ * change shape.
  */
 export const FamilyPedigreeSymbolsScene = defineScene(6.4, ({ t }) => {
   const bySex = t >= 3.2;
@@ -1188,7 +1194,10 @@ const RELATIONSHIP_VALUES: Partial<
   sam: 'sibling',
 };
 
-/** Each relative is given a fixed value saying how they are related. */
+/**
+ * Shows a family pedigree where each relative is given a fixed value saying how
+ * they are related to the participant, such as parent, sibling or grandparent.
+ */
 export const FamilyPedigreeRelationshipScene = defineScene(5.4, ({ t }) => ({
   rail: { progress: 0.4 },
   body: (
@@ -1221,9 +1230,9 @@ export const FamilyPedigreeRelationshipScene = defineScene(5.4, ({ t }) => ({
 }));
 
 /**
- * How relationships are drawn: biological parents with solid lines,
- * adoptive and social parents dashed, a partnership as a line between
- * partners, broken once it has ended.
+ * Shows how a family pedigree draws relationships: a biological parent with a
+ * solid line, an adoptive parent with a dashed line, current partners joined by
+ * a line, and former partners joined by a broken line.
  */
 export const FamilyPedigreeRelationshipsScene = defineScene(5.6, ({ t }) => {
   const width = (CONTENT.right - CONTENT.x) / 4;
@@ -1321,9 +1330,10 @@ const FRAMING_CHOICES = [
 const QUESTION: Point = [CX - 130, CONTENT.y + 110];
 
 /**
- * Letting the participant choose: the question opens before anything else,
- * the labels follow the answer, and the toolbar's wording control changes
- * it later.
+ * Shows a family pedigree where the participant is asked which words to use for
+ * their family before drawing it, the labels change to match their answer, and
+ * the participant later changes the words from the wording button in the
+ * toolbar.
  */
 export const FamilyPedigreeFramingScene = defineScene(8.0, ({ t }) => {
   const askAt = 0.4;
@@ -1401,9 +1411,10 @@ const CHECKLIST = [
 ] as const;
 
 /**
- * Completeness: the ring in the toolbar fills as the family nears what is
- * required, its list says what is still needed, and a person missing a
- * detail carries a warning.
+ * Shows a family pedigree where the ring in the toolbar fills as the
+ * participant adds their parents, a warning marks a parent missing a detail,
+ * and pointing at the ring opens a checklist where the participant says they
+ * have no biological siblings.
  */
 export const FamilyPedigreeCompletenessScene = defineScene(7.0, ({ t }) => {
   const parentsAt = 1.0;
@@ -1514,9 +1525,9 @@ export const FamilyPedigreeCompletenessScene = defineScene(7.0, ({ t }) => {
 });
 
 /**
- * A nomination prompt: once the family is drawn, the participant selects
- * everyone the question applies to. A limit by sex assigned at birth makes
- * the others unavailable.
+ * Shows a family pedigree where the participant selects everyone the prompt
+ * applies to, then a limit that leaves out people assigned male at birth makes
+ * those relatives unavailable.
  */
 export const FamilyPedigreeNominationScene = defineScene(6.6, ({ t }) => {
   const taps = [
