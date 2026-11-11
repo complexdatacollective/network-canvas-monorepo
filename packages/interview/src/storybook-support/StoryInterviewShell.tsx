@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { SuperJSON } from 'superjson';
 
+import { useAppDirection } from '@codaco/app-i18n/react';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { StageMetadataSchema } from '@codaco/shared-consts';
 
@@ -66,7 +67,10 @@ function inferAssetType(asset: RawAsset): ResolvedAsset['type'] {
   return 'network';
 }
 
-function buildPayload(raw: RawSyntheticPayload): {
+function buildPayload(
+  raw: RawSyntheticPayload,
+  direction: 'ltr' | 'rtl',
+): {
   payload: InterviewPayload;
   initialStep: number;
   assetUrls: Record<string, string>;
@@ -114,8 +118,14 @@ function buildPayload(raw: RawSyntheticPayload): {
     ...(parsedStageMetadata.success
       ? { stageMetadata: parsedStageMetadata.data }
       : {}),
+    // `Shell` takes its direction from the interview's language and from
+    // nothing else, so Storybook's direction control reaches an interview
+    // here: the story's languages are described as written right to left.
+    // Their words stay as the story wrote them.
     localeOptions: localization.locales.map((locale) =>
-      getLocaleMetadata(locale),
+      direction === 'rtl'
+        ? { ...getLocaleMetadata(locale), direction }
+        : getLocaleMetadata(locale),
     ),
   };
 
@@ -165,13 +175,16 @@ const StoryInterviewShell = (props: {
   preparePayload?: (payload: InterviewPayload) => InterviewPayload;
 }) => {
   const { preparePayload } = props;
+  // Storybook's direction control, or the direction of the language chosen
+  // beside it.
+  const direction = useAppDirection();
   const { payload, initialStep, assetUrls } = useMemo(() => {
     const raw = SuperJSON.parse<RawSyntheticPayload>(props.rawPayload);
-    const built = buildPayload(raw);
+    const built = buildPayload(raw, direction);
     return preparePayload
       ? { ...built, payload: preparePayload(built.payload) }
       : built;
-  }, [props.rawPayload, preparePayload]);
+  }, [props.rawPayload, preparePayload, direction]);
 
   const [currentStep, setCurrentStep] = useState<number>(
     props.initialStep ?? initialStep,
@@ -205,6 +218,8 @@ const StoryInterviewShell = (props: {
   // so this shell only owns the Shell + its props.
   return (
     <Shell
+      // The interview reads its languages once, when it starts.
+      key={direction}
       payload={payload}
       currentStep={currentStep}
       onStepChange={onStepChange}
