@@ -5,6 +5,7 @@ import { expect, screen, userEvent, within } from 'storybook/test';
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
 import { UnorderedList } from '../../../typography/UnorderedList';
+import { expectInvalidControlToKeepFocusRing } from '../focusRingTestHelpers';
 import NativeSelectField from './Native';
 import type { SelectOption } from './shared';
 import StyledSelectField from './Styled';
@@ -777,5 +778,71 @@ export const LocalizedOptions: Story = {
     ).toHaveAttribute('lang', 'es');
     await userEvent.click(friend);
     await expect(native).toHaveValue('friend');
+  },
+};
+
+/**
+ * An invalid select keeps its focus ring: its red border says the value is
+ * wrong, not which field the keyboard is in. The native select is ringed by
+ * the wrapper around it, the styled one by its own trigger.
+ */
+export const InvalidKeyboardFocusRing: Story = {
+  // This play reads a style that exists only while a control matches
+  // `:focus-visible`, which never matches in Chromatic's unfocused capture
+  // tab. `test:storybook` is where it runs; the invalid state itself is in
+  // the states story's snapshot.
+  parameters: { chromatic: { disableSnapshot: true } },
+  render: () => (
+    <div className="flex w-80 flex-col gap-6">
+      <NativeSelectField
+        aria-label="Native valid"
+        name="native-valid"
+        options={sampleOptions}
+        value="option1"
+      />
+      <NativeSelectField
+        aria-label="Native invalid"
+        aria-invalid
+        name="native-invalid"
+        options={sampleOptions}
+        value="option1"
+      />
+      <StyledSelectField
+        aria-label="Styled valid"
+        name="styled-valid"
+        options={sampleOptions}
+        value="option1"
+      />
+      <StyledSelectField
+        aria-label="Styled invalid"
+        aria-invalid
+        name="styled-invalid"
+        options={sampleOptions}
+        value="option1"
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expectInvalidControlToKeepFocusRing(
+      {
+        control: canvas.getByRole('combobox', { name: 'Native valid' }),
+        ringOn: 'wrapper',
+      },
+      {
+        control: canvas.getByRole('combobox', { name: 'Native invalid' }),
+        ringOn: 'wrapper',
+      },
+    );
+    await expectInvalidControlToKeepFocusRing(
+      {
+        control: canvas.getByRole('combobox', { name: 'Styled valid' }),
+        ringOn: 'control',
+      },
+      {
+        control: canvas.getByRole('combobox', { name: 'Styled invalid' }),
+        ringOn: 'control',
+      },
+    );
   },
 };

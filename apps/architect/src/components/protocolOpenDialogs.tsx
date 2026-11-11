@@ -73,7 +73,7 @@ const additionalMessages = defineMessages({
   upgradeMakesACopy: {
     id: 'architect.protocolOpenDialogs.upgradeMakesACopy',
     defaultMessage:
-      'Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.',
+      'Upgrading creates a separate copy of your protocol and opens it. Your original protocol will not be changed.',
     description:
       'Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy at the current schema and opens it, and that the original protocol stays as it was.',
   },

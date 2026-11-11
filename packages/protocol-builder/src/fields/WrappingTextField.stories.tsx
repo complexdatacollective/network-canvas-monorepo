@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import WrappingTextField from './WrappingTextField.tsx';
 
@@ -92,6 +92,65 @@ export const StaysOneParagraph: Story = {
     await userEvent.keyboard('worried');
     await expect(box).toHaveValue(
       'Who you turn to when things are hard or worried',
+    );
+  },
+};
+
+const outlineOf = (element: Element) => {
+  const { outlineStyle, outlineWidth, outlineOffset, outlineColor } =
+    getComputedStyle(element);
+  return { outlineStyle, outlineWidth, outlineOffset, outlineColor };
+};
+
+/**
+ * An invalid box keeps its focus ring: its red border says the text is wrong,
+ * not which box the keyboard is in. The valid box beside it is the reference,
+ * so the two cannot differ in a way this misses.
+ */
+export const InvalidKeyboardFocusRing: Story = {
+  // This play reads a style that exists only while a control matches
+  // `:focus-visible`, which never matches in Chromatic's unfocused capture
+  // tab. `test:storybook` is where it runs.
+  parameters: { chromatic: { disableSnapshot: true } },
+  render: () => (
+    <div className="flex max-w-md flex-col gap-6 p-6">
+      <WrappingTextField aria-label="Valid" value="A valid message" />
+      <WrappingTextField
+        aria-label="Invalid"
+        aria-invalid
+        value="An invalid message"
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const valid = canvas.getByRole('textbox', { name: 'Valid' });
+    const invalid = canvas.getByRole('textbox', { name: 'Invalid' });
+    // The box around each text draws the ring for it.
+    const validBox = valid.parentElement;
+    const invalidBox = invalid.parentElement;
+    if (!validBox || !invalidBox) throw new Error('No box around the text');
+
+    await expect(outlineOf(invalidBox).outlineStyle).toBe('none');
+
+    await userEvent.tab();
+    await waitFor(() => expect(valid).toHaveFocus());
+    // The ring eases in, so it is read once it has settled.
+    await waitFor(() =>
+      expect(outlineOf(validBox)).toMatchObject({
+        outlineStyle: 'solid',
+        outlineWidth: '2px',
+        outlineOffset: '3px',
+      }),
+    );
+    const expected = outlineOf(validBox);
+    const validBorder = getComputedStyle(validBox).borderTopColor;
+
+    await userEvent.tab();
+    await waitFor(() => expect(invalid).toHaveFocus());
+    await waitFor(() => expect(outlineOf(invalidBox)).toEqual(expected));
+    await expect(getComputedStyle(invalidBox).borderTopColor).not.toBe(
+      validBorder,
     );
   },
 };

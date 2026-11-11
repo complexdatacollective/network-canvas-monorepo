@@ -676,7 +676,7 @@
   "architect.protocolOpenDialogs.technicalDetails": "Technical details (English)",
   "architect.protocolOpenDialogs.upgradeAffectsInterviews": "<strong>Please note:</strong> upgrading may change the interview experience for participants, and will require you to also use the latest version of Interviewer or Fresco.",
   "architect.protocolOpenDialogs.upgradeChangesList": "If you upgrade, the following changes will be made to your protocol:",
-  "architect.protocolOpenDialogs.upgradeMakesACopy": "Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.",
+  "architect.protocolOpenDialogs.upgradeMakesACopy": "Upgrading creates a separate copy of your protocol and opens it. Your original protocol will not be changed.",
   "architect.protocolReview.availability.availableAgainAt": "Available again {when}",
   "architect.protocolReview.availability.nextReviewAt": "Next review {when}",
   "architect.protocolReview.availability.offline": "Offline",

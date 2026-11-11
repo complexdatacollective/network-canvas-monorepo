@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, screen, userEvent, waitFor } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import { Button } from '../../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../Popover';
@@ -8,6 +8,7 @@ import { presentationalTextValue } from '../../../PresentationalText';
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
 import { UnorderedList } from '../../../typography/UnorderedList';
+import { expectInvalidControlToKeepFocusRing } from '../focusRingTestHelpers';
 import ComboboxField from './Combobox';
 import type { ComboboxOption } from './shared';
 
@@ -1016,5 +1017,47 @@ export const LongSelection: Story = {
         triggerBox.right,
       );
     });
+  },
+};
+
+/**
+ * An invalid combobox keeps its focus ring: its red border says the value is
+ * wrong, not which field the keyboard is in.
+ */
+export const InvalidKeyboardFocusRing: Story = {
+  // This play reads a style that exists only while a control matches
+  // `:focus-visible`, which never matches in Chromatic's unfocused capture
+  // tab. `test:storybook` is where it runs; the invalid state itself is in
+  // the states story's snapshot.
+  parameters: { chromatic: { disableSnapshot: true } },
+  render: () => (
+    <div className="flex w-80 flex-col gap-6">
+      <ComboboxField
+        aria-label="Valid"
+        name="valid"
+        options={sampleOptions}
+        value={['option1']}
+      />
+      <ComboboxField
+        aria-label="Invalid"
+        aria-invalid
+        name="invalid"
+        options={sampleOptions}
+        value={['option1']}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expectInvalidControlToKeepFocusRing(
+      {
+        control: canvas.getByRole('combobox', { name: 'Valid' }),
+        ringOn: 'control',
+      },
+      {
+        control: canvas.getByRole('combobox', { name: 'Invalid' }),
+        ringOn: 'control',
+      },
+    );
   },
 };

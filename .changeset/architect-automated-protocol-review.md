@@ -1,12 +1,9 @@
 ---
 '@codaco/architect': minor
-'@codaco/shared-consts': minor
 ---
 
 Architect has a new experimental feature, **Automated Protocol Review**, which
 asks an AI model to look for problems in your protocol and suggest fixes.
-
-**Architect**
 
 - A new **Experimental features** page, opened from the flask icon at the end
   of the navigation bar, is where you turn the feature on for a protocol.
@@ -33,9 +30,3 @@ asks an AI model to look for problems in your protocol and suggest fixes.
 - The service is free and limited: 5 reviews an hour for each browser, and a
   daily budget shared by everyone who uses it. Architect tells you when either
   limit is reached and when you can review again.
-
-**For developers**
-
-`@codaco/shared-consts` exports `StudyContextSchema`, the `StudyContext` and
-`StudyAdministrationMode` types, `STUDY_CONTEXT_LIMITS` and
-`STUDY_ADMINISTRATION_MODES`: the study details the review service accepts.

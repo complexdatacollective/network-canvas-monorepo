@@ -86,7 +86,12 @@ export function useScaleLabelLayout({
       .map((el) => el?.getBoundingClientRect());
     const first = cells[0];
     const last = cells[n - 1];
-    const trackWidth = first && last ? last.right - first.left : 0;
+    // The first label is the rightmost in a right-to-left language, so the
+    // span is taken between the outer edges rather than from first to last.
+    const trackWidth =
+      first && last
+        ? Math.max(first.right, last.right) - Math.min(first.left, last.left)
+        : 0;
 
     const metrics = labelsRef.current.map((_, i) => {
       const min = minRefs.current[i]?.getBoundingClientRect();

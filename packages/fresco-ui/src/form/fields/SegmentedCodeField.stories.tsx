@@ -390,3 +390,32 @@ export const PasteSupport: Story = {
     );
   },
 };
+
+/**
+ * A code reads left to right in any language, so on a right-to-left page its
+ * first character still goes in the leftmost box and the arrow keys keep their
+ * meaning.
+ */
+export const RightToLeftPage: Story = {
+  ...Default,
+  globals: { appDirection: 'rtl' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(document.documentElement.dir).toBe('rtl');
+
+    const first = canvas.getByLabelText('Digit 1 of 6');
+    const second = canvas.getByLabelText('Digit 2 of 6');
+    await expect(first.getBoundingClientRect().left).toBeLessThan(
+      second.getBoundingClientRect().left,
+    );
+
+    await userEvent.click(first);
+    await userEvent.keyboard('12');
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect(second).toHaveFocus();
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect(first).toHaveFocus();
+    await userEvent.keyboard('{ArrowRight}');
+    await expect(second).toHaveFocus();
+  },
+};

@@ -40,7 +40,11 @@ export function DropIndicator({ target, className }: DropIndicatorProps) {
       data-drop-indicator={target.position}
       data-target-key={target.key}
     >
+      {/* One cap on each end of the line: a mirrored pair, the same picture
+          in either writing direction. */}
+      {/* oxlint-disable-next-line tailwindcss/enforce-logical -- one of a mirrored pair */}
       <div className="bg-primary absolute top-1/2 left-0 size-3 -translate-1/2 rounded-full shadow-lg" />
+      {/* oxlint-disable-next-line tailwindcss/enforce-logical -- one of a mirrored pair */}
       <div className="bg-primary absolute top-1/2 right-0 size-3 translate-x-1/2 -translate-y-1/2 rounded-full shadow-lg" />
     </div>
   );

@@ -1099,7 +1099,7 @@ const editorContentVariants = cva({
     // Placeholder styles
     '[&_.tiptap_p.is-editor-empty:first-child::before]:text-input-contrast/50',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none',
-    '[&_.tiptap_p.is-editor-empty:first-child::before]:float-left',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:float-start',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:h-0',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:italic',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',

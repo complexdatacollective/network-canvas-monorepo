@@ -106,9 +106,11 @@ export default function RangeFilter({
         <div className="absolute h-1.5 w-full rounded-full bg-current" />
         <div
           className="absolute h-1.5 rounded-full bg-current"
+          // From the start edge, as the sliders below run: a native range
+          // input puts its minimum on the right in a right-to-left language.
           style={{
-            left: `${rangePercent(currentMin).toString()}%`,
-            right: `${(100 - rangePercent(currentMax)).toString()}%`,
+            insetInlineStart: `${rangePercent(currentMin).toString()}%`,
+            insetInlineEnd: `${(100 - rangePercent(currentMax)).toString()}%`,
           }}
         />
         <input
