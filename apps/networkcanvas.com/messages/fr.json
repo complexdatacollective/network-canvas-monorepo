@@ -334,7 +334,7 @@
       "bestFor": "Idéal pour",
       "downloadVersion": "Télécharger la version {version}",
       "platformAccessibleName": "{platform} pour {app}",
-      "schemaVersionInfo": "Architect Classic et Interviewer Classic prennent en charge les protocoles en schéma 7. Les versions web d’Architect, d’Interviewer et de Fresco utilisent le schéma 9, qui inclut les dernières fonctionnalités. La mise à niveau d’un protocole est irréversible : conservez le fichier d’origine en schéma 7 si vous avez encore besoin des applications Classic.",
+      "schemaVersionInfo": "Architect Classic et Interviewer Classic prennent en charge les protocoles qui utilisent un schéma plus ancien. Les versions web d’Architect, d’Interviewer et de Fresco utilisent le schéma le plus récent, qui inclut toutes les dernières fonctionnalités. La mise à niveau d’un protocole est irréversible : conservez une copie du fichier d’origine si vous avez encore besoin des applications Classic.",
       "schemaVersionLink": "En savoir plus sur les versions de schéma"
     },
     "platforms": {
@@ -387,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · Mode maintenance",
-        "description": "À utiliser uniquement si votre étude doit rester compatible avec Interviewer Classic et le schéma 7.",
+        "description": "À utiliser uniquement si votre étude doit rester compatible avec Interviewer Classic et son schéma plus ancien.",
         "bestFor": {
           "classicCompatibility": "Une étude existante qui doit rester compatible avec Interviewer Classic",
-          "editWithoutMigration": "Un protocole en schéma 7 qui doit continuer à être modifié sans migration"
+          "editWithoutMigration": "Un protocole qui utilise un schéma plus ancien et doit continuer à être modifié sans migration"
         }
       },
       "interviewerClassic": {
         "status": "Classic · Études existantes",
-        "description": "Pour les études établies en schéma 7 et les flux de travail hors ligne sur ordinateur ou tablette. Maintenu pour la compatibilité et la correction des bogues.",
+        "description": "Pour les études établies qui utilisent un schéma plus ancien et pour les flux de travail hors ligne sur ordinateur ou tablette. Maintenu pour la compatibilité et la correction des bogues.",
         "bestFor": {
-          "schema7Study": "Une étude établie qui dépend du schéma 7",
+          "schema7Study": "Une étude établie qui dépend d’un schéma plus ancien",
           "desktopTablet": "Conserver un flux de travail existant sur ordinateur ou tablette",
           "offlineCollection": "Études qui nécessitent l’ancien flux de collecte hors ligne"
         }

@@ -334,7 +334,7 @@
       "bestFor": "Best for",
       "downloadVersion": "Download version {version}",
       "platformAccessibleName": "{platform} for {app}",
-      "schemaVersionInfo": "Architect Classic and Interviewer Classic support Schema 7 protocols. The browser-based Architect, Interviewer, and Fresco use Schema 9, which includes the latest features. Upgrading a protocol is one-way, so keep the original Schema 7 file if you still need the Classic apps.",
+      "schemaVersionInfo": "Architect Classic and Interviewer Classic support protocols that use an older schema. The browser-based Architect, Interviewer, and Fresco use the latest schema, which includes all the newest features. Upgrading a protocol is one-way, so keep a copy of the original file if you still need the Classic apps.",
       "schemaVersionLink": "Learn about schema versions"
     },
     "platforms": {
@@ -387,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · Maintenance mode",
-        "description": "Use only when your study must remain compatible with Interviewer Classic and schema 7.",
+        "description": "Use only when your study must remain compatible with Interviewer Classic and its older schema.",
         "bestFor": {
           "classicCompatibility": "An existing study that must remain compatible with Interviewer Classic",
-          "editWithoutMigration": "A schema 7 protocol that must continue to be edited without migration"
+          "editWithoutMigration": "A protocol on an older schema that must continue to be edited without migration"
         }
       },
       "interviewerClassic": {
         "status": "Classic · Existing studies",
-        "description": "For established schema 7 studies and offline desktop or tablet workflows. Maintained for compatibility and bug fixes.",
+        "description": "For established studies on an older schema, and offline desktop or tablet workflows. Maintained for compatibility and bug fixes.",
         "bestFor": {
-          "schema7Study": "An established study that depends on schema 7",
+          "schema7Study": "An established study that depends on an older schema",
           "desktopTablet": "Preserving an existing desktop or tablet workflow",
           "offlineCollection": "Studies requiring the older offline collection workflow"
         }

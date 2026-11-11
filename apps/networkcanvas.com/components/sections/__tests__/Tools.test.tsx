@@ -207,7 +207,7 @@ describe('Tools', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Una selección de herramientas para facilitar su investigación',
+        name: 'Una selección de herramientas para facilitar tu investigación',
       }),
     ).toBeInTheDocument();
     expect(
