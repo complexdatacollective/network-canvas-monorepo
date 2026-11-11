@@ -3248,7 +3248,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     type="button"
                     variant="text"
                     color="destructive"
-                    className="mr-auto"
+                    className="me-auto"
                     onClick={() => void handleRemove(editedPerson.id)}
                   >
                     <AppMessage message={commonMessages.delete} />
@@ -3258,7 +3258,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               <Button
                 type="button"
                 variant="text"
-                className={panel?.mode.kind === 'add' ? 'mr-auto' : undefined}
+                className={panel?.mode.kind === 'add' ? 'me-auto' : undefined}
                 onClick={cancelPanel}
               >
                 <AppMessage message={commonMessages.cancel} />

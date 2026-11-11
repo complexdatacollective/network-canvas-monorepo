@@ -938,6 +938,7 @@ function AdoptionBrackets() {
       aria-hidden
       className={cx(
         'pointer-events-none absolute -inset-y-2 w-3 border-solid border-current',
+        // oxlint-disable-next-line tailwindcss/enforce-logical -- a pair of brackets, one on each side of the symbol
         side === 'left' ? '-left-4' : '-right-4',
       )}
       style={{
