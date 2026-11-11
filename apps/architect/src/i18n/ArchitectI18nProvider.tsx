@@ -16,6 +16,7 @@ import {
   useAppIntl,
   useLocaleCatalog,
 } from '@codaco/app-i18n/react';
+import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 
 import { architectCatalogSource } from '../locales/catalogs';
 import { installArchitectIntl } from './imperative';
@@ -114,7 +115,7 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
         onLocaleChange={setLocale}
       >
         <ImperativeFormatter />
-        {children}
+        <LocaleDirectionProvider>{children}</LocaleDirectionProvider>
       </AppI18nProvider>
     </PreferenceContext.Provider>
   );

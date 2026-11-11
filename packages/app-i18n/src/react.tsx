@@ -436,6 +436,15 @@ export function useAppLocale(): Readonly<{
 }
 
 /**
+ * The writing direction of the language on screen. Works with or without a
+ * mounted provider, as `useAppIntl` does: without one the text is the
+ * descriptors' English, which is left to right.
+ */
+export function useAppDirection(): AppLocale['direction'] {
+  return useContext(AppI18nContext)?.locale.direction ?? 'ltr';
+}
+
+/**
  * The language the user asked for whose catalog could not be loaded, and the
  * one on screen in its place; undefined otherwise, and without a provider.
  */

@@ -1,6 +1,6 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import type { Decorator, Preview } from '@storybook/react-vite';
-import { type ReactNode, useEffect, useLayoutEffect } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useMemo } from 'react';
 
 import {
   type AppLocale,
@@ -209,15 +209,26 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
       root.dir = direction;
     }, [locale, direction]);
 
+    // The language on screen is declared in the toolbar's direction, so
+    // whatever reads the app language's direction (`useAppDirection`, a host's
+    // `LocaleDirectionProvider`) is given the override too. Left as declared,
+    // English forced right to left would mirror the page while a host's own
+    // providers, mounted inside a story, told Base UI it was left to right.
+    const shown = useMemo(
+      () =>
+        offered.map((entry) =>
+          entry.locale === locale ? { ...entry, direction } : entry,
+        ),
+      [locale, direction],
+    );
+
     return (
       <AppI18nProvider
         locale={locale}
-        locales={offered}
+        locales={shown}
         messages={catalogs[locale]}
-        // The effect above owns `<html lang>`/`<html dir>` instead, because
-        // the toolbar's direction is an override the provider cannot see: it
-        // would write the locale's own direction and undo an explicit RTL
-        // selection on every render.
+        // The effect above owns `<html lang>`/`<html dir>`: it is what the
+        // comment there explains, and two writers would be one too many.
         manageDocument={false}
       >
         {/*

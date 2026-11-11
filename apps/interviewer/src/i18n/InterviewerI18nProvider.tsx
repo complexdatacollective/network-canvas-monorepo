@@ -1,4 +1,3 @@
-import { DirectionProvider } from '@base-ui/react/direction-provider';
 import {
   createContext,
   useCallback,
@@ -10,6 +9,7 @@ import type { ReactNode } from 'react';
 
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
+import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 
 import { interviewerCatalogSource } from '../locales/catalogs';
 import { interviewerDefaultLocale, interviewerLocales } from './locales';
@@ -118,14 +118,7 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
           setPreference,
         }}
       >
-        <DirectionProvider
-          direction={
-            interviewerLocales.find((entry) => entry.locale === catalog.locale)
-              ?.direction ?? 'ltr'
-          }
-        >
-          {children}
-        </DirectionProvider>
+        <LocaleDirectionProvider>{children}</LocaleDirectionProvider>
       </PreferenceContext.Provider>
     </AppI18nProvider>
   );

@@ -22,6 +22,11 @@ import { type PropsWithChildren, StrictMode } from 'react';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 import './preview.css';
+import {
+  globalTypes as i18nGlobalTypes,
+  initialGlobals as i18nInitialGlobals,
+  withAppI18n,
+} from './i18n';
 import Providers from './Providers';
 
 (mapboxgl as unknown as { workerUrl: string }).workerUrl = mapboxWorkerUrl;
@@ -108,9 +113,11 @@ export default definePreview({
         dynamicTitle: true,
       },
     },
+    ...i18nGlobalTypes,
   },
   initialGlobals: {
     reducedMotion: 'user' satisfies ReducedMotion,
+    ...i18nInitialGlobals,
   },
   decorators: [
     (Story, { globals }) => (
@@ -132,5 +139,8 @@ export default definePreview({
         </ThemedRegion>
       </StrictMode>
     ),
+    // Last, so outermost: the language and direction are around everything
+    // the decorator above mounts.
+    withAppI18n,
   ],
 });

@@ -13,6 +13,7 @@ import { type PropsWithChildren, StrictMode } from 'react';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 import './preview.css';
+import { globalTypes, initialGlobals, withAppI18n } from './i18n';
 import Providers from './Providers';
 
 // Network Canvas Interviewer renders its entire UI inside a single
@@ -71,5 +72,10 @@ export default definePreview({
         </ThemedRegion>
       </StrictMode>
     ),
+    // Last, so outermost: the language and direction are around everything
+    // the decorator above mounts.
+    withAppI18n,
   ],
+  globalTypes,
+  initialGlobals,
 });

@@ -15,6 +15,7 @@ import {
   AppI18nProvider,
   AppIntlOverlay,
   AppMessage,
+  useAppDirection,
   useAppIntl,
   useAppLocale,
   useLocaleCatalog,
@@ -376,6 +377,26 @@ describe('useAppLocale without a provider', () => {
       return null;
     }
     expect(() => render(<Bare />)).toThrow(/AppI18nProvider/);
+  });
+});
+
+describe('useAppDirection', () => {
+  function Direction() {
+    return <output>{useAppDirection()}</output>;
+  }
+
+  it('is the direction of the language on screen', () => {
+    const { container } = render(
+      <AppI18nProvider locale="ar" locales={registry}>
+        <Direction />
+      </AppI18nProvider>,
+    );
+    expect(container.textContent).toBe('rtl');
+  });
+
+  it('is left to right without a provider', () => {
+    const { container } = render(<Direction />);
+    expect(container.textContent).toBe('ltr');
   });
 });
 

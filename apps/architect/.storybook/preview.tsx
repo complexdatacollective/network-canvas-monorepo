@@ -7,6 +7,7 @@ import { definePreview } from '@storybook/react-vite';
 import { StrictMode } from 'react';
 
 import './preview.css';
+import { globalTypes, initialGlobals, withAppI18n } from './i18n';
 import Providers from './Providers';
 
 export default definePreview({
@@ -34,5 +35,10 @@ export default definePreview({
         </div>
       </StrictMode>
     ),
+    // Last, so outermost: the language and direction are around everything
+    // the decorator above mounts.
+    withAppI18n,
   ],
+  globalTypes,
+  initialGlobals,
 });
