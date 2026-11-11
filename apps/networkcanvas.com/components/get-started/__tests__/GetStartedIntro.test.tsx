@@ -131,10 +131,16 @@ describe('GetStartedIntro', () => {
       'text-xl',
       'tablet-portrait:text-2xl',
     );
-    expect(documentationLink.querySelector('svg')?.parentElement).toHaveClass(
+    // In the end corner, pointing into it and moving further in on hover,
+    // whichever side the language ends on.
+    const arrow = documentationLink.querySelector('svg');
+    expect(arrow).toHaveClass('rtl:-scale-x-100');
+    expect(arrow?.parentElement).toHaveClass(
       'absolute',
-      'right-8',
+      'inset-e-8',
       'bottom-8',
+      'group-hover:translate-x-1',
+      'rtl:group-hover:-translate-x-1',
     );
 
     expect(

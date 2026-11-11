@@ -42,13 +42,15 @@ export function ScrollSignalProgress() {
       {progressValues.map((progress, index) => (
         <motion.span
           key={signalClasses[index]}
-          className={`absolute inset-x-0 h-0.5 origin-left ${signalClasses[index]}`}
+          className={`absolute inset-x-0 h-0.5 origin-left rtl:origin-right ${signalClasses[index]}`}
           style={{ scaleX: progress }}
         />
       ))}
       <motion.span
-        className="border-background bg-neon-coral absolute top-0 size-2 -translate-x-1/2 rounded-full border-2"
-        style={{ left: signalHeadPosition }}
+        // The head rides the leading end of the bars, which fill from the
+        // start edge: centred on a point that far from that edge.
+        className="border-background bg-neon-coral absolute top-0 size-2 -translate-x-1/2 rounded-full border-2 rtl:translate-x-1/2"
+        style={{ insetInlineStart: signalHeadPosition }}
       />
     </div>
   );

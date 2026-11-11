@@ -180,6 +180,15 @@ function isPinned(element: HTMLElement) {
 }
 
 describe('Grants', () => {
+  it('draws each card’s stripe from the start edge', () => {
+    renderGrants();
+
+    for (const grant of grants) {
+      const stripe = card(grant).querySelector('.origin-left');
+      expect(stripe).toHaveClass('inset-x-0', 'rtl:origin-right');
+    }
+  });
+
   it('links every grant to its page from a card that names its institution', () => {
     renderGrants();
 

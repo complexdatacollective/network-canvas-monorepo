@@ -193,7 +193,7 @@ export function PublicationsNetwork({
   // On wide screens the text sits in one column over a full-width network;
   // narrow screens show the text alone.
   const column =
-    'tablet-landscape:col-start-1 tablet-landscape:ml-[max(2.5rem,calc(50%-750px+2.5rem))] tablet-landscape:w-[min(34rem,44%)] tablet-landscape:px-0 relative px-6';
+    'tablet-landscape:col-start-1 tablet-landscape:ms-[max(2.5rem,calc(50%-750px+2.5rem))] tablet-landscape:w-[min(34rem,44%)] tablet-landscape:px-0 relative px-6';
 
   return (
     <section
@@ -211,7 +211,7 @@ export function PublicationsNetwork({
           <SectionHeading
             title={t('heading')}
             id={headingId}
-            className="tablet-landscape:mx-0 tablet-landscape:text-left"
+            className="tablet-landscape:mx-0 tablet-landscape:text-start"
           >
             <Paragraph margin="none">
               {t.rich('introduction', {
@@ -336,7 +336,7 @@ function PublicationCard({
         <span
           aria-hidden
           className={cn(
-            'absolute inset-y-0 left-0 w-1.5 origin-top bg-(--hub) transition-transform duration-500 ease-out',
+            'absolute inset-y-0 inset-s-0 w-1.5 origin-top bg-(--hub) transition-transform duration-500 ease-out',
             state === 'active' ? 'scale-y-100' : 'scale-y-0',
           )}
         />
@@ -351,11 +351,11 @@ function PublicationCard({
           <svg
             aria-hidden
             viewBox="0 0 12 14"
-            className="mr-2.5 inline-block h-3.5 w-3 fill-(--hub) align-[-0.15em]"
+            className="me-2.5 inline-block h-3.5 w-3 fill-(--hub) align-[-0.15em]"
           >
             <PageGlyph />
           </svg>
-          <cite className="mr-3 font-semibold">{publication.source}</cite>
+          <cite className="me-3 font-semibold">{publication.source}</cite>
           <time dateTime={publication.year} className="text-text/60">
             {publication.year}
           </time>
