@@ -10,6 +10,7 @@ import { locales } from '~/lib/i18n/locales';
 import {
   findTranslationProblems,
   gitBlobId,
+  labelSourcesPath,
   messageSourcesPath,
   readTranslatedFrom,
   writeTranslatedFrom,
@@ -41,6 +42,10 @@ describe('gitBlobId', () => {
     }).trim();
     rmSync(dir, { recursive: true });
     expect(gitBlobId(content)).toBe(expected);
+  });
+
+  it('gives a CRLF checkout the id of the LF content git stores', () => {
+    expect(gitBlobId('a\r\nb\r\n')).toBe(gitBlobId('a\nb\n'));
   });
 });
 
@@ -170,6 +175,63 @@ describe('findTranslationProblems', () => {
     expect(problems()).toEqual([
       'es messages/es.json Nav.home is stale: translated from "Home page", the English now says "Home"',
     ]);
+  });
+
+  describe('navigation', () => {
+    const metadata = (labels: object, indexFiles: object) =>
+      write(
+        'docs/start/metadata.json',
+        JSON.stringify({
+          type: 'section',
+          localeLabels: labels,
+          localeIndexFiles: indexFiles,
+        }),
+      );
+    const recordLabel = (label: string) =>
+      write(
+        labelSourcesPath(root, 'es').slice(root.length + 1),
+        JSON.stringify({ 'docs/start/metadata.json': label }),
+      );
+    beforeEach(() => {
+      write(
+        'docs/start/intro.es.mdx',
+        writeTranslatedFrom(
+          '---\ntitle: Intro\n---\n\nHola\n',
+          gitBlobId(english),
+        ),
+      );
+    });
+
+    it('accepts a recorded label and an index naming the translation', () => {
+      metadata(
+        { en: 'Start', es: 'Inicio' },
+        { en: 'intro.en.mdx', es: 'intro.es.mdx' },
+      );
+      recordLabel('Start');
+      expect(problems()).toEqual([]);
+    });
+
+    it('reports a label whose English changed or was never recorded', () => {
+      metadata({ en: 'Getting started', es: 'Inicio' }, { en: 'intro.en.mdx' });
+      expect(problems()).toEqual([
+        'es docs/start/metadata.json localeLabels.es does not record which English it was translated from (translation/sources/es.labels.json)',
+      ]);
+      recordLabel('Start');
+      expect(problems()).toEqual([
+        'es docs/start/metadata.json localeLabels.es is stale: translated from "Start", the English now says "Getting started"',
+      ]);
+    });
+
+    it('reports an index entry that is not the translation of the English index', () => {
+      metadata({ en: 'Start' }, { en: 'intro.en.mdx', es: 'intro.en.mdx' });
+      expect(problems()).toEqual([
+        expect.stringContaining('localeIndexFiles.es is "intro.en.mdx"'),
+      ]);
+      metadata({ en: 'Start' }, { en: 'intro.en.mdx', es: 'other.es.mdx' });
+      expect(problems()).toEqual([
+        expect.stringContaining('localeIndexFiles.es is "other.es.mdx"'),
+      ]);
+    });
   });
 
   it('reports messages with no recorded English and ones English dropped', () => {

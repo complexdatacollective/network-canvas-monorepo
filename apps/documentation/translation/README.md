@@ -20,7 +20,11 @@ language is published every change to the English must update it too. A test
 
 Each translated page records which English it was translated from, as the git
 blob id of the English file, in a `translatedFrom` frontmatter field. Each
-message catalog's English is recorded in `translation/sources/<locale>.json`.
+message catalog's English is recorded in `translation/sources/<locale>.json`,
+and each translated navigation label's English in
+`translation/sources/<locale>.labels.json`. A section's `localeIndexFiles`
+entry must name the translation of its English index page, and that page must
+exist.
 
 - **Any language with translated files**: a translation whose English has
   changed since it was made is reported as stale, and so is a translation that
@@ -35,7 +39,7 @@ command that shows exactly what changed in the English.
 
 ## Changing the English
 
-1. Edit the English page or message.
+1. Edit the English page, message or navigation label.
 2. Run the documentation tests. Each stale translation is listed.
 3. Update each translation to match, and check it as described below. An
    editorial English change (a typo, punctuation) may need no change to the
@@ -43,8 +47,11 @@ command that shows exactly what changed in the English.
 4. Stamp what you checked:
 
    ```sh
-   pnpm --filter @codaco/documentation translations:stamp docs/get-started/glossary.es.mdx messages/es.json
+   pnpm --filter @codaco/documentation translations:stamp docs/get-started/glossary.es.mdx messages/es.json docs/get-started/metadata.json
    ```
+
+   Stamping a `metadata.json` records its English label for every language
+   that translates it.
 
    Stamping records that a translation matches today's English. It does not
    say the translation is right, so never stamp a translation you have not

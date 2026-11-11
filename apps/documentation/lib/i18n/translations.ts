@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 
 import { MetadataFileSchema } from '~/app/types';
 
@@ -20,7 +20,9 @@ import { defaultLocale } from './locales';
  * Interface messages (`messages/<locale>.json`) are recorded the same way, in
  * `translation/sources/<locale>.json`: the English each message was translated
  * from. That record lives outside `messages/` because next-intl loads every
- * JSON file it finds there.
+ * JSON file it finds there. Navigation labels (`localeLabels` in a folder's
+ * `metadata.json`) are recorded in `translation/sources/<locale>.labels.json`,
+ * keyed by the metadata file.
  *
  * A locale is checked for staleness as soon as any of its files exist. It is
  * checked for completeness (every page, message and navigation label present)
@@ -29,9 +31,13 @@ import { defaultLocale } from './locales';
 
 const TRANSLATED_FROM_FIELD = 'translatedFrom';
 
-// The id git gives a file's content: `git hash-object <file>`.
+// The id git gives a file's content: `git hash-object <file>`. Line endings
+// are normalized to LF first, as git does when it stores a text file, so a
+// Windows checkout (core.autocrlf) computes the same id as CI.
 export function gitBlobId(content: Buffer | string): string {
-  const body = typeof content === 'string' ? Buffer.from(content) : content;
+  const text =
+    typeof content === 'string' ? content : content.toString('utf-8');
+  const body = Buffer.from(text.replace(/\r\n/g, '\n'));
   return createHash('sha1')
     .update(`blob ${body.length}\0`)
     .update(body)
@@ -155,6 +161,40 @@ function translationLocales({ root, published }: TranslationPaths): string[] {
 export const messageSourcesPath = (root: string, locale: string) =>
   join(root, 'translation', 'sources', `${locale}.json`);
 
+export const labelSourcesPath = (root: string, locale: string) =>
+  join(root, 'translation', 'sources', `${locale}.labels.json`);
+
+/** The recorded English of each translated navigation label, by metadata file. */
+export function readLabelSources(
+  root: string,
+  locale: string,
+): Record<string, string> {
+  const path = labelSourcesPath(root, locale);
+  if (!existsSync(path)) return {};
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a flat record of strings written by translations:stamp
+  return JSON.parse(readFileSync(path, 'utf-8')) as Record<string, string>;
+}
+
+// Why a section's `localeIndexFiles` entry for `locale` cannot be used, or
+// undefined if it names the translation of the English index page beside it.
+function indexFileProblem(
+  dir: string,
+  english: string,
+  translated: string,
+  locale: string,
+): string | undefined {
+  const source = PAGE_FILE.exec(english)?.groups;
+  const target = PAGE_FILE.exec(translated)?.groups;
+  if (
+    !source ||
+    target?.locale !== locale ||
+    target.name !== source.name ||
+    !existsSync(join(dir, translated))
+  )
+    return `localeIndexFiles.${locale} is "${translated}"; it must name the ${locale} translation of ${english} in this folder`;
+  return undefined;
+}
+
 /**
  * Everything that keeps the translations from matching the English: stale or
  * unrecorded translations of any locale, and missing ones for published
@@ -206,21 +246,47 @@ export function findTranslationProblems(
     }
 
     // Navigation labels and section index pages.
-    if (isPublished) {
-      for (const entry of readdirSync(docsDir, {
-        recursive: true,
-        withFileTypes: true,
-      })) {
-        if (!entry.isFile() || entry.name !== 'metadata.json') continue;
-        const file = join(entry.parentPath, entry.name);
-        const metadata = MetadataFileSchema.parse(
-          JSON.parse(readFileSync(file, 'utf-8')),
+    const labelSources = readLabelSources(root, locale);
+    for (const entry of readdirSync(docsDir, {
+      recursive: true,
+      withFileTypes: true,
+    })) {
+      if (!entry.isFile() || entry.name !== 'metadata.json') continue;
+      const file = join(entry.parentPath, entry.name);
+      const metadata = MetadataFileSchema.parse(
+        JSON.parse(readFileSync(file, 'utf-8')),
+      );
+
+      const englishLabel = metadata.localeLabels?.[defaultLocale];
+      const label = metadata.localeLabels?.[locale];
+      if (englishLabel !== undefined && label) {
+        const source = labelSources[rel(file)];
+        if (source === undefined)
+          add(
+            file,
+            `localeLabels.${locale} does not record which English it was translated from (${rel(labelSourcesPath(root, locale))})`,
+          );
+        else if (source !== englishLabel)
+          add(
+            file,
+            `localeLabels.${locale} is stale: translated from "${source}", the English now says "${englishLabel}"`,
+          );
+      } else if (englishLabel !== undefined && isPublished) {
+        add(file, `has no ${locale} entry in localeLabels`);
+      }
+
+      const englishIndex = metadata.localeIndexFiles?.[defaultLocale];
+      const index = metadata.localeIndexFiles?.[locale];
+      if (englishIndex !== undefined && index) {
+        const problem = indexFileProblem(
+          dirname(file),
+          englishIndex,
+          index,
+          locale,
         );
-        for (const field of ['localeLabels', 'localeIndexFiles'] as const) {
-          const values = metadata[field];
-          if (values?.[defaultLocale] !== undefined && !values[locale])
-            add(file, `has no ${locale} entry in ${field}`);
-        }
+        if (problem) add(file, problem);
+      } else if (englishIndex !== undefined && isPublished) {
+        add(file, `has no ${locale} entry in localeIndexFiles`);
       }
     }
 

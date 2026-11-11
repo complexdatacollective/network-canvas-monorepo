@@ -8,26 +8,32 @@
  *   pnpm --filter @codaco/documentation translations:stamp <file>...
  *
  * Each file is a translated page (`docs/**\/<name>.<locale>.mdx`), whose
- * `translatedFrom` is set to its English page's current git blob id, or a
+ * `translatedFrom` is set to its English page's current git blob id; a
  * message catalog (`messages/<locale>.json`), whose record in
  * `translation/sources/<locale>.json` is set to today's English for every
- * message the catalog has.
+ * message the catalog has; or a folder's `metadata.json`, whose English
+ * navigation label is recorded in `translation/sources/<locale>.labels.json`
+ * for every locale that has a translated label.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+import { MetadataFileSchema } from '~/app/types';
 import { defaultLocale } from '~/lib/i18n/locales';
 import {
   gitBlobId,
+  labelSourcesPath,
   messageSourcesPath,
+  readLabelSources,
   readTranslatedFrom,
   writeTranslatedFrom,
 } from '~/lib/i18n/translations';
 
 type Tree = { [key: string]: string | Tree };
 
-const root = resolve(dirname(new URL(import.meta.url).pathname), '..');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 function readTree(path: string): Tree {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- message catalogs are nested string records
@@ -78,6 +84,28 @@ function stampMessages(file: string) {
   console.log(`${relative(root, sourcesFile)}: recorded today's English`);
 }
 
+function stampLabels(file: string) {
+  const { localeLabels = {} } = MetadataFileSchema.parse(
+    JSON.parse(readFileSync(file, 'utf-8')),
+  );
+  const english = localeLabels[defaultLocale];
+  if (english === undefined)
+    throw new Error(`${file} has no ${defaultLocale} entry in localeLabels`);
+  const key = relative(root, file);
+  for (const locale of Object.keys(localeLabels)) {
+    if (locale === defaultLocale) continue;
+    const sourcesFile = labelSourcesPath(root, locale);
+    const sources = { ...readLabelSources(root, locale), [key]: english };
+    const sorted = Object.fromEntries(
+      Object.entries(sources).toSorted(([a], [b]) => a.localeCompare(b)),
+    );
+    mkdirSync(dirname(sourcesFile), { recursive: true });
+    writeFileSync(sourcesFile, `${JSON.stringify(sorted, null, 2)}\n`);
+    // oxlint-disable-next-line no-console -- the report is the script's output
+    console.log(`${relative(root, sourcesFile)}: ${key} -> "${english}"`);
+  }
+}
+
 const files = process.argv.slice(2).map((f) => resolve(f));
 if (files.length === 0) {
   // oxlint-disable-next-line no-console -- usage
@@ -88,5 +116,6 @@ if (files.length === 0) {
 for (const file of files) {
   if (relative(join(root, 'messages'), file) === basename(file))
     stampMessages(file);
+  else if (basename(file) === 'metadata.json') stampLabels(file);
   else stampPage(file);
 }
