@@ -711,7 +711,7 @@ describe('SummerUpdatePage', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /La documentación ahora se estructura según la etapa de su investigación/,
+        /La documentación ahora se estructura según la etapa de tu investigación/,
       ),
     ).toBeInTheDocument();
     expect(
@@ -738,7 +738,7 @@ describe('SummerUpdatePage', () => {
 
     const definitionPopover = screen.getByRole('dialog');
     expect(definitionPopover).toHaveTextContent(
-      'La aplicación de escritorio descargable original para diseñar protocolos de Network Canvas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas. Descárguela aquí.',
+      'La aplicación de escritorio descargable original para diseñar protocolos de Network Canvas. Sigue disponible para estudios en curso y cuenta con soporte completo, pero está en modo de mantenimiento y no recibirá funciones nuevas. Descárgala aquí.',
     );
     expect(
       within(definitionPopover).getByRole('link', { name: 'aquí' }),

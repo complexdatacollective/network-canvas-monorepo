@@ -213,12 +213,12 @@ describe('GetStartedIntro', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Elija por dónde empezar',
+        name: 'Elige por dónde empezar',
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Para empezar, haga clic en la tarjeta que mejor describa en qué etapa se encuentra su investigación y su familiaridad con Network Canvas.',
+        'Para empezar, haz clic en la tarjeta que mejor describa en qué etapa se encuentra tu investigación y tu familiaridad con Network Canvas.',
       ),
     ).toBeInTheDocument();
     expect(
