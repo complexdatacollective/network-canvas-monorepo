@@ -293,6 +293,9 @@ export function Tools() {
   const [architect, interviewer, fresco] = tools;
   if (!architect || !interviewer || !fresco) return null;
 
+  // In one column the two strands arrive from opposite gutters (see
+  // `measureGeometry`), each entering its card nearer its own gutter. The
+  // gutters are physical sides of the section, so these offsets are too.
   const pair = [
     {
       tool: interviewer,
@@ -345,7 +348,10 @@ export function Tools() {
           </SectionHeading>
 
           <div className="relative mx-auto mt-10 h-px w-px">
-            <span data-thread-anchor="start" className="absolute top-0 left-0">
+            <span
+              data-thread-anchor="start"
+              className="absolute inset-s-0 top-0"
+            >
               <ThreadNode
                 color="sea-green"
                 size="sm"
@@ -392,7 +398,7 @@ export function Tools() {
             </ToolCard>
             <span
               data-thread-anchor="architectIn"
-              className="tablet-landscape:left-1/4 absolute top-0 left-1/2 z-20"
+              className="tablet-landscape:inset-s-1/4 absolute inset-s-1/2 top-0 z-20"
             >
               <ThreadNode color="sea-green" active={isReached('architectIn')} />
             </span>

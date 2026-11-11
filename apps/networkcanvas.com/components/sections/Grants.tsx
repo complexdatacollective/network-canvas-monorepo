@@ -283,14 +283,14 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
               {t('introduction')}
             </SectionHeading>
 
-            <ol className="tablet-landscape:flex relative mt-12 hidden flex-col gap-6 pl-10 [@media(max-height:820px)]:mt-8 [@media(max-height:820px)]:gap-4">
+            <ol className="tablet-landscape:flex relative mt-12 hidden flex-col gap-6 ps-10 [@media(max-height:820px)]:mt-8 [@media(max-height:820px)]:gap-4">
               <span
                 aria-hidden
-                className="bg-text/12 absolute top-3 bottom-3 left-[0.6875rem] w-0.5 rounded-full"
+                className="bg-text/12 absolute inset-s-[0.6875rem] top-3 bottom-3 w-0.5 rounded-full"
               />
               <motion.span
                 aria-hidden
-                className="absolute top-3 bottom-3 left-[0.6875rem] w-0.5 origin-top rounded-full"
+                className="absolute inset-s-[0.6875rem] top-3 bottom-3 w-0.5 origin-top rounded-full"
                 style={{
                   background: `linear-gradient(to bottom, ${grants
                     .map((_, index) => grantAccent(index))
@@ -309,7 +309,7 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
                     <span
                       aria-hidden
                       className={cn(
-                        'absolute top-1 -left-10 size-6 rounded-full border-[3px] transition-[background-color,scale] duration-300',
+                        'absolute -inset-s-10 top-1 size-6 rounded-full border-[3px] transition-[background-color,scale] duration-300',
                         index === active ? 'scale-110' : 'scale-75',
                       )}
                       style={{
@@ -371,12 +371,12 @@ export function Grants({ grants }: { grants: readonly Grant[] }) {
           <div
             ref={minTopProbe}
             aria-hidden
-            className="pointer-events-none invisible absolute top-0 left-0 h-(--stack-min) w-px"
+            className="pointer-events-none invisible absolute inset-s-0 top-0 h-(--stack-min) w-px"
           />
           <div
             ref={stepProbe}
             aria-hidden
-            className="pointer-events-none invisible absolute top-0 left-0 h-(--stack-step) w-px"
+            className="pointer-events-none invisible absolute inset-s-0 top-0 h-(--stack-step) w-px"
           />
         </div>
       </section>
@@ -471,7 +471,7 @@ function StackFrame({
       >
         <motion.span
           aria-hidden
-          className="absolute inset-x-0 top-0 h-2 origin-left"
+          className="absolute inset-x-0 top-0 h-2 origin-left rtl:origin-right"
           style={{
             backgroundColor: accent,
             scaleX: motionEnabled ? stripe : 1,

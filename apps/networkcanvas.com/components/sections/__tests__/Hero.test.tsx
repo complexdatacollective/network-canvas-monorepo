@@ -29,6 +29,14 @@ describe('Hero', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('turns the primary action’s arrow round in a right-to-left language', () => {
+    renderWithIntl(<Hero newsItems={newsItems} />);
+
+    expect(
+      screen.getByRole('link', { name: 'Get Started' }).querySelector('svg'),
+    ).toHaveClass('rtl:-scale-x-100');
+  });
+
   it('uses the large desktop headline scale and the semantic text token for body copy', () => {
     renderWithIntl(<Hero newsItems={newsItems} />);
 

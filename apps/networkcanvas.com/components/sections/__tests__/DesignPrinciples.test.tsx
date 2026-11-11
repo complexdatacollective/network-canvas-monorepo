@@ -213,14 +213,14 @@ describe('DesignPrinciples', () => {
         'tablet-landscape:max-w-[86svh]',
       ]),
     );
-    // At the right of its columns, its right edge two rem past the start
-    // of the reading column's: one column, less two rem, of padding.
+    // At the end of its columns, its end edge two rem past the start of the
+    // reading column's: one column, less two rem, of padding.
     const holder = canvas.parentElement!.getAttribute('class')!.split(/\s+/);
     expect(holder).toEqual(
       expect.arrayContaining([
         'tablet-landscape:col-span-8',
         'tablet-landscape:justify-end',
-        'tablet-landscape:pr-[calc((100%-21rem)/8-2rem)]',
+        'tablet-landscape:pe-[calc((100%-21rem)/8-2rem)]',
       ]),
     );
   });

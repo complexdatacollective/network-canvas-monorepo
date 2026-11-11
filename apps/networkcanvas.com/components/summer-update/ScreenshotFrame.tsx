@@ -67,6 +67,7 @@ export function ScreenshotFrame({
         aria-hidden
       >
         <motion.span
+          // oxlint-disable-next-line tailwindcss/enforce-logical -- the sheen is swept across by a transform measured from the left edge
           className="via-sea-serpent/25 absolute inset-y-0 left-0 w-1/4 bg-linear-to-r from-transparent to-transparent"
           style={
             motionEnabled ? { opacity: sheenOpacity, x: sheenX } : undefined
@@ -75,7 +76,7 @@ export function ScreenshotFrame({
         <span className="bg-neon-coral relative size-2.5 rounded-full" />
         <span className="bg-mustard relative size-2.5 rounded-full" />
         <span className="bg-sea-green relative size-2.5 rounded-full" />
-        <span className="font-monospace relative ml-2 truncate text-xs text-current/55">
+        <span className="font-monospace relative ms-2 truncate text-xs text-current/55">
           {address}
         </span>
       </div>

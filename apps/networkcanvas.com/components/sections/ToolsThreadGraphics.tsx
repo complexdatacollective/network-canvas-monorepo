@@ -143,6 +143,9 @@ export function ThreadNode({
       aria-hidden
       data-reached={active ? '' : undefined}
       className={cn(
+        // Centred on its anchor point by a translate, which is physical, so
+        // the edge it is offset from has to be physical too.
+        // oxlint-disable-next-line tailwindcss/enforce-logical -- centred on a point with a physical translate
         'absolute top-0 left-0 grid -translate-x-1/2 -translate-y-1/2 place-items-center',
         size === 'md' ? 'size-7' : 'size-4',
       )}
@@ -200,6 +203,7 @@ export function NetworkBloom({ active }: { active: boolean }) {
     <svg
       aria-hidden
       viewBox="-80 -80 160 160"
+      // oxlint-disable-next-line tailwindcss/enforce-logical -- centred on a point with a physical translate
       className="absolute top-0 left-0 size-48 -translate-x-1/2 -translate-y-1/2 overflow-visible"
     >
       {satellites.map((satellite, index) => {
