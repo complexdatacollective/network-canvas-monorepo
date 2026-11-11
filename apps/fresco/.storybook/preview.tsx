@@ -8,6 +8,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { StrictMode } from 'react';
 
 import Providers from '../components/Providers';
+import { globalTypes, initialGlobals, withAppI18n } from './i18n';
 
 import '../styles/globals.css';
 
@@ -77,5 +78,10 @@ export default definePreview({
         </div>
       </StrictMode>
     ),
+    // Last, so outermost: `Providers` reads the app language's direction, so
+    // the language has to be around it.
+    withAppI18n,
   ],
+  globalTypes,
+  initialGlobals,
 });
