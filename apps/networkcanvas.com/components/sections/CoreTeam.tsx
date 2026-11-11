@@ -76,6 +76,9 @@ function ThreadLayer({
       height={geometry.height}
       viewBox={`0 0 ${geometry.width} ${geometry.height}`}
       className={cn(
+        // The thread's geometry is measured from the left edge, so the layer
+        // it is drawn in is pinned to that edge too.
+        // oxlint-disable-next-line tailwindcss/enforce-logical -- drawn in coordinates measured from the left edge
         'pointer-events-none absolute top-0 left-0 overflow-visible',
         className,
       )}
@@ -164,8 +167,12 @@ export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
             </ThreadLayer>
           ) : null}
 
+          {/* In one column the thread runs down the cards' physical left
+              gutter, where its measured geometry puts it, so the gutter is
+              physical too. */}
           <ul
             aria-label={t('heading')}
+            // oxlint-disable-next-line tailwindcss/enforce-logical -- leaves the gutter the physically placed thread runs down
             className="tablet-landscape:ml-0 tablet-landscape:grid-cols-4 tablet-landscape:gap-x-7 tablet-landscape:gap-y-21 relative z-1 ml-5.5 grid grid-cols-1 gap-y-4.5"
           >
             {members.map((member) => (
@@ -174,7 +181,7 @@ export function CoreTeam({ members }: { members: readonly TeamMember[] }) {
                 data-thread-card
                 className={cn(
                   glass,
-                  'hover:bg-surface/85 hover:elevation-medium tablet-landscape:block tablet-landscape:rounded-[28px] tablet-landscape:p-3 tablet-landscape:pb-5.5 flex items-center gap-4 rounded-[22px] p-2.5 pr-3.5',
+                  'hover:bg-surface/85 hover:elevation-medium tablet-landscape:block tablet-landscape:rounded-[28px] tablet-landscape:p-3 tablet-landscape:pb-5.5 flex items-center gap-4 rounded-[22px] p-2.5 pe-3.5',
                 )}
               >
                 <img
