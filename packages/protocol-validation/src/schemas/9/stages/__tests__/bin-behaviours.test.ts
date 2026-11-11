@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { localized } from '../../../../utils/test-utils.ts';
 import {
   inapplicableStageSettings,
-  missingRequiredStageSettings,
   missingSuppliedStageText,
 } from '../../supplied-stage-text.ts';
 import { categoricalBinStage } from '../categorical-bin.ts';
@@ -56,15 +55,13 @@ describe.each([
     ).toBe(false);
   });
 
-  it('refuses the completion gate without its notice', () => {
-    const result = schema.safeParse({
-      ...stage,
-      behaviours: { requireCompletePlacement: true },
-    });
-    expect(result.success).toBe(false);
-    expect(result.error?.issues.map((issue) => issue.path)).toEqual([
-      ['unplacedNodesNotice'],
-    ]);
+  it('accepts the completion gate without its notice, which the interview words itself', () => {
+    expect(
+      schema.safeParse({
+        ...stage,
+        behaviours: { requireCompletePlacement: true },
+      }).success,
+    ).toBe(true);
   });
 
   it('accepts the completion gate with its notice', () => {
@@ -88,9 +85,6 @@ describe.each([
 
   it('seeds the notice when the gate is switched on, and only then', () => {
     const gated = { ...stage, behaviours: { requireCompletePlacement: true } };
-    expect(missingRequiredStageSettings(gated)).toEqual([
-      ['unplacedNodesNotice'],
-    ]);
     expect(missingSuppliedStageText(gated, ENGLISH_ONLY)).toEqual([
       {
         path: ['unplacedNodesNotice'],

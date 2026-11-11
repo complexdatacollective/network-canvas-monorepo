@@ -37,6 +37,7 @@ import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import useSavesInOrder from '../../hooks/useSavesInOrder';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
 import type { AttributePatch } from '../../store/entityAttributePatch';
@@ -140,7 +141,7 @@ export default function GeospatialInterface({
   const useStub = isE2E && isMapboxStubBrowser();
   const mapUnavailable = intl.formatMessage(interfaceMessages.mapUnavailable);
   const { text: outsideAreasLabel } = useLocalizedString(
-    stage.outsideAreasLabel,
+    useStageWording(stage).text('outsideAreasLabel'),
   );
 
   const [navState, setNavState] = useState<{

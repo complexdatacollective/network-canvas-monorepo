@@ -12,12 +12,6 @@ import {
   panelsSchema,
 } from '../common/index.ts';
 import { localizedMessage, nonBlankText } from '../localized-string.ts';
-import {
-  hasMinimumNodes,
-  hasMaximumNodes,
-  requireWhenShown,
-  type StageRecord,
-} from '../stage-wording/conditions.ts';
 import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -65,8 +59,8 @@ export const MAX_NODES_ARGUMENTS: MessageArguments = {
 /**
  * The words a name generator shows about its limits,
  * which Network Canvas supplies (`stage-wording/name-generator.ts`). Each is
- * shown only in some configurations, so each is required only while its
- * configuration is on (`requireNameGeneratorWording`).
+ * shown only in some configurations; a stage that omits one shows Network
+ * Canvas's wording.
  */
 export const nameGeneratorWording = {
   minNodesNotice: localizedMessage(nonBlankText(), {
@@ -77,45 +71,25 @@ export const nameGeneratorWording = {
   }).optional(),
 };
 
-/** Refuses a name generator that shows a setting it does not hold. */
-export const requireNameGeneratorWording = (
-  stage: StageRecord,
-  ctx: z.RefinementCtx,
-): void =>
-  requireWhenShown(stage, ctx, [
-    {
-      name: 'minNodesNotice',
-      when: hasMinimumNodes,
-      message: 'A stage with a minimum needs a minimum notice.',
-    },
-    {
-      name: 'maxNodesNotice',
-      when: hasMaximumNodes,
-      message: 'A stage with a maximum needs a maximum notice.',
-    },
-  ]);
-
-export const nameGeneratorStage = baseStageSchema
-  .extend({
-    type: z.literal('NameGenerator'),
-    form: FormSchema,
-    subject: NodeStageSubjectSchema,
-    panels: panelsSchema,
-    prompts: z
-      .array(nameGeneratorPromptSchema)
-      .min(1)
-      .superRefine((prompts, ctx) => {
-        // Check for duplicate prompt IDs
-        const duplicatePromptId = findDuplicateId(prompts);
-        if (duplicatePromptId) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-            path: [],
-          });
-        }
-      }),
-    behaviours: nameGeneratorBehavioursSchema,
-    ...nameGeneratorWording,
-  })
-  .superRefine(requireNameGeneratorWording);
+export const nameGeneratorStage = baseStageSchema.extend({
+  type: z.literal('NameGenerator'),
+  form: FormSchema,
+  subject: NodeStageSubjectSchema,
+  panels: panelsSchema,
+  prompts: z
+    .array(nameGeneratorPromptSchema)
+    .min(1)
+    .superRefine((prompts, ctx) => {
+      // Check for duplicate prompt IDs
+      const duplicatePromptId = findDuplicateId(prompts);
+      if (duplicatePromptId) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+          path: [],
+        });
+      }
+    }),
+  behaviours: nameGeneratorBehavioursSchema,
+  ...nameGeneratorWording,
+});

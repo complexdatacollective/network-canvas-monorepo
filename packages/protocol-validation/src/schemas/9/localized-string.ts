@@ -80,6 +80,21 @@ type LocalizedStringDescriptor = Readonly<{
 export type LocalizedString = Readonly<Record<LocaleTag, string>>;
 
 /**
+ * The translations a protocol holds in `value`: the object itself when it is
+ * a plain object whose every value is text, otherwise none.
+ */
+export const heldTranslations = (value: unknown): LocalizedString => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    return {};
+  const entries = Object.entries(value);
+  return entries.every(
+    (entry): entry is [string, string] => typeof entry[1] === 'string',
+  )
+    ? Object.fromEntries(entries)
+    : {};
+};
+
+/**
  * Describes why a value is not a canonical BCP 47 tag, suggesting the
  * canonical spelling when one exists. Underscores are read as hyphens for the
  * suggestion only, so `EN_us` is still rejected.

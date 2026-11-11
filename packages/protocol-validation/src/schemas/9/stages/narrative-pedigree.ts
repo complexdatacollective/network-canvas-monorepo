@@ -124,25 +124,28 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
       });
     }),
   // The interview's own words on this stage, which Network Canvas supplies
-  // (`stage-wording/narrative-pedigree.ts`). The key's heading and rows and
-  // the clear focus tooltip, which every Narrative Pedigree shows alike, are
-  // interface text (`interface-text-wording.ts`).
+  // (`stage-wording/narrative-pedigree.ts`); a stage that omits one shows
+  // Network Canvas's wording. The key's heading and rows and the clear focus
+  // tooltip, which every Narrative Pedigree shows alike, are interface text
+  // (`interface-text-wording.ts`).
   saveSnapshot: localizedString(nonBlankText(), {
     format: 'plain',
     lines: 'single',
-  }),
-  conditionText: z.strictObject({
-    selectCondition: localizedString(nonBlankText(), {
-      format: 'plain',
-      lines: 'single',
-    }),
-    snapshotCondition: localizedMessage(nonBlankText(), {
-      arguments: SNAPSHOT_CONDITION_ARGUMENTS,
-    }),
-    snapshotInheritance: localizedMessage(nonBlankText(), {
-      arguments: SNAPSHOT_INHERITANCE_ARGUMENTS,
-    }),
-  }),
+  }).optional(),
+  conditionText: z
+    .strictObject({
+      selectCondition: localizedString(nonBlankText(), {
+        format: 'plain',
+        lines: 'single',
+      }).optional(),
+      snapshotCondition: localizedMessage(nonBlankText(), {
+        arguments: SNAPSHOT_CONDITION_ARGUMENTS,
+      }).optional(),
+      snapshotInheritance: localizedMessage(nonBlankText(), {
+        arguments: SNAPSHOT_INHERITANCE_ARGUMENTS,
+      }).optional(),
+    })
+    .optional(),
 });
 
 export const narrativePedigreeStage = withStageSubjectResolution(

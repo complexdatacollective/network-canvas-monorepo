@@ -63,6 +63,7 @@ import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { useContentFormat } from '../../localization/useContentFormat';
+import { useStageWording } from '../../localization/useStageWording';
 import {
   getActiveSession,
   getEdgeColorForType,
@@ -184,6 +185,7 @@ import { FAMILY_PEDIGREE_GAPS } from './pedigree-layout/layoutDimensions';
 import type { PedigreeLink } from './pedigree-layout/types';
 import { pedigreeLinksOf } from './pedigreeLinks';
 import {
+  completenessWordingFrom,
   PedigreeWordsProvider,
   showPiped,
   usePedigreeWordsOf,
@@ -294,7 +296,8 @@ const changesAnything = (changes: StandInChanges) =>
 const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
   const contentFormat = useContentFormat();
-  const words = usePedigreeWordsOf(stage.wording);
+  const stageWording = useStageWording(stage);
+  const words = usePedigreeWordsOf(stageWording);
   const { wording, text, piped } = words;
   const dispatch = useAppDispatch();
   const { currentStep, displayedStep } = useCurrentStep();
@@ -1337,6 +1340,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // How far the family is from what the researcher requires (or recommends)
   // before the participant continues.
   const completeness = stage.completeness;
+  const completenessWording = useMemo(
+    () => completenessWordingFrom(stageWording),
+    [stageWording],
+  );
+  // The name question, and the hint beneath it where the stage shows one.
+  const nameField = useMemo(
+    () => ({
+      prompt: stageWording.text('nodeConfiguration', 'nameField', 'prompt'),
+      hint: stageWording.shown('nodeConfiguration', 'nameField', 'hint'),
+    }),
+    [stageWording],
+  );
   const progress = useMemo(
     () =>
       completeness
@@ -3178,7 +3193,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 {progress && completeness && !nomination && (
                   <CompletenessTracker
                     progress={progress}
-                    completeness={completeness}
+                    completeness={{
+                      enforcement: completeness.enforcement,
+                      ...completenessWording,
+                    }}
                     open={trackerOpen}
                     onOpenChange={setTrackerOpen}
                     family={family}
@@ -3290,7 +3308,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               generatedLabels={generatedLabels}
               decryptedNames={decryptedNames}
               displayName={displayName}
-              nameField={stage.nodeConfiguration.nameField}
+              nameField={nameField}
               askAbout={
                 panel.mode.kind === 'edit' && progress && completeness
                   ? {
@@ -3302,8 +3320,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       required: completeness.enforcement === 'required',
                       answeredYes: saidYes.get(panel.mode.person.id),
                       questions: {
-                        siblings: completeness.itemText.siblings.question,
-                        children: completeness.itemText.children.question,
+                        siblings:
+                          completenessWording.itemText.siblings.question,
+                        children:
+                          completenessWording.itemText.children.question,
                       },
                     }
                   : undefined

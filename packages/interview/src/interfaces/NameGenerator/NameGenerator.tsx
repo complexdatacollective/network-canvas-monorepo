@@ -28,6 +28,7 @@ import useMediaQuery from '../../hooks/useMediaQuery';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import usePortalTarget from '../../hooks/usePortalTarget';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { useStageWording } from '../../localization/useStageWording';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import {
   getNetworkNodesForPrompt,
@@ -55,7 +56,9 @@ const NameGenerator = (props: NameGeneratorProps) => {
   const intl = useAppIntl();
   const { stage } = props;
 
-  const { behaviours, type, panels, minNodesNotice, maxNodesNotice } = stage;
+  const { behaviours, type, panels } = stage;
+  // The stage's own words, and Network Canvas's where the stage holds none.
+  const wording = useStageWording(stage);
 
   let quickAdd: string | null = null;
   let addNamePlaceholder: LocalizedString | null = null;
@@ -63,7 +66,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
 
   if (type === 'NameGeneratorQuickAdd') {
     quickAdd = stage.quickAdd;
-    addNamePlaceholder = stage.addNamePlaceholder;
+    addNamePlaceholder = wording.text('addNamePlaceholder');
   }
 
   if (type === 'NameGenerator') {
@@ -182,8 +185,8 @@ const NameGenerator = (props: NameGeneratorProps) => {
     stageNodeCount,
     minNodes,
     maxNodes,
-    minNodesNotice,
-    maxNodesNotice,
+    minNodesNotice: wording.shown('minNodesNotice'),
+    maxNodesNotice: wording.shown('maxNodesNotice'),
     isLastPrompt,
   });
 

@@ -103,19 +103,20 @@ export const finishSessionStage = baseStageSchema.extend({
   ),
   // The interview's own words on this screen, which Network Canvas supplies
   // (`stage-wording/finish-session.ts`): the Finish button, the question it
-  // asks, and what the interview says when it could not be ended.
+  // asks, and what the interview says when it could not be ended. A stage
+  // that omits one shows Network Canvas's wording.
   finishLabel: localizedString(nonBlankText(), {
     format: 'plain',
     lines: 'single',
-  }),
+  }).optional(),
   finishConfirmation: localizedString(nonBlankText(), {
     format: 'plain',
     lines: 'single',
-  }),
+  }).optional(),
   finishFailed: localizedString(nonBlankText(), {
     format: 'plain',
     lines: 'single',
-  }),
+  }).optional(),
   outcome: FinishOutcomeSchema,
 });
 

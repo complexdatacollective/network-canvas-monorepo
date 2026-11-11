@@ -50,9 +50,12 @@ describe('validateImportedProtocol', () => {
     });
   });
 
-  it('refuses a protocol written without the interface text it shows, naming each group', async () => {
-    const localization = { defaultLocale: 'en', locales: ['en'] };
-    const protocol = {
+  // The interview shows Network Canvas's wording for interface text a
+  // protocol does not hold, so a protocol without it lacks nothing in a
+  // language Network Canvas has wording in.
+  const handWritten = (locale: string) => {
+    const localization = { defaultLocale: locale, locales: [locale] };
+    return {
       name: 'Hand-written protocol',
       schemaVersion: 9,
       localization,
@@ -60,12 +63,19 @@ describe('validateImportedProtocol', () => {
       stages: [createDefaultFinishSessionStage({ id: 'finish', localization })],
       assetManifest: {},
     };
+  };
+
+  it('accepts a protocol written without the interface text it shows, in a language Network Canvas has wording in', async () => {
+    const protocol = handWritten('en');
 
     expect(
       (await validateImportedProtocol(withInterfaceText(protocol))).success,
     ).toBe(true);
+    expect((await validateImportedProtocol(protocol)).success).toBe(true);
+  });
 
-    const result = await validateImportedProtocol(protocol);
+  it('refuses one in a language Network Canvas has no wording in, naming each text it lacks', async () => {
+    const result = await validateImportedProtocol(handWritten('sw'));
     if (result.success || result.error !== 'validation-failed') {
       throw new Error('Expected the protocol to fail validation');
     }
@@ -80,7 +90,7 @@ describe('validateImportedProtocol', () => {
       throw new Error('Expected the validator’s issues');
     }
     expect(error.issues.map(({ path }) => path.join('.'))).toContain(
-      'interfaceText.navigation',
+      'interfaceText.navigation.back.sw',
     );
   });
 });

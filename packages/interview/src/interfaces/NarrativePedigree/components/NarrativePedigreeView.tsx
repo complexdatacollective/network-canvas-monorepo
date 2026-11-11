@@ -34,11 +34,13 @@ import { useNodeMeasurement } from '../../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   useLocalizedString,
+  useProtocolLocalization,
   useResolveLocalizedMessage,
   useResolveLocalizedString,
   useResolveLocalizedStringIn,
 } from '../../../localization/ProtocolLocalizationProvider';
 import { useContentFormat } from '../../../localization/useContentFormat';
+import { useStageWording } from '../../../localization/useStageWording';
 import {
   getActiveSession,
   getEdgeColorForType,
@@ -62,6 +64,7 @@ import type { PedigreeLink } from '../../FamilyPedigree/pedigree-layout/types';
 import { pedigreeLinksOf } from '../../FamilyPedigree/pedigreeLinks';
 import {
   type PedigreeWords,
+  pedigreeWordingOf,
   useKinshipLocale,
   usePedigreePiped,
   usePedigreeText,
@@ -149,11 +152,15 @@ export default function NarrativePedigreeView({
   const resolve = useResolveLocalizedString();
   const resolveMessage = useResolveLocalizedMessage();
   const stageLabel = useLocalizedString(stage.label).text;
-  // The stage's own words (`stage-wording/narrative-pedigree.ts`).
+  // The stage's own words (`stage-wording/narrative-pedigree.ts`): as the
+  // stage words them, and as Network Canvas does where the stage does not.
+  const stageWording = useStageWording(stage);
   const conditionControlWords: ConditionControlWords = {
-    selectCondition: resolve(stage.conditionText.selectCondition).text,
+    selectCondition: resolve(
+      stageWording.text('conditionText', 'selectCondition'),
+    ).text,
   };
-  const saveSnapshotText = resolve(stage.saveSnapshot).text;
+  const saveSnapshotText = resolve(stageWording.text('saveSnapshot')).text;
   // The key and the clear focus button are worded alike on every Narrative
   // Pedigree (the protocol's interface text).
   const clearFocusText = intl.formatMessage(messages.clearFocus);
@@ -227,36 +234,43 @@ export default function NarrativePedigreeView({
   // stage's words. Soft hyphens let long kinship words break inside a symbol.
   const pedigreeText = usePedigreeText();
   const pedigreePiped = usePedigreePiped();
-  const kinshipLocale = useKinshipLocale(sourceStage?.wording);
+  // The source stage's words as it shows them: its own, and Network Canvas's
+  // where it holds none.
+  const localization = useProtocolLocalization();
+  const sourceWording = useMemo(
+    () => (sourceStage ? pedigreeWordingOf(sourceStage, localization) : null),
+    [sourceStage, localization],
+  );
+  const kinshipLocale = useKinshipLocale(sourceWording ?? undefined);
   // The participant is called as the source stage calls them, with that
   // stage's dynamic values (their name from an earlier form, say) written in.
   const dynamicValueSources = useDynamicValueSources();
   const resolveIn = useResolveLocalizedStringIn();
   const sourceYou = useMemo(
     () =>
-      sourceStage
+      sourceStage && sourceWording
         ? resolveIn(
-            sourceStage.wording.you,
+            sourceWording.you,
             dynamicValueSources && {
               ...dynamicValueSources,
               bindings: sourceStage.dynamicValues ?? {},
             },
           ).text
         : '',
-    [sourceStage, resolveIn, dynamicValueSources],
+    [sourceStage, sourceWording, resolveIn, dynamicValueSources],
   );
   const sourceWords = useMemo<PedigreeWords | null>(
     () =>
-      sourceStage
+      sourceWording
         ? {
-            wording: sourceStage.wording,
+            wording: sourceWording,
             text: pedigreeText,
             piped: pedigreePiped,
             you: sourceYou,
             locale: kinshipLocale,
           }
         : null,
-    [sourceStage, pedigreeText, pedigreePiped, sourceYou, kinshipLocale],
+    [sourceWording, pedigreeText, pedigreePiped, sourceYou, kinshipLocale],
   );
   const labels = useMemo(
     () =>
@@ -709,20 +723,26 @@ export default function NarrativePedigreeView({
     const base = stageLabel;
     if (!selectedDiseaseLabel) return base;
     return focalLabel
-      ? resolveMessage(stage.conditionText.snapshotInheritance, {
-          title: base,
-          condition: selectedDiseaseLabel,
-          name: focalLabel,
-        }).text
-      : resolveMessage(stage.conditionText.snapshotCondition, {
-          title: base,
-          condition: selectedDiseaseLabel,
-        }).text;
+      ? resolveMessage(
+          stageWording.text('conditionText', 'snapshotInheritance'),
+          {
+            title: base,
+            condition: selectedDiseaseLabel,
+            name: focalLabel,
+          },
+        ).text
+      : resolveMessage(
+          stageWording.text('conditionText', 'snapshotCondition'),
+          {
+            title: base,
+            condition: selectedDiseaseLabel,
+          },
+        ).text;
   }, [
     stageLabel,
     selectedDiseaseLabel,
     focalLabel,
-    stage.conditionText,
+    stageWording,
     resolveMessage,
   ]);
 

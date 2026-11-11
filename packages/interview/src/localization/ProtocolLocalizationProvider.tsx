@@ -222,6 +222,14 @@ export function useProtocolLocale(): Readonly<{
 }
 
 /**
+ * The languages the protocol declares, for working out what Network Canvas
+ * words in them (see `useStageWording`).
+ */
+export function useProtocolLocalization(): LocalizationDeclaration {
+  return useProtocolLocalizationState().localization;
+}
+
+/**
  * The participant's languages, most preferred first: the interview language,
  * then the browser's. Text Network Canvas does not take from the protocol,
  * such as a map's place names, is matched against them.
@@ -345,9 +353,9 @@ export function useLocalizedString(
 }
 
 /**
- * `useLocalizedString` for a setting the stage holds only while its
- * configuration shows it (see `missingRequiredStageSettings`): its text, or
- * undefined where the stage does not hold it.
+ * `useLocalizedString` for a setting the stage shows only under some
+ * configurations (see `StageWording`): its text, or undefined where the
+ * stage does not show it.
  */
 export function useOptionalLocalizedText(
   value: LocalizedString | undefined,
