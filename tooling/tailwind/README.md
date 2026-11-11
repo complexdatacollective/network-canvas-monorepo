@@ -11,14 +11,14 @@ All exports are explicit; the published ones (`publishConfig.exports` in `packag
 
 ## Tailwind v4 surface
 
-The v4 surface ships a single foundation barrel that bundles every theme, plugin, and font. Tailwind v4 cares about `@import` ordering — by self-hosting fonts via `@font-face` (no external Google Fonts `@import url(...)`) the barrel composes safely no matter where consumers place it in their entry stream.
+The v4 surface ships a single foundation barrel that bundles every theme and plugin. Tailwind v4 cares about `@import` ordering — by self-hosting fonts via `@font-face` (no external Google Fonts `@import url(...)`) the barrel composes safely no matter where consumers place it in their entry stream.
 
-| Export                                                               | Purpose                                                                                                                                                                                       |
-| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@codaco/tailwind-config/fresco.css`                                 | Foundation barrel — colors, the `@theme` block, foundational utilities, custom plugins, **all theme variants** (default + interview + studio) with self-hosted Nunito + Inclusive Sans fonts. |
-| `@codaco/tailwind-config/fresco/plugins/elevation/elevation`         | Multi-layer realistic shadows (`elevation-low/medium/high`).                                                                                                                                  |
-| `@codaco/tailwind-config/fresco/plugins/inset-surface/inset-surface` | Background-color-adaptive inset (pressed-in) shadows.                                                                                                                                         |
-| `@codaco/tailwind-config/fresco/plugins/motion-spring`               | Spring-based transition utilities (`spring-short/medium/long`) generated via `motion`.                                                                                                        |
+| Export                                                               | Purpose                                                                                                                                                                                            |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@codaco/tailwind-config/fresco.css`                                 | Foundation barrel — colors, the `@theme` block, foundational utilities, custom plugins, **all theme variants** (default + interview + studio). The fonts are imported separately; see Fonts below. |
+| `@codaco/tailwind-config/fresco/plugins/elevation/elevation`         | Multi-layer realistic shadows (`elevation-low/medium/high`).                                                                                                                                       |
+| `@codaco/tailwind-config/fresco/plugins/inset-surface/inset-surface` | Background-color-adaptive inset (pressed-in) shadows.                                                                                                                                              |
+| `@codaco/tailwind-config/fresco/plugins/motion-spring`               | Spring-based transition utilities (`spring-short/medium/long`) generated via `motion`.                                                                                                             |
 
 ### Consuming from a Tailwind v4 app
 
@@ -29,6 +29,18 @@ The v4 surface ships a single foundation barrel that bundles every theme, plugin
 
 @import '@codaco/tailwind-config/fresco.css';
 ```
+
+### Fonts
+
+The font stacks in the themes name three self-hosted faces, and the barrel does not load them. Import their `@font-face` rules from the app's entry module, where the bundler resolves the woff2 files out of the `@fontsource-variable` packages this package depends on:
+
+```ts
+import '@codaco/tailwind-config/fonts/inclusive-sans.css';
+import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
+```
+
+Nunito sets headings and Inclusive Sans sets body text. Readex Pro follows them in both stacks and carries Arabic-script text: only its Arabic subset is declared, so Latin text never resolves to it and a browser fetches the file only for a page that shows Arabic. Its range covers the letters of Arabic itself; letters that other languages add to the script (Persian, Urdu) are not in the face and fall back to a system font.
 
 The default theme writes its values under `:root`; the interview and studio themes layer overrides under `[data-theme-interview]` / `[data-theme-studio]`, which can be placed on any element. The type scale binds to a `--theme-root-size` sentinel that each theme declares (a constant `1rem` in all three themes; the full-screen interview Shell in `@codaco/interview` additionally scopes a fluid viewport ramp of this sentinel — 0.9rem on phones up to a 1.25rem cap on large displays — onto its own subtree). All themes ship together in the foundation barrel; consumers typically wrap interview UI with `<ThemedRegion theme="interview">` from `@codaco/fresco-ui`.
 

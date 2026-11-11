@@ -68,8 +68,8 @@
 
 @layer theme {
   [data-theme-interview] {
-    --heading-font: 'Nunito Variable', sans-serif;
-    --body-font: 'Nunito Variable', sans-serif;
+    --heading-font: 'Nunito Variable', 'Readex Pro Variable', sans-serif;
+    --body-font: 'Nunito Variable', 'Readex Pro Variable', sans-serif;
 
     /*
      * Redeclared (not inherited from :root) so the calc resolves against

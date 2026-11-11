@@ -4,9 +4,11 @@
  * "paper" the white cards, "ink" the text on paper.
  */
 @theme {
-  --font-display: 'Nunito Variable', 'Nunito', system-ui, sans-serif;
+  --font-display:
+    'Nunito Variable', 'Nunito', 'Readex Pro Variable', system-ui, sans-serif;
   --font-body:
-    'Inclusive Sans Variable', 'Inclusive Sans', system-ui, sans-serif;
+    'Inclusive Sans Variable', 'Inclusive Sans', 'Readex Pro Variable',
+    system-ui, sans-serif;
 
   /* Page and dark panels */
   --color-night: oklch(0.22 0.07 281);

@@ -31,8 +31,8 @@ header they share in Discourse's header.
   underlined, since the link colour alone is too close to the text's.
 - **Palettes.** Ships "Network Canvas" and "Network Canvas Dark" palettes,
   filled from the same tokens.
-- **Fonts.** Ships Nunito and Inclusive Sans as theme assets, the same files
-  the apps load.
+- **Fonts.** Ships Nunito, Inclusive Sans and Readex Pro (for Arabic-script
+  text) as theme assets, the same files the apps load.
 - **Home page.** Replaces the forum's front page (`/`; the topic list moves to
   `/latest`) with a page that sends people to the right category. It shows a
   card for each of help, feature requests and general discussion, with that

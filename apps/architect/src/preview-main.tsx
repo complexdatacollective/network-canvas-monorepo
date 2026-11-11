@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
 import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBuildLease';
 

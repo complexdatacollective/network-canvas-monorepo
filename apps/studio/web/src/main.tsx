@@ -1,5 +1,6 @@
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 import './styles/globals.css';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';

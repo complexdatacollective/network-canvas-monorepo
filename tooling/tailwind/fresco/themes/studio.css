@@ -146,8 +146,8 @@
      */
     --base-hue: 60;
 
-    --heading-font: 'Nunito Variable', sans-serif;
-    --body-font: 'Inclusive Sans Variable', sans-serif;
+    --heading-font: 'Nunito Variable', 'Readex Pro Variable', sans-serif;
+    --body-font: 'Inclusive Sans Variable', 'Readex Pro Variable', sans-serif;
 
     /*
      * Redeclared (not inherited) so the calc resolves against THIS region's

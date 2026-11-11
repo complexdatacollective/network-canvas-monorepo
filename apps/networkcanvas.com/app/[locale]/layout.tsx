@@ -1,5 +1,8 @@
 import '@fontsource-variable/nunito';
 import '@fontsource-variable/inclusive-sans';
+// Arabic-script text. The shared rule loads only the Arabic subset, which a
+// browser fetches when a page shows Arabic, so it is not preloaded below.
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 // Resolves to the same hashed URLs the CSS above references, for the preloads
 // below. Latin only: every site locale's glyphs are in that subset.
 import inclusiveSansLatin from '@fontsource-variable/inclusive-sans/files/inclusive-sans-latin-wght-normal.woff2';

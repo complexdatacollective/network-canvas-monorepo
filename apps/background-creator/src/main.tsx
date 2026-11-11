@@ -1,5 +1,6 @@
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 import { createRoot } from 'react-dom/client';
 
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';

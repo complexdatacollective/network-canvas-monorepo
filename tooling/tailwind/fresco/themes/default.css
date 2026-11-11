@@ -31,8 +31,8 @@
      */
     --theme-root-size-fluid: clamp(1rem, 0.45rem + 0.5vw, 1.1rem);
 
-    --heading-font: 'Nunito Variable', sans-serif;
-    --body-font: 'Inclusive Sans Variable', sans-serif;
+    --heading-font: 'Nunito Variable', 'Readex Pro Variable', sans-serif;
+    --body-font: 'Inclusive Sans Variable', 'Readex Pro Variable', sans-serif;
 
     /*
      * Spacing tracks `--theme-root-size` so themed regions can scale all

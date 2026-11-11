@@ -2,6 +2,7 @@ import addonA11y from '@storybook/addon-a11y';
 
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 import addonDocs from '@storybook/addon-docs';
 import {
   DocsContainer,

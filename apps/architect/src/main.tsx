@@ -2,6 +2,7 @@ import { Toast } from '@base-ui/react/toast';
 
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 import './analytics';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';

@@ -36,7 +36,7 @@ consumers import them in order:
 
 ```css
 /* styles/globals.css */
-@import '@codaco/tailwind-config/fresco.css'; /* Tailwind v4 + theme + plugins + fonts */
+@import '@codaco/tailwind-config/fresco.css'; /* Tailwind v4 + theme + plugins */
 @import '@codaco/fresco-ui/styles.css'; /* @source for fresco-ui's dist */
 ```
 
@@ -60,8 +60,14 @@ does **not** re-export the design-system foundation, so the
 `tailwind-config` import is not optional.
 
 `@codaco/tailwind-config/fresco.css` bundles the default and interview
-theme variants together with self-hosted Nunito and Inclusive Sans
-woff2 files.
+theme variants. The fonts their stacks name are self-hosted and imported
+separately, from the app's entry module:
+
+```ts
+import '@codaco/tailwind-config/fonts/inclusive-sans.css';
+import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css'; // Arabic-script text
+```
 
 The interview theme is activated by the `data-theme-interview` attribute. Hosts typically apply it via the `<ThemedRegion theme="interview">` component (exported from `@codaco/fresco-ui/ThemedRegion`), which also wires up a `<PortalContainerProvider>` so dialogs, popovers, dropdowns, tooltips, toasts, selects, and comboboxes portal into a node inside the themed subtree (and therefore inherit the theme's CSS variables) instead of into `document.body`.
 

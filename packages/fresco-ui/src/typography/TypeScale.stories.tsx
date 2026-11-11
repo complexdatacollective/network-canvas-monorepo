@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, waitFor, within } from 'storybook/test';
 
 import Heading from './Heading';
 import Paragraph from './Paragraph';
@@ -381,4 +382,66 @@ export const LineHeightDemo: Story = {
       </div>
     </div>
   ),
+};
+
+/**
+ * Arabic-script text is set in Readex Pro, which follows the Latin face in
+ * both the heading and the body stack. The sample is Article 1 of the
+ * Universal Declaration of Human Rights, in the United Nations' Arabic and
+ * English texts.
+ */
+export const ArabicScript: Story = {
+  render: () => (
+    <div className="mx-auto grid max-w-4xl gap-12 p-8">
+      <section lang="ar" dir="rtl">
+        <Heading level="h1" variant="page-heading">
+          الإعلان العالمي لحقوق الإنسان
+        </Heading>
+        <Paragraph intent="lead">
+          يولد جميع الناس أحرارًا متساوين في الكرامة والحقوق.
+        </Paragraph>
+        <Heading level="h2">المادة 1</Heading>
+        <Paragraph>
+          يولد جميع الناس أحرارًا متساوين في الكرامة والحقوق. وقد وهبوا عقلًا
+          وضميرًا وعليهم أن يعامل بعضهم بعضًا بروح الإخاء.
+        </Paragraph>
+        <Heading level="h3">المادة 1</Heading>
+        <Paragraph>
+          <strong>يولد جميع الناس أحرارًا متساوين في الكرامة والحقوق.</strong>{' '}
+          وقد وهبوا عقلًا وضميرًا وعليهم أن يعامل بعضهم بعضًا بروح الإخاء.
+        </Paragraph>
+      </section>
+      <section lang="en" dir="ltr">
+        <Heading level="h1" variant="page-heading">
+          Universal Declaration of Human Rights
+        </Heading>
+        <Paragraph intent="lead">
+          All human beings are born free and equal in dignity and rights.
+        </Paragraph>
+        <Heading level="h2">Article 1</Heading>
+        <Paragraph>
+          All human beings are born free and equal in dignity and rights. They
+          are endowed with reason and conscience and should act towards one
+          another in a spirit of brotherhood.
+        </Paragraph>
+      </section>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [heading] = canvas.getAllByRole('heading', { name: 'المادة 1' });
+    await expect(getComputedStyle(heading!).fontFamily).toContain(
+      'Readex Pro Variable',
+    );
+    // A face limited by unicode-range is fetched only when rendered text
+    // reaches it, so a loaded face means the Arabic text resolved to it.
+    await waitFor(() =>
+      expect(
+        [...document.fonts].find(
+          (face) =>
+            face.family.replaceAll(/['"]/g, '') === 'Readex Pro Variable',
+        )?.status,
+      ).toBe('loaded'),
+    );
+  },
 };
