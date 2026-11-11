@@ -3,7 +3,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
 import { BackgroundLights } from '@codaco/art';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -72,14 +72,16 @@ export function AppErrorBoundary({ children }: { children: ReactNode }) {
 
 function ErrorFallback() {
   const intl = useAppIntl();
+  const direction = useAppDirection();
   // The crashed tree (including the ambient blob layer in App.tsx) is
   // unmounted by React, so re-create the backdrop here and present the
   // fallback as a dialog over it. Reload is the only way forward.
   return (
-    // The dialog's portal must share the fallback's language. In particular,
-    // locale startup can fail after bootstrap set a non-English document lang;
-    // provider-optional English recovery must not inherit that stale language.
-    <ThemedRegion theme="interview" lang={intl.locale} dir="ltr">
+    // The dialog's portal must share the fallback's language and the way it
+    // is written. In particular, locale startup can fail after bootstrap set a
+    // non-English document lang; provider-optional English recovery must not
+    // inherit that stale language, or a right-to-left direction left with it.
+    <ThemedRegion theme="interview" lang={intl.locale} dir={direction}>
       <motion.div
         className="fixed inset-0 -z-10"
         initial={{ opacity: 0 }}

@@ -136,7 +136,7 @@ export function ProtocolValidationDetailsDialogBody({
         aria-label={intl.formatMessage(messages.protocolValidationErrors)}
         className="inset-surface bg-surface-1 text-surface-1-contrast publish-colors h-64! flex-none overflow-hidden rounded-sm"
         fade={false}
-        viewportClassName="my-1.5 mr-1.5 px-4 py-2.5"
+        viewportClassName="my-1.5 me-1.5 px-4 py-2.5"
       >
         <ol lang="en" dir="ltr" className="list-decimal space-y-3 ps-5 text-sm">
           {visibleIssues.map((issue, index) => (
@@ -186,7 +186,7 @@ function ProtocolValidationDetailsDialogFooter({
       <Paragraph
         intent="smallText"
         aria-live="polite"
-        className="phone-landscape:mr-auto min-h-lh"
+        className="phone-landscape:me-auto min-h-lh"
         emphasis={copyStatus === 'failed' ? 'default' : 'muted'}
         margin="none"
       >

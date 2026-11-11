@@ -103,7 +103,7 @@ function UploadThingModal() {
         <Paragraph>
           {intl.formatMessage(messages.updatingTheKeyShouldTakeAMatter)}
         </Paragraph>
-        <ol className="mt-6 ml-4 list-inside list-decimal">
+        <ol className="ms-4 mt-6 list-inside list-decimal">
           <li>
             {intl.formatMessage(messages.visitTheUploadThingDashboard, {
               tag1: renderDashboardLinkChunks,

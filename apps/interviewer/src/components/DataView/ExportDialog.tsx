@@ -195,7 +195,7 @@ function ExportErrorFooter({
       <Paragraph
         intent="smallText"
         aria-live="polite"
-        className="phone-landscape:mr-auto min-h-lh"
+        className="phone-landscape:me-auto min-h-lh"
         emphasis={copyStatus === 'failed' ? 'default' : 'muted'}
         margin="none"
       >

@@ -672,7 +672,7 @@ export function DeckCard(props: DeckCardProps) {
                   level="h2"
                   title={protocol.name}
                   className={cx(
-                    'w-full text-left font-black wrap-break-word hyphens-auto',
+                    'w-full text-start font-black wrap-break-word hyphens-auto',
                     cardHeadingSizeClass(protocol.name),
                   )}
                   // line-height must be inline: leading-* utilities lose to
@@ -734,7 +734,7 @@ export function DeckCard(props: DeckCardProps) {
                   animate={PRESENCE_ENTER}
                   exit={PRESENCE_EXIT}
                   transition={REGION_TRANSITION}
-                  className="shrink-0 text-left"
+                  className="shrink-0 text-start"
                 >
                   {protocol.description ? (
                     <span
