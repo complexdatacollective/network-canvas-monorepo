@@ -96,8 +96,10 @@ section, so a reviewer can see what the comparator was told.
 
 ### 1. Translate
 
-Inputs: the English, its context note, and the existing translations for that
-locale on the same surface (grep them for the same concepts). Match their
+Inputs: the English, its context note, the locale's terminology glossary
+(`packages/app-i18n/glossary/<tag>.md`, where one exists), and the existing
+translations for that locale on the same surface (grep them for the same
+concepts). Match their
 register (formal/informal "you") and terminology. Keep ICU placeholders,
 select arms, exact plural arms (`=0`), rich-text tags and Markdown structure
 intact. Plural categories follow the target locale's CLDR rules, not English's:
@@ -132,13 +134,13 @@ checks the translation. Instruct it to find problems, not to confirm quality,
 and to report each finding with severity and a proposed fix. Its prompt must
 carry every input its checks need:
 
-| Check                             | Inputs in the comparator's prompt                                                                              |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Meaning drift, omission, addition | the English, the translation (tokens restored), the context note                                               |
-| Ambiguity                         | the back-translation **with the back-translator's notes, pasted verbatim**, never summarized by you            |
-| Register and terminology          | the exact locale tag (`pt-BR`, not "Portuguese"), its register, its existing translations of the same concepts |
-| ICU parity                        | the English and translation with ICU intact, and the locale tag                                                |
-| Tone and length                   | the audience and element kind from the context note                                                            |
+| Check                             | Inputs in the comparator's prompt                                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Meaning drift, omission, addition | the English, the translation (tokens restored), the context note                                                                     |
+| Ambiguity                         | the back-translation **with the back-translator's notes, pasted verbatim**, never summarized by you                                  |
+| Register and terminology          | the exact locale tag (`pt-BR`, not "Portuguese"), its register, its glossary entries, its existing translations of the same concepts |
+| ICU parity                        | the English and translation with ICU intact, and the locale tag                                                                      |
+| Tone and length                   | the audience and element kind from the context note                                                                                  |
 
 ICU parity means the same placeholders, select arms and exact plural arms as the
 English, with plural categories correct for that locale's CLDR rules. A
