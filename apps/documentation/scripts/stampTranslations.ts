@@ -24,6 +24,7 @@ import { MetadataFileSchema } from '~/app/types';
 import { defaultLocale } from '~/lib/i18n/locales';
 import {
   gitBlobId,
+  labelSourceKey,
   labelSourcesPath,
   messageSourcesPath,
   readLabelSources,
@@ -91,7 +92,7 @@ function stampLabels(file: string) {
   const english = localeLabels[defaultLocale];
   if (english === undefined)
     throw new Error(`${file} has no ${defaultLocale} entry in localeLabels`);
-  const key = relative(root, file);
+  const key = labelSourceKey(root, file);
   for (const locale of Object.keys(localeLabels)) {
     if (locale === defaultLocale) continue;
     const sourcesFile = labelSourcesPath(root, locale);

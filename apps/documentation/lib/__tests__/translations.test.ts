@@ -177,6 +177,21 @@ describe('findTranslationProblems', () => {
     ]);
   });
 
+  it('checks a language whose only translations are navigation labels', () => {
+    write(
+      'docs/start/metadata.json',
+      JSON.stringify({
+        type: 'section',
+        localeLabels: { en: 'Start', es: 'Inicio' },
+      }),
+    );
+    expect(problems()).toEqual([
+      expect.stringContaining(
+        'es docs/start/metadata.json localeLabels.es does not record',
+      ),
+    ]);
+  });
+
   describe('navigation', () => {
     const metadata = (labels: object, indexFiles: object) =>
       write(

@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 
-import { MetadataFileSchema } from '~/app/types';
+import { type MetadataFile, MetadataFileSchema } from '~/app/types';
 
 import { defaultLocale } from './locales';
 
@@ -145,11 +145,37 @@ export type TranslationProblem = {
   problem: string;
 };
 
-/** Every locale that has at least one translated file, plus the published ones. */
+type MetadataEntry = { file: string; metadata: MetadataFile };
+
+// Every folder's `metadata.json` under the docs folder.
+function listMetadata(docsDir: string): MetadataEntry[] {
+  return readdirSync(docsDir, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name === 'metadata.json')
+    .map((entry) => {
+      const file = join(entry.parentPath, entry.name);
+      return {
+        file,
+        metadata: MetadataFileSchema.parse(
+          JSON.parse(readFileSync(file, 'utf-8')),
+        ),
+      };
+    });
+}
+
+/**
+ * Every locale that has at least one translated page, message catalog or
+ * navigation entry, plus the published ones.
+ */
 function translationLocales({ root, published }: TranslationPaths): string[] {
   const found = new Set(published.filter((l) => l !== defaultLocale));
   for (const page of listPages(join(root, 'docs')))
     for (const t of page.translations) found.add(t.locale);
+  for (const { metadata } of listMetadata(join(root, 'docs')))
+    for (const locale of [
+      ...Object.keys(metadata.localeLabels ?? {}),
+      ...Object.keys(metadata.localeIndexFiles ?? {}),
+    ])
+      if (locale !== defaultLocale) found.add(locale);
   const messagesDir = join(root, 'messages');
   for (const name of readdirSync(messagesDir)) {
     const locale = /^(.+)\.json$/.exec(name)?.[1];
@@ -163,6 +189,11 @@ export const messageSourcesPath = (root: string, locale: string) =>
 
 export const labelSourcesPath = (root: string, locale: string) =>
   join(root, 'translation', 'sources', `${locale}.labels.json`);
+
+// A metadata file's key in the label record: its path from the app folder,
+// with forward slashes on every platform.
+export const labelSourceKey = (root: string, file: string) =>
+  relative(root, file).split(sep).join('/');
 
 /** The recorded English of each translated navigation label, by metadata file. */
 export function readLabelSources(
@@ -247,20 +278,11 @@ export function findTranslationProblems(
 
     // Navigation labels and section index pages.
     const labelSources = readLabelSources(root, locale);
-    for (const entry of readdirSync(docsDir, {
-      recursive: true,
-      withFileTypes: true,
-    })) {
-      if (!entry.isFile() || entry.name !== 'metadata.json') continue;
-      const file = join(entry.parentPath, entry.name);
-      const metadata = MetadataFileSchema.parse(
-        JSON.parse(readFileSync(file, 'utf-8')),
-      );
-
+    for (const { file, metadata } of listMetadata(docsDir)) {
       const englishLabel = metadata.localeLabels?.[defaultLocale];
       const label = metadata.localeLabels?.[locale];
       if (englishLabel !== undefined && label) {
-        const source = labelSources[rel(file)];
+        const source = labelSources[labelSourceKey(root, file)];
         if (source === undefined)
           add(
             file,
