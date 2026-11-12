@@ -664,6 +664,14 @@ describe('Studio editor shell', () => {
       screen.getByRole('heading', { name: 'Inspector' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Viewers')).not.toBeInTheDocument();
+    // Names the researcher typed take their own direction, so in a
+    // right-to-left interface a Latin name is cut at its end.
+    expect(
+      await screen.findByText('Follow-up', { selector: '[dir="auto"]' }),
+    ).toBeInTheDocument();
+    const titles = screen.getAllByRole('heading', { level: 1 });
+    expect(titles.length).toBeGreaterThan(0);
+    for (const title of titles) expect(title).toHaveAttribute('dir', 'auto');
 
     fireEvent.click(
       await screen.findByRole('button', { name: 'Move Follow-up up' }),

@@ -1000,7 +1000,10 @@ function EditorWorkspace({
           */}
         <div className="min-w-0">
           <Heading
-            className="truncate"
+            // The protocol name the researcher typed takes its own direction,
+            // on the interface side, and is cut at its end.
+            dir="auto"
+            className="text-match-parent truncate"
             level="h1"
             margin="none"
             {...routeFocusTargetProps}
