@@ -102,7 +102,7 @@ Arabic is a supported language, so every layout is read in both directions. Writ
 - **Pointer geometry is measured from the start edge**, which is the right in a right-to-left language.
 - **Content that is left-to-right in every language stays so**: codes, numbers in boxes, coordinates on a canvas. Set `dir="ltr"` on it.
 - **A panel leaves by the edge it sits against.** A drawer on the end edge takes `swipeDirection` from the direction and flips its entry and exit transforms with `rtl:` (see `ComposerDrawer`).
-- **Check it.** Storybook's Direction toolbar mirrors any story, and the "Pseudo right-to-left" language does the same in the development build of Architect, Interviewer and Studio. A story that pins `globals: { appDirection: 'rtl' }` can assert the behaviour in its `play` function.
+- **Check it.** Storybook's Direction toolbar mirrors any story, and the "Pseudo right-to-left" language does the same in the development build of Architect, Interviewer and Studio. A story that pins `globals: { appDirection: 'rtl' }` can assert the behaviour in its `play` function. Every story in every Storybook is also drawn afresh in both directions after its play function and fails unless each box sits as far from the right edge as it sat from the left, and each arrow that points along the line turns (`mirrorCheck` in `tooling/storybook/src/i18n.tsx`). Content whose `dir` is fixed (a code) is left alone; a drawing placed by coordinates carries `data-direction-exempt`; a story that is not a layout in the reading direction takes the `!mirror` tag with a comment saying why.
 
 ## Visual style
 
