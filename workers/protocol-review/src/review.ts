@@ -289,13 +289,14 @@ const review = async (
   // only counted.
   let send: ((event: ReviewEvent) => void) | null = null;
   let received = 0;
+  let thinking = 0;
   let lastProgressAt = Number.NEGATIVE_INFINITY;
   const sendProgress = (force: boolean) => {
     if (!send) return;
     const now = deps.now();
     if (!force && now - lastProgressAt < progressIntervalMs) return;
     lastProgressAt = now;
-    send({ type: 'progress', received });
+    send({ type: 'progress', received, thinking });
   };
 
   const { promise: started, resolve: markStarted } =
@@ -306,6 +307,10 @@ const review = async (
     user,
     signal: abort.signal,
     onStart: () => markStarted(),
+    onThinking: (chunk) => {
+      thinking += chunk.length;
+      sendProgress(false);
+    },
     onText: (chunk) => {
       received += chunk.length;
       sendProgress(false);

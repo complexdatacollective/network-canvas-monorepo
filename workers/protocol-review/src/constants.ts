@@ -38,6 +38,8 @@ type ModelPrices = {
 type ProviderModel = {
   /** The model that writes this provider's reviews. */
   model: string;
+  /** How hard the model thinks before it answers. */
+  effort: 'medium' | 'high';
   prices: ModelPrices;
   /**
    * The prices of a whole request whose input is over `overInputTokens`, for
@@ -58,15 +60,22 @@ type ProviderModel = {
  *   lifetime, also 1.25 times the input price. At half Opus 5.5's prices the
  *   month allows roughly twice as many reviews. A request with more than
  *   272,000 input tokens is charged at the long-context prices throughout.
+ *
+ * Reviewing a design rewards thoroughness, so Claude thinks at `high`. GPT-6.1
+ * Sol thinks at `medium`: at `high` it reasoned for about seven minutes over
+ * a nine-stage protocol before writing anything, which left a larger
+ * protocol no room inside `MODEL_TIMEOUT_MS`.
  */
 export const PROVIDER_MODELS = {
   anthropic: {
     model: 'claude-opus-5-5',
+    effort: 'high',
     prices: { input: 4, output: 20, cacheWrite: 5, cacheRead: 0.2 },
     longContext: null,
   },
   openai: {
     model: 'gpt-6.1-sol',
+    effort: 'medium',
     prices: { input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.1 },
     longContext: {
       overInputTokens: 272_000,
@@ -85,9 +94,6 @@ export const PROVIDER_MODELS = {
  * answer at $0.80.
  */
 export const MAX_OUTPUT_TOKENS = 40_000;
-
-/** How hard the model thinks. Reviewing a design rewards thoroughness. */
-export const REVIEW_EFFORT = 'high';
 
 /** The most findings one review returns. */
 export const MAX_FINDINGS = 12;
