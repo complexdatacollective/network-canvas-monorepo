@@ -5,7 +5,6 @@
 '@codaco/protocol-builder': patch
 '@codaco/protocol-validation': patch
 '@codaco/protocol-utilities': patch
-'@codaco/fresco-ui': patch
 ---
 
 The Spanish interface now uses gender-neutral wording for participants and
