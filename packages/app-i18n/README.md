@@ -78,6 +78,12 @@ also accept this explicit wrapper. Ordinary strings are always literal data,
 even if they happen to resemble an encoded error. This keeps shared rule names
 and unnamed-attribute labels reactive without duplicating their translations.
 
+A server that refuses with these messages but renders nothing takes
+`@codaco/app-i18n/message-errors` instead: `defineMessages`, `createMessageError`
+and `formatMessageError` with no react-intl or React at run time. Extraction finds
+its `defineMessages` calls by name, so the app whose client formats them collects
+the server module into its own catalog.
+
 ## Loading catalogs
 
 Every catalog-owning package exports a map of loaders: for each locale it

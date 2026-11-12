@@ -64,6 +64,7 @@
     "./resources/components/ResourceSummary": "./src/resources/components/ResourceSummary.tsx",
     "./resources/components/resourceKinds": "./src/resources/components/resourceKinds.ts",
     "./resources/references": "./src/resources/references.ts",
+    "./resources/resourceMessages": "./src/resources/resourceMessages.ts",
     "./rules/ruleDescription": "./src/rules/ruleDescription.ts",
     "./rules/RulePreview": "./src/rules/RulePreview.tsx",
     "./sections/BuilderSection": "./src/sections/BuilderSection.tsx",
