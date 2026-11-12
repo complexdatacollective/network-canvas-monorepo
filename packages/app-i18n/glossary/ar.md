@@ -74,6 +74,10 @@ use an old term change with it.
   for a masculine noun), `other {# عقدة}` (100 and above, singular). The dual
   takes "ان" or "ين" by its place in the sentence.
 
+- **Arrows point the way the text reads.** A menu path or a "go on" arrow is
+  "←" in Arabic: «الإعدادات» ← «الخصوصية». The arrow characters are not
+  mirrored by the layout, so the catalog has to carry the turned one.
+
 ## Never translated
 
 Network Canvas, Architect, Interviewer, Fresco, Studio, Mapbox, GraphML, CSV,
@@ -276,6 +280,61 @@ interface name is a proper name in « » after "واجهة" or "مرحلة": "م
 | Per Alter Form                 | نموذج لكل طرف آخر                 |
 | Sociogram                      | المخطط الاجتماعي                   |
 | Tie-Strength Census            | تعداد قوة الروابط                 |
+
+## App, device and security terms
+
+The apps' own screens: setting up a device, locking it, installing protocols,
+managing and exporting interviews.
+
+| English                           | Arabic                      | Notes                                                                                                                                                       |
+| --------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| analytics                         | التحليلات                    | Anonymous usage data is "بيانات استخدام مجهولة الهوية".                                                                                                     |
+| app                               | التطبيق                     |                                                                                                                                                             |
+| app security                      | أمان التطبيق                |                                                                                                                                                             |
+| archive (a ZIP file)              | أرشيف                       | "ملف ZIP" where the English names the format.                                                                                                               |
+| authentication                    | المصادقة                    | Proving who is using the app.                                                                                                                               |
+| authorized (user)                 | مصرّح له                     | "المستخدمون المصرّح لهم". App authorization is "التصريح باستخدام التطبيق".                                                                                   |
+| biometric unlock                  | فتح القفل بالقياسات الحيوية | Biometrics are "القياسات الحيوية". Face ID, Touch ID and Windows Hello are product names and stay in Latin letters.                                         |
+| browser                           | المتصفح                     |                                                                                                                                                             |
+| device                            | الجهاز                      | The tablet or computer the app runs on.                                                                                                                     |
+| device lock                       | قفل الجهاز                  | The feature that keeps the app's data locked on this device.                                                                                                |
+| encrypted / not encrypted         | مشفَّر / غير مشفَّر             | Agrees with its noun: "البيانات مشفَّرة". Encrypted at rest is "مشفَّرة في أثناء التخزين".                                                                      |
+| exported / not exported           | مُصدَّرة / غير مُصدَّرة           | The state of an interview. The vowel marks keep it from reading as "مصدر" (source).                                                                         |
+| finished / unfinished (interview) | مكتملة / غير مكتملة         | A state, not an instruction.                                                                                                                                |
+| home (the app's first screen)     | الشاشة الرئيسية             |                                                                                                                                                             |
+| install                           | تثبيت                       | An app, an update or a protocol.                                                                                                                            |
+| lock / unlock (actions)           | قفل / فتح القفل             | The states are "مقفل" and "غير مقفل".                                                                                                                       |
+| offline                           | دون اتصال بالإنترنت          | Of the device itself: "غير متصل بالإنترنت".                                                                                                                  |
+| permanently delete                | حذف نهائي                   | As an adverb: "نهائيًا".                                                                                                                                     |
+| PIN                               | رمز PIN                     | Keeps the Latin abbreviation, as device makers' Arabic does. Masculine: "رمز PIN غير صحيح".                                                                 |
+| read-only                         | للقراءة فقط                 |                                                                                                                                                             |
+| recover, recovery                 | استرداد                     | "الاسترداد بعبارة المرور". A recovery passphrase is "عبارة مرور الاسترداد".                                                                                   |
+| reload                            | إعادة التحميل               |                                                                                                                                                             |
+| reset (the app, its data)         | إعادة تعيين                 | Removes everything the app stores on the device.                                                                                                            |
+| responses                         | الإجابات                     | What a participant answered.                                                                                                                                |
+| sample protocol                   | بروتوكول توضيحي             | The built-in example. Never "تجريبي", which reads as "experimental", or "نموذجي", which reads as "of a form". A development protocol is "بروتوكول التطوير". |
+| setup, set up                     | إعداد                       | "إعداد الجهاز". The setup wizard is "معالج الإعداد".                                                                                                         |
+| start / resume (an interview)     | بدء / استئناف               |                                                                                                                                                             |
+| storage                           | التخزين                     | Persistent storage is "تخزين دائم".                                                                                                                         |
+| synthetic (data, interviews)      | اصطناعي                     | Generated for testing, not collected: "مقابلات اصطناعية".                                                                                                    |
+| unlock method                     | طريقة فتح القفل             | A PIN, a passphrase or biometrics.                                                                                                                          |
+| update (of the app)               | تحديث                       |                                                                                                                                                             |
+| version                           | إصدار                       |                                                                                                                                                             |
+| authenticator                     | أداة المصادقة               | What the device uses to check a fingerprint or face.                                                                                                        |
+| best-effort (storage)             | غير مضمون                   | The browser keeps the data but may clear it when space runs low. Never "بأفضل جهد".                                                                         |
+| clipboard                         | الحافظة                     |                                                                                                                                                             |
+| community forum                   | منتدى المجتمع               |                                                                                                                                                             |
+| credentials                       | بيانات الاعتماد              |                                                                                                                                                             |
+| destroy, wipe (data)              | محو                         | Stronger than "حذف": everything on the device goes.                                                                                                         |
+| enrol (a PIN, a fingerprint)      | تسجيل                       |                                                                                                                                                             |
+| Get started                       | البدء                       | The button that opens the setup wizard, so the wizard is "معالج «البدء»" where the English names it that way.                                               |
+| identity                          | الهوية                      | "تأكيد الهوية".                                                                                                                                             |
+| in progress (interview)           | جارية                       | A state.                                                                                                                                                    |
+| installation ID                   | معرّف التثبيت                |                                                                                                                                                             |
+| mark unfinished                   | وضع علامة «غير مكتملة»       |                                                                                                                                                             |
+| pixels                            | بكسل                        |                                                                                                                                                             |
+| preferences                       | التفضيلات                    |                                                                                                                                                             |
+| revoke (the device lock)          | إزالة                       | "إزالة قفل الجهاز". Never "إلغاء", which is Cancel, or "إبطال", which reads as "invalidate".                                                                |
 
 ## Common controls
 
