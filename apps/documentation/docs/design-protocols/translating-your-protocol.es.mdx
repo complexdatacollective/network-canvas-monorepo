@@ -2,7 +2,7 @@
 title: Traducir tu protocolo
 navOrder: 5
 date: 22nd October 2026
-translatedFrom: cdfcf116131492b4faa370c1441b762163a436a6
+translatedFrom: b192d165c4fb31589a02e4303d28efed5de9510b
 ---
 
 <Definition>
@@ -86,7 +86,7 @@ La página **Idiomas**, que se abre desde la barra de navegación del protocolo,
 - una insignia **Traducciones faltantes**, mientras haya textos sin traducción en ese idioma
 - tres botones: **Editar traducciones** (un lápiz), que abre [la tabla de traducciones](#the-translation-table) con ese idioma junto al idioma predeterminado; **Cambiar a otro idioma** (dos flechas), que se describe en [Cambiar el idioma en el que está registrado tu texto](#changing-the-language-your-text-is-recorded-as); y **Eliminar** (una papelera), que se describe en [Eliminar un idioma](#removing-a-language)
 
-Cuando un protocolo tiene más de un idioma, la página también explica el orden en el que se muestran las traducciones a quienes participan, ofrece la lista **Idioma predeterminado** e incluye un botón **Abrir tabla de traducciones**. Los idiomas no tienen un orden propio. Architect los enumera por orden alfabético de su nombre, y el orden en que se guardan no supone ninguna diferencia para quienes participan.
+Cuando un protocolo tiene más de un idioma, la página también explica el orden en el que se muestran las traducciones a quienes participan, ofrece la lista **Idioma predeterminado** e incluye un botón **Abrir tabla de traducciones**. Mientras el idioma predeterminado sea uno para el que Network Canvas no aporta redacción, la página ofrece también la lista **Idioma de respaldo** (consulta [El idioma de respaldo](#the-fallback-language)). Los idiomas no tienen un orden propio. Architect los enumera por orden alfabético de su nombre, y el orden en que se guardan no supone ninguna diferencia para quienes participan.
 
 ![La página Idiomas de un protocolo escrito en inglés estadounidense y español. El español tiene la insignia Traducciones faltantes, con 46 de 209 textos traducidos.](/assets/img/architect/localization/languages-page.png)
 
@@ -131,9 +131,15 @@ Hasta entonces, la sección **Personalizar la redacción predeterminada** de cad
 
 Esto también se aplica a las variedades regionales del inglés. Un protocolo cuyo idioma predeterminado es el inglés o el inglés estadounidense tiene la redacción aportada; uno cuyo idioma predeterminado es el inglés británico o el australiano no la tiene, y Architect ofrece añadir también el inglés.
 
-Por ejemplo, un protocolo creado en español de México, con el español añadido también cuando Architect lo pregunta, empieza con el español de México como idioma predeterminado y la redacción de Network Canvas solo en español. O bien se establece el español como predeterminado, de modo que quienes usan el español de México ven la redacción en español allí donde no se ha escrito texto en español de México, o bien se traduce toda la redacción aportada al español de México.
+Por ejemplo, un protocolo creado en español de México, con el español añadido también cuando Architect lo pregunta, empieza con el español de México como idioma predeterminado y la redacción de Network Canvas solo en español. O bien se establece el español como predeterminado, de modo que quienes usan el español de México ven la redacción en español allí donde no se ha escrito texto en español de México, o bien se traduce toda la redacción aportada al español de México. En el segundo caso, el protocolo necesita además un [idioma de respaldo](#the-fallback-language), y el español es la elección natural.
 
 Una traducción aportada es texto normal, y se puede editar como cualquier otro.
+
+#### El idioma de respaldo {#the-fallback-language}
+
+Un protocolo cuyo idioma predeterminado no tiene redacción aportada necesita un **idioma de respaldo**. Una actualización de Network Canvas puede añadir texto a la entrevista, como un mensaje nuevo, y un protocolo escrito antes de la actualización no tiene traducción de ese texto. Quienes participan lo ven con la redacción de Network Canvas, en el primer idioma para el que Network Canvas aporta redacción, tomando los idiomas en el orden descrito en [El idioma predeterminado y qué traducción ve cada participante](#the-default-language-and-which-translation-participants-see). Cuando Network Canvas no aporta redacción para ninguno de esos idiomas, quienes participan ven el texto en el idioma de respaldo.
+
+El idioma de respaldo se elige en la lista **Idioma de respaldo** de la página **Idiomas**. La lista solo aparece mientras Network Canvas no aporta redacción para el idioma predeterminado. Ofrece todos los idiomas para los que Network Canvas aporta redacción, sean o no idiomas del protocolo. El protocolo no se puede descargar hasta que se elija un idioma de respaldo. Mientras quede redacción aportada por traducir al idioma predeterminado, el aviso de la lista de etapas pide esa traducción; después, pide el idioma de respaldo. Si se establece como predeterminado un idioma para el que Network Canvas aporta redacción, se elimina el idioma de respaldo, porque quienes participan ven entonces ese texto en el idioma predeterminado.
 
 ### El idioma predeterminado y qué traducción ve cada participante {#the-default-language-and-which-translation-participants-see}
 
