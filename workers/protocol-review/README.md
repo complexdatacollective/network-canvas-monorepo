@@ -2,9 +2,11 @@
 
 A Cloudflare Worker behind Architect's experimental **Automated Protocol
 Review**. When a researcher asks for a review, Architect sends their protocol
-and four study details (research questions, population, how the interview is
-run, and an optional synopsis) to this service, with the provider the
-researcher chose: Anthropic or OpenAI. The service asks that provider's model
+and the study's details (a synopsis, its population, how the interview is
+run, and any research questions the researcher gave) to this service, with
+the provider the researcher chose: Anthropic or OpenAI. Research questions
+are recommended, not required: without them the model reviews the protocol
+against the synopsis. The service asks that provider's model
 for an adversarial review and streams back a list of problems, each with a
 fix written as edits to the protocol.
 
