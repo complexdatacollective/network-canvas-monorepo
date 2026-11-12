@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   compareMirrored,
   layoutShowing,
   layoutsMatch,
+  snapshotLayout,
   type LayoutSnapshot,
   type PlacedElement,
 } from './direction-audit.ts';
@@ -257,6 +259,90 @@ describe('layoutShowing', () => {
     expect(result.text).toBe('Loading…');
     expect(compareMirrored(result, oldDirection)).toEqual([
       'the two renders show different content, so they cannot be compared: “Loading…” then “Ada Lovelace”',
+    ]);
+  });
+});
+
+describe('snapshotLayout', () => {
+  // jsdom lays nothing out, so each fixture element states its own box
+  // (`data-box="left width"`, in viewport pixels) and any computed style that
+  // differs from a static block (`data-style`, as JSON).
+  const VIEWPORT = 1200;
+  const render = (direction: 'ltr' | 'rtl', html: string) => {
+    document.documentElement.dir = direction;
+    document.body.innerHTML = html;
+    const boxOf = (element: Element) => {
+      const [left = 0, width = VIEWPORT] = (
+        element.getAttribute('data-box') ?? ''
+      )
+        .split(' ')
+        .filter(Boolean)
+        .map(Number);
+      return { left, width };
+    };
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        const { left, width } = boxOf(this);
+        return DOMRect.fromRect({ x: left, y: 0, width, height: 40 });
+      },
+    );
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(
+      function (this: Element) {
+        return this === document.documentElement ? VIEWPORT : boxOf(this).width;
+      },
+    );
+    vi.spyOn(window, 'getComputedStyle').mockImplementation(
+      (element) =>
+        ({
+          display: 'block',
+          visibility: 'visible',
+          position: 'static',
+          clip: 'auto',
+          clipPath: 'none',
+          transform: 'none',
+          translate: 'none',
+          scale: 'none',
+          rotate: 'none',
+          perspective: 'none',
+          filter: 'none',
+          backdropFilter: 'none',
+          contain: 'none',
+          willChange: 'auto',
+          direction,
+          ...JSON.parse(element.getAttribute('data-style') ?? '{}'),
+        }) as CSSStyleDeclaration,
+    );
+    return snapshotLayout();
+  };
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('measures a fixed layer against the ancestor a transform makes its containing block', () => {
+    // A fixed, inset-0 layer (fresco-ui's portal container) in a 300px column
+    // centred in the page. In the right-to-left render a Motion layout
+    // animation's last frame leaves a vertical transform on the column, so
+    // the layer fills the column instead of the viewport. Neither is a
+    // fault; measured from its DOM parent, the layer looks 450px out.
+    const page = (columnStyle: string, layerBox: string) => `
+      <div data-box="450 300" data-style='${columnStyle}'>
+        <div data-box="${layerBox}" data-style='{"position":"fixed"}'></div>
+      </div>`;
+    const first = render('ltr', page('{}', '0 1200'));
+    const second = render(
+      'rtl',
+      page('{"transform":"matrix(1, 0, 0, 1, 0, 0.2)"}', '450 300'),
+    );
+    expect(compareMirrored(first, second)).toEqual([]);
+  });
+
+  it('still reports a fixed box that sits on the left of the viewport both ways', () => {
+    const page = `
+      <div data-box="450 300">
+        <div data-box="16 200" data-style='{"position":"fixed"}'></div>
+      </div>`;
+    expect(compareMirrored(render('ltr', page), render('rtl', page))).toEqual([
+      '<div> is 16px from the left and 984px from the right in ltr, but 984px from the right and 16px from the left in rtl',
     ]);
   });
 });
