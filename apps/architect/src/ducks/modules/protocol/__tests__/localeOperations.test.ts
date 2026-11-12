@@ -15,6 +15,7 @@ import {
   validateProtocol,
   familyPedigreeWordingIn,
   withInterfaceText,
+  withSuppliedWording,
 } from '@codaco/protocol-validation';
 
 import {
@@ -49,7 +50,8 @@ const protocolIn = (
     options: [Record<string, string>, Record<string, string>];
   },
 ): CurrentProtocol =>
-  // Holding the interface text it uses, as the active protocol always does.
+  // Holding the interface text it should: only the researcher's own, as the
+  // active protocol always does.
   withInterfaceText({
     name: 'Study',
     schemaVersion: 9,
@@ -376,19 +378,18 @@ describe('addLocales', () => {
 });
 
 describe('removeLocale', () => {
-  // The interface text the protocol holds in French, which Network Canvas
-  // supplies there.
+  // The interface text the protocol holds in French: none, since Network
+  // Canvas supplies it there and the protocol holds only its author's own.
   const frenchInterfaceText = collectLocalizedStrings(bilingual()).filter(
     ({ path, value }) => path[0] === 'interfaceText' && 'fr' in value,
   ).length;
 
   it('counts the translations a removal deletes', () => {
-    expect(frenchInterfaceText).toBeGreaterThan(0);
+    expect(frenchInterfaceText).toBe(0);
     expect(
       getLocaleRemovalImpact(collectLocalizedStrings(bilingual()), 'fr')
         .translationCount,
-      // Six texts of the protocol's own, the finish stage's three settings,
-      // and its interface text.
+      // Six texts of the protocol's own and the finish stage's three settings.
     ).toBe(9 + frenchInterfaceText);
   });
 
@@ -757,101 +758,100 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
 });
 
 describe('a roster stage’s supplied panel title', () => {
-  const withRoster = (panelTitle: Record<string, string>): CurrentProtocol =>
+  const withRoster = (panelTitle?: Record<string, string>): CurrentProtocol =>
     ({
       ...monolingual(),
       stages: [
         {
           id: 'roster',
           type: 'NameGeneratorRoster',
-          allAddedNotice: {
-            en: 'There is nothing left to add from this list.',
-          },
           label: { en: 'Services' },
           subject: { entity: 'node', type: 'person' },
           dataSource: 'roster',
-          panelTitle,
+          ...(panelTitle === undefined ? {} : { panelTitle }),
           prompts: [{ id: 'p1', text: { en: 'Which services?' } }],
         },
       ],
     }) as unknown as CurrentProtocol;
   const panelTitleOf = (protocol: CurrentProtocol) =>
     (protocol.stages[0] as { panelTitle?: unknown }).panelTitle;
+  /** The panel title the interview shows: the protocol's, or Network Canvas's. */
+  const shownPanelTitle = (protocol: CurrentProtocol) =>
+    panelTitleOf(withSuppliedWording(protocol));
 
-  it('is filled into a new language, and follows a corrected one, while it is unchanged', () => {
-    expect(
-      panelTitleOf(
-        protocolOf(addLocales(withRoster({ en: 'Available to add' }), ['fr'])),
-      ),
-    ).toEqual({ en: 'Available to add', fr: 'Éléments disponibles' });
-    expect(
-      panelTitleOf(
-        protocolOf(
-          changeLocale(withRoster({ en: 'Available to add' }), 'en', 'de'),
-        ),
-      ),
-    ).toEqual({ de: 'Zum Hinzufügen verfügbar' });
+  it('is written into no language, and reads in a new or corrected one as Network Canvas words it', () => {
+    const french = protocolOf(addLocales(withRoster(), ['fr']));
+    expect(panelTitleOf(french)).toBeUndefined();
+    expect(shownPanelTitle(french)).toEqual({
+      en: 'Available to add',
+      fr: 'Éléments disponibles',
+    });
+
+    const german = protocolOf(changeLocale(withRoster(), 'en', 'de'));
+    expect(panelTitleOf(german)).toBeUndefined();
+    expect(shownPanelTitle(german)).toEqual({ de: 'Zum Hinzufügen verfügbar' });
   });
 
-  it('is filled into a new language even once the researcher has changed it', () => {
-    expect(
-      panelTitleOf(
-        protocolOf(addLocales(withRoster({ en: 'Services' }), ['fr', 'ja'])),
-      ),
-    ).toEqual({ en: 'Services', fr: 'Éléments disponibles' });
+  it('keeps the researcher’s own wording in a new language, which reads Network Canvas’s beside it', () => {
+    const added = protocolOf(
+      addLocales(withRoster({ en: 'Services' }), ['fr', 'ja']),
+    );
+    expect(panelTitleOf(added)).toEqual({ en: 'Services' });
+    expect(shownPanelTitle(added)).toEqual({
+      en: 'Services',
+      fr: 'Éléments disponibles',
+    });
   });
 
-  // Network Canvas writes its wording only in a language it has it in, so
-  // the researcher writes this one; until then the protocol can't be
-  // downloaded.
+  // Network Canvas has no wording in this language, so the researcher writes
+  // it; until then the protocol can't be downloaded.
   it('is left for the researcher to write when the protocol’s only language is corrected to one Network Canvas has no wording in', () => {
-    expect(
-      panelTitleOf(
-        protocolOf(
-          changeLocale(withRoster({ en: 'Available to add' }), 'en', 'hu'),
-        ),
-      ),
-    ).toEqual({});
+    const corrected = protocolOf(changeLocale(withRoster(), 'en', 'hu'));
+    expect(panelTitleOf(corrected)).toBeUndefined();
+    expect(shownPanelTitle(corrected) ?? {}).toEqual({});
   });
 });
 
 describe('the interview’s shared words', () => {
-  const withBack = (back: Record<string, string>): CurrentProtocol =>
+  const withBack = (back?: Record<string, string>): CurrentProtocol =>
     ({
       ...monolingual(),
-      interfaceText: { navigation: { back } },
+      ...(back === undefined
+        ? {}
+        : { interfaceText: { navigation: { back } } }),
     }) as unknown as CurrentProtocol;
   const backOf = (protocol: CurrentProtocol) =>
     protocol.interfaceText?.navigation?.back;
+  /** The Back button text the interview shows. */
+  const shownBackOf = (protocol: CurrentProtocol) =>
+    withSuppliedWording(protocol).interfaceText?.navigation?.back;
 
-  it('follow a language change while they are Network Canvas’s', () => {
-    expect(
-      backOf(protocolOf(addLocales(withBack({ en: 'Back' }), ['fr']))),
-    ).toEqual({ en: 'Back', fr: 'Retour' });
-    expect(
-      backOf(protocolOf(changeLocale(withBack({ en: 'Back' }), 'en', 'de'))),
-    ).toEqual({ de: 'Zurück' });
+  it('are written into no language, and read in a new or corrected one as Network Canvas words them', () => {
+    const french = protocolOf(addLocales(withBack(), ['fr']));
+    expect(backOf(french)).toBeUndefined();
+    expect(shownBackOf(french)).toEqual({ en: 'Back', fr: 'Retour' });
+
+    const german = protocolOf(changeLocale(withBack(), 'en', 'de'));
+    expect(backOf(german)).toBeUndefined();
+    expect(shownBackOf(german)).toEqual({ de: 'Zurück' });
   });
 
-  it('are filled into a new language even once the researcher has reworded them', () => {
-    expect(
-      backOf(protocolOf(addLocales(withBack({ en: 'Previous' }), ['fr']))),
-    ).toEqual({ en: 'Previous', fr: 'Retour' });
+  it('keep the researcher’s rewording in a new language, which reads Network Canvas’s beside it', () => {
+    const added = protocolOf(addLocales(withBack({ en: 'Previous' }), ['fr']));
+    expect(backOf(added)).toEqual({ en: 'Previous' });
+    expect(shownBackOf(added)).toEqual({ en: 'Previous', fr: 'Retour' });
   });
 
-  it('lose what is still Network Canvas’s, and keep the researcher’s own words, when their language is corrected to one Network Canvas has no wording in', () => {
-    const protocol = withBack({ en: 'Back' });
+  it('keep the researcher’s own words when their language is corrected to one Network Canvas has no wording in', () => {
     const reworded = {
-      ...protocol,
-      interfaceText: {
-        navigation: { back: { en: 'Back' }, continue: { en: 'Next' } },
-      },
+      ...monolingual(),
+      interfaceText: { navigation: { continue: { en: 'Next' } } },
     } as unknown as CurrentProtocol;
     const corrected = protocolOf(changeLocale(reworded, 'en', 'hu'));
     expect(corrected.interfaceText?.navigation).toEqual({
-      back: {},
       continue: { hu: 'Next' },
     });
+    expect(shownBackOf(corrected) ?? {}).toEqual({});
   });
 
   it('gain nothing in a new language Network Canvas has no wording in', () => {

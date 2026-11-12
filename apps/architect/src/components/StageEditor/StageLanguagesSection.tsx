@@ -56,8 +56,9 @@ const selectStageIndex =
   };
 
 /**
- * Applies a language change to the stage's fields as the protocol holds them,
- * including the wording Network Canvas supplies, such as the heading.
+ * Applies a language change to the stage's fields as the editor holds them,
+ * so the wording Network Canvas supplies, such as the heading, is shown in
+ * the stage's languages after the change.
  */
 const rewriteStageFields = (
   identity: StageIdentity,

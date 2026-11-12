@@ -182,6 +182,25 @@ export const readTranslationFieldName = (
 
 const rowKey = (path: TextPath) => JSON.stringify(path);
 
+/**
+ * Makes what the table's cells hold what the protocol has, once `values` are
+ * saved, so closing the table loses nothing and asks nothing. A cell saved
+ * empty that still has focus was never left, so it is given Network Canvas's
+ * wording here, where it has any (see `savedCellValues`).
+ */
+export const settleSavedCells = (
+  formStore: FormStoreApi,
+  values: Readonly<Record<string, FieldValue>>,
+  state: RootState,
+) => {
+  const saved = savedCellValues(values, state);
+  const form = formStore.getState();
+  form.rebaseToDocument(saved);
+  for (const [name, value] of Object.entries(saved)) {
+    if (value !== values[name]) form.setFieldValue(name, value);
+  }
+};
+
 /** Each set of groups' rows by path, made once per set. */
 const rowIndexes = new WeakMap<
   readonly TranslationGroup[],
@@ -231,20 +250,71 @@ const asText = (value: unknown) => (typeof value === 'string' ? value : '');
 export const isBlankTranslation = (row: TranslationRow, text: string) =>
   kindOf(row) === 'message' ? isBlankMessage(text) : isBlankText(text);
 
-/** `value` with the cell's translation in `locale` replaced by `text`. */
+/**
+ * `value` with the cell's translation in `locale` replaced by `text`. An
+ * emptied cell holds none of the researcher's wording, so a text Network
+ * Canvas words reads as Network Canvas words it in that language, where it
+ * has wording, and any other text has no translation in it.
+ */
 const withCellText = (
   row: TranslationRow,
   value: LocalizedString,
   locale: LocaleTag,
   text: string,
-) =>
-  kindOf(row) === 'message'
-    ? withMessage(
-        value,
-        locale,
-        isBlankTranslation(row, text) ? undefined : text,
-      )
-    : withTranslation(value, locale, isBlankTranslation(row, text) ? '' : text);
+) => {
+  const blank = isBlankTranslation(row, text);
+  const supplied = blank ? row.supplied?.[locale] : undefined;
+  if (supplied !== undefined) return { ...value, [locale]: supplied };
+  return kindOf(row) === 'message'
+    ? withMessage(value, locale, blank ? undefined : text)
+    : withTranslation(value, locale, blank ? '' : text);
+};
+
+/**
+ * The row's value with its cell in `locale` holding `text`: what an emptied
+ * cell leaves participants reading in that language to see.
+ */
+export const rowValueWithCell = (
+  row: TranslationRow,
+  locale: LocaleTag,
+  text: string,
+): LocalizedString => withCellText(row, row.value, locale, text) ?? {};
+
+/**
+ * The text a cell holds when it holds Network Canvas's own wording, for a
+ * text Network Canvas words in `locale`.
+ */
+const suppliedCellText = (row: TranslationRow, locale: LocaleTag) =>
+  row.supplied?.[locale] === undefined
+    ? undefined
+    : storedTranslation({ ...row, value: row.supplied }, locale);
+
+/**
+ * `values` as the table's cells read once they are saved: a cell of a text
+ * Network Canvas words that was saved empty holds Network Canvas's wording,
+ * which is what the protocol now shows there.
+ */
+const savedCellValues = (
+  values: Readonly<Record<string, FieldValue>>,
+  state: RootState,
+): Record<string, FieldValue> => {
+  const groups = getTranslationGroups(state);
+  return Object.fromEntries(
+    Object.entries(values).map(([name, value]) => {
+      const cell = readTranslationFieldName(name);
+      const row = cell === undefined ? undefined : findRow(groups, cell.path);
+      const suppliedText =
+        cell === undefined || row === undefined
+          ? undefined
+          : suppliedCellText(row, cell.locale);
+      return row !== undefined &&
+        suppliedText !== undefined &&
+        isBlankTranslation(row, asText(value))
+        ? [name, suppliedText]
+        : [name, value];
+    }),
+  );
+};
 
 /**
  * The row's value with each of its cells as the table holds them now, saved
@@ -687,10 +757,22 @@ export const useTranslationDraft = ({
     recheckLeftCells();
   };
 
-  /** The researcher has left the cell: its text is checked from now on. */
+  /**
+   * The researcher has left the cell: its text is checked from now on. A cell
+   * left empty holds none of their wording, so one of a text Network Canvas
+   * words goes back to Network Canvas's wording, which is what participants
+   * would read.
+   */
   const leave = () => {
     const state = formStore.getState();
     if (!state.fields.has(name)) return;
+    const suppliedText = suppliedCellText(row, locale);
+    if (
+      suppliedText !== undefined &&
+      isBlankTranslation(row, asText(state.getFieldState(name)?.value))
+    ) {
+      state.setFieldValue(name, suppliedText);
+    }
     state.setFieldBlurred(name);
     void state.validateField(name);
     const left = state.getFieldState(name);

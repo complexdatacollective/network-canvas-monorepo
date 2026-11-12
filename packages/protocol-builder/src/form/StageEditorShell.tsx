@@ -845,7 +845,7 @@ function stageProblems(
   localization: LocalizationDeclaration | undefined,
   codebook: unknown,
 ): Readonly<{ sections: SectionValidationIssue[]; whole: string[] }> {
-  const document = stageDocument(identity, fields, localization);
+  const document = stageDocument(identity, fields);
   const result = stageSchema.safeParse(document);
   const sections: SectionValidationIssue[] = [];
   const whole: string[] = [];

@@ -1,11 +1,11 @@
 import { v4 as uuid } from 'uuid';
 
 import {
-  inapplicableStageSettings,
   isExclusiveVariantContainer,
   type LocalizationDeclaration,
-  missingSuppliedStageText,
   type StageType,
+  stageWithoutSuppliedText,
+  stageWithSuppliedText,
 } from '@codaco/protocol-validation';
 import {
   canonicalize,
@@ -24,12 +24,13 @@ export type StageFormDraft = Readonly<SectionDoc>;
 
 /**
  * Where the stage form holds the words every stage of its kind shares, for
- * the entries the open stage brings into use that the protocol does not hold
- * yet.
+ * the entries the open stage brings into use that the saved protocol does not
+ * show yet.
  *
  * Such an entry cannot be written to the protocol while the stage is open: the
- * protocol does not use it until the stage is saved, and Architect drops what
- * a protocol does not use on its next change. So its wording is held with the
+ * protocol does not show it until the stage is saved, and Architect drops the
+ * wording for an entry a protocol does not show on its next change. So its
+ * wording is held with the
  * stage's draft, as a field of the stage form, and written with the stage when
  * it is saved (see `pendingSharedWording`). A stage holds no key of this name,
  * so `stageDocument` leaves it out of the stage itself.
@@ -87,108 +88,71 @@ export function stageDraftFromDocument(document: SectionDoc): Readonly<{
 }
 
 /**
- * The stage an editor saves: its identity over what the form holds, holding
- * exactly the settings Network Canvas supplies wording for that apply to it.
+ * The stage an editor saves: its identity over what the form holds, with only
+ * the wording of the researcher's own for the settings Network Canvas words.
  *
- * Both halves of that rule are kept here, so every save path and every
- * reading of the draft as a stage agrees on it. A setting shown only under a
- * configuration that is now off is dropped, with any object it alone filled.
- * A setting that applies and that the stage lacks — a new stage's, or one
- * whose configuration was turned on while no field for it was mounted — is
- * written with Network Canvas's wording in the protocol's languages (see
- * `missingSuppliedStageText`, which leaves out a setting the researcher
- * removed from an optional object). So a wording field never has to be on
- * screen for its setting to be saved.
+ * The form holds Network Canvas's wording for each such setting the stage
+ * shows, so its field has words to start from (see `stageFieldsForEditing`).
+ * None of that is the stage's to store: the interview shows Network Canvas's
+ * wording for whatever a stage does not hold. So a translation that reads
+ * exactly as Network Canvas words it is left out, a setting left with none is
+ * left out with it, and so is a setting shown only under a configuration that
+ * is now off (see `stageWithoutSuppliedText`). The rule is kept here, so
+ * every save path and every reading of the draft as a stage agrees on it.
  *
  * The shared words the form holds beside the stage are not the stage's (see
  * `SHARED_WORDING_PATH`), so they are left out.
- *
- * `localization` is undefined while the protocol's languages are not known
- * yet; nothing is written then, and a save waits for them.
  */
 export function stageDocument(
   identity: StageIdentity,
   fields: StageFormDraft,
-  localization: LocalizationDeclaration | undefined,
 ): SectionDoc {
   assertNoIdentityFields(fields);
-  const document: SectionDoc = {
+  return stageWithoutSuppliedText({
     id: identity.id,
     type: identity.type,
     ...structuredClone(stageFieldsOf(fields)),
-  };
-  for (const path of inapplicableStageSettings({
-    ...document,
-    type: identity.type,
-  })) {
-    removeAt(document, path);
-  }
-  return localization === undefined
-    ? document
-    : withMissingSuppliedStageText(document, identity.type, localization);
+  });
 }
 
 /**
- * The form's draft as `stageDocument` saves it, without the identity: what an
- * editor holds once the stage is saved, so the draft it goes on editing is
- * the stage the protocol stored.
+ * What a stage form holds for `fields`: the stage's own fields, with Network
+ * Canvas's wording for each setting it words that the stage shows, in every
+ * protocol language the stage has no translation of its own in (see
+ * `stageWithSuppliedText`). A stage being opened, a new one and one just
+ * saved are all held this way, so a wording field starts with the words a
+ * participant would read and the form never counts them as a change.
+ */
+export function stageFieldsForEditing<Fields extends StageFormDraft>(
+  type: StageType,
+  fields: Fields,
+  localization: LocalizationDeclaration,
+): Fields {
+  const { type: _type, ...filled } = stageWithSuppliedText(
+    { ...fields, type },
+    localization,
+  );
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `fields` with its optional wording settings filled in, so still Fields
+  return filled as unknown as Fields;
+}
+
+/**
+ * The form's draft once the stage is saved: the stage as `stageDocument`
+ * stored it, held as a form holds one (`stageFieldsForEditing`), so the draft
+ * the editor goes on editing is the stage the protocol stored.
+ *
+ * `localization` is undefined while the protocol's languages are not known
+ * yet, and nothing is filled in then.
  */
 export function savedStageFields(
   identity: StageIdentity,
   fields: StageFormDraft,
   localization: LocalizationDeclaration | undefined,
 ): StageFormDraft {
-  const {
-    id: _id,
-    type: _type,
-    ...saved
-  } = stageDocument(identity, fields, localization);
-  return saved;
-}
-
-/**
- * `stage` with every supplied setting it should hold but lacks written in
- * (see `missingSuppliedStageText`). Copies each container it writes into, so
- * `stage` itself is left as it was.
- */
-export function withMissingSuppliedStageText<
-  T extends Readonly<Record<string, unknown>>,
->(stage: T, type: StageType, localization: LocalizationDeclaration): T {
-  const next: Record<string, unknown> = { ...stage };
-  for (const { path, value } of missingSuppliedStageText(
-    { ...next, type },
-    localization,
-  )) {
-    let container = next;
-    for (const key of path.slice(0, -1)) {
-      const child = container[key];
-      const copy: Record<string, unknown> = isDictionary(child)
-        ? { ...child }
-        : {};
-      container[key] = copy;
-      container = copy;
-    }
-    const last = path.at(-1);
-    if (last !== undefined) container[last] = { ...value };
-  }
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `next` is a copy of `stage` that only gains the supplied-text containers, so it still has T's shape
-  return next as T;
-}
-
-function removeAt(
-  root: Record<string, unknown>,
-  path: readonly string[],
-): void {
-  const [key, ...rest] = path;
-  if (key === undefined) return;
-  if (rest.length === 0) {
-    delete root[key];
-    return;
-  }
-  const container = root[key];
-  if (!isDictionary(container)) return;
-  removeAt(container, rest);
-  if (Object.keys(container).length === 0) delete root[key];
+  const { id: _id, type: _type, ...saved } = stageDocument(identity, fields);
+  return localization === undefined
+    ? saved
+    : stageFieldsForEditing(identity.type, saved, localization);
 }
 
 function assertNoIdentityFields(fields: StageFormDraft): void {

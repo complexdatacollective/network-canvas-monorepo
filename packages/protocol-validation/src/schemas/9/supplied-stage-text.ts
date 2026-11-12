@@ -14,20 +14,16 @@ import { NAME_GENERATOR_SUPPLIED_TEXT } from './stage-wording/name-generator.ts'
 import { NARRATIVE_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/narrative-pedigree.ts';
 import { NARRATIVE_SUPPLIED_TEXT } from './stage-wording/narrative.ts';
 import type { SuppliedStageSetting } from './supplied-stage-setting.ts';
-import {
-  type LanguageChange,
-  suppliedTextAfterLanguageChange,
-  suppliedTextFor,
-} from './supplied-text.ts';
+import { suppliedTextFor } from './supplied-text.ts';
 
 /**
  * The stage settings whose wording Network Canvas supplies, by stage type.
  * A stage may hold any of it, or none: for each text it does not hold in a
  * language, the interview shows Network Canvas's own wording where Network
- * Canvas has it in that language (`stageWordingShown`). Architect writes the
- * text into a stage when it is made, then edits and translates it like any
- * protocol text, and fills it into a language added later wherever that
- * language has no translation of it.
+ * Canvas has it in that language (`stageWordingShown`). A stage an editor
+ * saves holds only the wording its author changed
+ * (`stageWithoutSuppliedText`); the editor shows Network Canvas's wording for
+ * the rest (`stageWithSuppliedText`).
  */
 const SUPPLIED_STAGE_TEXT: Readonly<
   Record<string, readonly SuppliedStageSetting[]>
@@ -58,12 +54,12 @@ export const suppliedStageSettingPaths = (
   settingsOf(stageType).map(({ path }) => path);
 
 /**
- * The message Network Canvas writes for a setting in a protocol language:
- * its wording in exactly that language, and none in any other. That is the
- * rule for all its wording (the interface text and the Family Pedigree's
- * option labels too). A setting the stage shows with no text in the default
- * language, counting Network Canvas's wording, must be written there before
- * the protocol leaves its editor (`findBuiltInWordingProblems`).
+ * Network Canvas's message for a setting in a protocol language: its wording
+ * in exactly that language, and none in any other. That is the rule for all
+ * its wording (the interface text and the Family Pedigree's option labels
+ * too). A setting the stage shows with no text in the default language,
+ * counting Network Canvas's wording, must be written there before the
+ * protocol leaves its editor (`findBuiltInWordingProblems`).
  */
 const writtenIn = (
   setting: SuppliedStageSetting,
@@ -79,16 +75,15 @@ const valueAt = (value: unknown, path: readonly string[]): unknown =>
     value,
   );
 
-/** One supplied setting as a stage should hold it. */
+/** Network Canvas's wording for one supplied setting. */
 export type SuppliedStageText = Readonly<{
   path: readonly string[];
   value: LocalizedString;
 }>;
 
 /**
- * Every supplied setting of `stageType`, each holding Network Canvas's text
- * in every protocol language it writes one in (see `writtenIn`): what an
- * editor seeds a setting with when the object holding it is created.
+ * Every supplied setting of `stageType`, each with Network Canvas's text in
+ * every protocol language it has one in (see `writtenIn`).
  */
 export const suppliedStageText = (
   stageType: string,
@@ -103,35 +98,33 @@ export const suppliedStageText = (
     return { path: setting.path, value };
   });
 
+type StageLike = Readonly<{ type: string }> & Readonly<Record<string, unknown>>;
+
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 /**
- * Every supplied setting a stage holds, as it reads after a change to the
- * protocol's languages (see `suppliedTextAfterLanguageChange`): a language
- * the protocol did not have gains Network Canvas's wording for each setting
- * with no translation in it, whether or not the researcher has reworded the
- * setting, and Network Canvas's wording for a corrected language becomes its
- * wording for the language as corrected. A setting the stage does not hold
- * is left out.
+ * Whether the interview shows `setting` for `stage`: the object it lives in
+ * (`within`), if it has one, exists on the stage, and its `when`, if it has
+ * one, holds.
  */
-export const suppliedStageTextAfterLanguageChange = (
-  stage: Readonly<{ type: string }>,
-  change: LanguageChange,
-): readonly SuppliedStageText[] =>
-  settingsOf(stage.type).flatMap((setting) => {
-    const current = valueAt(stage, setting.path);
-    if (typeof current !== 'object' || current === null) return [];
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a supplied setting's path holds a language-to-text map in a stage; its translations are kept as they are, except one that equals the supplied wording below
-    const held = current as LocalizedString;
-    return [
-      {
-        path: setting.path,
-        value: suppliedTextAfterLanguageChange(
-          held,
-          (locale) => writtenIn(setting, locale),
-          change,
-        ),
-      },
-    ];
-  });
+const isShown = (setting: SuppliedStageSetting, stage: StageLike): boolean =>
+  (setting.within === undefined ||
+    valueAt(stage, setting.within) !== undefined) &&
+  (setting.when === undefined || setting.when(stage));
+
+/**
+ * The translations a stage holds at a setting's path, or undefined when what
+ * it holds there is not a language-to-text map: something for the schema to
+ * refuse, which nothing here rewrites.
+ */
+const translationsHeld = (held: unknown): LocalizedString | undefined => {
+  if (!isRecord(held)) return undefined;
+  const translations = heldTranslations(held);
+  return Object.keys(translations).length === Object.keys(held).length
+    ? translations
+    : undefined;
+};
 
 /** One supplied setting as the interview shows it for a stage. */
 export type ShownStageText = Readonly<{
@@ -149,23 +142,17 @@ export type ShownStageText = Readonly<{
  * wins, a language it does not hold gets Network Canvas's wording, and a
  * language Network Canvas has no wording in gets only what the stage holds.
  * The interview shows the setting when the object it lives in (`within`), if
- * it has one, exists on the stage, its `when`, if it has one, holds, and, for
- * an optional setting, the stage holds a value at its path.
+ * it has one, exists on the stage, and its `when`, if it has one, holds.
  */
 export const stageWordingShown = (
-  stage: Readonly<{ type: string }> & Readonly<Record<string, unknown>>,
+  stage: StageLike,
   localization: LocalizationDeclaration,
 ): readonly ShownStageText[] => {
   const settings = settingsOf(stage.type);
   return suppliedStageText(stage.type, localization).map(
     ({ path, value }, index) => {
       const setting = settings[index];
-      const shown =
-        setting !== undefined &&
-        (setting.within === undefined ||
-          valueAt(stage, setting.within) !== undefined) &&
-        (setting.when === undefined || setting.when(stage)) &&
-        (setting.optional !== true || valueAt(stage, path) !== undefined);
+      const shown = setting !== undefined && isShown(setting, stage);
       return {
         path,
         value: { ...value, ...heldTranslations(valueAt(stage, path)) },
@@ -176,56 +163,106 @@ export const stageWordingShown = (
 };
 
 /**
- * The supplied settings `stage` should gain, as a new stage starts with them
- * and the schema 8 to 9 migration adds them: each one it lacks, except one
- * whose optional object it lacks (that arrives with the object) and an
- * optional one whose object it already has (the researcher removed it).
+ * `root` with `value` at `path`, or with nothing there when `value` is
+ * undefined, copying each object on the way so `root` is left as it was. An
+ * object that removing the value leaves empty is removed too, unless it is
+ * `keep` or leads to it: the object a setting lives in is the researcher's
+ * to remove, never a side effect of rewording.
  */
-export const missingSuppliedStageText = (
-  stage: Readonly<{ type: string }>,
-  localization: LocalizationDeclaration,
-): readonly SuppliedStageText[] => {
-  const settings = settingsOf(stage.type);
-  const supplied = suppliedStageText(stage.type, localization);
-  return supplied.filter((_text, index) => {
-    const setting = settings[index];
-    if (setting === undefined) return false;
-    if (valueAt(stage, setting.path) !== undefined) return false;
-    if (
-      setting.within !== undefined &&
-      valueAt(stage, setting.within) === undefined
-    )
-      return false;
-    if (
-      setting.when !== undefined &&
-      !setting.when(stage as Readonly<Record<string, unknown>>)
-    )
-      return false;
-    return !(
-      setting.optional === true &&
-      valueAt(stage, setting.path.slice(0, -1)) !== undefined
-    );
-  });
+const withValueAt = (
+  root: Readonly<Record<string, unknown>>,
+  path: readonly string[],
+  value: LocalizedString | undefined,
+  keep: readonly string[] = [],
+): Readonly<Record<string, unknown>> => {
+  const [key, ...rest] = path;
+  if (key === undefined) return root;
+  const next: Record<string, unknown> = { ...root };
+  if (rest.length === 0) {
+    if (value === undefined) delete next[key];
+    else next[key] = value;
+    return next;
+  }
+  const child = root[key];
+  if (!isRecord(child) && value === undefined) return root;
+  const kept = keep[0] === key ? keep.slice(1) : undefined;
+  const inner = withValueAt(isRecord(child) ? child : {}, rest, value, kept);
+  if (Object.keys(inner).length === 0 && kept === undefined) delete next[key];
+  else next[key] = inner;
+  return next;
 };
 
 /**
- * The paths of the settings `stage` holds but no longer shows: each one shown
- * only under a configuration (its `when`) that is off. A stage editor seeds
- * such a setting when its configuration is turned on, so it drops it when the
- * configuration is turned off, and a protocol never asks to translate words
- * its participants cannot see.
+ * `stage` as a protocol stores it, holding only the wording of its author's
+ * own. Of each setting Network Canvas words, a translation that reads exactly
+ * as Network Canvas's wording in that language is removed, since the
+ * interview shows that wording whether or not the stage holds it, and a
+ * setting left with no translation is removed with it. A setting the stage
+ * holds but no longer shows, because the configuration that shows it (its
+ * `when`) is off, is removed whole, so a protocol never asks to translate
+ * words its participants cannot see. The same stage when there is nothing to
+ * remove, so a caller can tell nothing changed.
  */
-export const inapplicableStageSettings = (
-  stage: Readonly<{ type: string }> & Readonly<Record<string, unknown>>,
-): readonly (readonly string[])[] =>
-  settingsOf(stage.type)
-    .filter(
-      (setting) =>
-        setting.when !== undefined &&
-        !setting.when(stage) &&
-        valueAt(stage, setting.path) !== undefined,
+export const stageWithoutSuppliedText = <Stage extends StageLike>(
+  stage: Stage,
+): Stage => {
+  let next: Readonly<Record<string, unknown>> = stage;
+  for (const setting of settingsOf(stage.type)) {
+    const held = valueAt(next, setting.path);
+    if (held === undefined) continue;
+    if (setting.when !== undefined && !setting.when(stage)) {
+      next = withValueAt(next, setting.path, undefined, setting.within);
+      continue;
+    }
+    const translations = translationsHeld(held);
+    if (translations === undefined) continue;
+    const all = Object.entries(translations);
+    const own = all.filter(
+      ([locale, text]) => text !== writtenIn(setting, locale),
+    );
+    if (own.length === all.length && own.length > 0) continue;
+    next = withValueAt(
+      next,
+      setting.path,
+      own.length === 0 ? undefined : Object.fromEntries(own),
+      setting.within,
+    );
+  }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `next` is `stage` with some of its optional supplied settings narrowed or removed, so it still has Stage's shape
+  return next as Stage;
+};
+
+/**
+ * `stage` as an editor holds it: each setting Network Canvas words that the
+ * stage shows (`isShown`) holds the text the interview shows for it
+ * (`stageWordingShown`), so its field starts with Network Canvas's wording in
+ * every language the stage has no translation of its own in. No translation
+ * the stage holds is changed. Never what a protocol stores: an editor saves
+ * the stage through `stageWithoutSuppliedText`. The same stage when it
+ * already holds all of it.
+ */
+export const stageWithSuppliedText = <Stage extends StageLike>(
+  stage: Stage,
+  localization: LocalizationDeclaration,
+): Stage & Readonly<Record<string, unknown>> => {
+  const settings = settingsOf(stage.type);
+  let next: Readonly<Record<string, unknown>> = stage;
+  stageWordingShown(stage, localization).forEach(({ path, value }, index) => {
+    const setting = settings[index];
+    if (setting === undefined || !isShown(setting, stage)) return;
+    const held = valueAt(stage, path);
+    const translations = translationsHeld(held);
+    if (held !== undefined && translations === undefined) return;
+    if (
+      translations !== undefined &&
+      Object.keys(value).every((locale) => Object.hasOwn(translations, locale))
     )
-    .map((setting) => setting.path);
+      return;
+    next = withValueAt(next, path, value);
+  });
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `next` is `stage` with its optional supplied settings filled, so it still has Stage's shape
+  return next as Stage & Readonly<Record<string, unknown>>;
+};
 
 const samePath = (a: readonly string[], b: readonly string[]): boolean =>
   a.length === b.length && a.every((segment, index) => segment === b[index]);
@@ -237,7 +274,7 @@ const samePath = (a: readonly string[], b: readonly string[]): boolean =>
  * A path that is not a supplied setting of the stage's type does not apply.
  */
 export const suppliedStageSettingApplies = (
-  stage: Readonly<{ type: string }> & Readonly<Record<string, unknown>>,
+  stage: StageLike,
   path: readonly string[],
 ): boolean => {
   const setting = settingsOf(stage.type).find((candidate) =>

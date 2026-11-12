@@ -5144,8 +5144,8 @@
     "description": "Guidance under the name attribute control. The side panel is where the participant describes each family member. The two labels in quotation marks are examples of what the interview generates for an unnamed person, and are translated like the rest of the sentence; Tom is a person’s name. “You” is how the interview labels the participant in their family tree."
   },
   "protocolBuilder.pedigree.nameHintTextHint": {
-    "defaultMessage": "Shown under the name box, for example to say that a nickname will do. Leave it empty to show nothing.",
-    "description": "Guidance under the name-question guidance box."
+    "defaultMessage": "Shown under the name box, for example to say that a nickname will do. It starts with wording Network Canvas supplies, which you can change.",
+    "description": "Guidance under the box where a researcher writes the short guidance participants see under the name box of a Family Pedigree stage. The guidance is always shown to participants: Network Canvas’s wording until the researcher changes it."
   },
   "protocolBuilder.pedigree.nameHintTextLabel": {
     "defaultMessage": "Name question guidance",

@@ -26,10 +26,11 @@ import {
 import { extractProtocol } from '../../../utils/extractProtocol.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
-import { interfaceTextFor } from '../interface-text.ts';
 import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import migrationV8toV9 from '../migration.ts';
+import { withoutSuppliedWording } from '../protocol-wording.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
+import { suppliedStageSettingPaths } from '../supplied-stage-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 import {
   asSchema8Protocol,
@@ -180,6 +181,36 @@ const localizedDeclarations = (root: z.ZodType): Map<z.ZodType, string> => {
   return declarations;
 };
 
+/**
+ * Whether the declaration at `where` (as `localizedDeclarations` names it) is
+ * of wording Network Canvas supplies, which the migration does not write: an
+ * interface text, or a setting of a stage that Network Canvas words.
+ */
+const isSuppliedDeclaration = (where: string): boolean => {
+  if (where.startsWith('protocol.interfaceText.')) return true;
+  const match = /^protocol\.stages\[\]\[type=(\w+)\]\.(.+)$/.exec(where);
+  return (
+    match !== null &&
+    suppliedStageSettingPaths(match[1] ?? '').some(
+      (setting) => setting.join('.') === match[2],
+    )
+  );
+};
+
+/** Whether the text at `at` in `document` is wording Network Canvas supplies. */
+const isSuppliedSite = (document: unknown, at: Path): boolean => {
+  if (at[0] === 'interfaceText') return true;
+  if (at[0] !== 'stages') return false;
+  const stage = getAt(document, at.slice(0, 2));
+  const type = isRecord(stage) ? stage.type : undefined;
+  return (
+    typeof type === 'string' &&
+    suppliedStageSettingPaths(type).some(
+      (setting) => setting.join('.') === at.slice(2).join('.'),
+    )
+  );
+};
+
 describe('v8 to v9 localization migration', () => {
   it('declares English as the only language', () => {
     expect(migrateStep(schema8Protocol())).toMatchObject({
@@ -201,23 +232,16 @@ describe('v8 to v9 localization migration', () => {
         .map(({ schema }) => schema),
     );
     // Schema 8 has no Language Chooser, so a schema 8 document has none of
-    // its text to wrap. Nor does it hold an encrypted attribute or a bin
-    // placed by tapping, so it shows none of the text about protected
-    // answers and no Place here button.
-    const NEW_IN_SCHEMA_9 = [
-      'protocol.interfaceText.passphrase.protectedAnswersLocked',
-      'protocol.interfaceText.passphrase.protectedAnswersNotSaved',
-      'protocol.interfaceText.passphrase.answerUnavailable',
-      'protocol.interfaceText.passphrase.answerUnavailableKept',
-      'protocol.interfaceText.categoricalBin.placeHere',
-    ];
+    // its text to wrap. The migration writes none of the wording Network
+    // Canvas supplies (the interview shows it), so those texts are not
+    // wrapped either.
     const missed = [...declarations]
       .filter(([declaration]) => !wrapped.has(declaration))
       .map(([, where]) => where)
       .filter(
         (where) =>
           !where.includes('[type=LanguageChooser]') &&
-          !NEW_IN_SCHEMA_9.includes(where),
+          !isSuppliedDeclaration(where),
       );
     expect(missed).toEqual([]);
   });
@@ -253,15 +277,15 @@ describe('v8 to v9 localization migration', () => {
     );
     expected.localization = ENGLISH_ONLY;
 
-    // Besides the protocol's own text, the migration adds the interface text
-    // it uses, in English like the rest.
-    const { interfaceText, ...migrated } = migrateStep(schema8Protocol()) as {
-      interfaceText?: unknown;
-    };
-    expect(migrated).toEqual(expected);
-    expect(interfaceText).toEqual(
-      interfaceTextFor(expected as Parameters<typeof interfaceTextFor>[0]),
+    // The fixture words everything in Network Canvas's English; the migration
+    // holds none of that wording, so it is the fixture without it.
+    const migrated = migrateStep(schema8Protocol());
+    expect(migrated).toEqual(
+      withoutSuppliedWording(
+        expected as Parameters<typeof withoutSuppliedWording>[0],
+      ),
     );
+    expect(migrated).not.toHaveProperty('interfaceText');
   });
 
   it('migrates to a protocol schema 9 accepts', () => {
@@ -388,12 +412,24 @@ describe('v8 to v9 localization migration', () => {
     );
     expect(dynamicSites.length).toBeGreaterThan(0);
     // No text is lost, optional text included: every site plain text has
-    // is still there, and text that may show values reads as before.
-    expect(sites.map(({ path: at }) => at.join('.'))).toEqual(
-      collectLocalizedStrings(plain).map(({ path: at }) => at.join('.')),
+    // is still there. The marked text is not Network Canvas's own wording, so
+    // it is also held where plain text matched the wording and was dropped.
+    const siteNames = sites.map(({ path: at }) => at.join('.'));
+    const plainNames = collectLocalizedStrings(plain).map(({ path: at }) =>
+      at.join('.'),
     );
+    expect(siteNames.filter((name) => plainNames.includes(name))).toEqual(
+      plainNames,
+    );
+    expect(
+      sites
+        .filter(({ path: at }) => !plainNames.includes(at.join('.')))
+        .every(({ path: at }) => isSuppliedSite(migrated, at)),
+    ).toBe(true);
+    // Text that may show values reads as before.
     for (const { path: at, value } of dynamicSites) {
-      expect(value).toEqual(getAt(plain, at));
+      const before = getAt(plain, at);
+      if (before !== undefined) expect(value).toEqual(before);
     }
     // Text that cannot show values may keep the character.
     expect(
@@ -872,8 +908,11 @@ describe('v8 to v9 localization migration', () => {
       const text = collectLocalizedStrings(document);
       expect(text.map(({ path: at }) => at.at(-1))).toContain('minLabel');
 
-      // The document holds the interface text it uses, which the step keeps.
-      expect(collectLocalizedStrings(migrateStep(document))).toEqual(text);
+      // The step keeps all of it, but the wording of a setting its stage does
+      // not show (a gender identity label with the question off).
+      expect(collectLocalizedStrings(migrateStep(document))).toEqual(
+        text.filter(({ path: at }) => at.at(-1) !== 'genderIdentityLabel'),
+      );
     });
 
     it('migrates to a protocol schema 9 accepts', () => {

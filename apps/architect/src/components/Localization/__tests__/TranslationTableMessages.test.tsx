@@ -210,11 +210,12 @@ describe('TranslationTable: texts with versions', () => {
     await user.type(aboutYou, 'All ');
     await user.keyboard('{Enter}');
 
-    // The interview's own words follow every text a stage holds.
+    // The stage's next text, which the table lists whether or not the
+    // protocol holds wording of its own for it.
     await waitFor(() =>
       expect(
         screen.getByRole('textbox', {
-          name: /Interview navigation › Exit button English$/,
+          name: /No brothers or sisters button English$/,
         }),
       ).toHaveFocus(),
     );
@@ -303,22 +304,32 @@ describe('TranslationTable: texts with versions', () => {
     expect(getProtocol(store.getState())).toBe(before);
   });
 
-  it('says why the only translation cannot be cleared, and refuses to save it', async () => {
-    const { store, user } = renderTable();
-    const before = getProtocol(store.getState());
+  // Network Canvas words this text, so a cell with none of the researcher's
+  // wording is not an empty one: it reads as Network Canvas words it.
+  it("goes back to Network Canvas's wording when its only translation is cleared", async () => {
+    const { store, user } = renderTable(
+      withChoiceInASentence(
+        '{isYou, select, true {Your siblings} other {Siblings of {name}}}',
+      ),
+    );
+    expect(messageCell('English')).toHaveAccessibleDescription(/Your siblings/);
 
     await user.click(messageCell('English'));
     await user.click(await editedText('English'));
     await user.keyboard('{Control>}a{/Control}{Backspace}');
     await leaveCell(user, 'English');
-    expect(
-      await screen.findByText(
-        'This is the only translation, and it is in English. Add a translation in another language before clearing it.',
+
+    await waitFor(() =>
+      expect(messageCell('English')).toHaveAccessibleDescription(
+        /Add your biological brothers and sisters, or say you have none/,
       ),
-    ).toBeInTheDocument();
+    );
+    expect(
+      screen.queryByText(/This is the only translation/),
+    ).not.toBeInTheDocument();
 
     await save(user);
-    expect(getProtocol(store.getState())).toBe(before);
+    expect(listItem(store)).toBeUndefined();
   });
 
   const FOLDED_CHOICE =

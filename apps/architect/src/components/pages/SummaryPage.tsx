@@ -13,7 +13,7 @@ import InterfaceText from '~/lib/ProtocolSummary/components/InterfaceText';
 import Stages from '~/lib/ProtocolSummary/components/Stages';
 import SummaryContext from '~/lib/ProtocolSummary/components/SummaryContext';
 import { getCodebookIndex } from '~/lib/ProtocolSummary/helpers';
-import { getProtocol, getProtocolName } from '~/selectors/protocol';
+import { getProtocolAsShown, getProtocolName } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 const messages = defineMessages({
   protocolSummary: {
@@ -41,8 +41,9 @@ const SummaryPage = () => {
       document.documentElement.classList.remove('summary-view');
     };
   }, []);
-  // Get the active protocol and metadata from Redux store
-  const protocol = useSelector(getProtocol);
+  // The protocol with the wording a participant is shown written out, so the
+  // summary prints Network Canvas's wording where the protocol holds none.
+  const protocol = useSelector(getProtocolAsShown);
   const protocolName = useSelector(getProtocolName);
   const index = getCodebookIndex(protocol);
   // Unreachable: ProtocolRouteGuard renders no /protocol route without a

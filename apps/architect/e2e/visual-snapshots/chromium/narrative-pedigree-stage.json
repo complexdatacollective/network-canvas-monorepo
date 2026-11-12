@@ -1,15 +1,4 @@
 {
-  "conditionText": {
-    "selectCondition": {
-      "en": "Select a condition"
-    },
-    "snapshotCondition": {
-      "en": "{title}: {condition}"
-    },
-    "snapshotInheritance": {
-      "en": "{title}: {condition} — inheritance for {name}"
-    }
-  },
   "diseases": [
     {
       "attribute": "hasConditionX",
@@ -24,9 +13,6 @@
   "id": "id-2",
   "label": {
     "en": "Family Health History"
-  },
-  "saveSnapshot": {
-    "en": "Save snapshot"
   },
   "showAtRiskStatuses": false,
   "sourceStageId": "family-pedigree-1",

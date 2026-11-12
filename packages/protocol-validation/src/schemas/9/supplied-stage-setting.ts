@@ -10,23 +10,17 @@ export type SuppliedStageSetting = Readonly<{
   /** The supplied wording, by language, as ICU messages the stage can hold. */
   message: SuppliedWording;
   /**
-   * An optional object the setting belongs to: it is written only into a
-   * stage that has it, and arrives with it (the Family Pedigree's
-   * completeness texts arrive with `completeness`).
+   * An optional object the setting belongs to: the interview shows the
+   * setting only for a stage that has the object (the Family Pedigree's
+   * completeness texts belong to `completeness`).
    */
   within?: readonly string[];
   /**
-   * A setting the researcher may remove. It is written with the object that
-   * holds it, never into one that already exists without it.
-   */
-  optional?: true;
-  /**
    * A setting the stage shows only while it is configured a certain way,
    * such as the Family Pedigree's wording question, asked only when
-   * participants choose the wording. A stage holds it only while `when`
-   * holds: saving a stage fills it with the supplied wording when the
-   * configuration is switched on and drops it when it is switched off (see
-   * `missingSuppliedStageText` and `inapplicableStageSettings`).
+   * participants choose the wording. A stage holds wording for it only while
+   * `when` holds: saving a stage drops it when the configuration is switched
+   * off (see `stageWithoutSuppliedText`).
    */
   when?: (stage: Readonly<Record<string, unknown>>) => boolean;
 }>;

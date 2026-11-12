@@ -10,6 +10,7 @@ import {
   type LocaleTag,
   type LocalizationDeclaration,
   type LocalizedStringHit,
+  suppliedWordingIn,
 } from '@codaco/protocol-validation';
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
 import {
@@ -168,11 +169,18 @@ export const useLanguageActions = (
     [draftTexts, protocolTexts],
   );
 
+  // Network Canvas's own wording for a place: a text it words is not left
+  // empty by removing the only language the researcher reworded it in.
+  const suppliedWording = useMemo(
+    () => (protocol ? suppliedWordingIn(protocol) : undefined),
+    [protocol],
+  );
+
   /** What removing `locale` would delete, unsaved stage text included. */
   const removalImpact = useCallback(
     (locale: LocaleTag): LocaleRemovalImpact =>
-      getLocaleRemovalImpact(texts, locale),
-    [texts],
+      getLocaleRemovalImpact(texts, locale, suppliedWording),
+    [suppliedWording, texts],
   );
 
   const declaredNow = useCallback(

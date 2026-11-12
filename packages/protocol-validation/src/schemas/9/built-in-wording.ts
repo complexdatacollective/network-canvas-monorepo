@@ -65,10 +65,10 @@ const suppliedOptionLabelPaths = (
 };
 
 /**
- * Where a protocol holds wording Network Canvas supplies: its interface text,
- * the settings of each stage whose wording it supplies, and the labels of the
- * Family Pedigree's answers. Network Canvas writes this wording only in a
- * language it has it in exactly, so in any other language (Mexican Spanish,
+ * Where a protocol may hold wording Network Canvas supplies: its interface
+ * text, the settings of each stage whose wording it supplies, and the labels
+ * of the Family Pedigree's answers. Network Canvas has this wording only in
+ * the languages it supplies, so in any other language (Mexican Spanish,
  * Swahili) the researcher writes it.
  *
  * The finish stage's closing and finished screens are left to
@@ -107,7 +107,7 @@ export const builtInWordingPaths = (
   return paths;
 };
 
-/** Whether a path is one where the protocol holds supplied wording. */
+/** Whether a path is one where a protocol may hold supplied wording. */
 const isBuiltInWordingPath = (
   paths: ReadonlySet<string>,
   path: Path,

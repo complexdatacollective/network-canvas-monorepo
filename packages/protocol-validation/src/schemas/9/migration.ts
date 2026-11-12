@@ -32,11 +32,10 @@ import {
 } from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
-import { withInterfaceText } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
+import { withoutSuppliedWording } from './protocol-wording.ts';
 import { ProtocolSchemaV9 } from './schema.ts';
 import { freshStageId } from './stage-ids.ts';
-import { missingSuppliedStageText } from './supplied-stage-text.ts';
 import { findValidationContradictions } from './variables/validation-contradictions.ts';
 import { optionValueKey } from './variables/variable.ts';
 
@@ -1275,40 +1274,6 @@ const containerAt = (
   return node;
 };
 
-/**
- * Stage settings that schema 9 added and requires, whose wording Network
- * Canvas supplies (see `supplied-stage-text.ts`), get it on every stage
- * missing them, in the protocol's languages. A document already written in
- * schema 9 form keeps any it has.
- */
-const addSuppliedStageText = (
-  protocol: unknown,
-  localization: LocalizationDeclaration,
-) => {
-  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
-  for (const stage of protocol.stages) {
-    if (!isRecord(stage) || typeof stage.type !== 'string') continue;
-    for (const { path, value } of missingSuppliedStageText(
-      { ...stage, type: stage.type },
-      localization,
-    )) {
-      let container: Record<string, unknown> = stage;
-      for (const key of path.slice(0, -1)) {
-        const next = container[key];
-        if (isRecord(next)) {
-          container = next;
-        } else {
-          const created: Record<string, unknown> = {};
-          container[key] = created;
-          container = created;
-        }
-      }
-      const last = path.at(-1);
-      if (last !== undefined) container[last] = value;
-    }
-  }
-};
-
 const migrationV8toV9 = createMigration({
   from: 8,
   to: 9,
@@ -1362,7 +1327,6 @@ const migrationV8toV9 = createMigration({
     migrateNarrativePedigreeStages(migrated);
     addLegendLabels(migrated);
     addComposerCaptions(migrated);
-    addSuppliedStageText(migrated, localization);
     moveIntroductionPanelsToInformationStages(migrated, localization);
     repairInformationTitles(migrated);
     repairInformationTextItems(migrated);
@@ -1393,10 +1357,10 @@ const migrationV8toV9 = createMigration({
       else Reflect.deleteProperty(container, key);
     }
 
-    // The interview's own words for what the protocol uses, recorded in
-    // English like the rest of its text, from the protocol as migrated (an
-    // attribute whose encryption was never on is no longer encrypted).
-    return withInterfaceText({
+    // None of the wording Network Canvas supplies is written in: the
+    // interview shows it for a protocol that does not hold it. A document
+    // already in schema 9 form keeps only what its author changed.
+    return withoutSuppliedWording({
       ...migrated,
       stages: endsAtFinishStage(migrated.stages)
         ? migrated.stages

@@ -60,7 +60,7 @@ const asFieldValue = (value: unknown): FieldValue =>
 
 const NO_PATHS: readonly string[] = Object.freeze([]);
 
-/** What the protocol holds for one shared entry the stage uses, if anything. */
+/** What the saved protocol shows for one shared entry the stage uses, if it shows it. */
 const heldIn =
   (groups: readonly SharedWordingGroup[]) =>
   (group: string, key: string): LocalizedString | undefined =>
@@ -78,14 +78,15 @@ type StageWordingSectionProps = Readonly<{
 
 /**
  * A stage's "Customize built-in wording" section: the words a participant
- * reads that this stage holds, each starting with Network Canvas's wording,
- * and the words every stage of its kind shares, which the protocol holds once
- * (see `SharedStageWording`). Where it has both, each is a part of its own
+ * reads that this stage can word for itself, each starting with Network
+ * Canvas's wording, and the words every stage of its kind shares, which the
+ * protocol words once (see `SharedStageWording`). The stage and the protocol
+ * store only the wording the researcher changes. Where it has both, each is a part of its own
  * that opens and closes. Not shown at all when the stage has neither.
  *
- * Optional. Switched off, the stage holds Network Canvas's wording in every
- * language, which follows the protocol as languages are added or removed, so
- * switching off puts that wording back, the shared words with it (asking
+ * Optional. Switched off, the stage reads as Network Canvas words it in every
+ * language, including one added later, so switching off puts that wording
+ * back, the shared words with it (asking
  * first if the researcher changed any of it). It starts on when the stage or
  * the shared words already hold wording of the researcher's own, and whenever
  * the protocol has more than one language, so a translation still to be

@@ -10,6 +10,7 @@ import StageEditor from '@codaco/protocol-builder/StageEditor';
 import {
   type CurrentProtocol,
   validateProtocol,
+  withSuppliedWording,
 } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { ActionToolbarProvider } from '~/components/ProjectNav/ActionToolbar';
@@ -47,7 +48,8 @@ const protocol: CurrentProtocol = {
       id: STAGE_ID,
       type: 'LanguageChooser',
       label: LABEL,
-      // Network Canvas's heading, as a new stage holds it in each language.
+      // Network Canvas's heading in each language, which a stage need not
+      // hold: it is stored without it as soon as it is loaded.
       title: {
         en: 'Choose a language',
         fr: 'Choisissez une langue',
@@ -276,18 +278,24 @@ describe('the language chooser’s languages in Architect', () => {
     await waitFor(() => expect(savedStage(store)?.label).toEqual(changed));
     await waitFor(() => expect(readStageDraft().stage?.label).toEqual(changed));
     await waitFor(() => expect(readStageDraft().dirty).toBe(false));
-    // The heading is still Network Canvas's, so it becomes its Spanish wording
-    // in the open stage as in the protocol.
-    const heading = {
-      en: 'Choose a language',
-      es: 'Elige un idioma',
-      de: 'Wählen Sie eine Sprache aus',
-    };
-    expect(savedStage(store)).toMatchObject({ title: heading });
-    expect(readStageDraft().stage).toMatchObject({ title: heading });
+    // The heading is Network Canvas's, which neither the protocol nor the
+    // stage as it would be saved holds, so the change leaves it unwritten.
+    expect(savedStage(store)).not.toHaveProperty('title');
+    expect(readStageDraft().stage).not.toHaveProperty('title');
+    // The editor shows it in Spanish, as the interview does.
+    expect(
+      withSuppliedWording(getProtocol(store.getState()) as CurrentProtocol)
+        .stages[0],
+    ).toMatchObject({
+      title: {
+        en: 'Choose a language',
+        es: 'Elige un idioma',
+        de: 'Wählen Sie eine Sprache aus',
+      },
+    });
   });
 
-  it('gives the open stage’s unsaved, reworded heading Network Canvas’s wording in a language added from it', async () => {
+  it('keeps the open stage’s unsaved, reworded heading as the only wording it holds, in a language added from it', async () => {
     const { store } = await openEditor();
     globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
       languages: ['es', 'ja'],
@@ -315,29 +323,17 @@ describe('the language chooser’s languages in Architect', () => {
         'ja',
       ]),
     );
-    // Spanish gains Network Canvas's heading although English was reworded;
-    // the French and German translations stay as they were, and Japanese,
-    // which Network Canvas has no wording in, gains nothing.
-    const expected = {
-      en: 'Pick your language',
-      fr: 'Choisissez une langue',
-      de: 'Wählen Sie eine Sprache aus',
-      es: 'Elige un idioma',
-    };
+    // The stage as it would be saved holds only the researcher's wording:
+    // Network Canvas's French, German and Spanish headings are shown beside
+    // it, not held. Japanese, which Network Canvas has no wording in, gains
+    // nothing either.
     await waitFor(() =>
       expect(
         (readStageDraft().stage as { title?: unknown } | undefined)?.title,
-      ).toEqual(expected),
+      ).toEqual({ en: 'Pick your language' }),
     );
     expect(readStageDraft().dirty).toBe(true);
-    expect(savedStage(store)).toMatchObject({
-      title: {
-        en: 'Choose a language',
-        fr: 'Choisissez une langue',
-        de: 'Wählen Sie eine Sprache aus',
-        es: 'Elige un idioma',
-      },
-    });
+    expect(savedStage(store)).not.toHaveProperty('title');
   });
 
   it('saves a stage edited across a language’s removal as a valid protocol', async () => {

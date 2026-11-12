@@ -17,9 +17,9 @@ interview shows less text of its own.
 
 **Stage settings.** Text a participant sees on one kind of stage is now a
 setting of that stage, which researchers can change and translate. Network
-Canvas fills each one with its starting wording in every protocol language it
-has wording for (English, German, Spanish, French, Italian, Dutch, Brazilian
-Portuguese, and Simplified and Traditional Chinese):
+Canvas has wording for each one in English, German, Spanish, French, Italian,
+Dutch, Brazilian Portuguese, and Simplified and Traditional Chinese, and the
+interview shows that wording until a researcher changes it:
 
 - Finish screen: the finish button, its confirmation question, the finished
   notice and the message shown if finishing fails.
@@ -35,17 +35,25 @@ Portuguese, and Simplified and Traditional Chinese):
   button and snapshot headings.
 - Family Pedigree: every word of drawing, connecting and adding to the family,
   as the stage's `wording`, including the name question and the checklist of
-  family members still needed.
+  family members still needed. The guidance under the name question is always
+  shown: Network Canvas's unless the researcher has changed it.
 
-A stage may omit any of these settings. For each one it does not hold in a
-language, the interview shows Network Canvas's wording, where Network Canvas
-has wording in that language (`stageWordingShown(stage, localization)`). A
-setting shown only under some configuration, such as the layout tooltips
-while automatic layout is on, is offered only while that configuration is on:
-Architect fills it in with the starting wording when the configuration is
-switched on and removes it when it is switched off, so a protocol never asks
+A stage holds one of these settings only where its author changed the
+wording, or wrote it in a language Network Canvas has no wording in. For each
+one it does not hold in a language, the interview shows Network Canvas's
+wording, where Network Canvas has wording in that language
+(`stageWordingShown(stage, localization)`). Architect's stage editor,
+translation table and protocol summary show that wording for a setting the
+stage does not hold, and a translation that reads exactly as Network Canvas
+words it is not saved, so a correction to Network Canvas's wording reaches
+every protocol that has not changed it. Leaving a cell of the translation
+table empty puts Network Canvas's wording for that language back. A setting shown only under some
+configuration, such as the layout tooltips while automatic layout is on, is
+offered only while that configuration is on, and the researcher's wording for
+it is removed when the configuration is switched off, so a protocol never asks
 for text its participants cannot see to be translated. Upgrading a protocol
-from schema 8 gives each stage the wording it has always shown. Several
+from schema 8 writes none of this wording into it, so each stage reads as it
+always has. Several
 settings read differently when they are about the participant and when they
 are about someone else, or show a name or a number; Architect's stage editor,
 translation table and protocol summary show each version separately, named,
@@ -64,8 +72,9 @@ Family Pedigree or Network Composer, and Yes and No where a question is
 answered with them); messages (the screen error, the item error on an
 Information stage that shows a file, and one error message that also stands
 in for a form that could not be submitted); the passphrase prompt; the
-discard-changes question and explanation, held while a stage can ask it; and validation messages, one for each answer check, held only for the
-checks the protocol uses. The Yes answer is also the discard dialog's confirm
+discard-changes question and explanation, offered while a stage can ask it; and validation messages, one for each answer check, offered only for the
+checks the protocol uses. As with stage settings, a protocol holds an entry
+only where its author changed the wording. The Yes answer is also the discard dialog's confirm
 button. The interview shows this text in the protocol's language; its own
 words, such as the language chooser, still follow the participant's browser.
 
@@ -83,8 +92,11 @@ marked `required`, the new `TokenPill` subpath draws a placeholder the same
 way in text that is only read (`TokenPill`, `TokenizedText`), `Table` takes a
 `scrollerClassName` for its scrolling element, and a dialog's busy
 confirm button is announced through a status region;
-`@codaco/protocol-validation` adds `missingSuppliedStageText`,
-`inapplicableStageSettings`, `suppliedStageSettingApplies`,
+`@codaco/protocol-validation` adds `stageWithoutSuppliedText` (a stage as it
+is stored) and `stageWithSuppliedText` (as an editor holds it),
+`withoutSuppliedWording` and `withSuppliedWording` for a whole protocol,
+`suppliedWordingIn` (Network Canvas's own wording for a text of a protocol),
+`suppliedStageSettingApplies`,
 `messageVariants`, `composeMessage`, `findMessageArgumentProblem`,
 `findMissingPlacement` and `requiredArgumentsOf`, and a declared `text` or
 `plural` argument may list the versions it is `required` in; and

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type CurrentProtocol,
+  interfaceTextAsShown,
   type LocalizedString,
   type Stage,
   validateProtocol,
@@ -186,7 +187,7 @@ describe('buildProtocolWithStage', () => {
   });
 
   // A stage of a kind the protocol has none of brings interface text of its
-  // own, which the saved protocol will hold; the draft must hold it too, or
+  // own, which the saved protocol will show; the draft must show it too, or
   // the stage editor could never validate (or preview) the new stage.
   it('validates a draft adding the first stage of a kind, with the text that kind shows', async () => {
     const QUICK_ADD_ID = 'name-generator-quick-add-1';
@@ -200,7 +201,7 @@ describe('buildProtocolWithStage', () => {
         ({ type }) => type !== 'NameGeneratorQuickAdd',
       ),
     });
-    expect(protocol.interfaceText).not.toHaveProperty('quickAdd');
+    expect(interfaceTextAsShown(protocol)).not.toHaveProperty('quickAdd');
     expect((await validateProtocol(protocol, { draft: true })).success).toBe(
       true,
     );
@@ -208,7 +209,10 @@ describe('buildProtocolWithStage', () => {
     const { id: _id, ...newStage } = quickAdd;
     const built = buildProtocolWithStage(protocol, newStage as Stage, null);
 
-    expect(built.interfaceText).toHaveProperty('quickAdd');
+    // The saved protocol shows the new kind's text, and holds none of it:
+    // it is Network Canvas's own.
+    expect(interfaceTextAsShown(built)).toHaveProperty('quickAdd');
+    expect(built.interfaceText?.quickAdd).toBeUndefined();
     const result = await validateProtocol(built, { draft: true });
     expect(result.error?.issues).toBeUndefined();
   });

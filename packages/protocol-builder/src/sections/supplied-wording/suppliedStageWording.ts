@@ -33,9 +33,11 @@ export function useSuppliedStageWording(
 }
 
 /**
- * A wording field's starting value: what the stage already holds, else the
- * supplied wording, so switching on the setting that holds it seeds it.
- * `initialValue` replaces what the form would otherwise seed from the
+ * A wording field's starting value: what the form already holds for the
+ * setting, which for a setting the stage shows is the stage's own wording
+ * over Network Canvas's (see `stageFieldsForEditing`), else Network Canvas's
+ * wording, so a field whose setting has just been switched on starts with
+ * it. `initialValue` replaces what the form would otherwise seed from the
  * document, so the supplied wording given alone would overwrite the
  * researcher's.
  */
