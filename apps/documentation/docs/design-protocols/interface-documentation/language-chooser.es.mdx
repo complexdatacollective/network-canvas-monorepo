@@ -2,7 +2,7 @@
 title: Selector de idioma
 navOrder: 23
 date: 7th October 2026
-translatedFrom: 3ab5d9095c269fd71bf18f7c19f9325c0d2ed1c0
+translatedFrom: e871d25c6dc260991079fb66b70cbbce7224e564
 ---
 
 <InterfaceSummary type="LanguageChooser">
@@ -19,7 +19,7 @@ Para configurar los idiomas entre los que puede elegir cada participante, consul
 
 ## Qué ve cada participante {#what-participants-see}
 
-La pantalla consta de un encabezado situado encima de una lista de idiomas. El encabezado forma parte de tu protocolo, como el resto de su texto: una etapa «Selector de idioma» nueva empieza con «Elige un idioma», que Network Canvas escribe por ti en cada uno de los idiomas de tu protocolo para los que tiene redacción, y puedes cambiarlo o traducirlo tú (consulta [Configurar la etapa «Selector de idioma»](#configuring-the-language-chooser)). El encabezado se muestra en el idioma en el que se muestra la entrevista en ese momento, así que cambia en cuanto la persona participante elige otro idioma.
+La pantalla consta de un encabezado situado encima de una lista de idiomas. El encabezado se puede definir en tu protocolo, como el resto de su texto: dice «Elige un idioma», en cada uno de los idiomas de tu protocolo para los que Network Canvas tiene redacción, hasta que lo cambies o lo traduzcas tú (consulta [Configurar la etapa «Selector de idioma»](#configuring-the-language-chooser)). El encabezado se muestra en el idioma en el que se muestra la entrevista en ese momento, así que cambia en cuanto la persona participante elige otro idioma.
 
 La lista contiene exactamente los idiomas en los que está escrito tu protocolo, por orden alfabético según el idioma en el que se muestra la entrevista. Cada idioma aparece escrito en su propio idioma y en su propia escritura, así que una persona hispanohablante ve **Español** y una persona que habla japonés ve **日本語**, esté en el idioma que esté la pantalla en ese momento. Los idiomas no tienen ningún otro orden: el orden en que los guarda tu protocolo no supone ninguna diferencia.
 
@@ -34,14 +34,14 @@ La persona participante siempre puede pasar a la pantalla siguiente, aunque no e
 El editor de la etapa tiene estas secciones:
 
 - **Idiomas** enumera los idiomas entre los que pueden elegir quienes participan: todos los idiomas en los que está escrito tu protocolo, por orden alfabético. Puedes gestionarlos aquí mismo. Es la misma lista que la de la página **Idiomas** de Architect, con las mismas reglas (consulta [Gestionar los idiomas de tu protocolo](/es/design-protocols/translating-your-protocol#managing-your-protocols-languages)), así que un cambio hecho en un sitio aparece en el otro. Un cambio también se aplica a los cambios de esta etapa que todavía no has guardado. Puedes:
-  - añadir idiomas con **Añadir idiomas**. Un idioma nuevo empieza sin traducciones de tu propio texto, aunque la redacción que aporta Network Canvas, como el encabezado de esta etapa, se añade en ese idioma cuando Network Canvas tiene esa redacción.
+  - añadir idiomas con **Añadir idiomas**. Un idioma nuevo empieza sin traducciones de tu propio texto, aunque la redacción que aporta Network Canvas, como el encabezado de esta etapa, ya se muestra en ese idioma cuando Network Canvas tiene esa redacción.
   - elegir el idioma predeterminado en la lista **Idioma predeterminado**, cuando tu protocolo tiene más de un idioma.
   - dejar de ofrecer un idioma con el botón de eliminar que hay al final de su fila, lo que elimina sus traducciones. No puedes eliminar el idioma predeterminado hasta que otro idioma sea el predeterminado. No puedes eliminar un idioma que contiene la única traducción de algún texto hasta que ese texto se traduzca a otro idioma. Esto incluye el texto de esta etapa que todavía no has guardado. Cuando no puedes eliminar un idioma, su botón de eliminar no está disponible. Señálalo, o llega a él con el teclado, para ver el motivo.
   - registrar las traducciones de un idioma como si fueran de otro idioma con el botón de cambiar que hay al final de su fila, por ejemplo, cuando una redacción registrada en un idioma está escrita en realidad en otro (consulta [Cambiar el idioma en el que está registrado tu texto](/es/design-protocols/translating-your-protocol#changing-the-language-your-text-is-recorded-as)). Tu propia redacción se traslada tal cual. La redacción que aporta Network Canvas y que no has cambiado pasa a ser la redacción de Network Canvas en el idioma que elijas o, si Network Canvas no la tiene en ese idioma, se elimina para que la escribas tú.
 
   Una insignia **Traducciones faltantes** marca cada idioma al que todavía no se han traducido algunos textos. El editor de la etapa no abre [la tabla de traducciones](/es/design-protocols/translating-your-protocol#the-translation-table): traduce esos textos desde la página **Idiomas** de Architect.
 
-- **Personalizar la redacción predeterminada** contiene el **Encabezado** que se muestra encima de la lista de idiomas. Empieza con «Elige un idioma» en cada uno de los idiomas de tu protocolo para los que Network Canvas tiene redacción. Cámbialo como cualquier otro texto y tradúcelo a los idiomas en los que falte, como el resto de tu protocolo (consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol)). Cuando añades un idioma para el que Network Canvas tiene redacción, la redacción inicial del encabezado también se añade en ese idioma, salvo que hayas cambiado el encabezado en el idioma predeterminado de tu protocolo.
+- **Personalizar la redacción predeterminada** contiene el **Encabezado** que se muestra encima de la lista de idiomas. Dice «Elige un idioma» en cada uno de los idiomas de tu protocolo para los que Network Canvas tiene redacción, hasta que lo cambies. Cámbialo como cualquier otro texto y tradúcelo a los idiomas en los que falte, como el resto de tu protocolo (consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol)). Cuando añades un idioma para el que Network Canvas tiene redacción, el encabezado también se muestra en ese idioma con la redacción de Network Canvas, hasta que lo traduzcas tú.
 - La [lógica de salto](/es/design-protocols/key-concepts/skip-logic) y la guía para la persona entrevistadora funcionan igual que en las demás etapas.
 
 ![El editor de la etapa «Selector de idioma». La sección Personalizar la redacción predeterminada contiene el Encabezado, «Choose a language», en inglés estadounidense, el idioma predeterminado.](/assets/img/architect/localization/language-chooser-editor.png)
