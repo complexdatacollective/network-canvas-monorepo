@@ -44,7 +44,7 @@ const additionalMessages = defineMessages({
     defaultMessage:
       'To create your first attribute of this type, type a name above and press enter. See our <ExternalLink> {value1} </ExternalLink> for more information.',
     description:
-      'Visible text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+      'Hint in the variable search window, shown when no variable exists yet for this node type or edge type. ExternalLink wraps value1, which is a link to the documentation on naming. Attribute means codebook variable.',
   },
 });
 const messages = defineMessages({
@@ -58,57 +58,57 @@ const messages = defineMessages({
     id: 'architect.form.fields.variablePicker.variableSpotlight.cannotCreateAttributeNamed',
     defaultMessage: 'Cannot create attribute named "{filterTerm}"',
     description:
-      'The label text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+      'List item in the variable search window, shown disabled when the name typed cannot be used for a new variable. filterTerm is the name typed. The reason follows in a separate message.',
   },
   createNewAttributeCalled: {
     id: 'architect.form.fields.variablePicker.variableSpotlight.createNewAttributeCalled',
     defaultMessage: 'Create new attribute called "{filterTerm}".',
     description:
-      'The label text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+      'List item in the variable search window that creates a new codebook variable with the name typed in the search box. filterTerm is that name.',
   },
   findAnAttribute: {
     id: 'architect.form.fields.variablePicker.variableSpotlight.findAnAttribute',
     defaultMessage: 'Find an attribute...',
     description:
-      'The placeholder text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+      'Placeholder in the search box of the variable search window, used when only existing codebook variables can be chosen and none can be created.',
   },
   createOrFindAnAttribute: {
     id: 'architect.form.fields.variablePicker.variableSpotlight.createOrFindAnAttribute',
     defaultMessage: 'Create or find an attribute...',
     description:
-      'The placeholder text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+      'Placeholder in the search box of the variable search window, used when the researcher can search existing codebook variables or type a new name to create one.',
   },
   findOrCreateAnAttribute: {
     id: 'architect.form.fields.variablePicker.variableSpotlight.findOrCreateAnAttribute',
     defaultMessage: 'Find or create an attribute',
     description:
-      'The aria-label text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+      'Accessible name of the search box in the variable search window; read only by screen readers.',
   },
   documentationOnAttributeNaming: {
     id: 'architect.form.fields.variablePicker.variableSpotlight.documentationOnAttributeNaming',
     defaultMessage: 'documentation on attribute naming',
     description:
-      'Visible text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+      'Text of a link to the documentation page about naming variables. It is inserted as value1 into the hint about creating a first variable.',
   },
   noAttributesExistForYouTo: {
     id: 'architect.form.fields.variablePicker.variableSpotlight.noAttributesExistForYouTo',
     defaultMessage:
       'No attributes exist for you to select, and you cannot create a new attribute from here. Please create one or more attributes elsewhere in your protocol, and return here to select them.',
     description:
-      'Visible text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+      'Message in the variable search window when no codebook variable can be chosen here and none can be created from this window. Attributes means codebook variables.',
   },
   youCannotCreateANewAttribute: {
     id: 'architect.form.fields.variablePicker.variableSpotlight.youCannotCreateANewAttribute',
     defaultMessage:
       'You cannot create a new attribute from here. Please create one or more attributes elsewhere in your protocol, and return here to select them.',
     description:
-      'Visible text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+      'Message in the variable search window when the typed text matches no variable and new variables cannot be created from this window. Attribute means codebook variable.',
   },
   attributeResults: {
     id: 'architect.form.fields.variablePicker.variableSpotlight.attributeResults',
     defaultMessage: 'Attribute results',
     description:
-      'The aria-label text in components / Form / Fields / VariablePicker / VariableSpotlight.',
+      'Accessible name of the list of matching variables in the variable search window; read only by screen readers.',
   },
 });
 

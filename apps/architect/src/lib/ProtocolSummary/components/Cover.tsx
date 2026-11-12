@@ -19,17 +19,20 @@ const messages = defineMessages({
   protocolSummaryDocument: {
     id: 'architect.protocolSummary.cover.protocolSummaryDocument',
     defaultMessage: 'Protocol Summary Document',
-    description: 'Visible text in lib / ProtocolSummary / components / Cover.',
+    description:
+      'Title across the top of the cover page of the printable protocol summary.',
   },
   aNetworkCanvasProject: {
     id: 'architect.protocolSummary.cover.aNetworkCanvasProject',
     defaultMessage: 'A Network Canvas project',
-    description: 'The alt text in lib / ProtocolSummary / components / Cover.',
+    description:
+      'Accessible name of the Network Canvas logo on the cover page of the printable protocol summary; read only by screen readers.',
   },
   documentCreated: {
     id: 'architect.protocolSummary.cover.documentCreated',
     defaultMessage: 'Document Created: {now}',
-    description: 'Visible text in lib / ProtocolSummary / components / Cover.',
+    description:
+      'Line at the bottom of the cover page of the printable protocol summary stating when the summary was generated. now is the date and time.',
   },
   languages: {
     id: 'architect.protocolSummary.cover.languages',

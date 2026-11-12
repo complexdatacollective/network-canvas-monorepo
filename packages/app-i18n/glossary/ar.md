@@ -74,6 +74,10 @@ use an old term change with it.
   for a masculine noun), `other {# عقدة}` (100 and above, singular). The dual
   takes "ان" or "ين" by its place in the sentence.
 
+- **Arrows point the way the text reads.** A menu path or a "go on" arrow is
+  "←" in Arabic: «الإعدادات» ← «الخصوصية». The arrow characters are not
+  mirrored by the layout, so the catalog has to carry the turned one.
+
 ## Never translated
 
 Network Canvas, Architect, Interviewer, Fresco, Studio, Mapbox, GraphML, CSV,
@@ -276,6 +280,127 @@ interface name is a proper name in « » after "واجهة" or "مرحلة": "م
 | Per Alter Form                 | نموذج لكل طرف آخر                 |
 | Sociogram                      | المخطط الاجتماعي                   |
 | Tie-Strength Census            | تعداد قوة الروابط                 |
+
+## App, device and security terms
+
+The apps' own screens: setting up a device, locking it, installing protocols,
+managing and exporting interviews.
+
+| English                           | Arabic                      | Notes                                                                                                                                                       |
+| --------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| analytics                         | التحليلات                    | Anonymous usage data is "بيانات استخدام مجهولة الهوية".                                                                                                     |
+| app                               | التطبيق                     |                                                                                                                                                             |
+| app security                      | أمان التطبيق                |                                                                                                                                                             |
+| archive (a ZIP file)              | أرشيف                       | "ملف ZIP" where the English names the format.                                                                                                               |
+| authentication                    | المصادقة                    | Proving who is using the app.                                                                                                                               |
+| authorized (user)                 | مصرّح له                     | "المستخدمون المصرّح لهم". App authorization is "التصريح باستخدام التطبيق".                                                                                   |
+| biometric unlock                  | فتح القفل بالقياسات الحيوية | Biometrics are "القياسات الحيوية". Face ID, Touch ID and Windows Hello are product names and stay in Latin letters.                                         |
+| browser                           | المتصفح                     |                                                                                                                                                             |
+| device                            | الجهاز                      | The tablet or computer the app runs on.                                                                                                                     |
+| device lock                       | قفل الجهاز                  | The feature that keeps the app's data locked on this device.                                                                                                |
+| encrypted / not encrypted         | مشفَّر / غير مشفَّر             | Agrees with its noun: "البيانات مشفَّرة". Encrypted at rest is "مشفَّرة في أثناء التخزين".                                                                      |
+| exported / not exported           | مُصدَّرة / غير مُصدَّرة           | The state of an interview. The vowel marks keep it from reading as "مصدر" (source).                                                                         |
+| finished / unfinished (interview) | مكتملة / غير مكتملة         | A state, not an instruction.                                                                                                                                |
+| home (the app's first screen)     | الشاشة الرئيسية             |                                                                                                                                                             |
+| install                           | تثبيت                       | An app, an update or a protocol.                                                                                                                            |
+| lock / unlock (actions)           | قفل / فتح القفل             | The states are "مقفل" and "غير مقفل".                                                                                                                       |
+| offline                           | دون اتصال بالإنترنت          | Of the device itself: "غير متصل بالإنترنت".                                                                                                                  |
+| permanently delete                | حذف نهائي                   | As an adverb: "نهائيًا".                                                                                                                                     |
+| PIN                               | رمز PIN                     | Keeps the Latin abbreviation, as device makers' Arabic does. Masculine: "رمز PIN غير صحيح".                                                                 |
+| read-only                         | للقراءة فقط                 |                                                                                                                                                             |
+| recover, recovery                 | استرداد                     | "الاسترداد بعبارة المرور". A recovery passphrase is "عبارة مرور الاسترداد".                                                                                   |
+| reload                            | إعادة التحميل               |                                                                                                                                                             |
+| reset (the app, its data)         | إعادة تعيين                 | Removes everything the app stores on the device.                                                                                                            |
+| responses                         | الإجابات                     | What a participant answered.                                                                                                                                |
+| sample protocol                   | بروتوكول توضيحي             | The built-in example. Never "تجريبي", which reads as "experimental", or "نموذجي", which reads as "of a form". A development protocol is "بروتوكول التطوير". |
+| setup, set up                     | إعداد                       | "إعداد الجهاز". The setup wizard is "معالج الإعداد".                                                                                                         |
+| start / resume (an interview)     | بدء / استئناف               |                                                                                                                                                             |
+| storage                           | التخزين                     | Persistent storage is "تخزين دائم".                                                                                                                         |
+| synthetic (data, interviews)      | اصطناعي                     | Generated for testing, not collected: "مقابلات اصطناعية".                                                                                                    |
+| unlock method                     | طريقة فتح القفل             | A PIN, a passphrase or biometrics.                                                                                                                          |
+| update (of the app)               | تحديث                       |                                                                                                                                                             |
+| version                           | إصدار                       |                                                                                                                                                             |
+| authenticator                     | أداة المصادقة               | What the device uses to check a fingerprint or face.                                                                                                        |
+| best-effort (storage)             | غير مضمون                   | The browser keeps the data but may clear it when space runs low. Never "بأفضل جهد".                                                                         |
+| clipboard                         | الحافظة                     |                                                                                                                                                             |
+| community forum                   | منتدى المجتمع               |                                                                                                                                                             |
+| credentials                       | بيانات الاعتماد              |                                                                                                                                                             |
+| destroy, wipe (data)              | محو                         | Stronger than "حذف": everything on the device goes.                                                                                                         |
+| enrol (a PIN, a fingerprint)      | تسجيل                       |                                                                                                                                                             |
+| Get started                       | البدء                       | The button that opens the setup wizard, so the wizard is "معالج «البدء»" where the English names it that way.                                               |
+| identity                          | الهوية                      | "تأكيد الهوية".                                                                                                                                             |
+| in progress (interview)           | جارية                       | A state.                                                                                                                                                    |
+| installation ID                   | معرّف التثبيت                |                                                                                                                                                             |
+| mark unfinished                   | وضع علامة «غير مكتملة»       |                                                                                                                                                             |
+| pixels                            | بكسل                        |                                                                                                                                                             |
+| preferences                       | التفضيلات                    |                                                                                                                                                             |
+| revoke (the device lock)          | إزالة                       | "إزالة قفل الجهاز". Never "إلغاء", which is Cancel, or "إبطال", which reads as "invalidate".                                                                |
+
+## Architect terms
+
+Architect's own screens: opening and saving protocols, the stage editor, the
+codebook, resources, languages, the printable summary.
+
+| English                                                    | Arabic                                     | Notes                                                                                                                                                                         |
+| ---------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| access token (Mapbox)                                      | رمز الوصول                                 | "رمز وصول Mapbox". A testing token is "رمز وصول تجريبي". Not "مفتاح", which is the API key resource.                                                                          |
+| capability (of an interface)                               | إمكانية (إمكانيات)                         | What an interface type can do, used to filter the list of interfaces.                                                                                                         |
+| change undone / change redone                              | تم التراجع عن التغيير / أُعيد تنفيذ التغيير | Toasts after Undo and Redo.                                                                                                                                                   |
+| copy (noun, of a protocol)                                 | نسخة                                       | "تنزيل نسخة". The action Copy is "نسخ".                                                                                                                                       |
+| default language                                           | اللغة الافتراضية                            | The language a protocol is written in first.                                                                                                                                  |
+| documentation (the Network Canvas docs)                    | الوثائق                                    | "عرض الوثائق".                                                                                                                                                                |
+| issues (problems to fix in a stage)                        | المشكلات                                    |                                                                                                                                                                               |
+| OK (button that closes a notice)                           | موافق                                      |                                                                                                                                                                               |
+| Protocol Gallery                                           | معرض البروتوكولات                           |                                                                                                                                                                               |
+| tab character / line break / control character             | علامة جدولة / فاصل أسطر / حرف تحكم          | Characters not allowed in a name or value. Not "علامة تبويب", which is a browser tab.                                                                                          |
+| cannot (a rule forbids it) / could not (an attempt failed) | لا يمكن / تعذّر                              | "Cannot delete stage" as the title of a notice that explains why is "لا يمكن حذف المرحلة". "تعذّر" is for something that was tried and did not work.                            |
+| "… failed" (the title of an error)                         | فشل …                                      | "Download failed", "Delete failed", "Source save failed", "Preview failed": "فشل التنزيل", "فشل الحذف". The sentence under the title says what could not be done with "تعذّر". |
+| canonical (source files)                                   | المرجعية                                   | The copy of a protocol's source files that the repository treats as the reference: "ملفات مصدر البروتوكول المرجعية". Not "المعتمدة", which reads as approved.                 |
+| interview text (a kind of text)                            | نص المقابلة                                | The label for the wording the interview itself shows, on the Languages page and as a section of the summary. In a sentence about that wording, use "الصياغة".                 |
+| Outdoors (a map style)                                     | الهواء الطلق                               | Translated like the other map style names, as the other languages do ("Plein air", "Al aire libre").                                                                          |
+| closing screen / finished screen                           | شاشة الختام / شاشة الانتهاء                 | The two screens of a stage that ends the interview: the one the participant reads before finishing, and the one shown afterwards.                                             |
+| draft                                                      | مسودة (مسودات)                             |                                                                                                                                                                               |
+| duplicate (rows, labels)                                   | مكرّر                                       | "صفوف مكرّرة".                                                                                                                                                                 |
+| edge interpreter                                           | مفسّر الروابط                               | Beside "مفسّر الأسماء" for a name interpreter.                                                                                                                                  |
+| editor / stage editor                                      | المحرّر / محرّر المرحلة                      | The screen where one stage is edited.                                                                                                                                         |
+| example data (in a preview)                                | بيانات توضيحية                             | Not "مثالية", which means ideal.                                                                                                                                              |
+| feature (of a map layer)                                   | عنصر (عناصر)                               | "خاصية العنصر المستهدف". Not "ميزة".                                                                                                                                          |
+| history (undo and redo)                                    | سجل التغييرات                              |                                                                                                                                                                               |
+| leave (a screen, an editor)                                | مغادرة                                     | "تجاهل التغييرات والمغادرة".                                                                                                                                                  |
+| page (a section of Architect)                              | صفحة                                       | The Stages, Codebook, Resources, Languages and Summary pages: "صفحة المراحل", "صفحة دليل الترميز", "صفحة الموارد", "صفحة اللغات", "صفحة الملخّص".                              |
+| preview popup                                              | نافذة المعاينة المنبثقة                    | The separate window the interview preview opens in.                                                                                                                           |
+| protocol library                                           | مكتبة البروتوكولات                          | The list of protocols kept in this browser.                                                                                                                                   |
+| protocol summary                                           | ملخّص البروتوكول                            | The printable document that describes a protocol. Print is "طباعة".                                                                                                           |
+| read-only mode                                             | وضع القراءة فقط                            |                                                                                                                                                                               |
+| recent protocols                                           | البروتوكولات الأخيرة                         |                                                                                                                                                                               |
+| rename                                                     | إعادة تسمية                                |                                                                                                                                                                               |
+| resource library                                           | مكتبة الموارد                              | "Assets" and "resources" are the same thing: "الموارد".                                                                                                                       |
+| restore                                                    | استعادة                                    |                                                                                                                                                                               |
+| saved copy / saved version (of a protocol or stage)        | النسخة المحفوظة                            | The content as last saved. Keep "إصدار" for numbered versions of an app or of the schema. "The version the other tab saved" is "النسخة التي حفظتها علامة التبويب الأخرى".       |
+| start screen                                               | شاشة البداية                               | Architect's first screen, where protocols are opened and created. "العودة إلى شاشة البداية".                                                                                  |
+| subject (the node type, edge type or ego a stage is about) | الكيان المعني                              | Not "الموضوع", which means topic.                                                                                                                                             |
+| take (an interview, said of a participant)                 | خوض المقابلة                               | "يخوض المشاركون المقابلة بهذه اللغة". "إجراء المقابلة" is what the person conducting it does.                                                                                 |
+| tab (browser tab)                                          | علامة تبويب (علامات تبويب)                   | "علامة تبويب أخرى". A tab "holds" the saved copy: "تحتفظ بالنسخة المحفوظة".                                                                                                    |
+| template (protocol template)                               | قالب (قوالب)                               |                                                                                                                                                                               |
+| threshold                                                  | عتبة (عتبات)                               |                                                                                                                                                                               |
+| translation (of protocol text)                             | ترجمة (ترجمات)                             | A missing translation is "ترجمة ناقصة".                                                                                                                                       |
+| unsaved changes                                            | تغييرات غير محفوظة                         |                                                                                                                                                                               |
+| used in (column heading)                                   | مواضع الاستخدام                             | A heading with no gender to agree.                                                                                                                                            |
+| untitled                                                   | بلا عنوان                                   | Of a stage or protocol with no name. An option with no label is "بلا تسمية".                                                                                                   |
+
+Sentences that recur across Architect's screens are written the same way each
+time:
+
+- "This protocol is open in another tab, which holds the saved copy." is "هذا
+  البروتوكول مفتوح في علامة تبويب أخرى تحتفظ بالنسخة المحفوظة."
+- "Close the other tab, then …" is "أغلق علامة التبويب الأخرى، ثم …".
+- "You can restore it with Undo while this protocol remains open." is "يمكن
+  استعادته بالتراجع ما دام هذا البروتوكول مفتوحًا." (the pronoun agrees with
+  what was deleted).
+- "Return to start screen" is "العودة إلى شاشة البداية"; "Download a copy" is
+  "تنزيل نسخة".
+- "Participants could not tell these apart." is "لن يتمكن المشاركون من التمييز
+  بينها."
 
 ## Common controls
 

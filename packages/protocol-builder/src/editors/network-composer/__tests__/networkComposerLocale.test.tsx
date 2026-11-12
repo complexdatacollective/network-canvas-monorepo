@@ -102,7 +102,7 @@ describe('the network composer sections, read in Spanish', () => {
     expect(
       screen.getByRole('region', { name: 'Tipos de vínculo' }),
     ).toHaveAccessibleDescription(
-      'Selecciona los tipos de vínculo que los participantes pueden crear en el lienzo. Cada tipo seleccionado tendrá su propio conjunto de atributos editables abajo.',
+      'Selecciona los tipos de vínculo que quienes participan pueden crear en el lienzo. Cada tipo seleccionado tendrá su propio conjunto de atributos editables abajo.',
     );
   });
 
@@ -140,7 +140,7 @@ describe('the network composer sections, read in Spanish', () => {
       locale: 'es',
     });
 
-    const field = await openRow(harness, 'Editar campo del formulario');
+    const field = await openRow(harness, 'Editar campo de formulario');
     expect(
       field.getByRole('combobox', { name: 'Control de entrada' }),
     ).toBeInTheDocument();

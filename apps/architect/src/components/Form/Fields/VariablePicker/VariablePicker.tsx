@@ -16,19 +16,19 @@ const messages = defineMessages({
     id: 'architect.form.fields.variablePicker.variablePicker.noAttributeSelected',
     defaultMessage: 'No attribute selected',
     description:
-      'Visible text in components / Form / Fields / VariablePicker / VariablePicker.',
+      'Placeholder inside the variable picker field, shown in place of the variable pill when no codebook variable has been chosen yet. Attribute is the interface wording for a codebook variable.',
   },
   changeAttribute: {
     id: 'architect.form.fields.variablePicker.variablePicker.changeAttribute',
     defaultMessage: 'Change attribute',
     description:
-      'Visible text in components / Form / Fields / VariablePicker / VariablePicker.',
+      'Button on the variable picker field, shown when a variable is already chosen; opens the search window to choose a different codebook variable.',
   },
   selectAttribute: {
     id: 'architect.form.fields.variablePicker.variablePicker.selectAttribute',
     defaultMessage: 'Select attribute',
     description:
-      'Visible text in components / Form / Fields / VariablePicker / VariablePicker.',
+      'Button on the variable picker field, shown when no variable is chosen yet; opens the search window to choose a codebook variable.',
   },
 });
 

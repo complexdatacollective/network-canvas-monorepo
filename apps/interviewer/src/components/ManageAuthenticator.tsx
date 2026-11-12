@@ -22,94 +22,112 @@ const messages = defineMessages({
   yourNewPINMustBeExactly8: {
     id: 'interviewer.manageAuthenticator.yourNewPINMustBeExactly8',
     defaultMessage: 'Your new PIN must be exactly 8 digits.',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Error shown in the Change PIN form when the new PIN is not exactly 8 digits. Appears in a red alert box after pressing the save button.',
   },
   theTwoNewPINsDoNotMatch: {
     id: 'interviewer.manageAuthenticator.theTwoNewPINsDoNotMatch',
     defaultMessage: 'The two new PINs do not match.',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Error shown in the Change PIN form when the "New PIN" and "Confirm new PIN" entries differ. Appears in a red alert box after pressing the save button.',
   },
   weCouldNotChangeYourPIN: {
     id: 'interviewer.manageAuthenticator.weCouldNotChangeYourPIN',
     defaultMessage: 'We could not change your PIN.',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Fallback error shown in the Change PIN form when saving the new PIN fails and no more specific reason is available.',
   },
   currentPIN: {
     id: 'interviewer.manageAuthenticator.currentPIN',
     defaultMessage: 'Current PIN',
-    description: 'The label label in Interviewer Manage Authenticator.',
+    description:
+      'Field label for the PIN that is currently set on the device, in the Change PIN form in Settings. The researcher enters it to confirm the change.',
   },
   newPIN: {
     id: 'interviewer.manageAuthenticator.newPIN',
     defaultMessage: 'New PIN',
-    description: 'The label label in Interviewer Manage Authenticator.',
+    description:
+      'Field label for the new 8-digit PIN to be set, in the Change PIN form in Settings.',
   },
   confirmNewPIN: {
     id: 'interviewer.manageAuthenticator.confirmNewPIN',
     defaultMessage: 'Confirm new PIN',
-    description: 'The label label in Interviewer Manage Authenticator.',
+    description:
+      'Field label for re-entering the new 8-digit PIN to check it was typed correctly, in the Change PIN form in Settings.',
   },
   saving: {
     id: 'interviewer.manageAuthenticator.saving',
     defaultMessage: 'Saving…',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Label of the save button in the Change PIN and Change passphrase forms while the change is being saved.',
   },
   saveNewPIN: {
     id: 'interviewer.manageAuthenticator.saveNewPIN',
     defaultMessage: 'Save new PIN',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Button in the Change PIN form in Settings that replaces the device PIN with the new one entered.',
   },
   yourNewPassphraseMustBeAtLeast: {
     id: 'interviewer.manageAuthenticator.yourNewPassphraseMustBeAtLeast',
     defaultMessage:
       'Your new passphrase must be at least 12 characters and combine uppercase, lowercase, numbers, and symbols.',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Error shown in the Change passphrase form when the new passphrase is too short or too weak. Appears in a red alert box after pressing the save button.',
   },
   theTwoNewPassphrasesDoNotMatch: {
     id: 'interviewer.manageAuthenticator.theTwoNewPassphrasesDoNotMatch',
     defaultMessage: 'The two new passphrases do not match.',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Error shown in the Change passphrase form when the new passphrase and its confirmation differ. Appears in a red alert box after pressing the save button.',
   },
   weCouldNotChangeYourPassphrase: {
     id: 'interviewer.manageAuthenticator.weCouldNotChangeYourPassphrase',
     defaultMessage: 'We could not change your passphrase.',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Fallback error shown in the Change passphrase form when saving the new passphrase fails and no more specific reason is available.',
   },
   currentPassphrase: {
     id: 'interviewer.manageAuthenticator.currentPassphrase',
     defaultMessage: 'Current passphrase',
-    description: 'The label label in Interviewer Manage Authenticator.',
+    description:
+      'Field label for the passphrase currently set on the device, in the Change passphrase form in Settings. The researcher enters it to confirm the change.',
   },
   newPassphrase: {
     id: 'interviewer.manageAuthenticator.newPassphrase',
     defaultMessage: 'New passphrase',
-    description: 'The label label in Interviewer Manage Authenticator.',
+    description:
+      'Field label for the new passphrase to be set, in the Change passphrase form in Settings.',
   },
   atLeast12CharactersCombiningUppercaseLowercase: {
     id: 'interviewer.manageAuthenticator.atLeast12CharactersCombiningUppercaseLowercase',
     defaultMessage:
       'At least 12 characters, combining uppercase, lowercase, numbers, and symbols.',
-    description: 'The hint label in Interviewer Manage Authenticator.',
+    description:
+      'Hint shown under the "New passphrase" field, describing the strength requirements a new passphrase must meet.',
   },
   confirmNewPassphrase: {
     id: 'interviewer.manageAuthenticator.confirmNewPassphrase',
     defaultMessage: 'Confirm new passphrase',
-    description: 'The label label in Interviewer Manage Authenticator.',
+    description:
+      'Field label for re-entering the new passphrase to check it was typed correctly, in the Change passphrase form in Settings.',
   },
   passphrasesDoNotMatch: {
     id: 'interviewer.manageAuthenticator.passphrasesDoNotMatch',
     defaultMessage: 'Passphrases do not match.',
-    description: 'Visible copy in Interviewer Manage Authenticator.',
+    description:
+      'Inline error shown under the confirmation field of the Change passphrase form as soon as it has text that differs from the new passphrase.',
   },
   saveNewPassphrase: {
     id: 'interviewer.manageAuthenticator.saveNewPassphrase',
     defaultMessage: 'Save new passphrase',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Button in the Change passphrase form in Settings that replaces the device passphrase with the new one entered.',
   },
   deviceLock: {
     id: 'interviewer.manageAuthenticator.deviceLock',
     defaultMessage: 'Device lock',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Section heading in Settings shown when no device lock (PIN, passphrase or biometric) is set up. "Lock" is the security feature, not the action of locking.',
   },
   authenticator: {
     id: 'interviewer.manageAuthenticator.authenticator',
@@ -120,7 +138,8 @@ const messages = defineMessages({
     id: 'interviewer.manageAuthenticator.noDeviceLockIsConfiguredDataOn',
     defaultMessage:
       'No device lock is configured. Data on this device is not encrypted at the app layer. Use the Get started wizard below to enable app security and encrypt data stored by Interviewer.',
-    description: 'Visible copy in Interviewer Manage Authenticator.',
+    description:
+      'Explanatory note under the "Device lock" heading in Settings, shown when no device lock is set up. The "Get started wizard" is the app\'s security setup wizard.',
   },
   mode: {
     id: 'interviewer.manageAuthenticator.mode',
@@ -131,45 +150,53 @@ const messages = defineMessages({
   changePIN: {
     id: 'interviewer.manageAuthenticator.changePIN',
     defaultMessage: 'Change PIN',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Title of the Settings row, and the label of its button, for changing the device PIN. Shown only when a PIN is the unlock method.',
   },
   changePassphrase: {
     id: 'interviewer.manageAuthenticator.changePassphrase',
     defaultMessage: 'Change passphrase',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Title of the Settings row, and the label of its button, for changing the device passphrase. Shown only when a passphrase is the unlock method.',
   },
   replaceYour8DigitPINWithA: {
     id: 'interviewer.manageAuthenticator.replaceYour8DigitPINWithA',
     defaultMessage:
       'Replace your 8-digit PIN with a new one. Your data stays intact.',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Description under the "Change PIN" row in Settings, explaining that a new PIN replaces the old one without losing any stored data.',
   },
   replaceYourPassphraseWithANewOne: {
     id: 'interviewer.manageAuthenticator.replaceYourPassphraseWithANewOne',
     defaultMessage:
       'Replace your passphrase with a new one. Your data stays intact.',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Description under the "Change passphrase" row in Settings, explaining that a new passphrase replaces the old one without losing any stored data.',
   },
   toChangeYourUnlockMethodResetThe: {
     id: 'interviewer.manageAuthenticator.toChangeYourUnlockMethodResetThe',
     defaultMessage:
       'To change your unlock method, reset the device and run setup again. Resetting destroys all data on this device.',
-    description: 'Visible copy in Interviewer Manage Authenticator.',
+    description:
+      'Note in Settings shown when biometric unlock is in use, explaining that the unlock method can only be changed by resetting the device, which deletes all its data.',
   },
   resetDeviceAndWipeData: {
     id: 'interviewer.manageAuthenticator.resetDeviceAndWipeData',
     defaultMessage: 'Reset device and wipe data?',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Title of the confirmation dialog for resetting the device, shown in Settings when no device lock is set up. Resetting deletes all data on the device.',
   },
   revokeDeviceLockAndWipeData: {
     id: 'interviewer.manageAuthenticator.revokeDeviceLockAndWipeData',
     defaultMessage: 'Revoke device lock and wipe data?',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Title of the confirmation dialog for removing the device lock, shown in Settings when a lock is set up. Doing so deletes all data on the device.',
   },
   thisWillDestroyAllDataOnThis: {
     id: 'interviewer.manageAuthenticator.thisWillDestroyAllDataOnThis',
     defaultMessage: 'This will destroy all data on this device. Continue?',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Warning text in the reset/revoke confirmation dialog, asking the researcher to confirm that all data on the device will be permanently destroyed.',
   },
   destroyDeviceData: {
     id: 'interviewer.manageAuthenticator.destroyDeviceData',
@@ -180,58 +207,69 @@ const messages = defineMessages({
   resetDevice: {
     id: 'interviewer.manageAuthenticator.resetDevice',
     defaultMessage: 'Reset device',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Title of the Settings row, and the label of its button, for resetting the device. Shown when no device lock is set up. It deletes all data and restarts setup.',
   },
   revokeDeviceLock: {
     id: 'interviewer.manageAuthenticator.revokeDeviceLock',
     defaultMessage: 'Revoke device lock',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Title of the Settings row for removing the device lock, shown when a lock is set up. It deletes all data and restarts setup.',
   },
   destroyAllProtocolsSessionsAndStoredCredentials: {
     id: 'interviewer.manageAuthenticator.destroyAllProtocolsSessionsAndStoredCredentials',
     defaultMessage:
       'Destroy all protocols, sessions, and stored credentials on this device, then restart setup.',
-    description: 'The desc label in Interviewer Manage Authenticator.',
+    description:
+      'Description under the "Reset device" or "Revoke device lock" row in Settings, stating what the action deletes before setup restarts.',
   },
   pINChanged: {
     id: 'interviewer.manageAuthenticator.pINChanged',
     defaultMessage: 'PIN changed',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Title of the success toast shown after the device PIN has been changed in Settings.',
   },
   passphraseChanged: {
     id: 'interviewer.manageAuthenticator.passphraseChanged',
     defaultMessage: 'Passphrase changed',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Title of the success toast shown after the device passphrase has been changed in Settings.',
   },
   revoke: {
     id: 'interviewer.manageAuthenticator.revoke',
     defaultMessage: 'Revoke',
-    description: 'User-facing message in Interviewer Manage Authenticator.',
+    description:
+      'Label of the destructive button in Settings that removes the device lock. "Revoke" is a verb; it opens a confirmation dialog and deletes all device data.',
   },
   pinMethod: {
     id: 'interviewer.manageAuthenticator.pinMethod',
     defaultMessage: 'PIN',
-    description: 'Administration text in Interviewer ManageAuthenticator.',
+    description:
+      'Name of the PIN unlock method, shown as the value of "Mode" in the Settings device lock section. A PIN is an 8-digit code.',
   },
   passphraseMethod: {
     id: 'interviewer.manageAuthenticator.passphraseMethod',
     defaultMessage: 'Passphrase',
-    description: 'Administration text in Interviewer ManageAuthenticator.',
+    description:
+      'Name of the passphrase unlock method, shown as the value of "Mode" in the Settings device lock section.',
   },
   biometricMethod: {
     id: 'interviewer.manageAuthenticator.biometricMethod',
     defaultMessage: 'Biometric (with recovery passphrase)',
-    description: 'Administration text in Interviewer ManageAuthenticator.',
+    description:
+      'Name of the biometric unlock method, shown as the value of "Mode" in the Settings device lock section. A recovery passphrase is also set as a fallback.',
   },
   noLock: {
     id: 'interviewer.manageAuthenticator.noLock',
     defaultMessage: 'No device lock',
-    description: 'Administration text in Interviewer ManageAuthenticator.',
+    description:
+      'Value of "Mode" in the Settings device lock section when no unlock method is set up.',
   },
   unknownMethod: {
     id: 'interviewer.manageAuthenticator.unknownMethod',
     defaultMessage: 'Unknown',
-    description: 'Administration text in Interviewer ManageAuthenticator.',
+    description:
+      'Value of "Mode" in the Settings device lock section when the unlock method cannot be identified.',
   },
 });
 

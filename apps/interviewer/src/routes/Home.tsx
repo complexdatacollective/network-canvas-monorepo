@@ -35,27 +35,31 @@ const messages = defineMessages({
   deleteThisProtocol: {
     id: 'interviewer.home.deleteThisProtocol',
     defaultMessage: 'Delete this protocol?',
-    description: 'User-facing message in Interviewer Home.',
+    description:
+      'Title of the confirmation dialog shown before deleting an installed protocol (interview design) and its interviews.',
   },
   deleteProtocol: {
     id: 'interviewer.home.deleteProtocol',
     defaultMessage: 'Delete Protocol',
-    description: 'User-facing message in Interviewer Home.',
+    description:
+      'Destructive confirm button in the delete-protocol dialog; deletes the protocol.',
   },
   protocolDeleted: {
     id: 'interviewer.home.protocolDeleted',
     defaultMessage: 'Protocol deleted',
-    description: 'User-facing message in Interviewer Home.',
+    description:
+      'Success toast title after a protocol was deleted; its name is shown below as the toast body.',
   },
   couldNotDeleteProtocol: {
     id: 'interviewer.home.couldNotDeleteProtocol',
     defaultMessage: 'Could not delete protocol',
-    description: 'User-facing message in Interviewer Home.',
+    description: 'Error toast title shown when deleting a protocol failed.',
   },
   deleteFailedHelp: {
     id: 'interviewer.home.deleteFailedHelp',
     defaultMessage: 'The protocol could not be deleted. Please try again.',
-    description: 'Administration text in Interviewer Home.',
+    description:
+      'Error toast body under "Could not delete protocol"; the protocol remains and the researcher can try again.',
   },
 });
 

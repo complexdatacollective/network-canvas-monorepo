@@ -26,12 +26,14 @@ const messages = defineMessages({
   copied: {
     id: 'architect.errors.appErrorBoundary.copied',
     defaultMessage: 'Copied!',
-    description: 'Visible text in components / Errors / AppErrorBoundary.',
+    description:
+      'Label of the Copy error button in the error dialog for the two seconds after the error details have been copied to the clipboard.',
   },
   copyError: {
     id: 'architect.errors.appErrorBoundary.copyError',
     defaultMessage: 'Copy error',
-    description: 'Visible text in components / Errors / AppErrorBoundary.',
+    description:
+      'Button in the application error dialog that copies the technical error details to the clipboard.',
   },
 });
 

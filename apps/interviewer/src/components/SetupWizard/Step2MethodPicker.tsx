@@ -20,65 +20,76 @@ const messages = defineMessages({
     id: 'interviewer.step2MethodPicker.thisDeviceLockIsAlreadyProtectingStored',
     defaultMessage:
       'This device lock is already protecting stored data. Finish setup before changing it from the Security settings.',
-    description: 'Visible copy in Interviewer Step2Method Picker.',
+    description:
+      'Note above the method choices when a lock was already set up in this wizard; the method cannot be changed here after data is protected. Settings refers to the Security settings.',
   },
   biometricAuthentication: {
     id: 'interviewer.step2MethodPicker.biometricAuthentication',
     defaultMessage: 'Biometric authentication',
-    description: 'User-facing message in Interviewer Step2Method Picker.',
+    description:
+      'Option label on the choose-method step: unlock with the device biometrics (Face ID, Touch ID, Windows Hello).',
   },
   pINCode: {
     id: 'interviewer.step2MethodPicker.pINCode',
     defaultMessage: 'PIN code',
-    description: 'User-facing message in Interviewer Step2Method Picker.',
+    description:
+      'Option label on the choose-method step: unlock with a numeric PIN code.',
   },
   an8DigitNumericPIN: {
     id: 'interviewer.step2MethodPicker.an8DigitNumericPIN',
     defaultMessage: 'An 8-digit numeric PIN.',
-    description: 'User-facing message in Interviewer Step2Method Picker.',
+    description: 'Description under the PIN option on the choose-method step.',
   },
   passphrase: {
     id: 'interviewer.step2MethodPicker.passphrase',
     defaultMessage: 'Passphrase',
-    description: 'User-facing message in Interviewer Step2Method Picker.',
+    description:
+      'Option label on the choose-method step: unlock with a typed passphrase.',
   },
   aPasswordOfAtLeast12Characters: {
     id: 'interviewer.step2MethodPicker.aPasswordOfAtLeast12Characters',
     defaultMessage: 'A password of at least 12 characters.',
-    description: 'User-facing message in Interviewer Step2Method Picker.',
+    description:
+      'Description under the Passphrase option on the choose-method step, stating the minimum length.',
   },
   noSecurityNotRecommended: {
     id: 'interviewer.step2MethodPicker.noSecurityNotRecommended',
     defaultMessage: 'No security (not recommended)',
-    description: 'User-facing message in Interviewer Step2Method Picker.',
+    description:
+      'Option label on the choose-method step: use the app with no lock. The parenthesis warns against choosing it.',
   },
   skipAppSecurityYourDataWillNot: {
     id: 'interviewer.step2MethodPicker.skipAppSecurityYourDataWillNot',
     defaultMessage:
       'Skip app security. Your data will not be protected by the app.',
-    description: 'User-facing message in Interviewer Step2Method Picker.',
+    description:
+      'Description under the "No security" option on the choose-method step, warning that data will not be protected.',
   },
   continueWithoutSecurity: {
     id: 'interviewer.step2MethodPicker.continueWithoutSecurity',
     defaultMessage: 'Continue without security?',
-    description: 'User-facing message in Interviewer Step2Method Picker.',
+    description:
+      'Title of the confirmation dialog shown after choosing the no-security option; asks whether to proceed.',
   },
   yourDataWillNotBeProtectedBy: {
     id: 'interviewer.step2MethodPicker.yourDataWillNotBeProtectedBy',
     defaultMessage:
       'Your data will not be protected by an app lock or encryption managed by this app. Anyone with access to this device may be able to view collected data.',
-    description: 'User-facing message in Interviewer Step2Method Picker.',
+    description:
+      'Body of the no-security confirmation dialog; warns that data has no app lock or encryption so anyone with the device may view it.',
   },
   continueWithoutSecurity2: {
     id: 'interviewer.step2MethodPicker.continueWithoutSecurity2',
     defaultMessage: 'Continue without security',
-    description: 'User-facing message in Interviewer Step2Method Picker.',
+    description:
+      'Confirm button in the no-security dialog; accepts using the app without any lock.',
   },
   biometricDescription: {
     id: 'interviewer.step2MethodPicker.biometricDescription',
     defaultMessage:
       '{macInstalledLimitation, select, true {Use Face ID, Touch ID, Windows Hello, or another biometric sensor on this device. Note: on macOS, Chrome cannot use biometrics from the installed app — there you would unlock with your recovery passphrase.} other {Use Face ID, Touch ID, Windows Hello, or another biometric sensor on this device.}}',
-    description: 'Administration text in Interviewer Step2MethodPicker.',
+    description:
+      'Description under the Biometric option on the choose-method step. macInstalledLimitation is "true" when on macOS Chrome, where biometrics cannot be used from the installed app; otherwise "other" applies.',
   },
 });
 

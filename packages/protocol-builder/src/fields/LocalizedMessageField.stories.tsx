@@ -94,6 +94,25 @@ const PARTNER_ARGUMENTS = {
 } as const satisfies MessageArguments;
 
 /**
+ * Puts the caret at the end of a version's line through its editor, as a
+ * user's End key would leave it. A caret written into the page's selection
+ * directly is one ProseMirror has not read yet: for 20 ms after an editor
+ * takes focus it puts back its own caret wherever the page's differs, so on a
+ * slow machine the key could find the caret back at the start of the line.
+ */
+const caretToEnd = (line: HTMLElement) => {
+  // Tiptap keeps each editor on the element it draws.
+  const { editor } = line as HTMLElement & {
+    editor?: {
+      commands: { setTextSelection: (position: number) => boolean };
+      state: { doc: { content: { size: number } } };
+    };
+  };
+  if (!editor) throw new Error('The line has no editor.');
+  editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+};
+
+/**
  * The deepest message Network Canvas supplies: a choice inside a choice
  * inside a choice, each the whole of the version above it. Every level is
  * listed, so all four lines of wording show; no case is hidden behind a pill.
@@ -142,11 +161,7 @@ export const ThreeLevelsDeep: Story = {
     current?.focus();
     for (const leaf of leaves.slice(1)) {
       // From the end of a line, Down goes to the next.
-      const selection = current?.ownerDocument.getSelection();
-      if (current && selection) {
-        selection.selectAllChildren(current);
-        selection.collapseToEnd();
-      }
+      if (current) caretToEnd(current);
       await userEvent.keyboard('{ArrowDown}');
       await waitFor(() => expect(leaf).toHaveFocus());
       current = leaf;

@@ -43,7 +43,7 @@ describe('the anonymisation sections, read in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Explica el proceso de anonimización a los participantes antes de que introduzcan su frase de contraseña.',
+        'Explica el proceso de anonimización a quienes participan antes de que introduzcan su frase de contraseña.',
       ),
     ).toBeInTheDocument();
     expect(
@@ -178,7 +178,7 @@ describe('the anonymisation sections, read in Spanish', () => {
 
     expect(
       await screen.findByText(
-        '«name» no se puede cifrar mientras 2 reglas en «Name Generator» y «Sociogram» comparen las respuestas de este atributo. Las reglas se evalúan sin la frase de contraseña del participante, así que esas reglas no podrían leer las respuestas cifradas. Elimina esas reglas o edítalas para que solo comprueben si el atributo tiene respuesta.',
+        '«name» no se puede cifrar mientras 2 reglas en «Name Generator» y «Sociogram» comparen las respuestas de este atributo. Las reglas se evalúan sin la frase de contraseña de la persona participante, así que esas reglas no podrían leer las respuestas cifradas. Elimina esas reglas o edítalas para que solo comprueben si el atributo tiene respuesta.',
       ),
     ).toBeInTheDocument();
   });
@@ -194,7 +194,7 @@ describe('the anonymisation sections, read in Spanish', () => {
 
     expect(
       await screen.findByText(
-        'Se descartarán las longitudes que has definido y los participantes podrán elegir cualquier frase de contraseña.',
+        'Se descartarán las longitudes que has definido y quienes participan podrán elegir cualquier frase de contraseña.',
       ),
     ).toBeInTheDocument();
     expect(

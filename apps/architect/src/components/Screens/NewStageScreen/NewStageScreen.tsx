@@ -28,37 +28,37 @@ const messages = defineMessages({
     id: 'architect.screens.newStageScreen.newStageScreen.selectAnInterfaceType',
     defaultMessage: 'Select an Interface Type',
     description:
-      'The title text in components / Screens / NewStageScreen / NewStageScreen.',
+      'Title of the full-screen dialog, opened by adding a stage to the timeline, in which the researcher picks the interface type (the kind of screen) for the new stage.',
   },
   searchInterfaces: {
     id: 'architect.screens.newStageScreen.newStageScreen.searchInterfaces',
     defaultMessage: 'Search interfaces',
     description:
-      'The aria-label text in components / Screens / NewStageScreen / NewStageScreen.',
+      'Accessible name of the search field in the dialog for choosing a new stage type; read only by screen readers.',
   },
   searchInterfacesByNameOrKeyword: {
     id: 'architect.screens.newStageScreen.newStageScreen.searchInterfacesByNameOrKeyword',
     defaultMessage: 'Search interfaces by name or keyword...',
     description:
-      'The placeholder text in components / Screens / NewStageScreen / NewStageScreen.',
+      'Placeholder inside the search field of the dialog for choosing a new stage type. Interfaces are the available stage types, searched by their name or keywords.',
   },
   clearSearch: {
     id: 'architect.screens.newStageScreen.newStageScreen.clearSearch',
     defaultMessage: 'Clear search',
     description:
-      'The aria-label text in components / Screens / NewStageScreen / NewStageScreen.',
+      'Accessible name and tooltip of the small button inside the search field that empties the search text. It appears only once something has been typed.',
   },
   filterByCapabilities: {
     id: 'architect.screens.newStageScreen.newStageScreen.filterByCapabilities',
     defaultMessage: 'Filter by capabilities:',
     description:
-      'Visible text in components / Screens / NewStageScreen / NewStageScreen.',
+      'Heading beside the row of toggleable capability tags that narrow the list of interface types in the dialog for choosing a new stage type.',
   },
   interfaceCapabilityFilters: {
     id: 'architect.screens.newStageScreen.newStageScreen.interfaceCapabilityFilters',
     defaultMessage: 'Interface capability filters',
     description:
-      'The aria-label text in components / Screens / NewStageScreen / NewStageScreen.',
+      'Accessible name of the group of capability filter tags in the dialog for choosing a new stage type; read only by screen readers.',
   },
 });
 

@@ -15,7 +15,8 @@ const messages = defineMessages({
   stages: {
     id: 'architect.protocol.stages',
     defaultMessage: 'Stages',
-    description: 'Visible text in components / Protocol.',
+    description:
+      'Heading of the Stages page, visible only to screen readers; the same word as the Stages tab in the top navigation, the page showing the stage timeline.',
   },
 });
 

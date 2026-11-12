@@ -12,12 +12,14 @@ const messages = defineMessages({
   lockApp: {
     id: 'interviewer.topActionBar.lockApp',
     defaultMessage: 'Lock app',
-    description: 'The aria-label label in Interviewer Top Action Bar.',
+    description:
+      'Accessible name of the icon-only lock button in the home top bar; pressing it locks the app immediately. Read only by screen readers.',
   },
   settings: {
     id: 'interviewer.topActionBar.settings',
     defaultMessage: 'Settings',
-    description: 'The aria-label label in Interviewer Top Action Bar.',
+    description:
+      'Accessible name of the icon-only gear button in the home top bar; pressing it opens Settings. Read only by screen readers.',
   },
 });
 

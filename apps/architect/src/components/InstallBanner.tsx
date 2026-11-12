@@ -26,42 +26,43 @@ const utilityMessages = defineMessages({
     defaultMessage:
       '{browserName} rarely removes Network Canvas data automatically, but data stored in a browser tab is not guaranteed. Install Architect now to protect your protocols from being deleted.',
     description:
-      'Researcher-facing explanatory text in components / InstallBanner.',
+      'Warning banner at the top of the screen shown when Architect is running in a browser tab rather than installed, because the browser could delete the stored protocols. browserName is the browser, e.g. Chrome. For browsers that rarely delete data; the researcher can press the install button.',
   },
   rarelyRemovesNetworkCanvasData16bdc: {
     id: 'architect.utility.installBanner.rarelyRemovesNetworkCanvasData16bdc',
     defaultMessage:
       "{browserName} rarely removes Network Canvas data automatically, but data stored in a browser tab is not guaranteed. Use the install icon in the browser's address bar to install Architect now and protect your protocols from being deleted.",
     description:
-      'Researcher-facing explanatory text in components / InstallBanner.',
+      'Warning banner at the top of the screen shown when Architect is running in a browser tab rather than installed, because the browser could delete the stored protocols. browserName is the browser, e.g. Chrome. For browsers that rarely delete data; no install button is available, so it tells the researcher to use the address bar install icon.',
   },
   mayRemoveNetworkCanvasData: {
     id: 'architect.utility.installBanner.mayRemoveNetworkCanvasData',
     defaultMessage:
       '{browserName} may remove Network Canvas data when this device runs low on storage. Allow persistent storage when {browserNameValue} asks, and install Architect if your device supports it to protect your protocols from being deleted.',
     description:
-      'Researcher-facing explanatory text in components / InstallBanner.',
+      'Warning banner at the top of the screen shown when Architect is running in a browser tab rather than installed, because the browser could delete the stored protocols. browserName is the browser, e.g. Chrome. For browsers that may delete data when storage runs low. browserNameValue is the browser name again, in the sentence about allowing persistent storage.',
   },
   after7DaysOfInactivity: {
     id: 'architect.utility.installBanner.after7DaysOfInactivity',
     defaultMessage:
       '{usesWebKit, select, true {{browserName} uses WebKit, which is known to remove Network Canvas data after 7 days of inactivity.} other {{browserName} is known to remove Network Canvas data after 7 days of inactivity.}} Install Architect now to protect your protocols from being deleted: choose Share → Add to Dock.',
     description:
-      'Researcher-facing explanatory text in components / InstallBanner.',
+      'Warning banner at the top of the screen shown when Architect is running in a browser tab rather than installed, because the browser could delete the stored protocols. browserName is the browser, e.g. Chrome. For Safari-style browsers on a Mac that delete data after 7 days of inactivity; usesWebKit is true or false. The last sentence names the menu steps to install.',
   },
   after7DaysOfInactivity7c6c0: {
     id: 'architect.utility.installBanner.after7DaysOfInactivity7c6c0',
     defaultMessage:
       '{usesWebKit, select, true {{browserName} uses WebKit, which is known to remove Network Canvas data after 7 days of inactivity.} other {{browserName} is known to remove Network Canvas data after 7 days of inactivity.}} Install Architect now to protect your protocols from being deleted: choose Share → Add to Home Screen.',
     description:
-      'Researcher-facing explanatory text in components / InstallBanner.',
+      'Warning banner at the top of the screen shown when Architect is running in a browser tab rather than installed, because the browser could delete the stored protocols. browserName is the browser, e.g. Chrome. For WebKit browsers on iPhone, iPad or other non-Mac devices that delete data after 7 days of inactivity; usesWebKit is true or false. The last sentence names the menu steps to install.',
   },
 });
 const messages = defineMessages({
   installArchitect: {
     id: 'architect.installBanner.installArchitect',
     defaultMessage: 'Install Architect',
-    description: 'The aria-label text in components / InstallBanner.',
+    description:
+      'Accessible name of the banner warning that stored protocols could be deleted by the browser unless Architect is installed; read only by screen readers.',
   },
 });
 

@@ -8,7 +8,8 @@ const messages = defineMessages({
   notInUse: {
     id: 'architect.codebook.usageColumn.notInUse',
     defaultMessage: 'not in use',
-    description: 'Visible text in components / Codebook / UsageColumn.',
+    description:
+      'Warning badge in the Used In column of the codebook variables table, shown when the variable is not used by any stage.',
   },
 });
 

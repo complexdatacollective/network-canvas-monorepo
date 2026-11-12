@@ -31,18 +31,20 @@ const messages = defineMessages({
     id: 'architect.form.dropzone.dropzone.uploadFile',
     defaultMessage: 'Upload file',
     description:
-      'The aria-label text in components / Form / Dropzone / Dropzone.',
+      'Accessible name of the file drop area used to import a resource file; read only by screen readers.',
   },
   dragAndDropAFileHere: {
     id: 'architect.form.dropzone.dropzone.dragAndDropAFileHere',
     defaultMessage:
       'Drag and drop a file here to import it, or <span> click here to select a file from your computer </span> .',
-    description: 'Visible text in components / Form / Dropzone / Dropzone.',
+    description:
+      "Instruction inside the file drop area for importing a resource. span wraps the words that work as a click target to open the computer's file picker.",
   },
   importingFile: {
     id: 'architect.form.dropzone.dropzone.importingFile',
     defaultMessage: 'Importing file…',
-    description: 'Visible text in components / Form / Dropzone / Dropzone.',
+    description:
+      'Status announced only to screen readers while a dropped file is being imported.',
   },
 });
 
@@ -346,12 +348,14 @@ const extraMessages = defineMessages({
     id: 'architect.dropzone.extensions',
     defaultMessage:
       'This resource type does not support these extensions: {extensions}. Supported extensions: {supported}.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Error shown below the file drop area when the dropped file has an unsupported extension. extensions lists the extensions of the rejected file; supported lists the extensions this resource type accepts.',
   },
   failed: {
     id: 'architect.dropzone.failed',
     defaultMessage:
       'Unable to import this file. Check its format and try again.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Error shown below the file drop area when importing the dropped file fails.',
   },
 });

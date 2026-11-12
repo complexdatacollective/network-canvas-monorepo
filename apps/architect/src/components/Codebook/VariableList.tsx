@@ -24,12 +24,14 @@ const messages = defineMessages({
   name: {
     id: 'architect.codebook.variableList.name',
     defaultMessage: 'Name',
-    description: 'The title text in components / Codebook / VariableList.',
+    description:
+      'Column header of the table that lists the attribute names found in a network resource file on the Codebook page. Clicking it sorts the table.',
   },
   noAttributes: {
     id: 'architect.codebook.variableList.noAttributes',
     defaultMessage: 'No attributes.',
-    description: 'The emptyText text in components / Codebook / VariableList.',
+    description:
+      'Message shown in place of the rows of the table of a network resource attributes when the resource file has none.',
   },
 });
 

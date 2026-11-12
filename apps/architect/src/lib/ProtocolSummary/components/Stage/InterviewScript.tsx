@@ -8,7 +8,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.interviewScript.interviewerScript',
     defaultMessage: 'Interviewer Script',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / InterviewScript.',
+      'Section heading in the printable protocol summary, above the notes that the researcher wrote for the interviewer to read aloud or follow on this stage.',
   },
 });
 

@@ -25,7 +25,7 @@ export const REVIEW_PATH = '/review';
  * The only origins the service answers. A browser cannot forge `Origin`, so
  * this stops any other website from spending the service's budget; it does
  * not stop a script that sets the header itself, which the limits below and
- * the daily spending ceiling are for.
+ * the daily and monthly spending ceilings are for.
  */
 export const ALLOWED_ORIGINS = [
   'https://architect.networkcanvas.com',
@@ -194,6 +194,7 @@ export type ReviewResult = z.infer<typeof ReviewResultSchema>;
  * | `too_large`           | 413    | The body is over `REVIEW_LIMITS.maxRequestBytes`.              |
  * | `hourly_limit`        | 429    | This installation or address has used its reviews; `retryAt`.  |
  * | `daily_limit`         | 503    | The service has spent its budget for today; `retryAt`.         |
+ * | `monthly_limit`       | 503    | The service has spent its budget for this month; `retryAt`.    |
  * | `service_unavailable` | 503    | The model provider failed, refused or is out of credit.        |
  *
  * A refused or failed review never counts against the hourly limit.
@@ -204,6 +205,7 @@ export const REVIEW_ERROR_CODES = [
   'too_large',
   'hourly_limit',
   'daily_limit',
+  'monthly_limit',
   'service_unavailable',
 ] as const;
 

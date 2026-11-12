@@ -17,23 +17,27 @@ const utilityMessages = defineMessages({
   someAssetsCouldNotBeExported: {
     id: 'architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported',
     defaultMessage: 'Some resources could not be read',
-    description: 'The title text in utils / downloadActiveProtocol.',
+    description:
+      'Title of the dialog shown when downloading the protocol is refused because some uploaded resources could not be read.',
   },
   oK: {
     id: 'architect.utility.utils.downloadActiveProtocol.oK',
     defaultMessage: 'OK',
-    description: 'The label text in utils / downloadActiveProtocol.',
+    description:
+      'Label of the button that closes the dialog explaining why a protocol download failed or was refused.',
   },
   yourProtocolCouldNotBeDownloaded: {
     id: 'architect.utility.utils.downloadActiveProtocol.yourProtocolCouldNotBeDownloaded',
     defaultMessage: 'Your protocol could not be downloaded',
-    description: 'The title text in utils / downloadActiveProtocol.',
+    description:
+      'Title of the dialog shown when downloading the protocol fails unexpectedly.',
   },
   somethingWentWrongWhilePreparingThe: {
     id: 'architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe',
     defaultMessage:
       'Something went wrong while preparing the file. Please try again.',
-    description: 'The description text in utils / downloadActiveProtocol.',
+    description:
+      'Body of the dialog shown when downloading the protocol fails unexpectedly while the file is being built. The researcher can try again.',
   },
 });
 /** Why a protocol could not be bundled, when it was none of the known reasons. */
@@ -45,7 +49,8 @@ const finalMessages = defineMessages({
     id: 'architect.final.utils.downloadActiveProtocol.unresolvedAssets',
     defaultMessage:
       'These resources could not be read, so your protocol was not downloaded: {assetList}. Add the files again in Resources, then download it.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Body of the dialog shown when downloading the protocol is refused because some uploaded resources cannot be read. assetList is the list of those resources' names.",
   },
 });
 

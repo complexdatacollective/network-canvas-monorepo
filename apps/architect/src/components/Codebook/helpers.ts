@@ -36,22 +36,26 @@ const extraMessages = defineMessages({
   unknown: {
     id: 'architect.codebook.usage.unknown',
     defaultMessage: 'unknown',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Placeholder name shown in the Used In cell of the codebook when the variable or type that references this item cannot be found.',
   },
   validation: {
     id: 'architect.codebook.usage.validation',
     defaultMessage: 'Used as validation for "{name}"',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Entry in the Used In cell of a codebook variable: this variable is used by a validation rule of another variable. name is that other variable's name.",
   },
   shape: {
     id: 'architect.codebook.usage.shape',
     defaultMessage: 'Used in shape settings for "{name}"',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Entry in the Used In cell of a codebook node type or variable: it is used in the shape settings of a node type. name is that node type's name.",
   },
   elsewhere: {
     id: 'architect.codebook.usage.elsewhere',
     defaultMessage: 'Used elsewhere in this protocol',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Entry in the Used In cell of the codebook when the item is referenced from a place that has no more specific description.',
   },
 });
 

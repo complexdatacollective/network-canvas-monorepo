@@ -27,77 +27,92 @@ const extraMessages = defineMessages({
   ascending: {
     id: 'architect.summary.prompt.ascending',
     defaultMessage: 'ascending',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Value in the sort order list of a prompt in the printable protocol summary, shown in brackets after a property: items are sorted from lowest to highest.',
   },
   descending: {
     id: 'architect.summary.prompt.descending',
     defaultMessage: 'descending',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Value in the sort order list of a prompt in the printable protocol summary, shown in brackets after a property: items are sorted from highest to lowest.',
   },
   layoutattribute: {
     id: 'architect.summary.prompt.layoutattribute',
     defaultMessage: 'Layout attribute',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in a prompt's table in the printable protocol summary; its value is the variable that stores the position of each node on the sociogram.",
   },
   attribute: {
     id: 'architect.summary.prompt.attribute',
     defaultMessage: 'Attribute',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in a prompt's table in the printable protocol summary; its value is the codebook variable that the prompt records.",
   },
   createsedge: {
     id: 'architect.summary.prompt.createsedge',
     defaultMessage: 'Creates edge',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in a prompt's table in the printable protocol summary; its value is the edge type the prompt creates when participants connect two nodes.",
   },
   edgeStrengthAttribute: {
     id: 'architect.summary.prompt.edgeStrengthAttribute',
     defaultMessage: 'Edge Strength Attribute',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in a prompt's table in the printable protocol summary; its value is the edge variable that records the strength of a connection.",
   },
   allowhighlighting: {
     id: 'architect.summary.prompt.allowhighlighting',
     defaultMessage: 'Allow highlighting',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in a prompt's table in the printable protocol summary; its value says whether participants may highlight nodes.",
   },
   highlightattribute: {
     id: 'architect.summary.prompt.highlightattribute',
     defaultMessage: 'Highlight attribute',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in a prompt's table in the printable protocol summary; its value is the variable set when a participant highlights a node.",
   },
   negativeOptionLabel: {
     id: 'architect.summary.prompt.negativeOptionLabel',
     defaultMessage: 'Negative Option Label',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in a prompt's table in the printable protocol summary; its value is the text of the answer button that means none of the options apply.",
   },
   sortbyproperty: {
     id: 'architect.summary.prompt.sortbyproperty',
     defaultMessage: 'Sort by property',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in a prompt's table in the printable protocol summary; its value lists the properties used to sort the nodes shown to participants.",
   },
   binsortorder: {
     id: 'architect.summary.prompt.binsortorder',
     defaultMessage: 'Bin sort order',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in a prompt's table in the printable protocol summary; its value lists how nodes are sorted within each bin of an ordinal bin stage.",
   },
   bucketsortorder: {
     id: 'architect.summary.prompt.bucketsortorder',
     defaultMessage: 'Bucket sort order',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in a prompt's table in the printable protocol summary; its value lists how nodes are sorted in the bucket of nodes not yet placed.",
   },
   otherattribute: {
     id: 'architect.summary.prompt.otherattribute',
     defaultMessage: 'Other attribute',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Row label in a prompt\'s table in the printable protocol summary; its value is the variable that stores the text a participant types for an "other" answer.',
   },
   otherattributeprompt: {
     id: 'architect.summary.prompt.otherattributeprompt',
     defaultMessage: 'Other attribute prompt',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Row label in a prompt\'s table in the printable protocol summary; its value is the question shown to participants when they choose the "other" answer.',
   },
   otheroptionlabel: {
     id: 'architect.summary.prompt.otheroptionlabel',
     defaultMessage: 'Other option label',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Row label in a prompt\'s table in the printable protocol summary; its value is the text of the "other" answer option.',
   },
 });
 
