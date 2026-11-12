@@ -391,6 +391,11 @@ export const LineHeightDemo: Story = {
  * Pro lacks its extra letters. The samples are Article 1 of the Universal
  * Declaration of Human Rights in the United Nations' Arabic, English and
  * Persian texts.
+ *
+ * The last line of each section is a small tracked label in the monospace
+ * stack. In Arabic it leads with Readex Pro, and in Arabic and Persian it
+ * takes no letter-spacing, which would pull the joined letters apart in
+ * Safari.
  */
 export const ArabicScript: Story = {
   render: () => (
@@ -413,6 +418,12 @@ export const ArabicScript: Story = {
             فارسی
           </span>
         </Paragraph>
+        <p
+          className="font-monospace text-xs tracking-widest uppercase"
+          data-testid="arabic-label"
+        >
+          البيانات غير مشفَّرة · Interviewer 8.5.2
+        </p>
       </section>
       <section lang="en" dir="ltr">
         <Heading level="h1" variant="page-heading">
@@ -436,6 +447,12 @@ export const ArabicScript: Story = {
           </span>
           .
         </Paragraph>
+        <p
+          className="font-monospace text-xs tracking-widest uppercase"
+          data-testid="english-label"
+        >
+          Not encrypted · Interviewer 8.5.2
+        </p>
       </section>
       <section lang="fa" dir="rtl" data-testid="persian">
         <Heading level="h2">فارسی</Heading>
@@ -443,6 +460,12 @@ export const ArabicScript: Story = {
           تمام افراد بشر آزاد به دنیا می‌آیند و از لحاظ حیثیت و حقوق با هم
           برابرند.
         </Paragraph>
+        <p
+          className="font-monospace text-xs tracking-widest uppercase"
+          data-testid="persian-label"
+        >
+          رمزگذاری نشده · Interviewer 8.5.2
+        </p>
       </section>
     </div>
   ),
@@ -486,6 +509,38 @@ export const ArabicScript: Story = {
     for (const element of persian.querySelectorAll('h2, p')) {
       await expect(stack(element)).not.toContain('Readex Pro Variable');
     }
+
+    // Monospace text: Readex Pro leads the stack for Arabic, because Safari
+    // never reaches a face behind the system monospace one. Its face claims
+    // Arabic code points only, so the Latin on the same line stays monospaced.
+    await expect(stack(canvas.getByTestId('arabic-label'))).toEqual([
+      'Readex Pro Variable',
+      'ui-monospace',
+      'Menlo',
+      'Monaco',
+      'Fira Code',
+      'monospace',
+    ]);
+    for (const id of ['english-label', 'persian-label']) {
+      await expect(stack(canvas.getByTestId(id))).toEqual([
+        'ui-monospace',
+        'Menlo',
+        'Monaco',
+        'Fira Code',
+        'monospace',
+      ]);
+    }
+
+    // Tracking is kept for Latin text and dropped for Arabic-script text,
+    // whose letters join.
+    // A letter-spacing of zero is reported as `normal`.
+    const tracking = (id: string) => {
+      const { letterSpacing } = getComputedStyle(canvas.getByTestId(id));
+      return letterSpacing === 'normal' ? 0 : Number.parseFloat(letterSpacing);
+    };
+    await expect(tracking('english-label')).toBeGreaterThan(0);
+    await expect(tracking('arabic-label')).toBe(0);
+    await expect(tracking('persian-label')).toBe(0);
 
     // A face limited by unicode-range is fetched only when rendered text
     // reaches it, so a loaded face means the Arabic text resolved to it.

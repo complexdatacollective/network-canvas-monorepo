@@ -19,47 +19,56 @@ const messages = defineMessages({
   selectAllInterviewsOnThisPage: {
     id: 'interviewer.dataViewColumns.selectAllInterviewsOnThisPage',
     defaultMessage: 'Select all interviews on this page',
-    description: 'The aria-label label in Interviewer Data View Columns.',
+    description:
+      'Accessible name of the checkbox in the interview table header that selects every interview on the current page, read only by screen readers.',
   },
   caseID: {
     id: 'interviewer.dataViewColumns.caseID',
     defaultMessage: 'Case ID',
-    description: 'The title label in Interviewer Data View Columns.',
+    description:
+      'Sortable column header in the interview table for the case ID, the identifier the researcher gave the participant.',
   },
   protocol: {
     id: 'interviewer.dataViewColumns.protocol',
     defaultMessage: 'Protocol',
-    description: 'The title label in Interviewer Data View Columns.',
+    description:
+      'Sortable column header in the interview table for the name of the protocol (interview design) each interview used.',
   },
   started: {
     id: 'interviewer.dataViewColumns.started',
     defaultMessage: 'Started',
-    description: 'The title label in Interviewer Data View Columns.',
+    description:
+      'Sortable column header in the interview table for when each interview was started.',
   },
   updated: {
     id: 'interviewer.dataViewColumns.updated',
     defaultMessage: 'Updated',
-    description: 'The title label in Interviewer Data View Columns.',
+    description:
+      'Sortable column header in the interview table for when each interview was last changed.',
   },
   progress: {
     id: 'interviewer.dataViewColumns.progress',
     defaultMessage: 'Progress',
-    description: 'The title label in Interviewer Data View Columns.',
+    description:
+      'Sortable column header in the interview table for how far through its stages each interview is.',
   },
   exportStatus: {
     id: 'interviewer.dataViewColumns.exportStatus',
     defaultMessage: 'Export status',
-    description: 'The title label in Interviewer Data View Columns.',
+    description:
+      'Sortable column header in the interview table showing when each interview was last exported. Export is a noun here.',
   },
   notExported: {
     id: 'interviewer.dataViewColumns.notExported',
     defaultMessage: 'Not exported',
-    description: 'Visible copy in Interviewer Data View Columns.',
+    description:
+      'Cell text in the export status column for an interview that has never been exported; a state, not an instruction.',
   },
   interviewActions: {
     id: 'interviewer.dataViewColumns.interviewActions',
     defaultMessage: 'Interview actions',
-    description: 'Visible copy in Interviewer Data View Columns.',
+    description:
+      'Accessible name of the table column holding per-row action buttons; hidden visually and read only by screen readers.',
   },
   review: {
     id: 'interviewer.dataViewColumns.review',
@@ -81,7 +90,8 @@ const messages = defineMessages({
   selectCase: {
     id: 'interviewer.dataViewColumns.selectCase',
     defaultMessage: 'Select {caseId}',
-    description: 'Administration text in Interviewer useDataViewColumns.',
+    description:
+      'Accessible name of a row checkbox in the interview table, read only by screen readers. caseId is the case ID of that row.',
   },
   stepProgress: {
     id: 'interviewer.dataViewColumns.stepProgress',
@@ -93,7 +103,8 @@ const messages = defineMessages({
   markCaseUnfinished: {
     id: 'interviewer.dataViewColumns.markCaseUnfinished',
     defaultMessage: 'Mark {caseId} unfinished',
-    description: 'Administration text in Interviewer useDataViewColumns.',
+    description:
+      "Accessible name of the icon button on a finished interview row that reopens it. caseId is that row's case ID. Unfinished is a state.",
   },
 });
 

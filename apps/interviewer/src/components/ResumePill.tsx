@@ -20,12 +20,14 @@ const messages = defineMessages({
   resumeLastInterview: {
     id: 'interviewer.resumePill.resumeLastInterview',
     defaultMessage: 'Resume last interview',
-    description: 'Visible copy in Interviewer Resume Pill.',
+    description:
+      'Small caption in the pill on the home screen; pressing the pill reopens the interview the researcher last worked on. Resume is a verb.',
   },
   untitled: {
     id: 'interviewer.resumePill.untitled',
     defaultMessage: 'Untitled',
-    description: 'User-facing message in Interviewer Resume Pill.',
+    description:
+      'Fallback shown in the resume pill in place of the case ID when the last interview has none.',
   },
 });
 

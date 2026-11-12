@@ -35,27 +35,32 @@ const messages = defineMessages({
   importAProtocolCardSelected: {
     id: 'interviewer.protocolDeck.importAProtocolCardSelected',
     defaultMessage: 'Import a protocol card selected',
-    description: 'User-facing message in Interviewer Protocol Deck.',
+    description:
+      'Announcement read only by screen readers when a file is dragged over the page and the import card of the protocol deck becomes the drop target.',
   },
   cancelStartingInterview: {
     id: 'interviewer.protocolDeck.cancelStartingInterview',
     defaultMessage: 'Cancel starting interview',
-    description: 'The aria-label label in Interviewer Protocol Deck.',
+    description:
+      'Accessible name of the invisible backdrop button behind the start-interview form; pressing it closes the form without starting. Read by screen readers.',
   },
   protocolDeck: {
     id: 'interviewer.protocolDeck.protocolDeck',
     defaultMessage: 'Protocol deck',
-    description: 'The aria-label label in Interviewer Protocol Deck.',
+    description:
+      'Accessible name of the carousel region of protocol cards on the home screen, read only by screen readers.',
   },
   previousProtocol: {
     id: 'interviewer.protocolDeck.previousProtocol',
     defaultMessage: 'Previous protocol',
-    description: 'The aria-label label in Interviewer Protocol Deck.',
+    description:
+      'Accessible name of the arrow button that moves the protocol carousel to the previous protocol card, read only by screen readers.',
   },
   nextProtocol: {
     id: 'interviewer.protocolDeck.nextProtocol',
     defaultMessage: 'Next protocol',
-    description: 'The aria-label label in Interviewer Protocol Deck.',
+    description:
+      'Accessible name of the arrow button that moves the protocol carousel to the next protocol card, read only by screen readers.',
   },
   goToCard: {
     id: 'interviewer.protocolDeck.goToCard',

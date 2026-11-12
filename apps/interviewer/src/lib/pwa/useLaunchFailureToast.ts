@@ -14,13 +14,15 @@ const messages = defineMessages({
   couldNotOpenFile: {
     id: 'interviewer.launchFailureToast.couldNotOpenFile',
     defaultMessage: 'Could not open file',
-    description: 'User-facing message in Interviewer Launch Failure Toast.',
+    description:
+      'Title of an error toast on the home screen when a file opened from the operating system (a protocol file) could not be read.',
   },
   filesUnreadable: {
     id: 'interviewer.launchFailureToast.filesUnreadable',
     defaultMessage:
       '{count, plural, one {# launched file could not be read. The file may have been moved, deleted, or become unavailable since it was opened.} other {# launched files could not be read. The files may have been moved, deleted, or become unavailable since they were opened.}}',
-    description: 'Administration text in Interviewer useLaunchFailureToast.',
+    description:
+      'Body of the error toast about files opened from the operating system that could not be read. count is the number of such files.',
   },
 });
 

@@ -13,6 +13,7 @@ export const interviewerProductionLocales = defineAppLocales([
   { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
   { locale: 'it', label: 'Italiano', direction: 'ltr' },
   { locale: 'fr', label: 'Français', direction: 'ltr' },
+  { locale: 'ar', label: 'العربية', direction: 'rtl' },
 ]);
 
 export const interviewerLocales: readonly AppLocale[] = import.meta.env.DEV

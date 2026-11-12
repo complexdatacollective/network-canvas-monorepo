@@ -16,12 +16,14 @@ const messages = defineMessages({
   welcomeBack: {
     id: 'interviewer.lockScreen.welcomeBack',
     defaultMessage: 'Welcome back',
-    description: 'The title label in Interviewer Lock Screen.',
+    description:
+      'Title of the lock screen dialog shown when the app is locked, for example after idle time or a reload. The researcher unlocks it to continue.',
   },
   authenticateToUnlockAndPickUpWhere: {
     id: 'interviewer.lockScreen.authenticateToUnlockAndPickUpWhere',
     defaultMessage: 'Authenticate to unlock and pick up where you left off.',
-    description: 'The description label in Interviewer Lock Screen.',
+    description:
+      'Instruction under the lock screen title, asking the researcher to authenticate to unlock the app and carry on from where they were.',
   },
 });
 

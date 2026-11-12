@@ -14,29 +14,34 @@ const messages = defineMessages({
   canTReadThisDeviceSSecurity: {
     id: 'interviewer.vaultRecoveryScreen.canTReadThisDeviceSSecurity',
     defaultMessage: "Can't read this device's security settings",
-    description: 'The title label in Interviewer Vault Recovery Screen.',
+    description:
+      'Title of the error dialog shown at startup when the saved device security settings are unreadable, so the app cannot unlock.',
   },
   reload: {
     id: 'interviewer.vaultRecoveryScreen.reload',
     defaultMessage: 'Reload',
-    description: 'Visible copy in Interviewer Vault Recovery Screen.',
+    description:
+      'Button on the unreadable-security-settings error dialog that reloads the app, which is the safe first thing to try. Reload is the action.',
   },
   resetAllAppData: {
     id: 'interviewer.vaultRecoveryScreen.resetAllAppData',
     defaultMessage: 'Reset all app data',
-    description: 'Visible copy in Interviewer Vault Recovery Screen.',
+    description:
+      'Destructive button on the unreadable-security-settings error dialog that opens a confirmation to delete all app data.',
   },
   theSecurityConfigurationStoredOnThisDevice: {
     id: 'interviewer.vaultRecoveryScreen.theSecurityConfigurationStoredOnThisDevice',
     defaultMessage:
       'The security configuration stored on this device could not be read. This can happen if the app was updated and then rolled back, so a newer version wrote settings this version doesn’t understand.',
-    description: 'Visible copy in Interviewer Vault Recovery Screen.',
+    description:
+      'First paragraph of the unreadable-security-settings error dialog, explaining the saved settings could not be read and a likely cause.',
   },
   tryStrongReloadStrongFirstIfA: {
     id: 'interviewer.vaultRecoveryScreen.tryStrongReloadStrongFirstIfA',
     defaultMessage:
       'Try <strong>Reload</strong> first — if a newer version of the app is available it may be able to read these settings. If reloading doesn’t help, you can reset the app to start over, but any data already on this device will be lost.',
-    description: 'Visible copy in Interviewer Vault Recovery Screen.',
+    description:
+      'Second paragraph of the unreadable-security-settings error dialog, advising to press Reload first and warning that resetting loses data. The strong tags bold the word Reload, matching the button.',
   },
 });
 

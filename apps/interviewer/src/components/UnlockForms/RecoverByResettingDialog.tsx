@@ -17,31 +17,33 @@ const messages = defineMessages({
   resetAllAppData: {
     id: 'interviewer.recoverByResettingDialog.resetAllAppData',
     defaultMessage: 'Reset all app data?',
-    description: 'The title label in Interviewer Recover By Resetting Dialog.',
+    description:
+      'Title of the destructive confirmation dialog for deleting all app data, opened from the unlock screen or the security settings error screen.',
   },
   thisPermanentlyDeletesEveryProtocolAndRecorded: {
     id: 'interviewer.recoverByResettingDialog.thisPermanentlyDeletesEveryProtocolAndRecorded',
     defaultMessage:
       'This permanently deletes every protocol and recorded interview on this device. It cannot be undone, and the existing data cannot be recovered.',
     description:
-      'The description label in Interviewer Recover By Resetting Dialog.',
+      'Warning text in the reset confirmation dialog, stating that every protocol and recorded interview on the device will be permanently deleted.',
   },
   permanentlyDelete: {
     id: 'interviewer.recoverByResettingDialog.permanentlyDelete',
     defaultMessage: 'Permanently delete',
-    description: 'Visible copy in Interviewer Recover By Resetting Dialog.',
+    description:
+      'Destructive confirm button in the reset dialog that deletes all app data on the device. "Delete" is an action.',
   },
   deleting: {
     id: 'interviewer.recoverByResettingDialog.deleting',
     defaultMessage: 'Deleting…',
     description:
-      'The submittingText label in Interviewer Recover By Resetting Dialog.',
+      'Label of the confirm button in the reset dialog while all app data is being deleted.',
   },
   theAppDataCouldNotBeReset: {
     id: 'interviewer.recoverByResettingDialog.theAppDataCouldNotBeReset',
     defaultMessage: 'The app data could not be reset.',
     description:
-      'User-facing message in Interviewer Recover By Resetting Dialog.',
+      'Error shown in the reset dialog when deleting the app data fails.',
   },
 });
 
