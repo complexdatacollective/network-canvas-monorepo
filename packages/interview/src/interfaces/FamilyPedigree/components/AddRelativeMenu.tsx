@@ -142,6 +142,9 @@ export default function AddRelativeMenu({
   return createPortal(
     <div
       ref={placed}
+      // Siblings to the left and partners to the right in every language:
+      // the right-to-left mirror check leaves the buttons out.
+      data-direction-exempt
       // oxlint-disable-next-line tailwindcss/enforce-logical -- moved to the person's measured position, which is a distance from the left
       className="pointer-events-none absolute top-0 left-0 origin-top-left"
       data-add-menu={personId}

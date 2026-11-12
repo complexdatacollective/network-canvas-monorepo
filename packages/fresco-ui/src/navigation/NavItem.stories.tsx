@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
+  ArrowLeft,
   CreditCard,
   Download,
   FolderOpen,
@@ -177,6 +178,14 @@ export const WithoutIcon: Story = {
  * some languages compound rather than break. The label wraps and the row grows
  * — it is never truncated, and the count never gets pushed out.
  */
+/**
+ * A way back. The arrow points along the line of text, so NavItem turns it
+ * (`inlineIconClass`): in a right-to-left language back is to the right.
+ */
+export const BackLink: Story = {
+  args: { icon: ArrowLeft, label: 'Back to study', count: undefined },
+};
+
 export const LongLabel: Story = {
   args: {
     label: 'Teilnehmerinnen und Teilnehmer verwalten',

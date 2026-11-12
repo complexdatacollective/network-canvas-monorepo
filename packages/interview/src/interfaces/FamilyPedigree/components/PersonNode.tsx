@@ -121,6 +121,9 @@ export default function PersonNode({
 
   return (
     <div
+      // Part of the family drawing, which is the same way round in every
+      // language: the right-to-left mirror check leaves it out.
+      data-direction-exempt
       className="relative flex size-full items-center justify-center"
       data-testid="pedigree-person"
       data-person-id={person.id}

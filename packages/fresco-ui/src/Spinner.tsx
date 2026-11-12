@@ -245,6 +245,9 @@ export default function Spinner({
 
   return (
     <motion.div
+      // Arcs placed by coordinates and turning on the spot: a drawing, not a
+      // layout, so the right-to-left mirror check leaves it out.
+      data-direction-exempt
       className={cx(spinnerVariants({ size }), className)}
       style={customSizeStyle}
       initial={{ rotate: 45, scale: 1 }}
