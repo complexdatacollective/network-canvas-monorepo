@@ -9,7 +9,6 @@ import {
   MAX_OUTPUT_TOKENS,
   MODEL_TIMEOUT_MS,
   PROVIDER_MODELS,
-  REVIEW_EFFORT,
 } from './constants.ts';
 import { REVIEW_OUTPUT_SCHEMA } from './findings.ts';
 import {
@@ -107,7 +106,7 @@ export const createAnthropicModel = (
     timeout: MODEL_TIMEOUT_MS,
   });
 
-  return async ({ system, user, signal, onStart, onText }) => {
+  return async ({ system, user, signal, onStart, onThinking, onText }) => {
     // The input is reported when the provider starts answering; how much
     // output it wrote is only known at the end.
     let started: TokenUsage | null = null;
@@ -116,9 +115,11 @@ export const createAnthropicModel = (
         {
           model: PROVIDER_MODELS.anthropic.model,
           max_tokens: MAX_OUTPUT_TOKENS,
-          thinking: { type: 'adaptive' },
+          // Summarised, so that the thinking arrives as it happens: without
+          // it the stream is silent until the answer begins.
+          thinking: { type: 'adaptive', display: 'summarized' },
           output_config: {
-            effort: REVIEW_EFFORT,
+            effort: PROVIDER_MODELS.anthropic.effort,
             format: { type: 'json_schema', schema: REVIEW_OUTPUT_SCHEMA },
           },
           system: [
@@ -137,11 +138,12 @@ export const createAnthropicModel = (
         if (event.type === 'message_start') {
           started = toUsage(event.message.usage, null);
           onStart();
-        } else if (
-          event.type === 'content_block_delta' &&
-          event.delta.type === 'text_delta'
-        ) {
-          onText(event.delta.text);
+        } else if (event.type === 'content_block_delta') {
+          if (event.delta.type === 'thinking_delta') {
+            onThinking(event.delta.thinking);
+          } else if (event.delta.type === 'text_delta') {
+            onText(event.delta.text);
+          }
         }
       }
 

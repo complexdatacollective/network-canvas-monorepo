@@ -13,7 +13,6 @@ import {
   MAX_OUTPUT_TOKENS,
   MODEL_TIMEOUT_MS,
   PROVIDER_MODELS,
-  REVIEW_EFFORT,
 } from './constants.ts';
 import { REVIEW_OUTPUT_SCHEMA } from './findings.ts';
 import {
@@ -35,6 +34,13 @@ import type { TokenUsage } from './pricing.ts';
  * breakpoint; the study details and protocol follow in the user message, and
  * are never written to the cache. Nothing is stored by the provider beyond
  * the call (`store: false`).
+ *
+ * The model reasons for minutes before it writes, and sends nothing while it
+ * does unless a summary of its reasoning is asked for. The summary is asked
+ * for only so that the review can be seen to move. OpenAI gives summaries to
+ * verified organisations only, and refuses the whole request otherwise, so a
+ * request refused as invalid is sent once more without one (see
+ * `createOpenAIModel`).
  */
 
 /** The fixed reason and HTTP status of a failed call to the provider. */
@@ -126,6 +132,13 @@ const stopReasonOf = (response: ModelResponse): string | null => {
     : (response.status ?? null);
 };
 
+/**
+ * Whether the provider refused the request as invalid (HTTP 400), before any
+ * work began. Such a request is not billed.
+ */
+const isInvalidRequest = (error: unknown): boolean =>
+  error instanceof APIError && error.status === 400;
+
 /** A stream that ended with the provider saying the response failed. */
 class ResponseFailure extends Error {
   readonly usage: ResponseUsage | undefined;
@@ -151,13 +164,21 @@ export const createOpenAIModel = (
     timeout: MODEL_TIMEOUT_MS,
   });
 
-  return async ({ system, user, signal, onStart, onText }) => {
-    try {
-      const stream = await client.responses.create(
+  // Whether to ask for a summary of the reasoning. Stops being asked for once
+  // the provider has refused a request that asked for one, so that only the
+  // first review in this instance pays for the refusal with a second request.
+  let askForSummary = true;
+
+  return async ({ system, user, signal, onStart, onThinking, onText }) => {
+    const open = (summary: boolean) =>
+      client.responses.create(
         {
           model: PROVIDER_MODELS.openai.model,
           max_output_tokens: MAX_OUTPUT_TOKENS,
-          reasoning: { effort: REVIEW_EFFORT },
+          reasoning: {
+            effort: PROVIDER_MODELS.openai.effort,
+            ...(summary ? { summary: 'auto' as const } : {}),
+          },
           store: false,
           stream: true,
           // Only the instructions are worth caching: the rest of the request
@@ -188,10 +209,25 @@ export const createOpenAIModel = (
         { signal },
       );
 
+    try {
+      let stream: Awaited<ReturnType<typeof open>>;
+      try {
+        stream = await open(askForSummary);
+      } catch (error) {
+        // Not a retry of work the provider began: it refused the request
+        // outright, which costs nothing, and the likeliest cause is the
+        // summary. Anything else wrong with the request is refused again.
+        if (!askForSummary || !isInvalidRequest(error)) throw error;
+        askForSummary = false;
+        stream = await open(false);
+      }
+
       let finished: ModelResponse | null = null;
       for await (const event of stream) {
         if (event.type === 'response.created') {
           onStart();
+        } else if (event.type === 'response.reasoning_summary_text.delta') {
+          onThinking(event.delta);
         } else if (event.type === 'response.output_text.delta') {
           onText(event.delta);
         } else if (

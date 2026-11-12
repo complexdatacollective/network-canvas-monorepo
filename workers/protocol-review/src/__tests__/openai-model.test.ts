@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { MAX_OUTPUT_TOKENS } from '../constants.ts';
 import { REVIEW_OUTPUT_SCHEMA } from '../findings.ts';
-import { ModelCallError, type ModelRunOutput } from '../model.ts';
+import {
+  ModelCallError,
+  type ModelRunOutput,
+  type ReviewModel,
+} from '../model.ts';
 import { createOpenAIModel } from '../openai-model.ts';
 
 /**
@@ -55,6 +59,10 @@ const delta = (text: string) => ({
   type: 'response.output_text.delta',
   delta: text,
 });
+const thought = (text: string) => ({
+  type: 'response.reasoning_summary_text.delta',
+  delta: text,
+});
 const completed = (overrides: Json = {}) => ({
   type: 'response.completed',
   response: response(overrides),
@@ -97,15 +105,20 @@ const rejecting = (status: number, code: string) => {
   return { fetcher, attempts: () => attempts };
 };
 
-const call = async (fetcher: typeof fetch) => {
-  const seen = { started: 0, text: '' };
-  const model = createOpenAIModel('test-key', { fetch: fetcher });
+const call = async (
+  fetcher: typeof fetch,
+  model: ReviewModel = createOpenAIModel('test-key', { fetch: fetcher }),
+) => {
+  const seen = { started: 0, thinking: '', text: '' };
   const run = model({
     system: 'The instructions.',
     user: 'The protocol.',
     signal: new AbortController().signal,
     onStart: () => {
       seen.started += 1;
+    },
+    onThinking: (chunk) => {
+      seen.thinking += chunk;
     },
     onText: (chunk) => {
       seen.text += chunk;
@@ -140,7 +153,9 @@ describe('what the OpenAI call sends', () => {
     expect(request?.body).toEqual({
       model: 'gpt-6.1-sol',
       max_output_tokens: MAX_OUTPUT_TOKENS,
-      reasoning: { effort: 'high' },
+      // Medium, and with a summary of the reasoning so the review can be
+      // seen to move while the model thinks.
+      reasoning: { effort: 'medium', summary: 'auto' },
       store: false,
       stream: true,
       prompt_cache_options: { mode: 'explicit', ttl: '30m' },
@@ -171,16 +186,22 @@ describe('what the OpenAI call sends', () => {
 });
 
 describe('how the OpenAI call reads the answer', () => {
-  it('reports the start, each piece of text, and the usage split three ways', async () => {
+  it('reports the start, each piece of thinking and of text, and the usage split three ways', async () => {
     const { fetcher } = streaming([
       created,
+      thought('Reading the stages. '),
+      thought('Checking the codebook.'),
       delta('{"findings"'),
       delta(':[]}'),
       completed(),
     ]);
     const { seen, output } = await call(fetcher);
 
-    expect(seen).toEqual({ started: 1, text: '{"findings":[]}' });
+    expect(seen).toEqual({
+      started: 1,
+      thinking: 'Reading the stages. Checking the codebook.',
+      text: '{"findings":[]}',
+    });
     expect(output).toEqual({
       text: '{"findings":[]}',
       stopReason: 'end_turn',
@@ -231,9 +252,77 @@ describe('how the OpenAI call reads the answer', () => {
   });
 });
 
+/**
+ * A provider that refuses, as invalid, any request asking for a summary of
+ * the reasoning, as OpenAI does for an organisation it has not verified, and
+ * answers any other with `events`.
+ */
+const refusingSummaries = (events: Json[]) => {
+  const answering = streaming(events);
+  const summaryAsked: boolean[] = [];
+  const fetcher: typeof fetch = async (input, init) => {
+    const request = new Request(input, init);
+    const body = (await request.clone().json()) as {
+      reasoning?: { summary?: string };
+    };
+    const asked = body.reasoning?.summary !== undefined;
+    summaryAsked.push(asked);
+    if (!asked) return answering.fetcher(request);
+    return new Response(
+      JSON.stringify({
+        error: {
+          message: 'Your organization must be verified.',
+          type: 'invalid_request_error',
+          param: 'reasoning.summary',
+          code: 'unsupported_value',
+        },
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } },
+    );
+  };
+  return { fetcher, summaryAsked };
+};
+
+describe('when the provider will not summarise the reasoning', () => {
+  it('sends the request once more without the summary, and the review is written', async () => {
+    const { fetcher, summaryAsked } = refusingSummaries([
+      created,
+      delta('{"findings":[]}'),
+      completed(),
+    ]);
+    const { seen, output } = await call(fetcher);
+
+    expect(summaryAsked).toEqual([true, false]);
+    expect(seen).toEqual({ started: 1, thinking: '', text: '{"findings":[]}' });
+    expect(output?.stopReason).toBe('end_turn');
+  });
+
+  it('does not ask again in later reviews', async () => {
+    const { fetcher, summaryAsked } = refusingSummaries([created, completed()]);
+    const model = createOpenAIModel('test-key', { fetch: fetcher });
+    await call(fetcher, model);
+    await call(fetcher, model);
+
+    expect(summaryAsked).toEqual([true, false, false]);
+  });
+
+  it('fails, unbilled, when the request is refused as invalid without the summary too', async () => {
+    const { fetcher, attempts } = rejecting(400, 'invalid_request_error');
+    const { seen, error } = await call(fetcher);
+
+    expect(failureOf(error)).toMatchObject({
+      status: 400,
+      billing: { kind: 'rejected' },
+    });
+    expect(seen.started).toBe(0);
+    expect(attempts()).toBe(2);
+  });
+});
+
 describe('what a failed OpenAI call may have cost', () => {
   it.each([
     [401, 'invalid_api_key', 'authentication'],
+    [403, 'forbidden', 'permission'],
     [429, 'rate_limit_exceeded', 'rate_limited'],
     // Out of credit is a 429 too; only its code says so.
     [429, 'insufficient_quota', 'billing'],

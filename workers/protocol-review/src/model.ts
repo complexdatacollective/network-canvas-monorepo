@@ -87,6 +87,12 @@ export type ModelRunInput = {
   signal: AbortSignal;
   /** Called once, when the provider has accepted the request and begun. */
   onStart: () => void;
+  /**
+   * Called with each piece of the provider's summary of the model's thinking,
+   * which comes before the answer. Only its length is used, to show that the
+   * review is moving; a provider that gives no summary never calls it.
+   */
+  onThinking: (chunk: string) => void;
   /** Called with each piece of the answer as it arrives. */
   onText: (chunk: string) => void;
 };

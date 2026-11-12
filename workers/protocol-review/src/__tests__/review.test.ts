@@ -56,8 +56,13 @@ describe('a successful review', () => {
       'not even an object',
     ]);
     const chunks = pieces(answer, 40);
+    const thinking = pieces(
+      'Reading each stage against the study. '.repeat(8),
+      30,
+    );
     const harness = createHarness(
       scriptedModel({
+        thinking,
         chunks,
         // 100 ms between pieces: progress may go out at most every 250 ms.
         beforeChunk: () => {
@@ -78,9 +83,26 @@ describe('a successful review', () => {
       event.type === 'progress' ? event.received : -1,
     );
     expect(received.length).toBeGreaterThan(1);
-    expect(received.length).toBeLessThan(chunks.length / 2);
+    expect(received.length).toBeLessThan((thinking.length + chunks.length) / 2);
     expect(received).toEqual(received.toSorted((a, b) => a - b));
     expect(Math.max(...received)).toBeLessThanOrEqual(answer.length);
+
+    // The thinking comes first and is counted apart from the answer: it has
+    // moved before any of the answer has arrived, and never goes back.
+    const thought = progress.map((event) =>
+      event.type === 'progress' ? event.thinking : undefined,
+    );
+    expect(thought.every((count) => typeof count === 'number')).toBe(true);
+    expect(thought).toEqual(thought.toSorted((a, b) => (a ?? 0) - (b ?? 0)));
+    const beforeAnswer = progress.filter(
+      (event) => event.type === 'progress' && event.received === 0,
+    );
+    expect(
+      beforeAnswer.some(
+        (event) => event.type === 'progress' && (event.thinking ?? 0) > 0,
+      ),
+    ).toBe(true);
+    expect(thought.at(-1)).toBe(thinking.join('').length);
 
     const last = events.at(-1);
     expect(events.filter((event) => event.type === 'result')).toHaveLength(1);

@@ -28,8 +28,10 @@ is `src/contract.ts`. Architect imports it as
 4. The provider's model (see "Providers") reviews the protocol, guided by the
    rubric in `src/prompt/rubric.ts` and the protocol reference in
    `src/prompt/protocol-reference.ts`. Both providers get the same
-   instructions and must answer in the same schema. While the model writes,
-   the service sends `progress` events; when it is done, one `result` event.
+   instructions and must answer in the same schema. While the model thinks and
+   then writes, the service sends `progress` events, each counting the
+   characters of its thinking and of its answer that have arrived so far; when
+   it is done, one `result` event.
 5. The reservation is settled to what the review really cost, as reported by
    the API. When a call fails without saying what it cost (a lost connection,
    a timeout, a cancellation before the answer began), the whole reservation
@@ -63,9 +65,19 @@ its US $200 pays for roughly twice as many reviews. A request with more than
 half times the output price throughout; `PROVIDER_MODELS` in
 `src/constants.ts` holds both sets of prices.
 
-Both calls are single streamed requests with no tools and no retries. The
-OpenAI call goes to the Responses API with `store: false`, so OpenAI keeps
-nothing from it as a stored response.
+Both calls are single streamed requests with no tools, and neither is retried
+once the provider has begun work. The OpenAI call goes to the Responses API
+with `store: false`, so OpenAI keeps nothing from it as a stored response.
+
+Claude thinks at `high` effort and GPT-6.1 Sol at `medium`
+(`PROVIDER_MODELS`): at `high`, GPT-6.1 Sol reasoned for about seven minutes
+over a nine-stage protocol before writing anything, which is most of the eight
+minutes a review is allowed. Both are asked for a summary of their thinking as
+it happens, which the service uses only to count progress; the summary itself
+is never sent to Architect or stored. OpenAI gives summaries to verified
+organisations only and refuses the whole request otherwise, so a request it
+refuses as invalid (HTTP 400, which is not billed) is sent once more without
+the summary, and later reviews in the same Worker instance do not ask for one.
 
 `GET /providers` answers, for each provider, whether its budget has room for
 a review, and if not which budget is spent and when it starts again.
