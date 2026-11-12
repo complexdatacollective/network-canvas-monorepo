@@ -188,7 +188,11 @@ export default function AddRelativeMenu({
                       delay: reduceMotion ? 0 : index * 0.02,
                     }}
                     className={cx(
-                      'pointer-events-auto size-18 max-w-none shrink-0 rounded-full p-0 whitespace-nowrap',
+                      // A word for a relative may take two words in another
+                      // language (Arabic's "أحد الوالدين", one of the
+                      // parents): it wraps inside the circle rather than
+                      // running out of it.
+                      'pointer-events-auto size-18 max-w-none shrink-0 rounded-full px-1.5 py-0 text-center leading-tight text-balance',
                       // Set apart from the family and the canvas beneath them
                       // by a soft, wide shadow, the same at rest, on hover and
                       // when pressed.

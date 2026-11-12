@@ -273,7 +273,7 @@ describe('the language a proposal is in', () => {
   // Network Canvas supplies the wording for these languages as written for
   // one region, so another region of one, or any other language, has none.
   it('is none at all for a default language Network Canvas has no wording in', () => {
-    for (const defaultLocale of ['sw', 'es-MX', 'en-GB', 'ar', 'hu']) {
+    for (const defaultLocale of ['sw', 'es-MX', 'en-GB', 'fa', 'hu']) {
       expect(
         proposeStageLabel(
           { id: 'stage-1', type: 'Sociogram' },

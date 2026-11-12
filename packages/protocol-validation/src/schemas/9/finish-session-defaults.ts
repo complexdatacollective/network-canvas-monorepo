@@ -45,6 +45,12 @@ export const DEFAULT_FINISH_SESSION_TEXT = {
       '# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
     finishedContent: '# Interview Finished\n\nThank you for participating!',
   },
+  'ar': {
+    label: 'إنهاء المقابلة',
+    content:
+      '# إنهاء المقابلة\n\nلقد وصلت إلى نهاية المقابلة. إذا كانت المعلومات التي أدخلتها مُرضية لك، يمكنك إنهاء المقابلة الآن.',
+    finishedContent: '# انتهت المقابلة\n\nشكرًا لمشاركتك!',
+  },
   'de': {
     label: 'Interview beenden',
     content:

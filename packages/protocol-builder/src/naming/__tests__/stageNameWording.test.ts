@@ -12,6 +12,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { interfaceNameMessages } from '../../interfaces/interfaceNames.ts';
+import ar from '../../locales/ar.json';
 import de from '../../locales/de.json';
 import en from '../../locales/en.json';
 import es from '../../locales/es.json';
@@ -34,6 +35,7 @@ import {
  */
 const CATALOGS: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
   en,
+  ar,
   de,
   es,
   fr,
