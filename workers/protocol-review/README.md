@@ -20,8 +20,8 @@ is `src/contract.ts`. Architect imports it as
    or `https://architect.networkcanvas.dev`. Requests from any other origin are
    refused (`403 forbidden_origin`).
 2. The body is read up to its size limit and checked against the contract.
-3. The hourly limits and the daily spending ceiling are checked, and the most
-   the review could cost is reserved from the day's budget.
+3. The hourly limits and the monthly and daily spending ceilings are checked,
+   and the most the review could cost is reserved from the budget.
 4. Claude (`claude-opus-5-5`) reviews the protocol, guided by the rubric in
    `src/prompt/rubric.ts` and the protocol reference in
    `src/prompt/protocol-reference.ts`. While it writes, the service sends
@@ -49,7 +49,8 @@ code and status.
 | Reviews per network address   | 30 an hour                       | `REVIEW_LIMITS.perAddressPerHour`, contract.ts         |
 | Largest request               | 750,000 bytes                    | `REVIEW_LIMITS.maxRequestBytes`, contract.ts           |
 | Shared reviews kept for       | 90 days                          | `REVIEW_LIMITS.sharedReviewRetentionDays`, contract.ts |
-| Spending on the model per day | US $25 (UTC day)                 | `DAILY_SPEND_CEILING_USD`, constants.ts                |
+| Spending on the model a month | US $200 (UTC calendar month)     | `MONTHLY_SPEND_CEILING_USD`, constants.ts              |
+| Spending on the model a day   | US $20 (UTC day)                 | `DAILY_SPEND_CEILING_USD`, constants.ts                |
 | Answer length                 | 40,000 tokens, thinking included | `MAX_OUTPUT_TOKENS`, constants.ts                      |
 | Findings per review           | 12                               | `MAX_FINDINGS`, constants.ts                           |
 | Time per review               | 8 minutes                        | `MODEL_TIMEOUT_MS`, constants.ts                       |
@@ -66,26 +67,42 @@ that explains the limits and the service that enforces them cannot disagree.
 
 The limits are kept in one SQLite-backed Durable Object (`ReviewLimiter`),
 so the counts are exact even when reviews arrive together. Before calling the
-model, a review reserves its worst case from the day's budget: one token for
+model, a review reserves its worst case from the budget: one token for
 every UTF-8 byte it sends (the instructions, the protocol and study details,
 and the answer's schema), since no token stands for less than a byte, plus
 1,000 tokens for the API's framing, all at the cache-write price, plus the
 whole answer cap. Afterwards the reservation is replaced by the real cost.
-Concurrent reviews therefore cannot together overshoot the ceiling. The bound
+Concurrent reviews therefore cannot together overshoot a ceiling. The bound
 is generous: the instructions alone reserve about $0.98, a typical protocol
 of 50–150 KB about $1.25–$1.75, and a review of the largest allowed request
-(750,000 bytes) about $4.75, so near the ceiling only a few large reviews can
-run at once, though each settles to its real cost when it ends. When the day's remaining
-budget cannot cover a reservation, the review is refused with
-`503 daily_limit` until the next midnight UTC.
+(750,000 bytes) about $4.75, so near a ceiling only a few large reviews can
+run at once, though each settles to its real cost when it ends.
+
+There are two ceilings, and a review must fit under both:
+
+- **The month** (US $200) is the service's whole budget. The Anthropic API
+  key carries the same monthly limit, and the service counts at least what
+  the provider bills, so it reaches its own ceiling first and can say when
+  reviews start again. When what is left of the month cannot cover a
+  reservation, the review is refused with `503 monthly_limit` until the first
+  midnight UTC of the next month.
+- **The day** (US $20, a tenth of the month) stops one bad day from spending
+  the month. When what is left of the day cannot cover a reservation, the
+  review is refused with `503 daily_limit` until the next midnight UTC.
+
+The month's spending is the sum of its days, each counted on the day its
+review was admitted. A review admitted in the last minutes of a month is
+counted in that month even if the provider bills it in the next, so the two
+counts can differ at the boundary by the cost of the reviews then running.
 
 ## What is stored, and what is not
 
 - **The limiter** holds counters only: for each hourly window, a SHA-256 hash
   of the installation id or of the network address, when the window started
-  and ended, and how many reviews it counted; and, for each UTC day, the
-  amount spent. Raw addresses and ids are never stored. Windows that have
-  ended and days before yesterday are deleted as new reviews arrive.
+  and ended, and how many reviews it counted; and, for each UTC day of the
+  current month, the amount spent. Raw addresses and ids are never stored.
+  Windows that have ended, and days of earlier months (but for yesterday),
+  are deleted as new reviews arrive.
 - **Shared reviews.** Only when the researcher chose to share the review, and
   only when it succeeded, the service keeps
   `{ receivedAt, locale, studyContext, protocol, findings }` in the
@@ -162,13 +179,17 @@ pnpm cf-typegen   # after changing wrangler.jsonc
 
 A local review calls the real API with your key and spends real money.
 
-## Changing the daily ceiling
+## Changing the spending ceilings
 
-Change `DAILY_SPEND_CEILING_USD` in `src/constants.ts` and deploy. The
-ceiling is in US dollars per UTC day and applies from the next review. The
-cost of each review is computed from the token counts the API reports and the
-price table `MODEL_PRICES_USD_PER_MILLION_TOKENS` beside it; if the model or
-its prices change, update both together.
+Change `MONTHLY_SPEND_CEILING_USD` or `DAILY_SPEND_CEILING_USD` in
+`src/constants.ts` and release (see "Releasing"). They are in US dollars per
+UTC calendar month and per UTC day, and apply from the next review. Keep the
+monthly ceiling at or below the monthly limit set on the Anthropic API key:
+above it, the provider refuses first and researchers see "unavailable" with
+no time to come back. The cost of each review is computed from the token
+counts the API reports and the price table
+`MODEL_PRICES_USD_PER_MILLION_TOKENS` beside it; if the model or its prices
+change, update both together.
 
 ## Code
 
@@ -176,7 +197,7 @@ its prices change, update both together.
 | ------------------------------------ | ------------------------------------------------------------------- |
 | `src/index.ts`                       | Wires everything to Cloudflare; the `ReviewLimiter` Durable Object. |
 | `src/review.ts`                      | The request: origin, size, schema, limits, model, stream, sharing.  |
-| `src/limiter.ts`                     | Hourly windows and the daily budget, as pure functions.             |
+| `src/limiter.ts`                     | Hourly windows and the two budgets, as pure functions.              |
 | `src/sql-store.ts`                   | The limiter's state in the Durable Object's SQLite storage.         |
 | `src/anthropic-model.ts`             | The streamed call to Claude, and how its errors are classified.     |
 | `src/findings.ts`                    | The answer's JSON schema, and checking, ordering and numbering.     |

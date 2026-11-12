@@ -1,6 +1,7 @@
 import {
   DAILY_SPEND_CEILING_USD,
   MAX_OUTPUT_TOKENS,
+  MONTHLY_SPEND_CEILING_USD,
   MODEL_PRICES_USD_PER_MILLION_TOKENS as PRICES,
   RESERVATION_OVERHEAD_TOKENS,
 } from './constants.ts';
@@ -11,6 +12,10 @@ import {
  * dollars per million tokens is, conveniently, micro-dollars per token.
  */
 export const DAILY_CEILING_MICROS = Math.round(DAILY_SPEND_CEILING_USD * 1e6);
+
+export const MONTHLY_CEILING_MICROS = Math.round(
+  MONTHLY_SPEND_CEILING_USD * 1e6,
+);
 
 /** What the provider reported billing for one call. */
 export type TokenUsage = {

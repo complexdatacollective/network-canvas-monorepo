@@ -1,5 +1,5 @@
 import { REVIEW_LIMITS, type ReviewQuota } from './contract.ts';
-import { DAILY_CEILING_MICROS } from './pricing.ts';
+import { DAILY_CEILING_MICROS, MONTHLY_CEILING_MICROS } from './pricing.ts';
 
 /**
  * The service's limits, as pure functions over a small store. The Durable
@@ -31,6 +31,8 @@ export type LimiterStore = {
   /** Micro-dollars spent or reserved on `day` (`YYYY-MM-DD`, UTC). */
   getCommitted(day: string): number;
   setCommitted(day: string, micros: number): void;
+  /** Micro-dollars spent or reserved on `day` and every day after it. */
+  getCommittedSince(day: string): number;
   /** Forgets the spending of every day before `day`. */
   deleteDaysBefore(day: string): void;
 };
@@ -54,7 +56,11 @@ export type AdmitRequest = {
 
 export type AdmitResult =
   | { ok: true; admission: Admission; quota: ReviewQuota }
-  | { ok: false; error: 'hourly_limit' | 'daily_limit'; retryAt: string };
+  | {
+      ok: false;
+      error: 'hourly_limit' | 'daily_limit' | 'monthly_limit';
+      retryAt: string;
+    };
 
 export type SettleRequest = {
   admission: Admission;
@@ -69,6 +75,15 @@ export const utcDay = (time: number): string =>
 
 const nextUtcMidnight = (time: number): number =>
   Math.floor(time / DAY_MS) * DAY_MS + DAY_MS;
+
+/** The first day of the UTC calendar month `time` falls in (`YYYY-MM-01`). */
+export const utcMonthStart = (time: number): string =>
+  `${utcDay(time).slice(0, 7)}-01`;
+
+const nextUtcMonth = (time: number): number => {
+  const date = new Date(time);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
+};
 
 const toIso = (time: number): string => new Date(time).toISOString();
 
@@ -87,7 +102,12 @@ export const admit = (
   { installationKey, addressKey, reservationMicros, now }: AdmitRequest,
 ): AdmitResult => {
   store.deleteExpiredWindows(now);
-  store.deleteDaysBefore(utcDay(now - DAY_MS));
+  // The month's total is the sum of its days, so every day of this month is
+  // kept; and yesterday is kept even when it belongs to last month, because a
+  // review admitted before midnight settles against the day it was admitted.
+  const monthStart = utcMonthStart(now);
+  const yesterday = utcDay(now - DAY_MS);
+  store.deleteDaysBefore(yesterday < monthStart ? yesterday : monthStart);
 
   const limits = [
     { key: installationKey, limit: REVIEW_LIMITS.perInstallationPerHour },
@@ -107,6 +127,19 @@ export const admit = (
       ...blocking.map(({ window }) => window?.windowEnd ?? now),
     );
     return { ok: false, error: 'hourly_limit', retryAt: toIso(retryAt) };
+  }
+
+  // The month before the day: when both are spent, the month is the one
+  // that decides when a review can next run.
+  if (
+    store.getCommittedSince(monthStart) + reservationMicros >
+    MONTHLY_CEILING_MICROS
+  ) {
+    return {
+      ok: false,
+      error: 'monthly_limit',
+      retryAt: toIso(nextUtcMonth(now)),
+    };
   }
 
   const day = utcDay(now);

@@ -6,15 +6,25 @@
  */
 
 /**
- * The most the service may spend on the model in one UTC day, in US dollars.
+ * The most the service may spend on the model in one UTC calendar month, in
+ * US dollars. This is the service's whole budget: the Anthropic API key it
+ * calls with carries the same monthly limit, and the service must reach its
+ * own first, so that a researcher is told when reviews start again rather
+ * than that the service is unavailable.
  *
  * A typical review (a protocol of 50–150 KB and a full answer) costs roughly
- * $0.30–$0.80, so this allows on the order of 30–80 reviews a day, which is
- * well above what an experimental feature should see, while capping the
- * worst day at a sum nobody has to explain. Adjust it once real usage has
- * been measured (see the README, "Changing the daily ceiling").
+ * $0.30–$0.80, so this allows on the order of 250–650 reviews a month.
  */
-export const DAILY_SPEND_CEILING_USD = 25;
+export const MONTHLY_SPEND_CEILING_USD = 200;
+
+/**
+ * The most the service may spend in one UTC day, in US dollars: a tenth of
+ * the month. Without it, a script that forges Architect's origin could spend
+ * the whole month in an afternoon and close the service until the next one.
+ * With it, the worst day costs a tenth, and the team has the days that
+ * follow to notice (see the README, "Changing the spending ceilings").
+ */
+export const DAILY_SPEND_CEILING_USD = 20;
 
 /** The model that writes reviews (Claude Opus 5.5). */
 export const REVIEW_MODEL = 'claude-opus-5-5';
