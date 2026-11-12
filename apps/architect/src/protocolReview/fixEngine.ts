@@ -440,6 +440,36 @@ export const fixFits = (
   return applied.ok && sameStored(applied.targets, recorded);
 };
 
+const operationInEffect = (
+  root: unknown,
+  operation: StoredOperation,
+): boolean => {
+  const segments = parsePath(operation.path);
+  if (segments === null) return false;
+  if (operation.op === 'remove') return !readPath(root, segments).found;
+  const parsed = parseValue(operation.value);
+  if (!parsed.ok) return false;
+  const target =
+    operation.op === 'set'
+      ? readPath(root, segments)
+      : hasStringId(parsed.value)
+        ? readPath(root, [...segments.slice(0, -1), parsed.value.id])
+        : { found: false as const };
+  return target.found && sameStored(target.value, parsed.value);
+};
+
+export const fixInEffect = (
+  root: unknown,
+  operations: readonly StoredOperation[],
+): boolean => {
+  if (operations.length === 0) return false;
+  try {
+    return operations.every((operation) => operationInEffect(root, operation));
+  } catch {
+    return false;
+  }
+};
+
 /**
  * What one place in the protocol held just after a fix was applied: the
  * value at `path`, or its absence. Together they are everything the fix

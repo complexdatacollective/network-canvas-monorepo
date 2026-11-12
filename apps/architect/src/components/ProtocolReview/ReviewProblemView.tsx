@@ -332,7 +332,9 @@ const ReviewProblemView = ({
     status === 'fixed'
       ? current.canUndo
         ? messages.fixedState
-        : messages.fixedNoUndo
+        : current.decision === 'fix'
+          ? messages.fixedNoUndo
+          : null
       : status === 'mine'
         ? messages.mineState
         : status === 'dismissed'

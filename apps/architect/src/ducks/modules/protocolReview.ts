@@ -36,6 +36,7 @@ import {
 import {
   applyOperations,
   fixFits,
+  fixInEffect,
   writtenHolds,
 } from '~/protocolReview/fixEngine';
 import {
@@ -63,6 +64,7 @@ import {
   type StoredReviewRecord,
   writeReviewRecord,
 } from '~/protocolReview/reviewStore';
+import { currentStageReferences } from '~/protocolReview/stageReferences';
 import {
   getIsProtocolReviewEnabled,
   getProtocol,
@@ -510,18 +512,27 @@ export type ReviewFindingView = {
   location: FindingLocation;
 };
 
+const fixHolds = (stored: StoredFinding, protocol: CurrentProtocol) =>
+  stored.decision === 'fix' &&
+  !!stored.written &&
+  writtenHolds(protocolAsReviewed(protocol), stored.written);
+
 const statusOf = (
   stored: StoredFinding,
   protocol: CurrentProtocol,
 ): FindingDisplayStatus => {
-  // Undecided, mine and dismissed show as they are; a fix shows as fixed only
-  // while everything it wrote is as it left it, so the app's own Undo — or
-  // the researcher editing what the fix wrote — returns it to undecided.
-  if (stored.decision !== 'fix') return stored.decision;
-  return stored.written &&
-    writtenHolds(protocolAsReviewed(protocol), stored.written)
-    ? 'fixed'
-    : 'undecided';
+  // A fix shows as fixed while everything it wrote is as it left it, or
+  // while the protocol already holds what it would write; the app's own Undo
+  // — or the researcher editing what the fix wrote — returns it to undecided.
+  if (stored.decision === 'dismissed') return 'dismissed';
+  if (fixHolds(stored, protocol)) return 'fixed';
+  if (
+    stored.targets !== null &&
+    fixInEffect(protocolAsReviewed(protocol), stored.operations)
+  ) {
+    return 'fixed';
+  }
+  return stored.decision === 'fix' ? 'undecided' : stored.decision;
 };
 
 const checkResult = (
@@ -554,6 +565,7 @@ const availabilityOf = (
 };
 
 const undoApplies = (stored: StoredFinding, protocol: CurrentProtocol) =>
+  fixHolds(stored, protocol) &&
   stored.inverse !== null &&
   applyOperations(protocolAsReviewed(protocol), stored.inverse).ok;
 
@@ -567,6 +579,9 @@ export const getProtocolReviewFindings = createSelector(
   [getProtocol, selectRecord, (state: RootState) => selectReview(state).checks],
   (protocol, record, checks): ReviewFindingView[] => {
     if (!protocol || !record?.review) return [];
+    const { stageIds } = record.review;
+    const current = (text: string) =>
+      currentStageReferences(text, stageIds, protocol);
     return record.review.findings.map((stored) => {
       const { finding } = stored;
       const status = statusOf(stored, protocol);
@@ -576,10 +591,10 @@ export const getProtocolReviewFindings = createSelector(
         id: finding.id,
         severity: finding.severity,
         category: finding.category,
-        title: finding.title,
-        explanation: finding.explanation,
-        fixSummary: finding.fix.summary,
-        fixChanges: finding.fix.changes,
+        title: current(finding.title),
+        explanation: current(finding.explanation),
+        fixSummary: current(finding.fix.summary),
+        fixChanges: finding.fix.changes.map(current),
         textEdits: describeFixTextEdits(
           protocolAsReviewed(protocol),
           stored.operations,
@@ -921,6 +936,7 @@ export const startReview =
         createdAt: Date.now(),
         locale,
         provider,
+        stageIds: reviewed.stages.map((stage) => stage.id),
         findings,
       },
     });
@@ -1172,7 +1188,7 @@ export const undoFix =
     const protocol = getProtocol(getState());
     if (!protocol) return refused('no_review');
     const { stored } = found;
-    if (statusOf(stored, protocol) !== 'fixed' || stored.inverse === null) {
+    if (!fixHolds(stored, protocol) || stored.inverse === null) {
       return refused('not_fixed');
     }
     if (!getProtocolOwnedHere(getState())) return refused('not_owned');
@@ -1267,6 +1283,7 @@ const runChecks = async (dispatch: AppDispatch, getState: GetState) => {
       if (status === 'fixed') {
         if (
           stored.inverse === null ||
+          !fixHolds(stored, protocol) ||
           checkResult(checks, id, protocol, 'undo') !== null
         ) {
           continue;

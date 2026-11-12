@@ -59,6 +59,7 @@ export type StoredReview = {
    * of which Anthropic wrote.
    */
   provider?: ReviewProvider;
+  stageIds?: string[];
   findings: StoredFinding[];
 };
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyOperations,
   fixFits,
+  fixInEffect,
   planFix,
   type StoredOperation,
   writtenHolds,
@@ -267,6 +268,34 @@ describe('fixFits', () => {
       op('remove', '/codebook/node/person/options/0'),
     ]).result;
     expect(fixFits(shifted, removing, targets)).toBe(false);
+  });
+});
+
+describe('fixInEffect', () => {
+  it('holds once the protocol already has what every edit writes, however it got there', () => {
+    const operations = [
+      op('remove', '/stages/b~1c'),
+      op('set', '/stages/a/label', 'Better'),
+      op('insert', '/stages/-', { id: 'new', label: 'New' }),
+    ];
+    expect(fixInEffect(doc(), operations)).toBe(false);
+    const done = apply(doc(), [
+      op('remove', '/stages/b~1c'),
+      op('insert', '/stages/a', { id: 'new', label: 'New' }),
+      op('set', '/stages/a/label', 'Better'),
+    ]).result;
+    expect(fixInEffect(done, operations)).toBe(true);
+  });
+
+  it('does not hold while any edit would still change the protocol', () => {
+    const removed = apply(doc(), [op('remove', '/stages/b~1c')]).result;
+    expect(
+      fixInEffect(removed, [
+        op('remove', '/stages/b~1c'),
+        op('set', '/stages/a/label', 'Better'),
+      ]),
+    ).toBe(false);
+    expect(fixInEffect(removed, [])).toBe(false);
   });
 });
 

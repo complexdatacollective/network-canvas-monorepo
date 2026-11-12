@@ -867,6 +867,97 @@ describe('decisions', () => {
     ).toEqual(['mine', 'undecided', 'undecided', 'undecided']);
   });
 
+  it('shows a problem as fixed once another fix has already made its change, and undecided again once that is undone', async () => {
+    await open(store);
+    vi.stubGlobal(
+      'fetch',
+      answering({
+        ...RESULT,
+        findings: [
+          makeFinding('dropWelcome', [op('remove', '/stages/welcome')], {
+            stageId: 'welcome',
+            category: 'structure',
+          }),
+          makeFinding('alsoDropWelcome', [op('remove', '/stages/welcome')], {
+            category: 'structure',
+          }),
+        ],
+      }).fetchImpl,
+    );
+    await store.dispatch(startReview());
+    await store.dispatch(checkFixAvailability());
+
+    expect(await store.dispatch(decideFinding('dropWelcome', 'fix'))).toEqual({
+      ok: true,
+    });
+    expect(findingOf(store, 'alsoDropWelcome')).toMatchObject({
+      status: 'fixed',
+      decision: 'undecided',
+      canFix: false,
+      canUndo: false,
+    });
+    expect(getProtocolReviewCounts(store.getState()).fixed).toBe(2);
+    expect(await store.dispatch(undoFix('alsoDropWelcome'))).toEqual({
+      ok: false,
+      reason: 'not_fixed',
+    });
+
+    store.dispatch(timelineActions.undo());
+    await store.dispatch(checkFixAvailability());
+    expect(findingOf(store, 'alsoDropWelcome')).toMatchObject({
+      status: 'undecided',
+      availability: 'available',
+    });
+  });
+
+  it('numbers the stages a problem names as the protocol stands now', async () => {
+    await open(store);
+    vi.stubGlobal(
+      'fetch',
+      answering({
+        ...RESULT,
+        findings: [
+          makeFinding('dropWelcome', [op('remove', '/stages/welcome')], {
+            stageId: 'welcome',
+            category: 'structure',
+          }),
+          makeFinding(
+            'finishCopy',
+            [op('set', '/stages/finish/content/en', 'All done.')],
+            {
+              stageId: 'finish',
+              title: 'Stage 3 · Finish is abrupt.',
+              explanation:
+                'Stage 1 · Welcome promises more than Stage 3 · Finish.',
+              fix: {
+                summary: 'Reword Stage 3 · Finish.',
+                changes: ['Stage 3 · Finish: say the interview is over.'],
+                operations: [
+                  op('set', '/stages/finish/content/en', 'All done.'),
+                ],
+              },
+            },
+          ),
+        ],
+      }).fetchImpl,
+    );
+    await store.dispatch(startReview());
+    await store.dispatch(checkFixAvailability());
+    expect(findingOf(store, 'finishCopy')).toMatchObject({
+      title: 'Stage 3 · Finish is abrupt.',
+      location: { kind: 'stage', position: 3 },
+    });
+
+    await store.dispatch(decideFinding('dropWelcome', 'fix'));
+    expect(findingOf(store, 'finishCopy')).toMatchObject({
+      title: 'Stage 2 · Finish is abrupt.',
+      explanation: 'Welcome promises more than Stage 2 · Finish.',
+      fixSummary: 'Reword Stage 2 · Finish.',
+      fixChanges: ['Stage 2 · Finish: say the interview is over.'],
+      location: { kind: 'stage', position: 2 },
+    });
+  });
+
   it('refuses to re-decide a fix that holds; Undo is the way back', async () => {
     await reviewed(store);
     await store.dispatch(decideFinding('title', 'fix'));
