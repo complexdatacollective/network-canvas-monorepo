@@ -19,16 +19,28 @@
  * of Arabic: the heading stack inside a heading, the body stack anywhere
  * else. A font utility on the element itself still wins, and preformatted
  * text keeps its monospace face.
+ *
+ * The monospace stack (`--font-monospace` in theme.css) starts with the
+ * system's monospace face, and Safari draws Arabic from that face's own
+ * fallbacks, so a face later in the stack is never reached; Chrome does reach
+ * it, but only after every Latin face. Either way Arabic set in monospace,
+ * such as Interviewer's status line, would come out wider than the page's
+ * Arabic and unlike it. Arabic text therefore gets the same stack with Readex
+ * Pro first. Readex Pro claims Arabic code points only, so Latin letters and
+ * digits still come from the monospace faces.
  */
 @layer base {
   :lang(ar) {
     --heading-font: var(--heading-face), 'Readex Pro Variable', sans-serif;
     --body-font: var(--body-face), 'Readex Pro Variable', sans-serif;
+    --monospace-font:
+      'Readex Pro Variable', ui-monospace, Menlo, Monaco, 'Fira Code', monospace;
   }
 
   :lang(ar) :not(:lang(ar)) {
     --heading-font: var(--heading-face), sans-serif;
     --body-font: var(--body-face), sans-serif;
+    --monospace-font: initial;
   }
 
   [lang]:lang(ar):not(pre, code, kbd, samp),
@@ -39,5 +51,32 @@
   .font-heading [lang]:lang(ar):not(pre, code, kbd, samp),
   .font-heading:lang(ar) [lang]:not(:lang(ar), pre, code, kbd, samp) {
     font-family: var(--heading-font);
+  }
+}
+
+/*
+ * Arabic script is joined: a letter takes its shape from its neighbours and
+ * connects to them. Safari puts `letter-spacing` between every two letters,
+ * which pulls the joins apart (Chrome and Firefox leave joined letters
+ * alone), so text in a language written in the Arabic script takes none.
+ * This is about the script, not the typeface, so it names Persian, Urdu and
+ * the other languages a protocol is likely to be written in, as well as
+ * Arabic.
+ *
+ * The type scale and the `tracking-*` utilities declare `letter-spacing` on
+ * the element itself, so inheritance cannot undo them. `!important` in a
+ * layer outranks every normal declaration, whichever layer that is in.
+ */
+@layer base {
+  :is(
+    :lang(ar),
+    :lang(fa),
+    :lang(ur),
+    :lang(ps),
+    :lang(ckb),
+    :lang(sd),
+    :lang(ug)
+  ) {
+    letter-spacing: 0 !important;
   }
 }

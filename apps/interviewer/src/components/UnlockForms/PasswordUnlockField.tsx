@@ -7,12 +7,14 @@ const messages = defineMessages({
   passphrase: {
     id: 'interviewer.passwordUnlockField.passphrase',
     defaultMessage: 'Passphrase',
-    description: 'The label label in Interviewer Password Unlock Field.',
+    description:
+      'Field label for entering the device passphrase in the unlock dialog.',
   },
   enterPassphrase: {
     id: 'interviewer.passwordUnlockField.enterPassphrase',
     defaultMessage: 'Enter passphrase',
-    description: 'The placeholder label in Interviewer Password Unlock Field.',
+    description:
+      'Placeholder text inside the passphrase field in the unlock dialog.',
   },
 });
 

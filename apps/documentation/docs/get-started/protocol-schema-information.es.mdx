@@ -1,0 +1,225 @@
+---
+title: Información sobre el esquema de protocolo
+wip: false
+navOrder: 3
+date: 22nd October 2026
+translatedFrom: 8631e06e13957a752bfe0a37019beb16d109eeca
+---
+
+## Resumen {#summary}
+
+En este artículo se explica el concepto de «esquema de protocolo»: qué es, por qué lo necesitamos y cómo trabajar con los requisitos de versión del esquema en nuestras aplicaciones.
+
+Las versiones actuales de Architect, Fresco e Interviewer son compatibles con versiones anteriores. Las tres abren protocolos creados para versiones anteriores del esquema sin actualizarlos, y Architect además puede editarlos. Las funciones que introduce una versión más reciente del esquema solo están disponibles en un protocolo una vez que se ha actualizado a esa versión, así que actualizar merece la pena cuando quieres alguna de esas funciones, pero nunca es obligatorio. Solo Architect migra un protocolo al esquema 9, y únicamente cuando tú lo decides. Fresco e Interviewer ejecutan cada protocolo con el esquema para el que se creó, salvo los protocolos del esquema 7, que ambas aplicaciones migran automáticamente al esquema 8 (consulta [Migrar un protocolo](#migrating-a-protocol)).
+
+La versión actual y más reciente del esquema de protocolo es la **9**. El esquema 9 es compatible con las versiones actuales de **Architect**, **Fresco** e **Interviewer**. **No** es compatible con **Architect Classic** ni con **Interviewer Classic**, que admiten el esquema 7 y anteriores, ni con las versiones de Fresco e Interviewer publicadas antes de que se introdujera el esquema 9. Consulta más abajo [Versión 9 del esquema](#schema-version-9) y [Versión 8 del esquema](#schema-version-8) para ver los detalles.
+
+<TipBox danger>
+
+Si usas Interviewer Classic en iPadOS o Android: te recomendamos encarecidamente que sigas los consejos del artículo [Configurar los dispositivos antes de empezar a recopilar datos](/es/collect-data/interviewer/configuring-devices) y que desactives las actualizaciones automáticas de las aplicaciones, para que no te sorprendan cambios incompatibles derivados de nuevas versiones del esquema de protocolo.
+
+Esto es imprescindible si quieres seguir usando una versión concreta de una aplicación para que siga siendo compatible con tus protocolos actuales (¡en estas plataformas no es posible volver a una versión anterior!).
+
+</TipBox>
+
+## ¿Qué es un esquema de protocolo? {#what-is-a-protocol-schema}
+
+Fresco, Interviewer y Architect incorporan una función que nos permite comprobar que un archivo de protocolo es correcto comparándolo con un conjunto conocido de reglas, llamado «esquema». Esta función existe para que podamos garantizar que un protocolo creado en Architect funcionará en Interviewer y en Fresco. Cuando se usa un protocolo en Architect o en Interviewer, se valida con un esquema. Los valores, propiedades o estructuras inesperados generan distintos tipos de mensajes de advertencia o de error.
+
+## ¿Por qué necesitamos versiones del esquema de protocolo? {#why-do-we-need-protocol-schema-versions}
+
+Necesitamos asignar «versiones» a los esquemas de protocolo de Network Canvas para poder añadir o cambiar funciones a medida que las desarrollamos. Es necesario, por ejemplo, al desarrollar una nueva interfaz o al cambiar el funcionamiento de una función existente, como la lógica de salto. Si nos limitáramos a modificar un esquema existente, el software no tendría forma de saber qué propiedades y qué configuración esperar, y eso provocaría que fallara.
+
+También adoptamos los esquemas para garantizar la estabilidad y la coherencia del funcionamiento del software. Si un protocolo es válido según su esquema, debería funcionar sin problemas.
+
+Al implementar las versiones del esquema, nuestra prioridad ha sido no suponer una carga para quien usa las aplicaciones, ya sea creando «trabajo de mantenimiento» (por ejemplo, obligando a actualizar a mano los protocolos antiguos) o alterando tu flujo de trabajo (por ejemplo, impidiendo que funcionen los protocolos existentes). Por eso, Fresco e Interviewer siguen ejecutando los protocolos del esquema 8 exactamente como se diseñaron, y migran al esquema 8 los protocolos del esquema 7 procedentes de las aplicaciones Classic sin preguntar. Pasar un protocolo al esquema 9 cambia lo que ve cada participante, así que solo ocurre cuando tú lo eliges en Architect.
+
+## Qué significa para ti {#what-it-means-for-you}
+
+Actualizar Architect, Fresco o Interviewer no impide que tus protocolos actuales sigan funcionando. Cada aplicación te avisa cuando un protocolo se creó para una versión anterior del esquema, y a continuación se describe qué hace con ese protocolo.
+
+### En Architect {#within-architect}
+
+Cuando abres un protocolo del esquema 7 o del esquema 8 en Architect, te pregunta cómo quieres abrirlo. Puedes actualizarlo al esquema 9 o seguir editándolo como esquema 8 en la versión anterior de Architect, que viene incluida. Consulta más abajo [Migrar un protocolo](#migrating-a-protocol) para saber qué hace cada opción.
+
+Los protocolos del esquema 8 que sigues editando aparecen en tu biblioteca de protocolos junto a tus protocolos del esquema 9, marcados con el distintivo **Esquema 8**. Su menú ofrece **Abrir en Architect 8**, para seguir editándolos sin actualizarlos, y **Actualizar al esquema 9**. Architect almacena la versión anterior (Architect 8) en tu dispositivo en segundo plano, así que también puedes usarla sin conexión.
+
+Si quieres seguir editando un protocolo del esquema 7 como esquema 7, mantenlo en **Architect Classic**. Para versiones más antiguas del esquema, consulta la [página de versiones (releases) de Architect en GitHub](https://github.com/complexdatacollective/Architect/releases), donde se conservan las versiones anteriores de Architect Classic, y la [tabla de compatibilidad](#compatibility-table) para saber qué versión necesitas.
+
+### En Fresco e Interviewer {#within-fresco-and-interviewer}
+
+Fresco e Interviewer importan los protocolos del esquema 8 tal como están y realizan sus entrevistas con el motor de entrevistas del esquema 8 que integra cada aplicación, de modo que cada participante ve exactamente lo que el protocolo se diseñó para mostrar. No tienes que hacer nada. Interviewer muestra **Esquema 8 · una versión anterior** en la tarjeta del protocolo, y Fresco muestra el distintivo **Esquema 8** junto al nombre del protocolo en la tabla de protocolos. Las entrevistas de estos protocolos se recopilan, revisan y exportan igual que las de un protocolo del esquema 9. En Interviewer, el estado **Listo para uso sin conexión** abarca todos los protocolos del dispositivo, sea cual sea su versión del esquema.
+
+Un protocolo del esquema 7 se migra automáticamente al esquema 8 al importarlo, y a partir de entonces se ejecuta como esquema 8.
+
+### En Interviewer Classic {#within-interviewer-classic}
+
+En Interviewer Classic, puede que veas un icono de bombilla azul o de robot rojo en la tarjeta de tu protocolo. Cuando un nuevo esquema es compatible con una versión anterior, verás una bombilla azul, e Interviewer seguirá permitiendo instalar y ejecutar protocolos de esa versión sin ningún problema. Esto significa que, si tu archivo de protocolo te sirve tal como está, **no tienes que hacer nada**. Tu protocolo seguirá funcionando como antes, aunque sin acceso a las nuevas funciones que introduce la nueva versión del esquema (consulta más abajo la [tabla de versiones del esquema](/es/get-started/protocol-schema-information#compatibility-table) para ver los detalles).
+
+Si quieres actualizar el archivo de protocolo a la nueva versión del esquema, sigue las instrucciones del apartado [Migrar un protocolo](#migrating-a-protocol), más abajo.
+
+Si tu protocolo ya no es compatible con la versión de Interviewer Classic que tienes instalada, verás un icono de robot rojo y ya no podrás iniciar entrevistas. Consulta más abajo el apartado [Gestionar protocolos obsoletos en Interviewer Classic](#handling-obsolete-protocols-in-interviewer-classic) para obtener más ayuda.
+
+## Gestionar protocolos obsoletos en Interviewer Classic {#handling-obsolete-protocols-in-interviewer-classic}
+
+Aunque siempre intentamos que los cambios del esquema sean compatibles con versiones anteriores, a veces no es posible cuando necesitamos revisar a fondo una función. Si se introduce una nueva versión del esquema que no es compatible con las anteriores, Interviewer Classic marcará el protocolo como «obsoleto» y ya no permitirá iniciar nuevas sesiones de entrevista. Aunque evidentemente no es lo ideal, **todos los datos de las sesiones de entrevista existentes se podrán seguir exportando desde un protocolo en esta situación**. Revisa el apartado siguiente para conocer tus opciones en este caso.
+
+Aunque Architect podrá seguir migrando los protocolos obsoletos a la versión más reciente del esquema, en algunos casos puede que sea necesario intervenir o actualizar algo a mano. Por ejemplo, si añadimos al protocolo propiedades obligatorias que no se pueden deducir de las existentes, puede que tengas que crearlas tú. Ponte en contacto con nosotros si te has encontrado con algún problema o tienes dudas concretas al respecto.
+
+### Qué hacer si tu protocolo aparece como obsoleto {#what-to-do-if-your-protocol-is-marked-as-obsolete}
+
+Si tu protocolo aparece como obsoleto y quieres seguir usándolo para recopilar datos, tienes dos opciones:
+
+1. Migrar el protocolo a una versión posterior que sea compatible con tu versión de Interviewer Classic. Consulta más abajo [Migrar un protocolo](#migrating-a-protocol).
+2. Instalar una versión anterior de Interviewer Classic: desinstala la versión actual y descarga la que necesites desde nuestra [página de versiones en GitHub](https://github.com/complexdatacollective/Interviewer/releases). Como se advierte al principio de este artículo, en iOS y Android no es posible volver a una versión anterior. Si por error has actualizado Interviewer en estas plataformas y tu protocolo ha quedado obsoleto, la única opción es migrar el protocolo a la versión más reciente del esquema y volver a distribuirlo.
+
+## Migrar un protocolo {#migrating-a-protocol}
+
+Si vas a migrar porque estás pasando de las aplicaciones Classic a la generación actual, [Migrar desde las aplicaciones Classic](/es/get-started/migrating-from-classic) explica toda esa transición, incluido qué ocurre con los datos que has recopilado. El funcionamiento de la migración depende de la aplicación que uses:
+
+**En Architect (la aplicación web)**, migrar al esquema 9 es decisión tuya. Cuando abres un protocolo del esquema 7 o del esquema 8, Architect enumera los cambios que introduciría la actualización y ofrece dos opciones:
+
+- **Actualizar al esquema 9** crea una copia actualizada del protocolo y la abre. Tu protocolo original no se modifica. La copia se guarda en la biblioteca del navegador; usa **Descargar** para obtener una copia `.netcanvas` y ejecutarla en Fresco o Interviewer.
+- **Seguir editando en el esquema 8** abre el protocolo, sin actualizarlo al esquema 9, en Architect 8, la versión anterior de Architect, que viene incluida. Si se trata de un protocolo del esquema 7, al hacerlo se migra al esquema 8.
+
+Architect es la única aplicación que migra un protocolo al esquema 9.
+
+**En Fresco e Interviewer**, un protocolo nunca se migra al esquema 9. Un protocolo del esquema 8 sigue siendo del esquema 8, y sus entrevistas se realizan con el motor de entrevistas del esquema 8 que integra la aplicación, exactamente como se diseñó el protocolo. Para usar las funciones del esquema 9, actualiza el protocolo en Architect e importa la copia actualizada. Se trata de un protocolo distinto, así que las entrevistas que ya hayas recopilado se quedan con el original del esquema 8.
+
+Los protocolos del esquema 7 son la única excepción. Fresco e Interviewer los migran automáticamente al esquema 8 al importarlos, y después los ejecutan como esquema 8. Así es como los protocolos creados en las aplicaciones Classic pasan a Fresco e Interviewer: Architect Classic solo crea protocolos del esquema 7, y las versiones anteriores de Fresco e Interviewer los migraban de la misma forma. La migración no modifica el archivo de protocolo que has importado.
+
+**En Architect Classic**, la migración se aplica a archivos que gestionas tú:
+
+1. Asegúrate de tener la versión más reciente de Architect Classic. Al abrir la aplicación con conexión a internet, comprueba automáticamente si hay actualizaciones y te avisa si encuentra alguna. También puedes actualizarla a mano: visita nuestra página de descargas e instala la versión más reciente para tu plataforma.
+2. Cuando tengas la versión más reciente, abre el archivo de protocolo que quieras migrar.
+3. Architect Classic te indicará que el archivo de protocolo se puede actualizar, lo que se hace creando una copia (para conservar tu archivo original). Si decides continuar, te pedirá una ubicación donde guardar el protocolo actualizado.
+
+   ![Architect Classic ofrece crear una copia actualizada de un protocolo](/assets/img/protocol-schema/architect-migrate.png)
+
+4. Architect Classic añadirá automáticamente «(schema version X)» al nombre del archivo, lo que puede ayudarte a llevar el control de las distintas versiones de tu protocolo y a distinguirlas en Interviewer.
+
+## Versión 9 del esquema {#schema-version-9}
+
+La versión 9 es la versión actual y más reciente del esquema de protocolo. Permite escribir un protocolo en más de un idioma, para que cada participante pueda hacer la entrevista en su propio idioma. También permite poner nombres a los atributos en cualquier idioma, con espacios y signos de puntuación, y convierte los atributos cifrados en una función estándar.
+
+- **Architect** 9.0 y posteriores admiten el esquema 9. Cuando abres un protocolo del esquema 7 o del esquema 8, ofrece actualizarlo al esquema 9 o seguir editándolo como esquema 8.
+- **Fresco** 5.0 y posteriores e **Interviewer** 9.0 y posteriores admiten el esquema 9. También siguen ejecutando los protocolos del esquema 8 como esquema 8, y nunca actualizan un protocolo al esquema 9.
+- Las versiones anteriores de **Fresco** (4.x) e **Interviewer** (8.x) solo admiten los esquemas 7 y 8, y no pueden abrir un protocolo del esquema 9.
+- **Architect Classic** e **Interviewer Classic** admiten el esquema 7 y anteriores.
+
+Todos los protocolos nuevos que creas en Architect son del esquema 9, al igual que todas las copias actualizadas. Un protocolo que sigues editando como esquema 8 sigue siendo del esquema 8.
+
+<TipBox danger>
+
+Antes de ejecutar un protocolo del esquema 9, asegúrate de que la aplicación en la que lo vas a ejecutar está actualizada. Si tu equipo gestiona su propio servidor de Fresco, actualízalo antes de subir el protocolo. Si usas Interviewer en varios dispositivos, actualízalo en todos ellos. Una aplicación publicada antes del esquema 9 se niega a abrir un protocolo del esquema 9, así que no podrás iniciar entrevistas con él en esa aplicación.
+
+</TipBox>
+
+### Novedades del esquema 9 {#whats-new-in-schema-9}
+
+- **Nombres de atributos en cualquier idioma.** Los nombres de los atributos ahora pueden usar letras de cualquier idioma, además de espacios y signos de puntuación: `género`, `关系类型` y `contact frequency (per week)` son todos válidos. Un nombre sigue sin poder estar vacío, empezar o terminar con un espacio, ni contener tabulaciones, saltos de línea u otros caracteres de control. Consulta [Qué puede contener un nombre](/es/design-protocols/key-concepts/variables#what-a-name-can-contain).
+- **La misma libertad para los nombres de tipos y los valores de las opciones.** Architect ahora acepta los mismos caracteres en los nombres de los tipos de nodo y de vínculo, y en los valores de las opciones de respuesta de los atributos categóricos y ordinales.
+- **Protocolos en más de un idioma.** Un protocolo ahora indica los idiomas en los que está escrito, y uno de ellos es su idioma predeterminado. Cada texto que ven quienes participan, como los nombres de las etapas, las preguntas, los campos de formulario, las opciones de respuesta y los textos de las etapas «Información», puede tener una traducción en cada uno de esos idiomas, y necesita tenerla al menos en uno. Cuando un texto no tiene traducción en el idioma de la persona participante, esta ve la mejor disponible: el texto en otro de los idiomas que tenga configurados su navegador o, si no, en el idioma predeterminado o, si no, en cualquier idioma en el que exista. Los idiomas no tienen un orden. Consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see).
+- **Solo nombres en el libro de códigos.** Los tipos de nodo, los tipos de vínculo y los atributos solo tienen un nombre, que usan tus datos exportados y que quienes participan nunca ven. Donde quienes participan sí ven un tipo de vínculo, la etapa le asigna una etiqueta propia, que se puede traducir: cada tipo de vínculo que se dibuja en una vista predefinida (una configuración de visualización de la red que defines en una etapa [«Narrativa»](/es/design-protocols/interface-documentation/narrative)) y cada tipo de vínculo que cada participante puede trazar en una etapa [«Compositor de redes»](/es/design-protocols/interface-documentation/network-composer).
+- **Etiquetas para los atributos destacados en las etapas «Narrativa».** Cada atributo destacado en una vista predefinida de una etapa [«Narrativa»](/es/design-protocols/interface-documentation/narrative) tiene su propia etiqueta, que quienes participan ven en el selector de vistas predefinidas y que se puede traducir.
+- **Etiquetas para los campos de las etapas «Compositor de redes».** Cada campo del formulario de una etapa [«Compositor de redes»](/es/design-protocols/interface-documentation/network-composer) necesita una etiqueta, que quienes participan ven y que se puede traducir.
+- **Texto dinámico (piped text).** Las preguntas de las etapas y de los formularios, y otros textos que leen quienes participan, pueden mostrar valores que completa la entrevista: las respuestas de la persona participante, la etiqueta y las respuestas del nodo o vínculo sobre el que trata una pregunta, y la fecha de hoy. Cada valor que puede faltar necesita una versión del texto para cuando falte, en todos los idiomas; ningún idioma está obligado a mostrar un valor que muestre otro idioma. Consulta [Texto dinámico](/es/design-protocols/piped-text).
+- **Nueva interfaz «[Selector de idioma](/es/design-protocols/interface-documentation/language-chooser)».** Una pantalla en la que cada participante elige en cuál de los idiomas del protocolo se muestra el resto de la entrevista.
+- **Las palabras comunes de la entrevista pasan a formar parte de tu protocolo.** El texto que antes cada participante solo veía en los idiomas propios de Network Canvas ahora es texto de tu protocolo, así que puedes reformularlo y traducirlo. El texto propio de un tipo de etapa, como el botón de la etapa «Pantalla de finalización», los avisos de una etapa «Generador de nombres», los mensajes del mapa de una etapa geoespacial, la información emergente de las herramientas del lienzo y las palabras de una etapa «Genealogía familiar», es un ajuste de esa etapa. El texto compartido entre etapas, como «Volver», «Continuar», los mensajes de validación y las palabras relativas a la frase de contraseña, es el texto de entrevista del protocolo. Network Canvas aporta una redacción inicial en los idiomas para los que la tiene. Se han eliminado algunas palabras predeterminadas que se repetían o no aportaban nada, como los encabezados que repetían lo que ya decía la pantalla en la que aparecían. Consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+- **Nueva interfaz «[Pantalla de finalización](/es/design-protocols/interface-documentation/finish-screen)».** La pantalla que cierra la entrevista es ahora una etapa al final de cada protocolo, con un texto de cierre y un texto de entrevista finalizada que escribes tú y que puedes traducir. O bien cada participante confirma que ha terminado, o bien la entrevista finaliza en cuanto la persona participante llega a esa pantalla. Esta etapa también registra cómo terminó la entrevista (completada, no elegible o finalizada antes de tiempo). Un protocolo puede terminar con varias etapas «Pantalla de finalización», por ejemplo, un final distinto para quienes no cumplen los requisitos, y no puede tener ningún otro tipo de etapa después de ellas.
+- **Las instrucciones van en etapas «Información».** Las interfaces «Formulario por álter» (un formulario para cada álter, es decir, cada persona a la que se nombra durante la entrevista), «Formulario de vínculos por álter» (un formulario para cada vínculo entre dos álteres), «Censo de díadas» y «Censo de fuerza de vínculos» ya no tienen panel de introducción. Para explicar a quienes participan una de estas tareas, coloca una etapa [«Información»](/es/design-protocols/interface-documentation/information) justo antes. La etapa «Formulario del ego» conserva su panel de introducción, que se muestra encima de sus preguntas.
+- **Cómo terminó la entrevista, en los datos exportados.** Cada entrevista exportada registra su resultado, tomado de la etapa «Pantalla de finalización» en la que terminó. Consulta [Cómo terminó la entrevista](/es/analyze-data/data-export#how-the-interview-ended).
+- **Los atributos cifrados ya no son experimentales.** La [interfaz de anonimización](/es/design-protocols/interface-documentation/anonymisation) siempre está disponible al añadir una etapa en Architect, y un atributo que marcas como cifrado en una etapa de anonimización siempre se cifra durante las entrevistas. Los protocolos conservan su ajuste `experiments`, que permite lanzar funciones nuevas dentro de una versión del esquema, pero los atributos cifrados ya no son uno de sus experimentos. El esquema 9 todavía no tiene experimentos que activar, así que Architect ya no tiene la página «Funciones experimentales».
+
+En el archivo de protocolo, cada traducción se almacena como un mensaje [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/), por lo que las llaves y algunos apóstrofos se escapan. Nunca ves estos caracteres de escape: Architect muestra y guarda tu texto exactamente como lo escribes, y quienes participan lo ven igual. Si editas un archivo de protocolo a mano, cada traducción debe ser texto sin formato escrito con esta sintaxis. Un marcador de posición como `{name}` solo se permite en dos lugares: en el texto que puede mostrar [valores dinámicos](/es/design-protocols/piped-text), para un valor indicado en el `dynamicValues` de la etapa, y en las [palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies), que deben conservar los marcadores de posición que requiere cada texto.
+
+Junto con el esquema 9, Architect rechaza los nombres y los valores de opciones que harían que dos variables compartieran la misma columna en tus datos exportados. Consulta [Nombres que coincidirían en los datos exportados](/es/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data).
+
+Migrar un protocolo del esquema 8 al esquema 9 conserva todo su contenido, y los nombres de los atributos existentes se mantienen exactamente igual. Además, la migración:
+
+- registra como inglés (el código de idioma `en`) todo el texto que ven quienes participan, porque los protocolos antiguos no registran en qué idioma están escritos. Este idioma pasa a ser el único del protocolo y su idioma predeterminado. Si el protocolo está escrito en otro idioma, ábrelo en Architect para indicar cuál es realmente (consulta [Cambiar el idioma en el que está registrado tu texto](/es/design-protocols/translating-your-protocol#changing-the-language-your-text-is-recorded-as)).
+- asigna una etiqueta a cada tipo de vínculo que se dibuja en una vista predefinida de una etapa «Narrativa» y a cada tipo de vínculo que quienes participan pueden trazar en una etapa «Compositor de redes»; inicialmente, la etiqueta es el nombre del tipo de vínculo.
+- asigna una etiqueta a cada atributo destacado en una vista predefinida de una etapa «Narrativa»; inicialmente, la etiqueta es el nombre del atributo.
+- asigna una etiqueta a cada campo sin etiqueta de una etapa «Compositor de redes»; inicialmente, la etiqueta es el nombre del atributo.
+- da al protocolo la redacción de las etapas y el texto de entrevista que necesita, que empiezan siendo la redacción que la entrevista ha mostrado siempre, registrada como inglés (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+- añade al final una etapa [«Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen), porque todo protocolo del esquema 9 debe terminar con una. La pantalla que cierra la entrevista es ahora una etapa «Pantalla de finalización» al final de tu protocolo, así que puedes cambiar su texto de cierre y su texto de entrevista finalizada y traducirlos como el resto del protocolo. Cada participante confirma que ha terminado, como siempre. Su texto de cierre es inicialmente el texto que la entrevista ha mostrado siempre en ese lugar, y su texto de entrevista finalizada, «Interview Finished» y «Thank you for participating!», ambos registrados como inglés. Su resultado es **Completada**. El ID de la etapa es `finish`, o `finish-2` y así sucesivamente si otra etapa ya tiene ese ID.
+- traslada el panel de introducción de cada etapa «Formulario por álter», «Formulario de vínculos por álter», «Censo de díadas» o «Censo de fuerza de vínculos» a una etapa [«Información»](/es/design-protocols/interface-documentation/information) situada justo antes de la etapa de origen, con el título y el texto del panel. La nueva etapa tiene la misma lógica de salto, de modo que se omite siempre que se omite la etapa de origen, y la lógica de salto que tenía esa etapa como destino ahora lleva a la nueva etapa «Información». Una etapa «Formulario del ego» conserva su panel de introducción.
+- traslada el título de cada etapa de anonimización al principio de su explicación, como encabezado, para que la etapa tenga un solo texto que editar y traducir. Quienes participan ven la misma pantalla que antes.
+
+La migración elimina el experimento **Encrypted Attributes** del ajuste `experiments` del protocolo, porque los atributos cifrados ya no lo necesitan. Lo que ocurre con los atributos marcados como cifrados depende de si estaba activado:
+
+- Si el experimento **Encrypted Attributes** estaba activado, los atributos marcados como cifrados siguen marcados, y las respuestas se cifran durante las entrevistas. Las entrevistas ya recopiladas con el protocolo del esquema 8 siguen asociadas a él y conservan las respuestas que protegió la versión experimental. Consulta [Respuestas protegidas por la versión experimental](/es/design-protocols/interface-documentation/anonymisation#answers-protected-by-the-experimental-version).
+- Si el experimento estaba desactivado, cualquier atributo marcado como cifrado deja de estarlo, de modo que se sigue recopilando sin cifrar, como antes. Para cifrarlo, vuelve a marcarlo en una etapa de anonimización.
+
+## Versión 8 del esquema {#schema-version-8}
+
+La compatibilidad con el esquema 8 depende de las aplicaciones que uses:
+
+- **Architect**, **Fresco** e **Interviewer** admiten el esquema 8. En las versiones actuales, Architect puede seguir editando un protocolo del esquema 8 como esquema 8 o actualizarlo al esquema 9, y Fresco e Interviewer lo ejecutan como esquema 8.
+- **Architect Classic** e **Interviewer Classic** admiten el esquema 7 y anteriores.
+
+Esto tiene dos consecuencias prácticas:
+
+1. Architect Classic no puede crear ni abrir protocolos del esquema 8, ni migrar protocolos al esquema 8. Usa **Architect** en su lugar.
+2. Un protocolo del esquema 8 solo se puede ejecutar en **Fresco** o en **Interviewer**. Las aplicaciones **Interviewer Classic** para ordenador y tableta, más antiguas, no pueden ejecutar protocolos del esquema 8 y los marcarán como incompatibles o no admitidos.
+
+Tanto Fresco como Interviewer aceptan protocolos de los esquemas 7 y 8, así que tus protocolos actuales siguen funcionando sin necesidad de migrarlos a mano. Un protocolo del esquema 8 se ejecuta como esquema 8. Un protocolo del esquema 7 se migra automáticamente al esquema 8 al importarlo y se ejecuta como esquema 8, de modo que los protocolos creados en las aplicaciones Classic funcionan sin tener que abrirlos antes en Architect.
+
+<TipBox danger>
+
+Si abres un protocolo del esquema 8 en Architect Classic, o intentas instalarlo en **Interviewer Classic**, aparecerá como incompatible o no admitido. Si necesitas seguir trabajando con las aplicaciones de escritorio antiguas, mantén tus protocolos en el esquema 7, o bien pasa a **Architect** e **Interviewer**, que admiten el esquema 8.
+
+</TipBox>
+
+### Novedades del esquema 8 {#whats-new-in-schema-8}
+
+La versión 8 del esquema introduce varias interfaces y funciones de diseño nuevas:
+
+- **Nueva interfaz geoespacial.** Permite a cada participante seleccionar una ubicación en un mapa definido por un archivo GeoJSON.
+- **Nueva interfaz experimental de anonimización.** Permite a cada participante cifrar información sensible o identificativa para que quien investiga no pueda leerla. En el esquema 8 hay que activarla en cada protocolo mediante un ajuste de experimento. En el esquema 9 [deja de ser experimental](#whats-new-in-schema-9). Las respuestas protegidas por la versión experimental siguen siendo legibles en sus entrevistas, que se quedan con el protocolo del esquema 8 cuando lo actualizas.
+- **Nueva interfaz «Censo de díadas de uno a muchos».** Permite a cada participante vincular varios álteres a la vez.
+- **Nueva interfaz «Genealogía familiar».** Una interfaz para construir genealogías, diseñada para el seguimiento de enfermedades genéticas, con tipos de nodo y de vínculo configurables, atributos de parentesco y preguntas opcionales para señalar enfermedades o afecciones.
+- **Nueva interfaz «[Compositor de redes](/es/design-protocols/interface-documentation/network-composer)».** Un constructor de redes de formato libre, en una sola pantalla, para crear álteres, trazar vínculos de varios tipos y registrar datos de atributos, pensado para que lo maneje quien investiga o la persona entrevistadora.
+- **Nueva interfaz «[Genealogía narrativa](/es/design-protocols/interface-documentation/narrative-pedigree)».** Muestra, con la notación genealógica estándar, una genealogía familiar construida en una etapa «Genealogía familiar», y superpone información sobre la herencia de una o varias afecciones.
+- **Nuevas opciones de validación de campos de formulario:** `greaterThanVariable` y `lessThanVariable`.
+- **Nuevo tipo de variable `location`.** Almacena el área geográfica que selecciona cada participante en la interfaz geoespacial; no tiene un control de entrada propio y se crea al configurar una etapa geoespacial.
+- **Nuevo indicador `encrypted` por variable.** Marca los valores de una variable para cifrarlos en el dispositivo; se establece en la interfaz de anonimización, no en el editor general de atributos.
+- **Nuevas opciones de comparación para la lógica de salto y los filtros:** «contiene» y «no contiene».
+- **Destinos específicos para la lógica de salto.** Cuando se oculta una etapa, la entrevista puede continuar en la siguiente etapa disponible, saltar a una etapa posterior seleccionada o dirigirse a la etapa [«Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen) que cierra la entrevista. Los destinos deben apuntar hacia delante.
+- **Selección múltiple** en los comparadores «incluye» y «excluye» de los atributos ordinales y categóricos.
+- **Forma predeterminada configurable y formas de nodo determinadas por un atributo.** Elige círculo, cuadrado o rombo como forma predeterminada de un tipo de nodo, o [asigna su forma a partir de un atributo del nodo](/es/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape). La antigua propiedad `iconVariant` pasa a llamarse `icon`.
+- **Propiedad opcional «hint» (indicación) en los campos de formulario** (una cadena en Markdown que se muestra a cada participante como orientación adicional), además de la opción `showValidationHints` para mostrar automáticamente indicaciones derivadas de las reglas de validación.
+- **Nuevo campo `experiments` de nivel superior en los protocolos.** Un objeto JSON (por defecto, `{}`) que contiene los interruptores de experimentos y funciones del protocolo que utiliza el motor de la entrevista, lo que permite introducir comportamientos de la entrevista que hay que activar expresamente sin más cambios en el esquema. El esquema 9 conserva este campo, pero los atributos cifrados ya no son uno de sus experimentos.
+- **Limpieza general:** se han eliminado la propiedad obsoleta y sin uso `displayVariable` y la propiedad sin uso `options` de las variables booleanas de tipo «Interruptor»; se ha normalizado la nomenclatura de las entidades en las reglas de filtrado; y ahora el protocolo debe tener la propiedad `name`.
+
+<TipBox>
+
+Los destinos específicos para la lógica de salto son una ampliación del esquema 8 sin cambio de versión y una de las funciones con las que se lanzó **Fresco 4.0**. Usa los protocolos que contengan un `destination` solo con Fresco 4.0 o posterior, o con las versiones correspondientes de Architect e Interviewer. Los validadores estrictos más antiguos del esquema 8 rechazarán la nueva propiedad; los protocolos del esquema 8 sin destino siguen siendo compatibles.
+
+</TipBox>
+
+## Tabla de compatibilidad {#compatibility-table}
+
+La tabla siguiente muestra de un vistazo las generaciones actual y anterior de las aplicaciones de Network Canvas, y qué versiones del esquema de protocolo admite cada una.
+
+<AppCompatibilityTable></AppCompatibilityTable>
+
+Para ver el historial completo, consulta la tabla siguiente, que indica qué versiones del esquema admite cada versión publicada del software de Network Canvas. Ten en cuenta que los esquemas 8 y 9 ya no están ligados a números de versión concretos de Architect Classic o Interviewer Classic: los admiten las aplicaciones web Architect y Fresco, además de Interviewer.
+
+| Versión del esquema | Funciones                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Versiones de Architect            | Versiones de Interviewer      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | ----------------------------- |
+| 9                   | Nombres de atributos en cualquier idioma, con espacios y signos de puntuación. Protocolos en más de un idioma, con un idioma predeterminado y traducciones del texto que ven quienes participan. Nueva interfaz «Selector de idioma». Etiquetas traducibles para los tipos de vínculo que ven quienes participan. Una interfaz «Genealogía familiar» rediseñada, de la que la interfaz «Genealogía narrativa» toma sus datos. Publicación definitiva de los atributos cifrados. | Architect 9.0+                    | Fresco 5.0+, Interviewer 9.0+ |
+| 8                   | Nuevas interfaces geoespacial, de anonimización (experimental), «Censo de díadas de uno a muchos», «Genealogía familiar», «Compositor de redes» y «Genealogía narrativa». Nuevas validaciones `greaterThanVariable`/`lessThanVariable`, comparadores «contiene»/«no contiene» y destinos específicos para la lógica de salto. Forma predeterminada configurable para los nodos y formas determinadas por un atributo, e indicaciones en los campos de formulario.               | Architect                         | Fresco 4.0+, Interviewer      |
+| 7                   | Número mínimo y máximo de álteres en los generadores de nombres. Opciones adicionales de lógica de salto para atributos categóricos.                                                                                                                                                                                                                                                                                                                                            | 6.4.0                             | \> 6.3.0                      |
+| 6                   | Nueva interfaz «Generador de nombres a partir de una lista». Disposición automática de los nodos en el sociograma.                                                                                                                                                                                                                                                                                                                                                              | 6.3.0, 6.3.1                      | \> 6.2.0                      |
+| 5                   | Admite la interfaz «Censo de fuerza de vínculos». Añade las opciones de validación «único», «igual que» y «distinto de». Añade la sección del guion de la entrevista.                                                                                                                                                                                                                                                                                                           | 6.1.0, 6.1.1, 6.2.0, 6.2.1, 6.2.2 | \> 6.1.0                      |
+| 4                   | Primer esquema estable. Introduce requisitos más estrictos para los nombres de los atributos.                                                                                                                                                                                                                                                                                                                                                                                   | 6.0.0, 6.0.1, 6.0.2, 6.0.3        | \> 6.0.0                      |
+| 1.0.0               | Esquema alfa obsoleto.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |                                   |                               |
+
+## Implementación técnica de la migración del esquema {#technical-implementation-of-schema-migration}
+
+El siguiente apartado puede serte útil si quieres entender cómo se realiza la migración del esquema a nivel técnico. En casos excepcionales, puede ayudarte a resolver por tu cuenta algún problema con un protocolo migrado, si así lo deseas.
+
+- Una migración entre dos versiones consecutivas del esquema es una transformación funcional del objeto del protocolo. Estas transformaciones se escriben como funciones sencillas que reciben un objeto de protocolo, lo modifican y devuelven el protocolo modificado. Las funciones de migración están definidas en el [paquete protocol-validation](https://github.com/complexdatacollective/network-canvas-monorepo/tree/main/packages/protocol-validation/src/migration) del monorrepositorio.
+- Las transformaciones se pueden encadenar, de modo que un protocolo se puede migrar de la versión 1 a la versión n aplicando en secuencia todas las transformaciones intermedias \[1 … n].
+- Tenemos previsto un sistema paralelo de «parches», que usará la misma técnica que la migración pero está pensado para corregir problemas de corrupción de datos causados por errores de Architect. Los parches están pensados para corregir problemas de los protocolos sin actualizar la versión del esquema.

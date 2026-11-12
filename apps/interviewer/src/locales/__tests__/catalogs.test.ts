@@ -20,6 +20,7 @@ import { createAppIntl } from '@codaco/app-i18n/messages';
 
 import { interviewerProductionLocales } from '../../i18n/locales';
 import { buildDeleteProtocolMessage } from '../../routes/deleteProtocolMessage';
+import ar from '../ar.json';
 import {
   interviewerCatalogLoaders,
   interviewerCatalogSource,
@@ -47,6 +48,7 @@ const nlSources = readTranslationSources(localesDir, 'nl');
 const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
 const italianSources = readTranslationSources(localesDir, 'it');
 const frSources = readTranslationSources(localesDir, 'fr');
+const arSources = readTranslationSources(localesDir, 'ar');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the complete administration catalog', () => {
@@ -88,6 +90,10 @@ describe('the complete administration catalog', () => {
   it('ships full French with valid ICU and identical placeholder semantics', () => {
     expect(checkFullLocale(source, fr, frSources)).toEqual([]);
   });
+
+  it('ships full Arabic with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, ar, arSources)).toEqual([]);
+  });
   it('loads each committed catalog through its own locale loader', async () => {
     expect(
       await checkCatalogLoaders(localesDir, interviewerCatalogLoaders),
@@ -125,6 +131,7 @@ describe('the complete administration catalog', () => {
       'pt-BR',
       'it',
       'fr',
+      'ar',
     ]);
     for (const entry of interviewerProductionLocales)
       expect(

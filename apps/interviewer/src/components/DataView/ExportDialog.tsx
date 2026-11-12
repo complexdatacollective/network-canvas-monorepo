@@ -27,12 +27,14 @@ const messages = defineMessages({
   errorDetailsCopiedToClipboard: {
     id: 'interviewer.exportDialog.errorDetailsCopiedToClipboard',
     defaultMessage: 'Error details copied to clipboard.',
-    description: 'User-facing message in Interviewer Export Dialog.',
+    description:
+      'Status line in the export-failed dialog footer, confirming the technical error details were copied to the clipboard.',
   },
   errorDetailsCouldNotBeCopied: {
     id: 'interviewer.exportDialog.errorDetailsCouldNotBeCopied',
     defaultMessage: 'Error details could not be copied.',
-    description: 'User-facing message in Interviewer Export Dialog.',
+    description:
+      'Status line in the export-failed dialog footer, shown when copying the technical error details to the clipboard did not work.',
   },
   copied: {
     id: 'interviewer.exportDialog.copied',
@@ -49,18 +51,21 @@ const messages = defineMessages({
   exportProgress: {
     id: 'interviewer.exportDialog.exportProgress',
     defaultMessage: 'Export progress',
-    description: 'The label label in Interviewer Export Dialog.',
+    description:
+      'Accessible name of the progress bar in the export dialog, read only by screen readers. Export is a noun.',
   },
   exportFailed: {
     id: 'interviewer.exportDialog.exportFailed',
     defaultMessage: 'Export failed',
-    description: 'User-facing message in Interviewer Export Dialog.',
+    description:
+      'Title of the dialog shown when building the interview export archive failed. Also announced to screen readers.',
   },
   yourInterviewDataIsUnchangedAndStored: {
     id: 'interviewer.exportDialog.yourInterviewDataIsUnchangedAndStored',
     defaultMessage:
       'Your interview data is unchanged and stored on this device. If this keeps happening, post the copied error details on the <link>community forum</link>, or email <link1>info@networkcanvas.com</link1> with this information.',
-    description: 'Visible copy in Interviewer Export Dialog.',
+    description:
+      'Paragraph in the export-failed dialog: reassures that data is safe and tells the researcher where to get help. link wraps the forum link text and link1 wraps the email address.',
   },
   archiveReady: {
     id: 'interviewer.exportDialog.archiveReady',
@@ -72,19 +77,22 @@ const messages = defineMessages({
     id: 'interviewer.exportDialog.saveDescription',
     defaultMessage:
       'Choose where to save the archive. Interviews are marked as exported once the file is saved.',
-    description: 'Administration text in Interviewer ExportDialog.',
+    description:
+      'Explanation in the export dialog once the archive is built, on devices where the file is saved through a Save As prompt. The primary button saves the file.',
   },
   shareDescription: {
     id: 'interviewer.exportDialog.shareDescription',
     defaultMessage:
       'Share the archive to save or send it. Interviews are marked as exported once sharing completes.',
-    description: 'Administration text in Interviewer ExportDialog.',
+    description:
+      'Explanation in the export dialog once the archive is built, on devices that use the system share sheet. The primary button opens sharing.',
   },
   downloadDescription: {
     id: 'interviewer.exportDialog.downloadDescription',
     defaultMessage:
       'Download the archive. Interviews are marked as exported once the download starts.',
-    description: 'Administration text in Interviewer ExportDialog.',
+    description:
+      'Explanation in the export dialog once the archive is built, on browsers that download the file. The primary button starts the download.',
   },
   saveAction: {
     id: 'interviewer.exportDialog.saveAction',
@@ -108,30 +116,35 @@ const messages = defineMessages({
     id: 'interviewer.exportDialog.exporting',
     defaultMessage:
       '{count, plural, one {Exporting # interview} other {Exporting # interviews}}',
-    description: 'Administration text in Interviewer ExportDialog.',
+    description:
+      'Title of the export dialog while the archive is being built. count is the number of interviews being exported.',
   },
   filesProgress: {
     id: 'interviewer.exportDialog.filesProgress',
     defaultMessage: '{current, number} of {total, number} files',
-    description: 'Administration text in Interviewer ExportDialog.',
+    description:
+      'Small progress line under the progress bar in the export dialog. current is the number of files processed so far and total is the number of files to process.',
   },
   contains: {
     id: 'interviewer.exportDialog.contains',
     defaultMessage:
       '{count, plural, one {Contains # interview.} other {Contains # interviews.}}',
-    description: 'Administration text in Interviewer ExportDialog.',
+    description:
+      'Line under the archive file name in the export dialog once it is built. count is the number of interviews inside the archive.',
   },
   incomplete: {
     id: 'interviewer.exportDialog.incomplete',
     defaultMessage:
       '{count, plural, one {# interview could not be exported completely and may be missing from this archive.} other {# interviews could not be exported completely and may be missing from this archive.}}',
-    description: 'Administration text in Interviewer ExportDialog.',
+    description:
+      'Warning in the export dialog when some interviews could not be fully exported. count is the number of such interviews.',
   },
   failedDescription: {
     id: 'interviewer.exportDialog.failedDescription',
     defaultMessage:
       'The interview archive could not be created. Your saved interview data is unchanged. Copy the error details below if you need support.',
-    description: 'Administration text in Interviewer ExportDialog.',
+    description:
+      'Subtitle of the export-failed dialog: the archive was not created, saved data is unchanged, and the error details below can be copied for support.',
   },
 });
 

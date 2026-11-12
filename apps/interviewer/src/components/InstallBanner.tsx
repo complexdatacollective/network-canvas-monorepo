@@ -18,31 +18,36 @@ const messages = defineMessages({
   installInterviewer: {
     id: 'interviewer.installBanner.installInterviewer',
     defaultMessage: 'Install Interviewer',
-    description: 'The aria-label label in Interviewer Install Banner.',
+    description:
+      'Accessible name of the banner on the home screen that urges installing the app to protect collected data, read only by screen readers.',
   },
   chromiumPrompt: {
     id: 'interviewer.installBanner.chromiumPrompt',
     defaultMessage:
       '{browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Install Interviewer now, before collecting data, to protect your interview data from being deleted.',
-    description: 'Administration text in Interviewer InstallBanner.',
+    description:
+      'Install banner text on the home screen for Chromium browsers when an install button is offered. browserName is the browser name. Warns that data in a browser tab is not guaranteed and urges installing before collecting data.',
   },
   chromiumManual: {
     id: 'interviewer.installBanner.chromiumManual',
     defaultMessage:
       "{browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Before collecting data, use the install icon in the browser's address bar to install Interviewer and protect your interview data from being deleted.",
-    description: 'Administration text in Interviewer InstallBanner.',
+    description:
+      'Install banner text on the home screen for Chromium browsers with no install button; directs the researcher to the install icon in the address bar. browserName is the browser name.',
   },
   storagePressure: {
     id: 'interviewer.installBanner.storagePressure',
     defaultMessage:
       '{browserName} may remove Network Canvas data when this device runs low on storage. Before collecting data, allow persistent storage when {browserName} asks and install Interviewer if your device supports it to protect your interview data from being deleted.',
-    description: 'Administration text in Interviewer InstallBanner.',
+    description:
+      'Install banner text on the home screen for browsers that may remove data when the device is low on storage. browserName is the browser name. Urges allowing persistent storage and installing.',
   },
   webKit: {
     id: 'interviewer.installBanner.webKit',
     defaultMessage:
       '{usesWebKit, select, true {{browserName} uses WebKit, which is known to remove Network Canvas data after 7 days of inactivity.} other {{browserName} is known to remove Network Canvas data after 7 days of inactivity.}} Install Interviewer now, before collecting data, to protect your interview data from being deleted: {target, select, dock {choose Share → Add to Dock.} other {choose Share → Add to Home Screen.}}',
-    description: 'Administration text in Interviewer InstallBanner.',
+    description:
+      'Install banner text on the home screen for browsers that delete site data after 7 days of inactivity. browserName is the browser name; usesWebKit selects wording about the WebKit engine; target selects Add to Dock (Mac) or Add to Home Screen. Share and the menu items are browser UI names.',
   },
 });
 

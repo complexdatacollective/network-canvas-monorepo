@@ -1,0 +1,99 @@
+---
+title: Network Canvas
+navOrder: 0
+toc: true
+translatedFrom: 231ee503a8768c9383b59c5eaabae98a3037179c
+---
+
+Network Canvas es un conjunto de herramientas gratuitas y de código abierto para
+encuestas sobre redes, diseñado en torno a las necesidades tanto de quienes
+investigan como de quienes participan. Ofrecemos un flujo de trabajo integral
+para la investigación de redes, con aplicaciones para diseñar encuestas y para
+realizar entrevistas. Con estas herramientas, quienes investigan pueden diseñar,
+recopilar y exportar datos de red con facilidad.
+
+## El flujo de trabajo de investigación {#the-research-workflow}
+
+Todos los estudios de Network Canvas tienen la misma estructura: diseñas un
+protocolo que describe tu entrevista, recopilas datos aplicando ese protocolo
+con participantes y analizas los datos recopilados. La documentación se
+organiza en torno a estas tres fases:
+
+- **[Diseñar protocolos](/es/design-protocols)**: decide qué preguntará tu
+  entrevista y cómo, y plasma esas decisiones en un archivo de protocolo.
+  Architect es la herramienta para crear, previsualizar y perfeccionar
+  protocolos.
+- **[Recopilar datos](/es/collect-data)**: aplica tu protocolo en entrevistas
+  con participantes. Interviewer realiza las entrevistas en un dispositivo que
+  tú controlas, mientras que Fresco publica tu protocolo en la web para que
+  cada participante lo complete a distancia.
+- **[Analizar datos](/es/analyze-data)**: exporta los datos de red que has
+  recopilado a formatos estándar como CSV y GraphML, listos para R, Python o
+  cualquier otro paquete de análisis de redes.
+
+Si todavía estás dando forma a tu estudio, empieza por
+[Planificar un estudio](/es/get-started/planning-a-study/workflows), donde se
+repasan las decisiones que conviene tomar antes de empezar.
+
+## Las aplicaciones {#the-applications}
+
+Cada fase del flujo de trabajo cuenta con una o varias aplicaciones:
+
+|                     | Dónde se ejecuta                            | Acceso                                                           | Paso del flujo de trabajo |
+| ------------------- | ------------------------------------------- | ---------------------------------------------------------------- | ------------------------- |
+| Architect           | Navegador, PWA                              | [Abrir en el navegador](https://architect.networkcanvas.com)     | Crear el protocolo        |
+| Architect Classic   | Windows, macOS, Linux                       | [Descargar](/es/design-protocols/installing-architect-classic)   | Crear el protocolo        |
+| Interviewer         | Navegador, PWA                              | [Abrir en el navegador](https://interviewer.networkcanvas.com)   | Realizar entrevistas      |
+| Interviewer Classic | Ordenador y tableta                         | [Descargar](/es/collect-data/interviewer/installing-interviewer) | Realizar entrevistas      |
+| Fresco              | Navegador (instancia de alojamiento propio) | [Implementar una instancia](/es/collect-data/fresco/guide)       | Realizar entrevistas      |
+
+_**PWA** (aplicación web progresiva): Architect e Interviewer funcionan en
+cualquier navegador web moderno sin necesidad de instalar nada y, si quieres,
+puedes instalarlos en un dispositivo que controles para acceder a ellos
+rápidamente y usarlos sin conexión._
+
+<TipBox>
+
+No todas las aplicaciones son compatibles con todos los protocolos. La versión del esquema de
+un protocolo, que depende de la herramienta con la que se creó, determina qué
+aplicaciones pueden abrirlo, así que ten en cuenta la compatibilidad al elegir
+tus herramientas. Las versiones actuales de Architect, Fresco e Interviewer
+abren protocolos creados para versiones anteriores del esquema, pero las
+aplicaciones Classic no pueden abrir protocolos creados para versiones
+posteriores. Consulta
+[Información sobre el esquema de protocolo](/es/get-started/protocol-schema-information)
+para ver una explicación completa de las versiones del esquema, la
+compatibilidad entre aplicaciones y la migración automática.
+
+</TipBox>
+
+Te animamos a usar la función de búsqueda de la parte superior de cada página
+para encontrar artículos sobre cualquier tema. Nuestras páginas están muy
+enlazadas entre sí, y la información se reparte necesariamente entre varias
+de ellas.
+
+## En esta sección {#in-this-section}
+
+Esta sección, **Primeros pasos**, reúne el material de referencia complementario que se aplica a todas las herramientas. Encontrarás estos apartados en la barra
+lateral de la izquierda:
+
+- **Planificar un estudio**: cómo plantear tu estudio antes de empezar, con un
+  [resumen visual de los flujos de trabajo](/es/get-started/planning-a-study/workflows),
+  consejos para [realizar un estudio piloto](/es/get-started/planning-a-study/piloting-your-study)
+  y orientación sobre el Reglamento General de Protección de Datos (RGPD) y los comités de ética (IRB).
+- **[Migrar desde las aplicaciones Classic](/es/get-started/migrating-from-classic)**:
+  cómo trasladar un estudio existente de Architect Classic e Interviewer
+  Classic a las aplicaciones actuales, que funcionan en el navegador.
+- **[Información sobre el esquema de protocolo](/es/get-started/protocol-schema-information)**:
+  cómo funcionan las versiones del esquema de protocolo, qué aplicaciones
+  admiten cada versión y cómo se produce la migración.
+- **[Glosario](/es/get-started/glossary)**: definiciones en lenguaje sencillo
+  de los términos que se usan en esta documentación, cada una con un enlace a
+  una explicación más completa.
+- **Información del proyecto**: detalles sobre los orígenes del proyecto en el
+  [resumen del proyecto](/es/get-started/project-information/project-overview),
+  e información sobre cómo citar el software y colaborar con nosotros.
+
+El material de referencia para _diseñar_ protocolos (**Conceptos clave** y
+**Documentación de las interfaces**) se encuentra en la sección
+[Diseñar protocolos](/es/design-protocols).
