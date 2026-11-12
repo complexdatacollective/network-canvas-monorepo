@@ -184,7 +184,7 @@ describe('localized home sections', () => {
       screen.getByRole('button', { name: 'Unirse a la lista' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: 'Manténgase en contacto' }),
+      screen.getByRole('heading', { name: 'Mantente en contacto' }),
     ).toBeInTheDocument();
     for (const [name, href] of [
       ['Visitar el sitio de documentación', externalLinks.documentation],

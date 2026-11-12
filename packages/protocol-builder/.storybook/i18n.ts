@@ -24,7 +24,7 @@ import { protocolBuilderCatalogLoaders } from '../src/locales/catalogs.ts';
  * globals (`appLocale`, `appDirection`), their storage keys and their
  * stand-down under automation are therefore shared, so a reviewer moving
  * between the two Storybooks operates one control, and the direction axis
- * — which no locale here exercises yet — arrives for free.
+ * — which Arabic exercises — arrives for free.
  *
  * Catalogs merge in host order — `common.*`, then `frescoUi.*`, then this
  * package's own — which is the order Architect and Studio use, so a shared
