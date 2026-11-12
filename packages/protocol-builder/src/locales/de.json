@@ -1285,7 +1285,7 @@
   "protocolBuilder.pedigree.kindLabel": "Art der Beziehung",
   "protocolBuilder.pedigree.nameCreateLabel": "Neues Attribut für den Namen erstellen",
   "protocolBuilder.pedigree.nameHint": "Der Name jeder Person, den die teilnehmende Person im Seitenpanel eingibt. Ein Name kann leer bleiben: Wenn die teilnehmende Person diesen Abschnitt verlässt, erhält jede Person ohne Namen eine Bezeichnung aus ihrer Beziehung zur teilnehmenden Person, etwa „Tante mütterlicherseits“ oder „Schwester (Partnerin von Tom)“. Die teilnehmende Person wird nicht nach ihrem eigenen Namen gefragt und als „Sie“ angezeigt. Die Validierungsregeln des Attributs gelten für die Namen, die die teilnehmende Person eingibt.",
-  "protocolBuilder.pedigree.nameHintTextHint": "Wird unter dem Namensfeld angezeigt, zum Beispiel um zu sagen, dass ein Spitzname genügt. Leer lassen, um nichts anzuzeigen.",
+  "protocolBuilder.pedigree.nameHintTextHint": "Wird unter dem Namensfeld angezeigt, zum Beispiel um zu sagen, dass ein Spitzname genügt. Der Text beginnt mit einem von Network Canvas bereitgestellten Wortlaut, den Sie ändern können.",
   "protocolBuilder.pedigree.nameHintTextLabel": "Hinweis zur Namensfrage",
   "protocolBuilder.pedigree.nameLabel": "Name",
   "protocolBuilder.pedigree.namePromptHint": "Wird über dem Feld angezeigt, in das Teilnehmende den Namen eines Familienmitglieds eingeben. Der Text beginnt mit einem von Network Canvas bereitgestellten Wortlaut, den Sie ändern können.",

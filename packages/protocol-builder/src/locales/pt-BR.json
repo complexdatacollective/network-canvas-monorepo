@@ -1285,7 +1285,7 @@
   "protocolBuilder.pedigree.kindLabel": "Tipo de relação",
   "protocolBuilder.pedigree.nameCreateLabel": "Criar novo atributo de nome",
   "protocolBuilder.pedigree.nameHint": "O nome de cada pessoa, digitado pela pessoa participante no painel lateral. Um nome pode ficar em branco: quando a pessoa participante sai desta etapa, cada pessoa sem nome recebe um rótulo baseado na relação com a pessoa participante, como “Tia materna” ou “Irmã (parceira de Tom)”. A pessoa participante não precisa informar o próprio nome e aparece como “Você”. As regras de validação do atributo se aplicam aos nomes que a pessoa participante digita.",
-  "protocolBuilder.pedigree.nameHintTextHint": "Mostrada abaixo do campo do nome, por exemplo para dizer que um apelido serve. Deixe vazia para não mostrar nada.",
+  "protocolBuilder.pedigree.nameHintTextHint": "Mostrada abaixo do campo do nome, por exemplo para dizer que um apelido serve. Começa com um texto fornecido pelo Network Canvas, que você pode alterar.",
   "protocolBuilder.pedigree.nameHintTextLabel": "Orientação da pergunta do nome",
   "protocolBuilder.pedigree.nameLabel": "Nome",
   "protocolBuilder.pedigree.namePromptHint": "Mostrado acima do campo em que os participantes digitam o nome de um familiar. Começa com um texto fornecido pelo Network Canvas, que você pode alterar.",

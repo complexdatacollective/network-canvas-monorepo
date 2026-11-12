@@ -12,9 +12,6 @@
     "targetFeatureProperty": "name",
     "tokenAssetId": "id-2"
   },
-  "outsideAreasLabel": {
-    "en": "Outside Selectable Areas"
-  },
   "prompts": [
     {
       "id": "id-3",

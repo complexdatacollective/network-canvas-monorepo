@@ -13,11 +13,6 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import migrationV8toV9 from '../migration.ts';
-import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
-import {
-  pedigreeCompletenessText,
-  pedigreeNameField,
-} from './family-pedigree-text.ts';
 // The CEGRM template as `main` released it (commit 5dec6ca2), when the Family
 // Pedigree was a schema 8 stage.
 import ecoGeneticTemplate from './fixtures/eco-genetic-relationship-maps.schema-8.json';
@@ -83,22 +78,6 @@ const consentSkip = (destination?: Fields): Fields => ({
 });
 
 /** A schema 8 Family Pedigree with every optional piece set. */
-/** The wording a stage holds while its framing question and gender identity
- * are off. */
-const CONFIGURED_WORDING = [
-  'framingChoiceTitle',
-  'framingChoiceDescription',
-  'framingControlLabel',
-  'genderIdentityLabel',
-];
-
-const pedigreeWordingWithout = () =>
-  Object.fromEntries(
-    Object.entries(familyPedigreeWordingIn()).filter(
-      ([key]) => !CONFIGURED_WORDING.includes(key),
-    ),
-  );
-
 const schema8Pedigree = (extra: Fields = {}): Fields => ({
   id: 'pedigree',
   type: 'FamilyPedigree',
@@ -281,14 +260,12 @@ describe('v8 to v9 Family Pedigree migration', () => {
     expect(pedigreeOf(migrated)).toEqual({
       id: 'pedigree',
       type: 'FamilyPedigree',
-      wording: pedigreeWordingWithout(),
       label: en('Your family'),
       interviewScript: 'Draw the family with the participant.',
       subject: { entity: 'node', type: 'person' },
       prompt: en('Who is in your family? {braces} it’s fine'),
       nodeConfiguration: {
         nameAttribute: 'name',
-        nameField: pedigreeNameField(),
         sexAssignedAtBirthAttribute: 'biologicalSex',
         egoAttribute: 'isEgo',
       },
@@ -303,7 +280,6 @@ describe('v8 to v9 Family Pedigree migration', () => {
         scope: 'grandparents',
         enforcement: 'required',
         relativesNotRecordedAttribute: 'relativesNotRecorded',
-        ...pedigreeCompletenessText(),
       },
       form: {
         fields: [
@@ -413,13 +389,11 @@ describe('v8 to v9 Family Pedigree migration', () => {
                 scope: 'parents',
                 enforcement: 'required',
                 relativesNotRecordedAttribute: 'relativesNotRecorded',
-                ...pedigreeCompletenessText(),
               }
             : {
                 scope: 'grandparents',
                 enforcement: requireGrandparents,
                 relativesNotRecordedAttribute: 'relativesNotRecorded',
-                ...pedigreeCompletenessText(),
               },
         );
         expect(relativesNotRecorded).toEqual({
@@ -438,7 +412,6 @@ describe('v8 to v9 Family Pedigree migration', () => {
         scope: 'parents',
         enforcement: 'required',
         relativesNotRecordedAttribute: 'relativesNotRecorded',
-        ...pedigreeCompletenessText(),
       });
       expect(
         variableAt(migrated, 'node', 'person', 'relativesNotRecorded'),
@@ -488,7 +461,6 @@ describe('v8 to v9 Family Pedigree migration', () => {
       for (const id of ['mother-side', 'father-side']) {
         expect(stageById(migrated, id).completeness).toMatchObject({
           relativesNotRecordedAttribute: 'relativesNotRecorded',
-          ...pedigreeCompletenessText(),
         });
       }
       expect(
@@ -990,13 +962,11 @@ describe('v8 to v9 Family Pedigree migration', () => {
       {
         id: 'pedigree',
         type: 'FamilyPedigree',
-        wording: pedigreeWordingWithout(),
         label: en('Your family'),
         subject: { entity: 'node', type: 'person' },
         prompt: en('Who is in your family? {braces} it’s fine'),
         nodeConfiguration: {
           nameAttribute: 'name',
-          nameField: pedigreeNameField(),
           sexAssignedAtBirthAttribute: 'biologicalSex',
           egoAttribute: 'isEgo',
         },
@@ -1011,7 +981,6 @@ describe('v8 to v9 Family Pedigree migration', () => {
           scope: 'parents',
           enforcement: 'required',
           relativesNotRecordedAttribute: 'relativesNotRecorded',
-          ...pedigreeCompletenessText(),
         },
       },
       expect.objectContaining({ type: 'FinishSession', id: 'finish' }),
@@ -1085,7 +1054,6 @@ describe('v8 to v9 Family Pedigree migration', () => {
         prompt: en("Let's map out your family. Who is in it?"),
         nodeConfiguration: {
           nameAttribute: 'name',
-          nameField: pedigreeNameField(),
           sexAssignedAtBirthAttribute: 'biologicalSex',
           egoAttribute: 'is_ego',
         },
@@ -1100,7 +1068,6 @@ describe('v8 to v9 Family Pedigree migration', () => {
           scope: 'grandparents',
           enforcement: 'recommended',
           relativesNotRecordedAttribute: 'relativesNotRecorded',
-          ...pedigreeCompletenessText(),
         },
         form: {
           fields: [{ variable: 'living_status' }, { variable: 'birth_year' }],
@@ -1182,16 +1149,7 @@ describe('v8 to v9 Narrative Pedigree migration', () => {
       label: en('How it runs in the family'),
       sourceStageId: 'pedigree',
       showAtRiskStatuses: true,
-      // The wording Network Canvas supplies, written in the protocol's only
-      // language.
-      saveSnapshot: { en: 'Save snapshot' },
-      conditionText: {
-        selectCondition: { en: 'Select a condition' },
-        snapshotCondition: { en: '{title}: {condition}' },
-        snapshotInheritance: {
-          en: '{title}: {condition} — inheritance for {name}',
-        },
-      },
+      // The wording Network Canvas supplies is not written into the stage.
       diseases: [
         {
           id: 'condition',

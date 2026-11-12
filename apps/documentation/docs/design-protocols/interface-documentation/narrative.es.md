@@ -1,7 +1,7 @@
 ---
 title: Narrativa
 navOrder: 10
-translatedFrom: deb0247d9fd1da0a36c6888a3078c1a1eaf415a9
+translatedFrom: a21c6fb487cacde6abc161d81dd344278b8ee53a
 ---
 
 <InterfaceSummary type="Narrative">
@@ -59,7 +59,7 @@ Tres comportamientos de la etapa cambian la forma en que quienes participan pued
 
 ### Personalizar la redacción predeterminada {#customize-built-in-wording}
 
-La sección **Personalizar la redacción predeterminada** del editor de etapas contiene los encabezados de los paneles, en **Textos exclusivos de esta etapa**. Network Canvas aporta una redacción inicial para cada uno, en todos los idiomas para los que la tiene, y puedes cambiarla y traducirla como cualquier otro texto (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Un encabezado solo está en la sección mientras alguna vista predefinida resalta atributos, muestra vínculos o agrupa nodos, y se elimina cuando ninguna lo hace.
+La sección **Personalizar la redacción predeterminada** del editor de etapas contiene los encabezados de los paneles, en **Textos exclusivos de esta etapa**. Cada uno empieza con la redacción de Network Canvas, en todos los idiomas para los que Network Canvas la tiene, y puedes cambiarla y traducirla como cualquier otro texto. Tu protocolo solo conserva la redacción que cambias (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Un encabezado solo está en la sección mientras alguna vista predefinida resalta atributos, muestra vínculos o agrupa nodos, y se elimina cuando ninguna lo hace.
 
 La información emergente de las herramientas de dibujo es la misma en todas las etapas «Narrativa», así que está en **Textos comunes a todas las etapas de este tipo**, en la misma sección, mientras **Dibujo libre** está activado. Un cambio en ella se aplica a todas esas etapas, y se guarda en cuanto sales del campo. Hay tres textos: **Información emergente de activar o desactivar el dibujo** nombra el botón que activa y desactiva el dibujo; **Información emergente de congelar o descongelar las anotaciones**, el botón que congela y descongela las anotaciones, y **Información emergente de restablecer las anotaciones**, el botón que las borra.
 

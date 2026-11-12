@@ -693,6 +693,26 @@ describe('analyzeProtocolLocalization', () => {
     setAt(protocol, stage(0, 'label'), { en: 'Language', fr: 'Langue' });
     expect(warningsAt(protocol, stage(0, 'label'))).toEqual([]);
   });
+
+  // A stored protocol holds only its own wording for a text Network Canvas
+  // words, and the interview shows Network Canvas's for the other languages.
+  it('counts the wording Network Canvas shows for a text the protocol rewords in one language', () => {
+    const protocol = bilingual();
+    setAt(protocol, stage(0, 'title'), { fr: 'Choisis ta langue' });
+    expect(warningsAt(protocol, stage(0, 'title'))).toEqual([]);
+  });
+
+  it('counts the wording Network Canvas shows for a text the protocol does not hold', () => {
+    const protocol = bilingual();
+    setAt(protocol, stage(0, 'title'), undefined);
+    protocol.localization = {
+      defaultLocale: 'en',
+      locales: ['en', 'fr', 'sw'],
+    };
+    expect(warningsAt(protocol, stage(0, 'title'))).toEqual([
+      expect.objectContaining({ locale: 'sw', fallbackLocale: 'en' }),
+    ]);
+  });
 });
 
 describe('LanguageChooser stage', () => {

@@ -21,7 +21,11 @@ import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
 import { withSafeTypingIntoRichText } from '@codaco/fresco-ui/testing/withSafeTypingIntoRichText';
-import type { Codebook, StageType } from '@codaco/protocol-validation';
+import {
+  type Codebook,
+  type StageType,
+  stageWithoutSuppliedText,
+} from '@codaco/protocol-validation';
 import { protocolValidationCatalogLoaders } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -910,8 +914,19 @@ export function renderStageEditor<T extends StageType = StageType>(
       // `id` and `type` are the section's, never the editor's: `seeded.fields`
       // is the document without them.
       const { id: _id, type: _type, ...savedFields } = written.stageDocument;
+      // A protocol stores a stage without the wording Network Canvas supplies,
+      // so the stage it would have stored is what a save is compared with.
+      const {
+        id: _seededId,
+        type: _seededType,
+        ...storedFields
+      } = stageWithoutSuppliedText({
+        ...seeded.fields,
+        id: seeded.id,
+        type: seeded.type,
+      });
       const { dropped, added, changed } = stageDocumentDiff(
-        seeded.fields,
+        storedFields,
         savedFields,
       );
       if (dropped.length > 0 || added.length > 0 || changed.length > 0) {

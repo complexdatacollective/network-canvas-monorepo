@@ -2,7 +2,7 @@
 title: Trabajar con listas predefinidas
 wip: false
 navOrder: 2
-translatedFrom: dc4f216e2ab188b2bf96abf919cb8d5da6b08114
+translatedFrom: 365181d0e0314f85b07e843a5c61c5ab8b071d85
 ---
 
 <SummaryCard duration="30 minutos">
@@ -247,7 +247,7 @@ Imagina que tienes una lista predefinida con dos personas llamadas Kwame. Una es
 
 Internamente, el programa habrá asignado a cada uno de estos nodos un UUID único, pero la persona entrevistada no podrá saber cuál es cuál.
 
-Posible solución: al importar una lista predefinida, Network Canvas no comprueba que la columna de nombres contenga solo elementos únicos. Sin embargo, puedes comprobarlo tú al preparar la lista. Una forma de hacerlo es seleccionar toda la columna en Excel o en Calc y elegir la opción de menú (en Excel) «Datos» - «Herramientas de tabla» - «Quitar duplicados». Si tu lista se ha acortado, tenías duplicados que deberías haber eliminado. Una forma de gestionarlo es crear una nueva variable de nombre que combine el nombre y el apellido. Puedes hacerlo a mano o con una fórmula de Excel.
+Posible solución: al importar una lista predefinida, Network Canvas no comprueba que la columna de nombres contenga solo elementos únicos. Sin embargo, puedes comprobarlo tú al preparar la lista predefinida. Una forma de hacerlo es copiar la columna de nombres en una hoja en blanco, seleccionarla y elegir «Datos» - «Herramientas de datos» - «Quitar duplicados» en Excel (en Calc, elige «Datos» - «Más filtros» - «Filtro estándar» y marca «Sin duplicados»). Si la lista copiada se acorta, hay nombres que aparecen más de una vez. No elimines los nombres repetidos de tu lista predefinida, porque dos personas distintas pueden llamarse igual. En su lugar, haz que cada nombre sea único. Una forma de hacerlo es crear una nueva variable de nombre que combine el nombre y los apellidos. Puedes hacerlo a mano o con una fórmula de Excel.
 
 No recomendamos editar el nombre en Network Canvas una vez creado, tanto por motivos técnicos como porque corres el riesgo de no poder saber si se trata del mismo Kwame o del Kwame_Nk de la lista cuando compares los datos de distintas personas. Recuerda que, con una lista predefinida, normalmente queremos combinar los datos de las distintas personas participantes para ver quién nombra a quién.
 

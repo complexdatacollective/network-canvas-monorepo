@@ -3,7 +3,7 @@ title: Diccionario de datos de exportación
 navOrder: 2
 toc: true
 date: 5th October 2026
-translatedFrom: c1a4040fb6059ea3a43c053b9de783f18354439a
+translatedFrom: 8a26fdf2401457d85ab7c1fa5efeba7234107ed6
 ---
 
 <Definition>
@@ -179,8 +179,8 @@ que relacionan los archivos entre sí:
   `networkCanvasFinishOutcome`, seguidas de tus variables de ego. Las marcas de
   tiempo de la sesión de entrevista son cadenas ISO 8601.
 - Los **archivos de álteres** (un álter es cada persona a la que se nombra
-  durante la entrevista) empiezan por `nodeID` (un número secuencial único
-  dentro de la exportación), `networkCanvasEgoUUID` (la clave de unión con el
+  durante la entrevista) empiezan por `nodeID` (un número único dentro de la
+  entrevista, numerado desde 1 en una sola secuencia que abarca todos los tipos de nodo de la entrevista), `networkCanvasEgoUUID` (la clave de unión con el
   archivo de ego) y `networkCanvasUUID` (el identificador permanente del álter).
 - Los **archivos de vínculos** empiezan por `edgeID`, `from`, `to` (que hacen
   referencia a valores de `nodeID` de los archivos de álteres),

@@ -9,6 +9,7 @@ import validateProtocol, {
 import { findBuiltInWordingProblems } from '../built-in-wording.ts';
 import { createDefaultFinishSessionStage } from '../finish-session-defaults.ts';
 import {
+  interfaceTextAsShown,
   interfaceTextFor,
   interfaceTextShownBy,
   withInterfaceText,
@@ -23,8 +24,21 @@ type Document = Record<string, unknown> & {
   interfaceText?: Record<string, Record<string, unknown>>;
 };
 
-/** The base protocol, ending at a finish stage and holding its interface text. */
-const baseProtocol = (): Document => withFinishStage(createBaseProtocol());
+type Localized = {
+  localization: { defaultLocale: string; locales: string[] };
+};
+
+/** The protocol holding every interface text it shows, as the interview shows it. */
+const holdingAllText = (protocol: Document): Document => ({
+  ...protocol,
+  interfaceText: interfaceTextAsShown(
+    protocol as Document & Localized,
+  ) as Document['interfaceText'],
+});
+
+/** The base protocol, ending at a finish stage and holding all its interface text. */
+const baseProtocol = (): Document =>
+  holdingAllText(withFinishStage(createBaseProtocol()));
 
 /** The protocol's name attribute required and at least two letters long. */
 const withNameRules = (protocol: Document): Document => {
@@ -36,11 +50,7 @@ const withNameRules = (protocol: Document): Document => {
     required: true,
     minLength: 2,
   };
-  return withInterfaceText(
-    document as Document & {
-      localization: { defaultLocale: string; locales: string[] };
-    },
-  );
+  return holdingAllText(document);
 };
 
 const interfaceTextIssues = async (
@@ -65,9 +75,10 @@ describe('the interface text a protocol may hold', () => {
 
   it('accepts a protocol with no interface text, in a default language Network Canvas supplies', async () => {
     const { interfaceText: _held, ...protocol } = baseProtocol();
-    expect(Object.keys(interfaceTextFor(protocol as never))).toContain(
-      'navigation',
-    );
+    expect(
+      interfaceTextShownBy(protocol as never).map(({ group }) => group),
+    ).toContain('navigation');
+    expect(interfaceTextFor(protocol as never)).toEqual({});
 
     for (const draft of [false, true]) {
       expect((await validateProtocol(protocol, { draft })).error?.issues).toBe(
@@ -169,19 +180,22 @@ describe('the interface text a protocol may hold', () => {
     };
   };
 
-  it('fills an entry or a group held as undefined, as if absent', () => {
+  it('reads an entry or a group held as undefined as holding none, and shows Network Canvas’s wording for it', () => {
     const { protocol, held } = withUndefinedText();
-    const filled = interfaceTextFor(protocol);
+    const kept = interfaceTextFor(protocol);
 
     expect(held.buttons?.done).toBeDefined();
-    expect(filled.buttons?.done).toEqual(held.buttons?.done);
-    expect(filled.search).toEqual(held.search);
-    expect(withInterfaceText(protocol).interfaceText).toEqual(filled);
+    expect(kept.buttons?.done).toBeUndefined();
+    expect(kept.search).toBeUndefined();
+    expect(withInterfaceText(protocol).interfaceText).toBeUndefined();
+    expect(interfaceTextAsShown(protocol).buttons?.done).toEqual(
+      held.buttons?.done,
+    );
   });
 
   it('still accepts a group, or an entry, the protocol does not use', async () => {
     const protocol = baseProtocol();
-    const unused = interfaceTextFor({
+    const unused = interfaceTextAsShown({
       ...protocol,
       localization: { defaultLocale: 'en', locales: ['en'] },
       codebook: {
@@ -211,7 +225,10 @@ describe('the interface text a protocol may hold', () => {
         createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
       ],
     };
-    const protocol = { ...document, interfaceText: interfaceTextFor(document) };
+    const protocol = {
+      ...document,
+      interfaceText: interfaceTextAsShown(document),
+    };
     expect(protocol.interfaceText.navigation?.exitInterview).toEqual({});
 
     expect((await validateProtocol(protocol, { draft: true })).success).toBe(
@@ -219,10 +236,12 @@ describe('the interface text a protocol may hold', () => {
     );
   });
 
-  it('migrates a schema 8 protocol to one that holds its interface text', async () => {
+  it('migrates a schema 8 protocol to one that holds no interface text, as it only shows Network Canvas’s', async () => {
     const migrated = migrateProtocol(asSchema8Protocol(completeProtocol()), 9);
 
-    expect(migrated.interfaceText).toEqual(interfaceTextFor(migrated));
+    expect(migrated.interfaceText).toBeUndefined();
+    expect(interfaceTextFor(migrated)).toEqual({});
+    expect(interfaceTextShownBy(migrated).length).toBeGreaterThan(0);
     expect((await validateProtocol(migrated)).error?.issues).toBe(undefined);
   });
 });

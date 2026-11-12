@@ -5,7 +5,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import { DEFAULT_FINISH_SESSION_TEXT } from '../finish-session-defaults.ts';
-import { interfaceTextFor } from '../interface-text.ts';
+import { interfaceTextAsShown } from '../interface-text.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   pedigreeCompletenessText,
@@ -24,7 +24,7 @@ const options = (...labels: [string, string | number][]) =>
  */
 export const completeProtocol = () => {
   const protocol = protocolDocument();
-  return { ...protocol, interfaceText: interfaceTextFor(protocol) };
+  return { ...protocol, interfaceText: interfaceTextAsShown(protocol) };
 };
 
 const protocolDocument = () => ({

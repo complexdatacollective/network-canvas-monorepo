@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateProtocol } from '@codaco/protocol-validation';
+import {
+  validateProtocol,
+  withInterfaceText,
+} from '@codaco/protocol-validation';
 import { contentHash } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { validateSection } from '@codaco/studio-sync/section-validation';
@@ -27,8 +30,10 @@ describe('sectionize/assemble round trip', () => {
         ).toBe(true);
       }
 
+      // Assembling brings the interface text up to date: the protocol holds
+      // only the researcher's own wording, not Network Canvas's.
       const assembled = assembleProtocolSections(sections);
-      expect(assembled).toEqual(protocol);
+      expect(assembled).toEqual(withInterfaceText(protocol));
 
       const revalidated = await validateProtocol(assembled);
       expect(
@@ -85,20 +90,15 @@ describe('a new protocol', () => {
         finishedContent: {
           en: '# Interview Finished\n\nThank you for participating!',
         },
-        finishLabel: { en: 'Finish' },
-        finishConfirmation: {
-          en: 'Are you sure you want to finish the interview?',
-        },
-        finishFailed: {
-          en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
-        },
         outcome: 'completed',
       }),
     ]);
-    expect(protocol.interfaceText?.navigation).toBeDefined();
-    expect(sectionizeProtocol(protocol).settings).toMatchObject({
-      interfaceText: protocol.interfaceText,
-    });
+    // It holds none of the wording Network Canvas supplies.
+    expect(protocol.stages[0]).not.toHaveProperty('finishLabel');
+    expect(protocol).not.toHaveProperty('interfaceText');
+    expect(sectionizeProtocol(protocol).settings).not.toHaveProperty(
+      'interfaceText',
+    );
     const validated = await validateProtocol(protocol);
     expect(
       validated.success,
@@ -124,7 +124,7 @@ describe('golden hashes', () => {
         "assets": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
         "codebook:edge:knows": "d10d93cc1b4c9ea77f4c6d750eb7a2e1da90346ad9a6b52b59c45a8c4f7aaadb",
         "codebook:node:person": "5b62bc580a031a23de667d9f7c0005e797a1f97b8e375362b9c5cd7c21375372",
-        "settings": "33c055b0ee473c85f0949cc65f3d09238d28af0987133933c58523273557af40",
+        "settings": "62eb33d43a79ad953fb8d44150ef3d9388bcecb0ec4ba390695b52cdaf43f3ae",
         "stage:finish": "9d53432c1592c77cb24422813ad7716d997cd720d5ef19aaa4a06ed08603ddbc",
         "stage:nameGenerator1": "da989aa0f95cc6223c4ae6e1e8eecd53698a900bae557d0dae58ba43948f9511",
         "stage:sociogram1": "f20a610875c24d940f59bd6d68d52e3b0453fe778d1a4af9a3a09a7926b0e3a9",
@@ -132,7 +132,7 @@ describe('golden hashes', () => {
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"bbad2eb6f171fd69dc9a57ef12479d7d23caff2cac909dfe30232f01f70ccf34"`,
+      `"3ad78322b12b50ee685ecf7d2eb75dfdad58251d53a59407dfe87b92d1f0f624"`,
     );
   });
 });

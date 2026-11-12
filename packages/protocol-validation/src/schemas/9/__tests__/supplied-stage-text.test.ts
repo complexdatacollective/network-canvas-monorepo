@@ -4,13 +4,12 @@ import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
-  inapplicableStageSettings,
-  missingSuppliedStageText,
+  stageWithoutSuppliedText,
+  stageWithSuppliedText,
   stageWordingShown,
   suppliedStageSettingApplies,
   suppliedStageSettingPaths,
   suppliedStageText,
-  suppliedStageTextAfterLanguageChange,
 } from '../supplied-stage-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
@@ -64,217 +63,12 @@ describe('the roster panel title Network Canvas supplies', () => {
         },
       ]);
     });
-
-    it('is still Network Canvas’s in a default language it is not supplied in while that is unwritten', () => {
-      const roster = {
-        type: 'NameGeneratorRoster',
-        panelTitle: { es: 'Disponibles para añadir' },
-      };
-      expect(
-        suppliedStageTextAfterLanguageChange(roster, {
-          before: { defaultLocale: 'es-MX', locales: ['es-MX', 'es'] },
-          after: { defaultLocale: 'es-MX', locales: ['es-MX', 'es', 'fr'] },
-        }),
-      ).toEqual([
-        {
-          path: ['panelTitle'],
-          value: { es: 'Disponibles para añadir', fr: 'Éléments disponibles' },
-        },
-      ]);
-    });
-
-    it('is still filled into a new language once the researcher writes it in that default language', () => {
-      const roster = {
-        type: 'NameGeneratorRoster',
-        panelTitle: { 'es-MX': 'Disponibles', 'es': 'Disponibles para añadir' },
-      };
-      expect(
-        suppliedStageTextAfterLanguageChange(roster, {
-          before: { defaultLocale: 'es-MX', locales: ['es-MX', 'es'] },
-          after: { defaultLocale: 'es-MX', locales: ['es-MX', 'es', 'fr'] },
-        }),
-      ).toEqual([
-        {
-          path: ['panelTitle'],
-          value: {
-            'es-MX': 'Disponibles',
-            'es': 'Disponibles para añadir',
-            'fr': 'Éléments disponibles',
-          },
-        },
-      ]);
-    });
   });
 
   it('is supplied for no other stage', () => {
     expect(
       suppliedStageText('NameGenerator', english).filter(panelTitleOnly),
     ).toEqual([]);
-  });
-
-  const roster = (panelTitle: Record<string, string>) => ({
-    type: 'NameGeneratorRoster',
-    panelTitle,
-  });
-
-  it('is filled into a new language', () => {
-    expect(
-      suppliedStageTextAfterLanguageChange(roster({ en: 'Available to add' }), {
-        before: english,
-        after: { defaultLocale: 'en', locales: ['en', 'fr'] },
-      }),
-    ).toEqual([
-      {
-        path: ['panelTitle'],
-        value: { en: 'Available to add', fr: 'Éléments disponibles' },
-      },
-    ]);
-  });
-
-  it('becomes the corrected language’s text when the language is corrected', () => {
-    expect(
-      suppliedStageTextAfterLanguageChange(roster({ en: 'Available to add' }), {
-        before: english,
-        after: { defaultLocale: 'de', locales: ['de'] },
-        renamed: { en: 'de' },
-      }),
-    ).toEqual([
-      { path: ['panelTitle'], value: { de: 'Zum Hinzufügen verfügbar' } },
-    ]);
-  });
-
-  it('is left unwritten when its only language is corrected to one it is not supplied in', () => {
-    expect(
-      suppliedStageTextAfterLanguageChange(roster({ en: 'Available to add' }), {
-        before: english,
-        after: { defaultLocale: 'hu', locales: ['hu'] },
-        renamed: { en: 'hu' },
-      }),
-    ).toEqual([{ path: ['panelTitle'], value: {} }]);
-  });
-
-  it('is left unwritten in a new default language it is not supplied in when the old one is removed', () => {
-    expect(
-      suppliedStageTextAfterLanguageChange(roster({ en: 'Available to add' }), {
-        before: { defaultLocale: 'en', locales: ['en', 'hu'] },
-        after: { defaultLocale: 'hu', locales: ['hu'] },
-      }),
-    ).toEqual([{ path: ['panelTitle'], value: {} }]);
-  });
-
-  it('is still Network Canvas’s while a default language it is not supplied in is unwritten', () => {
-    expect(
-      suppliedStageTextAfterLanguageChange(roster({}), {
-        before: { defaultLocale: 'hu', locales: ['hu'] },
-        after: { defaultLocale: 'hu', locales: ['hu', 'fr'] },
-      }),
-    ).toEqual([
-      { path: ['panelTitle'], value: { fr: 'Éléments disponibles' } },
-    ]);
-  });
-
-  it('is filled into a new language even once the researcher has reworded it in the default language', () => {
-    expect(
-      suppliedStageTextAfterLanguageChange(roster({ en: 'Services' }), {
-        before: english,
-        after: { defaultLocale: 'en', locales: ['en', 'fr', 'de'] },
-      }),
-    ).toEqual([
-      {
-        path: ['panelTitle'],
-        value: {
-          en: 'Services',
-          fr: 'Éléments disponibles',
-          de: 'Zum Hinzufügen verfügbar',
-        },
-      },
-    ]);
-  });
-
-  it('never overwrites a translation', () => {
-    // French is the researcher's own; German was written before it was
-    // declared, as an open stage editor can hold it.
-    expect(
-      suppliedStageTextAfterLanguageChange(
-        roster({ en: 'Services', fr: 'Nos services', de: 'Dienste' }),
-        {
-          before: { defaultLocale: 'en', locales: ['en', 'fr'] },
-          after: { defaultLocale: 'en', locales: ['en', 'fr', 'de', 'es'] },
-        },
-      ),
-    ).toEqual([
-      {
-        path: ['panelTitle'],
-        value: {
-          en: 'Services',
-          fr: 'Nos services',
-          de: 'Dienste',
-          es: 'Disponibles para añadir',
-        },
-      },
-    ]);
-  });
-
-  it('moves the researcher’s own translation unchanged to a corrected language', () => {
-    expect(
-      suppliedStageTextAfterLanguageChange(
-        roster({ en: 'Available to add', fr: 'Nos services' }),
-        {
-          before: { defaultLocale: 'en', locales: ['en', 'fr'] },
-          after: { defaultLocale: 'en', locales: ['en', 'de'] },
-          renamed: { fr: 'de' },
-        },
-      ),
-    ).toEqual([
-      {
-        path: ['panelTitle'],
-        value: { en: 'Available to add', de: 'Nos services' },
-      },
-    ]);
-  });
-
-  it('gains nothing in a new language Network Canvas has no wording in', () => {
-    expect(
-      suppliedStageTextAfterLanguageChange(roster({ en: 'Services' }), {
-        before: english,
-        after: { defaultLocale: 'en', locales: ['en', 'ja', 'fr-CA'] },
-      }),
-    ).toEqual([{ path: ['panelTitle'], value: { en: 'Services' } }]);
-  });
-
-  it('becomes the corrected language’s text where it is Network Canvas’s, even beside reworded text in the default language', () => {
-    expect(
-      suppliedStageTextAfterLanguageChange(
-        roster({ en: 'Services', fr: 'Éléments disponibles' }),
-        {
-          before: { defaultLocale: 'en', locales: ['en', 'fr'] },
-          after: { defaultLocale: 'en', locales: ['en', 'de'] },
-          renamed: { fr: 'de' },
-        },
-      ),
-    ).toEqual([
-      {
-        path: ['panelTitle'],
-        value: { en: 'Services', de: 'Zum Hinzufügen verfügbar' },
-      },
-    ]);
-  });
-
-  it('fills no gap in a language the protocol already had, as when the default changes or another language is removed', () => {
-    const missingFrench = roster({ en: 'Available to add' });
-    const both = { defaultLocale: 'en', locales: ['en', 'fr'] };
-    expect(
-      suppliedStageTextAfterLanguageChange(missingFrench, {
-        before: both,
-        after: { defaultLocale: 'fr', locales: ['en', 'fr'] },
-      }),
-    ).toEqual([{ path: ['panelTitle'], value: { en: 'Available to add' } }]);
-    expect(
-      suppliedStageTextAfterLanguageChange(missingFrench, {
-        before: { defaultLocale: 'en', locales: ['en', 'fr', 'de'] },
-        after: both,
-      }),
-    ).toEqual([{ path: ['panelTitle'], value: { en: 'Available to add' } }]);
   });
 });
 
@@ -284,21 +78,19 @@ describe('migrating a roster stage to schema 9', () => {
       (stage) => (stage as { type?: unknown }).type === 'NameGeneratorRoster',
     ) as Record<string, unknown> | undefined;
 
-  it('gives a schema 8 roster the heading the interview has always shown, in English', () => {
+  // Schema 8 had no heading to hold. None is written in: the interview shows
+  // Network Canvas's for a roster that does not hold one.
+  it('writes no heading into a schema 8 roster', () => {
     const document = asSchema8Protocol(completeProtocol());
     delete rosterOf(document)!.panelTitle;
     const migrated = migrateProtocol(document, 9);
-    expect(rosterOf(migrated)).toMatchObject({
-      panelTitle: {
-        [migrated.localization.defaultLocale]: 'Available to add',
-      },
-    });
+    expect(rosterOf(migrated)).not.toHaveProperty('panelTitle');
     expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
   });
 
   // Fresco's deploy normalization re-runs this migration over rows already
   // stored at schema 9.
-  it('gives a schema 9 roster without one the supplied text in its own languages, and keeps one it has', () => {
+  it('keeps only the researcher’s own heading on a roster already in schema 9 form', () => {
     const document = {
       ...completeProtocol(),
       schemaVersion: 8,
@@ -306,70 +98,192 @@ describe('migrating a roster stage to schema 9', () => {
     };
     const untitled = structuredClone(document);
     delete rosterOf(untitled)!.panelTitle;
-    expect(rosterOf(migrateProtocol(untitled, 9))).toMatchObject({
-      panelTitle: {
-        en: 'Available to add',
-        de: 'Zum Hinzufügen verfügbar',
-      },
-    });
+    expect(rosterOf(migrateProtocol(untitled, 9))).not.toHaveProperty(
+      'panelTitle',
+    );
+
     const titled = structuredClone(document);
     Object.assign(rosterOf(titled)!, { panelTitle: { en: 'Services' } });
-    expect(rosterOf(migrateProtocol(titled, 9))).toMatchObject({
-      panelTitle: { en: 'Services' },
+    expect(rosterOf(migrateProtocol(titled, 9))?.panelTitle).toEqual({
+      en: 'Services',
+    });
+
+    const partly = structuredClone(document);
+    Object.assign(rosterOf(partly)!, {
+      panelTitle: { en: 'Available to add', de: 'Dienste' },
+    });
+    expect(rosterOf(migrateProtocol(partly, 9))?.panelTitle).toEqual({
+      de: 'Dienste',
     });
   });
 });
 
-describe('the Language Chooser heading Network Canvas supplies', () => {
-  it('starts a new chooser with the heading in each protocol language it is supplied in', () => {
-    expect(
-      missingSuppliedStageText(
-        { type: 'LanguageChooser' },
-        { defaultLocale: 'en', locales: ['en', 'es', 'hu'] },
-      ),
-    ).toEqual([
+describe('a stage as an editor holds it', () => {
+  const locales = { defaultLocale: 'en', locales: ['en', 'es', 'hu'] };
+
+  it('holds Network Canvas’s wording for a setting the stage does not hold, in each language it has it in', () => {
+    expect(stageWithSuppliedText({ type: 'LanguageChooser' }, locales)).toEqual(
       {
-        path: ['title'],
-        value: { en: 'Choose a language', es: 'Elige un idioma' },
+        type: 'LanguageChooser',
+        title: { en: 'Choose a language', es: 'Elige un idioma' },
       },
-    ]);
+    );
   });
 
-  it('keeps a heading the chooser already has', () => {
-    const chooser = { type: 'LanguageChooser', title: { en: 'Pick one' } };
-    expect(missingSuppliedStageText(chooser, english)).toEqual([]);
+  it('keeps each translation the stage holds and fills in the others', () => {
+    expect(
+      stageWithSuppliedText(
+        { type: 'LanguageChooser', title: { es: 'Idioma', hu: 'Nyelv' } },
+        locales,
+      ).title,
+    ).toEqual({ en: 'Choose a language', es: 'Idioma', hu: 'Nyelv' });
   });
 
-  // Schema 8 has no Language Chooser, so only a document already in schema 9
-  // form, which Fresco's deploy normalization re-runs this migration over,
-  // can hold one without a heading.
-  it('is given to a schema 9 chooser without one when the migration re-runs', () => {
-    const document = {
-      ...completeProtocol(),
-      schemaVersion: 8,
-      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+  it('is the same stage when it already holds all of it', () => {
+    const chooser = {
+      type: 'LanguageChooser',
+      title: { en: 'Pick one', es: 'Elige uno' },
     };
-    const chooserOf = (protocol: { stages: readonly unknown[] }) =>
-      protocol.stages.find(
-        (stage) => (stage as { type?: unknown }).type === 'LanguageChooser',
-      ) as Record<string, unknown> | undefined;
-    delete chooserOf(document)!.title;
-    const migrated = migrateProtocol(document, 9);
-    expect(chooserOf(migrated)).toMatchObject({
-      title: { en: 'Choose a language', fr: 'Choisissez une langue' },
-    });
-    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+    expect(stageWithSuppliedText(chooser, locales)).toBe(chooser);
+  });
+
+  it('holds an empty text for a setting no protocol language has wording for', () => {
+    expect(
+      stageWithSuppliedText(
+        { type: 'LanguageChooser' },
+        { defaultLocale: 'hu', locales: ['hu'] },
+      ).title,
+    ).toEqual({});
+  });
+
+  it('fills in only the settings the stage shows', () => {
+    const generator = stageWithSuppliedText(
+      { type: 'NameGenerator', behaviours: { minNodes: 2 } },
+      english,
+    );
+    expect(generator).toHaveProperty('minNodesNotice.en');
+    expect(generator).not.toHaveProperty('maxNodesNotice');
+  });
+
+  it('leaves something that is not text for the schema to refuse', () => {
+    const chooser = { type: 'LanguageChooser', title: 'Pick one' };
+    expect(stageWithSuppliedText(chooser, locales)).toBe(chooser);
+  });
+});
+
+describe('a stage as a protocol stores it', () => {
+  it('holds none of the wording that reads as Network Canvas words it', () => {
+    expect(
+      stageWithoutSuppliedText({
+        type: 'LanguageChooser',
+        title: { en: 'Choose a language', es: 'Elige un idioma' },
+      }),
+    ).toEqual({ type: 'LanguageChooser' });
+  });
+
+  it('keeps the translations that are the researcher’s own', () => {
+    expect(
+      stageWithoutSuppliedText({
+        type: 'LanguageChooser',
+        title: { en: 'Pick one', es: 'Elige un idioma', hu: 'Nyelv' },
+      }).title,
+    ).toEqual({ en: 'Pick one', hu: 'Nyelv' });
+  });
+
+  it('is the same stage when there is nothing to remove', () => {
+    const reworded = { type: 'LanguageChooser', title: { en: 'Pick one' } };
+    expect(stageWithoutSuppliedText(reworded)).toBe(reworded);
+    const bare = { type: 'LanguageChooser' };
+    expect(stageWithoutSuppliedText(bare)).toBe(bare);
+  });
+
+  it('removes a setting left holding no text at all', () => {
+    expect(
+      stageWithoutSuppliedText({ type: 'LanguageChooser', title: {} }),
+    ).toEqual({ type: 'LanguageChooser' });
+  });
+
+  const notices = {
+    minNodesNotice: { en: 'Add {count, plural, one {# more} other {# more}}' },
+    maxNodesNotice: { en: 'That is everyone' },
+  };
+
+  it('removes a setting the stage no longer shows, whatever it says', () => {
+    expect(
+      stageWithoutSuppliedText({
+        type: 'NameGenerator',
+        behaviours: {},
+        ...notices,
+      }),
+    ).toEqual({ type: 'NameGenerator', behaviours: {} });
+  });
+
+  it('keeps the researcher’s wording for a setting whose configuration is on', () => {
+    const generator = {
+      type: 'NameGenerator',
+      behaviours: { minNodes: 1, maxNodes: 3 },
+      ...notices,
+    };
+    expect(stageWithoutSuppliedText(generator)).toBe(generator);
+  });
+
+  it('removes an object left holding nothing', () => {
+    const conditionText = Object.fromEntries(
+      suppliedStageText('NarrativePedigree', english)
+        .filter(({ path }) => path[0] === 'conditionText')
+        .map(({ path, value }) => [path[1], value]),
+    );
+    expect(Object.keys(conditionText).length).toBeGreaterThan(0);
+    expect(
+      stageWithoutSuppliedText({
+        type: 'NarrativePedigree',
+        sourceStageId: 'pedigree',
+        conditionText,
+      }),
+    ).toEqual({ type: 'NarrativePedigree', sourceStageId: 'pedigree' });
+  });
+
+  // Removing the tracker's last reworded text must not remove the tracker.
+  it('never removes the object a setting belongs to', () => {
+    expect(
+      stageWithoutSuppliedText({
+        type: 'FamilyPedigree',
+        completeness: {
+          recommendedNote: {
+            en: 'You can also continue without these by pressing Next again.',
+          },
+        },
+      }),
+    ).toEqual({ type: 'FamilyPedigree', completeness: {} });
+  });
+
+  it('leaves something that is not text for the schema to refuse', () => {
+    const chooser = { type: 'LanguageChooser', title: 'Pick one' };
+    expect(stageWithoutSuppliedText(chooser)).toBe(chooser);
+    const mixed = { type: 'LanguageChooser', title: { en: 3 } };
+    expect(stageWithoutSuppliedText(mixed)).toBe(mixed);
+  });
+
+  it('undoes what an editor filled in, for every stage of a protocol', () => {
+    const localization = { defaultLocale: 'en', locales: ['en', 'es', 'hu'] };
+    for (const stage of completeProtocol().stages) {
+      const stored = stageWithoutSuppliedText(stage);
+      const edited = stageWithSuppliedText(stored, localization);
+      expect(stageWithoutSuppliedText(edited), stage.type).toEqual(stored);
+      // And an editor's stage is filled in once: filling it again adds nothing.
+      expect(stageWithSuppliedText(edited, localization), stage.type).toBe(
+        edited,
+      );
+    }
   });
 });
 
 describe('the Family Pedigree wording Network Canvas supplies', () => {
-  const paths = (stage: Record<string, unknown>) =>
-    missingSuppliedStageText(
-      { type: 'FamilyPedigree', ...stage },
-      { defaultLocale: 'en', locales: ['en', 'de'] },
-    ).map(({ path }) => path.join('.'));
+  const localization = { defaultLocale: 'en', locales: ['en', 'de'] };
+  const filled = (stage: Record<string, unknown>) =>
+    stageWithSuppliedText({ type: 'FamilyPedigree', ...stage }, localization);
 
-  // The wording a stage holds only while its configuration is on: the framing
+  // The wording a stage shows only while its configuration is on: the framing
   // question while participants choose the words, the gender identity
   // question while the stage asks about gender identity.
   const CONFIGURED = [
@@ -378,81 +292,58 @@ describe('the Family Pedigree wording Network Canvas supplies', () => {
     'framingControlLabel',
     'genderIdentityLabel',
   ];
-  const alwaysWording = Object.keys(familyPedigreeWordingIn())
-    .filter((key) => !CONFIGURED.includes(key))
-    .map((key) => `wording.${key}`);
+  const alwaysWording = Object.keys(familyPedigreeWordingIn()).filter(
+    (key) => !CONFIGURED.includes(key),
+  );
 
-  it('gives a new stage its name question and its wording, and no tracker wording until it has a tracker', () => {
-    expect(paths({})).toEqual([
-      'nodeConfiguration.nameField.prompt',
-      'nodeConfiguration.nameField.hint',
-      ...alwaysWording,
-    ]);
+  it('gives an editor a new stage’s name question, its hint and its wording, and no tracker wording until it has a tracker', () => {
+    const stage = filled({});
+    expect(stage).toHaveProperty('nodeConfiguration.nameField.prompt.de');
+    expect(stage).toHaveProperty('nodeConfiguration.nameField.hint.de');
+    expect(Object.keys(stage.wording as object)).toEqual(alwaysWording);
+    expect(stage).not.toHaveProperty('completeness');
   });
 
-  it('gives a stage with a tracker all of its wording', () => {
-    expect(
-      paths({
-        nodeConfiguration: { nameField: { prompt: { en: 'Name' } } },
-        completeness: { scope: 'parents' },
-      }),
-    ).toEqual([
-      'completeness.itemText.parents.listItem',
-      'completeness.itemText.siblings.listItem',
-      'completeness.itemText.siblings.noneButton',
-      'completeness.itemText.siblings.question',
-      'completeness.itemText.children.listItem',
-      'completeness.itemText.children.noneButton',
-      'completeness.itemText.children.question',
-      'completeness.itemText.details.listItem',
-      'completeness.recommendedNote',
-      ...alwaysWording,
-    ]);
+  it('gives an editor all of a tracker’s wording once the stage has a tracker', () => {
+    const { completeness } = filled({ completeness: { scope: 'parents' } });
+    expect(completeness).toMatchObject({ scope: 'parents' });
+    for (const path of [
+      'itemText.parents.listItem',
+      'itemText.siblings.listItem',
+      'itemText.siblings.noneButton',
+      'itemText.siblings.question',
+      'itemText.children.listItem',
+      'itemText.children.noneButton',
+      'itemText.children.question',
+      'itemText.details.listItem',
+      'recommendedNote',
+    ]) {
+      expect(completeness).toHaveProperty(`${path}.en`);
+    }
   });
 
-  it('does not put back a hint the researcher removed', () => {
-    expect(
-      paths({ nodeConfiguration: { nameField: { prompt: { en: 'Name' } } } }),
-    ).toEqual(alwaysWording);
+  // The hint is a text the interview always shows, so a stage holding a
+  // prompt of its own and no hint reads with Network Canvas's hint.
+  it('gives an editor Network Canvas’s hint for a stage that holds only a prompt', () => {
+    const stage = filled({
+      nodeConfiguration: { nameField: { prompt: { en: 'Name' } } },
+    });
+    expect(stage).toHaveProperty('nodeConfiguration.nameField.prompt', {
+      en: 'Name',
+      de: expect.any(String) as unknown as string,
+    });
+    expect(stage).toHaveProperty('nodeConfiguration.nameField.hint.en');
   });
 
-  it('writes the wording with its arguments, in each language it is supplied in', () => {
-    const stage = {
-      type: 'FamilyPedigree',
-      completeness: {},
-      nodeConfiguration: { nameField: { prompt: {} } },
-    };
-    const [parents] = missingSuppliedStageText(stage, {
+  it('is worded with its arguments, in each language it is supplied in', () => {
+    const parents = suppliedStageText('FamilyPedigree', {
       defaultLocale: 'en',
       locales: ['en', 'zh-Hans'],
-    });
+    }).find(
+      ({ path }) => path.join('.') === 'completeness.itemText.parents.listItem',
+    );
     expect(parents?.value['zh-Hans']).toContain('{isYou, select,');
     expect(parents?.value.en).toContain('{name}');
-  });
-
-  it('follows a language change while the default language still has it', () => {
-    const stage = {
-      type: 'FamilyPedigree',
-      completeness: {
-        recommendedNote: {
-          en: 'You can also continue without these by pressing Next again.',
-        },
-      },
-    };
-    expect(
-      suppliedStageTextAfterLanguageChange(stage, {
-        before: english,
-        after: { defaultLocale: 'en', locales: ['en', 'fr'] },
-      }),
-    ).toEqual([
-      {
-        path: ['completeness', 'recommendedNote'],
-        value: {
-          en: 'You can also continue without these by pressing Next again.',
-          fr: expect.stringContaining('Suivant') as unknown as string,
-        },
-      },
-    ]);
   });
 });
 
@@ -521,36 +412,6 @@ describe('which supplied settings apply to a stage', () => {
     expect(
       suppliedStageSettingApplies({ type: 'Sociogram' }, ['noSuchSetting']),
     ).toBe(false);
-  });
-});
-
-describe('the settings a stage holds but no longer shows', () => {
-  const notices = {
-    minNodesNotice: { en: 'Add {count, plural, one {# more} other {# more}}' },
-    maxNodesNotice: { en: 'That is everyone' },
-  };
-
-  it('are the conditional ones whose configuration is off', () => {
-    expect(
-      inapplicableStageSettings({
-        type: 'NameGenerator',
-        behaviours: {},
-        ...notices,
-      }),
-    ).toEqual([['minNodesNotice'], ['maxNodesNotice']]);
-  });
-
-  it('leave out a setting whose configuration is on, or one the stage lacks', () => {
-    expect(
-      inapplicableStageSettings({
-        type: 'NameGenerator',
-        behaviours: { minNodes: 1, maxNodes: 3 },
-        ...notices,
-      }),
-    ).toEqual([]);
-    expect(
-      inapplicableStageSettings({ type: 'NameGenerator', behaviours: {} }),
-    ).toEqual([]);
   });
 });
 
@@ -628,7 +489,7 @@ describe('the text the interview shows for a stage', () => {
     expect(minNotice({ type: 'NameGenerator' })?.shown).toBe(false);
   });
 
-  it('shows an optional setting only while the stage holds it', () => {
+  it('always shows the name hint, Network Canvas’s where the stage holds none', () => {
     const hint = (nameField: unknown) =>
       stageWordingShown(
         { type: 'FamilyPedigree', nodeConfiguration: { nameField } },
@@ -637,22 +498,14 @@ describe('the text the interview shows for a stage', () => {
         ({ path }) => path.join('.') === 'nodeConfiguration.nameField.hint',
       );
 
-    expect(hint({ prompt: { en: 'Name?' } })?.shown).toBe(false);
-    expect(hint({ prompt: { en: 'Name?' }, hint: { en: 'Hint' } })?.shown).toBe(
-      true,
+    expect(hint({ prompt: { en: 'Name?' } })?.shown).toBe(true);
+    expect(hint({ prompt: { en: 'Name?' } })?.value.en).toEqual(
+      expect.any(String),
     );
     expect(
       hint({ prompt: { en: 'Name?' }, hint: { en: 'Hint' } })?.value.en,
     ).toBe('Hint');
-    // The prompt is not optional: the interview shows it, wording its own.
-    expect(
-      stageWordingShown(
-        { type: 'FamilyPedigree', nodeConfiguration: {} },
-        locales,
-      ).find(
-        ({ path }) => path.join('.') === 'nodeConfiguration.nameField.prompt',
-      )?.shown,
-    ).toBe(true);
+    expect(hint(undefined)?.shown).toBe(true);
   });
 
   it('shows a setting within an optional object only while the stage has the object', () => {

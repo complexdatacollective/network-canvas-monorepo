@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  interfaceTextFor,
+  interfaceTextAsShown,
   interfaceTextWithUpdates,
   sharedStageInterfaceTextUsed,
   STAGE_TYPE_INTERFACE_TEXT,
@@ -76,10 +76,10 @@ describe('the shared interface text a protocol would use with a stage as it stan
     ).toContain('searchFailed');
   });
 
-  it('names exactly the stage kind’s groups and entries the saved protocol would hold', () => {
+  it('names exactly the stage kind’s groups and entries the protocol would show', () => {
     for (const allowSearch of [true, false]) {
       const stage = geospatial('map', allowSearch);
-      const saved = interfaceTextFor(protocolWith([stage]));
+      const saved = interfaceTextAsShown(protocolWith([stage]));
       const expected = (STAGE_TYPE_INTERFACE_TEXT.Geospatial ?? []).flatMap(
         (group) => {
           const entries = saved[group as keyof typeof saved];

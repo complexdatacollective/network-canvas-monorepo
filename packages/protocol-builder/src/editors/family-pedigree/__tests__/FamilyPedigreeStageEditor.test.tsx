@@ -9,11 +9,10 @@ import {
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   suppliedOptionLabel,
-  suppliedStageText,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { withMissingSuppliedStageText } from '../../../stageDocument.ts';
+import { stageFieldsForEditing } from '../../../stageDocument.ts';
 import {
   attributeField,
   awaitOfferedAttributes,
@@ -236,15 +235,11 @@ describe('the family pedigree stage editor', () => {
       label: { 'en-US': expect.any(String) },
       subject: { entity: 'node', type: 'family_member' },
       prompt: { 'en-US': PROMPT_TEXT },
-      // Every word the stage shows. The gender identity label among them is
-      // written by the save: the stage gained it when the attribute was
-      // bound, with its wording group closed.
-      wording: EVERY_PEDIGREE_WORD,
+      // None of the words Network Canvas supplies for the stage (the wording
+      // group, the name question): the interview shows them, and the stage
+      // holds only what the researcher wrote.
       nodeConfiguration: {
         nameAttribute: 'fm_name',
-        // The name question a new stage starts with, in the protocol's
-        // language.
-        nameField: FIXTURE_NAME_FIELD,
         genderIdentity: {
           attribute: FRESH_GENDER_ID,
           // The attribute's options are the interface's defaults, so binding
@@ -676,7 +671,6 @@ describe('asking about gender identity', () => {
     const request = await harness.submit();
     expect(nodeConfigurationOf(request?.stageDocument)).toEqual({
       nameAttribute: 'fm_name',
-      nameField: FIXTURE_NAME_FIELD,
       sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
       egoAttribute: 'is_ego',
     });
@@ -732,7 +726,6 @@ describe('asking about gender identity', () => {
 
     expect(nodeConfigurationOf(request?.stageDocument)).toEqual({
       nameAttribute: 'fm_name',
-      nameField: FIXTURE_NAME_FIELD,
       sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
       egoAttribute: 'is_ego',
     });
@@ -992,7 +985,7 @@ describe('the gender identity options, which this stage manages', () => {
 });
 
 describe('the name question', () => {
-  it('is saved as the stage holds it', async () => {
+  it('shows Network Canvas’s wording, and saves none of it', async () => {
     const harness = openFixture();
     await harness.opened();
 
@@ -1000,8 +993,8 @@ describe('the name question', () => {
       await screen.findByRole('textbox', { name: 'Name question' }),
     ).toHaveValue('Name (optional)');
     const request = await harness.submit();
-    expect(nodeConfigurationOf(request?.stageDocument).nameField).toEqual(
-      FIXTURE_NAME_FIELD,
+    expect(nodeConfigurationOf(request?.stageDocument)).not.toHaveProperty(
+      'nameField',
     );
   });
 
@@ -1026,7 +1019,7 @@ describe('the name question', () => {
     ).toHaveValue('What do you call them?');
   });
 
-  it('does not put back guidance the researcher removed', async () => {
+  it('shows Network Canvas’s guidance when the stage holds none, and saves none of it', async () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
         nodeConfiguration: {
@@ -1038,9 +1031,11 @@ describe('the name question', () => {
     });
     await harness.opened();
 
+    // The interview always shows the guidance, so the field starts on
+    // Network Canvas's.
     expect(
       await screen.findByRole('textbox', { name: 'Name question guidance' }),
-    ).toHaveTextContent('');
+    ).toHaveTextContent('A first name or nickname is fine.');
     const request = await harness.submit();
     expect(nodeConfigurationOf(request?.stageDocument).nameField).toEqual({
       prompt: { 'en-US': 'Name' },
@@ -1128,7 +1123,7 @@ describe('the completeness requirement', () => {
     );
   });
 
-  it('writes the words of its checklist as Network Canvas supplies them, while the wording is closed', async () => {
+  it('writes none of the words of its checklist, which the interview shows as Network Canvas supplies them', async () => {
     const harness = openFixture();
     await harness.opened();
     addFamilyMemberVariables(harness, {
@@ -1142,12 +1137,6 @@ describe('the completeness requirement', () => {
     ).toBeNull();
 
     const request = await harness.submit();
-    const supplied = Object.fromEntries(
-      suppliedStageText('FamilyPedigree', {
-        defaultLocale: 'en-US',
-        locales: ['en-US'],
-      }).map(({ path, value }) => [path.join('.'), value]),
-    );
     const document = request?.stageDocument;
     for (const path of [
       'completeness.itemText.parents.listItem',
@@ -1156,7 +1145,7 @@ describe('the completeness requirement', () => {
       'completeness.itemText.details.listItem',
       'completeness.recommendedNote',
     ]) {
-      expect(get(document, path), path).toEqual(supplied[path]);
+      expect(get(document, path), path).toBeUndefined();
     }
   });
 
@@ -1698,7 +1687,8 @@ describe('the participant wording', () => {
   });
 
   it('saves every setting of the completeness checklist unchanged through its field', async () => {
-    const supplied = withMissingSuppliedStageText(
+    const supplied = stageFieldsForEditing(
+      'FamilyPedigree',
       {
         completeness: {
           scope: 'firstDegree',
@@ -1706,7 +1696,6 @@ describe('the participant wording', () => {
           relativesNotRecordedAttribute: 'relativesNotRecorded',
         },
       },
-      'FamilyPedigree',
       { defaultLocale: 'en-US', locales: ['en-US'] },
     );
     const harness = renderStageEditor({

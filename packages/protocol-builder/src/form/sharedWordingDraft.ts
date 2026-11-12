@@ -32,7 +32,7 @@ import type { SectionValidationIssue } from './outlineStore.ts';
 import { REQUIRED } from './requiredField.ts';
 import type { StageFormStoreApi } from './stageEditorContext.ts';
 
-/** The stage form's field for one shared entry the protocol does not hold. */
+/** The stage form's field for one shared entry the saved protocol does not show. */
 export const sharedWordingFieldName = (group: string, key: string): string =>
   `${SHARED_WORDING_PATH}.${group}.${key}`;
 
@@ -89,7 +89,10 @@ export function sharedWordingInForm(
     : { value: field.value, baseline: field.initialValue };
 }
 
-/** What the protocol holds for one shared entry, if anything. */
+/**
+ * What the saved protocol shows for one shared entry, if it shows the entry:
+ * its own wording, or Network Canvas's where it has none.
+ */
 const heldSharedWord = (
   protocol: ProtocolBuilderProtocolContext,
   group: string,
@@ -129,13 +132,13 @@ const asWording = (value: unknown): LocalizedString =>
 
 /**
  * The shared words a save writes with the stage: every entry the stage
- * brings into use that the protocol does not hold, with what the form holds
- * for it, or Network Canvas's wording in the protocol's languages where the
- * researcher has not been shown it. Exactly what `withInterfaceText` would
- * give the protocol on the save, but for the researcher's own words, so a
- * host that keeps the words a protocol uses (Architect) and one that does not
- * (Studio) both end up holding them. An entry the stage stops using is left
- * out, whatever the form still holds for it.
+ * brings into use that the saved protocol does not show, with what the form
+ * holds for it, or Network Canvas's wording in the protocol's languages where
+ * the researcher has not been shown it. A host stores only the researcher's
+ * own wording of each (`interfaceTextWithUpdates`), so an entry sent as
+ * Network Canvas words it writes nothing, and removes wording the settings
+ * still held for it from an earlier use. An entry the stage stops using is
+ * left out, whatever the form still holds for it.
  *
  * With them, the researcher's unsaved change to an entry the protocol came to
  * hold while the stage was open (`isHandedOver`): saving the stage saves it

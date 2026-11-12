@@ -31,7 +31,7 @@ Spanish no longer gets a Spanish protocol inside French buttons.
   text, in a group named for that stage type: `familyPedigree`,
   `categoricalBin`, `quickAdd` (the quick-add name box's placeholder),
   `networkComposer`, plus `familyTreeView` for the controls both pedigree
-  stages share. Each group is held only while the protocol has a stage that
+  stages share. A protocol may word a group only while it has a stage that
   shows it, and an entry that only some configurations show (such as a
   Categorical Bin's Place here button, shown only when it places nodes by
   tapping) only while one does.
@@ -42,8 +42,11 @@ Spanish no longer gets a Spanish protocol inside French buttons.
   a protocol shows must have words in its default language, counting Network
   Canvas's wording, before the protocol leaves its editor: a protocol whose
   default language Network Canvas has no wording in must hold each one there.
-  Architect, Studio and the schema 8 migration still write this text into the
-  protocol.
+  A protocol holds only the wording its author changed: Architect, Studio
+  and the schema 8 migration write none of Network Canvas's wording into it,
+  and a translation that reads exactly as Network Canvas words it is not kept.
+  So a correction to Network Canvas's wording reaches every protocol that has
+  not changed that text.
 - Buttons that any stage might show are worded once, among `buttons`: `undo`,
   `redo`, `skip`, `zoomIn` and `zoomOut` join `copy`.
 - `STAGE_TYPE_INTERFACE_TEXT` names the groups each stage type shows, and
@@ -51,8 +54,11 @@ Spanish no longer gets a Spanish protocol inside French buttons.
   wording of one entry in a protocol's languages.
 - `sharedStageInterfaceTextUsed(protocol, stage)` names the shared interface
   text a protocol would use with one stage saved as given, and
-  `interfaceTextWithUpdates(interfaceText, updates)` writes entries over a
-  protocol's interface text.
+  `interfaceTextWithUpdates(interfaceText, updates)` writes the researcher's
+  own wording for entries into a protocol's interface text.
+  `withoutSuppliedWording(protocol)` gives a protocol as it is stored, and
+  `withSuppliedWording(protocol)` gives it with the wording it shows written
+  out, for a tool that lists, translates or prints every text.
 
 **Architect**
 
@@ -71,7 +77,7 @@ Spanish no longer gets a Spanish protocol inside French buttons.
   leave each field, because it changes every stage of that type, and switching
   the section off resets it too. The shared part follows the stage as you
   edit it: turning on a setting that needs shared wording the protocol does
-  not hold yet, such as a map stage's search, lists that wording at once with
+  not show yet, such as a map stage's search, lists that wording at once with
   Network Canvas's text, and turning the setting off hides it again. That
   wording is saved with the stage, as one step, and discarded if you cancel;
   its field says so. If a collaborator saves a stage that uses the same

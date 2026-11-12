@@ -1251,7 +1251,6 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
   {
     path: ['nodeConfiguration', 'nameField', 'hint'],
     message: NAME_HINT,
-    optional: true,
   },
   pedigreeCompleteness(['itemText', 'parents', 'listItem'], PARENTS_ITEM),
   pedigreeCompleteness(['itemText', 'siblings', 'listItem'], SIBLINGS_ITEM),

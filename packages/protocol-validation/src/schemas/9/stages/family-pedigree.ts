@@ -110,9 +110,9 @@ export const NodeConfigurationSchema = z.strictObject({
     requireType: ['text'],
   }),
   // The question asking that name, and the hint beneath it, worded like a
-  // form field's prompt and hint. Network Canvas supplies both; a stage that
-  // omits the prompt shows Network Canvas's wording, and one that omits the
-  // hint shows none.
+  // form field's prompt and hint. Network Canvas supplies both, and the
+  // interview always shows both: a stage holds either only where its author
+  // changed the wording, or writes in a language Network Canvas has none in.
   nameField: z
     .strictObject({
       prompt: localizedString(nonBlankText(), {

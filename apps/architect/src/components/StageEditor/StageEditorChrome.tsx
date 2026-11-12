@@ -231,9 +231,9 @@ function StageDraftPublisher() {
       const draft = liveDraft();
       const words = pendingSharedWording();
       publishStageDraft(
-        // As it would be saved, holding the wording a save writes in.
+        // As it would be saved, holding only the researcher's own wording.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the draft is a plain record that may not satisfy the stage schema mid-edit; every reader validates the protocol built from it (validateProtocol) before relying on it
-        stageDocument(identity, draft, localization) as unknown as Stage,
+        stageDocument(identity, draft) as unknown as Stage,
         committedFields,
         // Compared without a name the editor proposed and nobody has touched:
         // that is not work the researcher would lose by leaving. The shared

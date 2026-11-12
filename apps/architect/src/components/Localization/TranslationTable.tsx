@@ -75,6 +75,7 @@ import {
   clearSaveFindings,
   readTranslationFieldName,
   saveTranslations,
+  settleSavedCells,
 } from './translationDrafts';
 import {
   type MissingFilter,
@@ -636,9 +637,7 @@ const TranslationTableContent = ({
         getWords: () => ({ intl, languageName }),
       });
       if (result.success) {
-        // What the cells hold is now what the protocol has, so closing the
-        // table loses nothing and asks nothing.
-        formStore.getState().rebaseToDocument(values);
+        settleSavedCells(formStore, values, store.getState());
         onSaved();
       }
       return result;
