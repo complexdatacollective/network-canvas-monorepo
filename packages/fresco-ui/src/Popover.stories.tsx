@@ -298,13 +298,19 @@ export const ArrowAlignment: Story = {
         );
         expect(popup.contains(over)).toBe(true);
         expect(box.contains(over)).toBe(false);
-        const popupRect = popup.getBoundingClientRect();
+        // The arrow sits beside the bordered surface, not inside it.
+        const surface = Array.from(popup.children).find(
+          (child) => child !== box,
+        );
+        expect(surface).toBeDefined();
+        const popupRect = surface!.getBoundingClientRect();
         const triggerRect = trigger.getBoundingClientRect();
-        const border = parseFloat(getComputedStyle(popup).borderTopWidth);
+        const border = parseFloat(getComputedStyle(surface!).borderTopWidth);
+        expect(border).toBeGreaterThan(0);
         const ctm = arrow.getScreenCTM()!;
-        // 30px of arrow across 20 viewBox units, and nothing else scaling it —
-        // so a popup caught mid-entrance fails rather than being measured.
-        expect(Math.hypot(ctm.a, ctm.b)).toBeCloseTo(1.5, 5);
+        // The arrow is drawn at 1:1 and nothing else may scale it, so a popup
+        // caught mid-entrance fails rather than being measured.
+        expect(Math.hypot(ctm.a, ctm.b)).toBeCloseTo(1, 5);
 
         const horizontal = side === 'top' || side === 'bottom';
         const at = (x: number, y: number) => {
@@ -323,12 +329,13 @@ export const ArrowAlignment: Story = {
           ? triggerRect.left + triggerRect.width / 2
           : triggerRect.top + triggerRect.height / 2;
 
-        // y=8 is the shoulder the border runs through — both ends, so a shoulder
-        // that isn't parallel to it is caught too. x=10 is the drawing's centre.
+        // The feet sit on y=8, the border's centre line — both of them, so an
+        // arrow tilted against the border is caught too. x=8 is the drawing's
+        // centre.
         return [
-          { side, what: 'shoulder start', offBy: at(0, 8).y - borderCentre },
-          { side, what: 'shoulder end', offBy: at(20, 8).y - borderCentre },
-          { side, what: 'aim', offBy: at(10, 8).x - triggerCentre },
+          { side, what: 'start foot', offBy: at(1, 8).y - borderCentre },
+          { side, what: 'end foot', offBy: at(15, 8).y - borderCentre },
+          { side, what: 'aim', offBy: at(8, 8).x - triggerCentre },
         ];
       });
 

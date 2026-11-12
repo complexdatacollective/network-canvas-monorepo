@@ -314,7 +314,8 @@ export default function QuickAddField({
               <TooltipContent
                 side="bottom"
                 align="center"
-                className="bg-destructive text-destructive-contrast [&_svg_path]:fill-destructive max-w-md text-sm"
+                className="bg-destructive text-destructive-contrast max-w-md text-sm"
+                arrowClassName="[&_path]:fill-destructive"
                 sideOffset={10}
               >
                 {meta.errors?.[0] && (
