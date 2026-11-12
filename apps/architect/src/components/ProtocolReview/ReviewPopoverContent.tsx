@@ -91,7 +91,7 @@ const messages = defineMessages({
   runningBody: {
     id: 'architect.protocolReview.popover.runningBody',
     defaultMessage:
-      'This can take a few minutes. You can close this panel and keep working. The button shows how far the review has got, then a count of the problems found.',
+      'This can take a few minutes. You can close this panel and keep working. While the panel is closed, the button shows how far the review has got, then a count of the problems found.',
     description:
       'Text while an automated review runs. "The button" is the Review protocol toolbar button.',
   },
