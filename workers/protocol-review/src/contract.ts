@@ -33,6 +33,16 @@ export const REVIEW_PROVIDERS = ['anthropic', 'openai'] as const;
 export type ReviewProvider = (typeof REVIEW_PROVIDERS)[number];
 
 /**
+ * What each provider and its model are called, for the choice Architect
+ * shows. They are names, and are not translated. The model the service really
+ * calls is `PROVIDER_MODELS` in `constants.ts`; a test keeps the two in step.
+ */
+export const REVIEW_PROVIDER_NAMES = {
+  anthropic: { company: 'Anthropic', model: 'Claude Opus 5.5' },
+  openai: { company: 'OpenAI', model: 'GPT-6.1 Sol' },
+} as const satisfies Record<ReviewProvider, { company: string; model: string }>;
+
+/**
  * The only origins the service answers. A browser cannot forge `Origin`, so
  * this stops any other website from spending the service's budget; it does
  * not stop a script that sets the header itself, which the limits below and

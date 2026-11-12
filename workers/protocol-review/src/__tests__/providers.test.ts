@@ -4,6 +4,7 @@ import { MAX_OUTPUT_TOKENS, PROVIDER_MODELS } from '../constants.ts';
 import {
   PROVIDERS_PATH,
   ProviderStatusSchema,
+  REVIEW_PROVIDER_NAMES,
   REVIEW_PROVIDERS,
   ReviewErrorSchema,
   type ReviewProvider,
@@ -140,6 +141,18 @@ describe('the provider a review asks for', () => {
       provider: 'openai',
       model: PROVIDER_MODELS.openai.model,
     });
+  });
+});
+
+describe('what each provider is called', () => {
+  it('names the model the service really calls', () => {
+    // "Claude Opus 5.5" is `claude-opus-5-5`; "GPT-6.1 Sol" is `gpt-6.1-sol`.
+    const plain = (name: string) => name.toLowerCase().replace(/[ .]/gu, '-');
+    for (const provider of REVIEW_PROVIDERS) {
+      expect(plain(REVIEW_PROVIDER_NAMES[provider].model)).toBe(
+        plain(PROVIDER_MODELS[provider].model),
+      );
+    }
   });
 });
 
