@@ -10,9 +10,10 @@ import {
 import type { StudyContext } from '@codaco/shared-consts';
 
 export const STUDY_CONTEXT: StudyContext = {
-  researchQuestions: ['Who do older adults turn to for advice?'],
+  synopsis: 'A cross-sectional study of advice networks in later life.',
   population: 'Adults over 65 living alone',
   administration: 'face_to_face',
+  researchQuestions: ['Who do older adults turn to for advice?'],
 };
 
 /**

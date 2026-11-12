@@ -21,7 +21,6 @@ const record = (protocolId: string): StoredReviewRecord => ({
     reviewId: '6a1f0e1c-2c1e-4c55-9e0a-6d3f4f2b9a10',
     createdAt: 1_700_000_000_000,
     locale: 'en',
-    fingerprint: 'abc:def',
     findings: [
       {
         finding: makeFinding('f1', [op('set', '/name', 'x')]),
@@ -46,10 +45,10 @@ const readFromDisk = async (protocolId: string) => {
 };
 
 describe('review store', () => {
-  it('reads an empty record, with sharing off, for a protocol never reviewed', async () => {
+  it('reads an empty record, with sharing not yet chosen, for a protocol never reviewed', async () => {
     expect(await readReviewRecord('never')).toEqual({
       protocolId: 'never',
-      shareReviews: false,
+      shareReviews: null,
       review: null,
     });
   });

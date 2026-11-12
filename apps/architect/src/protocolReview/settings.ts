@@ -67,30 +67,39 @@ export const parseProtocolReviewSettings = (
 
 /**
  * The study details as the review service requires them, or `undefined` while
- * the draft is incomplete or invalid. A blank synopsis is left out.
+ * the draft is incomplete or invalid. Research questions are optional: a
+ * draft with none is complete.
  */
 export const completeStudyContext = (
   draft: StudyDetailsDraft,
 ): StudyContext | undefined => {
   const result = StudyContextSchema.safeParse({
-    researchQuestions: draft.researchQuestions,
+    synopsis: draft.synopsis,
     population: draft.population,
     administration: draft.administration,
-    ...(/\S/u.test(draft.synopsis) && { synopsis: draft.synopsis }),
+    researchQuestions: draft.researchQuestions,
   });
   return result.success ? result.data : undefined;
 };
+
+/** Whether two sets of study details say the same thing. */
+export const sameStudyContext = (a: StudyContext, b: StudyContext): boolean =>
+  a.synopsis === b.synopsis &&
+  a.population === b.population &&
+  a.administration === b.administration &&
+  a.researchQuestions.length === b.researchQuestions.length &&
+  a.researchQuestions.every(
+    (question, index) => question === b.researchQuestions[index],
+  );
 
 /** What is written under `protocolReview` for these study details. */
 export const serializeProtocolReviewSettings = (
   studyContext: StudyContext,
 ): NonNullable<Experiments['protocolReview']> => ({
   [STUDY_CONTEXT_KEY]: {
-    researchQuestions: [...studyContext.researchQuestions],
+    synopsis: studyContext.synopsis,
     population: studyContext.population,
     administration: studyContext.administration,
-    ...(studyContext.synopsis !== undefined && {
-      synopsis: studyContext.synopsis,
-    }),
+    researchQuestions: [...studyContext.researchQuestions],
   },
 });

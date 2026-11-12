@@ -81,15 +81,22 @@ export const reviewProtocol = (): CurrentProtocol =>
     ],
   });
 
+/** The study details `reviewProtocolWithDetails` holds. */
+export const SAVED_SYNOPSIS =
+  'A survey of where older adults living alone get everyday advice.';
+export const SAVED_POPULATION = 'Adults over 65 living alone';
+export const SAVED_QUESTION = 'Who do older adults turn to for advice?';
+
 /** The same protocol with the experiment on and study details already saved. */
 export const reviewProtocolWithDetails = (): CurrentProtocol => ({
   ...reviewProtocol(),
   experiments: {
     protocolReview: {
       studyContext: {
-        researchQuestions: ['Who do older adults turn to for advice?'],
-        population: 'Adults over 65 living alone',
+        synopsis: SAVED_SYNOPSIS,
+        population: SAVED_POPULATION,
         administration: 'face_to_face',
+        researchQuestions: [SAVED_QUESTION],
       },
     },
   },
@@ -217,13 +224,30 @@ type ReviewBody = {
   locale: string;
   share: boolean;
   studyContext: {
-    researchQuestions: string[];
+    synopsis: string;
     population: string;
     administration: string;
-    synopsis?: string;
+    researchQuestions: string[];
   };
   protocol: Record<string, unknown>;
 };
+
+const holdsText = (value: unknown) =>
+  typeof value === 'string' && /\S/u.test(value);
+
+/**
+ * Whether `studyContext` is what the service accepts: a synopsis and a
+ * population that hold text, an administration mode, and any number of
+ * research questions (none included), each holding text.
+ */
+const isValidStudyContext = (value: unknown) =>
+  isRecord(value) &&
+  holdsText(value.synopsis) &&
+  holdsText(value.population) &&
+  (value.administration === 'face_to_face' ||
+    value.administration === 'self_administered') &&
+  Array.isArray(value.researchQuestions) &&
+  value.researchQuestions.every(holdsText);
 
 /** One provider's line in the answer to `GET /providers`. */
 export type MockProviderStatus = {
@@ -327,6 +351,17 @@ export async function mockReviewService(
     if (!isRecord(parsed)) throw new Error('review request body is not JSON');
     // Keep the body as sent; the specs assert on its fields one by one.
     bodies.push(JSON.parse(JSON.stringify(parsed)) as ReviewBody);
+
+    // The service refuses study details it does not accept, as the real one
+    // does, so a request that breaks the contract never gets a result.
+    if (!isValidStudyContext(parsed.studyContext)) {
+      await route.fulfill({
+        status: 400,
+        headers: { ...cors, 'content-type': 'application/json' },
+        body: JSON.stringify({ error: 'invalid_request', retryAt: null }),
+      });
+      return;
+    }
 
     const current = reply;
     if (current.kind === 'error') {

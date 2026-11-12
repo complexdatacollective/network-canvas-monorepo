@@ -33,7 +33,6 @@ import {
   type FixTextEdit,
   resolveFindingLocation,
 } from '~/protocolReview/describeFix';
-import { reviewFingerprint } from '~/protocolReview/fingerprint';
 import {
   applyOperations,
   fixFits,
@@ -60,7 +59,6 @@ import {
 import {
   type FindingDecision,
   readReviewRecord,
-  reviewProviderOf,
   type StoredFinding,
   type StoredReviewRecord,
   writeReviewRecord,
@@ -317,9 +315,19 @@ export const getProtocolReviewPhase = (
   return run.received > 0 ? 'writing' : 'thinking';
 };
 
-/** Whether reviews of this protocol are shared with the team. Off until chosen. */
-export const getShareProtocolReviews = (state: RootState): boolean =>
-  selectReview(state).record?.shareReviews ?? false;
+/**
+ * The researcher's choice about sharing reviews of this protocol with the
+ * team; null while they have not made one.
+ */
+export const getShareReviewsChoice = (state: RootState): boolean | null =>
+  selectReview(state).record?.shareReviews ?? null;
+
+/**
+ * Whether the active protocol's record has been read. Until it has, "no
+ * review" is not yet an answer.
+ */
+export const getIsProtocolReviewRecordRead = (state: RootState): boolean =>
+  selectReview(state).record !== null;
 
 const selectRecord = (state: RootState) => selectReview(state).record;
 
@@ -417,23 +425,6 @@ const getProtocolReviewProvider = (
   return reviewProviderFor(review.provider, reviewProviderChoices(review, now));
 };
 
-/** Who wrote the stored review of the active protocol; null when none is. */
-export const getProtocolReviewWriter = (
-  state: RootState,
-): ReviewProvider | null => {
-  const review = selectRecord(state)?.review;
-  return review ? reviewProviderOf(review) : null;
-};
-
-// The study details come only through the app's selector, which reads the
-// experiment's opaque settings tolerantly; undefined means missing or
-// incomplete.
-const getCurrentFingerprint = createSelector(
-  [getProtocol, getProtocolReviewStudyContext],
-  (protocol, context) =>
-    protocol && context ? reviewFingerprint(protocol, context) : null,
-);
-
 export type ReviewStartBlock =
   | { code: 'no_protocol' }
   | { code: 'experiment_off' }
@@ -441,7 +432,6 @@ export type ReviewStartBlock =
   | { code: 'running' }
   /** Every provider's budget is spent. */
   | { code: 'budget_spent' }
-  | { code: 'unchanged' }
   | { code: 'hourly_limit'; resetsAt: string };
 
 /**
@@ -457,29 +447,21 @@ export const getProtocolReviewStartBlock = (
     return { code: 'no_protocol' };
   }
   if (!getIsProtocolReviewEnabled(state)) return { code: 'experiment_off' };
-  if (!getProtocolReviewStudyContext(state)) {
-    return { code: 'missing_study_context' };
-  }
   const review = selectReview(state);
   if (review.run.status === 'running') return { code: 'running' };
   const choices = reviewProviderChoices(review, now);
   if (!choices.some((choice) => choice.available)) {
     return { code: 'budget_spent' };
   }
-  // Another review of the same protocol and details is only the same
-  // question when the same provider would answer it.
-  const fingerprint = getCurrentFingerprint(state);
-  const stored = selectRecord(state)?.review;
-  if (
-    fingerprint !== null &&
-    stored?.fingerprint === fingerprint &&
-    reviewProviderOf(stored) === reviewProviderFor(review.provider, choices)
-  ) {
-    return { code: 'unchanged' };
-  }
   const quota = getProtocolReviewQuota(state, now);
   if (quota && quota.remaining <= 0) {
     return { code: 'hourly_limit', resetsAt: quota.resetsAt };
+  }
+  // Last, because it is the one block the researcher lifts themselves, in the
+  // dialog every review is asked for through: the blocks above stop that
+  // dialog from opening, and this one does not.
+  if (!getProtocolReviewStudyContext(state)) {
+    return { code: 'missing_study_context' };
   }
   return null;
 };
@@ -748,7 +730,6 @@ export type StartReviewRefusal =
   | 'missing_study_context'
   | 'running'
   | 'budget_spent'
-  | 'unchanged'
   | 'hourly_limit';
 
 export type StartReviewResult =
@@ -848,21 +829,22 @@ export const startReview =
     const { runId } = run;
     inflight = run;
     const startedAt = Date.now();
-    const fingerprint = reviewFingerprint(protocol, studyContext);
     // What is sent, and what every fix is recorded against: the protocol with
     // the wording a participant is shown written out.
     const reviewed = protocolAsReviewed(protocol);
     const locale = getArchitectIntl().locale;
     const provider = getProtocolReviewProvider(state);
+    // Shared only on a choice the researcher made.
+    const share = record.shareReviews === true;
     dispatch(actions.runStarted({ runId, startedAt }));
-    captureReviewStarted({ share: record.shareReviews, provider });
+    captureReviewStarted({ share, provider });
 
     const outcome = await requestReview({
       request: {
         installationId: getReviewInstallationId(),
         provider,
         locale,
-        share: record.shareReviews,
+        share,
         studyContext,
         protocol: protocolForReview(reviewed),
       },
@@ -938,7 +920,6 @@ export const startReview =
         reviewId: result.reviewId,
         createdAt: Date.now(),
         locale,
-        fingerprint,
         provider,
         findings,
       },
@@ -988,6 +969,23 @@ export const cancelReview = (): Thunk<void> => (dispatch) => {
   const aborted = abortInflight();
   if (aborted) dispatch(actions.runFinished({ runId: aborted.runId }));
 };
+
+/**
+ * Removes the active protocol's review, and answers whether it did. The
+ * sharing choice stays, and so does every change a fix made to the protocol:
+ * those are the protocol's now, and the app's own Undo takes them back.
+ */
+export const dismissReview =
+  (): Thunk<Promise<boolean>> => async (dispatch, getState) => {
+    const record = selectRecord(getState());
+    if (
+      !record?.review ||
+      record.protocolId !== getActiveProtocolId(getState())
+    ) {
+      return false;
+    }
+    return saveRecord(dispatch, getState, { ...record, review: null });
+  };
 
 /** Clears a failed run back to idle. */
 export const dismissReviewFailure = (): Thunk<void> => (dispatch, getState) => {

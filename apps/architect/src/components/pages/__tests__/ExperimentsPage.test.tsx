@@ -120,9 +120,10 @@ describe('<ExperimentsPage />', () => {
 
   describe('with study details saved', () => {
     const studyContext = {
-      researchQuestions: ['How do students find support?'],
+      synopsis: 'A survey of first-year students.',
       population: 'First-year students',
       administration: 'face_to_face' as const,
+      researchQuestions: ['How do students find support?'],
     };
 
     const storeWithDetails = () => {

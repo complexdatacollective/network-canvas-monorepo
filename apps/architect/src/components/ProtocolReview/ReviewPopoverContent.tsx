@@ -1,5 +1,5 @@
-import { ArrowRight, CircleCheck, PenLine, RefreshCw, X } from 'lucide-react';
-import { type ReactNode, useEffect, useId } from 'react';
+import { ArrowRight, CircleCheck, PenLine, X } from 'lucide-react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 import {
   defineMessages,
@@ -9,22 +9,21 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
-import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { PopoverTitle } from '@codaco/fresco-ui/Popover';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   REVIEW_PROVIDER_NAMES,
-  REVIEW_PROVIDERS,
   type ReviewErrorCode,
 } from '@codaco/protocol-review-worker/contract';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   cancelReview,
-  chooseReviewProvider,
   decideFinding,
+  dismissReview,
   dismissReviewFailure,
   getProtocolReviewCounts,
   getProtocolReviewFindings,
@@ -32,7 +31,6 @@ import {
   getProtocolReviewProgress,
   getProtocolReviewRun,
   getProtocolReviewSummary,
-  getProtocolReviewWriter,
   refreshReviewProviders,
   type ReviewFindingView,
   type ReviewRun,
@@ -41,6 +39,7 @@ import {
 import { getProtocol } from '~/selectors/protocol';
 
 import { GuardedButton, ProtocolPlaceLink } from './reviewControls';
+import ReviewProblemView from './ReviewProblemView';
 import {
   formatLocation,
   formatLocationLink,
@@ -66,14 +65,15 @@ const messages = defineMessages({
   ready: {
     id: 'architect.protocolReview.popover.ready',
     defaultMessage:
-      'Your protocol and study details will be sent to the review service, which lists the problems it finds, most serious first; nothing in your protocol changes until you choose.',
+      'A review lists the problems it finds in your protocol, most serious first. Nothing in your protocol changes until you choose.',
     description:
-      'What happens when the researcher starts the first automated review of a protocol.',
+      'Shown in the review panel while the protocol has no review: what a review gives the researcher.',
   },
   startReview: {
     id: 'architect.protocolReview.popover.startReview',
     defaultMessage: 'Start review',
-    description: 'Button that starts the first automated review of a protocol.',
+    description:
+      'Button in the review panel that opens the dialog a researcher goes through to start an automated review of the protocol.',
   },
   started: {
     id: 'architect.protocolReview.popover.started',
@@ -126,25 +126,12 @@ const messages = defineMessages({
     description:
       'Caption while a review runs: which of the researcher’s reviews allowed this hour it is.',
   },
-  reviewed: {
-    id: 'architect.protocolReview.popover.reviewed',
+  resultsIntro: {
+    id: 'architect.protocolReview.popover.resultsIntro',
     defaultMessage:
-      'Reviewed {when} · {total, plural, one {# problem} other {# problems}}, {undecided, plural, =0 {none still to decide} other {# still to decide}}',
+      'The results of your review are shown below in order of importance.',
     description:
-      'Line under the Protocol review heading once a review has finished. {when} is a moment such as "today at 14:32"; {total} is how many problems were found; {undecided} how many the researcher has not decided about yet. The dot is a separator.',
-  },
-  lastReviewed: {
-    id: 'architect.protocolReview.popover.lastReviewed',
-    defaultMessage:
-      'Last reviewed {when} · {total, plural, one {# problem} other {# problems}}, {undecided, plural, =0 {none still to decide} other {# still to decide}}',
-    description:
-      'Line under the Protocol review heading when the latest attempt to review did not finish, and the results shown are from an earlier review. {when} is a moment such as "today at 14:32"; {total} is how many problems were found; {undecided} how many the researcher has not decided about yet. The dot is a separator.',
-  },
-  reviewedNone: {
-    id: 'architect.protocolReview.popover.reviewedNone',
-    defaultMessage: 'Reviewed {when} · no problems',
-    description:
-      'Line under the Protocol review heading once a review found nothing. {when} is a moment such as "today at 14:32". The dot is a separator.',
+      'Line under the Protocol review heading, above the list of problems the review found.',
   },
   noProblems: {
     id: 'architect.protocolReview.popover.noProblems',
@@ -205,17 +192,30 @@ const messages = defineMessages({
     description:
       'Button that opens the problems still to decide one at a time. {count} is how many there are.',
   },
-  reviewAgain: {
-    id: 'architect.protocolReview.popover.reviewAgain',
-    defaultMessage: 'Review again',
+  dismissReview: {
+    id: 'architect.protocolReview.popover.dismissReview',
+    defaultMessage: 'Dismiss review',
     description:
-      'Button that starts a new automated review of the protocol as it is now.',
+      'Button under the list of problems that removes the review. The protocol is then as if it had not been reviewed, and a new review can be started.',
+  },
+  reviewDismissed: {
+    id: 'architect.protocolReview.popover.reviewDismissed',
+    defaultMessage: 'Review dismissed.',
+    description:
+      'Read by screen readers after Dismiss review removed the review.',
+  },
+  dismissRefused: {
+    id: 'architect.protocolReview.popover.dismissRefused',
+    defaultMessage:
+      'The review could not be dismissed, because this protocol is open for editing in another tab. Dismiss it in that tab.',
+    description:
+      'Notice when Dismiss review was refused because another browser tab holds this protocol for editing.',
   },
   tryAgain: {
     id: 'architect.protocolReview.popover.tryAgain',
     defaultMessage: 'Try again',
     description:
-      'Button that starts the review again after the review service was not available.',
+      'Button that sends the same review again after the review service was not available.',
   },
   quota: {
     id: 'architect.protocolReview.popover.quota',
@@ -224,31 +224,18 @@ const messages = defineMessages({
     description:
       'Caption beside the review buttons: how many reviews the researcher may still start this hour.',
   },
-  editStudyDetails: {
-    id: 'architect.protocolReview.popover.editStudyDetails',
-    defaultMessage: 'Edit study details',
-    description:
-      'Button that opens the study details dialog (research questions, participants, synopsis, sharing) to change them.',
-  },
   offlineTitle: {
     id: 'architect.protocolReview.notice.offlineTitle',
     defaultMessage: 'You’re offline',
     description:
       'Title of the notice shown when there is no internet connection.',
   },
-  offlineBody: {
-    id: 'architect.protocolReview.notice.offlineBody',
-    defaultMessage:
-      'Protocol review needs an internet connection. Your last review is still here, and you can keep working through it.',
-    description:
-      'Text of the offline notice when this protocol has an earlier review, which stays on screen below the notice.',
-  },
   offlineBodyNoReview: {
     id: 'architect.protocolReview.notice.offlineBodyNoReview',
     defaultMessage:
       'Protocol review needs an internet connection. You can review this protocol when you are back online.',
     description:
-      'Text of the offline notice when this protocol has not been reviewed yet.',
+      'Text of the offline notice, shown in the review panel while the protocol has no review.',
   },
   hourlyTitle: {
     id: 'architect.protocolReview.notice.hourlyTitle',
@@ -273,9 +260,9 @@ const messages = defineMessages({
   budgetBody: {
     id: 'architect.protocolReview.notice.budgetBody',
     defaultMessage:
-      'This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. You can choose another provider for this review. Nothing in your protocol was changed.',
+      'This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. Start the review again to choose another model. Nothing in your protocol was changed.',
     description:
-      'Text of the notice shown when the chosen provider’s budget is spent and another provider still has budget. A provider is the company whose AI model writes the review (Anthropic or OpenAI); the researcher chooses one in the same panel.',
+      'Text of the notice shown when the chosen provider’s budget is spent and another provider still has budget. A provider is the company whose AI model writes the review (Anthropic or OpenAI); the researcher chooses a model in the last step of the dialog that starts a review.',
   },
   allSpentTitle: {
     id: 'architect.protocolReview.notice.allSpentTitle',
@@ -314,31 +301,6 @@ const messages = defineMessages({
     defaultMessage:
       'The review service only accepts protocols up to a fixed size, and this one is larger. Nothing in your protocol was changed, and this attempt did not count towards your limit.',
     description: 'Text of the too-large notice.',
-  },
-  writtenBy: {
-    id: 'architect.protocolReview.popover.writtenBy',
-    defaultMessage: 'Written by {model} ({company})',
-    description:
-      'Line under the Protocol review heading saying which AI model wrote the review shown. {model} is the model’s name, such as "Claude Opus 5.5", and {company} is who makes it, such as "Anthropic"; neither is translated.',
-  },
-  providerLabel: {
-    id: 'architect.protocolReview.provider.label',
-    defaultMessage: 'Provider for the next review',
-    description:
-      'Label of the choice between the companies whose AI model can write the next review of the protocol (Anthropic or OpenAI).',
-  },
-  providerSpentUntil: {
-    id: 'architect.protocolReview.provider.spentUntil',
-    defaultMessage:
-      'The budget for {company} has been spent. It starts again {when}.',
-    description:
-      'Why a provider cannot be chosen to write the next review. {company} is the provider’s name, "Anthropic" or "OpenAI", and is not translated; {when} is a moment such as "tomorrow at 01:00" or "1 Dec 2026 at 01:00".',
-  },
-  providerSpent: {
-    id: 'architect.protocolReview.provider.spent',
-    defaultMessage: 'The budget for {company} has been spent.',
-    description:
-      'Why a provider cannot be chosen to write the next review, when the service did not say when its budget starts again. {company} is the provider’s name, "Anthropic" or "OpenAI", and is not translated.',
   },
   dismissNotice: {
     id: 'architect.protocolReview.notice.dismiss',
@@ -397,22 +359,26 @@ const statusMessages: Record<
 
 type ReviewPopoverContentProps = {
   onClose: () => void;
-  onOpenFinding: (findingId: string) => void;
-  onStartReview: () => void;
-  onEditStudyDetails: () => void;
+  /** Opens the dialog every review is asked for through. */
+  onRequestReview: () => void;
+  /** Sends the review that failed again, as it was asked for. */
+  onRetryReview: () => void;
   announce: (message: string) => void;
 };
 
+/** What the panel shows of a review: all its problems, or one of them. */
+type PanelView = { kind: 'list' } | { kind: 'problem'; findingId: string };
+
 /**
- * What the Review protocol popover shows, by the state of the review: ready
- * for a first review, running, or its results; with any notice about a review
- * that could not run above whatever results there are.
+ * What the Review protocol popover shows, by the state of the review: none
+ * yet, running, or its results; with any notice about a review that could
+ * not run above. The results are a list of problems, and opening one shows
+ * it in the list's place.
  */
 const ReviewPopoverContent = ({
   onClose,
-  onOpenFinding,
-  onStartReview,
-  onEditStudyDetails,
+  onRequestReview,
+  onRetryReview,
   announce,
 }: ReviewPopoverContentProps) => {
   const intl = useAppIntl();
@@ -424,7 +390,6 @@ const ReviewPopoverContent = ({
   const progress = useAppSelector(getProtocolReviewProgress);
   const phase = useAppSelector(getProtocolReviewPhase);
   const protocol = useAppSelector(getProtocol);
-  const writer = useAppSelector(getProtocolReviewWriter);
   const {
     now,
     online,
@@ -433,11 +398,28 @@ const ReviewPopoverContent = ({
     providers,
     provider,
     hourlyResetsAt,
-    canStart,
+    canRequest,
     reason: blockedReason,
   } = useReviewAvailability();
   const captionId = useId();
-  const providerLabelId = useId();
+
+  const [view, setView] = useState<PanelView>({ kind: 'list' });
+  // Whether the view has changed since the panel opened: the first view
+  // arrives with the panel, and only a later one slides in.
+  const [switched, setSwitched] = useState(false);
+  // The problem last shown, whose row takes focus when the list comes back.
+  const returnTo = useRef<string | null>(null);
+  const [dismissRefused, setDismissRefused] = useState(false);
+
+  const openFinding = (findingId: string) => {
+    setSwitched(true);
+    setView({ kind: 'problem', findingId });
+  };
+  const showList = () => {
+    if (view.kind === 'problem') returnTo.current = view.findingId;
+    setSwitched(true);
+    setView({ kind: 'list' });
+  };
 
   // Which providers have budget left is the service's to say, so it is asked
   // each time this opens, and again when the connection comes back.
@@ -445,13 +427,19 @@ const ReviewPopoverContent = ({
     if (online) void dispatch(refreshReviewProviders());
   }, [dispatch, online]);
 
-  const notice = noticeOf(
-    online,
-    run,
-    hourlyResetsAt !== null,
-    providers.some((choice) => choice.available),
-  );
   const running = run.status === 'running';
+  // A notice is about a review that cannot be asked for or did not finish.
+  // With results on screen there is nothing to ask for until they are
+  // dismissed, so none is shown.
+  const notice =
+    summary && !running
+      ? null
+      : noticeOf(
+          online,
+          run,
+          hourlyResetsAt !== null,
+          providers.some((choice) => choice.available),
+        );
 
   const subline = (() => {
     if (running) {
@@ -463,14 +451,9 @@ const ReviewPopoverContent = ({
       });
     }
     if (!summary) return intl.formatMessage(messages.notReviewed);
-    const when = formatWhen(intl, summary.createdAt, now);
-    if (counts.total === 0) {
-      return intl.formatMessage(messages.reviewedNone, { when });
-    }
-    return intl.formatMessage(
-      notice === null ? messages.reviewed : messages.lastReviewed,
-      { when, total: counts.total, undecided: counts.undecided },
-    );
+    return findings.length === 0
+      ? null
+      : intl.formatMessage(messages.resultsIntro);
   })();
 
   const renderNotice = () => {
@@ -489,9 +472,7 @@ const ReviewPopoverContent = ({
       {
         offline: {
           title: intl.formatMessage(messages.offlineTitle),
-          body: intl.formatMessage(
-            summary ? messages.offlineBody : messages.offlineBodyNoReview,
-          ),
+          body: intl.formatMessage(messages.offlineBodyNoReview),
         },
         hourly: {
           title: intl.formatMessage(messages.hourlyTitle, { limit }),
@@ -552,7 +533,12 @@ const ReviewPopoverContent = ({
       <li key={finding.id} className="border-outline border-t">
         <button
           type="button"
-          onClick={() => onOpenFinding(finding.id)}
+          ref={(row) => {
+            if (row === null || returnTo.current !== finding.id) return;
+            returnTo.current = null;
+            row.focus();
+          }}
+          onClick={() => openFinding(finding.id)}
           className="focusable hover:bg-surface-1 flex w-full items-start gap-3 px-6 py-3 text-start"
         >
           <SeverityIcon severity={finding.severity} />
@@ -625,12 +611,24 @@ const ReviewPopoverContent = ({
   const firstUndecided = findings.find(
     (finding) => finding.status === 'undecided',
   );
-  const startLabel =
-    run.status === 'failed' && failureNotices[run.code] === 'unavailable'
-      ? messages.tryAgain
-      : summary
-        ? messages.reviewAgain
-        : messages.startReview;
+  // A review the service could not answer is sent again as it was asked
+  // for. Every other start goes through the dialog.
+  const retry =
+    run.status === 'failed' && failureNotices[run.code] === 'unavailable';
+
+  const shownIndex =
+    view.kind === 'problem' && summary && !running
+      ? findings.findIndex((finding) => finding.id === view.findingId)
+      : -1;
+  const shown = shownIndex === -1 ? undefined : findings[shownIndex];
+
+  const dismiss = async () => {
+    const dismissed = await dispatch(dismissReview());
+    setDismissRefused(!dismissed);
+    if (!dismissed) return;
+    announce(intl.formatMessage(messages.reviewDismissed));
+    onClose();
+  };
 
   const body = running ? (
     <div className="flex flex-col gap-4 px-6 pb-4">
@@ -677,25 +675,6 @@ const ReviewPopoverContent = ({
     </ScrollArea>
   );
 
-  // Why each provider that cannot be chosen cannot, once for the option
-  // (read with it by a screen reader) and once in sight under the choice.
-  const spentReasons = new Map(
-    providers
-      .filter((choice) => !choice.available)
-      .map((choice) => {
-        const { company } = REVIEW_PROVIDER_NAMES[choice.provider];
-        return [
-          choice.provider,
-          choice.retryAt === null
-            ? intl.formatMessage(messages.providerSpent, { company })
-            : intl.formatMessage(messages.providerSpentUntil, {
-                company,
-                when: formatWhen(intl, choice.retryAt, now),
-              }),
-        ] as const;
-      }),
-  );
-
   const caption = running
     ? intl.formatMessage(messages.runningCaption, {
         current: Math.min(limit, limit - remaining + 1),
@@ -704,8 +683,35 @@ const ReviewPopoverContent = ({
     : (blockedReason ??
       intl.formatMessage(messages.quota, { remaining, limit }));
 
+  // The panel stays above the button and scrolls inside when it is tall. Its
+  // height stops a little short of the room there is: a popup that fills the
+  // room exactly is one the positioner moves to another side of the button,
+  // which a problem longer than the list before it would otherwise do.
+  const frame =
+    'flex max-h-[min(54rem,calc(var(--available-height,100dvh)-0.5rem))] w-[min(32rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-[inherit]';
+  // A view that replaces another arrives with a short fade and rise.
+  const arriving =
+    switched &&
+    'spring-short transition-[opacity,translate] motion-reduce:transition-none starting:translate-y-2 starting:opacity-0';
+
+  if (shown) {
+    return (
+      <div key={shown.id} className={cx(frame, arriving)}>
+        <ReviewProblemView
+          finding={shown}
+          index={shownIndex}
+          total={findings.length}
+          onOpenFinding={openFinding}
+          onBack={showList}
+          onClose={onClose}
+          announce={announce}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex max-h-[min(54rem,var(--available-height,100dvh))] w-[min(32rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-[inherit]">
+    <div key="list" className={cx(frame, arriving)}>
       <div className="flex items-start gap-4 px-6 pt-6 pb-4">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <PopoverTitle
@@ -713,98 +719,70 @@ const ReviewPopoverContent = ({
           >
             {intl.formatMessage(messages.title)}
           </PopoverTitle>
-          <span className="text-sm text-current/70">{subline}</span>
-          {!running && writer !== null && (
-            <span className="text-sm text-current/70">
-              {intl.formatMessage(messages.writtenBy, {
-                model: REVIEW_PROVIDER_NAMES[writer].model,
-                company: REVIEW_PROVIDER_NAMES[writer].company,
-              })}
-            </span>
+          {subline !== null && (
+            <span className="text-sm text-current/70">{subline}</span>
           )}
         </div>
         <CloseButton onClick={onClose} />
       </div>
       {renderNotice()}
+      {dismissRefused && (
+        <div className="px-6 pb-4">
+          <Alert variant="warning" density="compact" className="my-0">
+            <AlertDescription className="text-sm">
+              {intl.formatMessage(messages.dismissRefused)}
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
       {body}
       <div className="border-outline flex flex-col gap-3 border-t px-6 py-4">
-        <div className="flex flex-col gap-1">
-          <span id={providerLabelId} className="text-sm font-bold">
-            {intl.formatMessage(messages.providerLabel)}
-          </span>
-          <RadioGroupField
-            aria-labelledby={providerLabelId}
-            orientation="horizontal"
-            size="sm"
-            disabled={running}
-            value={provider}
-            onChange={(next) => {
-              const chosen = REVIEW_PROVIDERS.find((name) => name === next);
-              if (chosen) dispatch(chooseReviewProvider(chosen));
-            }}
-            options={providers.map((choice) => {
-              const { company, model } = REVIEW_PROVIDER_NAMES[choice.provider];
-              return {
-                value: choice.provider,
-                label: (
-                  <>
-                    <span className="font-bold">{company}</span>{' '}
-                    <span>{model}</span>
-                  </>
-                ),
-                disabled: !choice.available,
-                description: spentReasons.get(choice.provider),
-              };
-            })}
-          />
-          {/* Each option carries its own reason for a screen reader. */}
-          {[...spentReasons].map(([name, reason]) => (
-            <span key={name} aria-hidden className="text-sm text-current/70">
-              {reason}
-            </span>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {running ? (
-            <Button onClick={() => dispatch(cancelReview())}>
-              {intl.formatMessage(messages.cancelReview)}
+        {running ? (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={() => dispatch(cancelReview())}>
+                {intl.formatMessage(messages.cancelReview)}
+              </Button>
+            </div>
+            <span className="text-sm text-current/70">{caption}</span>
+          </>
+        ) : summary ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Button onClick={() => void dismiss()}>
+              {intl.formatMessage(messages.dismissReview)}
             </Button>
-          ) : (
-            <>
-              {summary && counts.undecided > 0 && firstUndecided && (
-                <Button
-                  color="primary"
-                  icon={<ArrowRight className="rtl:rotate-180" aria-hidden />}
-                  iconPosition="right"
-                  onClick={() => onOpenFinding(firstUndecided.id)}
-                >
-                  {intl.formatMessage(messages.goThrough, {
-                    count: counts.undecided,
-                  })}
-                </Button>
-              )}
-              <GuardedButton
-                color={summary && counts.undecided > 0 ? 'default' : 'primary'}
-                icon={summary ? <RefreshCw aria-hidden /> : undefined}
-                unavailable={!canStart}
-                aria-describedby={blockedReason ? captionId : undefined}
-                onClick={onStartReview}
+            {counts.undecided > 0 && firstUndecided && (
+              <Button
+                color="primary"
+                icon={<ArrowRight className="rtl:rotate-180" aria-hidden />}
+                iconPosition="right"
+                onClick={() => openFinding(firstUndecided.id)}
               >
-                {intl.formatMessage(startLabel)}
+                {intl.formatMessage(messages.goThrough, {
+                  count: counts.undecided,
+                })}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <GuardedButton
+                color="primary"
+                unavailable={!canRequest}
+                aria-describedby={blockedReason ? captionId : undefined}
+                onClick={retry ? onRetryReview : onRequestReview}
+              >
+                {intl.formatMessage(
+                  retry ? messages.tryAgain : messages.startReview,
+                )}
               </GuardedButton>
-            </>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
-          <span id={captionId} className="text-current/70">
-            {caption}
-          </span>
-          {!running && (
-            <Button size="sm" variant="link" onClick={onEditStudyDetails}>
-              {intl.formatMessage(messages.editStudyDetails)}
-            </Button>
-          )}
-        </div>
+            </div>
+            <span id={captionId} className="text-sm text-current/70">
+              {caption}
+            </span>
+          </>
+        )}
       </div>
     </div>
   );

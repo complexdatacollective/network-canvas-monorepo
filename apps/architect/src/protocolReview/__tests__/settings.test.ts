@@ -20,10 +20,10 @@ const EMPTY = {
 };
 
 const studyContext: StudyContext = {
-  researchQuestions: ['How do students find support?', 'Who helps most?'],
+  synopsis: 'A two-wave study.',
   population: 'First-year students',
   administration: 'face_to_face',
-  synopsis: 'A two-wave study.',
+  researchQuestions: ['How do students find support?', 'Who helps most?'],
 };
 
 const parse = (studyContextValue: unknown) =>
@@ -122,7 +122,7 @@ describe('completeStudyContext', () => {
     researchQuestions: ['Q?'],
     population: 'Adults',
     administration: 'self_administered' as const,
-    synopsis: '',
+    synopsis: 'A study.',
   };
 
   it('returns a context the review service accepts', () => {
@@ -131,24 +131,29 @@ describe('completeStudyContext', () => {
     expect(StudyContextSchema.safeParse(result).success).toBe(true);
   });
 
-  it('leaves out a blank synopsis', () => {
-    const result = completeStudyContext({ ...draft, synopsis: '  ' });
+  it('is complete with no research questions', () => {
+    const result = completeStudyContext({ ...draft, researchQuestions: [] });
     expect(result).toEqual({
-      researchQuestions: ['Q?'],
+      synopsis: 'A study.',
       population: 'Adults',
       administration: 'self_administered',
+      researchQuestions: [],
     });
-    expect(result).not.toHaveProperty('synopsis');
+    expect(StudyContextSchema.safeParse(result).success).toBe(true);
+  });
+
+  it.each(['', '  '])('is incomplete with a synopsis of %j', (synopsis) => {
+    expect(completeStudyContext({ ...draft, synopsis })).toBeUndefined();
+  });
+
+  it('is incomplete with a blank research question on the list', () => {
+    expect(
+      completeStudyContext({ ...draft, researchQuestions: ['Q?', ' '] }),
+    ).toBeUndefined();
   });
 
   it('returns undefined for an incomplete draft', () => {
     expect(completeStudyContext(EMPTY as never)).toBeUndefined();
-    expect(
-      completeStudyContext({ ...draft, researchQuestions: [] }),
-    ).toBeUndefined();
-    expect(
-      completeStudyContext({ ...draft, researchQuestions: ['  '] }),
-    ).toBeUndefined();
     expect(completeStudyContext({ ...draft, population: ' ' })).toBeUndefined();
     expect(
       completeStudyContext({ ...draft, administration: null }),

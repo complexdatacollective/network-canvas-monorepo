@@ -2721,19 +2721,15 @@
   },
   "architect.protocolReview.availability.availableAgainAt": {
     "defaultMessage": "Available again {when}",
-    "description": "Why Review again is unavailable: the budget of every provider that could write the review is spent, for the day or the month. {when} is the moment the first of them starts again, such as \"tomorrow at 01:00\" or \"1 Dec 2026 at 01:00\"."
+    "description": "Why a review cannot be started: the budget of every provider that could write the review is spent, for the day or the month. {when} is the moment the first of them starts again, such as \"tomorrow at 01:00\" or \"1 Dec 2026 at 01:00\"."
   },
   "architect.protocolReview.availability.nextReviewAt": {
     "defaultMessage": "Next review {when}",
-    "description": "Why Review again is unavailable: the hourly limit is used up. {when} is a time such as \"today at 15:32\"."
+    "description": "Why a review cannot be started: the hourly limit is used up. {when} is a time such as \"today at 15:32\"."
   },
   "architect.protocolReview.availability.offline": {
     "defaultMessage": "Offline",
-    "description": "Why the review buttons are unavailable: there is no internet connection."
-  },
-  "architect.protocolReview.availability.unchanged": {
-    "defaultMessage": "Nothing has changed since this review.",
-    "description": "Why Review again is unavailable: neither the protocol nor the study details changed since the last review."
+    "description": "Why a review cannot be started: there is no internet connection."
   },
   "architect.protocolReview.button.failed": {
     "defaultMessage": "Protocol review could not be completed. Open Review protocol to see why.",
@@ -2787,110 +2783,6 @@
     "defaultMessage": "Wording",
     "description": "Which part of the study design a problem found by the automated protocol review is about: how prompts and instructions are worded. Shown as a label on one problem."
   },
-  "architect.protocolReview.dialog.afterFix": {
-    "defaultMessage": "After the fix",
-    "description": "Label over a piece of text as the suggested fix would change it."
-  },
-  "architect.protocolReview.dialog.back": {
-    "defaultMessage": "Back",
-    "description": "Button that goes back to the previous problem in the list."
-  },
-  "architect.protocolReview.dialog.cannotFix": {
-    "defaultMessage": "This fix cannot be made for you. Make the change yourself, using the description below.",
-    "description": "Notice on a problem whose suggested fix Architect cannot apply automatically."
-  },
-  "architect.protocolReview.dialog.captionCodebook": {
-    "defaultMessage": "Fix for me changes your protocol now, and you can undo it. I will fix this keeps the problem on your list, with a link to the codebook. Each choice takes you to the next problem.",
-    "description": "Caption under the three choices for a problem in the codebook. \"Fix for me\" and \"I will fix this\" are button names and must match their translations."
-  },
-  "architect.protocolReview.dialog.captionProtocol": {
-    "defaultMessage": "Fix for me changes your protocol now, and you can undo it. I will fix this keeps the problem on your list. Each choice takes you to the next problem.",
-    "description": "Caption under the three choices for a problem about the whole protocol. \"Fix for me\" and \"I will fix this\" are button names and must match their translations."
-  },
-  "architect.protocolReview.dialog.captionStage": {
-    "defaultMessage": "Fix for me changes your protocol now, and you can undo it. I will fix this keeps the problem on your list, with a link to stage {position, number}. Each choice takes you to the next problem.",
-    "description": "Caption under the three choices for a problem on one stage. {position} is the stage’s number. \"Fix for me\" and \"I will fix this\" are button names and must match their translations."
-  },
-  "architect.protocolReview.dialog.changed": {
-    "defaultMessage": "This fix can no longer be made for you, because that part of the protocol changed after the review. Make the change yourself, or review again to get a new fix.",
-    "description": "Notice on a problem whose suggested fix no longer fits the protocol, because the researcher has since changed what it would edit."
-  },
-  "architect.protocolReview.dialog.checkingFix": {
-    "defaultMessage": "Checking whether this fix can be made for you…",
-    "description": "Read by screen readers with the Fix for me button while Architect works out whether the fix leaves a valid protocol."
-  },
-  "architect.protocolReview.dialog.dismiss": {
-    "defaultMessage": "Dismiss",
-    "description": "Button that puts a problem found by the automated protocol review away without changing anything, and moves to the next problem."
-  },
-  "architect.protocolReview.dialog.dismissedState": {
-    "defaultMessage": "You dismissed this problem.",
-    "description": "Notice on a problem the researcher already dismissed."
-  },
-  "architect.protocolReview.dialog.fixApplied": {
-    "defaultMessage": "Fixed for you: {title}",
-    "description": "Read by screen readers after Fix for me changed the protocol. {title} is the problem’s title, written by the review service."
-  },
-  "architect.protocolReview.dialog.fixForMe": {
-    "defaultMessage": "Fix for me",
-    "description": "Button that makes the suggested fix in the protocol now (it can be undone), and moves to the next problem."
-  },
-  "architect.protocolReview.dialog.fixUndone": {
-    "defaultMessage": "Fix undone: {title}",
-    "description": "Read by screen readers after a fix made for the researcher was taken back out. {title} is the problem’s title, written by the review service."
-  },
-  "architect.protocolReview.dialog.fixedNoUndo": {
-    "defaultMessage": "This was fixed for you. You have changed that part of the protocol since, so the fix cannot be undone from here; use Undo in the toolbar instead.",
-    "description": "Notice on a problem fixed for the researcher whose change can no longer be taken back from the review, only with the app’s ordinary Undo button."
-  },
-  "architect.protocolReview.dialog.fixedState": {
-    "defaultMessage": "This was fixed for you. Undo takes the change back out of your protocol.",
-    "description": "Notice on a problem the researcher already chose Fix for me for, while that change is still in the protocol. \"Undo\" is the name of a button."
-  },
-  "architect.protocolReview.dialog.mine": {
-    "defaultMessage": "I will fix this",
-    "description": "Button that keeps a problem on the researcher’s list, for them to fix themselves, and moves to the next problem."
-  },
-  "architect.protocolReview.dialog.mineState": {
-    "defaultMessage": "You chose to fix this yourself.",
-    "description": "Notice on a problem the researcher already chose \"I will fix this\" for."
-  },
-  "architect.protocolReview.dialog.nextProblem": {
-    "defaultMessage": "Next problem",
-    "description": "Button that moves on from a problem already fixed to the next problem still to decide."
-  },
-  "architect.protocolReview.dialog.notOwned": {
-    "defaultMessage": "This protocol is open for editing in another tab, so it cannot be changed here. Make the change in that tab.",
-    "description": "Notice when Fix for me was refused because another browser tab holds this protocol for editing."
-  },
-  "architect.protocolReview.dialog.notUpdated": {
-    "defaultMessage": "That choice could not be saved, because the review changed in the meantime. Close this and open the problem again.",
-    "description": "Notice when a choice about a problem could not be recorded because the review it belongs to was replaced or the problem was already fixed."
-  },
-  "architect.protocolReview.dialog.now": {
-    "defaultMessage": "Now",
-    "description": "Label over a piece of text as it is in the protocol now, shown beside the same text as the suggested fix would change it."
-  },
-  "architect.protocolReview.dialog.otherTranslations": {
-    "defaultMessage": "This protocol also has this text in {languages}. Fix for me does not change {count, plural, one {that version} other {those versions}}, so check {count, plural, one {it} other {them}} after the fix.",
-    "description": "Note under a suggested change to a text that the protocol also has in other languages. {languages} is a list of language names, already joined for the reader’s language (for example \"Spanish and French\"); {count} is how many. \"Fix for me\" is the name of a button and must match its translation."
-  },
-  "architect.protocolReview.dialog.problemOf": {
-    "defaultMessage": "Problem {position, number} of {total, number}",
-    "description": "Shows which problem found by the automated protocol review is open, when going through them one at a time."
-  },
-  "architect.protocolReview.dialog.restore": {
-    "defaultMessage": "Restore",
-    "description": "Button that returns a problem the researcher dismissed, or took on themselves, to the problems still to decide."
-  },
-  "architect.protocolReview.dialog.suggestedFix": {
-    "defaultMessage": "Suggested fix",
-    "description": "Heading of the part of a problem that describes how the automated protocol review suggests fixing it."
-  },
-  "architect.protocolReview.dialog.undo": {
-    "defaultMessage": "Undo",
-    "description": "Button that takes a fix made for the researcher back out of the protocol."
-  },
   "architect.protocolReview.location.codebook": {
     "defaultMessage": "Codebook",
     "description": "Where in the protocol a problem found by the automated protocol review is: the codebook as a whole. \"Codebook\" is the name of a page in Architect."
@@ -2928,8 +2820,8 @@
     "description": "Title of the notice shown when the budget of every provider is spent, so no review can start for now."
   },
   "architect.protocolReview.notice.budgetBody": {
-    "defaultMessage": "This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. You can choose another provider for this review. Nothing in your protocol was changed.",
-    "description": "Text of the notice shown when the chosen provider’s budget is spent and another provider still has budget. A provider is the company whose AI model writes the review (Anthropic or OpenAI); the researcher chooses one in the same panel."
+    "defaultMessage": "This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. Start the review again to choose another model. Nothing in your protocol was changed.",
+    "description": "Text of the notice shown when the chosen provider’s budget is spent and another provider still has budget. A provider is the company whose AI model writes the review (Anthropic or OpenAI); the researcher chooses a model in the last step of the dialog that starts a review."
   },
   "architect.protocolReview.notice.budgetTitle": {
     "defaultMessage": "The budget for {company} has been spent",
@@ -2947,13 +2839,9 @@
     "defaultMessage": "You have used your {limit, plural, one {# review} other {# reviews}} for this hour",
     "description": "Title of the notice shown when the researcher has started as many reviews as are allowed in an hour. {limit} is that number."
   },
-  "architect.protocolReview.notice.offlineBody": {
-    "defaultMessage": "Protocol review needs an internet connection. Your last review is still here, and you can keep working through it.",
-    "description": "Text of the offline notice when this protocol has an earlier review, which stays on screen below the notice."
-  },
   "architect.protocolReview.notice.offlineBodyNoReview": {
     "defaultMessage": "Protocol review needs an internet connection. You can review this protocol when you are back online.",
-    "description": "Text of the offline notice when this protocol has not been reviewed yet."
+    "description": "Text of the offline notice, shown in the review panel while the protocol has no review."
   },
   "architect.protocolReview.notice.offlineTitle": {
     "defaultMessage": "You’re offline",
@@ -2979,13 +2867,17 @@
     "defaultMessage": "Cancel review",
     "description": "Button that stops the review in progress. Nothing is saved and it does not count towards the hourly limit."
   },
+  "architect.protocolReview.popover.dismissRefused": {
+    "defaultMessage": "The review could not be dismissed, because this protocol is open for editing in another tab. Dismiss it in that tab.",
+    "description": "Notice when Dismiss review was refused because another browser tab holds this protocol for editing."
+  },
+  "architect.protocolReview.popover.dismissReview": {
+    "defaultMessage": "Dismiss review",
+    "description": "Button under the list of problems that removes the review. The protocol is then as if it had not been reviewed, and a new review can be started."
+  },
   "architect.protocolReview.popover.dismissed": {
     "defaultMessage": "Dismissed",
     "description": "Status of a problem the researcher dismissed."
-  },
-  "architect.protocolReview.popover.editStudyDetails": {
-    "defaultMessage": "Edit study details",
-    "description": "Button that opens the study details dialog (research questions, participants, synopsis, sharing) to change them."
   },
   "architect.protocolReview.popover.fixUndone": {
     "defaultMessage": "Fix undone: {title}",
@@ -2998,10 +2890,6 @@
   "architect.protocolReview.popover.goThrough": {
     "defaultMessage": "Go through {count, plural, one {# problem} other {# problems}}",
     "description": "Button that opens the problems still to decide one at a time. {count} is how many there are."
-  },
-  "architect.protocolReview.popover.lastReviewed": {
-    "defaultMessage": "Last reviewed {when} · {total, plural, one {# problem} other {# problems}}, {undecided, plural, =0 {none still to decide} other {# still to decide}}",
-    "description": "Line under the Protocol review heading when the latest attempt to review did not finish, and the results shown are from an earlier review. {when} is a moment such as \"today at 14:32\"; {total} is how many problems were found; {undecided} how many the researcher has not decided about yet. The dot is a separator."
   },
   "architect.protocolReview.popover.meta": {
     "defaultMessage": "{severity} · {location}",
@@ -3040,24 +2928,20 @@
     "description": "Caption beside the review buttons: how many reviews the researcher may still start this hour."
   },
   "architect.protocolReview.popover.ready": {
-    "defaultMessage": "Your protocol and study details will be sent to the review service, which lists the problems it finds, most serious first; nothing in your protocol changes until you choose.",
-    "description": "What happens when the researcher starts the first automated review of a protocol."
+    "defaultMessage": "A review lists the problems it finds in your protocol, most serious first. Nothing in your protocol changes until you choose.",
+    "description": "Shown in the review panel while the protocol has no review: what a review gives the researcher."
   },
   "architect.protocolReview.popover.restore": {
     "defaultMessage": "Restore",
     "description": "Button beside a dismissed problem, or one the researcher took on, that returns it to the problems still to decide."
   },
-  "architect.protocolReview.popover.reviewAgain": {
-    "defaultMessage": "Review again",
-    "description": "Button that starts a new automated review of the protocol as it is now."
+  "architect.protocolReview.popover.resultsIntro": {
+    "defaultMessage": "The results of your review are shown below in order of importance.",
+    "description": "Line under the Protocol review heading, above the list of problems the review found."
   },
-  "architect.protocolReview.popover.reviewed": {
-    "defaultMessage": "Reviewed {when} · {total, plural, one {# problem} other {# problems}}, {undecided, plural, =0 {none still to decide} other {# still to decide}}",
-    "description": "Line under the Protocol review heading once a review has finished. {when} is a moment such as \"today at 14:32\"; {total} is how many problems were found; {undecided} how many the researcher has not decided about yet. The dot is a separator."
-  },
-  "architect.protocolReview.popover.reviewedNone": {
-    "defaultMessage": "Reviewed {when} · no problems",
-    "description": "Line under the Protocol review heading once a review found nothing. {when} is a moment such as \"today at 14:32\". The dot is a separator."
+  "architect.protocolReview.popover.reviewDismissed": {
+    "defaultMessage": "Review dismissed.",
+    "description": "Read by screen readers after Dismiss review removed the review."
   },
   "architect.protocolReview.popover.runningBody": {
     "defaultMessage": "This can take a few minutes. You can close this panel and keep working. The button shows how far the review has got, then a count of the problems found.",
@@ -3073,7 +2957,7 @@
   },
   "architect.protocolReview.popover.startReview": {
     "defaultMessage": "Start review",
-    "description": "Button that starts the first automated review of a protocol."
+    "description": "Button in the review panel that opens the dialog a researcher goes through to start an automated review of the protocol."
   },
   "architect.protocolReview.popover.started": {
     "defaultMessage": "Started at {time}",
@@ -3085,31 +2969,111 @@
   },
   "architect.protocolReview.popover.tryAgain": {
     "defaultMessage": "Try again",
-    "description": "Button that starts the review again after the review service was not available."
+    "description": "Button that sends the same review again after the review service was not available."
   },
   "architect.protocolReview.popover.undo": {
     "defaultMessage": "Undo",
     "description": "Button beside \"Fixed for you\" that takes the fix back out of the protocol."
   },
-  "architect.protocolReview.popover.writtenBy": {
-    "defaultMessage": "Written by {model} ({company})",
-    "description": "Line under the Protocol review heading saying which AI model wrote the review shown. {model} is the model’s name, such as \"Claude Opus 5.5\", and {company} is who makes it, such as \"Anthropic\"; neither is translated."
+  "architect.protocolReview.problem.afterFix": {
+    "defaultMessage": "After the fix",
+    "description": "Label over a piece of text as the suggested fix would change it."
+  },
+  "architect.protocolReview.problem.allDecided": {
+    "defaultMessage": "You have been through every problem. Back at the list of problems.",
+    "description": "Read by screen readers when the researcher decides about the last problem still open and the panel returns to the list of all the problems."
+  },
+  "architect.protocolReview.problem.back": {
+    "defaultMessage": "Back",
+    "description": "Button on one problem found by the automated protocol review that returns to the list of all the problems."
+  },
+  "architect.protocolReview.problem.cannotFix": {
+    "defaultMessage": "This fix cannot be made for you. Make the change yourself, using the description below.",
+    "description": "Notice on a problem whose suggested fix Architect cannot apply automatically."
+  },
+  "architect.protocolReview.problem.changed": {
+    "defaultMessage": "This fix can no longer be made for you, because that part of the protocol changed after the review. Make the change yourself, using the description below.",
+    "description": "Notice on a problem whose suggested fix no longer fits the protocol, because the researcher has since changed what it would edit."
+  },
+  "architect.protocolReview.problem.checkingFix": {
+    "defaultMessage": "Checking whether this fix can be made for you…",
+    "description": "Read by screen readers with the Fix for me button while Architect works out whether the fix leaves a valid protocol."
+  },
+  "architect.protocolReview.problem.dismiss": {
+    "defaultMessage": "Dismiss",
+    "description": "Button that puts a problem found by the automated protocol review away without changing anything, and moves to the next problem."
+  },
+  "architect.protocolReview.problem.dismissedState": {
+    "defaultMessage": "You dismissed this problem.",
+    "description": "Notice on a problem the researcher already dismissed."
+  },
+  "architect.protocolReview.problem.fixApplied": {
+    "defaultMessage": "Fixed for you: {title}",
+    "description": "Read by screen readers after Fix for me changed the protocol. {title} is the problem’s title, written by the review service."
+  },
+  "architect.protocolReview.problem.fixForMe": {
+    "defaultMessage": "Fix for me",
+    "description": "Button that makes the suggested fix in the protocol now (it can be undone), and moves to the next problem."
+  },
+  "architect.protocolReview.problem.fixUndone": {
+    "defaultMessage": "Fix undone: {title}",
+    "description": "Read by screen readers after a fix made for the researcher was taken back out. {title} is the problem’s title, written by the review service."
+  },
+  "architect.protocolReview.problem.fixedNoUndo": {
+    "defaultMessage": "This was fixed for you. You have changed that part of the protocol since, so the fix cannot be undone from here; use Undo in the toolbar instead.",
+    "description": "Notice on a problem fixed for the researcher whose change can no longer be taken back from the review, only with the app’s ordinary Undo button."
+  },
+  "architect.protocolReview.problem.fixedState": {
+    "defaultMessage": "This was fixed for you. Undo takes the change back out of your protocol.",
+    "description": "Notice on a problem the researcher already chose Fix for me for, while that change is still in the protocol. \"Undo\" is the name of a button."
+  },
+  "architect.protocolReview.problem.mine": {
+    "defaultMessage": "I will fix this",
+    "description": "Button that keeps a problem on the researcher’s list, for them to fix themselves, and moves to the next problem."
+  },
+  "architect.protocolReview.problem.mineState": {
+    "defaultMessage": "You chose to fix this yourself.",
+    "description": "Notice on a problem the researcher already chose \"I will fix this\" for."
+  },
+  "architect.protocolReview.problem.nextProblem": {
+    "defaultMessage": "Next problem",
+    "description": "Button that moves on from a problem already fixed to the next problem still to decide."
+  },
+  "architect.protocolReview.problem.notOwned": {
+    "defaultMessage": "This protocol is open for editing in another tab, so it cannot be changed here. Make the change in that tab.",
+    "description": "Notice when Fix for me was refused because another browser tab holds this protocol for editing."
+  },
+  "architect.protocolReview.problem.notUpdated": {
+    "defaultMessage": "That choice could not be saved, because the review changed in the meantime. Go back and open the problem again.",
+    "description": "Notice when a choice about a problem could not be recorded because the review it belongs to was replaced or the problem was already fixed. \"Back\" is the name of the button that returns to the list of problems."
+  },
+  "architect.protocolReview.problem.now": {
+    "defaultMessage": "Now",
+    "description": "Label over a piece of text as it is in the protocol now, shown beside the same text as the suggested fix would change it."
+  },
+  "architect.protocolReview.problem.otherTranslations": {
+    "defaultMessage": "This protocol also has this text in {languages}. Fix for me does not change {count, plural, one {that version} other {those versions}}, so check {count, plural, one {it} other {them}} after the fix.",
+    "description": "Note under a suggested change to a text that the protocol also has in other languages. {languages} is a list of language names, already joined for the reader’s language (for example \"Spanish and French\"); {count} is how many. \"Fix for me\" is the name of a button and must match its translation."
+  },
+  "architect.protocolReview.problem.problemOf": {
+    "defaultMessage": "Problem {position, number} of {total, number}",
+    "description": "Shows which problem found by the automated protocol review is open, when going through them one at a time."
+  },
+  "architect.protocolReview.problem.restore": {
+    "defaultMessage": "Restore",
+    "description": "Button that returns a problem the researcher dismissed, or took on themselves, to the problems still to decide."
+  },
+  "architect.protocolReview.problem.suggestedFix": {
+    "defaultMessage": "Suggested fix",
+    "description": "Heading of the part of a problem that describes how the automated protocol review suggests fixing it."
+  },
+  "architect.protocolReview.problem.undo": {
+    "defaultMessage": "Undo",
+    "description": "Button that takes a fix made for the researcher back out of the protocol."
   },
   "architect.protocolReview.progressRing.label": {
     "defaultMessage": "Review progress",
     "description": "Accessible name, read by screen readers, of the small circular progress indicator on the Review protocol toolbar button while an automated protocol review runs."
-  },
-  "architect.protocolReview.provider.label": {
-    "defaultMessage": "Provider for the next review",
-    "description": "Label of the choice between the companies whose AI model can write the next review of the protocol (Anthropic or OpenAI)."
-  },
-  "architect.protocolReview.provider.spent": {
-    "defaultMessage": "The budget for {company} has been spent.",
-    "description": "Why a provider cannot be chosen to write the next review, when the service did not say when its budget starts again. {company} is the provider’s name, \"Anthropic\" or \"OpenAI\", and is not translated."
-  },
-  "architect.protocolReview.provider.spentUntil": {
-    "defaultMessage": "The budget for {company} has been spent. It starts again {when}.",
-    "description": "Why a provider cannot be chosen to write the next review. {company} is the provider’s name, \"Anthropic\" or \"OpenAI\", and is not translated; {when} is a moment such as \"tomorrow at 01:00\" or \"1 Dec 2026 at 01:00\"."
   },
   "architect.protocolReview.severity.serious": {
     "defaultMessage": "Serious",
@@ -3123,53 +3087,57 @@
     "defaultMessage": "Worth fixing",
     "description": "How serious a problem the automated protocol review found is: the middle of three levels. Shown beside the problem’s title in the review results."
   },
-  "architect.protocolReview.summary.description": {
-    "defaultMessage": "Here is what you decided. You can change any of it from the Review protocol button.",
-    "description": "Text under the summary heading. \"Review protocol\" is the name of the toolbar button and must match its translation."
-  },
-  "architect.protocolReview.summary.dismissed": {
-    "defaultMessage": "{count, plural, one {<num>#</num> dismissed} other {<num>#</num> dismissed}}",
-    "description": "One of three counts in the review summary: problems the researcher dismissed. <num></num> marks the number, shown large; keep it around the number."
-  },
-  "architect.protocolReview.summary.done": {
-    "defaultMessage": "Done",
-    "description": "Button that closes the review summary."
-  },
-  "architect.protocolReview.summary.fixed": {
-    "defaultMessage": "{count, plural, one {<num>#</num> fixed for you} other {<num>#</num> fixed for you}}",
-    "description": "One of three counts in the review summary: problems fixed for the researcher. <num></num> marks the number, shown large; keep it around the number."
-  },
-  "architect.protocolReview.summary.forYouToFix": {
-    "defaultMessage": "For you to fix",
-    "description": "Heading of the list of problems the researcher chose to fix themselves."
-  },
-  "architect.protocolReview.summary.meta": {
-    "defaultMessage": "{severity} · {location}",
-    "description": "A problem’s severity and where it is, under its title. {severity} is a word such as \"Serious\"; {location} is a place such as \"Stage 5 · Friends\". The dot is a separator."
-  },
-  "architect.protocolReview.summary.mine": {
-    "defaultMessage": "{count, plural, one {<num>#</num> for you to fix} other {<num>#</num> for you to fix}}",
-    "description": "One of three counts in the review summary: problems the researcher will fix themselves. <num></num> marks the number, shown large; keep it around the number."
-  },
-  "architect.protocolReview.summary.reviewAgain": {
-    "defaultMessage": "Review again",
-    "description": "Button that starts a new automated review of the protocol as it is now."
-  },
-  "architect.protocolReview.summary.reviewAgainNote": {
-    "defaultMessage": "When you have made your own changes, review again to check them.",
-    "description": "Closing note of the review summary."
-  },
-  "architect.protocolReview.summary.title": {
-    "defaultMessage": "You have been through every problem",
-    "description": "Heading shown when the researcher has decided about every problem the automated protocol review found."
-  },
-  "architect.protocolReview.summary.undoNote": {
-    "defaultMessage": "{count, plural, one {The fix made for you can be undone} other {The # fixes made for you can each be undone}} from the Review protocol button.",
-    "description": "Note in the review summary, shown when at least one fix was made for the researcher. \"Review protocol\" is the name of the toolbar button."
-  },
   "architect.protocolReview.when": {
     "defaultMessage": "{day, select, today {today at {time}} yesterday {yesterday at {time}} tomorrow {tomorrow at {time}} other {{date} at {time}}}",
     "description": "A moment, said relative to today, used inside other protocol review sentences such as \"Reviewed {when}\" and \"You can review again {when}\". The sentence around it adds no \"at\" or \"on\" of its own. {time} is a time of day and {date} a date, both already formatted for the reader’s language. Keep the four cases (today, yesterday, tomorrow, other) as they are; translate only the words inside them."
+  },
+  "architect.protocolReview.wizard.before.description": {
+    "defaultMessage": "This experimental feature uses LLMs (also known as ‘AI’) to generate review feedback to help you improve your protocol. To use this feature, your protocol must be sent to one of the providers we support (Anthropic and OpenAI). Ensure that you are permitted to do this by your IRB or ethics review body.",
+    "description": "Text of the first step of the dialog that starts an automated protocol review. An LLM is a large language model. \"Anthropic\" and \"OpenAI\" are company names and are not translated. An IRB is an institutional review board, the body that approves research involving people."
+  },
+  "architect.protocolReview.wizard.before.sentTable": {
+    "defaultMessage": "What is sent for review, and what is never sent",
+    "description": "Accessible name, read by screen readers, of the two-column table listing what the automated protocol review sends and what it never sends."
+  },
+  "architect.protocolReview.wizard.before.title": {
+    "defaultMessage": "Before you use this feature",
+    "description": "Heading of the first step of the dialog that starts an automated protocol review. It says what the feature does, what it sends, and asks whether the review may be shared."
+  },
+  "architect.protocolReview.wizard.model.allSpent": {
+    "defaultMessage": "This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. Every provider’s budget has been spent, so a review cannot start for now. What you have entered here is kept.",
+    "description": "Notice on the last step of the dialog that starts an automated protocol review, when no model can be chosen because every provider’s budget is spent."
+  },
+  "architect.protocolReview.wizard.model.by": {
+    "defaultMessage": "Made by {company}",
+    "description": "Line under a model’s name in the choice of AI model. {company} is the company that makes it, \"Anthropic\" or \"OpenAI\", and is not translated."
+  },
+  "architect.protocolReview.wizard.model.description": {
+    "defaultMessage": "Your protocol and study details are sent to the provider of the model you choose, and that model writes the review. A review can take several minutes.",
+    "description": "Explanation under the heading of the last step of the dialog that starts an automated protocol review. A provider is the company that makes an AI model (Anthropic or OpenAI)."
+  },
+  "architect.protocolReview.wizard.model.label": {
+    "defaultMessage": "Model",
+    "description": "Label of the choice between the AI models that can write the review."
+  },
+  "architect.protocolReview.wizard.model.offline": {
+    "defaultMessage": "You’re offline. Protocol review needs an internet connection; you can start the review when you are back online.",
+    "description": "Notice on the last step of the dialog that starts an automated protocol review, when there is no internet connection."
+  },
+  "architect.protocolReview.wizard.model.quota": {
+    "defaultMessage": "{remaining, number} of {limit, number} reviews left this hour",
+    "description": "Note on the last step of the dialog that starts an automated protocol review: how many reviews the researcher may still start this hour."
+  },
+  "architect.protocolReview.wizard.model.spent": {
+    "defaultMessage": "The budget for {company} has been spent.",
+    "description": "Why a model cannot be chosen to write the review, when the service did not say when its budget starts again. {company} is the company that makes it, \"Anthropic\" or \"OpenAI\", and is not translated."
+  },
+  "architect.protocolReview.wizard.model.spentUntil": {
+    "defaultMessage": "The budget for {company} has been spent. It starts again {when}.",
+    "description": "Why a model cannot be chosen to write the review. {company} is the company that makes it, \"Anthropic\" or \"OpenAI\", and is not translated; {when} is a moment such as \"tomorrow at 01:00\" or \"1 Dec 2026 at 01:00\"."
+  },
+  "architect.protocolReview.wizard.model.title": {
+    "defaultMessage": "Choose a model",
+    "description": "Heading of the last step of the dialog that starts an automated protocol review: the choice of which AI model writes the review."
   },
   "architect.protocolReview.wizard.participants.administrationLabel": {
     "defaultMessage": "How is the interview administered?",
@@ -3181,7 +3149,7 @@
   },
   "architect.protocolReview.wizard.participants.description": {
     "defaultMessage": "We ask for information about your participants and how your interview will be administered so that the agent can identify issues with how tasks are explained, and the wording of prompts.",
-    "description": "Explanation under the heading of the participants step of the study details dialog. \"The agent\" is the automated reviewer."
+    "description": "Explanation under the heading of the participants step of the dialog that starts an automated protocol review. \"The agent\" is the automated reviewer."
   },
   "architect.protocolReview.wizard.participants.faceToFace": {
     "defaultMessage": "Face to face",
@@ -3213,43 +3181,31 @@
   },
   "architect.protocolReview.wizard.participants.title": {
     "defaultMessage": "Who takes part, and how?",
-    "description": "Heading of the second step of the study details dialog for the automated protocol review."
+    "description": "Heading of the third step of the dialog that starts an automated protocol review."
   },
   "architect.protocolReview.wizard.questions.add": {
     "defaultMessage": "Add a research question",
-    "description": "Button under the research questions in the study details dialog that adds another, empty, question."
+    "description": "Button under the research questions that adds another, empty, question."
   },
   "architect.protocolReview.wizard.questions.description": {
-    "defaultMessage": "We ask for this information so that the automated reviewer understands the overall objective of your study, and can check for things you might have missed, or problems with how you are capturing data. Only include research questions that are related to your Network Canvas interview.",
-    "description": "Explanation under the heading of the research questions step of the study details dialog. \"Network Canvas\" is a product name and is not translated."
+    "defaultMessage": "Research questions are optional, but recommended. With them, the automated reviewer can check whether your interview collects what each question needs. Without them, the problems it finds will be less specific. Only include research questions that are related to your Network Canvas interview.",
+    "description": "Explanation under the heading of the research questions step of the dialog that starts an automated protocol review. \"Network Canvas\" is a product name and is not translated."
   },
   "architect.protocolReview.wizard.questions.limit": {
-    "defaultMessage": "Up to {max, number} characters each",
-    "description": "Note under the research questions in the study details dialog, saying how long each question may be. {max} is a number of characters."
+    "defaultMessage": "Up to {max, number} characters each. A box left empty is not sent.",
+    "description": "Note under the research questions, saying how long each question may be and that an empty one is ignored. {max} is a number of characters."
   },
   "architect.protocolReview.wizard.questions.questionLabel": {
     "defaultMessage": "Research question {number, number}",
-    "description": "Label of one research question’s text box in the study details dialog. {number} counts the questions from 1."
+    "description": "Label of one research question’s text box. {number} counts the questions from 1."
   },
   "architect.protocolReview.wizard.questions.remove": {
     "defaultMessage": "Remove research question {number, number}",
     "description": "Accessible name of the button beside a research question that removes it from the list. {number} counts the questions from 1."
   },
-  "architect.protocolReview.wizard.questions.required": {
-    "defaultMessage": "Write a research question here, or remove this one.",
-    "description": "Error under an empty research question box in the study details dialog, when the researcher tries to continue."
-  },
   "architect.protocolReview.wizard.questions.title": {
     "defaultMessage": "What are your research questions?",
-    "description": "Heading of the first step of the study details dialog for the automated protocol review."
-  },
-  "architect.protocolReview.wizard.save": {
-    "defaultMessage": "Save",
-    "description": "Last button of the study details dialog when it was opened to edit details already saved: saves them without starting a review."
-  },
-  "architect.protocolReview.wizard.sending.description": {
-    "defaultMessage": "Protocol review runs on a Network Canvas service, which passes your protocol to the provider you choose for each review, Anthropic or OpenAI, to be read by its AI model.",
-    "description": "Explanation under the heading of the last step of the study details dialog. A provider is the company whose AI model writes the review; the researcher chooses one each time they start a review. \"Network Canvas\", \"Anthropic\" and \"OpenAI\" are names and are not translated."
+    "description": "Heading of the fourth step of the dialog that starts an automated protocol review. The step is optional."
   },
   "architect.protocolReview.wizard.sending.neverApiKeys": {
     "defaultMessage": "API keys saved in your protocol",
@@ -3267,10 +3223,6 @@
     "defaultMessage": "Roster data files",
     "description": "Item in the list of what is never sent for review."
   },
-  "architect.protocolReview.wizard.sending.notKept": {
-    "defaultMessage": "The service does not keep your protocol or the review. Your study details are saved in this protocol file, so anyone you share the protocol with can read them.",
-    "description": "Closing note of the last step of the study details dialog, under the two lists."
-  },
   "architect.protocolReview.wizard.sending.sentCodebook": {
     "defaultMessage": "The codebook: node types, edge types, attributes and their options",
     "description": "Item in the list of what is sent for review. \"Codebook\" is the name of a page in Architect."
@@ -3280,56 +3232,60 @@
     "description": "Item in the list of what is sent for review."
   },
   "architect.protocolReview.wizard.sending.sentStudyDetails": {
-    "defaultMessage": "Your study details from the first three steps",
-    "description": "Item in the list of what is sent for review, shown on the fourth and last step of the study details wizard. The first three steps are where the researcher typed the study details."
+    "defaultMessage": "The study details you give in the next three steps",
+    "description": "Item in the list of what is sent for review, shown on the first step of the dialog. The next three steps are where the researcher describes their study."
   },
   "architect.protocolReview.wizard.sending.shareHint": {
-    "defaultMessage": "If you tick this, we keep each protocol you send, your study details and the problems found. We keep them for {days, plural, one {# day} other {# days}} and use them only to improve this feature. You can change this at any time from the Review protocol button.",
-    "description": "Explanation under the share checkbox. {days} is how long shared reviews are kept. \"Review protocol\" is the name of the toolbar button that opens the review."
+    "defaultMessage": "When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for {days, plural, one {# day} other {# days}}. We will use this information only for the purposes of improving this feature.",
+    "description": "Explanation under the share checkbox. {days} is how long a shared review is kept. \"Network Canvas\" is a product name and is not translated."
   },
   "architect.protocolReview.wizard.sending.shareLabel": {
-    "defaultMessage": "Share my reviews with the Network Canvas team",
-    "description": "Label of the checkbox that lets the Network Canvas team keep this protocol’s reviews. \"Network Canvas\" is a product name and is not translated."
-  },
-  "architect.protocolReview.wizard.sending.title": {
-    "defaultMessage": "Before your protocol is sent",
-    "description": "Heading of the last step of the study details dialog, which says what the automated protocol review sends and keeps."
+    "defaultMessage": "Share the results of this review with the Network Canvas team",
+    "description": "Label of the checkbox, ticked unless the researcher unticks it, that lets the Network Canvas team keep a copy of this review. \"Network Canvas\" is a product name and is not translated."
   },
   "architect.protocolReview.wizard.sending.whatIsNeverSent": {
     "defaultMessage": "What is never sent",
-    "description": "Heading of the list of what the automated protocol review never sends."
+    "description": "Column heading of the list of what the automated protocol review never sends."
   },
   "architect.protocolReview.wizard.sending.whatIsSent": {
     "defaultMessage": "What is sent",
-    "description": "Heading of the list of what the automated protocol review sends to the review service."
+    "description": "Column heading of the list of what the automated protocol review sends to the review service."
   },
   "architect.protocolReview.wizard.startReview": {
     "defaultMessage": "Start review",
-    "description": "Last button of the study details dialog the first time it is filled in: saves the details and starts the automated protocol review."
+    "description": "Last button of the dialog that starts an automated protocol review: saves the study details and starts the review."
   },
   "architect.protocolReview.wizard.synopsis.description": {
-    "defaultMessage": "This step is optional. Anything you state here, such as a reference period or a named instrument, is treated as decided and will not be questioned.",
-    "description": "Explanation under the heading of the synopsis step of the study details dialog."
+    "defaultMessage": "We ask for a synopsis so that the automated reviewer understands what your study is for and how it works. Anything you state here, such as a reference period or a named instrument, is treated as decided and will not be questioned.",
+    "description": "Explanation under the heading of the synopsis step of the dialog that starts an automated protocol review."
   },
   "architect.protocolReview.wizard.synopsis.hint": {
-    "defaultMessage": "Setting, design, sampling, reference period and any instruments you plan to use.",
+    "defaultMessage": "The aims of the study, its setting, design, sampling, reference period and any instruments you plan to use.",
     "description": "Hint under the Study synopsis label."
   },
   "architect.protocolReview.wizard.synopsis.label": {
-    "defaultMessage": "Study synopsis (optional)",
-    "description": "Label of the optional text box describing the study."
+    "defaultMessage": "Study synopsis",
+    "description": "Label of the text box describing the study."
   },
   "architect.protocolReview.wizard.synopsis.limit": {
     "defaultMessage": "Up to {max, number} characters",
     "description": "Note under the Study synopsis box saying how long it may be. {max} is a number of characters."
   },
+  "architect.protocolReview.wizard.synopsis.required": {
+    "defaultMessage": "Describe your study.",
+    "description": "Error under an empty Study synopsis box when the researcher tries to continue."
+  },
+  "architect.protocolReview.wizard.synopsis.savedInFile": {
+    "defaultMessage": "Your study details are saved in this protocol file, so anyone you share the protocol with can read them.",
+    "description": "Note on the first of the three steps that ask about the study, saying where what the researcher types is kept."
+  },
   "architect.protocolReview.wizard.synopsis.title": {
-    "defaultMessage": "Describe the study",
-    "description": "Heading of the third, optional, step of the study details dialog for the automated protocol review."
+    "defaultMessage": "Describe your study",
+    "description": "Heading of the second step of the dialog that starts an automated protocol review: the first of three steps about the study."
   },
   "architect.protocolReview.wizard.title": {
-    "defaultMessage": "Study details",
-    "description": "Name of the four-step dialog in which a researcher describes their study for the automated protocol review."
+    "defaultMessage": "Review protocol",
+    "description": "Name of the five-step dialog a researcher goes through each time they ask for an automated protocol review."
   },
   "architect.protocolSummary.asset.english": {
     "defaultMessage": "English",

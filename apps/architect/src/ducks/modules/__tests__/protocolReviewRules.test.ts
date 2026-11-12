@@ -20,7 +20,7 @@ import {
   checkFixAvailability,
   decideFinding,
   getProtocolReviewFindings,
-  getShareProtocolReviews,
+  getShareReviewsChoice,
   setShareReviews,
   startReview,
   undoFix,
@@ -327,7 +327,7 @@ describe('D: the session’s newest record wins until it has been saved', () => 
     writes.mockRestore();
 
     const reopened = await reload(id, protocolOf(store));
-    expect(getShareProtocolReviews(reopened.getState())).toBe(false);
+    expect(getShareReviewsChoice(reopened.getState())).toBe(false);
     expect(findingOf(reopened, 'title').status).toBe('dismissed');
 
     reopened.dispatch(

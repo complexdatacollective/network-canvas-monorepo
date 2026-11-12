@@ -20,22 +20,20 @@ import type { ProjectActionsMode } from '~/components/ProjectNav/ProjectActions'
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import {
+  getIsProtocolReviewRecordRead,
   getProtocolReviewCounts,
   getProtocolReviewProgress,
   getProtocolReviewRun,
   getProtocolReviewSummary,
+  refreshReviewProviders,
   startReview,
 } from '~/ducks/modules/protocolReview';
-import {
-  getIsProtocolReviewEnabled,
-  getProtocolReviewStudyContext,
-} from '~/selectors/protocol';
+import { getIsProtocolReviewEnabled } from '~/selectors/protocol';
 
-import ReviewDialog, { type ReviewDialogView } from './ReviewDialog';
 import ReviewPopoverContent from './ReviewPopoverContent';
 import ReviewProgressRing from './ReviewProgressRing';
 import ReviewSparklesIcon from './ReviewSparklesIcon';
-import { useStudyDetailsWizard } from './StudyDetailsWizard';
+import { useStartReviewWizard } from './StartReviewWizard';
 import { useReviewAvailability } from './useReviewAvailability';
 
 const messages = defineMessages({
@@ -85,8 +83,9 @@ type ReviewProtocolActionProps = {
 };
 
 /**
- * The Review protocol toolbar control on the Stages screen: the button, its
- * popover, the one-problem-at-a-time dialog and the study details wizard.
+ * The Review protocol toolbar control on the Stages screen: the button, the
+ * dialog every review is asked for through, and the panel that shows a
+ * review running and then its results.
  *
  * The review itself lives in the store, so it carries on when this closes or
  * the researcher leaves the page, and everything here shows its current
@@ -97,19 +96,24 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
 }: ReviewProtocolActionProps) {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
-  const availability = useReviewAvailability();
-  const { online } = availability;
-  const studyContext = useAppSelector(getProtocolReviewStudyContext);
+  const { online, canRequest } = useReviewAvailability();
+  const recordRead = useAppSelector(getIsProtocolReviewRecordRead);
   const run = useAppSelector(getProtocolReviewRun);
   const progress = useAppSelector(getProtocolReviewProgress);
   const counts = useAppSelector(getProtocolReviewCounts);
   const summary = useAppSelector(getProtocolReviewSummary);
-  const openWizard = useStudyDetailsWizard();
+  const openWizard = useStartReviewWizard();
   const protocolId = useAppSelector(getActiveProtocolId);
   const { announce } = useAccessibilityAnnouncements();
 
+  // Whether any provider has budget left decides what the button opens, so
+  // the service is asked as soon as the button is on screen, and again when
+  // the connection comes back; not first when it is pressed.
+  useEffect(() => {
+    if (online) void dispatch(refreshReviewProviders());
+  }, [dispatch, online]);
+
   const [open, setOpen] = useState(false);
-  const [dialogView, setDialogView] = useState<ReviewDialogView | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   // Set while the popover closes to hand the researcher to a dialog: focus
   // then belongs to the dialog, not back on the button.
@@ -140,7 +144,7 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
   // A refused start changes nothing on screen, so it is said aloud; the
   // popover shows why.
   // Started for the protocol that was open when the researcher asked. The
-  // wizard waits on a save before it gets here, and a protocol opened in
+  // dialog waits on a save before it gets here, and a protocol opened in
   // that time is not the one they asked to have reviewed.
   const start = useCallback(async () => {
     const result = await dispatch(startReview(protocolId ?? undefined));
@@ -149,37 +153,18 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
     }
   }, [announce, dispatch, intl, protocolId]);
 
-  const beginWithWizard = useCallback(async () => {
-    const saved = await openWizard('start', returnToTrigger);
-    if (!saved) return;
+  // Every review is asked for through the dialog. Completing it opens the
+  // panel, where the review is seen running; leaving it returns the
+  // researcher to the button.
+  const requestReview = useCallback(async () => {
+    handingOff.current = true;
+    setOpen(false);
+    const completed = await openWizard(returnToTrigger);
+    handingOff.current = false;
+    if (!completed) return;
     setOpen(true);
     if (online) await start();
   }, [online, openWizard, returnToTrigger, start]);
-
-  const editStudyDetails = useCallback(async () => {
-    handingOff.current = true;
-    setOpen(false);
-    await openWizard('edit', returnToTrigger);
-    handingOff.current = false;
-    // Back to where the researcher came from, saved or not.
-    setOpen(true);
-  }, [openWizard, returnToTrigger]);
-
-  const openFinding = useCallback((findingId: string) => {
-    handingOff.current = true;
-    setOpen(false);
-    setDialogView({ kind: 'finding', findingId });
-  }, []);
-
-  const changeDialogView = useCallback((view: ReviewDialogView | null) => {
-    if (view === null) handingOff.current = false;
-    setDialogView(view);
-  }, []);
-
-  const reviewAgainFromSummary = useCallback(() => {
-    setOpen(true);
-    void start();
-  }, [start]);
 
   const running = run.status === 'running';
   let icon: ReactNode = <ReviewSparklesIcon aria-hidden />;
@@ -214,8 +199,17 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
         ref={ref}
         open={open}
         onOpenChange={(next) => {
-          if (next && !studyContext) {
-            void beginWithWizard();
+          // With no review, none running and nothing in the way of asking
+          // for one, there is nothing for the panel to show: the button
+          // goes straight to the dialog.
+          if (
+            next &&
+            recordRead &&
+            summary === null &&
+            run.status === 'idle' &&
+            canRequest
+          ) {
+            void requestReview();
             return;
           }
           if (next) handingOff.current = false;
@@ -242,20 +236,11 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
       >
         <ReviewPopoverContent
           onClose={() => setOpen(false)}
-          onOpenFinding={openFinding}
-          onStartReview={() => void start()}
-          onEditStudyDetails={() => void editStudyDetails()}
+          onRequestReview={() => void requestReview()}
+          onRetryReview={() => void start()}
           announce={announce}
         />
       </ToolbarPopover>
-      <ReviewDialog
-        view={dialogView}
-        onViewChange={changeDialogView}
-        onReviewAgain={reviewAgainFromSummary}
-        reviewAgain={availability}
-        announce={announce}
-        finalFocus={returnToTrigger}
-      />
     </>
   );
 });

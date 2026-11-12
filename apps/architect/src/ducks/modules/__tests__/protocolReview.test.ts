@@ -20,7 +20,6 @@ import {
 import { posthog } from '~/analytics';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import {
-  actionCreators,
   setActiveProtocol,
   setProtocolTranslation,
 } from '~/ducks/modules/activeProtocol';
@@ -36,9 +35,8 @@ import {
   getProtocolReviewProgress,
   getProtocolReviewRun,
   getProtocolReviewStartBlock,
-  getProtocolReviewWriter,
-  getShareProtocolReviews,
-  refreshProtocolReviewRecord,
+  dismissReview,
+  getShareReviewsChoice,
   refreshReviewProviders,
   reviewProgressFraction,
   reviewProviderChoices,
@@ -59,7 +57,6 @@ import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListe
 import {
   FINDING_DECISIONS,
   readReviewRecord,
-  writeReviewRecord,
 } from '~/protocolReview/reviewStore';
 import {
   PROTOCOL_REVIEW_PROVIDER_KEY,
@@ -248,7 +245,7 @@ describe('startReview refusals', () => {
       makeProtocol({
         experiments: {
           protocolReview: {
-            studyContext: { ...STUDY_CONTEXT, researchQuestions: [] },
+            studyContext: { ...STUDY_CONTEXT, synopsis: ' ' },
           },
         },
       }),
@@ -256,6 +253,49 @@ describe('startReview refusals', () => {
     expect(await store.dispatch(startReview())).toMatchObject({
       reason: 'missing_study_context',
     });
+  });
+
+  it('reviews a protocol whose study details have no research questions, sending none', async () => {
+    await open(
+      store,
+      makeProtocol({
+        experiments: {
+          protocolReview: {
+            studyContext: { ...STUDY_CONTEXT, researchQuestions: [] },
+          },
+        },
+      }),
+    );
+    expect(getProtocolReviewStartBlock(store.getState())).toBeNull();
+    const answer = answering();
+    vi.stubGlobal('fetch', answer.fetchImpl);
+    expect(await store.dispatch(startReview())).toMatchObject({
+      status: 'completed',
+    });
+    expect(answer.requestBody()).toMatchObject({
+      studyContext: { ...STUDY_CONTEXT, researchQuestions: [] },
+    });
+  });
+
+  it('names what stops a review being asked for ahead of study details still to give', async () => {
+    // The dialog a review is asked for through is where the details are
+    // given, so they are the last thing to stand in the way.
+    const now = Date.now();
+    localStorage.setItem(
+      PROTOCOL_REVIEW_QUOTA_KEY,
+      JSON.stringify({
+        limit: 5,
+        remaining: 0,
+        resetsAt: new Date(now + 60_000).toISOString(),
+      }),
+    );
+    await open(store, makeProtocol({ experiments: { protocolReview: {} } }));
+    expect(getProtocolReviewStartBlock(store.getState(), now)).toMatchObject({
+      code: 'hourly_limit',
+    });
+    expect(getProtocolReviewStartBlock(store.getState(), now + 60_000)).toEqual(
+      { code: 'missing_study_context' },
+    );
   });
 
   it('refuses while a review is running', async () => {
@@ -277,30 +317,24 @@ describe('startReview refusals', () => {
     expect(answer.fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it('refuses when nothing has changed since the last review, and allows one after a change', async () => {
+  it('reviews again though nothing has changed since the last review', async () => {
     await reviewed(store);
-    expect(getProtocolReviewStartBlock(store.getState())).toEqual({
-      code: 'unchanged',
-    });
-    expect(await store.dispatch(startReview())).toMatchObject({
-      reason: 'unchanged',
-    });
-    // The protocol's name is not something a review reads.
-    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
-    expect(getProtocolReviewStartBlock(store.getState())).toEqual({
-      code: 'unchanged',
-    });
-    // The study details are.
-    store.dispatch(
-      actionCreators.updateProtocol({
-        experiments: {
-          protocolReview: {
-            studyContext: { ...STUDY_CONTEXT, population: 'Students' },
-          },
-        },
-      }),
-    );
+    const first = store.getState().protocolReview.record?.review?.reviewId;
     expect(getProtocolReviewStartBlock(store.getState())).toBeNull();
+    vi.stubGlobal(
+      'fetch',
+      answering({
+        ...RESULT,
+        reviewId: '5d2c1b0a-7e6f-4a3b-9c8d-0f1e2d3c4b5a',
+      }).fetchImpl,
+    );
+    expect(await store.dispatch(startReview())).toMatchObject({
+      status: 'completed',
+    });
+    expect(store.getState().protocolReview.record?.review?.reviewId).toBe(
+      '5d2c1b0a-7e6f-4a3b-9c8d-0f1e2d3c4b5a',
+    );
+    expect(first).not.toBe('5d2c1b0a-7e6f-4a3b-9c8d-0f1e2d3c4b5a');
   });
 
   it('refuses while the stored hourly quota is used up, and not once it resets', async () => {
@@ -846,15 +880,67 @@ describe('decisions', () => {
 });
 
 describe('sharing', () => {
-  it('is off by default, kept between reviews, and sent with the request', async () => {
+  it('is not chosen until the researcher chooses, and nothing is shared meanwhile', async () => {
     await open(store);
-    expect(getShareProtocolReviews(store.getState())).toBe(false);
-    await store.dispatch(setShareReviews(true));
+    expect(getShareReviewsChoice(store.getState())).toBeNull();
     const answer = answering();
     vi.stubGlobal('fetch', answer.fetchImpl);
     await store.dispatch(startReview());
-    expect(answer.requestBody()).toMatchObject({ share: true });
-    expect(getShareProtocolReviews(store.getState())).toBe(true);
+    expect(answer.requestBody()).toMatchObject({ share: false });
+    expect(getShareReviewsChoice(store.getState())).toBeNull();
+  });
+
+  it.each([true, false])(
+    'keeps a choice of %s between reviews, and sends it with the request',
+    async (choice) => {
+      await open(store);
+      await store.dispatch(setShareReviews(choice));
+      const answer = answering();
+      vi.stubGlobal('fetch', answer.fetchImpl);
+      await store.dispatch(startReview());
+      expect(answer.requestBody()).toMatchObject({ share: choice });
+      expect(getShareReviewsChoice(store.getState())).toBe(choice);
+    },
+  );
+});
+
+describe('dismissing a review', () => {
+  it('removes the review from the record, keeping the sharing choice and what its fixes changed', async () => {
+    const id = await reviewed(store);
+    await store.dispatch(setShareReviews(true));
+    await store.dispatch(decideFinding('title', 'fix'));
+    const fixed = store.getState().activeProtocol.present;
+
+    expect(await store.dispatch(dismissReview())).toBe(true);
+
+    expect(store.getState().protocolReview.record).toEqual({
+      protocolId: id,
+      shareReviews: true,
+      review: null,
+    });
+    expect(await readReviewRecord(id)).toEqual({
+      protocolId: id,
+      shareReviews: true,
+      review: null,
+    });
+    expect(getProtocolReviewFindings(store.getState())).toEqual([]);
+    expect(store.getState().activeProtocol.present).toBe(fixed);
+    // Dismissed, the protocol can be reviewed afresh.
+    expect(getProtocolReviewStartBlock(store.getState())).toBeNull();
+  });
+
+  it('does nothing with no review, or in a tab that does not hold the protocol', async () => {
+    await open(store);
+    expect(await store.dispatch(dismissReview())).toBe(false);
+
+    const id = await reviewed(store);
+    const reviewId = store.getState().protocolReview.record?.review?.reviewId;
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    expect(await store.dispatch(dismissReview())).toBe(false);
+    expect(store.getState().protocolReview.record?.review?.reviewId).toBe(
+      reviewId,
+    );
+    expect((await readReviewRecord(id)).review?.reviewId).toBe(reviewId);
   });
 });
 
@@ -1068,7 +1154,6 @@ describe('providers', () => {
     });
     expect(reviews).toEqual([expect.objectContaining({ provider: 'openai' })]);
     expect((await readReviewRecord(id)).review?.provider).toBe('openai');
-    expect(getProtocolReviewWriter(store.getState())).toBe('openai');
     expect(posthog.capture).toHaveBeenCalledWith('protocol_review_started', {
       share: false,
       provider: 'openai',
@@ -1079,43 +1164,6 @@ describe('providers', () => {
     await open(next);
     expect(next.getState().protocolReview.provider).toBe('openai');
     next.dispatch(cancelReview());
-  });
-
-  it('reads a review saved before there was a choice as Anthropic’s', async () => {
-    await reviewed(store);
-    const record = store.getState().protocolReview.record;
-    if (!record?.review) throw new Error('No review');
-    const { provider: _provider, ...review } = record.review;
-    const id = await open(store);
-    await writeReviewRecord({ ...record, protocolId: id, review });
-    await store.dispatch(refreshProtocolReviewRecord());
-    expect(store.getState().protocolReview.record?.review).not.toHaveProperty(
-      'provider',
-    );
-    expect(getProtocolReviewWriter(store.getState())).toBe('anthropic');
-  });
-
-  it('lets the other provider review a protocol that has not changed', async () => {
-    const { reviews } = service({});
-    await open(store);
-    await store.dispatch(startReview());
-    expect(getProtocolReviewStartBlock(store.getState())).toEqual({
-      code: 'unchanged',
-    });
-
-    store.dispatch(chooseReviewProvider('openai'));
-    expect(getProtocolReviewStartBlock(store.getState())).toBeNull();
-    expect(await store.dispatch(startReview())).toMatchObject({
-      status: 'completed',
-    });
-    expect(reviews.map((review) => review.provider)).toEqual([
-      'anthropic',
-      'openai',
-    ]);
-    // The same provider would now be asked the same question again.
-    expect(getProtocolReviewStartBlock(store.getState())).toEqual({
-      code: 'unchanged',
-    });
   });
 
   it.each(['daily_limit', 'monthly_limit'] as const)(

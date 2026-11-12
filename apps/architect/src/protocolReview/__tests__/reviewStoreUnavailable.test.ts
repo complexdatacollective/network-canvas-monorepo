@@ -26,7 +26,7 @@ describe('review store without IndexedDB', () => {
       review: null,
     });
     await deleteReviewRecord('p1');
-    expect((await readReviewRecord('p1')).shareReviews).toBe(false);
+    expect((await readReviewRecord('p1')).shareReviews).toBeNull();
     // Storage being unavailable is expected, not a bug to report.
     expect(reportError).not.toHaveBeenCalled();
   });

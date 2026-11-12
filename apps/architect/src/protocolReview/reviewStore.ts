@@ -54,30 +54,27 @@ export type StoredReview = {
   createdAt: number;
   /** The language the findings are written in. */
   locale: string;
-  /** The reviewed protocol and study details (`reviewFingerprint`). */
-  fingerprint: string;
   /**
    * Who wrote it. Absent from reviews saved before there was a choice, all
-   * of which Anthropic wrote (`reviewProviderOf`).
+   * of which Anthropic wrote.
    */
   provider?: ReviewProvider;
   findings: StoredFinding[];
 };
 
-/** Who wrote a stored review. */
-export const reviewProviderOf = (review: StoredReview): ReviewProvider =>
-  review.provider ?? 'anthropic';
-
 export type StoredReviewRecord = {
   protocolId: string;
-  /** Whether reviews are shared with the Network Canvas team. Off until chosen. */
-  shareReviews: boolean;
+  /**
+   * Whether reviews are shared with the Network Canvas team; null until the
+   * researcher has chosen. Nothing is shared on a choice that was not made.
+   */
+  shareReviews: boolean | null;
   review: StoredReview | null;
 };
 
 export const emptyReviewRecord = (protocolId: string): StoredReviewRecord => ({
   protocolId,
-  shareReviews: false,
+  shareReviews: null,
   review: null,
 });
 

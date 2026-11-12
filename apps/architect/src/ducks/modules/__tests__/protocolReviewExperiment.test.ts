@@ -26,9 +26,10 @@ const makeStore = () =>
   });
 
 const studyContext: StudyContext = {
-  researchQuestions: ['How do students find support?'],
+  synopsis: 'A survey of first-year students.',
   population: 'First-year students',
   administration: 'self_administered',
+  researchQuestions: ['How do students find support?'],
 };
 
 const protocol = (): CurrentProtocol => ({

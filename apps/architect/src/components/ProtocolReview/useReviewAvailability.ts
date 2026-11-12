@@ -21,29 +21,23 @@ import { formatWhen } from './reviewText';
 import { useNowUntil, useOnline } from './useReviewClock';
 
 const messages = defineMessages({
-  unchanged: {
-    id: 'architect.protocolReview.availability.unchanged',
-    defaultMessage: 'Nothing has changed since this review.',
-    description:
-      'Why Review again is unavailable: neither the protocol nor the study details changed since the last review.',
-  },
   offline: {
     id: 'architect.protocolReview.availability.offline',
     defaultMessage: 'Offline',
     description:
-      'Why the review buttons are unavailable: there is no internet connection.',
+      'Why a review cannot be started: there is no internet connection.',
   },
   nextReviewAt: {
     id: 'architect.protocolReview.availability.nextReviewAt',
     defaultMessage: 'Next review {when}',
     description:
-      'Why Review again is unavailable: the hourly limit is used up. {when} is a time such as "today at 15:32".',
+      'Why a review cannot be started: the hourly limit is used up. {when} is a time such as "today at 15:32".',
   },
   availableAgainAt: {
     id: 'architect.protocolReview.availability.availableAgainAt',
     defaultMessage: 'Available again {when}',
     description:
-      'Why Review again is unavailable: the budget of every provider that could write the review is spent, for the day or the month. {when} is the moment the first of them starts again, such as "tomorrow at 01:00" or "1 Dec 2026 at 01:00".',
+      'Why a review cannot be started: the budget of every provider that could write the review is spent, for the day or the month. {when} is the moment the first of them starts again, such as "tomorrow at 01:00" or "1 Dec 2026 at 01:00".',
   },
 });
 
@@ -59,14 +53,18 @@ export type ReviewAvailability = {
   provider: ReviewProvider;
   /** When the hourly limit lifts, while it is reached; otherwise null. */
   hourlyResetsAt: number | null;
-  /** Whether a new review can be started now. */
-  canStart: boolean;
+  /**
+   * Whether a review can be asked for now: the dialog that starts one may
+   * open. Study details still to give do not stand in the way, since that
+   * dialog is where they are given.
+   */
+  canRequest: boolean;
   /** Why not, in words, when there is something to tell the researcher. */
   reason: string | null;
 };
 
 /**
- * Whether a new review can start, who would write it, and why not: the
+ * Whether a review can be asked for, who would write it, and why not: the
  * engine's start block and being offline. Moves on by itself when a limit
  * lifts or a provider's budget starts again.
  */
@@ -125,8 +123,6 @@ export const useReviewAvailability = (): ReviewAvailability => {
   let reason: string | null = null;
   if (!online) {
     reason = intl.formatMessage(messages.offline);
-  } else if (block?.code === 'unchanged') {
-    reason = intl.formatMessage(messages.unchanged);
   } else if (block?.code === 'hourly_limit') {
     reason = intl.formatMessage(messages.nextReviewAt, {
       when: formatWhen(intl, Date.parse(block.resetsAt), now),
@@ -145,7 +141,8 @@ export const useReviewAvailability = (): ReviewAvailability => {
     providers,
     provider: reviewProviderFor(chosen, providers),
     hourlyResetsAt,
-    canStart: online && block === null,
+    canRequest:
+      online && (block === null || block.code === 'missing_study_context'),
     reason,
   };
 };

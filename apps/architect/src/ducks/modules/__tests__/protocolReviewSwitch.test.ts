@@ -249,11 +249,9 @@ describe('rule G', () => {
     release(gates.reads);
     await choice;
 
-    expect((await readReviewRecord(a)).shareReviews).toBe(false);
-    expect((await readReviewRecord(b)).shareReviews).toBe(false);
-    expect(store.getState().protocolReview.record?.shareReviews ?? false).toBe(
-      false,
-    );
+    expect((await readReviewRecord(a)).shareReviews).toBeNull();
+    expect((await readReviewRecord(b)).shareReviews).toBeNull();
+    expect(store.getState().protocolReview.record?.shareReviews).toBeNull();
   });
 
   it('decideFinding changes nothing when the protocol changes while the fix is checked', async () => {
@@ -403,7 +401,7 @@ describe('tab ownership', () => {
     });
     expect(client.requestReview).not.toHaveBeenCalled();
     await store.dispatch(setShareReviews(true));
-    expect((await readReviewRecord(a)).shareReviews).toBe(false);
+    expect((await readReviewRecord(a)).shareReviews).toBeNull();
 
     // The control: the same protocol, owned, does send its review.
     store.dispatch(setProtocolLockState('owned'));

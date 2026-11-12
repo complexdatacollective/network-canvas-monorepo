@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { type ReactNode, useMemo } from 'react';
 import { Provider } from 'react-redux';
 import { expect, vi } from 'vitest';
@@ -177,3 +178,55 @@ export const renderToolbar = (
 /** The Review protocol toolbar button, whatever it currently says. */
 export const reviewButton = () =>
   screen.getByRole('button', { name: /Review protocol|Reviewing/ });
+
+/** The headings of the dialog every review is asked for through, in order. */
+const REQUEST_STEPS = [
+  'Before you use this feature',
+  'Describe your study',
+  'Who takes part, and how?',
+  'What are your research questions?',
+  'Choose a model',
+] as const;
+
+type RequestStep = (typeof REQUEST_STEPS)[number];
+
+/** The dialog every review is asked for through, on whichever step it shows. */
+export const requestDialog = () => {
+  const dialog = screen
+    .getByTestId('wizard-next')
+    .closest<HTMLElement>('[role="dialog"]');
+  if (!dialog) throw new Error('The dialog that starts a review is not open');
+  return within(dialog);
+};
+
+/** Waits for the dialog to show the step headed `name`. */
+export const requestStep = (name: RequestStep) =>
+  screen.findByRole('heading', { level: 2, name });
+
+/** Presses the dialog's advance button, which must be called `name`. */
+export const pressNext = async (name = 'Continue') =>
+  userEvent.click(requestDialog().getByRole('button', { name }));
+
+/**
+ * Presses Review protocol, which must open the dialog, and goes through it
+ * to `step` with whatever each step is prefilled with.
+ */
+export const openRequestDialogAt = async (step: RequestStep) => {
+  await userEvent.click(reviewButton());
+  for (const heading of REQUEST_STEPS) {
+    await requestStep(heading);
+    if (heading === step) return;
+    await pressNext();
+  }
+};
+
+/**
+ * Asks for a review as a researcher does, changing nothing on the way: the
+ * button, every step of the dialog, then Start review. Resolves to the panel
+ * that opens.
+ */
+export const requestReviewFromButton = async () => {
+  await openRequestDialogAt('Choose a model');
+  await pressNext('Start review');
+  return screen.findByRole('dialog', { name: 'Protocol review' });
+};
