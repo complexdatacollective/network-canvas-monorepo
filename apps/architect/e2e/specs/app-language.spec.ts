@@ -40,6 +40,7 @@ const OPTION_NAMES: Record<string, RegExp> = {
   'pt-BR': /^Português \(Brasil\)/,
   'it': /^Italiano/,
   'fr': /^Français/,
+  'ar': /^العربية/,
 };
 
 async function selectLanguage(page: Page, locale: string) {
@@ -76,6 +77,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
     /^Português \(Brasil\)$/,
     /^Italiano$/,
     /^Français$/,
+    /^العربية$/,
   ]);
   await expect(options.first()).toHaveAttribute('aria-selected', 'true');
   await expect(
@@ -108,6 +110,28 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await expect(languageSwitcher(page)).toHaveAccessibleName(
     'Idioma de la interfaz: Automático (Español)',
   );
+});
+
+test('lays Architect out right to left in Arabic, with a protocol name written in Latin script on the same side as the rest', async ({
+  architectPage: page,
+  seed,
+}) => {
+  await seed(emptyProtocol(), { name: 'Research_Name_1' });
+  await page.goto('/');
+  await selectLanguage(page, 'ar');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(
+    page.getByRole('button', { name: 'إنشاء بروتوكول جديد' }),
+  ).toBeVisible();
+  // The name is the researcher's own text. It keeps its own reading direction
+  // and still starts where the Arabic around it starts.
+  const name = page.getByRole('heading', { name: 'Research_Name_1' });
+  await expect(name).toHaveCSS('direction', 'ltr');
+  await expect(name).toHaveCSS('text-align', 'right');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 });
 
 test('authors an Information stage in Spanish and previews it in the protocol’s language without changing research data', async ({

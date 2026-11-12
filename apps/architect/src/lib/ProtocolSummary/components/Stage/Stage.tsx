@@ -64,13 +64,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.stage.networkFiltering',
     defaultMessage: 'Network Filtering',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Stage.',
+      'Section heading in the printable protocol summary, above the rules that decide which nodes of the network a stage shows.',
   },
   skipLogic: {
     id: 'architect.protocolSummary.stage.stage.skipLogic',
     defaultMessage: 'Skip Logic',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Stage.',
+      'Section heading in the printable protocol summary, above the rules that decide when a stage is skipped during an interview.',
   },
 });
 

@@ -27,48 +27,50 @@ const chromeMessages = defineMessages({
     id: 'architect.chrome.codebook.entityTypeDialog.node',
     defaultMessage: 'Node',
     description:
-      'Researcher-facing explanatory text in components / Codebook / EntityTypeDialog.',
+      'The word Node, inserted as entityLabel into the title of the dialog for creating or editing a node type (a kind of person or thing participants name).',
   },
   edge: {
     id: 'architect.chrome.codebook.entityTypeDialog.edge',
     defaultMessage: 'Edge',
     description:
-      'Researcher-facing explanatory text in components / Codebook / EntityTypeDialog.',
+      'The word Edge, inserted as entityLabel into the title of the dialog for creating or editing an edge type (a kind of relationship between nodes).',
   },
   createType: {
     id: 'architect.chrome.codebook.entityTypeDialog.createType',
     defaultMessage: 'Create {entityLabel} Type',
     description:
-      'Researcher-facing explanatory text in components / Codebook / EntityTypeDialog.',
+      'Title of the dialog for creating a new node type or edge type. entityLabel is the word Node or Edge.',
   },
   editType: {
     id: 'architect.chrome.codebook.entityTypeDialog.editType',
     defaultMessage: 'Edit {entityLabel} Type',
     description:
-      'Researcher-facing explanatory text in components / Codebook / EntityTypeDialog.',
+      'Title of the dialog for editing an existing node type or edge type. entityLabel is the word Node or Edge.',
   },
 });
 const messages = defineMessages({
   couldNotCreateType: {
     id: 'architect.codebook.entityTypeDialog.couldNotCreateType',
     defaultMessage: 'Could not create type',
-    description: 'The title text in components / Codebook / EntityTypeDialog.',
+    description:
+      'Title of the error dialog shown when saving a new node type or edge type fails.',
   },
   couldNotUpdateType: {
     id: 'architect.codebook.entityTypeDialog.couldNotUpdateType',
     defaultMessage: 'Could not update type',
-    description: 'The title text in components / Codebook / EntityTypeDialog.',
+    description:
+      'Title of the error dialog shown when saving changes to an existing node type or edge type fails.',
   },
   oK: {
     id: 'architect.codebook.entityTypeDialog.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / Codebook / EntityTypeDialog.',
+    description: 'Button that dismisses the could-not-save-type error dialog.',
   },
   saveAndClose: {
     id: 'architect.codebook.entityTypeDialog.saveAndClose',
     defaultMessage: 'Save and Close',
     description:
-      'The submitLabel text in components / Codebook / EntityTypeDialog.',
+      'Submit button of the node type or edge type dialog that saves the type and closes the dialog.',
   },
 });
 

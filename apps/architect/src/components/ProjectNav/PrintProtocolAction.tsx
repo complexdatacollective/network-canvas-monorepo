@@ -15,7 +15,7 @@ const messages = defineMessages({
     id: 'architect.projectNav.printProtocolAction.print',
     defaultMessage: 'Print',
     description:
-      'Visible text in components / ProjectNav / PrintProtocolAction.',
+      'Label of the toolbar button on the Summary page that prints the protocol summary or saves it as a PDF. Print is a verb.',
   },
 });
 
@@ -78,6 +78,7 @@ const extraMessages = defineMessages({
   filename: {
     id: 'architect.summary.print.filename',
     defaultMessage: '{name} Protocol Summary (Created {date})',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'File name suggested when the protocol summary is saved as a PDF. name is the protocol name; date is the current date and time with punctuation replaced by hyphens. The extension is added separately.',
   },
 });

@@ -10,12 +10,14 @@ const messages = defineMessages({
   label: {
     id: 'architect.options.lockedOptions.label',
     defaultMessage: 'Label',
-    description: 'Visible text in components / Options / LockedOptions.',
+    description:
+      'Column header of the read-only options table; this column shows the option text a participant sees.',
   },
   value: {
     id: 'architect.options.lockedOptions.value',
     defaultMessage: 'Value',
-    description: 'Visible text in components / Options / LockedOptions.',
+    description:
+      'Column header of the read-only options table; this column shows the stored value recorded for each option.',
   },
 });
 
@@ -28,7 +30,7 @@ const CAPTION = defineMessages({
     defaultMessage:
       'These options are automatically configured by the interface and cannot be modified.',
     description:
-      'Researcher-facing explanation in components/Options/LockedOptions.tsx.',
+      'Caption above the read-only options table, read aloud by screen readers; explains the options come from the interface the stage uses and cannot be edited.',
   },
 }).message;
 

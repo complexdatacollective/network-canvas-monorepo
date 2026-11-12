@@ -12,7 +12,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.asset.english',
     defaultMessage: 'English',
     description:
-      'The label text in lib / ProtocolSummary / components / Asset.',
+      "Accessible name of the captions track on a video or audio resource in the printable protocol summary. It names the track's language, English; read only by screen readers.",
   },
 });
 

@@ -53,73 +53,78 @@ const chromeMessages = defineMessages({
     id: 'architect.chrome.projectNav.projectActions.returnToStages',
     defaultMessage: 'Return to Stages',
     description:
-      'Researcher-facing explanatory text in components / ProjectNav / ProjectActions.',
+      'Label of the toolbar button, shown on the Resources, Codebook, Languages and Summary pages, that goes back to the Stages page showing the stage timeline.',
   },
   returnToStartScreen: {
     id: 'architect.chrome.projectNav.projectActions.returnToStartScreen',
     defaultMessage: 'Return to Start Screen',
     description:
-      'Researcher-facing explanatory text in components / ProjectNav / ProjectActions.',
+      'Label of the toolbar button, shown on the Stages page, that closes the protocol and goes back to the start screen listing protocols.',
   },
 });
 const messages = defineMessages({
   saveProtocolSource: {
     id: 'architect.projectNav.projectActions.saveProtocolSource',
     defaultMessage: 'Save protocol source?',
-    description: 'The title text in components / ProjectNav / ProjectActions.',
+    description:
+      'Title of the confirmation dialog, shown only in developer builds, asking whether to write the open protocol back to the protocol source files of the repository.',
   },
   willOverwriteTheCanonical: {
     id: 'architect.projectNav.projectActions.willOverwriteTheCanonical',
     defaultMessage:
       '"{value1}" will overwrite the canonical protocol source files in this repository.',
     description:
-      'The description text in components / ProjectNav / ProjectActions.',
+      'Body of the Save protocol source confirmation dialog. value1 is the protocol name; the source files are the protocol files kept in the developer repository.',
   },
   saveToSource: {
     id: 'architect.projectNav.projectActions.saveToSource',
     defaultMessage: 'Save to source',
-    description: 'The label text in components / ProjectNav / ProjectActions.',
+    description:
+      'Label of the toolbar button, and of the confirm button in its dialog, that writes the open protocol to the protocol source files in the developer repository.',
   },
   sourceSaveFailed: {
     id: 'architect.projectNav.projectActions.sourceSaveFailed',
     defaultMessage: 'Source save failed',
-    description: 'The title text in components / ProjectNav / ProjectActions.',
+    description:
+      'Title of the error dialog shown when writing the protocol to the source files failed.',
   },
   couldNotBeSaved: {
     id: 'architect.projectNav.projectActions.couldNotBeSaved',
     defaultMessage:
       '"{protocolName}" could not be saved to source. Check the source files and your write permissions, then try again.',
     description:
-      'The description text in components / ProjectNav / ProjectActions.',
+      'Body of the error dialog shown when writing the protocol to the source files failed. protocolName is the protocol name; technical details follow below it.',
   },
   oK: {
     id: 'architect.projectNav.projectActions.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / ProjectNav / ProjectActions.',
+    description:
+      'Button that dismisses the dialog reporting the result of saving the protocol to source.',
   },
   protocolSourceSaved: {
     id: 'architect.projectNav.projectActions.protocolSourceSaved',
     defaultMessage: 'Protocol source saved',
-    description: 'The title text in components / ProjectNav / ProjectActions.',
+    description:
+      'Title of the dialog confirming the protocol was written to the source files.',
   },
   wasSavedTo: {
     id: 'architect.projectNav.projectActions.wasSavedTo',
     defaultMessage:
       '"{protocolName}" was saved to {path}. {writtenCount, plural, one {# asset was written} other {# assets were written}} and {removedCount, plural, one {# stale asset was removed} other {# stale assets were removed}}.',
     description:
-      'The description text in components / ProjectNav / ProjectActions.',
+      'Body of the dialog confirming the protocol was written to the source files. protocolName is the protocol name, path is where the protocol file was written, writtenCount is the number of asset files written, removedCount is the number of outdated asset files removed.',
   },
   navigationActions: {
     id: 'architect.projectNav.projectActions.navigationActions',
     defaultMessage: 'Navigation actions',
     description:
-      'The aria-label text in components / ProjectNav / ProjectActions.',
+      'Accessible name of the toolbar group holding the button that returns to the previous page; read only by screen readers.',
   },
   additionalActions: {
     id: 'architect.projectNav.projectActions.additionalActions',
     defaultMessage: 'Additional actions',
     description:
-      'The aria-label text in components / ProjectNav / ProjectActions.',
+      'Accessible name of the toolbar group holding page-specific buttons; read only by screen readers.',
   },
   exportActions: {
     id: 'architect.projectNav.projectActions.exportActions',
@@ -173,17 +178,19 @@ const messages = defineMessages({
     id: 'architect.projectNav.projectActions.sourceActions',
     defaultMessage: 'Source actions',
     description:
-      'The aria-label text in components / ProjectNav / ProjectActions.',
+      'Accessible name of the toolbar group holding the Save to source button; read only by screen readers.',
   },
   saved: {
     id: 'architect.projectNav.projectActions.saved',
     defaultMessage: 'Saved',
-    description: 'Visible text in components / ProjectNav / ProjectActions.',
+    description:
+      'Label of the Save to source toolbar button for a moment after the protocol was written to the source files.',
   },
   saving: {
     id: 'architect.projectNav.projectActions.saving',
     defaultMessage: 'Saving...',
-    description: 'Visible text in components / ProjectNav / ProjectActions.',
+    description:
+      'Label of the Save to source toolbar button while the protocol is being written to the source files.',
   },
 });
 

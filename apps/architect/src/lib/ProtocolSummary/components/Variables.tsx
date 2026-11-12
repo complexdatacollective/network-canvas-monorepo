@@ -20,25 +20,25 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.variables.name',
     defaultMessage: 'Name',
     description:
-      'Visible text in lib / ProtocolSummary / components / Variables.',
+      "Column header in the table of variables of the printable protocol summary; each row shows a variable's name.",
   },
   type: {
     id: 'architect.protocolSummary.variables.type',
     defaultMessage: 'Type',
     description:
-      'Visible text in lib / ProtocolSummary / components / Variables.',
+      "Column header in the table of variables of the printable protocol summary; each row shows the variable's data type, such as text or number.",
   },
   usedIn: {
     id: 'architect.protocolSummary.variables.usedIn',
     defaultMessage: 'Used In',
     description:
-      'Visible text in lib / ProtocolSummary / components / Variables.',
+      'Column header in the table of variables of the printable protocol summary; each row lists the stages that use the variable.',
   },
   noAttributesToDisplay: {
     id: 'architect.protocolSummary.variables.noAttributesToDisplay',
     defaultMessage: 'No attributes to display.',
     description:
-      'Visible text in lib / ProtocolSummary / components / Variables.',
+      'Shown in the printable protocol summary in place of the variables table when a node type, edge type or the ego has no variables.',
   },
 });
 

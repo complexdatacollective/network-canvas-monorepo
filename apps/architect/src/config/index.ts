@@ -5,7 +5,8 @@ const messages = defineMessages({
   protocolNameTooLong: {
     id: 'architect.config.protocolNameTooLong',
     defaultMessage: 'Protocol names are limited to {max, number} characters.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Validation error shown under the protocol name field, in the new protocol dialog and when renaming a protocol, when the name is longer than the limit. max is the maximum number of characters.',
   },
 });
 

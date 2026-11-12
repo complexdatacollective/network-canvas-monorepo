@@ -17,7 +17,8 @@ const messages = defineMessages({
   protocolTimeline: {
     id: 'architect.home.transitMap.protocolTimeline',
     defaultMessage: 'Protocol timeline',
-    description: 'Visible text in components / Home / TransitMap.',
+    description:
+      'Accessible title of the timeline diagram on the Architect home screen, which draws the stages of the protocol as stops on a transit line; read only by screen readers.',
   },
 });
 
