@@ -14,7 +14,7 @@ import { type PropsWithChildren, StrictMode } from 'react';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 import './preview.css';
-import { globalTypes, initialGlobals, mirrorCheck, withAppI18n } from './i18n';
+import { globalTypes, initialGlobals, mirrorAddon, withAppI18n } from './i18n';
 import Providers from './Providers';
 
 // Network Canvas Interviewer renders its entire UI inside a single
@@ -46,11 +46,11 @@ const ThemedDocsContainer = ({
 
 export default definePreview({
   // Every story is checked right to left after its play function (see
-  // `mirrorCheck` in @codaco/storybook-config); a story that is not a layout
-  // in the reading direction opts out with the `!mirror` tag and says why.
+  // `mirrorAddon` in @codaco/storybook-config, first in `addons` so it runs
+  // after the accessibility audit); a story that is not a layout in the
+  // reading direction opts out with the `!mirror` tag and says why.
   tags: ['mirror'],
-  afterEach: mirrorCheck,
-  addons: [addonDocs(), addonA11y(), addonVitest()],
+  addons: [mirrorAddon, addonDocs(), addonA11y(), addonVitest()],
   parameters: {
     controls: {
       matchers: {

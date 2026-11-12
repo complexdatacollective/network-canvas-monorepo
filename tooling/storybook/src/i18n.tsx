@@ -110,14 +110,18 @@ export type StorybookI18n = Readonly<{
   initialGlobals: Readonly<{ appLocale: string; appDirection: DirectionMode }>;
   withAppI18n: Decorator;
   /**
-   * An `afterEach` for the preview: a story tagged `mirror` is drawn in the
-   * other direction once its play function has run, and fails unless every
-   * box sits as far from the right edge as it sat from the left, and every
-   * arrow that points along the line turns round. See `mirrorCheck` below.
+   * A preview addon: a story tagged `mirror` is drawn in each direction once
+   * its play function has run, and fails unless every box sits as far from
+   * the right edge as it sat from the left, and every arrow that points along
+   * the line turns round. See `mirrorCheck` below.
+   *
+   * It goes first in the preview's `addons`. Storybook runs `afterEach`
+   * hooks in the reverse of the order they are composed (addons in order,
+   * then the preview's own), so the first addon's runs last: after the
+   * accessibility audit has read the page the play function left, which the
+   * mirror check's fresh renders would otherwise have replaced.
    */
-  mirrorCheck: (
-    context: Readonly<{ tags: readonly string[] }>,
-  ) => Promise<void>;
+  mirrorAddon: Preview;
 }>;
 
 /** The tag a story or a whole stories file opts into the mirror check with. */
@@ -429,13 +433,16 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
    * when their size changes, not when the direction does: a story flipped in
    * place shows the old measurement, which a real change of language (whose
    * text changes every size) never would. The cost is that what the play
-   * function opened is closed again; a story that should be checked open
-   * renders open (`defaultOpen`).
+   * function opened is closed again, so the check sees the story as first
+   * drawn; a story that should be checked open renders open (`defaultOpen`).
+   * The accessibility audit has already run on what the play function left.
    *
    * It runs only in an automated browser (the Storybook test suites), so a
    * person clicking through stories never sees the story flip.
    */
-  const mirrorCheck: StorybookI18n['mirrorCheck'] = async ({ tags }) => {
+  const mirrorCheck = async ({
+    tags,
+  }: Readonly<{ tags: readonly string[] }>) => {
     if (!tags.includes(MIRROR_TAG) || !window.navigator.webdriver) return;
     const setDirection = forceDirection;
     if (!setDirection) {
@@ -451,8 +458,8 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     setDirection(drawn === 'rtl' ? 'ltr' : 'rtl');
     await settleLayout();
     const second = await stableLayout();
-    // Back to the story's own direction, settled: other checks that run
-    // after this one (the accessibility audit) read the page.
+    // Back to the story's own direction, settled, so the story is left as
+    // it was drawn rather than unmounting mid-render.
     setDirection(null);
     await settleLayout();
 
@@ -466,7 +473,7 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
 
   return {
     withAppI18n,
-    mirrorCheck,
+    mirrorAddon: { afterEach: mirrorCheck },
     initialGlobals: {
       [LOCALE_KEY]: initialLocale,
       [DIRECTION_KEY]: initialDirection,

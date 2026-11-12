@@ -40,7 +40,7 @@ import { protocolBuilderCatalogLoaders } from '../src/locales/catalogs.ts';
  * reads its catalogs synchronously, so a Storybook — a development tool with
  * nothing to save on download size — awaits them all before it renders.
  */
-export const { globalTypes, initialGlobals, withAppI18n, mirrorCheck } =
+export const { globalTypes, initialGlobals, withAppI18n, mirrorAddon } =
   storybookI18n({
     locales: ecosystemLocales,
     catalogs: Object.fromEntries(
