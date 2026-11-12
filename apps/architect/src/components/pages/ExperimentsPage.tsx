@@ -13,11 +13,12 @@ import ExternalLink from '~/components/ExternalLink';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
 import ReviewSparklesIcon from '~/components/ProtocolReview/ReviewSparklesIcon';
-import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import {
   disableProtocolReview,
   enableProtocolReview,
 } from '~/ducks/modules/activeProtocol';
+import { getProtocolOwnedHere } from '~/ducks/modules/app';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import {
   getIsProtocolReviewEnabled,
@@ -97,6 +98,7 @@ const renderVersioning = (chunks: ReactNode[]) => (
 const ExperimentsPage = () => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
+  const store = useAppStore();
   const { openDialog } = useDialog();
   const headingId = useId();
   const readOnly = useProtocolAccessMode() === 'read-only';
@@ -141,11 +143,16 @@ const ExperimentsPage = () => {
           },
         });
         if (confirmed !== true) return;
+        // Another tab can take the protocol while the question is open. This
+        // tab's change could then not be saved, and would come back once the
+        // saved copy is read again, so nothing is changed; the page is
+        // read-only by now, and says why.
+        if (!getProtocolOwnedHere(store.getState())) return;
       }
 
       dispatch(disableProtocolReview());
     },
-    [dispatch, hasStudyContext, openDialog],
+    [dispatch, hasStudyContext, openDialog, store],
   );
 
   return (

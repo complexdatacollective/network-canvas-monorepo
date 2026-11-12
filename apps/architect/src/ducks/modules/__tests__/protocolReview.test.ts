@@ -761,12 +761,52 @@ describe('decisions', () => {
     expect(findingOf(store, 'title')).toMatchObject({
       status: 'undecided',
       availability: 'available',
+      canFix: true,
+      canUndo: false,
     });
+    // The record of the applied fix is kept, so the fix is recognised if the
+    // app's own Undo puts it back.
     const stored = await readReviewRecord(id);
-    expect(stored.review?.findings[1]).toMatchObject({
-      decision: 'undecided',
-      inverse: null,
+    expect(stored.review?.findings[1]).toMatchObject({ decision: 'fix' });
+    expect(stored.review?.findings[1]?.inverse).not.toBeNull();
+  });
+
+  it('shows a fix the researcher adjusted as fixed again when the app’s Undo takes back its Undo', async () => {
+    await reviewed(store);
+    const path = findingOf(store, 'prompt').textEdits[0]?.path;
+    if (path === undefined) throw new Error('The fix rewrites no text');
+    expect(
+      await store.dispatch(
+        decideFinding('prompt', 'fix', { [path]: 'Name your friends' }),
+      ),
+    ).toEqual({ ok: true });
+    expect(promptText(store)).toEqual({
+      en: 'Name your friends',
+      fr: 'Nommez',
     });
+
+    expect(await store.dispatch(undoFix('prompt'))).toEqual({ ok: true });
+    expect(promptText(store)).toEqual({ en: 'Name people', fr: 'Nommez' });
+    expect(findingOf(store, 'prompt').status).toBe('undecided');
+
+    // The app's Undo takes the finding's Undo back: the adjusted text is in
+    // the protocol again, which the review's own suggestion does not match.
+    store.dispatch(timelineActions.undo());
+    expect(promptText(store)).toEqual({
+      en: 'Name your friends',
+      fr: 'Nommez',
+    });
+    await vi.waitFor(() =>
+      expect(findingOf(store, 'prompt')).toMatchObject({
+        status: 'fixed',
+        canUndo: true,
+      }),
+    );
+
+    // And the finding's Undo works on it again.
+    expect(await store.dispatch(undoFix('prompt'))).toEqual({ ok: true });
+    expect(promptText(store)).toEqual({ en: 'Name people', fr: 'Nommez' });
+    expect(findingOf(store, 'prompt').status).toBe('undecided');
   });
 
   it('rewords text Network Canvas supplies, which the protocol holds only once it differs, and Undo takes it back out', async () => {

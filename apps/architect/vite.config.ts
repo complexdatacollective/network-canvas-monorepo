@@ -22,48 +22,18 @@ import {
   matchRetainedPwaAsset,
 } from '../../scripts/buildtime/pwa-cache-reclamation-plugin.ts';
 import { version } from './package.json';
+import { contentSecurityPolicy } from './scripts/content-security-policy';
 import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-authoring';
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(rootDir, '../..');
 const legacyArchitect = legacyApp('architect');
 
-// The Content-Security-Policy directives a <meta http-equiv> can express — i.e.
-// everything except frame-ancestors, which is header-only and stays in
-// public/_headers. It is injected into the built HTML (see injectCspMeta) rather
-// than served purely as an HTTP header so that a change to it rides the service
-// worker's content-revisioning: because the app precaches its HTML shell, a
-// header-only CSP change is frozen in the cached response and never reaches
-// already-installed clients, whereas a change to this in-content policy alters
-// the HTML, bumps its precache revision, and propagates on the next update.
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  // No 'wasm-unsafe-eval': mapbox-gl compiles its right-to-left text shaper
-  // (WebAssembly) inside its module worker, a same-origin /assets file that
-  // runs under its own response headers rather than this page policy. A
-  // header that put this policy on /assets would fail that compile for every
-  // map tile with right-to-left text.
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "font-src 'self' data:",
-  "img-src 'self' data: blob:",
-  "media-src 'self' blob:",
-  // protocol-review.networkcanvas.com is the automated protocol review
-  // service (PROTOCOL_REVIEW_SERVICE_URL in workers/protocol-review's
-  // contract; a test beside src/protocolReview keeps the two in step).
-  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com https://protocol-review.networkcanvas.com",
-  "worker-src 'self' blob:",
-  "frame-src 'self'",
-  "base-uri 'none'",
-  "object-src 'none'",
-  "form-action 'self'",
-].join('; ');
-
 // Inject the CSP as the first <head> tag of every built HTML entry so it governs
 // every resource parsed after it. Build-only: in dev a <meta> CSP would block
 // Vite's HMR / react-refresh (inline + eval) scripts and the HMR websocket, and
 // the dev server serves no _headers anyway.
-const injectCspMeta = (): Plugin => ({
+const injectCspMeta = (policy: string): Plugin => ({
   name: 'architect-inject-csp-meta',
   apply: 'build',
   transformIndexHtml: {
@@ -73,7 +43,7 @@ const injectCspMeta = (): Plugin => ({
         tag: 'meta',
         attrs: {
           'http-equiv': 'Content-Security-Policy',
-          'content': CONTENT_SECURITY_POLICY,
+          'content': policy,
         },
         injectTo: 'head-prepend',
       },
@@ -127,7 +97,7 @@ export default defineConfig(({ command, mode }) => {
     },
     plugins: [
       ...appI18n(),
-      injectCspMeta(),
+      injectCspMeta(contentSecurityPolicy(env.VITE_PROTOCOL_REVIEW_URL)),
       createProtocolSourceAuthoringPlugin({
         repoRoot,
         enabled: env.VITE_PROTOCOL_SOURCE_AUTHORING === 'true',

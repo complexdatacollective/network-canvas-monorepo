@@ -415,6 +415,26 @@ describe('tab ownership', () => {
     expect(client.requestReview).toHaveBeenCalledTimes(1);
   });
 
+  it('a review whose answer arrives after another tab took the protocol is not reported as completed', async () => {
+    const a = await open(store);
+    const { promise: answer, resolve: answerWith } =
+      Promise.withResolvers<ReviewOutcome>();
+    client.requestReview.mockReturnValueOnce(answer);
+    const run = store.dispatch(startReview());
+    await vi.waitFor(() =>
+      expect(store.getState().protocolReview.run.status).toBe('running'),
+    );
+
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    answerWith({ kind: 'result', result: RESULT });
+
+    // Nothing could be saved from here, so nothing completed.
+    expect(await run).toEqual({ status: 'cancelled' });
+    expect(store.getState().protocolReview.run.status).toBe('idle');
+    expect(store.getState().protocolReview.record?.review).toBeNull();
+    expect((await readReviewRecord(a)).review).toBeNull();
+  });
+
   it('a review asked for one protocol does not start for the one opened since', async () => {
     const a = await open(store);
     const b = await open(store, otherProtocol());

@@ -172,6 +172,27 @@ describe('<ExperimentsPage />', () => {
       expect(openDialog).toHaveBeenCalledTimes(1);
     });
 
+    it('changes nothing when another tab takes the protocol while the question is open', async () => {
+      const store = storeWithDetails();
+      const { promise: answer, resolve: answerWith } =
+        Promise.withResolvers<boolean>();
+      openDialog.mockReturnValue(answer);
+      renderPage(store);
+
+      await userEvent.click(reviewSwitch());
+      expect(openDialog).toHaveBeenCalledTimes(1);
+      store.dispatch(setProtocolLockState('open-elsewhere'));
+      answerWith(true);
+      // The switch is disabled once the page has caught up with the answer.
+      await waitFor(() => expect(reviewSwitch()).toBeDisabled());
+      await answer;
+
+      expect(getIsProtocolReviewEnabled(store.getState())).toBe(true);
+      expect(getProtocolReviewStudyContext(store.getState())).toEqual(
+        studyContext,
+      );
+    });
+
     it('changes nothing when the researcher cancels', async () => {
       openDialog.mockResolvedValue(false);
       const store = storeWithDetails();

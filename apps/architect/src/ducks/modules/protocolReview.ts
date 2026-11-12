@@ -933,7 +933,7 @@ export const startReview =
     // is still the active one (checked above, with no await since), so the
     // slice holds its record.
     const latest = selectRecord(getState());
-    await saveRecord(dispatch, getState, {
+    const saved = await saveRecord(dispatch, getState, {
       protocolId,
       shareReviews:
         latest?.protocolId === protocolId
@@ -949,6 +949,10 @@ export const startReview =
       },
     });
     dispatch(actions.runFinished({ runId }));
+    // Another tab took the protocol's saved copy while the review ran, so
+    // this tab could keep none of it: the run ends as if it had been stopped,
+    // and nothing is reported as completed.
+    if (!saved) return { status: 'cancelled' };
     void dispatch(checkFixAvailability());
     captureReviewCompleted(
       completedPayload(result.findings, Date.now() - startedAt),
@@ -1192,7 +1196,7 @@ export const decideFinding =
 
 /**
  * Takes an applied fix back out by applying its inverse, as one undoable
- * change, and returns the finding to undecided. Offered only while the fix
+ * change, which returns the finding to undecided. Offered only while the fix
  * holds; refused when the inverse no longer applies or would leave the
  * protocol invalid.
  */
@@ -1237,16 +1241,12 @@ export const undoFix =
         check: { protocol: committed, kind: 'fix', valid: true },
       }),
     );
-    const latest = findStored(getState, findingId);
-    await saveRecord(
-      dispatch,
-      getState,
-      withFinding(latest?.record ?? found.record, findingId, {
-        decision: 'undecided',
-        inverse: null,
-        written: null,
-      }),
-    );
+    // The record of the applied fix stays as it is, as it does when the app's
+    // own Undo takes a fix back: what the fix wrote no longer holds, so the
+    // finding reads as undecided, and it reads as fixed again (with its Undo)
+    // if the app's Undo puts the fix back. That is the only way a fix the
+    // researcher adjusted can be recognised, since the review's own edits
+    // differ from what was applied.
     captureReviewDecision(decisionPayload('undecided', stored.finding));
     void dispatch(checkFixAvailability());
     return { ok: true };

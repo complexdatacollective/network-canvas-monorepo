@@ -15,6 +15,20 @@ import { LEGACY_LIBRARIES } from '../storageNames';
 
 const LEGACY_DB_NAME = LEGACY_LIBRARIES[0].dbName;
 
+// The reviews live in a database of their own, which can fail on its own.
+const reviews = vi.hoisted(() => ({ failClear: false }));
+vi.mock('~/protocolReview/reviewStore', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('~/protocolReview/reviewStore')>();
+  return {
+    ...actual,
+    clearReviewRecords: async () => {
+      if (reviews.failClear) throw new Error('reviews clear failed');
+      return actual.clearReviewRecords();
+    },
+  };
+});
+
 const request = <T>(req: IDBRequest<T>) =>
   new Promise<T>((resolve, reject) => {
     req.onsuccess = () => resolve(req.result);
@@ -102,6 +116,7 @@ afterEach(async () => {
   });
   localStorage.clear();
   vi.restoreAllMocks();
+  reviews.failClear = false;
   await request(indexedDB.deleteDatabase(LEGACY_DB_NAME));
 });
 
@@ -155,6 +170,19 @@ describe('clearAllStorage', () => {
     expect(reload).not.toHaveBeenCalled();
     // One transaction: nothing was removed when part of it failed.
     expect(await assetDb.protocols.count()).toBe(1);
+    expect(await assetDb.legacyProtocolChoices.count()).toBe(1);
+  });
+
+  // The caller says nothing was removed and leaves the list on screen, so
+  // the library has to be as that list shows it.
+  it('removes nothing from the library when the reviews cannot be cleared', async () => {
+    reviews.failClear = true;
+
+    await expect(clearAllStorage()).rejects.toThrow('reviews clear failed');
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(await assetDb.protocols.count()).toBe(1);
+    expect(await assetDb.assets.count()).toBe(1);
     expect(await assetDb.legacyProtocolChoices.count()).toBe(1);
   });
 });
