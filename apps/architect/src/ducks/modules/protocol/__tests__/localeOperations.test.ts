@@ -15,6 +15,7 @@ import {
   validateProtocol,
   familyPedigreeWordingIn,
   withInterfaceText,
+  withoutSuppliedWording,
   withSuppliedWording,
 } from '@codaco/protocol-validation';
 
@@ -449,6 +450,25 @@ describe('removeLocale', () => {
     });
   });
 
+  it('removes the only language a text Network Canvas words was reworded in, which then reads as Network Canvas words it', () => {
+    // The protocol's own wording for the Back button is only in French.
+    const reworded = {
+      ...bilingual(),
+      interfaceText: { navigation: { back: { fr: 'Précédent' } } },
+    };
+    const back = collectLocalizedStrings(reworded).filter(
+      ({ path }) => path[0] === 'interfaceText',
+    );
+    expect(back.map(({ value }) => value)).toEqual([{ fr: 'Précédent' }]);
+
+    // Network Canvas has English for it, so nothing is left without text;
+    // without that wording counted, the removal would strand it.
+    expect(getLocaleRemovalImpact(back, 'fr').strandedStrings).toEqual(back);
+    const removed = protocolOf(removeLocale(reworded, 'fr'));
+    expect(removed.localization.locales).toEqual(['en']);
+    expect(removed.interfaceText).toBeUndefined();
+  });
+
   it('refuses a language the protocol does not declare', () => {
     expect(removeLocale(bilingual(), 'de')).toEqual({
       ok: false,
@@ -731,12 +751,15 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
       ...english,
       localization: { defaultLocale: 'en', locales: ['en', 'fr', 'de'] },
     };
+    // The fixture's stage holds Network Canvas's own wording, which a stored
+    // protocol does not: each result is compared with the fixture as stored.
+    const stored = withoutSuppliedWording(french);
     const frenchDefault = protocolOf(setDefaultLocale(french, 'fr'));
     expect(frenchDefault.codebook).toEqual(french.codebook);
-    expect(frenchDefault.stages).toEqual(french.stages);
+    expect(frenchDefault.stages).toEqual(stored.stages);
     const withoutGerman = protocolOf(removeLocale(french, 'de'));
     expect(withoutGerman.codebook).toEqual(french.codebook);
-    expect(withoutGerman.stages).toEqual(french.stages);
+    expect(withoutGerman.stages).toEqual(stored.stages);
   });
 
   it('leaves a new default language with no built-in labels without them, and still fills in a language added later', () => {

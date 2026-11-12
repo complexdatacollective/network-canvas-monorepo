@@ -303,6 +303,55 @@ describe('activeProtocol', () => {
       expect(state.codebook.node?.person).toBeDefined();
     });
 
+    // Network Canvas words the Back button "Back" and the finish button
+    // "Finish"; "Onwards" and "Really finish?" are the researcher's own.
+    const holdingSuppliedWording = {
+      ...mockProtocol,
+      stages: [
+        { id: 'anon', type: 'Anonymisation', label: { en: 'Passphrase' } },
+        {
+          id: 'finish',
+          type: 'FinishSession',
+          label: { en: 'Finish' },
+          finishLabel: { en: 'Finish' },
+          finishConfirmation: { en: 'Really finish?' },
+        },
+      ],
+      interfaceText: {
+        navigation: { back: { en: 'Back' }, continue: { en: 'Onwards' } },
+        passphrase: { passphraseAccepted: { en: 'Thank you' } },
+      },
+    } as unknown as CurrentProtocol;
+
+    it('stores a protocol holding only the wording its author changed', () => {
+      store.dispatch(actionCreators.setActiveProtocol(holdingSuppliedWording));
+
+      const state = store.getState().activeProtocol;
+      expect(state?.interfaceText).toEqual({
+        navigation: { continue: { en: 'Onwards' } },
+        passphrase: { passphraseAccepted: { en: 'Thank you' } },
+      });
+      expect(state?.stages[1]).toEqual({
+        id: 'finish',
+        type: 'FinishSession',
+        label: { en: 'Finish' },
+        finishConfirmation: { en: 'Really finish?' },
+      });
+    });
+
+    it('drops wording for a shared text once no stage shows it', () => {
+      store.dispatch(actionCreators.setActiveProtocol(holdingSuppliedWording));
+
+      // Only a passphrase stage shows the "passphrase accepted" text.
+      store.dispatch(stagesTest.deleteStage('anon'));
+
+      const state = store.getState().activeProtocol;
+      expect(state?.stages.map(({ id }) => id)).toEqual(['finish']);
+      expect(state?.interfaceText).toEqual({
+        navigation: { continue: { en: 'Onwards' } },
+      });
+    });
+
     it('should not process sub-reducers when no protocol data', () => {
       // Try to dispatch an action that would normally be handled by sub-reducers
       store.dispatch(stagesTest.moveStage(0, 1));

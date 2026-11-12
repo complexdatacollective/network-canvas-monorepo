@@ -177,14 +177,17 @@ export const stageAfterLanguageChange = <
  * The wording Network Canvas supplies for stage settings, such as a roster's
  * panel title, and for the interview's shared words is not copied into a
  * protocol, so nothing is written for it: the interview shows it in each
- * language the protocol has no wording of its own in.
+ * language the protocol has no wording of its own in. The result is stored as
+ * every protocol is (`withoutSuppliedWording`), so a text of that wording
+ * whose only translation the change removed is no longer held, rather than
+ * held with no translation.
  */
 const withLanguageChange = (
   original: CurrentProtocol,
   rewritten: CurrentProtocol,
   change: LanguageChange,
 ): CurrentProtocol => {
-  return createNextState(rewritten, (draft) => {
+  const changed = createNextState(rewritten, (draft) => {
     draft.localization = {
       defaultLocale: change.after.defaultLocale,
       locales: [...change.after.locales],
@@ -222,6 +225,7 @@ const withLanguageChange = (
       }
     });
   });
+  return withoutSuppliedWording(changed);
 };
 
 /**
