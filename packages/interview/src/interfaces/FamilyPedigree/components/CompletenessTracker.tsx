@@ -347,7 +347,7 @@ function CompletenessTracker({
                       <div className="flex flex-col items-start gap-2">
                         <button
                           type="button"
-                          className="focusable cursor-pointer text-left underline-offset-4 hover:underline"
+                          className="focusable cursor-pointer text-start underline-offset-4 hover:underline"
                           onClick={() => {
                             // The list is put away for what it leads to, the
                             // person's panel, which it would otherwise cover.

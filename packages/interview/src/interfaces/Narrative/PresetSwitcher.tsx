@@ -230,7 +230,7 @@ export default function PresetSwitcher({
       draggable
       dragConstraints={dragConstraints}
       dragHandleLabel={intl.formatMessage(interfaceMessages.dragToReposition)}
-      className="absolute right-10 bottom-10 z-10"
+      className="absolute inset-e-10 bottom-10 z-10"
     >
       <ToolbarGroup
         aria-label={intl.formatMessage(interfaceMessages.presetNavigation)}
@@ -238,7 +238,7 @@ export default function PresetSwitcher({
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.previousPreset)}
           tooltip={false}
-          icon={<ChevronLeft />}
+          icon={<ChevronLeft className="rtl:rotate-180" />}
           disabled={activePreset === 0}
           onClick={() => onChangePreset(activePreset - 1)}
         />
@@ -361,7 +361,7 @@ export default function PresetSwitcher({
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.nextPreset)}
           tooltip={false}
-          icon={<ChevronRight />}
+          icon={<ChevronRight className="rtl:rotate-180" />}
           disabled={activePreset + 1 === presets.length}
           onClick={() => onChangePreset(activePreset + 1)}
         />

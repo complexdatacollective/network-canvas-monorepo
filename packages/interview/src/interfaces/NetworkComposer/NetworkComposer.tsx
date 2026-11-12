@@ -736,7 +736,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         {selectionGroupOptions.length > 0 && (
           <div
             key="selection-group-membership"
-            className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center pr-4 pl-24 min-[68rem]:px-4"
+            className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center ps-24 pe-4 min-[68rem]:px-4"
           >
             <MotionSurface
               floating
