@@ -1,0 +1,227 @@
+{
+  "SectionSwitcher": {
+    "get-started": {
+      "label": "Primeros pasos",
+      "description": "Conoce Network Canvas, elige tus herramientas y planifica tu estudio."
+    },
+    "design-protocols": {
+      "label": "Diseñar protocolos",
+      "description": "Diseña el protocolo de entrevista que usará tu estudio."
+    },
+    "collect-data": {
+      "label": "Recopilar datos",
+      "description": "Realiza entrevistas en persona o a distancia y reúne tus datos."
+    },
+    "analyze-data": {
+      "label": "Analizar datos",
+      "description": "Exporta y analiza los datos de red que generan tus entrevistas."
+    }
+  },
+  "WorkflowNav": {
+    "workflowLabel": "Flujo de trabajo"
+  },
+  "TipBox": {
+    "info": "Conviene saber:",
+    "warning": "¡Atención!"
+  },
+  "WorkInProgress": {
+    "title": "En elaboración",
+    "content": "Estamos trabajando en este artículo y puede que no esté terminado. Si necesitas ayuda con este tema, ponte en contacto directamente con el equipo del proyecto."
+  },
+  "DocSearch": {
+    "button": {
+      "buttonText": "Buscar en la documentación",
+      "buttonTextMobile": "Buscar",
+      "buttonAriaLabel": "Abrir la búsqueda",
+      "buttonUnavailableText": "La búsqueda no está disponible en este momento"
+    },
+    "modal": {
+      "searchBox": {
+        "resetButtonTitle": "Borrar la búsqueda",
+        "resetButtonAriaLabel": "Borrar la búsqueda",
+        "cancelButtonText": "Cancelar",
+        "cancelButtonAriaLabel": "Cancelar"
+      },
+      "startScreen": {
+        "recentSearchesTitle": "Recientes",
+        "noRecentSearchesText": "No hay búsquedas recientes",
+        "saveRecentSearchButtonTitle": "Guardar esta búsqueda",
+        "removeRecentSearchButtonTitle": "Quitar esta búsqueda del historial",
+        "favoriteSearchesTitle": "Favoritas",
+        "removeFavoriteSearchButtonTitle": "Quitar esta búsqueda de favoritas"
+      },
+      "errorScreen": {
+        "titleText": "No se han podido obtener los resultados",
+        "helpText": "Comprueba tu conexión a la red"
+      },
+      "footer": {
+        "selectText": "para seleccionar",
+        "selectKeyAriaLabel": "Tecla Intro",
+        "navigateText": "para navegar",
+        "navigateUpKeyAriaLabel": "Flecha arriba",
+        "navigateDownKeyAriaLabel": "Flecha abajo",
+        "closeText": "para cerrar",
+        "closeKeyAriaLabel": "Tecla Escape",
+        "searchByText": "Con la tecnología de"
+      },
+      "noResultsScreen": {
+        "noResultsText": "No hay resultados para",
+        "suggestedQueryText": "Prueba a buscar",
+        "reportMissingResultsText": "¿Crees que esta búsqueda debería dar resultados?",
+        "reportMissingResultsLinkText": "Avísanos"
+      }
+    }
+  },
+  "SharedNavigation": {
+    "documentationHome": "Inicio de la documentación",
+    "openDocumentationMenu": "Abrir la navegación de la documentación",
+    "closeDocumentationMenu": "Cerrar la navegación de la documentación",
+    "documentationNavigation": "Navegación de la documentación",
+    "documentationNavigationDescription": "Recorre las secciones y las páginas de la documentación."
+  },
+  "Footer": {
+    "terms": "Términos de uso",
+    "privacy": "Política de privacidad",
+    "copyright": "Derechos de autor de Complex Data Collective 2016-{year}",
+    "youtube": "YouTube",
+    "twitter": "Twitter",
+    "github": "GitHub",
+    "netlify": "Este sitio funciona con <link>Netlify</link>"
+  },
+  "ThemeTranslations": {
+    "label": "Tema de color",
+    "triggerLabel": "Tema de color: {theme}",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
+  },
+  "Hero": {
+    "title": "Documentación para cada etapa\nde tu investigación",
+    "tagline": "Guías y material de referencia para planificar estudios, diseñar protocolos, recopilar datos y analizar los resultados."
+  },
+  "Home": {
+    "title": "Inicio",
+    "subtitle": "Te damos la bienvenida a la documentación de Network Canvas. Aquí puedes conocer el proyecto, encontrar tutoriales y obtener ayuda para usar nuestro software."
+  },
+  "DocPage": {
+    "docAvailableTxt": "Este documento también está disponible en"
+  },
+  "InterfaceSummary": {
+    "screenshotAlt": "La interfaz «{name}»",
+    "type": "Tipo",
+    "creates": "Crea",
+    "usesPrompts": "Usa preguntas",
+    "schema": "Versión del esquema",
+    "availableIn": "Disponible en",
+    "requires": "Requiere",
+    "yes": "Sí",
+    "no": "No",
+    "configureIn": "Se configura en {app}",
+    "runIn": "Se ejecuta en {app}"
+  },
+  "InterfaceNames": {
+    "AlterEdgeForm": "Formulario de vínculos por álter",
+    "AlterForm": "Formulario por álter",
+    "Anonymisation": "Interfaz de anonimización",
+    "CategoricalBin": "Clasificación por categorías",
+    "DyadCensus": "Censo de díadas",
+    "EgoForm": "Formulario del ego",
+    "FamilyPedigree": "Genealogía familiar",
+    "FinishSession": "Pantalla de finalización",
+    "Geospatial": "Interfaz geoespacial",
+    "Information": "Información",
+    "LanguageChooser": "Selector de idioma",
+    "NameGenerator": "Generador de nombres (con formularios)",
+    "NameGeneratorQuickAdd": "Generador de nombres (adición rápida)",
+    "NameGeneratorRoster": "Generador de nombres a partir de una lista",
+    "Narrative": "Narrativa",
+    "NarrativePedigree": "Genealogía narrativa",
+    "NetworkComposer": "Compositor de redes",
+    "OneToManyDyadCensus": "Censo de díadas de uno a muchos",
+    "OrdinalBin": "Clasificación ordinal",
+    "Sociogram": "Sociograma",
+    "TieStrengthCensus": "Censo de fuerza de vínculos"
+  },
+  "AppCompatibility": {
+    "title": "Compatibilidad de las aplicaciones según la versión del esquema",
+    "caption": "Versiones del esquema de protocolo que puede abrir cada aplicación de Network Canvas, con las aplicaciones agrupadas por generación.",
+    "app": "Aplicación",
+    "platform": "Plataforma",
+    "schemaProtocols": "Protocolos del esquema {schema}",
+    "previousGeneration": "Generación anterior",
+    "currentGeneration": "Generación actual",
+    "groupSchema": "Esquema {schema}",
+    "desktopAndTablet": "Ordenador y tableta",
+    "desktop": "Ordenador",
+    "browser": "Navegador",
+    "native": "Nativo",
+    "migratesTo": "Se migra al esquema {schema}",
+    "keepOrUpgrade": "Se puede editar como esquema 8 o actualizar al esquema 9",
+    "unsupported": "No compatible",
+    "oneWayTitle": "La actualización no tiene vuelta atrás.",
+    "oneWayBody": "Solo Architect actualiza un protocolo al esquema 9, y solo cuando tú lo eliges: crea una copia actualizada y deja el original sin cambios. Ninguna aplicación puede convertir un protocolo a una versión anterior del esquema, así que guarda una copia del archivo de protocolo original si necesitas seguir usando aplicaciones que solo admiten un esquema anterior. Las versiones de Interviewer y Fresco publicadas antes del esquema 9 solo abren protocolos de los esquemas 7 y 8, así que actualízalas antes de usar un protocolo del esquema 9."
+  },
+  "WorkflowsOverview": {
+    "caption": "Las tres formas de realizar un estudio con Network Canvas, en las fases de diseño, recopilación y exportación.",
+    "workflow": "Flujo de trabajo",
+    "phase1": "Fase 1",
+    "phase2": "Fase 2",
+    "phase3": "Fase 3",
+    "design": "Diseñar un protocolo",
+    "collect": "Recopilar datos",
+    "export": "Exportar datos",
+    "desktopOnline": "Ordenador, con conexión",
+    "desktopOnlineSummary": "Entrevistas en persona con dispositivos conectados a internet.",
+    "desktopOffline": "Ordenador, sin conexión",
+    "desktopOfflineSummary": "El mismo flujo de trabajo que con conexión, para cuando los dispositivos no tengan acceso a internet.",
+    "web": "En la web",
+    "webSummary": "Entrevistas a distancia que se completan en el navegador.",
+    "cloudService": "Servicio en la nube",
+    "usbDrive": "Memoria USB",
+    "frescoDashboard": "Panel de administración de Fresco",
+    "designDesktop": "Diseña un protocolo en Architect para Interviewer (estudios nuevos), o en Architect Classic para Interviewer Classic.",
+    "deployCloud": "Distribúyelo a cada dispositivo mediante un servicio de archivos en la nube.",
+    "uploadCloud": "Sube las exportaciones al mismo servicio en la nube para reunirlas.",
+    "deployUsb": "Lleva el protocolo a los dispositivos en una memoria USB.",
+    "returnUsb": "Recupera los datos recopilados con una memoria USB.",
+    "designWeb": "Diseña el protocolo en el navegador.",
+    "deployFresco": "Súbelo una sola vez; cada participante hace la entrevista en su navegador.",
+    "exportFresco": "Gestiónalo todo desde un solo lugar; exporta desde el panel u obtén los datos con la <link>API de Fresco</link>."
+  },
+  "SummaryCard": {
+    "duration": "Duración:",
+    "summary": "Resumen:",
+    "prerequisites": "Requisitos previos:"
+  },
+  "CodeCopyButton": {
+    "copy": "Copiar el código",
+    "copied": "¡Copiado!"
+  },
+  "CodeExample": {
+    "languageSwitcher": "Elige el lenguaje del código de ejemplo",
+    "sectionLabel": "Ejemplo de clasificación por coordenadas en {language}",
+    "showing": "Se muestra el ejemplo en {language}."
+  },
+  "AppSwitch": {
+    "label": "Elige la aplicación"
+  },
+  "ResponsiveSvgPreview": {
+    "landscape": "Horizontal",
+    "portrait": "Vertical",
+    "landscapeAlt": "{alt}, en orientación horizontal",
+    "portraitAlt": "{alt}, en orientación vertical"
+  },
+  "Sidebar": {
+    "loading": "Cargando..."
+  },
+  "NotFound": {
+    "title": "404 - Página no encontrada",
+    "heading": "No se ha encontrado la página solicitada.",
+    "explanation": "Lo más probable es que la página se haya movido o eliminado. Disculpa las molestias.",
+    "tryThis": "Prueba lo siguiente:",
+    "checkSpelling": "Si has escrito la dirección de la página en la barra de direcciones, comprueba que esté bien escrita.",
+    "goHome": "Usa el enlace «Volver al inicio» de abajo para ir a la página de inicio y, desde allí, busca la página que quieres con los menús.",
+    "contact": "Si crees que ves esta página por error, ponte en contacto con el equipo del proyecto e indica la página a la que intentabas llegar. Escríbenos a <link>info@networkcanvas.com</link>.",
+    "returnHome": "Volver al inicio"
+  }
+}

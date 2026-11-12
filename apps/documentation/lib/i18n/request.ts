@@ -10,7 +10,10 @@ export default getRequestConfig(async ({ requestLocale }) => {
     ? requested
     : routing.defaultLocale;
 
-  const messages: { default: AbstractIntlMessages } = await import(
+  // The catalog is the JSON module's default export. The bundler also exposes
+  // its top-level keys on the module itself, which is why passing the module
+  // happened to work, but the default export is the catalog.
+  const { default: messages }: { default: AbstractIntlMessages } = await import(
     `~/messages/${locale}.json`
   );
 

@@ -39,7 +39,10 @@ function generateSidebarData() {
   );
 
   // Set up initial structure for sidebar data.
-  const sidebarData: TSideBar = { en: emptyLocaleDefinition() };
+  const sidebarData: TSideBar = {
+    en: emptyLocaleDefinition(),
+    es: emptyLocaleDefinition(),
+  };
 
   const sortedFiles = sortDirectoryListing(files);
 

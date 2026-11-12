@@ -1,7 +1,8 @@
 # Translating the documentation
 
-English is the source. Every other language is a translation of it, and once a
-language is published every change to the English must update it too. A test
+English is the source. Every other language is a translation of it. The
+published languages are English and Spanish, so every change to the English
+must update the Spanish in the same pull request. A test
 (`lib/__tests__/translations.test.ts`) enforces this in CI.
 
 ## Where translations live
@@ -11,7 +12,20 @@ language is published every change to the English must update it too. A test
   `docs/get-started/glossary.es.mdx`.
 - **Navigation labels and section index pages**: the `localeLabels` and
   `localeIndexFiles` entries in each `docs/**/metadata.json`.
-- **Interface text** (header, footer, search, buttons): `messages/<locale>.json`.
+- **Interface text** (header, footer, search, buttons, and the text of the
+  custom components pages use, such as the interface summary box and the
+  compatibility and workflow tables): `messages/<locale>.json`. Interface
+  names in `InterfaceNames` must match the names Architect uses in that
+  language (`protocolBuilder.interface.*` in Architect's catalog).
+- **The language switcher's own text**: the shared packages' catalogs
+  (`@codaco/app-i18n` and `@codaco/fresco-ui`), loaded by
+  `lib/i18n/appLocales.ts`.
+- **Text written into a page's components**: some components take text from
+  the page, such as an interface summary's `requires` list. Write it in the
+  page's language. The interface summary picks each requirement's icon from
+  keywords in every language (`REQUIREMENT_KEYWORDS` in
+  `components/customComponents/InterfaceSummary.tsx`), so a new language adds
+  its keywords there.
 - **Terminology**: the shared glossary for each language in
   [`packages/app-i18n/glossary/`](../../../packages/app-i18n/glossary/), which
   the apps and the website use too. Translate with it.
@@ -74,7 +88,19 @@ by native speakers follows as it becomes available.
 3. Translate and stamp the pages, labels and messages, section by section.
    Until the locale is published, the files are checked for staleness but not
    shown to readers.
-4. Add the locale to `lib/i18n/locales.ts`. The guard then requires it to be
-   complete.
+4. Publish the language:
+   - add it to `lib/i18n/locales.ts` (the guard then requires it to be
+     complete) and to the sidebar's starting data in `lib/writeSidebarJson.ts`;
+   - add it to `documentationAppLocales` and
+     `siteLocaleByDocumentationLocale` in `lib/i18n/appLocales.ts`, so the
+     footer switcher offers it and the shared navigation and language cookie
+     name it the way the websites do;
+   - add its messages to the 404 page (`components/NotFound/NotFoundContent.tsx`),
+     which is one static page for every language and picks its language from
+     the address in the browser;
+   - add its requirement keywords to the interface summary (see above);
+   - extend the edge function test in `netlify/edge-functions/__tests__/`;
+   - ask whoever manages the Algolia crawler to crawl the new language's
+     pages (see "Search in each language" in the documentation README).
 
 Screenshots stay in English.
