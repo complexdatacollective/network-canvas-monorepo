@@ -84,9 +84,18 @@ Maximum value validation ensures the number entered is less than or equal to a s
 
 A Date Picker's range is set in the attribute's settings rather than as a validation rule. Participants can't choose a date outside it.
 
-**Earliest date** sets the earliest date that can be chosen. Left empty, the picker starts in 1920. Use it to rule out dates that are too early, to limit responses to a study period, or to keep dates within a relevant timeframe. For example, you might require that a visit date is on or after January 1, 2020.
+**Earliest date** sets the earliest date that can be chosen. Use it to rule out dates that are too early, to limit responses to a study period, or to keep dates within a relevant timeframe. For example, you might require that a visit date is on or after January 1, 2020.
 
-**Latest date** sets the latest date that can be chosen. Left empty, the picker ends on the date of the interview, so a birth date can't be in the future unless you set a later date. Use it to limit responses to a study period or to keep dates realistic. For historical events, set appropriate ranges, and consider whether precision is needed (exact date versus month/year).
+**Latest date** sets the latest date that can be chosen. Use it to limit responses to a study period or to keep dates realistic. For historical events, set appropriate ranges, and consider whether precision is needed (exact date versus month/year).
+
+What happens when you leave one of these dates empty depends on the attribute's **Date resolution**:
+
+- A picker for a year and month, or for a year only, always has a range. An empty **Earliest date** starts it in 1920, and an empty **Latest date** ends it on the date of the interview.
+- A picker for a full date (year, month and day) has no range at all when both dates are empty, so participants can enter any date, including one in the future. Once you set at least one of the two, an empty one takes the default given above for that end.
+
+One exception applies at every resolution: if the date you set already lies past the empty end's default, such as an **Earliest date** later than the date of the interview, the empty end is moved past your date instead, so the picker still offers a range.
+
+To keep a full birth date out of the future, set an **Earliest date**, such as January 1, 1900, and leave the **Latest date** empty, so that the range ends on the date of the interview.
 
 </AppOnly>
 
@@ -186,7 +195,7 @@ Age:
 
 Date of Birth:
 - Type: Date Picker
-- Validation: Required; latest date: the date of the interview
+- Validation: Required; earliest date: January 1, 1900; latest date: left empty (the date of the interview)
 - Rationale: Birth date cannot be in the future
 ```
 
@@ -209,7 +218,7 @@ Relationship Description:
 ```
 Last Contact:
 - Type: Date Picker
-- Validation: Required; earliest date: [study start]; latest date: the date of the interview
+- Validation: Required; earliest date: [study start]; latest date: left empty (the date of the interview)
 - Rationale: Must fall within study period; cannot be future date
 
 Frequency:

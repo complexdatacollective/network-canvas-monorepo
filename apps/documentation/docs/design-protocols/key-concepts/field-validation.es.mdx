@@ -1,7 +1,7 @@
 ---
 title: Validación de campos
 navOrder: 8
-translatedFrom: 301b78b4dce37d6101f418f042c69c7d413482ea
+translatedFrom: f2f48c7d75c7af59731fa48e0b5846269fed4de4
 ---
 
 <Definition>
@@ -86,9 +86,18 @@ La validación de valor máximo garantiza que el número introducido sea menor o
 
 El intervalo de un Selector de fecha se establece en los ajustes del atributo, no como una regla de validación. Quienes participan no pueden elegir una fecha fuera de él.
 
-**Fecha más temprana** establece la fecha más temprana que se puede elegir. Si se deja vacía, el selector empieza en 1920. Úsala para descartar fechas demasiado tempranas, para limitar las respuestas a un periodo de estudio o para que las fechas queden dentro de un marco temporal pertinente. Por ejemplo, podrías exigir que la fecha de una visita sea el 1 de enero de 2020 o posterior.
+**Fecha más temprana** establece la fecha más temprana que se puede elegir. Úsala para descartar fechas demasiado tempranas, para limitar las respuestas a un periodo de estudio o para que las fechas queden dentro de un marco temporal pertinente. Por ejemplo, podrías exigir que la fecha de una visita sea el 1 de enero de 2020 o posterior.
 
-**Fecha más tardía** establece la fecha más tardía que se puede elegir. Si se deja vacía, el selector termina en la fecha de la entrevista, así que una fecha de nacimiento no puede estar en el futuro, a menos que indiques aquí una fecha posterior a la de la entrevista. Úsala para limitar las respuestas a un periodo de estudio o para que las fechas sean realistas. Para los acontecimientos históricos, establece intervalos adecuados y valora si necesitas precisión (fecha exacta frente a mes y año).
+**Fecha más tardía** establece la fecha más tardía que se puede elegir. Úsala para limitar las respuestas a un periodo de estudio o para que las fechas sean realistas. Para los acontecimientos históricos, establece intervalos adecuados y valora si necesitas precisión (fecha exacta frente a mes y año).
+
+Lo que ocurre cuando dejas vacía una de estas fechas depende de la **Precisión de la fecha** del atributo:
+
+- Un selector que pide el año y el mes, o solo el año, siempre tiene un intervalo. Si la **Fecha más temprana** está vacía, el intervalo empieza en 1920, y si la **Fecha más tardía** está vacía, termina en la fecha de la entrevista.
+- Un selector que pide una fecha completa (año, mes y día) no tiene ningún intervalo cuando las dos fechas están vacías, así que quienes participan pueden introducir cualquier fecha, incluso una futura. En cuanto estableces al menos una de las dos, la que esté vacía toma el valor predeterminado que se indica arriba para ese extremo.
+
+Hay una excepción, sea cual sea la precisión: si la fecha que has establecido ya está más allá del valor predeterminado del extremo vacío, como una **Fecha más temprana** posterior a la fecha de la entrevista, el extremo vacío, en lugar de tomar ese valor, se desplaza más allá de tu fecha, para que el selector siga ofreciendo un intervalo.
+
+Para que una fecha de nacimiento completa no pueda estar en el futuro, establece una **Fecha más temprana**, como el 1 de enero de 1900, y deja vacía la **Fecha más tardía**, para que el intervalo termine en la fecha de la entrevista.
 
 </AppOnly>
 
@@ -188,7 +197,7 @@ Age:
 
 Date of Birth:
 - Type: Date Picker
-- Validation: Required; latest date: the date of the interview
+- Validation: Required; earliest date: January 1, 1900; latest date: left empty (the date of the interview)
 - Rationale: Birth date cannot be in the future
 ```
 
@@ -211,7 +220,7 @@ Relationship Description:
 ```
 Last Contact:
 - Type: Date Picker
-- Validation: Required; earliest date: [study start]; latest date: the date of the interview
+- Validation: Required; earliest date: [study start]; latest date: left empty (the date of the interview)
 - Rationale: Must fall within study period; cannot be future date
 
 Frequency:
