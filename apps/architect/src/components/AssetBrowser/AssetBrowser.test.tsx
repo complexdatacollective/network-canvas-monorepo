@@ -9,10 +9,8 @@ import {
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  CurrentProtocolSchema,
-  withInterfaceText,
-} from '@codaco/protocol-validation';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { importAssetAsync } from '~/ducks/modules/protocol/assetManifest';
 import { rootReducer } from '~/ducks/modules/root';

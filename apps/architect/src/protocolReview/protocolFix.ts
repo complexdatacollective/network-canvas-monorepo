@@ -1,9 +1,11 @@
+import {
+  withoutSuppliedWording,
+  withSuppliedWording,
+} from '@codaco/interview/supplied-wording';
 import type { FixOperation } from '@codaco/protocol-review-worker/contract';
 import {
   type CurrentProtocol,
   validateProtocol,
-  withoutSuppliedWording,
-  withSuppliedWording,
 } from '@codaco/protocol-validation';
 
 import {

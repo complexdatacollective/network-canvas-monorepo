@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  validateProtocol,
-  withInterfaceText,
-} from '@codaco/protocol-validation';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import { validateProtocol } from '@codaco/protocol-validation';
 import { contentHash } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { validateSection } from '@codaco/studio-sync/section-validation';

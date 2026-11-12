@@ -1,4 +1,4 @@
-import { withInterfaceText } from '../schemas/9/interface-text.ts';
+import { withInterfaceText } from './suppliedWording.ts';
 
 /**
  * Test support: a schema 9 protocol must end at a finish stage, so a fixture

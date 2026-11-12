@@ -3,6 +3,10 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
+  interfaceTextWithUpdates,
+  suppliedInterfaceText,
+} from '@codaco/interview/supplied-wording';
+import {
   InvalidShape,
   PromotionFailed,
   ProtocolNotFound,
@@ -13,9 +17,7 @@ import {
 import { HostUnauthorized } from '@codaco/protocol-builder-core/contract/session';
 import {
   type InterfaceTextUpdate,
-  interfaceTextWithUpdates,
   type LocalizedString,
-  suppliedInterfaceText,
 } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 

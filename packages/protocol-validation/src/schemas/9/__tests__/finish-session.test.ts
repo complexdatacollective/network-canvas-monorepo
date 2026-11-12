@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withInterfaceText } from '../../../__tests__/suppliedWording.ts';
 import {
   migrateProtocol,
   migrateProtocolWithSessions,
@@ -16,7 +17,6 @@ import {
   defaultFinishSessionText,
 } from '../finish-session-defaults.ts';
 import { findFinishStageTextProblems } from '../finish-stage-text.ts';
-import { withInterfaceText } from '../interface-text.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { finishSessionStage } from '../stages/finish-session.ts';
 import {

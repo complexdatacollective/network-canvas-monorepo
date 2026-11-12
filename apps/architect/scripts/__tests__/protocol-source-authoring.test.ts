@@ -3,10 +3,8 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import {
-  type CurrentProtocol,
-  withInterfaceText,
-} from '@codaco/protocol-validation';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import { type CurrentProtocol } from '@codaco/protocol-validation';
 
 import {
   createTempRepoRoot,

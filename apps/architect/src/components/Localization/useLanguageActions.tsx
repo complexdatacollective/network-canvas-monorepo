@@ -4,13 +4,13 @@ import { useSelector } from 'react-redux';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { suppliedWordingIn } from '@codaco/interview/supplied-wording';
 import {
   collectLocalizedStrings,
   type LanguageChange,
   type LocaleTag,
   type LocalizationDeclaration,
   type LocalizedStringHit,
-  suppliedWordingIn,
 } from '@codaco/protocol-validation';
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
 import {

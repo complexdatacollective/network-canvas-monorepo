@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { withSuppliedWording } from '@codaco/interview/supplied-wording';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
 import type { StageEditTarget } from '@codaco/protocol-builder/stageEdit';
@@ -12,7 +13,6 @@ import StageEditor from '@codaco/protocol-builder/StageEditor';
 import {
   type CurrentProtocol,
   validateProtocol,
-  withSuppliedWording,
 } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { ActionToolbarProvider } from '~/components/ProjectNav/ActionToolbar';

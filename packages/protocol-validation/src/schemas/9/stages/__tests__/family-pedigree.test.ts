@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
+import { familyPedigreeWordingIn } from '../../../../__tests__/suppliedWording.ts';
 import { findExclusiveVariableConflicts } from '../../../../utils/findExclusiveVariableConflicts.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import {
@@ -17,7 +18,6 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../../schema.ts';
-import { familyPedigreeWordingIn } from '../../stage-wording/family-pedigree.ts';
 import {
   FAMILY_PEDIGREE_BUILD_PROMPT_ID,
   familyPedigreeStage,

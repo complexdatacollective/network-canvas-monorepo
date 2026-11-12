@@ -33,7 +33,7 @@ import {
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
-import { withoutSuppliedWording } from './protocol-wording.ts';
+import { withoutUnshownWording } from './protocol-wording.ts';
 import { ProtocolSchemaV9 } from './schema.ts';
 import { freshStageId } from './stage-ids.ts';
 import { findValidationContradictions } from './variables/validation-contradictions.ts';
@@ -1359,8 +1359,11 @@ const migrationV8toV9 = createMigration({
 
     // None of the wording Network Canvas supplies is written in: the
     // interview shows it for a protocol that does not hold it. A document
-    // already in schema 9 form keeps only what its author changed.
-    return withoutSuppliedWording({
+    // already in schema 9 form keeps the wording it holds for the text it
+    // shows. The words are the interview's, so a copy of them cannot be told
+    // from a rewording here; the tool that next stores the protocol removes
+    // it (`withoutSuppliedWording`).
+    return withoutUnshownWording({
       ...migrated,
       stages: endsAtFinishStage(migrated.stages)
         ? migrated.stages

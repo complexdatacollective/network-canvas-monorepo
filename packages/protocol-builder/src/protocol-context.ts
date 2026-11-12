@@ -1,4 +1,5 @@
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { interfaceTextAsShown } from '@codaco/interview/supplied-wording';
 import {
   type Asset,
   assetSchema,
@@ -9,7 +10,6 @@ import {
   EgoDefinitionSchema,
   type EgoDefinition,
   type InterfaceText,
-  interfaceTextAsShown,
   NodeDefinitionSchema,
   type NodeDefinition,
   type Stage,

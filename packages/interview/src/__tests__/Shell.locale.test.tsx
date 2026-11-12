@@ -11,10 +11,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
-import {
-  getLocaleMetadata,
-  withInterfaceText,
-} from '@codaco/protocol-validation';
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -24,6 +21,7 @@ import ActionButton from '../components/ActionButton';
 import type { InterviewPayload, SyncHandler } from '../contract/types';
 import Shell from '../Shell';
 import { updateStageMetadata } from '../store/modules/session';
+import { withInterfaceText } from '../wording/suppliedWording';
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 

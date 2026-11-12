@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { Users } from 'lucide-react';
+import { ArrowLeft, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -55,6 +55,21 @@ describe('NavItem', () => {
     // The icon repeats the label; announcing both says everything twice.
     expect(link).toHaveAccessibleName('Participants');
     expect(link.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('mirrors an icon that points along the line of text', () => {
+    renderInList(
+      <>
+        <NavItem href="/study" label="Back to study" icon={ArrowLeft} />
+        <NavItem href="/participants" label="Participants" icon={Users} />
+      </>,
+    );
+
+    // Back is to the right in a right-to-left interface; a picture of people
+    // is the same either way round.
+    const [back, people] = screen.getAllByRole('link');
+    expect(back?.querySelector('svg')).toHaveClass('rtl:-scale-x-100');
+    expect(people?.querySelector('svg')).not.toHaveClass('rtl:-scale-x-100');
   });
 
   it('marks the current destination with aria-current=page', () => {

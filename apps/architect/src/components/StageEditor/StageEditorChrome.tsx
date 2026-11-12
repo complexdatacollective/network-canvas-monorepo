@@ -11,6 +11,7 @@ import {
 } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import { suppliedInterfaceText } from '@codaco/interview/supplied-wording';
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
 import { useProtocolLocalization } from '@codaco/protocol-builder/localization/ProtocolLocalization';
 import { useStandingStageNameProposal } from '@codaco/protocol-builder/naming/useStandingStageNameProposal';
@@ -23,11 +24,7 @@ import {
   stageFieldsOf,
 } from '@codaco/protocol-builder/stageDocument';
 import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
-import {
-  type Stage,
-  suppliedInterfaceText,
-  validateProtocol,
-} from '@codaco/protocol-validation';
+import { type Stage, validateProtocol } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import { launchPreview } from '~/components/PreviewHost/launchPreview';
 import { StageEditorToolbar } from '~/components/ProjectNav/StageEditorNav';

@@ -23,7 +23,7 @@ import {
   QUICK_ADD_INTERFACE_TEXT,
   SEARCH_INTERFACE_TEXT,
   VALIDATION_INTERFACE_TEXT,
-} from './interface-text-wording.ts';
+} from './interface-text-entries.ts';
 import {
   heldTranslations,
   type LocalizedString,
@@ -45,7 +45,7 @@ import {
   hasInspectorForm,
   leavesEdgeTypesUndrawn,
 } from './stage-wording/network-composer.ts';
-import { suppliedTextFor } from './supplied-text.ts';
+import type { SuppliedWordingSource } from './supplied-stage-setting.ts';
 
 /**
  * The interface text a protocol holds: the words the interview shows that
@@ -635,8 +635,9 @@ export const interfaceTextArguments = (
 };
 
 /**
- * Where a protocol may hold each interface text, and the messages of the
- * interview's (or a shared package's) catalog it stands in for: what the
+ * Where a protocol may hold each interface text, and the messages it shows
+ * in place of: the interview message that words it, and each message of the
+ * interview's (or a shared package's) catalog it stands in for. What the
  * interview overlays the protocol's text onto. An entry that stands in for
  * several messages has a row for each.
  */
@@ -647,108 +648,24 @@ export const INTERFACE_TEXT_MESSAGES: readonly Readonly<{
 }>[] = GROUP_NAMES.flatMap((group) =>
   Object.entries(INTERFACE_TEXT_GROUPS[group].entries).flatMap(
     ([key, entry]: [string, InterfaceTextEntry]) =>
-      entry.ids.map((id) => ({ group, key, id })),
+      [...new Set([entry.wording, ...entry.ids])].map((id) => ({
+        group,
+        key,
+        id,
+      })),
   ),
 );
 
-/**
- * The text Network Canvas writes for an entry in a protocol language: its
- * wording in exactly that language, and none in any other. An entry with no
- * wording in the default language must be written there before the protocol
- * leaves its editor (`findBuiltInWordingProblems`).
- */
-const writtenIn = (
-  entry: InterfaceTextEntry,
-  locale: LocaleTag,
-): string | undefined => suppliedTextFor(entry.message, locale);
-
-const suppliedValue = (
-  entry: InterfaceTextEntry,
-  localization: LocalizationDeclaration,
-): LocalizedString => {
-  const value: Record<LocaleTag, string> = {};
-  for (const locale of localization.locales) {
-    const text = writtenIn(entry, locale);
-    if (text !== undefined) value[locale] = text;
-  }
-  return value;
-};
-
-/**
- * Network Canvas's wording for one interface text in the languages
- * `localization` declares; undefined for an entry that does not exist.
- */
-export const suppliedInterfaceText = (
-  group: string,
-  key: string,
-  localization: LocalizationDeclaration,
-): LocalizedString | undefined => {
-  if (!isGroupName(group)) return undefined;
-  const entries: Readonly<Record<string, InterfaceTextEntry | undefined>> =
-    INTERFACE_TEXT_GROUPS[group].entries;
-  const entry = entries[key];
-  return entry === undefined ? undefined : suppliedValue(entry, localization);
-};
-
-/**
- * The text the interview shows for one interface text: Network Canvas's
- * wording in every protocol language it writes one in
- * (`suppliedInterfaceText`), with the protocol's own translations of the
- * entry laid over it per language. `interfaceText` is whatever the protocol
- * holds under `interfaceText`, so anything that is not a record of groups
- * reads as holding nothing. Undefined for an entry that does not exist.
- */
-export const interfaceTextShown = (
-  interfaceText: unknown,
-  group: string,
-  key: string,
-  localization: LocalizationDeclaration,
-): LocalizedString | undefined => {
-  const supplied = suppliedInterfaceText(group, key, localization);
-  if (supplied === undefined) return undefined;
-  const entries = isRecord(interfaceText) ? interfaceText[group] : undefined;
-  const held = isRecord(entries) ? entries[key] : undefined;
-  return { ...supplied, ...heldTranslations(held) };
-};
-
-/**
- * Every interface text `protocol` shows, as the interview shows it
- * (`interfaceTextShown`): the entries of the groups the protocol uses, in the
- * order of `INTERFACE_TEXT_GROUPS`.
- */
-export const interfaceTextShownBy = (
-  protocol: ProtocolDocument,
-): readonly Readonly<{
+/** Every interface text, by group and name, with its entry. */
+export const INTERFACE_TEXT_ENTRIES: readonly Readonly<{
   group: string;
   key: string;
-  value: LocalizedString;
-}>[] =>
-  usedInterfaceText(protocol).flatMap(({ group, keys }) =>
-    keys.flatMap((key) => {
-      const value = interfaceTextShown(
-        protocol.interfaceText,
-        group,
-        key,
-        protocol.localization,
-      );
-      return value === undefined ? [] : [{ group, key, value }];
-    }),
-  );
-
-/**
- * Every interface text `protocol` shows, by group and name, as the interview
- * shows it (`interfaceTextShownBy`): what an editor of the protocol's words
- * lists and edits. Never what a protocol stores (see `interfaceTextFor`).
- */
-export const interfaceTextAsShown = (
-  protocol: ProtocolDocument,
-): InterfaceText => {
-  const shown: Record<string, Record<string, LocalizedString>> = {};
-  for (const { group, key, value } of interfaceTextShownBy(protocol)) {
-    shown[group] = { ...shown[group], [key]: value };
-  }
-  return shown;
-};
+  entry: InterfaceTextEntry;
+}>[] = GROUP_NAMES.flatMap((group) =>
+  Object.entries(INTERFACE_TEXT_GROUPS[group].entries).map(
+    ([key, entry]: [string, InterfaceTextEntry]) => ({ group, key, entry }),
+  ),
+);
 
 const heldText = (protocol: ProtocolDocument): InterfaceText =>
   isRecord(protocol.interfaceText)
@@ -807,69 +724,8 @@ export const sharedStageInterfaceTextUsed = (
   return groups.flatMap((group) => usedGroup(group, withStage));
 };
 
-/**
- * The translations of `value` that are its author's own: every one but a
- * translation that reads exactly as Network Canvas's wording for the entry in
- * that language, which the interview shows whether or not the protocol holds
- * it. Anything that is not a language-to-text map has none.
- */
-const ownWording = (
-  entry: InterfaceTextEntry,
-  value: unknown,
-): LocalizedString =>
-  Object.fromEntries(
-    Object.entries(heldTranslations(value)).filter(
-      ([locale, text]) => text !== writtenIn(entry, locale),
-    ),
-  );
-
-/**
- * The interface text `protocol` should hold: of each entry it shows, the
- * translations that are its author's own (`ownWording`). An entry worded
- * entirely as Network Canvas words it is not held, nor is a group left with
- * no entry, nor any entry or group the protocol does not show.
- */
-export const interfaceTextFor = (protocol: ProtocolDocument): InterfaceText => {
-  const held = heldText(protocol);
-  const next: Partial<Record<GroupName, Record<string, LocalizedString>>> = {};
-  for (const { group, keys } of usedInterfaceText(protocol)) {
-    const entries: Readonly<Record<string, InterfaceTextEntry>> =
-      INTERFACE_TEXT_GROUPS[group].entries;
-    const current = held[group] ?? {};
-    const kept = keys.flatMap((key) => {
-      const entry = entries[key];
-      if (entry === undefined) return [];
-      const own = ownWording(entry, current[key]);
-      return Object.keys(own).length === 0 ? [] : [[key, own] as const];
-    });
-    if (kept.length > 0) next[group] = Object.fromEntries(kept);
-  }
-  return next;
-};
-
 const sameText = (a: InterfaceText, b: InterfaceText): boolean =>
   JSON.stringify(a) === JSON.stringify(b);
-
-/**
- * `protocol` holding the interface text it should (see `interfaceTextFor`),
- * and no `interfaceText` at all when that is none: the same protocol when it
- * already does, so a caller can tell nothing changed.
- */
-export const withInterfaceText = <Protocol extends ProtocolDocument>(
-  protocol: Protocol,
-): Protocol => {
-  const next = interfaceTextFor(protocol);
-  if (Object.keys(next).length === 0) {
-    if (protocol.interfaceText === undefined) return protocol;
-    const { interfaceText: _held, ...rest } = protocol;
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `protocol` without its optional `interfaceText`, so still a Protocol
-    return rest as Protocol;
-  }
-  return protocol.interfaceText !== undefined &&
-    sameText(next, heldText(protocol))
-    ? protocol
-    : { ...protocol, interfaceText: next };
-};
 
 /** One interface text, by group and name, as it reads after a change. */
 export type InterfaceTextUpdate = Readonly<{
@@ -879,32 +735,207 @@ export type InterfaceTextUpdate = Readonly<{
 }>;
 
 /**
- * `held` interface text after each of `updates`: the entry an update names
- * holds the translations of the update's value that are its author's own
- * (`ownWording`), and is removed, with a group it leaves empty, when there
- * are none. Every other entry and group is kept as it was. `held` is whatever
- * a protocol's settings hold, so anything that is not a record of groups
- * reads as holding none. An update naming an entry that does not exist is
- * written as it is, for the schema to refuse.
+ * What is read of a protocol's interface text with Network Canvas's wording
+ * to hand (see `SuppliedWordingSource`): the wording itself, the text the
+ * interview shows, and the interface text a protocol stores.
  */
-export const interfaceTextWithUpdates = (
-  held: unknown,
-  updates: readonly InterfaceTextUpdate[],
-): Readonly<Record<string, unknown>> => {
-  const next: Record<string, unknown> = isRecord(held) ? { ...held } : {};
-  for (const { group, key, value } of updates) {
-    const current = next[group];
-    const entries: Record<string, unknown> = isRecord(current)
-      ? { ...current }
-      : {};
-    const declared: Readonly<Record<string, InterfaceTextEntry | undefined>> =
-      isGroupName(group) ? INTERFACE_TEXT_GROUPS[group].entries : {};
-    const entry = declared[key];
-    const own = entry === undefined ? value : ownWording(entry, value);
-    if (Object.keys(own).length === 0) delete entries[key];
-    else entries[key] = own;
-    if (Object.keys(entries).length === 0) delete next[group];
-    else next[group] = entries;
-  }
-  return next;
+export const interfaceTextWith = (wording: SuppliedWordingSource) => {
+  /**
+   * The text Network Canvas writes for an entry in a protocol language: its
+   * wording in exactly that language, and none in any other. An entry with no
+   * wording in the default language must be written there before the protocol
+   * leaves its editor (`findBuiltInWordingProblems`).
+   */
+  const writtenIn = (
+    entry: InterfaceTextEntry,
+    locale: LocaleTag,
+  ): string | undefined => wording(entry, locale);
+
+  const suppliedValue = (
+    entry: InterfaceTextEntry,
+    localization: LocalizationDeclaration,
+  ): LocalizedString => {
+    const value: Record<LocaleTag, string> = {};
+    for (const locale of localization.locales) {
+      const text = writtenIn(entry, locale);
+      if (text !== undefined) value[locale] = text;
+    }
+    return value;
+  };
+
+  /**
+   * Network Canvas's wording for one interface text in the languages
+   * `localization` declares; undefined for an entry that does not exist.
+   */
+  const suppliedInterfaceText = (
+    group: string,
+    key: string,
+    localization: LocalizationDeclaration,
+  ): LocalizedString | undefined => {
+    if (!isGroupName(group)) return undefined;
+    const entries: Readonly<Record<string, InterfaceTextEntry | undefined>> =
+      INTERFACE_TEXT_GROUPS[group].entries;
+    const entry = entries[key];
+    return entry === undefined ? undefined : suppliedValue(entry, localization);
+  };
+
+  /**
+   * The text the interview shows for one interface text: Network Canvas's
+   * wording in every protocol language it writes one in
+   * (`suppliedInterfaceText`), with the protocol's own translations of the
+   * entry laid over it per language. `interfaceText` is whatever the protocol
+   * holds under `interfaceText`, so anything that is not a record of groups
+   * reads as holding nothing. Undefined for an entry that does not exist.
+   */
+  const interfaceTextShown = (
+    interfaceText: unknown,
+    group: string,
+    key: string,
+    localization: LocalizationDeclaration,
+  ): LocalizedString | undefined => {
+    const supplied = suppliedInterfaceText(group, key, localization);
+    if (supplied === undefined) return undefined;
+    const entries = isRecord(interfaceText) ? interfaceText[group] : undefined;
+    const held = isRecord(entries) ? entries[key] : undefined;
+    return { ...supplied, ...heldTranslations(held) };
+  };
+
+  /**
+   * Every interface text `protocol` shows, as the interview shows it
+   * (`interfaceTextShown`): the entries of the groups the protocol uses, in the
+   * order of `INTERFACE_TEXT_GROUPS`.
+   */
+  const interfaceTextShownBy = (
+    protocol: ProtocolDocument,
+  ): readonly Readonly<{
+    group: string;
+    key: string;
+    value: LocalizedString;
+  }>[] =>
+    usedInterfaceText(protocol).flatMap(({ group, keys }) =>
+      keys.flatMap((key) => {
+        const value = interfaceTextShown(
+          protocol.interfaceText,
+          group,
+          key,
+          protocol.localization,
+        );
+        return value === undefined ? [] : [{ group, key, value }];
+      }),
+    );
+
+  /**
+   * Every interface text `protocol` shows, by group and name, as the interview
+   * shows it (`interfaceTextShownBy`): what an editor of the protocol's words
+   * lists and edits. Never what a protocol stores (see `interfaceTextFor`).
+   */
+  const interfaceTextAsShown = (protocol: ProtocolDocument): InterfaceText => {
+    const shown: Record<string, Record<string, LocalizedString>> = {};
+    for (const { group, key, value } of interfaceTextShownBy(protocol)) {
+      shown[group] = { ...shown[group], [key]: value };
+    }
+    return shown;
+  };
+
+  /**
+   * The translations of `value` that are its author's own: every one but a
+   * translation that reads exactly as Network Canvas's wording for the entry in
+   * that language, which the interview shows whether or not the protocol holds
+   * it. Anything that is not a language-to-text map has none.
+   */
+  const ownWording = (
+    entry: InterfaceTextEntry,
+    value: unknown,
+  ): LocalizedString =>
+    Object.fromEntries(
+      Object.entries(heldTranslations(value)).filter(
+        ([locale, text]) => text !== writtenIn(entry, locale),
+      ),
+    );
+
+  /**
+   * The interface text `protocol` should hold: of each entry it shows, the
+   * translations that are its author's own (`ownWording`). An entry worded
+   * entirely as Network Canvas words it is not held, nor is a group left with
+   * no entry, nor any entry or group the protocol does not show.
+   */
+  const interfaceTextFor = (protocol: ProtocolDocument): InterfaceText => {
+    const held = heldText(protocol);
+    const next: Partial<Record<GroupName, Record<string, LocalizedString>>> =
+      {};
+    for (const { group, keys } of usedInterfaceText(protocol)) {
+      const entries: Readonly<Record<string, InterfaceTextEntry>> =
+        INTERFACE_TEXT_GROUPS[group].entries;
+      const current = held[group] ?? {};
+      const kept = keys.flatMap((key) => {
+        const entry = entries[key];
+        if (entry === undefined) return [];
+        const own = ownWording(entry, current[key]);
+        return Object.keys(own).length === 0 ? [] : [[key, own] as const];
+      });
+      if (kept.length > 0) next[group] = Object.fromEntries(kept);
+    }
+    return next;
+  };
+
+  /**
+   * `protocol` holding the interface text it should (see `interfaceTextFor`),
+   * and no `interfaceText` at all when that is none: the same protocol when it
+   * already does, so a caller can tell nothing changed.
+   */
+  const withInterfaceText = <Protocol extends ProtocolDocument>(
+    protocol: Protocol,
+  ): Protocol => {
+    const next = interfaceTextFor(protocol);
+    if (Object.keys(next).length === 0) {
+      if (protocol.interfaceText === undefined) return protocol;
+      const { interfaceText: _held, ...rest } = protocol;
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `protocol` without its optional `interfaceText`, so still a Protocol
+      return rest as Protocol;
+    }
+    return protocol.interfaceText !== undefined &&
+      sameText(next, heldText(protocol))
+      ? protocol
+      : { ...protocol, interfaceText: next };
+  };
+
+  /**
+   * `held` interface text after each of `updates`: the entry an update names
+   * holds the translations of the update's value that are its author's own
+   * (`ownWording`), and is removed, with a group it leaves empty, when there
+   * are none. Every other entry and group is kept as it was. `held` is whatever
+   * a protocol's settings hold, so anything that is not a record of groups
+   * reads as holding none. An update naming an entry that does not exist is
+   * written as it is, for the schema to refuse.
+   */
+  const interfaceTextWithUpdates = (
+    held: unknown,
+    updates: readonly InterfaceTextUpdate[],
+  ): Readonly<Record<string, unknown>> => {
+    const next: Record<string, unknown> = isRecord(held) ? { ...held } : {};
+    for (const { group, key, value } of updates) {
+      const current = next[group];
+      const entries: Record<string, unknown> = isRecord(current)
+        ? { ...current }
+        : {};
+      const declared: Readonly<Record<string, InterfaceTextEntry | undefined>> =
+        isGroupName(group) ? INTERFACE_TEXT_GROUPS[group].entries : {};
+      const entry = declared[key];
+      const own = entry === undefined ? value : ownWording(entry, value);
+      if (Object.keys(own).length === 0) delete entries[key];
+      else entries[key] = own;
+      if (Object.keys(entries).length === 0) delete next[group];
+      else next[group] = entries;
+    }
+    return next;
+  };
+
+  return {
+    suppliedInterfaceText,
+    interfaceTextShown,
+    interfaceTextShownBy,
+    interfaceTextAsShown,
+    withInterfaceText,
+    interfaceTextWithUpdates,
+  };
 };

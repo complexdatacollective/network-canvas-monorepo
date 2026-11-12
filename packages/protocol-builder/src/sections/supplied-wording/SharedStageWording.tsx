@@ -15,10 +15,10 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { suppliedInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   interfaceTextArguments,
   type LocalizedString,
-  suppliedInterfaceText,
 } from '@codaco/protocol-validation';
 
 import LocalizedMessageField from '../../fields/LocalizedMessageField.tsx';

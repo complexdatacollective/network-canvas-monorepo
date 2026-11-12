@@ -10,12 +10,11 @@ import {
 } from '../../utils/collectLocalizedStrings.ts';
 import { findInterfaceOwnedOptionBindings } from '../../utils/findExclusiveVariableConflicts.ts';
 import { isSuppliedOptionLabelSet } from './family-pedigree-option-labels.ts';
-import { interfaceTextShownBy } from './interface-text.ts';
 import type { LocalizedString } from './localized-string.ts';
-import {
-  stageWordingShown,
-  suppliedStageSettingPaths,
-} from './supplied-stage-text.ts';
+import { wordingPresent } from './protocol-wording.ts';
+import { suppliedStageSettingPaths } from './supplied-stage-text.ts';
+
+const { interfaceTextShownBy, stageWordingShown } = wordingPresent;
 
 type Path = readonly (string | number)[];
 

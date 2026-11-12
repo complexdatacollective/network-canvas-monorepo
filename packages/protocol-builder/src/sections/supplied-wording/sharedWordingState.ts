@@ -10,10 +10,12 @@ import {
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import {
-  type InterfaceTextUpdate,
   interfaceTextWithUpdates,
-  type LocalizedString,
   suppliedInterfaceText,
+} from '@codaco/interview/supplied-wording';
+import {
+  type InterfaceTextUpdate,
+  type LocalizedString,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 

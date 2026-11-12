@@ -1,5 +1,5 @@
-import { interfaceTextShown } from '../schemas/9/interface-text.ts';
 import type { LocalizedString } from '../schemas/9/localized-string.ts';
+import { wordingPresent } from '../schemas/9/protocol-wording.ts';
 import type { CurrentProtocol } from '../schemas/index.ts';
 import { findLabelCollisions } from './labelCollisions.ts';
 import type { LocaleTag } from './localeTag.ts';
@@ -84,7 +84,7 @@ export const findFieldTextProblems = (
       // Canvas's own, so text held only in another language lacks nothing
       // where Network Canvas has wording in the default language.
       const shown = isLocalizedString(value)
-        ? (interfaceTextShown(
+        ? (wordingPresent.interfaceTextShown(
             protocol.interfaceText,
             group,
             key,

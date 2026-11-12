@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { withSuppliedWording } from '@codaco/interview/supplied-wording';
 import {
   FINDING_CATEGORIES,
   FINDING_SEVERITIES,
@@ -13,10 +14,7 @@ import {
   type ReviewEvent,
   type ReviewResult,
 } from '@codaco/protocol-review-worker/contract';
-import {
-  type CurrentProtocol,
-  withSuppliedWording,
-} from '@codaco/protocol-validation';
+import { type CurrentProtocol } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import {

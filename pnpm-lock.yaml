@@ -3441,6 +3441,9 @@ importers:
 
   packages/studio-sync:
     dependencies:
+      '@codaco/interview':
+        specifier: workspace:^
+        version: link:../interview
       '@codaco/protocol-validation':
         specifier: workspace:^
         version: link:../protocol-validation

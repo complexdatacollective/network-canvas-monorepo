@@ -1,3 +1,4 @@
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import type {
   Finding,
   FixOperation,
@@ -5,7 +6,6 @@ import type {
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 import type { StudyContext } from '@codaco/shared-consts';
 

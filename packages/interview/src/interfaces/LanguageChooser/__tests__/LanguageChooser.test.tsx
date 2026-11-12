@@ -14,7 +14,6 @@ import {
   getLocaleMetadata,
   type LocalizationDeclaration,
   type LocalizedString,
-  suppliedStageText,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -23,6 +22,7 @@ import {
 
 import type { InterviewPayload, SyncHandler } from '../../../contract/types';
 import Shell from '../../../Shell';
+import { suppliedStageText } from '../../../wording/suppliedWording';
 
 vi.mock('../../../hooks/useMediaQuery', () => ({ default: () => false }));
 

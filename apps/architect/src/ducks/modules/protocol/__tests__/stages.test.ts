@@ -1,8 +1,8 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
+import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
 import type { LocalizedString, Stage } from '@codaco/protocol-validation';
-import { familyPedigreeWordingIn } from '@codaco/protocol-validation';
 import type { AppDispatch } from '~/ducks/store';
 
 import { commitStage } from '../commitStage';

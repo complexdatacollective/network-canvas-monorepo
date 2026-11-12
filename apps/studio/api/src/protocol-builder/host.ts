@@ -13,15 +13,13 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { Effect, Redacted } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import { interfaceTextWithUpdates } from '@codaco/interview/supplied-wording';
 import type {
   Presence,
   ResourceDescriptor,
   Revision,
 } from '@codaco/protocol-builder-core/contract/schemas';
-import {
-  type InterfaceTextUpdate,
-  interfaceTextWithUpdates,
-} from '@codaco/protocol-validation';
+import { type InterfaceTextUpdate } from '@codaco/protocol-validation';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { Forbidden } from '@codaco/studio-contract/schema/errors';
 import type { SectionDoc } from '@codaco/studio-sync/apply';

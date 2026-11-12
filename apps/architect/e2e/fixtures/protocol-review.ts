@@ -1,9 +1,9 @@
 import type { BrowserContext, Route } from '@playwright/test';
 
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 
 // The fixtures of the Automated Protocol Review specs: a small protocol whose

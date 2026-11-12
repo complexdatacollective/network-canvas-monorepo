@@ -13,8 +13,10 @@ import { NAME_GENERATOR_ROSTER_SUPPLIED_TEXT } from './stage-wording/name-genera
 import { NAME_GENERATOR_SUPPLIED_TEXT } from './stage-wording/name-generator.ts';
 import { NARRATIVE_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/narrative-pedigree.ts';
 import { NARRATIVE_SUPPLIED_TEXT } from './stage-wording/narrative.ts';
-import type { SuppliedStageSetting } from './supplied-stage-setting.ts';
-import { suppliedTextFor } from './supplied-text.ts';
+import type {
+  SuppliedStageSetting,
+  SuppliedWordingSource,
+} from './supplied-stage-setting.ts';
 
 /**
  * The stage settings whose wording Network Canvas supplies, by stage type.
@@ -41,6 +43,14 @@ const SUPPLIED_STAGE_TEXT: Readonly<
   OrdinalBin: BIN_SUPPLIED_TEXT,
 };
 
+/** Every supplied stage setting, with the type of stage that holds it. */
+export const SUPPLIED_STAGE_SETTINGS: readonly Readonly<{
+  stageType: string;
+  setting: SuppliedStageSetting;
+}>[] = Object.entries(SUPPLIED_STAGE_TEXT).flatMap(([stageType, settings]) =>
+  settings.map((setting) => ({ stageType, setting })),
+);
+
 const settingsOf = (stageType: string): readonly SuppliedStageSetting[] =>
   SUPPLIED_STAGE_TEXT[stageType] ?? [];
 
@@ -52,19 +62,6 @@ export const suppliedStageSettingPaths = (
   stageType: string,
 ): readonly (readonly string[])[] =>
   settingsOf(stageType).map(({ path }) => path);
-
-/**
- * Network Canvas's message for a setting in a protocol language: its wording
- * in exactly that language, and none in any other. That is the rule for all
- * its wording (the interface text and the Family Pedigree's option labels
- * too). A setting the stage shows with no text in the default language,
- * counting Network Canvas's wording, must be written there before the
- * protocol leaves its editor (`findBuiltInWordingProblems`).
- */
-const writtenIn = (
-  setting: SuppliedStageSetting,
-  locale: LocaleTag,
-): string | undefined => suppliedTextFor(setting.message, locale);
 
 const valueAt = (value: unknown, path: readonly string[]): unknown =>
   path.reduce<unknown>(
@@ -80,23 +77,6 @@ export type SuppliedStageText = Readonly<{
   path: readonly string[];
   value: LocalizedString;
 }>;
-
-/**
- * Every supplied setting of `stageType`, each with Network Canvas's text in
- * every protocol language it has one in (see `writtenIn`).
- */
-export const suppliedStageText = (
-  stageType: string,
-  localization: LocalizationDeclaration,
-): readonly SuppliedStageText[] =>
-  settingsOf(stageType).map((setting) => {
-    const value: Record<LocaleTag, string> = {};
-    for (const locale of localization.locales) {
-      const text = writtenIn(setting, locale);
-      if (text !== undefined) value[locale] = text;
-    }
-    return { path: setting.path, value };
-  });
 
 type StageLike = Readonly<{ type: string }> & Readonly<Record<string, unknown>>;
 
@@ -134,35 +114,6 @@ export type ShownStageText = Readonly<{
 }>;
 
 /**
- * Every supplied setting of the stage's type, in table order, with the text
- * the interview shows for it and whether it shows it. The text is Network
- * Canvas's wording in every protocol language it writes one in (what
- * `suppliedStageText` builds), with the translations the stage holds at the
- * setting's path laid over it per language: a language the stage holds
- * wins, a language it does not hold gets Network Canvas's wording, and a
- * language Network Canvas has no wording in gets only what the stage holds.
- * The interview shows the setting when the object it lives in (`within`), if
- * it has one, exists on the stage, and its `when`, if it has one, holds.
- */
-export const stageWordingShown = (
-  stage: StageLike,
-  localization: LocalizationDeclaration,
-): readonly ShownStageText[] => {
-  const settings = settingsOf(stage.type);
-  return suppliedStageText(stage.type, localization).map(
-    ({ path, value }, index) => {
-      const setting = settings[index];
-      const shown = setting !== undefined && isShown(setting, stage);
-      return {
-        path,
-        value: { ...value, ...heldTranslations(valueAt(stage, path)) },
-        shown,
-      };
-    },
-  );
-};
-
-/**
  * `root` with `value` at `path`, or with nothing there when `value` is
  * undefined, copying each object on the way so `root` is left as it was. An
  * object that removing the value leaves empty is removed too, unless it is
@@ -193,75 +144,137 @@ const withValueAt = (
 };
 
 /**
- * `stage` as a protocol stores it, holding only the wording of its author's
- * own. Of each setting Network Canvas words, a translation that reads exactly
- * as Network Canvas's wording in that language is removed, since the
- * interview shows that wording whether or not the stage holds it, and a
- * setting left with no translation is removed with it. A setting the stage
- * holds but no longer shows, because the configuration that shows it (its
- * `when`) is off, is removed whole, so a protocol never asks to translate
- * words its participants cannot see. The same stage when there is nothing to
- * remove, so a caller can tell nothing changed.
+ * What is read of a stage's supplied settings with Network Canvas's wording
+ * to hand (see `SuppliedWordingSource`): the wording itself, the text the
+ * interview shows, and a stage as it is stored and as an editor holds it.
  */
-export const stageWithoutSuppliedText = <Stage extends StageLike>(
-  stage: Stage,
-): Stage => {
-  let next: Readonly<Record<string, unknown>> = stage;
-  for (const setting of settingsOf(stage.type)) {
-    const held = valueAt(next, setting.path);
-    if (held === undefined) continue;
-    if (setting.when !== undefined && !setting.when(stage)) {
-      next = withValueAt(next, setting.path, undefined, setting.within);
-      continue;
-    }
-    const translations = translationsHeld(held);
-    if (translations === undefined) continue;
-    const all = Object.entries(translations);
-    const own = all.filter(
-      ([locale, text]) => text !== writtenIn(setting, locale),
-    );
-    if (own.length === all.length && own.length > 0) continue;
-    next = withValueAt(
-      next,
-      setting.path,
-      own.length === 0 ? undefined : Object.fromEntries(own),
-      setting.within,
-    );
-  }
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `next` is `stage` with some of its optional supplied settings narrowed or removed, so it still has Stage's shape
-  return next as Stage;
-};
+export const stageTextWith = (wording: SuppliedWordingSource) => {
+  /**
+   * Every supplied setting of `stageType`, each with Network Canvas's text in
+   * every protocol language it has one in (see `SuppliedWordingSource`).
+   */
+  const suppliedStageText = (
+    stageType: string,
+    localization: LocalizationDeclaration,
+  ): readonly SuppliedStageText[] =>
+    settingsOf(stageType).map((setting) => {
+      const value: Record<LocaleTag, string> = {};
+      for (const locale of localization.locales) {
+        const text = wording(setting, locale);
+        if (text !== undefined) value[locale] = text;
+      }
+      return { path: setting.path, value };
+    });
 
-/**
- * `stage` as an editor holds it: each setting Network Canvas words that the
- * stage shows (`isShown`) holds the text the interview shows for it
- * (`stageWordingShown`), so its field starts with Network Canvas's wording in
- * every language the stage has no translation of its own in. No translation
- * the stage holds is changed. Never what a protocol stores: an editor saves
- * the stage through `stageWithoutSuppliedText`. The same stage when it
- * already holds all of it.
- */
-export const stageWithSuppliedText = <Stage extends StageLike>(
-  stage: Stage,
-  localization: LocalizationDeclaration,
-): Stage & Readonly<Record<string, unknown>> => {
-  const settings = settingsOf(stage.type);
-  let next: Readonly<Record<string, unknown>> = stage;
-  stageWordingShown(stage, localization).forEach(({ path, value }, index) => {
-    const setting = settings[index];
-    if (setting === undefined || !isShown(setting, stage)) return;
-    const held = valueAt(stage, path);
-    const translations = translationsHeld(held);
-    if (held !== undefined && translations === undefined) return;
-    if (
-      translations !== undefined &&
-      Object.keys(value).every((locale) => Object.hasOwn(translations, locale))
-    )
-      return;
-    next = withValueAt(next, path, value);
-  });
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `next` is `stage` with its optional supplied settings filled, so it still has Stage's shape
-  return next as Stage & Readonly<Record<string, unknown>>;
+  /**
+   * Every supplied setting of the stage's type, in table order, with the text
+   * the interview shows for it and whether it shows it. The text is Network
+   * Canvas's wording in every protocol language it writes one in (what
+   * `suppliedStageText` builds), with the translations the stage holds at the
+   * setting's path laid over it per language: a language the stage holds
+   * wins, a language it does not hold gets Network Canvas's wording, and a
+   * language Network Canvas has no wording in gets only what the stage holds.
+   * The interview shows the setting when the object it lives in (`within`), if
+   * it has one, exists on the stage, and its `when`, if it has one, holds.
+   */
+  const stageWordingShown = (
+    stage: StageLike,
+    localization: LocalizationDeclaration,
+  ): readonly ShownStageText[] => {
+    const settings = settingsOf(stage.type);
+    return suppliedStageText(stage.type, localization).map(
+      ({ path, value }, index) => {
+        const setting = settings[index];
+        const shown = setting !== undefined && isShown(setting, stage);
+        return {
+          path,
+          value: { ...value, ...heldTranslations(valueAt(stage, path)) },
+          shown,
+        };
+      },
+    );
+  };
+
+  /**
+   * `stage` as a protocol stores it, holding only the wording of its author's
+   * own. Of each setting Network Canvas words, a translation that reads exactly
+   * as Network Canvas's wording in that language is removed, since the
+   * interview shows that wording whether or not the stage holds it, and a
+   * setting left with no translation is removed with it. A setting the stage
+   * holds but no longer shows, because the configuration that shows it (its
+   * `when`) is off, is removed whole, so a protocol never asks to translate
+   * words its participants cannot see. The same stage when there is nothing to
+   * remove, so a caller can tell nothing changed.
+   */
+  const stageWithoutSuppliedText = <Stage extends StageLike>(
+    stage: Stage,
+  ): Stage => {
+    let next: Readonly<Record<string, unknown>> = stage;
+    for (const setting of settingsOf(stage.type)) {
+      const held = valueAt(next, setting.path);
+      if (held === undefined) continue;
+      if (setting.when !== undefined && !setting.when(stage)) {
+        next = withValueAt(next, setting.path, undefined, setting.within);
+        continue;
+      }
+      const translations = translationsHeld(held);
+      if (translations === undefined) continue;
+      const all = Object.entries(translations);
+      const own = all.filter(
+        ([locale, text]) => text !== wording(setting, locale),
+      );
+      if (own.length === all.length && own.length > 0) continue;
+      next = withValueAt(
+        next,
+        setting.path,
+        own.length === 0 ? undefined : Object.fromEntries(own),
+        setting.within,
+      );
+    }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `next` is `stage` with some of its optional supplied settings narrowed or removed, so it still has Stage's shape
+    return next as Stage;
+  };
+
+  /**
+   * `stage` as an editor holds it: each setting Network Canvas words that the
+   * stage shows (`isShown`) holds the text the interview shows for it
+   * (`stageWordingShown`), so its field starts with Network Canvas's wording in
+   * every language the stage has no translation of its own in. No translation
+   * the stage holds is changed. Never what a protocol stores: an editor saves
+   * the stage through `stageWithoutSuppliedText`. The same stage when it
+   * already holds all of it.
+   */
+  const stageWithSuppliedText = <Stage extends StageLike>(
+    stage: Stage,
+    localization: LocalizationDeclaration,
+  ): Stage & Readonly<Record<string, unknown>> => {
+    const settings = settingsOf(stage.type);
+    let next: Readonly<Record<string, unknown>> = stage;
+    stageWordingShown(stage, localization).forEach(({ path, value }, index) => {
+      const setting = settings[index];
+      if (setting === undefined || !isShown(setting, stage)) return;
+      const held = valueAt(stage, path);
+      const translations = translationsHeld(held);
+      if (held !== undefined && translations === undefined) return;
+      if (
+        translations !== undefined &&
+        Object.keys(value).every((locale) =>
+          Object.hasOwn(translations, locale),
+        )
+      )
+        return;
+      next = withValueAt(next, path, value);
+    });
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `next` is `stage` with its optional supplied settings filled, so it still has Stage's shape
+    return next as Stage & Readonly<Record<string, unknown>>;
+  };
+
+  return {
+    suppliedStageText,
+    stageWordingShown,
+    stageWithoutSuppliedText,
+    stageWithSuppliedText,
+  };
 };
 
 const samePath = (a: readonly string[], b: readonly string[]): boolean =>

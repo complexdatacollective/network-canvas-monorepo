@@ -927,7 +927,11 @@ export default function TeamActivity() {
                         })}
                       </time>
                     </TableCell>
-                    <TableCell>{actorText(intl, event.actor)}</TableCell>
+                    {/* Who and what an event names are data: each takes its own
+                        direction, on the interface side. */}
+                    <TableCell dir="auto" className="text-match-parent">
+                      {actorText(intl, event.actor)}
+                    </TableCell>
                     <TableCell>
                       <Button
                         variant="link"
@@ -942,7 +946,7 @@ export default function TeamActivity() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell dir="auto" className="text-match-parent">
                       {/* eslint-disable-next-line formatjs/no-literal-string-in-jsx -- the em dash is locale-neutral typography, not copy */}
                       {targetLabel ?? target?.id ?? '—'}
                     </TableCell>
@@ -1113,7 +1117,11 @@ function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
         {fields.map((field) => (
           <div key={field.label} className="col-span-2 grid grid-cols-subgrid">
             <dt className="font-bold">{field.label}</dt>
-            <dd className="m-0 break-all">{field.value}</dd>
+            {/* A value is a name, an identifier or a translated word: each
+                takes its own direction, on the interface side. */}
+            <dd dir="auto" className="text-match-parent m-0 break-all">
+              {field.value}
+            </dd>
           </div>
         ))}
       </dl>
