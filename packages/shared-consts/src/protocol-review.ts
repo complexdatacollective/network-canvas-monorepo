@@ -37,21 +37,26 @@ export type StudyAdministrationMode =
 const holdsText = (value: string) => /\S/u.test(value);
 
 export const StudyContextSchema = z.strictObject({
-  /** At least one; there is no upper limit on how many. */
-  researchQuestions: z
-    .array(
-      z
-        .string()
-        .max(STUDY_CONTEXT_LIMITS.researchQuestion)
-        .refine(holdsText, 'A research question cannot be blank.'),
-    )
-    .min(1),
+  /** What the study is for and how it works. Always given. */
+  synopsis: z
+    .string()
+    .max(STUDY_CONTEXT_LIMITS.synopsis)
+    .refine(holdsText, 'The synopsis cannot be blank.'),
   population: z
     .string()
     .max(STUDY_CONTEXT_LIMITS.population)
     .refine(holdsText, 'The population cannot be blank.'),
   administration: z.enum(STUDY_ADMINISTRATION_MODES),
-  synopsis: z.string().max(STUDY_CONTEXT_LIMITS.synopsis).optional(),
+  /**
+   * Any number, none included. They are recommended rather than required: a
+   * review without them has less to check the protocol against.
+   */
+  researchQuestions: z.array(
+    z
+      .string()
+      .max(STUDY_CONTEXT_LIMITS.researchQuestion)
+      .refine(holdsText, 'A research question cannot be blank.'),
+  ),
 });
 
 export type StudyContext = z.infer<typeof StudyContextSchema>;
