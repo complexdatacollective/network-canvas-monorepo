@@ -2,7 +2,7 @@
 title: API de Fresco
 navOrder: 4
 toc: true
-translatedFrom: dd197001976f293099158682d9c960447d78cd6b
+translatedFrom: 417ee50d8a8e5abd7e303d0aa5be3538ab267952
 ---
 
 <Definition>
@@ -86,7 +86,7 @@ Devuelve una lista paginada de entrevistas, empezando por las actualizadas más 
 **Ejemplo de solicitud**
 
 ```bash
-curl -H "Authorization: Bearer $FRESCO_TOKEN" \
+curl -H "Authorization: Bearer $FRESCO_API_TOKEN" \
   "https://your-fresco-instance.com/api/v1/interview?status=completed&perPage=50"
 ```
 
@@ -156,7 +156,7 @@ Devuelve el registro completo de una entrevista, incluida la **red** recopilada 
 **Ejemplo de solicitud**
 
 ```bash
-curl -H "Authorization: Bearer $FRESCO_TOKEN" \
+curl -H "Authorization: Bearer $FRESCO_API_TOKEN" \
   "https://your-fresco-instance.com/api/v1/interview/clx0a1b2c3d4e5f6g7h8"
 ```
 
@@ -247,7 +247,7 @@ entrevistas.
 **Ejemplo de solicitud**
 
 ```bash
-curl -H "Authorization: Bearer $FRESCO_TOKEN" \
+curl -H "Authorization: Bearer $FRESCO_API_TOKEN" \
   "https://your-fresco-instance.com/api/v1/protocols-meta"
 ```
 
@@ -283,7 +283,7 @@ páginas: solicita la página `1`, lee `meta.pageCount` y, después, obtén cada
 restantes.
 
 ```bash
-curl -H "Authorization: Bearer $FRESCO_TOKEN" \
+curl -H "Authorization: Bearer $FRESCO_API_TOKEN" \
   "https://your-fresco-instance.com/api/v1/interview?page=2&perPage=100"
 ```
 

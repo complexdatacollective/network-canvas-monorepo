@@ -2,7 +2,7 @@
 title: Usar Fresco
 date: 7th October 2026
 navOrder: 2
-translatedFrom: ba4c6adaaf55d667e3c54ca96adb2173027013b5
+translatedFrom: 6b99cbc352fe13f4dff136966ab589f4b71285da
 ---
 
 Esta guía te explica paso a paso el flujo de trabajo básico para realizar tu estudio con Fresco.
@@ -125,7 +125,7 @@ Para añadir a una persona participante a mano:
 
 1. Ve a la página de participantes del panel.
    ![La página de participantes del panel.](/assets/img/fresco-images/participants-page.png)
-2. Haz clic en el botón **Añadir participante individual**.
+2. Haz clic en el botón **Añadir participante**.
    ![Añadir participante individual](/assets/img/fresco-images/participants-add-single.png)
 3. Introduce un identificador de participante o haz clic en el botón **Generar** para que se genere uno al azar.
 4. Si quieres, introduce una etiqueta de participante.
@@ -195,7 +195,7 @@ En Fresco puedes compartir dos tipos de URL con quienes participan: **URL única
 
 Las URL únicas de participante son URL únicas que puedes generar para cada participante y protocolo, y compartir con la persona participante para que complete una entrevista. Estas URL llevan a la persona participante directamente a la entrevista del protocolo indicado y vinculan sus respuestas con su identificador de participante.
 
-Para compartir las URL únicas de participante, puedes copiar cada URL por separado o exportar un archivo CSV que contenga todas las URL de un protocolo determinado.
+Para compartir las URL únicas de participante con quienes participan, puedes copiar cada URL por separado o exportar un archivo CSV que contenga las URL de tus participantes.
 
 #### Copiar a mano una URL única de participante {#manually-copying-a-unique-participant-url}
 
@@ -207,12 +207,10 @@ Para compartir las URL únicas de participante, puedes copiar cada URL por separ
 #### Exportar un CSV con las URL únicas de participante {#exporting-a-csv-of-unique-participant-urls}
 
 1. Ve a la página de participantes del panel.
-2. Haz clic en el botón **Exportar URL de participantes**.
-3. En la lista desplegable, selecciona el protocolo para el que quieres generar las URL.
-4. Si quieres, selecciona a las personas participantes para las que quieres generar las URL. Por defecto se incluyen todas.
-5. Haz clic en el botón **Exportar URL de participantes**.
+2. Haz clic en el botón **Exportar participantes** para exportar a todas las personas participantes de la lista (si has escrito algo en el cuadro de filtro, solo a las que coincidan con él), o marca las casillas de las personas participantes que quieras y haz clic en **Exportar selección**.
+3. El navegador descargará un archivo llamado `participants.csv`.
 
-El archivo CSV contendrá una fila por participante, con columnas para el identificador de participante, la etiqueta de participante y la URL única del protocolo indicado. Puedes usar este archivo para hacer llegar las URL a quienes participan por correo electrónico, SMS u otros medios.
+El archivo CSV contendrá una fila por participante, con columnas para el ID interno, el identificador y la etiqueta de cada participante, seguidas de una columna `interview_url_<protocol name>` (donde `<protocol name>` es el nombre del protocolo) por cada protocolo instalado, con la URL única de esa persona participante para ese protocolo. Puedes usar este archivo para hacer llegar las URL a quienes participan por correo electrónico, SMS u otros medios.
 
 ### URL de participación anónima {#anonymous-participant-urls}
 
@@ -221,7 +219,7 @@ Si activas el reclutamiento anónimo, quienes participan pueden inscribirse en e
 #### Para generar una URL de participación anónima: {#to-generate-an-anonymous-participant-url}
 
 1. Ve a la página de protocolos del panel.
-2. Haz clic en el botón **URL de participación anónima** del protocolo para el que quieres reclutar participantes.
+2. En la columna **URL de participación anónima**, que aparece una vez activado el reclutamiento anónimo, haz clic en el botón del protocolo para el que quieres reclutar participantes.
 3. La URL se copiará en el portapapeles y tendrá el siguiente formato:
 
 ```bash
@@ -338,7 +336,7 @@ Puedes generar de forma masiva un archivo CSV con las URL de las entrevistas inc
 1. Ve a la página de entrevistas del panel.
 2. Haz clic en el botón **Exportar URL de entrevistas incompletas**.
 3. En la lista desplegable, selecciona el protocolo para el que quieres generar las URL.
-4. Haz clic en el botón **Exportar URL de entrevistas incompletas**.
+4. Haz clic en el botón **Exportar**.
 
 ## Exportar los datos {#exporting-data}
 

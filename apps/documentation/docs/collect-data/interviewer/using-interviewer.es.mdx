@@ -4,7 +4,7 @@ navOrder: 2
 wip: false
 toc: true
 date: 7th October 2026
-translatedFrom: 5a16b4d9597ef93f94854b9085ed86dd1ddd8be0
+translatedFrom: 5f55f17bead535dcba9b8e645d80417e216f29ac
 ---
 
 <SummaryCard duration="30 minutos">
@@ -93,7 +93,7 @@ Después, eliges cómo vas a desbloquear la aplicación. Según tu dispositivo, 
 
 <TipBox danger={true}>
 
-Un **PIN o una frase de contraseña** olvidados no se pueden recuperar: los datos que protegen quedan inaccesibles para siempre en ese dispositivo. Al configurar la **autenticación biométrica** también se registra una **frase de contraseña de recuperación** obligatoria, así que, si solo pierdes el autenticador, puedes recurrir a ella; si pierdes ambos, la pérdida es igual de permanente. Registrar un PIN o una frase de contraseña nuevos (después de demostrar que conoces tu credencial actual) conserva el acceso a tus datos, pero pasar a la autenticación biométrica o dejar de usarla exige **desactivar el bloqueo del dispositivo**, lo que borra **todos los protocolos, todas las sesiones de entrevista y todas las credenciales guardadas en este dispositivo**. Sea cual sea el método que uses, **exporta tus entrevistas con regularidad**, para que perder un dispositivo (o volver a protegerlo) nunca suponga perder tus datos.
+Un **PIN o una frase de contraseña** olvidados no se pueden recuperar: los datos que protegen quedan inaccesibles para siempre en ese dispositivo. Al configurar la **autenticación biométrica** también se registra una **frase de contraseña de recuperación** obligatoria, así que, si solo pierdes el autenticador, puedes recurrir a ella; si pierdes ambos, la pérdida es igual de permanente. Sustituir tu PIN por otro nuevo, o tu frase de contraseña por otra nueva (después de demostrar que conoces la actual), conserva el acceso a tus datos, pero cambiar a otro método de desbloqueo (por ejemplo, de un PIN a una frase de contraseña, o pasar a la autenticación biométrica o dejar de usarla) exige **desactivar el bloqueo del dispositivo**, lo que borra **todos los protocolos, todas las sesiones de entrevista y todas las credenciales guardadas en este dispositivo**. Sea cual sea el método que uses, **exporta tus entrevistas con regularidad**, para que perder un dispositivo (o volver a protegerlo) nunca suponga perder tus datos.
 
 </TipBox>
 
@@ -119,7 +119,7 @@ En **Configuración** puedes gestionar las preferencias de la aplicación, contr
 
 **Acerca de** muestra información básica sobre la aplicación y este dispositivo: la versión de la aplicación, cuánto almacenamiento estás usando (en forma de barra de uso; en ordenadores de escritorio también muestra el espacio libre en disco) y tu ID de instalación, un identificador único de cada dispositivo. La versión y el ID de instalación son los datos que debes indicar cuando te pongas en contacto con nosotros para pedir ayuda. Este apartado también te permite volver a mostrar en la pantalla de inicio la tarjeta del protocolo de ejemplo, que se instala con un clic, si la habías ocultado.
 
-**Idioma** contiene el selector **Idioma de la aplicación**, que establece el idioma de las pantallas de Interviewer en este dispositivo. Elige un idioma, o **Automático (navegador)** para seguir las preferencias de idioma de tu navegador. Consulta más abajo [Idioma de la aplicación](#interface-language).
+**Idioma** contiene el selector **Idioma de la aplicación**, que establece el idioma de las pantallas de Interviewer en este dispositivo. Elige un idioma, o **Automático** para seguir las preferencias de idioma de tu navegador; esa opción también indica el idioma que se aplica en ese momento, por ejemplo _Automático (español)_. Consulta más abajo [Idioma de la aplicación](#interface-language).
 
 **Entrevista** tiene un único interruptor, **Permitir la navegación entre etapas**, activado por defecto. Mientras está activado, al tocar la barra de progreso durante una entrevista se abre un menú de etapas desde el que puedes saltar directamente a cualquier etapa. Cuando está desactivado, la barra de progreso deja de abrir ese menú; las flechas arriba y abajo siguen retrocediendo o avanzando una pantalla cada vez, lo que, en una etapa con varias preguntas, significa una pregunta y no una etapa entera. Saltar entre etapas resulta útil al realizar un estudio piloto de un protocolo, pero normalmente se desactiva en las entrevistas reales.
 
@@ -130,7 +130,7 @@ En **Configuración** puedes gestionar las preferencias de la aplicación, contr
 
 **Privacidad** tiene un único interruptor, **Activar estadísticas de uso**. Cuando está activado (la opción predeterminada), la aplicación envía una pequeña cantidad de información anónima sobre el uso y los errores (qué etapas de entrevista y qué funciones se usan, cuándo se importan protocolos o se exportan datos, y detalles de cualquier cierre inesperado) para ayudarnos a mejorar la aplicación. Ningún dato de participantes sale nunca del dispositivo: nunca se recopilan datos de red, respuestas, ID de casos, contenido de los protocolos ni archivos de recursos, y los datos analíticos no contienen nada que te identifique. Puedes cambiarlo en cualquier momento.
 
-**Seguridad** aparece siempre. En un dispositivo que se usa sin bloqueo, ofrece **Activar la seguridad de la aplicación**, que inicia el asistente **Empezar** para que puedas configurar un bloqueo del dispositivo. Añadir ese primer bloqueo conserva todo lo que ya hay en el dispositivo: los protocolos y las sesiones de entrevista que contiene se vuelven a cifrar con una clave derivada de tu nueva credencial, sin borrarse. Por eso, un dispositivo que ha estado recopilando datos sin bloqueo se puede proteger en cualquier momento. Una vez establecido un método de seguridad, este apartado muestra tu método actual y cuándo se estableció y, en el caso de un PIN, te permite **cambiar tu PIN** sin perder datos. También contiene el periodo de inactividad tras el que la aplicación se bloquea automáticamente y las opciones para volver a autenticarse que se describen más arriba en [Bloquear y desbloquear](#locking-and-unlocking). Por último, ofrece la opción **Desactivar bloqueo del dispositivo / Restablecer dispositivo**: como los datos guardados están vinculados a tu método de seguridad, usarla **borra del dispositivo todos los protocolos y todas las sesiones** y te devuelve al asistente de configuración inicial.
+**Seguridad** aparece siempre. En un dispositivo que se usa sin bloqueo, ofrece **Activar la seguridad de la aplicación**, que inicia el asistente **Empezar** para que puedas configurar un bloqueo del dispositivo. Añadir ese primer bloqueo conserva todo lo que ya hay en el dispositivo: los protocolos y las sesiones de entrevista que contiene se vuelven a cifrar con una clave derivada de tu nueva credencial, sin borrarse. Por eso, un dispositivo que ha estado recopilando datos sin bloqueo se puede proteger en cualquier momento. Una vez establecido un método de seguridad, este apartado muestra tu método actual y cuándo se estableció y, en el caso de un PIN o una frase de contraseña, te permite sustituirlo mediante **Cambiar PIN** o **Cambiar frase de contraseña** sin perder datos. Para cambiar a otro método de desbloqueo, tienes que restablecer el dispositivo y volver a hacer la configuración. También contiene el periodo de inactividad tras el que la aplicación se bloquea automáticamente y las opciones para volver a autenticarse que se describen más arriba en [Bloquear y desbloquear](#locking-and-unlocking). Por último, ofrece la opción **Desactivar bloqueo del dispositivo / Restablecer dispositivo**: como los datos guardados están vinculados a tu método de seguridad, usarla **borra del dispositivo todos los protocolos y todas las sesiones** y te devuelve al asistente de configuración inicial.
 
 **Datos sintéticos** genera sesiones de entrevista ficticias para que puedas ensayar y validar tu proceso de exportación antes de recopilar datos reales. Elige un **Protocolo**, establece el **Número de sesiones** que quieres crear (de 1 a 1000; 10 por defecto) y, si quieres, ajusta **Simular el abandono de participantes** (activado por defecto; deja algunas sesiones incompletas para que se parezcan a los datos reales) y **Respetar la lógica de salto y los filtros** (desactivado por defecto). Las sesiones generadas aparecen en tu vista **Datos** y se exportan exactamente igual que las reales; **Eliminar todo** borra todas las sesiones sintéticas de una vez. Para saber cómo encajan los datos sintéticos en un ensayo completo de tu estudio, consulta [Realizar un estudio piloto](/es/get-started/planning-a-study/piloting-your-study).
 
@@ -281,9 +281,9 @@ Una vez importado un protocolo, aparece una nueva sección en la pantalla de ini
 
 <AppOnly axis="interviewer" app="current">
 
-El protocolo de ejemplo viene integrado en Interviewer: selecciónalo en la pila de tarjetas de protocolos de la pantalla de **Inicio** para seguir el tutorial. También puedes <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">hacer clic aquí</DownloadLink> para descargar el archivo e importarlo desde la zona **Protocolos**.
+El protocolo de ejemplo viene integrado en Interviewer: selecciónalo en la pila de tarjetas de protocolos de la vista **Protocolos** para seguir el tutorial. También puedes <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">hacer clic aquí</DownloadLink> para descargar el archivo e importarlo con la tarjeta **Importar un protocolo**, al final de la pila.
 
-Una vez instalado, un protocolo aparece en la pila de tarjetas de la pantalla de Inicio como una tarjeta que representa el protocolo que has importado.
+Una vez instalado, un protocolo aparece en la pila de tarjetas de protocolos como una tarjeta que representa el protocolo que has importado.
 
 </AppOnly>
 
@@ -331,7 +331,7 @@ Desde esta capa puedes ordenar tus protocolos instalados y filtrarlos por nombre
 
 <AppOnly axis="interviewer" app="current">
 
-Abre la zona **Protocolos** para gestionar todo lo que hay instalado en el dispositivo. Cada protocolo indica su versión del esquema, su fecha de importación y el número de entrevistas recopiladas con él. Antes de eliminar un protocolo se te pide que lo confirmes, ya que no se puede deshacer, y todas las entrevistas registradas con ese protocolo se eliminan junto con él.
+Cada protocolo instalado en el dispositivo tiene una tarjeta en la pila de la vista **Protocolos**, que muestra su versión del esquema, cuándo se importó y el número de entrevistas recopiladas con él. Para quitar un protocolo, usa el icono de la papelera de su tarjeta. Antes de eliminar un protocolo se te pide que lo confirmes, ya que no se puede deshacer, y todas las entrevistas registradas con ese protocolo se eliminan junto con él.
 
 ![Confirmar la eliminación de un protocolo en Interviewer](/assets/img/interviewer-guide/delete-protocol.png)
 
@@ -351,7 +351,7 @@ Si tienes más de un protocolo instalado en Interviewer, aparecerá una pila de 
 
 <AppOnly axis="interviewer" app="current">
 
-Para empezar una entrevista, busca el protocolo en la pila de tarjetas de la pantalla de **Inicio** y haz clic en **Iniciar nueva entrevista** en su tarjeta (como se muestra más arriba, en la anatomía de la tarjeta). La tarjeta que has usado más recientemente queda al frente de la pila para que accedas a ella rápidamente; si tienes varios protocolos instalados, ve pasando las tarjetas o abre la zona **Protocolos** para buscar en la lista completa.
+Para empezar una entrevista, busca el protocolo en la pila de tarjetas de la vista **Protocolos** y haz clic en **Iniciar nueva entrevista** en su tarjeta (como se muestra más arriba, en la anatomía de la tarjeta). La pila se abre en la tarjeta que has usado más recientemente, para que accedas a ella rápidamente; si tienes varios protocolos instalados, ve pasando las tarjetas hasta encontrar el que quieras.
 
 </AppOnly>
 
@@ -437,7 +437,7 @@ Interviewer mantiene los controles de la entrevista deliberadamente al mínimo. 
 - Una flecha **arriba** para ir a la etapa o pregunta anterior.
 - Una flecha **abajo** para avanzar a la siguiente etapa o pregunta.
 
-Entre las flechas arriba y abajo, una **barra de progreso** se va llenando a medida que la persona participante avanza por la entrevista. Mientras **Permitir la navegación entre etapas** está activado en **Configuración → Entrevista** (la opción predeterminada), la barra de progreso también es un botón (que los lectores de pantalla anuncian como **Ir a otra pantalla**) que abre un menú de etapas para saltar directamente a cualquier etapa. El progreso se guarda continuamente, así que puedes salir de una entrevista y reanudarla más tarde desde la lista **Entrevistas** sin perder datos.
+Entre las flechas arriba y abajo, una **barra de progreso** se va llenando a medida que la persona participante avanza por la entrevista. Mientras **Permitir la navegación entre etapas** está activado en **Configuración → Entrevista** (la opción predeterminada), la barra de progreso también es un botón (que los lectores de pantalla anuncian como **Ir a otra pantalla**) que abre un menú de etapas para saltar directamente a cualquier etapa. El progreso se guarda continuamente, así que puedes salir de una entrevista y reanudarla más tarde desde la vista **Datos** sin perder datos.
 
 El menú de ajustes solo contiene estas opciones pensadas para la persona participante; todos los demás ajustes de la aplicación están en el apartado **Configuración** del panel de administración, al que se llega después de salir de la entrevista.
 
@@ -697,7 +697,7 @@ El proceso de exportación de datos consiste en seleccionar una o más sesiones 
 
 <AppOnly axis="interviewer" app="current">
 
-Todas las sesiones que recopilas, ya estén en curso, finalizadas o exportadas, aparecen en la zona **Entrevistas**. Cada fila muestra el ID del caso, el protocolo usado, cuándo empezó la entrevista y su estado.
+Todas las sesiones que recopilas, ya estén en curso, finalizadas o ya exportadas, aparecen en la tabla **Entrevistas** de la vista **Datos**. Cada fila muestra el ID del caso, el protocolo usado, cuándo empezó la entrevista y su estado.
 
 <Screenshot axis="interviewer" name="resume-section" alt="La lista de entrevistas"></Screenshot>
 

@@ -3,7 +3,7 @@ title: Guía de implementación en Vercel
 date: 22nd July 2026
 navOrder: 5
 hidden: true
-translatedFrom: f2fb3f657ab6586ca1a85bd116d22a66aeb2ce92
+translatedFrom: 7be4ee64cd5ee029104f3de19da83ceb6e33024f
 ---
 
 <TipBox danger>
@@ -69,7 +69,6 @@ Para ello, asegúrate de tener una cuenta de GitHub y de haber iniciado sesión,
    ![](/assets/img/fresco-images/github-fork2.png)
 
 Cuando hayas completado este paso, se te redirigirá a tu repositorio bifurcado (tu fork) en GitHub. Esta copia del código de Fresco ya es tuya, y puedes implementarla o modificarla como quieras.
-``
 
 ## Crear una base de datos {#create-a-database}
 
@@ -130,11 +129,11 @@ Fresco usa una base de datos PostgreSQL para almacenar los datos de tu estudio, 
 
 A continuación, implementaremos tu fork en la plataforma Vercel con los servicios que hemos creado antes. Puedes usar el plan «hobby» (que es gratuito) o un plan de pago (para obtener más información sobre los precios de los servicios en la nube, lee nuestra documentación sobre [precios de los servicios en la nube](/es/collect-data/fresco/cloud-pricing)), pero en esta guía usaremos el plan gratuito.
 
-<Tipbox>
+<TipBox>
 
 Si tienes algún problema, consulta la guía de [solución de problemas](/es/collect-data/fresco/deployment-troubleshooting) o escribe a la <a href="https://community.networkcanvas.com" target="_blank">comunidad de personas usuarias</a> (en inglés).
 
-</Tipbox>
+</TipBox>
 
 1. Haz clic <a href="https://vercel.com/new" target="_blank">aquí</a> para crear un nuevo proyecto en Vercel. Inicia sesión con GitHub si aún no lo has hecho.
 
@@ -209,11 +208,11 @@ El tamaño máximo de un único archivo de protocolo `.netcanvas` subido es de *
 
 Fresco puede usar un servicio de terceros llamado «UploadThing» para almacenar archivos multimedia, incluidos los recursos de los protocolos. Para usar este servicio, creas una cuenta en UploadThing que te permite generar un token de API con el que Fresco se comunica con el servicio de forma segura.
 
-<Tipbox>
+<TipBox>
 
 Tu cuenta de UploadThing es exclusivamente tuya, lo que significa que nadie más tendrá acceso a los archivos almacenados en tu instancia de Fresco. Para obtener más información sobre UploadThing, consulta la <a href="https://docs.uploadthing.com" target="_blank">documentación de UploadThing</a> (en inglés).
 
-</Tipbox>
+</TipBox>
 
 Para crear una aplicación en UploadThing:
 
