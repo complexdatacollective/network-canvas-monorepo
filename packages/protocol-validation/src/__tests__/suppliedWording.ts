@@ -11,53 +11,33 @@ import type { SuppliedWordingCatalogues } from '../schemas/9/supplied-stage-sett
 // protocols read theirs, so that what they assert about text a protocol shows
 // or stores is asserted against the words a participant reads.
 
-const localesDir = path.resolve(
+const wordingDir = path.resolve(
   import.meta.dirname,
-  '../../../interview/src/locales',
+  '../../../interview/src/locales/wording',
 );
-
-const wordingDir = path.join(localesDir, 'wording');
-
-const read = (file: string): unknown => JSON.parse(readFileSync(file, 'utf8'));
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** A catalogue of translations: message by id. */
-const translations = (file: string): Readonly<Record<string, string>> => {
-  const catalogue = read(path.join(wordingDir, file));
-  if (!isRecord(catalogue)) throw new Error(`${file} is not a catalogue`);
+/** One language's catalogue: message by id. */
+const catalogue = (file: string): Readonly<Record<string, string>> => {
+  const read: unknown = JSON.parse(
+    readFileSync(path.join(wordingDir, file), 'utf8'),
+  );
+  if (!isRecord(read)) throw new Error(`${file} is not a catalogue`);
   return Object.fromEntries(
-    Object.entries(catalogue).flatMap(([id, message]) =>
+    Object.entries(read).flatMap(([id, message]) =>
       typeof message === 'string' ? [[id, message]] : [],
     ),
   );
 };
 
-/** The English catalogue, which records each message with its description. */
-const english = (): Readonly<Record<string, string>> => {
-  const catalogue = read(path.join(localesDir, 'en.json'));
-  if (!isRecord(catalogue)) throw new Error('en.json is not a catalogue');
-  return Object.fromEntries(
-    Object.entries(catalogue).flatMap(([id, message]) =>
-      isRecord(message) && typeof message.defaultMessage === 'string'
-        ? [[id, message.defaultMessage]]
-        : [],
-    ),
-  );
-};
-
 /** The interview's catalogues, as `@codaco/interview/supplied-wording` binds them. */
-const SUPPLIED_WORDING: SuppliedWordingCatalogues = {
-  en: english(),
-  ...Object.fromEntries(
-    readdirSync(wordingDir)
-      .filter(
-        (file) => file.endsWith('.json') && !file.endsWith('.source.json'),
-      )
-      .map((file) => [file.replace(/\.json$/, ''), translations(file)]),
-  ),
-};
+const SUPPLIED_WORDING: SuppliedWordingCatalogues = Object.fromEntries(
+  readdirSync(wordingDir)
+    .filter((file) => file.endsWith('.json') && !file.endsWith('.source.json'))
+    .map((file) => [file.replace(/\.json$/, ''), catalogue(file)]),
+);
 
 export const {
   suppliedStageText,

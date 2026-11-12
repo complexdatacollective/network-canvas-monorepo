@@ -27,10 +27,10 @@ const committedEn = JSON.parse(
   readFileSync(join(localesDir, 'en.json'), 'utf8'),
 ) as ExtractedCatalog;
 
-/** The locale the messages are written in, so it has no catalogue of translations. */
+/** The locale the messages are written in, so its catalogue is no translation. */
 const SOURCE_LOCALE = 'en';
 
-/** Where the translations of the wording a protocol may reword are kept. */
+/** Where the catalogues of the wording a protocol may reword are kept. */
 const wordingDir = join(localesDir, 'wording');
 
 const readCatalogue = (locale: string) =>
@@ -38,7 +38,7 @@ const readCatalogue = (locale: string) =>
     readFileSync(join(wordingDir, `${locale}.json`), 'utf8'),
   ) as Record<string, string>;
 
-/** The catalogues of translations committed, by language. */
+/** The catalogues committed, by language. */
 const committedLocales = readdirSync(wordingDir)
   .filter((file) => file.endsWith('.json') && !file.endsWith('.source.json'))
   .map((file) => file.replace(/\.json$/, ''));
@@ -76,9 +76,10 @@ describe('the interview package built-in messages', () => {
     expect(checkCatalogFreshness(committedEn, extracted)).toEqual([]);
   }, 120_000);
 
-  // A catalogue directly inside `locales` is one every build compiles into
-  // parsed messages (`@codaco/app-i18n`'s convention). The wording a protocol
-  // may reword has to stay text, so its translations are one folder down.
+  // A file directly inside `locales` is one a build may take for an app's own
+  // interface (`@codaco/app-i18n`'s convention): a translation is compiled
+  // into parsed messages. The wording a protocol may reword has to stay text,
+  // so its catalogues are one folder down.
   it('keeps no translation where a build would compile it', () => {
     expect(
       readdirSync(localesDir).filter((file) => file.endsWith('.json')),
@@ -106,14 +107,22 @@ describe('the catalogues of the wording Network Canvas supplies', () => {
   });
 
   it('has a catalogue for each supplied language and each variant a text is worded in, and no other', () => {
-    expect(committedLocales.toSorted()).toEqual(
-      [
-        ...SUPPLIED_LANGUAGES.filter((locale) => locale !== SOURCE_LOCALE),
-        ...variants,
-      ].toSorted(),
-    );
-    expect(Object.keys(SUPPLIED_WORDING).toSorted()).toEqual(
-      [...SUPPLIED_LANGUAGES, ...variants].toSorted(),
+    const expected = [...SUPPLIED_LANGUAGES, ...variants].toSorted();
+    expect(committedLocales.toSorted()).toEqual(expected);
+    expect(Object.keys(SUPPLIED_WORDING).toSorted()).toEqual(expected);
+  });
+
+  // The interview reads the English from a catalogue of its own, which
+  // `pnpm --filter @codaco/interview i18n:extract` writes from the messages.
+  // A difference here means that command has not been run since an edit.
+  it('words every such text in English as its message is written, and nothing else', () => {
+    expect(readCatalogue(SOURCE_LOCALE)).toEqual(
+      Object.fromEntries(
+        Object.entries(wordingEnglish).map(([id, { defaultMessage }]) => [
+          id,
+          defaultMessage,
+        ]),
+      ),
     );
   });
 
@@ -145,12 +154,10 @@ describe('the catalogues of the wording Network Canvas supplies', () => {
     },
   );
 
-  it('serves each catalogue as it is committed, and English as it is written', () => {
+  it('serves each catalogue as it is committed', () => {
+    expect(committedLocales).toContain(SOURCE_LOCALE);
     for (const locale of committedLocales) {
       expect(SUPPLIED_WORDING[locale]).toEqual(readCatalogue(locale));
-    }
-    for (const id of wordingIds) {
-      expect(SUPPLIED_WORDING.en?.[id]).toBe(committedEn[id]?.defaultMessage);
     }
   });
 

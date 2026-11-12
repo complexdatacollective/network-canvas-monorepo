@@ -10,9 +10,9 @@
 
 The wording Network Canvas supplies for a schema 9 protocol is now the
 interview's own. Each text a protocol may reword is one of the interview's
-messages, written in English in the interview and translated in one catalogue
-per language (`packages/interview/src/locales/wording`). Nothing a participant
-reads changes.
+messages, written in English in the interview's source, with one catalogue
+per language, English included, in `packages/interview/src/locales/wording`.
+Nothing a participant reads changes.
 
 For developers:
 
