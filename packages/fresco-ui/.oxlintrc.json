@@ -3,7 +3,12 @@
   "jsPlugins": ["eslint-plugin-formatjs", "oxlint-tailwindcss"],
   "settings": {
     "tailwindcss": {
-      "entryPoint": "tooling/tailwind/fresco/fresco.css"
+      "entryPoint": "tooling/tailwind/fresco/fresco.css",
+      "variablePatterns": [
+        "[a-z](?:Class|ClassNames?|Classes)$",
+        "_CLASS(?:ES|_NAMES?)?$"
+      ],
+      "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
     }
   },
   "rules": {
@@ -19,9 +24,38 @@
 
     "tailwindcss/no-unknown-classes": "error",
     "tailwindcss/no-duplicate-classes": "error",
-    "tailwindcss/no-conflicting-classes": "warn",
+    // `focusable` sets its transition only under :focus-visible, a more
+    // specific selector, so an element's own transition classes apply until
+    // the ring shows. The rule reads that nested block as unconditional.
+    "tailwindcss/no-conflicting-classes": [
+      "error",
+      {
+        "allow": [
+          [
+            "(^|:)focusable(-within)?$",
+            "(^|:)(transition|duration|ease|delay)(-|$)"
+          ]
+        ]
+      }
+    ],
     "tailwindcss/no-unnecessary-whitespace": "error",
-    "tailwindcss/enforce-canonical": "warn"
+    "tailwindcss/enforce-canonical": "error",
+    // Right-to-left layouts (Arabic). A class naming a physical side stays
+    // on that side when the page mirrors, so spacing, corners and alignment
+    // are written against the reading direction instead. Where a physical
+    // side is what is meant (centring with `left-1/2`, an element placed by
+    // pointer coordinates, one of a mirrored pair) the line carries a
+    // disable comment saying which of those it is.
+    "tailwindcss/enforce-logical": [
+      "error",
+      {
+        "direction": "inline",
+        // Half-way from the left is half-way from the right: `left-1/2` with
+        // `-translate-x-1/2` centres in either direction, and its logical
+        // spelling would need the translate flipped to do the same.
+        "allowlist": ["(^|:)left-1/2$"]
+      }
+    ]
   },
   "overrides": [
     {

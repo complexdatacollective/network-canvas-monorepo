@@ -2,7 +2,8 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
-import FinishStageTextAlert from './FinishStageTextAlert';
+import DefaultLanguageTextAlert from './DefaultLanguageTextAlert';
+import LabelCollisionsAlert from './LabelCollisionsAlert';
 import LanguageChooserAlert from './Localization/LanguageChooserAlert';
 import LocalizationAlert from './Localization/LocalizationAlert';
 import ProtocolInfoCard from './ProtocolInfoCard';
@@ -40,7 +41,8 @@ const Protocol = () => {
        * when no note shows, leaving the card where it was.
        */}
       <div className="mb-15 w-full max-w-3xl empty:hidden">
-        <FinishStageTextAlert />
+        <DefaultLanguageTextAlert />
+        <LabelCollisionsAlert />
         <TestingMapboxTokenAlert />
         <VariableRoleConflictsAlert />
         <LocalizationAlert />

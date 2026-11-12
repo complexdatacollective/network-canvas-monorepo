@@ -5,7 +5,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -63,7 +63,9 @@ function renderList(
 
   function Section() {
     const [disabled, setDisabled] = useState(false);
-    controls.setDisabled = setDisabled;
+    useLayoutEffect(() => {
+      controls.setDisabled = setDisabled;
+    }, [setDisabled]);
     return (
       <BuilderSection
         title={title}

@@ -17,6 +17,7 @@ import {
   SortManagerContext,
   useCollectionStore,
 } from '../contexts';
+import type { DragAndDropHooks } from '../dnd/types';
 import { useCollectionSetup } from '../hooks/useCollectionSetup';
 import { useFilterState } from '../hooks/useFilterState';
 import { useSortState } from '../hooks/useSortState';
@@ -45,6 +46,14 @@ type CollectionContentProps<T> = Omit<
  * Internal component that renders the collection items.
  * Separated to use hooks within the provider context.
  */
+/**
+ * Which drag-and-drop hooks a collection calls. They are hooks, so the set a
+ * mounted collection calls cannot change: a collection that gains or loses
+ * one mounts its content afresh, keyed on this.
+ */
+const dragAndDropHooksInUse = (hooks: DragAndDropHooks | undefined) =>
+  `draggable:${Boolean(hooks?.useDraggableItemProps)} droppable:${Boolean(hooks?.useDroppableCollectionState)}`;
+
 function CollectionContent<T extends Record<string, unknown>>({
   items,
   keyExtractor,
@@ -108,6 +117,7 @@ function CollectionContent<T extends Record<string, unknown>>({
     selectionManager,
     collectionProps,
     dndCollectionProps,
+    containerCallbackRef,
     dropState,
   } = useCollectionSetup<T>(
     {
@@ -179,10 +189,12 @@ function CollectionContent<T extends Record<string, unknown>>({
   const focusedKey = useCollectionStore<unknown, Key | null>(
     (state) => state.focusedKey,
   );
+  // A new filter or sort is a different list: show it from the top.
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = 0;
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- the query and sort are the triggers for the scroll reset; the effect has no use for their values
   }, [filterDebouncedQuery, storeSortProperty, storeSortDirection]);
 
   // Extract ref and tabIndex from dndCollectionProps
@@ -199,7 +211,11 @@ function CollectionContent<T extends Record<string, unknown>>({
   };
   // tabIndex is intentionally unused - Collection's tabIndex takes precedence
   void tabIndex;
-  const mergedRef = useMergeRefs({ containerRef, dndRef });
+  const mergedRef = useMergeRefs({
+    containerRef,
+    containerCallbackRef,
+    dndRef,
+  });
 
   useEffect(() => {
     // Consumer bundlers replace this flag, so the check is dropped from
@@ -211,6 +227,14 @@ function CollectionContent<T extends Record<string, unknown>>({
       );
     }
   }, [scrollable, virtualized]);
+
+  // An empty listbox is allowed; one holding anything but options is not. The
+  // empty state is drawn where the items would be, so in a listbox it is
+  // hidden from assistive technology and given to the list as its
+  // description instead: "Added people, list box, No items".
+  const showEmptyState = collection.size === 0 && !!emptyState;
+  const emptyStateId = `${collectionId}-empty`;
+  const describesEmptyState = showEmptyState && !nativeItemSemantics;
 
   const regionProps = {
     'role': nativeItemSemantics ? undefined : 'listbox',
@@ -226,6 +250,7 @@ function CollectionContent<T extends Record<string, unknown>>({
         : undefined,
     ...(nativeItemSemantics ? {} : collectionProps),
     ...restDndProps,
+    'aria-describedby': describesEmptyState ? emptyStateId : undefined,
     'className': 'size-full',
   };
 
@@ -256,8 +281,14 @@ function CollectionContent<T extends Record<string, unknown>>({
           layoutGroupId={layoutGroupId}
         />
       )}
-      {collection.size === 0 && emptyState && (
-        <div className="text-center text-current/70">{emptyState}</div>
+      {showEmptyState && (
+        <div
+          id={emptyStateId}
+          aria-hidden={describesEmptyState || undefined}
+          className="text-center text-current/70"
+        >
+          {emptyState}
+        </div>
       )}
     </>
   );
@@ -425,6 +456,7 @@ export function Collection<T extends Record<string, unknown>>({
       }}
     >
       <CollectionContent
+        key={dragAndDropHooksInUse(dragAndDropHooks)}
         items={items}
         keyExtractor={keyExtractor}
         layout={layout}

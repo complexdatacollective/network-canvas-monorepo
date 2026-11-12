@@ -417,7 +417,7 @@ export const SignInForm = () => {
             variant="text"
             type="button"
             onClick={handleBackToSignIn}
-            icon={<ArrowLeft />}
+            icon={<ArrowLeft className="rtl:rotate-180" />}
           >
             {intl.formatMessage(messages.backToSignIn)}
           </Button>
@@ -476,7 +476,7 @@ export const SignInForm = () => {
           <Button
             variant="text"
             onClick={handleBackToSignIn}
-            icon={<ArrowLeft />}
+            icon={<ArrowLeft className="rtl:rotate-180" />}
           >
             {intl.formatMessage(messages.backToSignIn)}
           </Button>
@@ -546,7 +546,6 @@ export const SignInForm = () => {
           </div>
 
           <Button
-            variant="outline"
             className="h-auto min-h-12 w-full py-2 text-center text-wrap"
             onClick={handlePasskeySignIn}
             disabled={passkeyLoading}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import { Drawer } from '@base-ui/react/drawer';
 import { useRef, type ReactNode, type Ref } from 'react';
 
@@ -44,6 +45,9 @@ export default function PersonDrawer({
   const intl = useAppIntl();
   const portalContainer = usePortalContainer();
   const initialFocusRef = useRef<HTMLDivElement>(null);
+  // The panel is on the end edge, which is the left in a right-to-left
+  // interview, and is swiped away towards the edge it came from.
+  const isRtl = useDirection() === 'rtl';
 
   return (
     <Drawer.Root
@@ -54,10 +58,10 @@ export default function PersonDrawer({
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) onClosed?.();
       }}
-      swipeDirection="right"
+      swipeDirection={isRtl ? 'left' : 'right'}
     >
       <Drawer.Portal container={portalContainer ?? undefined}>
-        <Drawer.Viewport className="pointer-events-none fixed inset-y-0 right-0 w-full max-w-md">
+        <Drawer.Viewport className="pointer-events-none fixed inset-y-0 inset-e-0 w-full max-w-md">
           <Drawer.Popup
             ref={popupRef}
             // A control the form marks takes focus as the panel opens; any
@@ -74,14 +78,19 @@ export default function PersonDrawer({
             className={[
               'bg-surface-1 publish-colors text-text pointer-events-auto absolute inset-0 flex flex-col',
               'shadow-[-2px_0_6px_oklch(from_var(--background)_0.05_c_h/0.4),-16px_0_48px_oklch(from_var(--background)_0.05_c_h/0.6)]',
+              'rtl:shadow-[2px_0_6px_oklch(from_var(--background)_0.05_c_h/0.4),16px_0_48px_oklch(from_var(--background)_0.05_c_h/0.6)]',
               'transition-transform duration-300 ease-out',
               '[transform:translateX(var(--drawer-swipe-movement-x,0px))]',
+              // A transform has no logical form: the panel leaves towards
+              // the right edge, or the left in a right-to-left interview.
               'data-[starting-style]:[transform:translateX(100%)]',
               'data-[ending-style]:[transform:translateX(100%)]',
+              'rtl:data-[starting-style]:[transform:translateX(-100%)]',
+              'rtl:data-[ending-style]:[transform:translateX(-100%)]',
             ].join(' ')}
             data-testid="pedigree-person-panel"
           >
-            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-current/10 p-4 pl-6">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-current/10 p-4 ps-6">
               <Drawer.Title className="text-lg font-semibold">
                 {title}
               </Drawer.Title>

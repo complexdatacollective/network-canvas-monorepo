@@ -25,7 +25,7 @@ pnpm test:storybook    # vitest run --project=storybook
 pnpm storybook         # Storybook dev server on :6006
 ```
 
-`build` is the command CI deploys with. It runs Vite and then fails if the service worker, manifest, or icons are missing from `dist/`, if a critical JS chunk (interview engine, entry point), a per-language locale chunk, or a responsive stage-preview image got silently dropped from the Workbox precache manifest, if a locale chunk is missing or loaded statically, or if any of the dev-only Development protocol (its JSON or media) is in the build. Treat an `assert-pwa-build.mjs` failure as a real bug, not noise.
+`build` is the command CI deploys with. It runs Vite and then fails if the service worker, manifest, or icons are missing from `dist/`, if a critical JS chunk (interview engine, entry point), a per-language locale chunk, a responsive stage-preview image, or a bundled font face got silently dropped from the Workbox precache manifest, if a locale chunk is missing or loaded statically, or if any of the dev-only Development protocol (its JSON or media) is in the build. Treat an `assert-pwa-build.mjs` failure as a real bug, not noise.
 
 ## Source Surface
 
@@ -37,7 +37,7 @@ One entry per directory. Per-file granularity rots; per-directory framing tells 
   _Touch when:_ Add/modify a top-level page. Routes wire data via `src/lib/db/api`.
 - **`src/components/`** — Shared UI. `AuthGate` (locked/unlocked/unconfigured state machine), `AppErrorBoundary` (PostHog-reporting render-error boundary), `LockScreen`, `SetupWizardDialog` + `SetupWizard/`, `UnlockForms/` (per-mode unlock forms shared by LockScreen and step-up), `SecurityBehaviorControls`, `ManageAuthenticator`, `AppUpdate/AppUpdateProvider`, `AppUpdate/AppUpdatePill`, `InstallBanner`, `BrandHeader`, `TopActionBar`, `ViewSwitcher`, `ResumePill`, `StatusRow`, `ImportDialog`, `NewSessionForm`, `SettingsDialog`.
   _Touch when:_ Cross-cutting UI; not a route, not a primitive. Reach for `@codaco/fresco-ui` first, fall back to `@base-ui/react` + `motion`, fall back to `@codaco/art` for blobs.
-- **`src/components/DataView/`** — The sessions table on `/data`: orchestrator, toolbar, URL-synced filters/sort, selection model, bulk export/delete mutations, the modal export-flow dialog (`ExportDialog`), column defs.
+- **`src/components/DataView/`** — The sessions table on `/data`: orchestrator, toolbar, URL-synced filters/sort, selection model, bulk export/delete mutations, the modal export-flow dialog (`ExportDialog`), column defs. Saving the archive goes through `@codaco/fresco-ui/utils/saveBlob`, the save ladder shared with the Background Creator (Save-As picker → Web Share on handheld platforms only → object-URL download; see the 2026-07-08 export-save-ladder spec and its amendments).
   _Touch when:_ Data-table behavior: filtering, sorting, URL deep links, selection, export/delete flows.
 - **`src/components/ProtocolCarousel/`** — The motion-native protocol deck: deck orchestration, drag/wheel-driven carousel, fan geometry, slot merging (pending/sample/protocol), card rendering.
   _Touch when:_ Deck behavior, card rendering, drag/flick/wheel feel (constants at the top of `DeckCarousel.tsx`).
@@ -53,10 +53,6 @@ One entry per directory. Per-file granularity rots; per-directory framing tells 
   _Touch when:_ Protocol import bug, pending-import card behavior, schema-version bump, or the online-map warning.
 - **`src/lib/export/`** — `exportSessions.ts` — Effect 3 program wiring `@codaco/network-exporters` to renderer-side repositories + a Blob sink, surfacing per-stage progress via an event queue.
   _Touch when:_ Export pipeline changes (GraphML/CSV options, screen-coordinate pixels, archive layout).
-- **`src/lib/files/`** — `download.ts` (`saveBlob` capability ladder: Save-As picker → Web Share (handheld platforms only, via `lib/platform.ts`) → object-URL download; see the 2026-07-08 export-save-ladder spec and its 2026-08-13 amendment). Protocol file selection is owned by `components/ProtocolCarousel/ImportTriggerCard.tsx` via `react-dropzone`.
-  _Touch when:_ Save file logic; protocol open/import UI lives in the deck.
-- **`src/lib/platform.ts`** — `isHandheldPlatform()` — iOS/iPadOS/Android detection (iPadOS reports itself as a Mac; a touchscreen separates them). Used by the export save ladder to withhold the share rung on desktop.
-  _Touch when:_ Capability decisions that hinge on handheld vs desktop.
 - **`src/lib/net/`** — `OnlineStatusProvider.tsx` — wraps `@codaco/interview`'s `useOnline` (the single source of online/offline state) in a context so it's subscribed once app-wide.
   _Touch when:_ Offline-aware UI; consume `useOnline()` from here, don't re-subscribe to `navigator.onLine` elsewhere.
 - **`src/lib/pwa/`** — `installPrompt.ts` — captures the browser's `beforeinstallprompt` event (Chrome/Edge/Android only) as a tiny external store so `InstallBanner` can trigger a one-tap install. `passkeyWindowLimitation.ts` — detects macOS Chromium installed-PWA windows, where WebAuthn can't reach iCloud Keychain (crbug.com/364926914); gates biometric enrolment/unlock UI. `swipeNavigationGuard.ts` — wheel-level suppression of Safari's two-finger history swipe (WebKit bug 240183; Chromium is handled by `overscroll-behavior` in globals.css). `useHistoryBackGuard.ts` — pins history while an interview is mounted so back gestures can't bypass the exit gate. `fileLaunchQueue.ts` + `useLaunchedProtocolImport.ts` — OS-launched .netcanvas files (manifest `file_handlers`, Chromium desktop) held until Home imports them after unlock; unreadable handles are read via `Promise.allSettled` (so one bad handle doesn't drop its siblings) and surfaced as a toast by `useLaunchFailureToast.ts`.

@@ -247,7 +247,7 @@ describe('LanguageList', () => {
   it('records the text of a language as another language from that language’s row', async () => {
     const { store } = renderLanguageList();
     const { openDialog } = globalThis.__architectDialogMocks;
-    openDialog.mockResolvedValueOnce({ language: 'es' });
+    openDialog.mockResolvedValueOnce({ languages: ['es'] });
 
     fireEvent.click(
       within(rowOf('German')).getByRole('button', {
@@ -276,7 +276,7 @@ describe('LanguageList', () => {
   it('moves the translations and the default with the language changed', async () => {
     const { store } = renderLanguageList();
     globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
-      language: 'es',
+      languages: ['es'],
     });
 
     fireEvent.click(
@@ -310,14 +310,19 @@ describe('LanguageList', () => {
 
     await vi.waitFor(() => expect(openDialog).toHaveBeenCalledOnce());
     const { children } = openDialog.mock.lastCall?.[0] ?? {};
-    const { options } = (
-      children as { props: { options: { value: string }[] } }
+    const { choices, unavailable } = (
+      children as {
+        props: { choices: { locale: string }[]; unavailable: string[] };
+      }
     ).props;
-    expect(options.length).toBeGreaterThan(0);
+    const offered = choices.map(({ locale }) => locale);
+    expect(offered.length).toBeGreaterThan(0);
     for (const declared of ['en', 'fr', 'de']) {
-      expect(options.map(({ value }) => value)).not.toContain(declared);
+      expect(offered).not.toContain(declared);
     }
-    expect(options.map(({ value }) => value)).not.toContain('und');
+    expect(offered).not.toContain('und');
+    // A typed code is held to the same languages.
+    expect(unavailable).toEqual(['en', 'fr', 'de']);
   });
 
   it('explains which translation participants see under the heading', () => {

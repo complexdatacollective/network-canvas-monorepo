@@ -140,13 +140,15 @@ export type OptionsContextValue = {
   arrayName: string;
   /** The whole array, for cross-row validators. */
   allValues: Record<string, unknown>;
-  /**
-   * The whole array with each label as its plain text in `labelLocale`, for
-   * the label cells' cross-row validators.
-   */
-  labelValues: Record<string, unknown>;
   /** The translation the label cells edit: the protocol's default language. */
   labelLocale: LocaleTag;
+  /**
+   * The positions of the options a participant would read the same way as
+   * another, by the rule the list itself is refused by (`uniqueOptionLabels`).
+   */
+  duplicatedLabels: ReadonlySet<number>;
+  /** What a label cell of one of `duplicatedLabels` says. */
+  duplicatedLabelMessage: string;
   /** The array field itself is reporting an error (minTwoOptions et al). */
   showArrayError: boolean;
 };
@@ -178,8 +180,14 @@ const Option = ({
   readOnly,
 }: ArrayFieldItemProps<OptionValue>) => {
   const intl = useAppIntl();
-  const { arrayName, allValues, labelValues, labelLocale, showArrayError } =
-    useOptionsContext();
+  const {
+    arrayName,
+    allValues,
+    labelLocale,
+    duplicatedLabels,
+    duplicatedLabelMessage,
+    showArrayError,
+  } = useOptionsContext();
   const localization = useSelector(getLocalization);
   const { confirm } = useDialog();
   const interactionDisabled = disabled || readOnly;
@@ -303,6 +311,7 @@ const Option = ({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegated: Escape from any of the option's fields finishes editing; the fields keep their own semantics.
     <div
       className={cx(
         'flex flex-col gap-4',
@@ -354,8 +363,15 @@ const Option = ({
             ),
           });
         }}
-        validation={{ required: true, uniqueArrayAttribute: true }}
-        allValues={labelValues}
+        // Says where the researcher is typing that another row reads the
+        // same, by the rule the list's own `uniqueOptionLabels` refuses the
+        // save by (`findDuplicateOptionLabels`), so the two never disagree.
+        validation={{ required: true }}
+        issues={
+          duplicatedLabels.has(committedIndex ?? index)
+            ? [duplicatedLabelMessage]
+            : undefined
+        }
         forceShowErrors={forceShowErrors}
         disabled={interactionDisabled}
       />

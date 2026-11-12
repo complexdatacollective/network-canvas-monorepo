@@ -540,7 +540,7 @@ for (const viewport of VIEWPORTS) {
     const toolbar = architectPage.getByRole('toolbar', {
       name: 'Page actions',
     });
-    const trailing = toolbar.getByRole('button', { name: 'Download' });
+    const trailing = toolbar.getByRole('button', { name: 'Export' });
     await expect(trailing).toBeVisible();
 
     const pill = await toolbar.boundingBox();

@@ -106,6 +106,8 @@ type AssetType = {
   type: AssetTypeValue;
 };
 
+const assetName = (asset: AssetType) => asset.name;
+
 type AssetsProps = {
   type?: string | null;
   assets?: AssetType[];
@@ -221,7 +223,7 @@ const Assets = ({
         aria-label={intl.formatMessage(messages.resourceLibrary)}
         items={assets}
         keyExtractor={(asset) => asset.id}
-        textValueExtractor={(asset) => asset.name}
+        textValueExtractor={assetName}
         layout={layout}
         renderItem={renderItem}
         selectionMode="single"
@@ -230,7 +232,7 @@ const Assets = ({
         animate
         animationKey={selectedAssetType}
         className="!flex-none"
-        viewportClassName="pr-3"
+        viewportClassName="pe-3"
         emptyState={
           <Paragraph emphasis="muted" margin="none" className="py-10">
             {intl.formatMessage(messages.noResourcesToDisplay)}

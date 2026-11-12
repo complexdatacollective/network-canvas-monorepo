@@ -20,23 +20,27 @@ const messages = defineMessages({
     id: 'interviewer.step5Analytics.youCanHelpUsImproveNetworkCanvas',
     defaultMessage:
       'You can help us improve Network Canvas Interviewer by sending anonymous usage and error data. This tells us which features are used and details of any errors or crashes, so we can fix bugs and decide what to build next.',
-    description: 'Visible copy in Interviewer Step5Analytics.',
+    description:
+      'Explanation at the top of the final wizard step about optionally sending anonymous usage and error data to the Network Canvas team.',
   },
   sendAnonymousAnalytics: {
     id: 'interviewer.step5Analytics.sendAnonymousAnalytics',
     defaultMessage: 'Send anonymous analytics',
-    description: 'The label label in Interviewer Step5Analytics.',
+    description:
+      'Label of the on/off switch on the final wizard step that enables sending anonymous analytics.',
   },
   noParticipantOrPersonalDataIsCollected: {
     id: 'interviewer.step5Analytics.noParticipantOrPersonalDataIsCollected',
     defaultMessage: 'No participant or personal data is collected',
-    description: 'Visible copy in Interviewer Step5Analytics.',
+    description:
+      'Title of a privacy callout on the final wizard step, stating that no participant or personal data is collected.',
   },
   networkDataInterviewResponsesCaseIDsAnd: {
     id: 'interviewer.step5Analytics.networkDataInterviewResponsesCaseIDsAnd',
     defaultMessage:
       'Network data, interview responses, case IDs, and protocol contents never leave this device. Analytics contain no user-identifiable information — events are tied only to a random per-device installation ID, never your name, email, or any account. You can change this any time in Settings → Privacy.',
-    description: 'Visible copy in Interviewer Step5Analytics.',
+    description:
+      'Body of the privacy callout: interview data never leaves the device, analytics use a random installation ID, and the setting is under Settings, Privacy.',
   },
 });
 

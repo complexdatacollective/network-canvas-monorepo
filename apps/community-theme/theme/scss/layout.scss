@@ -1,0 +1,128 @@
+@use 'lib/viewport';
+
+// The forum's content sits on one white sheet over the tinted page, with the
+// shared radius and shadow, like the cards on the website. Phones get a
+// smaller radius and less padding.
+//
+// The palette's secondary colour, which Discourse paints the page with, is
+// the sheet's surface colour, so the page and the sidebar beside the sheet
+// are painted here.
+
+html {
+  background-color: var(--nc-background);
+}
+
+// Discourse paints its full-page log-in, sign-up and account screens, header
+// included, in the content colour; they keep the tinted page and its header
+// (header.scss) here too.
+body:is(
+  .login-page,
+  .signup-page,
+  .invite-page,
+  .password-reset-page,
+  .activate-account-page
+) {
+  background-color: var(--nc-background);
+
+  .d-header {
+    background-color: var(--nc-background);
+  }
+}
+
+:root {
+  --d-sidebar-background: var(--nc-background);
+  --main-outlet-padding-x: var(--space-3);
+
+  @include viewport.from(md) {
+    --main-outlet-padding-x: var(--space-6);
+    --main-outlet-padding-bottom: var(--space-6);
+  }
+}
+
+#main-outlet {
+  margin-block: var(--space-2) var(--space-6);
+  border-radius: var(--nc-radius-sm);
+  background: var(--nc-surface);
+  color: var(--nc-surface-contrast);
+  box-shadow: var(--nc-shadow-sm-base);
+
+  @include viewport.from(md) {
+    margin-block: var(--space-4) var(--space-8);
+    border-radius: var(--nc-radius-base);
+    box-shadow: var(--nc-shadow-md-base);
+  }
+}
+
+// Discourse's mobile layout sets the side padding to the safe area alone,
+// which would put the content against the sheet's edge.
+.mobile-view #main-outlet {
+  padding-inline: max(var(--main-outlet-padding-x), env(safe-area-inset-left))
+    max(var(--main-outlet-padding-x), env(safe-area-inset-right));
+}
+
+// The home page (landing.scss) has no sheet: its cards sit on the tinted
+// page, as on the website. Its column grows with the window, gutters
+// included, up to 110rem of content, so a large screen gets a wider page
+// rather than wider margins. Its gutters are the header's (header.scss), so
+// the logo lines up with the page's edge.
+//
+// Behind the content, three soft glows of the illustrations' colours tint the page:
+// blue at the top right, coral at the left and mustard at the right. They
+// are fainter in the dark palette (--nc-glow-strength), where the same tint
+// shows far more against the dark page. The header is clear until the page
+// scrolls under it, so the blue shows behind it too. The sidebar, when it
+// shows, lets them through.
+body.nc-landing-page {
+  --d-wrap-padding-x: var(--d-header-padding-x);
+  --d-max-width: calc(110rem + 2 * var(--d-wrap-padding-x));
+  --d-sidebar-background: transparent;
+  --main-outlet-padding-x: 0;
+  --main-outlet-padding-top: 0;
+
+  background:
+    radial-gradient(
+      60rem 28rem at 88% 8rem,
+      color-mix(
+        in oklab,
+        oklch(var(--nc-sea-serpent)) calc(13% * var(--nc-glow-strength)),
+        transparent
+      ),
+      transparent 70%
+    ),
+    radial-gradient(
+      48rem 26rem at 4% 20rem,
+      color-mix(
+        in oklab,
+        oklch(var(--nc-neon-coral)) calc(7% * var(--nc-glow-strength)),
+        transparent
+      ),
+      transparent 70%
+    ),
+    radial-gradient(
+      40rem 24rem at 96% 38rem,
+      color-mix(
+        in oklab,
+        oklch(var(--nc-mustard)) calc(10% * var(--nc-glow-strength)),
+        transparent
+      ),
+      transparent 70%
+    ),
+    var(--nc-background);
+
+  // With no sheet, the sheet's margin and inner padding above the content
+  // would only push the page down; its own padding sets the gap under the
+  // header.
+  #main-outlet {
+    margin-block-start: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  // A site notice (read-only mode, email turned off) comes above the page,
+  // so it takes the same gap from the header. Discourse renders the notices'
+  // wrapper empty when there are none.
+  .global-notice:has(.alert) {
+    margin-top: var(--space-8);
+  }
+}

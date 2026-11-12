@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useReducer } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
 import type { Variable } from '@codaco/protocol-validation';
@@ -151,7 +151,6 @@ export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
   const scope = useDecryptionScope();
   const { requirePassphrase } = usePassphrase();
   const reportUnreadable = useReportUnreadable();
-  const [, rerender] = useReducer((count: number) => count + 1, 0);
 
   const protectedNodes = useMemo(
     () =>
@@ -208,17 +207,8 @@ export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
   }, [values, scope, requirePassphrase]);
 
   useEffect(() => {
-    if (!scope || decrypted) return undefined;
-
-    let current = true;
-    void Promise.all(values.map((value) => decryptInScope(scope, value))).then(
-      () => {
-        if (current) rerender();
-      },
-    );
-    return () => {
-      current = false;
-    };
+    if (!scope || decrypted) return;
+    for (const value of values) void decryptInScope(scope, value);
   }, [scope, decrypted, values]);
 
   if (plaintextNodes) return { status: 'ready', nodes: plaintextNodes };

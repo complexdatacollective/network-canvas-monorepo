@@ -130,7 +130,7 @@ function applyLayout(
   return gridLayout(input, span, centerX, centerY);
 }
 
-self.onmessage = ({ data }: { data: Message }) => {
+self.addEventListener('message', ({ data }: MessageEvent<Message>) => {
   switch (data.type) {
     case 'initialize':
       mockLayout = data.options?.mockLayout ?? 'identity';
@@ -163,4 +163,4 @@ self.onmessage = ({ data }: { data: Message }) => {
     }
     default:
   }
-};
+});

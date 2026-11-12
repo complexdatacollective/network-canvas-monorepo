@@ -174,10 +174,10 @@ export function startErrorTelemetry(
   target: TelemetryTarget = window,
 ): () => void {
   const budget = budgetOf(target);
-  const report = (error: unknown) => {
+  const report = (thrown: unknown) => {
     if (budget.remaining <= 0) return;
     budget.remaining -= 1;
-    send(errorReport(error, surface, target.location.origin)).catch(
+    send(errorReport(thrown, surface, target.location.origin)).catch(
       () => undefined,
     );
   };

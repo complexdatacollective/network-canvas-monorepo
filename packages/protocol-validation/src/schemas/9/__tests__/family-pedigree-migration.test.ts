@@ -707,34 +707,43 @@ describe('v8 to v9 Family Pedigree migration', () => {
     });
   });
 
-  // Schema 8 accepted text of only spaces here, which showed no words.
+  // Schema 8 accepted text of only spaces here, which showed no words. A
+  // prompt or question is the protocol's own content, which the migration
+  // never writes, so the document is refused at that place.
   describe('text that shows nothing', () => {
+    // The pedigree follows the introduction stage the conversion adds.
+    const refusedAt = (
+      document: Fields,
+      below: readonly (string | number)[],
+    ) => {
+      let paths: (string | number)[][] = [];
+      try {
+        migrateValid(document);
+      } catch (error) {
+        if (!(error instanceof MigrationResultInvalidError)) throw error;
+        paths = error.issues.map((issue) => issue.path);
+      }
+      expect(paths).toContainEqual([
+        'stages',
+        expect.any(Number),
+        ...below,
+        'en',
+      ]);
+    };
+
     it.each([' ', '\t', '\u00a0', '\u200b'])(
-      'gives a prompt of %j the name of the stage',
+      'refuses a prompt of %j at the prompt',
       (blank) => {
-        const migrated = migrateValid(
-          schema8Protocol([schema8Pedigree({ censusPrompt: blank })]),
-        );
-        expect(pedigreeOf(migrated).prompt).toEqual(en('Your family'));
+        refusedAt(schema8Protocol([schema8Pedigree({ censusPrompt: blank })]), [
+          'prompt',
+        ]);
       },
     );
 
-    // The prompt is markdown and the name plain text.
-    it('escapes the name of the stage, so it shows as written', () => {
-      const migrated = migrateValid(
-        schema8Protocol([
-          schema8Pedigree({ label: 'Your *family*', censusPrompt: ' ' }),
-        ]),
-      );
-      expect(
-        messageText(String(asRecord(pedigreeOf(migrated).prompt).en)),
-      ).toBe('Your \\*family\\*');
-    });
-
     it.each([' ', '\t', '\u00a0', '\u200b'])(
-      'gives a question about the family of %j the name of its attribute',
+      'refuses a question about the family of %j at the question',
       (blank) => {
-        const migrated = migrateValid(
+        refusedAt(
           schema8Protocol([
             schema8Pedigree({
               nominationPrompts: [
@@ -747,21 +756,18 @@ describe('v8 to v9 Family Pedigree migration', () => {
               ],
             }),
           ]),
+          ['nominationPrompts', 0, 'text'],
         );
-        expect(pedigreeOf(migrated).nominationPrompts).toEqual([
-          {
-            id: 'condition',
-            text: en('hasCondition'),
-            attribute: 'hasCondition',
-          },
-          {
-            id: 'tested',
-            text: en('Who was tested?'),
-            attribute: 'hadTesting',
-          },
-        ]);
       },
     );
+
+    it('refuses a blank question in its form at the question', () => {
+      const pedigree = schema8Pedigree();
+      (pedigree.nodeConfig as Fields).form = [
+        { variable: 'living', prompt: ' ' },
+      ];
+      refusedAt(schema8Protocol([pedigree]), ['form', 'fields', 0, 'prompt']);
+    });
   });
 
   // Schema 8 did not check the name attribute's type, so the name could share
@@ -787,17 +793,6 @@ describe('v8 to v9 Family Pedigree migration', () => {
       (pedigree.nodeConfig as Fields).form = [];
       const migrated = migrateValid(schema8Protocol([pedigree]));
       expect(pedigreeOf(migrated)).not.toHaveProperty('form');
-    });
-
-    it('asks a blank question with the attribute name', () => {
-      const pedigree = schema8Pedigree();
-      (pedigree.nodeConfig as Fields).form = [
-        { variable: 'living', prompt: ' ' },
-      ];
-      const migrated = migrateValid(schema8Protocol([pedigree]));
-      expect(pedigreeOf(migrated).form).toEqual({
-        fields: [{ variable: 'living', prompt: en('living') }],
-      });
     });
 
     // An empty hint showed nothing, and schema 9 refuses one.
@@ -1189,21 +1184,9 @@ describe('v8 to v9 Narrative Pedigree migration', () => {
       showAtRiskStatuses: true,
       // The wording Network Canvas supplies, written in the protocol's only
       // language.
-      keyHeading: { en: 'Key' },
       saveSnapshot: { en: 'Save snapshot' },
-      tooltips: {
-        clearFocus: { en: 'Clear focus' },
-      },
       conditionText: {
         selectCondition: { en: 'Select a condition' },
-        notation: {
-          affected: { en: 'Has this condition' },
-          obligateAffected: { en: 'Will develop this condition' },
-          obligateCarrier: { en: 'Carries this condition' },
-          atRiskAffected: { en: 'May develop this condition' },
-          atRiskCarrier: { en: 'May carry this condition' },
-          unknown: { en: 'Not known' },
-        },
         snapshotCondition: { en: '{title}: {condition}' },
         snapshotInheritance: {
           en: '{title}: {condition} — inheritance for {name}',

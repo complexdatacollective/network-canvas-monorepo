@@ -42,7 +42,7 @@ export const interfaceMessages = defineMessages({
     id: 'interview.interfaces.scrollForQuestions',
     defaultMessage: 'Scroll to see more questions',
     description:
-      'Hint at the bottom of a long personal-information form indicating that more questions are below the visible area.',
+      'Accessible name and announcement of the arrows at the bottom of a long personal-information form, which show that more questions are below the visible area. Only screen readers read it, so it stays in English whatever the interview language.',
   },
   emptyValue: {
     id: 'interview.interfaces.emptyValue',
@@ -116,6 +116,81 @@ export const interfaceMessages = defineMessages({
     description:
       'Placeholder in the network-composer name field; pressing Enter adds the named item.',
   },
+  quickAddHint: {
+    id: 'interview.interfaces.quickAddHint',
+    defaultMessage: 'Press Enter when you are finished.',
+    description:
+      'Tooltip that opens over the quick-add name field after about five seconds without typing, until the first name is added, telling the participant how to add what they typed.',
+  },
+  overtakenEditNotice: {
+    id: 'interview.interfaces.overtakenEditNotice',
+    defaultMessage:
+      'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
+    description:
+      'Explanation in the Discard changes dialog shown as the interviewer leaves a network-composer form whose answer an undo or redo changed while they were editing it.',
+  },
+  composerGroups: {
+    id: 'interview.interfaces.composerGroups',
+    defaultMessage: 'Groups',
+    description:
+      'Name of the network-composer tool that puts nodes in groups, shown in its tooltip and read as its accessible name.',
+  },
+  composerAddNode: {
+    id: 'interview.interfaces.composerAddNode',
+    defaultMessage: 'Add node',
+    description:
+      'Accessible name and tooltip of the network-composer tool that adds a node.',
+  },
+  composerAutomaticLayout: {
+    id: 'interview.interfaces.composerAutomaticLayout',
+    defaultMessage: 'Automatic layout',
+    description:
+      'Accessible name and tooltip of the network-composer toggle that lays the nodes out automatically.',
+  },
+  composerDrawEdge: {
+    id: 'interview.interfaces.composerDrawEdge',
+    defaultMessage: 'Draw edge',
+    description:
+      'Accessible name and tooltip of the network-composer tool that draws an edge between two nodes.',
+  },
+  toggleDrawing: {
+    id: 'interview.interfaces.toggleDrawing',
+    defaultMessage: 'Toggle drawing',
+    description:
+      'Accessible name and tooltip of the Narrative button that turns drawing on the canvas on and off.',
+  },
+  toggleFreezing: {
+    id: 'interview.interfaces.toggleFreezing',
+    defaultMessage: 'Toggle freezing annotations',
+    description:
+      'Accessible name and tooltip of the Narrative button that freezes what has been drawn so it stays put, and unfreezes it.',
+  },
+  resetAnnotations: {
+    id: 'interview.interfaces.resetAnnotations',
+    defaultMessage: 'Reset annotations',
+    description:
+      'Accessible name and tooltip of the Narrative button that clears everything drawn on the canvas.',
+  },
+  mapOffline: {
+    id: 'interview.interfaces.mapOffline',
+    defaultMessage:
+      'You are offline — the map will not load until you reconnect.',
+    description:
+      'Notice over a Geospatial map while the device is offline and the map cannot load.',
+  },
+  mapUnavailable: {
+    id: 'interview.interfaces.mapUnavailable',
+    defaultMessage:
+      'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+    description:
+      'Explanation shown when a Geospatial map cannot be drawn at all.',
+  },
+  searchFailed: {
+    id: 'interview.interfaces.searchFailed',
+    defaultMessage: 'Search could not be completed. Try again in a moment.',
+    description:
+      'Notice under the Geospatial map search when a search could not run.',
+  },
   resizePanel: {
     id: 'interview.interfaces.resizePanel',
     defaultMessage: 'Resize panel',
@@ -164,17 +239,29 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of the toolbar group containing undo and redo actions.',
   },
+  composerUndo: {
+    id: 'interview.interfaces.composerUndo',
+    defaultMessage: 'Undo',
+    description:
+      'Accessible name of the network composer toolbar button that reverses the most recent change. The button shows only an icon and no tooltip, so only screen readers read this, and it stays in English whatever the interview language.',
+  },
+  composerRedo: {
+    id: 'interview.interfaces.composerRedo',
+    defaultMessage: 'Redo',
+    description:
+      'Accessible name of the network composer toolbar button that makes again a change that was undone. The button shows only an icon and no tooltip, so only screen readers read this, and it stays in English whatever the interview language.',
+  },
   undo: {
     id: 'interview.interfaces.undo',
     defaultMessage: 'Undo',
     description:
-      'Toolbar action that reverses the most recent change, in the network composer and the family pedigree.',
+      'Name of the family pedigree toolbar button that reverses the most recent change, shown in its tooltip.',
   },
   redo: {
     id: 'interview.interfaces.redo',
     defaultMessage: 'Redo',
     description:
-      'Toolbar action that makes again a change that was undone, in the network composer and the family pedigree.',
+      'Name of the family pedigree toolbar button that makes again a change that was undone, shown in its tooltip.',
   },
   layoutAndDrawing: {
     id: 'interview.interfaces.layoutAndDrawing',
@@ -339,13 +426,25 @@ export const interfaceMessages = defineMessages({
     id: 'interview.interfaces.zoomIn',
     defaultMessage: 'Zoom in',
     description:
-      'Accessible name of the map and family pedigree buttons that increase magnification. Sentence case.',
+      'Name of the family tree toolbar button that increases magnification, on the Family Pedigree and Narrative Pedigree stages, shown in its tooltip. Sentence case.',
   },
   zoomOut: {
     id: 'interview.interfaces.zoomOut',
     defaultMessage: 'Zoom out',
     description:
-      'Accessible name of the map and family pedigree buttons that decrease magnification. Sentence case.',
+      'Name of the family tree toolbar button that decreases magnification, on the Family Pedigree and Narrative Pedigree stages, shown in its tooltip. Sentence case.',
+  },
+  mapZoomIn: {
+    id: 'interview.interfaces.mapZoomIn',
+    defaultMessage: 'Zoom in',
+    description:
+      'Accessible name of the Geospatial map button that increases magnification. The button shows only an icon, so only screen readers read this, and it stays in English whatever the interview language.',
+  },
+  mapZoomOut: {
+    id: 'interview.interfaces.mapZoomOut',
+    defaultMessage: 'Zoom out',
+    description:
+      'Accessible name of the Geospatial map button that decreases magnification. The button shows only an icon, so only screen readers read this, and it stays in English whatever the interview language.',
   },
   recenterMap: {
     id: 'interview.interfaces.recenterMap',
@@ -376,6 +475,12 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Search suggestions',
     description:
       'Accessible name of the list of places returned by geospatial search, including its loading and empty states.',
+  },
+  mapMoveFailed: {
+    id: 'interview.interfaces.mapMoveFailed',
+    defaultMessage: 'Search could not be completed. Try again in a moment.',
+    description:
+      'Screen-reader announcement when the map could not be moved to the search result the participant chose. Only screen readers read it, so it stays in English whatever the interview language.',
   },
   mapMoved: {
     id: 'interview.interfaces.mapMoved',

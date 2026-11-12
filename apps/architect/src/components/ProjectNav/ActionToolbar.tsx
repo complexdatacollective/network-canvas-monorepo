@@ -205,7 +205,7 @@ const ActionToolbar = ({
           size="md"
           restAt="end"
           className={cx(
-            'pointer-events-auto ml-auto min-w-0 self-end',
+            'pointer-events-auto ms-auto min-w-0 self-end',
             className,
           )}
         >

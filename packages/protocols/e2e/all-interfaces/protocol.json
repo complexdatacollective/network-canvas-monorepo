@@ -423,9 +423,6 @@
     },
     {
       "id": "name-generator-quick-add-1",
-      "quickAddHint": {
-        "en-US": "Press Enter when you are finished."
-      },
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en-US": "Name Generator Quick Add"
@@ -442,7 +439,10 @@
             "en-US": "Quickly add people you know"
           }
         }
-      ]
+      ],
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      }
     },
     {
       "id": "name-generator-roster-1",
@@ -508,6 +508,9 @@
       "behaviours": {
         "minNodes": 1,
         "maxNodes": 8
+      },
+      "unnamedLabel": {
+        "en-US": "Unnamed {count}"
       }
     },
     {
@@ -729,23 +732,6 @@
       "groupsHeading": {
         "en-US": "Groups"
       },
-      "tooltips": {
-        "enableDrawing": {
-          "en-US": "Enable drawing"
-        },
-        "disableDrawing": {
-          "en-US": "Disable drawing"
-        },
-        "freezeAnnotations": {
-          "en-US": "Freeze annotations"
-        },
-        "unfreezeAnnotations": {
-          "en-US": "Unfreeze annotations"
-        },
-        "resetAnnotations": {
-          "en-US": "Reset annotations"
-        }
-      },
       "type": "Narrative",
       "label": {
         "en-US": "Narrative"
@@ -827,9 +813,6 @@
         "childKindLabel": {
           "en-US": "Is this child…"
         },
-        "connectHint": {
-          "en-US": "Select a person, then select another to connect them."
-        },
         "connectParent": {
           "en-US": "{parentIsYou, select, true {You are a parent of {child}} other {{childIsYou, select, true {{parent} is your parent} other {{parent} is a parent of {child}}}}}"
         },
@@ -844,9 +827,6 @@
         },
         "disconnectConfirmTitle": {
           "en-US": "{firstIsYou, select, true {Remove the connection between you and {second}?} other {Remove the connection between {first} and {second}?}}"
-        },
-        "disconnectHint": {
-          "en-US": "Select a person, then select someone they are connected to, to remove that connection."
         },
         "disconnectWouldCutOff": {
           "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}"
@@ -928,15 +908,6 @@
         },
         "you": {
           "en-US": "You"
-        },
-        "connectTool": {
-          "en-US": "Connect"
-        },
-        "disconnectTool": {
-          "en-US": "Disconnect"
-        },
-        "pointerTool": {
-          "en-US": "Add and edit"
         },
         "changeWouldCutOff": {
           "en-US": "{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}"
@@ -1100,34 +1071,12 @@
     },
     {
       "id": "narrative-pedigree-1",
-      "keyHeading": {
-        "en-US": "Key"
-      },
       "saveSnapshot": {
         "en-US": "Save snapshot"
-      },
-      "tooltips": {
-        "clearFocus": {
-          "en-US": "Clear focus"
-        }
       },
       "conditionText": {
         "selectCondition": {
           "en-US": "Select a condition"
-        },
-        "notation": {
-          "affected": {
-            "en-US": "Has this condition"
-          },
-          "obligateAffected": {
-            "en-US": "Will develop this condition"
-          },
-          "obligateCarrier": {
-            "en-US": "Carries this condition"
-          },
-          "unknown": {
-            "en-US": "Not known"
-          }
         },
         "snapshotCondition": {
           "en-US": "{title}: {condition}"
@@ -1155,20 +1104,6 @@
     },
     {
       "id": "network-composer-1",
-      "addNamePlaceholder": {
-        "en-US": "Type a name, then press Enter"
-      },
-      "overtakenEditNotice": {
-        "en-US": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost."
-      },
-      "tooltips": {
-        "addPerson": {
-          "en-US": "Add node"
-        },
-        "automaticLayout": {
-          "en-US": "Automatic layout"
-        }
-      },
       "type": "NetworkComposer",
       "label": {
         "en-US": "Network Composer"
@@ -1185,12 +1120,6 @@
     },
     {
       "id": "geospatial-1",
-      "offlineNotice": {
-        "en-US": "You are offline — the map will not load until you reconnect."
-      },
-      "mapUnavailable": {
-        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow."
-      },
       "outsideAreasLabel": {
         "en-US": "Outside Selectable Areas"
       },
@@ -1233,7 +1162,9 @@
     },
     {
       "id": "finish",
-      "finishLabel": { "en-US": "Finish" },
+      "finishLabel": {
+        "en-US": "Finish"
+      },
       "finishConfirmation": {
         "en-US": "Are you sure you want to finish the interview?"
       },
@@ -1242,7 +1173,9 @@
       },
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": { "en-US": "Finish Interview" },
+      "label": {
+        "en-US": "Finish Interview"
+      },
       "content": {
         "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
@@ -1286,6 +1219,38 @@
       },
       "continue": {
         "en-US": "Continue"
+      },
+      "exitFailed": {
+        "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en-US": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en-US": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en-US": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en-US": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en-US": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en-US": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en-US": "Show screen"
       }
     },
     "buttons": {
@@ -1315,20 +1280,44 @@
       },
       "resumeLayout": {
         "en-US": "Resume automatic layout"
+      },
+      "copy": {
+        "en-US": "Copy"
+      },
+      "copied": {
+        "en-US": "Copied"
+      },
+      "zoomOut": {
+        "en-US": "Zoom out"
+      },
+      "zoomIn": {
+        "en-US": "Zoom in"
+      },
+      "undo": {
+        "en-US": "Undo"
+      },
+      "redo": {
+        "en-US": "Redo"
+      },
+      "skip": {
+        "en-US": "Skip"
       }
     },
     "messages": {
       "stageError": {
         "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "itemUnavailable": {
-        "en-US": "This item could not be displayed."
-      },
       "error": {
         "en-US": "An error occurred."
       },
       "externalDataError": {
         "en-US": "External data could not be loaded."
+      },
+      "loading": {
+        "en-US": "Loading…"
+      },
+      "unnamed": {
+        "en-US": "Unnamed"
       }
     },
     "search": {
@@ -1349,26 +1338,14 @@
       "passphraseIncorrect": {
         "en-US": "This passphrase does not match the one used earlier in this interview. Check it and try again."
       },
-      "protectedAnswersLocked": {
-        "en-US": "Some answers here are protected by your passphrase. Enter your passphrase to see and change them."
-      },
-      "protectedAnswersNotSaved": {
-        "en-US": "Your answers have not been saved. Enter your passphrase, then try again."
-      },
-      "protectedAnswersUnavailable": {
-        "en-US": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know."
-      },
-      "answerUnavailable": {
-        "en-US": "Answer unavailable"
-      },
-      "answerUnavailableKept": {
-        "en-US": "This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer."
-      },
       "confirmPassphrase": {
         "en-US": "Confirm Passphrase"
       },
       "passphraseAccepted": {
         "en-US": "Passphrase accepted! Click \"Next\" to continue."
+      },
+      "passwordPlaceholder": {
+        "en-US": "Enter password"
       }
     },
     "forms": {
@@ -1394,6 +1371,110 @@
       },
       "sameAs": {
         "en-US": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}"
+      }
+    },
+    "familyTreeView": {
+      "zoomOutDescription": {
+        "en-US": "Make your family tree smaller, to see more of it at once."
+      },
+      "zoomInDescription": {
+        "en-US": "Make your family tree bigger, to see part of it more closely."
+      },
+      "showWholeFamily": {
+        "en-US": "Show the whole family"
+      },
+      "showWholeFamilyDescription": {
+        "en-US": "Fit your whole family tree on the screen."
+      }
+    },
+    "familyPedigree": {
+      "pointerTool": {
+        "en-US": "Add and edit"
+      },
+      "pointerToolDescription": {
+        "en-US": "Select a family member to edit their details or add their relatives."
+      },
+      "connectTool": {
+        "en-US": "Connect"
+      },
+      "connectToolDescription": {
+        "en-US": "Select two family members to connect them and say how they are related."
+      },
+      "connectHint": {
+        "en-US": "Select a person, then select another to connect them."
+      },
+      "disconnectTool": {
+        "en-US": "Disconnect"
+      },
+      "disconnectToolDescription": {
+        "en-US": "Select two connected family members to remove the connection between them."
+      },
+      "disconnectHint": {
+        "en-US": "Select a person, then select someone they are connected to, to remove that connection."
+      },
+      "undoDescription": {
+        "en-US": "Undo your last change to your family tree."
+      },
+      "redoDescription": {
+        "en-US": "Bring back the change you undid."
+      }
+    },
+    "narrativePedigree": {
+      "keyHeading": {
+        "en-US": "Key"
+      },
+      "hasCondition": {
+        "en-US": "Has this condition"
+      },
+      "willDevelop": {
+        "en-US": "Will develop this condition"
+      },
+      "carries": {
+        "en-US": "Carries this condition"
+      },
+      "notKnown": {
+        "en-US": "Not known"
+      },
+      "clearFocus": {
+        "en-US": "Clear focus"
+      }
+    },
+    "quickAdd": {
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      }
+    },
+    "networkComposer": {
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      },
+      "addNodeTooltip": {
+        "en-US": "Add node"
+      },
+      "automaticLayoutTooltip": {
+        "en-US": "Automatic layout"
+      },
+      "connection": {
+        "en-US": "Connection"
+      }
+    },
+    "narrative": {
+      "toggleDrawing": {
+        "en-US": "Toggle drawing"
+      },
+      "toggleFreezing": {
+        "en-US": "Toggle freezing annotations"
+      },
+      "resetAnnotations": {
+        "en-US": "Reset annotations"
+      }
+    },
+    "geospatial": {
+      "offlineNotice": {
+        "en-US": "You are offline — the map will not load until you reconnect."
+      },
+      "mapUnavailable": {
+        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow."
       }
     }
   }

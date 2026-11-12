@@ -9,32 +9,32 @@ import {
 import {
   INTERFACE_TEXT_MESSAGES,
   type InterfaceText,
+  interfaceTextShown,
+  type LocalizationDeclaration,
   type LocalizedString,
 } from '@codaco/protocol-validation';
 
 import type { LocalizedMessageValues } from './messageFormatter';
-import { useResolveLocalizedMessage } from './ProtocolLocalizationProvider';
+import {
+  useProtocolLocalization,
+  useResolveLocalizedMessage,
+} from './ProtocolLocalizationProvider';
 
 /**
- * The text `interfaceText` holds for each catalog message, by message id.
+ * The text the interview shows for each catalog message, by message id: the
+ * protocol's own text in each language it holds, and Network Canvas's
+ * wording in each language it does not (see `interfaceTextShown`).
  */
-const heldTextById = (
+const shownTextById = (
   interfaceText: InterfaceText | undefined,
+  localization: LocalizationDeclaration,
 ): ReadonlyMap<string, LocalizedString> => {
-  const held = new Map<string, LocalizedString>();
-  // Widened so that the catalog's group names, which are plain text, can look
-  // up their group.
-  const groups: Readonly<
-    Record<
-      string,
-      Readonly<Record<string, LocalizedString | undefined>> | undefined
-    >
-  > = interfaceText ?? {};
+  const shown = new Map<string, LocalizedString>();
   for (const { group, key, id } of INTERFACE_TEXT_MESSAGES) {
-    const value = groups[group]?.[key];
-    if (value !== undefined) held.set(id, value);
+    const value = interfaceTextShown(interfaceText, group, key, localization);
+    if (value !== undefined) shown.set(id, value);
   }
-  return held;
+  return shown;
 };
 
 /**
@@ -61,10 +61,10 @@ const plainValues = (
 
 /**
  * Shows the interview's shared words — Back, Continue, Exit interview and the
- * like — as the protocol words them, in the interview's language, wherever
- * the interview and the controls it uses ask their catalogs for them. A
- * message the protocol holds no text for keeps its catalog wording, so a
- * protocol made before it held this text shows what it always did.
+ * like — in the interview's language, wherever the interview and the controls
+ * it uses ask their catalogs for them: as the protocol words them where it
+ * holds them, and as Network Canvas words them where it does not. A message
+ * with no text in any of the protocol's languages keeps its catalog wording.
  */
 export function InterfaceTextOverlay({
   interfaceText,
@@ -74,18 +74,28 @@ export function InterfaceTextOverlay({
   children: ReactNode;
 }) {
   const resolve = useResolveLocalizedMessage();
-  const held = useMemo(() => heldTextById(interfaceText), [interfaceText]);
+  const localization = useProtocolLocalization();
+  const shown = useMemo(
+    () => shownTextById(interfaceText, localization),
+    [interfaceText, localization],
+  );
 
   const override = useCallback<AppMessageOverride>(
     (message, values) => {
-      const value = message.id === undefined ? undefined : held.get(message.id);
-      if (value === undefined) return undefined;
+      const value =
+        message.id === undefined ? undefined : shown.get(message.id);
+      // Text with no words in any language keeps the catalog's wording: only
+      // a protocol still being written in a language Network Canvas has no
+      // wording in, which Architect previews, has it.
+      if (value === undefined || Object.keys(value).length === 0) {
+        return undefined;
+      }
       // A message given markup to wrap its words in keeps its catalog's
       // wording, since protocol text is plain.
       const plain = plainValues(values);
       return plain === undefined ? undefined : resolve(value, plain).text;
     },
-    [held, resolve],
+    [shown, resolve],
   );
 
   return <AppIntlOverlay override={override}>{children}</AppIntlOverlay>;

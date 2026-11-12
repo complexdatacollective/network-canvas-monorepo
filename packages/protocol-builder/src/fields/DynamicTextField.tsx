@@ -1,4 +1,11 @@
-import { type ComponentProps, type ReactNode, useMemo, useRef } from 'react';
+import {
+  type ComponentProps,
+  createContext,
+  type ReactNode,
+  useContext,
+  useMemo,
+  useRef,
+} from 'react';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -25,16 +32,15 @@ import {
   dynamicValueNamesIn,
   escapeMessageText,
   findDynamicValueProblem,
-  findMissingDynamicPlacement,
   type LocaleTag,
   type LocalizedString,
+  type LocalizedTextShape,
   MISSING_CASE,
   type MessageNode,
   type MessageSwitch,
   messageStructure,
   pluralValueExamples,
   printMessageStructure,
-  TOO_MANY_DYNAMIC_VERSIONS,
 } from '@codaco/protocol-validation';
 
 import { variableTypeLabel } from '../codebook/variableTypeLabels.ts';
@@ -44,6 +50,7 @@ import {
   type DynamicValueChoice,
   dynamicValueChoices,
 } from '../localization/dynamicValueCatalog.ts';
+import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
 import { resolveTranslation } from '../localization/localizedText.ts';
 import {
   countTokenId,
@@ -55,12 +62,17 @@ import {
 } from '../localization/messageDocument.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import {
+  richTextToolbarFor,
+  textFieldPropsFor,
+} from '../localization/textShape.ts';
+import {
   type DynamicValueSiteState,
   useDynamicValueSite,
 } from '../localization/useDynamicValueSite.ts';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
-import { LocalizedStringField } from './LocalizedStringField.tsx';
 import { participantVersionMessages } from './messageArgumentLabels.ts';
+
+const PLAIN_LINE: LocalizedTextShape = { format: 'plain', lines: 'single' };
 
 const messages = defineMessages({
   insertMenu: {
@@ -227,19 +239,6 @@ const messages = defineMessages({
       'This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.',
     description:
       'Shown in place of a text field a participant reads when its stored text uses something the editor cannot display, such as a format it does not support. The text is not changed.',
-  },
-  translationMissesValue: {
-    id: 'protocolBuilder.dynamicText.translationMissesValue',
-    defaultMessage: 'Include “{value}” wherever the original text shows it.',
-    description:
-      'Problem shown under a translation that leaves out a value, such as the participant’s name, that the text in the protocol’s main language shows. value is the value’s name.',
-  },
-  translationTooComplex: {
-    id: 'protocolBuilder.dynamicText.translationTooComplex',
-    defaultMessage:
-      'This text has too many versions to check its translation. Use fewer values that change the wording.',
-    description:
-      'Problem shown under a translated text whose versions are too many to compare with the original.',
   },
 });
 
@@ -439,7 +438,7 @@ const messageLabelsFor = ({
 /**
  * What a text's editor knows about where the text sits. Without
  * `setBindings` the editor offers only the values the stage already binds:
- * a translator works with the values the original text shows, and never
+ * a translator works with the values the stage already binds, and never
  * adds a binding of their own.
  */
 export type DynamicMessageSite = Readonly<{
@@ -462,11 +461,8 @@ export type DynamicMessageEditorProps = Readonly<{
   readOnly: boolean;
   markdown: boolean;
   singleLine: boolean;
-  compact: boolean;
   message: string;
   onMessageChange: (message: string | undefined) => void;
-  /** The text in the protocol's main language, to check a translation against. */
-  original: Readonly<{ locale: LocaleTag; message: string }> | undefined;
   locale: LocaleTag;
   site: DynamicMessageSite;
   /**
@@ -498,10 +494,8 @@ export function DynamicMessageEditor({
   readOnly,
   markdown,
   singleLine,
-  compact,
   message,
   onMessageChange,
-  original,
   locale,
   site,
   showsProblems = true,
@@ -809,42 +803,9 @@ export function DynamicMessageEditor({
       return undefined;
     }
     const values = dynamicValueArgumentsAt(bindings, context);
-    const own = findDynamicValueProblem(message, values, locale);
-    if (own !== undefined) return own;
-    if (original === undefined || original.locale === locale) return undefined;
-    if (
-      findDynamicValueProblem(original.message, values, original.locale) !==
-      undefined
-    ) {
-      return undefined;
-    }
-    const missing = findMissingDynamicPlacement(
-      original.message,
-      original.locale,
-      message,
-      locale,
-      values,
-    );
-    if (missing === undefined) return undefined;
-    if (missing === TOO_MANY_DYNAMIC_VERSIONS) {
-      return intl.formatMessage(messages.translationTooComplex);
-    }
-    const choice = choiceByName.get(missing.argument);
-    return intl.formatMessage(messages.translationMissesValue, {
-      value:
-        choice === undefined ? missing.argument : naming.valueLabel(choice),
-    });
+    return findDynamicValueProblem(message, values, locale);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    showsProblems,
-    message,
-    parsed,
-    bindings,
-    context,
-    original,
-    locale,
-    intl,
-  ]);
+  }, [showsProblems, message, parsed, bindings, context, locale]);
 
   if (parsed === undefined && message !== '') {
     return (
@@ -858,15 +819,7 @@ export function DynamicMessageEditor({
   }
 
   const toolbarOptions = markdown
-    ? {
-        bold: true,
-        italic: true,
-        links: !singleLine,
-        headings: !singleLine,
-        lists: !singleLine,
-        thematicBreak: !singleLine,
-        history: true,
-      }
+    ? richTextToolbarFor(singleLine)
     : {
         bold: false,
         italic: false,
@@ -890,8 +843,7 @@ export function DynamicMessageEditor({
         autoFocus={autoFocus}
         disabled={disabled}
         readOnly={readOnly}
-        singleLine={singleLine || compact}
-        compact={compact}
+        singleLine={singleLine}
         changeMode="input"
         toolbarOptions={toolbarOptions}
         tokens={tokens}
@@ -902,9 +854,9 @@ export function DynamicMessageEditor({
         className={className}
       />
       {problem !== undefined && (
-        <p className="text-destructive text-sm" role="status">
+        <output aria-live="polite" className="text-destructive block text-sm">
           {problem}
-        </p>
+        </output>
       )}
     </div>
   );
@@ -1012,6 +964,50 @@ const LABEL_MARKDOWN: BlockMarkdown = {
 };
 
 /**
+ * How a summary draws the value its markdown marked with a character of its
+ * own, by that character's position among the message's values.
+ *
+ * Read through a context so the span component below can be defined once, at
+ * module level: a component written inline in the render is a new type each
+ * time, and React would unmount and remount every pill on every render.
+ */
+const SummaryValueContext = createContext<(index: number) => ReactNode>(
+  () => undefined,
+);
+
+/** The span markdown wraps a marked value in, drawn as its pill. */
+function SummaryValueSpan({
+  node,
+  children,
+}: Readonly<{
+  node?: { properties?: Record<string, unknown> } | undefined;
+  children?: ReactNode;
+}>) {
+  const shownValue = useContext(SummaryValueContext);
+  const index = node?.properties?.[VALUE_PROPERTY];
+  if (typeof index !== 'string') return <span>{children}</span>;
+  // A character past the values is the author's own, kept as is.
+  return (
+    shownValue(Number(index)) ??
+    String.fromCodePoint(VALUE_MARK + Number(index))
+  );
+}
+
+/**
+ * The one set of versions a message is made of, with nothing but whitespace
+ * around it, or undefined when it is anything else.
+ */
+const wholeSwitch = (
+  nodes: readonly MessageNode[],
+): MessageSwitch | undefined => {
+  const only = nodes.filter(
+    (node) => !(node.kind === 'text' && node.text.trim() === ''),
+  );
+  const [one] = only;
+  return only.length === 1 && one?.kind === 'switch' ? one : undefined;
+};
+
+/**
  * A message's words, read-only, each value as the pill an editor shows and
  * each set of versions folded to the pill of the value it is on, as the
  * editor shows it folded: what it says in each case is written, and read, in
@@ -1024,6 +1020,7 @@ export function MessageNodesSummary({
   blockMarkdown = SECTION_MARKDOWN,
   valueLabel,
   switchSummary,
+  versionLabel,
 }: Readonly<{
   nodes: readonly MessageNode[];
   /** Whether the words are markdown, drawn here with their formatting. */
@@ -1040,6 +1037,14 @@ export function MessageNodesSummary({
   valueLabel: (argument: string) => string;
   /** What a set of versions' pill says. */
   switchSummary: (node: MessageSwitch) => string;
+  /**
+   * What a version of a set is called, for a set that is the whole of the
+   * message, or of one version of it: that set is written out, one labelled
+   * line for each version, instead of being folded to a pill, as the editor
+   * lists it open. A set among words is a pill either way. Without this,
+   * every set is a pill.
+   */
+  versionLabel?: (node: MessageSwitch, key: string) => string;
 }>) {
   const elements = multiline ? blockMarkdown : LABEL_MARKDOWN;
   const allowedElements = [...elements.allowedElements, 'span'];
@@ -1056,6 +1061,37 @@ export function MessageNodesSummary({
     levelNodes: readonly MessageNode[],
     plural: string | undefined,
   ): ReactNode {
+    const whole =
+      versionLabel === undefined ? undefined : wholeSwitch(levelNodes);
+    if (whole !== undefined && versionLabel !== undefined) {
+      return (
+        <span data-versions-summary="" className="flex flex-col gap-1.5">
+          {whole.versions.map((version) => (
+            <span
+              key={version.key}
+              data-version-summary={version.key}
+              className="flex flex-col"
+            >
+              <span className="text-xs font-semibold text-current/70">
+                {versionLabel(whole, version.key)}
+              </span>
+              <span
+                className={
+                  wholeSwitch(version.nodes)
+                    ? 'border-s border-current/20 ps-3'
+                    : undefined
+                }
+              >
+                {render(
+                  version.nodes,
+                  whole.type === 'plural' ? whole.argument : undefined,
+                )}
+              </span>
+            </span>
+          ))}
+        </span>
+      );
+    }
     const held: (string | MessageSwitch)[] = [];
     let source = '';
     for (const node of levelNodes) {
@@ -1085,24 +1121,15 @@ export function MessageNodesSummary({
     };
     if (markdown) {
       return (
-        <RenderMarkdown
-          allowedElements={allowedElements}
-          rehypePlugins={SUMMARY_REHYPE_PLUGINS}
-          components={{
-            ...elements.components,
-            span: ({ node, children }) => {
-              const index = node?.properties?.[VALUE_PROPERTY];
-              if (typeof index !== 'string') return <span>{children}</span>;
-              // A character past the values is the author's own, kept as is.
-              return (
-                shown(Number(index), 0) ??
-                String.fromCodePoint(VALUE_MARK + Number(index))
-              );
-            },
-          }}
-        >
-          {source}
-        </RenderMarkdown>
+        <SummaryValueContext value={(index) => shown(index, 0)}>
+          <RenderMarkdown
+            allowedElements={allowedElements}
+            rehypePlugins={SUMMARY_REHYPE_PLUGINS}
+            components={{ ...elements.components, span: SummaryValueSpan }}
+          >
+            {source}
+          </RenderMarkdown>
+        </SummaryValueContext>
       );
     }
     return Array.from(source).map(
@@ -1251,10 +1278,11 @@ export type DynamicTextFieldProps = CreateFormFieldProps<
      * which answers it can show.
      */
     'fieldPath'?: readonly string[];
-    /** Markdown text; plain text otherwise. */
-    'markdown'?: boolean;
-    'singleLine'?: boolean;
-    'compact'?: boolean;
+    /**
+     * What the text may hold, as its field declares it (see
+     * `markdownTextShapeAt`); one plain line when absent.
+     */
+    'shape'?: LocalizedTextShape;
     'placeholder'?: string;
     'autoFocus'?: boolean;
     'hideUntranslatedNote'?: boolean;
@@ -1278,9 +1306,7 @@ export default function DynamicTextField({
   readOnly,
   'dynamicValues': siteKind,
   fieldPath,
-  markdown = false,
-  singleLine = false,
-  compact = false,
+  shape = PLAIN_LINE,
   placeholder,
   autoFocus,
   hideUntranslatedNote,
@@ -1290,17 +1316,9 @@ export default function DynamicTextField({
   'aria-required': ariaRequired,
 }: DynamicTextFieldProps) {
   const site = useDynamicValueSite(siteKind, fieldPath);
+  const { markdown, singleLine } = textFieldPropsFor(shape);
   const { localization, locale } = useEditingLanguage();
   const defaultLocale = localization?.defaultLocale;
-  const originalMessage =
-    defaultLocale === undefined ? undefined : value?.[defaultLocale];
-  const original = useMemo(
-    () =>
-      defaultLocale === undefined || originalMessage === undefined
-        ? undefined
-        : { locale: defaultLocale, message: originalMessage },
-    [defaultLocale, originalMessage],
-  );
 
   return (
     <LocalizedStringField
@@ -1321,11 +1339,9 @@ export default function DynamicTextField({
           disabled={disabled}
           readOnly={readOnly === true || translation.readOnly}
           markdown={markdown}
-          singleLine={!markdown || singleLine}
-          compact={compact}
+          singleLine={singleLine}
           message={translation.message}
           onMessageChange={translation.onMessageChange}
-          original={original}
           locale={locale ?? defaultLocale ?? 'en'}
           site={site}
         />

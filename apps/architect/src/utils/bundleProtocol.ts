@@ -1,12 +1,14 @@
 import JSZip from 'jszip';
 
-import {
-  type CurrentProtocol,
-  type FinishStageTextProblem,
-  findFinishStageTextProblems,
-} from '@codaco/protocol-validation';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import { getAssetById } from './assetUtils';
+import { isBuiltInWordingSummary } from './defaultLanguageText';
+import {
+  type DownloadRefusal,
+  findDownloadRefusal,
+  isLabelCollisionsSummary,
+} from './downloadRefusal';
 import {
   type LegacyProtocol,
   type LegacyStoredProtocolRow,
@@ -42,23 +44,32 @@ export class UnresolvedAssetsError extends Error {
 }
 
 /**
- * The stage that ends the interview has no heading or text in the protocol's
- * default language. Architect lets a protocol be written and saved like this
- * — a new protocol in a language Network Canvas supplies no closing text for
- * starts so — but not handed out: every host refuses to import it, and a
- * participant would finish the interview on an empty screen.
+ * The protocol holds what every host refuses to import (`findDownloadRefusal`):
+ * text a participant must read with none in the protocol's default language
+ * (the stage that ends the interview has no heading or text, or Network
+ * Canvas's built-in wording has none, as it is written only in a language
+ * Network Canvas has it in exactly), or two labels a participant chooses
+ * between that read the same. Architect lets a protocol be written and saved
+ * like this (a new protocol in Mexican Spanish or Japanese starts so, and a
+ * change of its languages can leave two labels reading the same) but not
+ * handed out: a participant would meet empty screens and buttons, or two
+ * answers nothing tells apart.
  *
  * Checked here, where every download and export is produced, so no path can
  * hand one out.
  */
-export class MissingFinishStageTextError extends Error {
-  readonly problem: FinishStageTextProblem;
+export class DownloadRefusedError extends Error {
+  readonly problem: DownloadRefusal;
 
-  constructor(problem: FinishStageTextProblem) {
+  constructor(problem: DownloadRefusal) {
     super(
-      `The finish stage has no ${problem.missing.join(' or ')} in ${problem.locale}`,
+      isLabelCollisionsSummary(problem)
+        ? 'Labels participants choose between read the same'
+        : isBuiltInWordingSummary(problem)
+          ? `${problem.count} built-in texts have no wording in ${problem.locale}`
+          : `The finish stage has no ${problem.missing.join(' or ')} in ${problem.locale}`,
     );
-    this.name = 'MissingFinishStageTextError';
+    this.name = 'DownloadRefusedError';
     this.problem = problem;
   }
 }
@@ -227,9 +238,9 @@ export const bundleProtocol = async (
   protocol: CurrentProtocol,
   protocolId?: string,
 ): Promise<Blob> => {
-  const [finishStageTextProblem] = findFinishStageTextProblems(protocol);
-  if (finishStageTextProblem !== undefined) {
-    throw new MissingFinishStageTextError(finishStageTextProblem);
+  const problem = findDownloadRefusal(protocol);
+  if (problem !== null) {
+    throw new DownloadRefusedError(problem);
   }
 
   return zipProtocol(protocol, protocol.assetManifest, (assetId) =>
@@ -345,7 +356,7 @@ export async function downloadProtocolAsNetcanvas(
     // behind a message no dialog should ever show.
     if (
       error instanceof UnresolvedAssetsError ||
-      error instanceof MissingFinishStageTextError
+      error instanceof DownloadRefusedError
     ) {
       throw error;
     }

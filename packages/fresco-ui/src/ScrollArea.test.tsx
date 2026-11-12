@@ -37,11 +37,7 @@ const viewport = () => screen.getByTestId('viewport');
 describe('ScrollArea keyboard reachability', () => {
   it('is not a tab stop when its content fits', async () => {
     stubOverflow(100, 100);
-    render(
-      <ScrollArea viewportClassName="v" data-testid="viewport">
-        short
-      </ScrollArea>,
-    );
+    render(<ScrollArea data-testid="viewport">short</ScrollArea>);
 
     await waitFor(() => expect(viewport()).toHaveAttribute('tabindex', '-1'));
   });
@@ -49,13 +45,21 @@ describe('ScrollArea keyboard reachability', () => {
   it('is a tab stop when its content overflows', async () => {
     // A scrollable region must stay operable by keyboard (WCAG 2.1.1).
     stubOverflow(900, 100);
-    render(
-      <ScrollArea viewportClassName="v" data-testid="viewport">
-        long
-      </ScrollArea>,
-    );
+    render(<ScrollArea data-testid="viewport">long</ScrollArea>);
 
     await waitFor(() => expect(viewport()).toHaveAttribute('tabindex', '0'));
+  });
+
+  it('is a tab stop from the first render, before any animation frame', () => {
+    // The measurement used to wait for a requestAnimationFrame, so a region
+    // that overflowed on arrival was a scrollable region with no keyboard
+    // access until the frame ran — which is exactly what an accessibility
+    // audit straight after render (axe's `scrollable-region-focusable`) saw.
+    stubOverflow(900, 100);
+    render(<ScrollArea data-testid="viewport">long</ScrollArea>);
+
+    // No waitFor: nothing has been given a frame to run.
+    expect(viewport()).toHaveAttribute('tabindex', '0');
   });
 
   it('is a tab stop when it overflows with fade turned off', async () => {
@@ -64,7 +68,7 @@ describe('ScrollArea keyboard reachability', () => {
     // data table's faceted filter — could scroll but could never be reached.
     stubOverflow(900, 100);
     render(
-      <ScrollArea fade={false} viewportClassName="v" data-testid="viewport">
+      <ScrollArea fade={false} data-testid="viewport">
         long
       </ScrollArea>,
     );
@@ -75,7 +79,7 @@ describe('ScrollArea keyboard reachability', () => {
   it('honours an explicit tabIndex over the measurement', async () => {
     stubOverflow(100, 100);
     render(
-      <ScrollArea tabIndex={0} viewportClassName="v" data-testid="viewport">
+      <ScrollArea tabIndex={0} data-testid="viewport">
         short
       </ScrollArea>,
     );
@@ -143,7 +147,7 @@ describe('ScrollArea content that grows on its own', () => {
     // be reached by keyboard at all (WCAG 2.1.1).
     stubOverflow(100, 100);
     render(
-      <ScrollArea viewportClassName="v" data-testid="viewport">
+      <ScrollArea data-testid="viewport">
         <img alt="" data-testid="content" />
       </ScrollArea>,
     );
@@ -169,7 +173,7 @@ describe('ScrollArea naming', () => {
       <ScrollArea
         nameWhenScrollableOnly
         aria-label="Edit Field"
-        viewportClassName="v"
+
         data-testid="viewport"
       >
         short
@@ -187,7 +191,7 @@ describe('ScrollArea naming', () => {
     render(
       <ScrollArea
         aria-label="Interviewer changelog"
-        viewportClassName="v"
+
         data-testid="viewport"
       >
         short
@@ -206,7 +210,7 @@ describe('ScrollArea naming', () => {
       <ScrollArea
         nameWhenScrollableOnly
         aria-label="Edit Field"
-        viewportClassName="v"
+
         data-testid="viewport"
       >
         long

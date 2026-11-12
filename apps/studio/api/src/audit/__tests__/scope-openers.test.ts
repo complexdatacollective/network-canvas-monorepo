@@ -218,10 +218,14 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       count: 1,
       why: 'the staging collection’s cross-team tenant enumeration, read-only; its writes go through `noAuditMaintenanceTransaction`',
     },
-  [`${SERVER}/src/jobs/worker.ts › JobWorker.drainOnce › MaintenanceScope.open`]:
+  [`${SERVER}/src/jobs/worker.ts › drainOnce › MaintenanceScope.open`]: {
+    count: 1,
+    why: 'claiming a job in the queue schema, which holds no team’s rows',
+  },
+  [`${SERVER}/src/jobs/worker.ts › JobWorker.process › MaintenanceScope.open`]:
     {
-      count: 5,
-      why: 'claiming and settling jobs in the queue schema, which holds no team’s rows',
+      count: 4,
+      why: 'settling a claimed job in the queue schema, which holds no team’s rows',
     },
   [`${SERVER}/src/jobs/worker.ts › JobWorker.reapExpired › MaintenanceScope.open`]:
     {

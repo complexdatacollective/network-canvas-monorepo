@@ -6,15 +6,17 @@ import {
   useLayoutEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 
-import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import { isPseudoLocale } from '@codaco/app-i18n/locales';
 import {
   AppI18nProvider,
   useAppIntl,
   useLocaleCatalog,
 } from '@codaco/app-i18n/react';
+import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 
 import { architectCatalogSource } from '../locales/catalogs';
 import { installArchitectIntl } from './imperative';
@@ -37,9 +39,16 @@ type LocalePreference = {
 
 const PreferenceContext = createContext<LocalePreference | null>(null);
 
+// The browser's languages, which decide the automatic entry, announce a change
+// with `languagechange`.
+const subscribeToLanguageChange = (onChange: () => void) => {
+  window.addEventListener('languagechange', onChange);
+  return () => window.removeEventListener('languagechange', onChange);
+};
+const readAutomaticLocale = () => resolveDeviceLocale(null);
+
 export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
   const [preference, setPreference] = useState(readLocalePreference);
-  const [browserRevision, setBrowserRevision] = useState(0);
   const [saveState, setSaveState] =
     useState<LocalePreference['saveState']>('idle');
 
@@ -50,7 +59,7 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
     )
       return;
     setSaveState(
-      locale === PSEUDO_LOCALE
+      isPseudoLocale(locale)
         ? 'idle'
         : writeLocalePreference(locale)
           ? 'saved'
@@ -60,33 +69,33 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const languageChanged = () =>
-      setBrowserRevision((revision) => revision + 1);
     const preferenceChanged = (event: StorageEvent) => {
       if (event.key !== ARCHITECT_LOCALE_KEY && event.key !== null) return;
       setPreference(readLocalePreference());
       setSaveState('idle');
     };
-    window.addEventListener('languagechange', languageChanged);
     window.addEventListener('storage', preferenceChanged);
     return () => {
-      window.removeEventListener('languagechange', languageChanged);
       window.removeEventListener('storage', preferenceChanged);
     };
   }, []);
 
-  const { locale, automaticLocale } = useMemo(() => {
-    // The event revision invalidates browser negotiation only; explicit
-    // preferences still win, including the non-persisted development locale.
-    void browserRevision;
-    return {
-      locale:
-        import.meta.env.DEV && preference === PSEUDO_LOCALE
-          ? PSEUDO_LOCALE
-          : resolveDeviceLocale(preference),
-      automaticLocale: resolveDeviceLocale(null),
-    };
-  }, [preference, browserRevision]);
+  // The browser's languages decide the automatic entry, and the language in
+  // force whenever no preference settles it. Both are read through the
+  // subscription: worked out during render, they would be remembered for the
+  // preference alone and miss a change of browser language. Explicit
+  // preferences still win, including the non-persisted development locale.
+  const automaticLocale = useSyncExternalStore(
+    subscribeToLanguageChange,
+    readAutomaticLocale,
+  );
+  const deviceLocale = useSyncExternalStore(subscribeToLanguageChange, () =>
+    resolveDeviceLocale(preference),
+  );
+  const locale =
+    import.meta.env.DEV && preference !== null && isPseudoLocale(preference)
+      ? preference
+      : deviceLocale;
   const value = useMemo(
     () => ({ preference, automaticLocale, saveState, setLocale }),
     [preference, automaticLocale, saveState, setLocale],
@@ -106,7 +115,7 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
         onLocaleChange={setLocale}
       >
         <ImperativeFormatter />
-        {children}
+        <LocaleDirectionProvider>{children}</LocaleDirectionProvider>
       </AppI18nProvider>
     </PreferenceContext.Provider>
   );

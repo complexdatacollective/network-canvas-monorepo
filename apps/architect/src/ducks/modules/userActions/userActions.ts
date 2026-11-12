@@ -8,13 +8,17 @@ import {
   type CurrentProtocol,
   type ExtractedAsset,
   extractProtocolFromZip,
+  formatRefusedContent,
   getMigrationInfo,
+  MigrationContentRefusedError,
   type MigrationNote,
   migrateProtocol,
   NetcanvasInflationLimitError,
   type ProtocolValidationError,
   validateProtocol,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
+import { protocolFileErrorMessages } from '@codaco/protocol-validation/messages';
 import { ensureError } from '@codaco/shared-consts';
 import { posthog } from '~/analytics';
 import { APP_SCHEMA_VERSION } from '~/config';
@@ -33,7 +37,7 @@ import {
 } from '~/utils/beforeUnloadGuard';
 import {
   downloadProtocolAsNetcanvas,
-  MissingFinishStageTextError,
+  DownloadRefusedError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
 import { beginExport, setImportInProgress } from '~/utils/criticalOperation';
@@ -142,7 +146,16 @@ export type ProtocolOpenResult =
     }
   | {
       status: 'validation-error';
+      /** Each issue, in English, for the dialog's details. */
       message: string;
+      /** Replace the dialog's general title and sentence when present. */
+      localizedTitle?: LocalizedText;
+      localizedMessage?: LocalizedText;
+      /**
+       * Show the issues without the researcher opening the details: true when
+       * they are what the researcher has to correct, not a record for support.
+       */
+      showDetails?: boolean;
     }
   | {
       status: 'migration-required';
@@ -156,6 +169,39 @@ export type ProtocolOpenResult =
     };
 
 const openedResult: ProtocolOpenResult = { status: 'opened' };
+
+/**
+ * What the researcher is shown when `migrateProtocol` throws.
+ *
+ * A protocol the upgrade refused because of its own content (a prompt, an
+ * option value or a name left empty, which the upgrade will not invent) is
+ * presented the way a protocol that fails validation is: each problem listed
+ * with its place, to be corrected in the Architect that made it. Every other
+ * failure keeps `describeMigrationFailure`'s sentence, since it may be a fault
+ * in the upgrade itself.
+ */
+const describeThrownMigration = (
+  caught: unknown,
+  protocol: unknown,
+): Extract<ProtocolOpenResult, { status: 'error' | 'validation-error' }> => {
+  if (caught instanceof MigrationContentRefusedError) {
+    return {
+      status: 'validation-error',
+      message: formatRefusedContent(caught.problems),
+      localizedTitle: { message: extraMessages.failed },
+      localizedMessage: {
+        message: protocolFileErrorMessages.upgradeRefusedContent,
+      },
+      showDetails: true,
+    };
+  }
+  const { title, message, detail } = describeMigrationFailure(
+    ensureError(caught),
+    protocol,
+    getArchitectIntl(),
+  );
+  return { status: 'error', title, message, detail };
+};
 
 // A protocol failed schema validation during import. This is an expected
 // outcome for an old or malformed file, so we record an analytics event
@@ -485,7 +531,13 @@ type ProtocolMigrationResult =
       status: 'needs-ui';
       result: Extract<
         ProtocolOpenResult,
-        { status: 'migration-required' | 'app-upgrade-required' | 'error' }
+        {
+          status:
+            | 'migration-required'
+            | 'app-upgrade-required'
+            | 'error'
+            | 'validation-error';
+        }
       >;
     };
 
@@ -540,15 +592,12 @@ const handleProtocolMigration = ({
         // because of a bug in it is re-raised as `MigrationStepError`, which
         // `getImportFailureKind` deliberately does not treat as the file's
         // fault, so this is what puts our own migration defects in front of us.
+        // A refusal of the protocol's own content is the file's, and is
+        // recorded by its kind alone.
         trackImportFailure(source, caught);
-        const { title, message, detail } = describeMigrationFailure(
-          ensureError(caught),
-          protocol,
-          getArchitectIntl(),
-        );
         return {
           status: 'needs-ui',
-          result: { status: 'error', title, message, detail },
+          result: describeThrownMigration(caught, protocol),
         };
       }
     }
@@ -589,7 +638,9 @@ export const createNetcanvas = createAppAsyncThunk(
     { name, description, localization }: CreateNetcanvasParams,
     { dispatch },
   ) => {
-    const newProtocol: CurrentProtocol = {
+    // It holds the interface text it uses from the start, as the library
+    // stores it as a valid protocol.
+    const newProtocol: CurrentProtocol = withInterfaceText({
       name,
       description,
       schemaVersion: APP_SCHEMA_VERSION,
@@ -603,7 +654,7 @@ export const createNetcanvas = createAppAsyncThunk(
         ego: {},
       },
       assetManifest: {},
-    };
+    });
 
     await instantiateProtocol(
       { protocol: newProtocol, name, description },
@@ -822,9 +873,9 @@ export const exportNetcanvas = createAppAsyncThunk(
           assetNames: error.assetNames,
         } as const;
       }
-      if (error instanceof MissingFinishStageTextError) {
+      if (error instanceof DownloadRefusedError) {
         return {
-          status: 'missing-finish-stage-text',
+          status: 'download-refused',
           problem: error.problem,
         } as const;
       }
@@ -1037,12 +1088,7 @@ export const upgradeLegacyProtocol = createAppAsyncThunk(
       } catch (caught) {
         // As for a file: see `handleProtocolMigration`.
         trackImportFailure('legacy-library', caught);
-        const { title, message, detail } = describeMigrationFailure(
-          ensureError(caught),
-          snapshot.row.protocol,
-          getArchitectIntl(),
-        );
-        return { status: 'error', title, message, detail };
+        return describeThrownMigration(caught, snapshot.row.protocol);
       }
 
       const validation = await validateProtocol(protocol, { draft: true });

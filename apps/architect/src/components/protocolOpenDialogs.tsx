@@ -73,7 +73,7 @@ const additionalMessages = defineMessages({
   upgradeMakesACopy: {
     id: 'architect.protocolOpenDialogs.upgradeMakesACopy',
     defaultMessage:
-      'Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.',
+      'Upgrading creates a separate copy of your protocol and opens it. Your original protocol will not be changed.',
     description:
       'Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy at the current schema and opens it, and that the original protocol stays as it was.',
   },
@@ -269,7 +269,7 @@ export const showProtocolOpenResultDialog = async ({
                   message: additionalMessages.upgradeChangesList,
                 })}
               </Paragraph>
-              <div className="bg-surface-2 max-h-72 overflow-y-auto rounded-sm px-4 py-2 [&_li]:mb-2 [&_li]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5">
+              <div className="bg-surface-2 max-h-72 overflow-y-auto rounded-sm px-4 py-2 [&_li]:mb-2 [&_li]:leading-relaxed [&_ul]:list-disc [&_ul]:ps-5">
                 {result.migrationNotes.map(({ version, notes }) => (
                   <div key={version}>
                     <Heading level="h4">
@@ -370,17 +370,28 @@ export const showProtocolOpenResultDialog = async ({
       type: 'acknowledge',
       intent: 'destructive',
       finalFocus,
-      title: createElement(AppMessage, {
-        message: additionalMessages.protocolValidationFailed,
-      }),
+      title: result.localizedTitle ? (
+        <AppMessage {...result.localizedTitle} />
+      ) : (
+        createElement(AppMessage, {
+          message: additionalMessages.protocolValidationFailed,
+        })
+      ),
       children: (
         <>
           <Paragraph>
-            {createElement(AppMessage, {
-              message: additionalMessages.theProtocolCouldNotBeOpened,
-            })}
+            {result.localizedMessage ? (
+              <AppMessage {...result.localizedMessage} />
+            ) : (
+              createElement(AppMessage, {
+                message: additionalMessages.theProtocolCouldNotBeOpened,
+              })
+            )}
           </Paragraph>
-          <ProtocolFailureDetails detail={result.message} />
+          <ProtocolFailureDetails
+            detail={result.message}
+            open={result.showDetails}
+          />
           <Paragraph intent="smallText">
             {createElement(AppMessage, {
               message: additionalMessages.ifTheProblemPersistsReachOut,
@@ -455,15 +466,27 @@ export const showProtocolOpenResultDialog = async ({
  * whoever reads the bug report, not for the person who just wanted to open
  * their protocol — the dialog above it says everything they need in order to
  * decide what to do next.
+ *
+ * `open` starts it expanded, for details the researcher acts on: the problems
+ * an upgrade refused, which the dialog asks them to correct.
  */
-export const ProtocolFailureDetails = ({ detail }: { detail?: string }) => {
+export const ProtocolFailureDetails = ({
+  detail,
+  open = false,
+}: {
+  detail?: string;
+  open?: boolean;
+}) => {
   const intl = useAppIntl();
   if (!detail) {
     return null;
   }
 
   return (
-    <Accordion className="mt-4">
+    <Accordion
+      className="mt-4"
+      defaultValue={open ? ['technical-details'] : undefined}
+    >
       <AccordionItem value="technical-details">
         <AccordionHeader>
           <AccordionTrigger>

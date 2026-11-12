@@ -53,6 +53,7 @@ catalog:
   '@faker-js/faker': ~10.6.0
   '@fontsource-variable/inclusive-sans': ^5.3.0
   '@fontsource-variable/nunito': ^5.3.0
+  '@fontsource-variable/readex-pro': ^5.3.0
   # App-i18n tooling: programmatic message extraction (guards + extract
   # scripts) and build-time ICU-to-AST compilation for catalog JSON.
   '@formatjs/cli-lib': ^10.0.11
@@ -62,9 +63,8 @@ catalog:
   # integration.
   '@formatjs/unplugin': ^1.2.14
   # BCP 47 best-fit matching for app locale negotiation (@codaco/app-i18n);
-  # the protocol localization design (§7.1) adopts this same entry when
-  # protocol-validation's locale helpers land.
-  '@formatjs/intl-localematcher': ^0.9.0
+  # protocol-validation's locale helpers share this same entry.
+  '@formatjs/intl-localematcher': ^0.10.1
   '@microsoft/api-extractor': ^7.59.4
   '@next/bundle-analyzer': ^16.4.2
   '@next/third-parties': ^16.4.2
@@ -118,6 +118,10 @@ catalog:
   # Matches the range `cva` itself depends on, so the joiner it hands `cva`'s
   # `cx` config option stays in lock-step with what `cva` was built against.
   clsx: ^2.1.1
+  # Test-only: the colour maths behind the theme contrast check in
+  # tooling/tailwind (OKLCH parsing, mixing, conversion to sRGB). Already in the
+  # lockfile at this version through sass-embedded.
+  colorjs.io: ^0.7.1
   csvtojson: ^2.0.14
   dotenv: ^18.0.8
   # Pinned to the 1.0 RC, exactly (the rc dist-tag moves): stable drizzle-kit
@@ -153,6 +157,9 @@ catalog:
   # two versions means the hook can rewrite a generated baseline that the
   # subsequent comparison then rejects.
   oxfmt: ^0.74.0
+  # The React Compiler for `@vitejs/plugin-react`'s `compiler: true` (its Rust
+  # port; no babel). Every package that compiles React with it lists this.
+  oxc-transform-react: ^0.152.0
   pdfjs-dist: ^6.3.289
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".

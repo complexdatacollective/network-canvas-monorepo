@@ -283,7 +283,7 @@ const pillClassName = ({
     'variable-pill font-monospace inline-flex h-12 w-max max-w-full min-w-0 flex-nowrap rounded-full p-0.5 text-base',
     'effect-shadow-sm bg-(--variable-pill-accent)',
     interactive
-      ? 'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-left transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5'
+      ? 'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-start transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5'
       : 'cursor-default',
     className,
   );
@@ -313,7 +313,7 @@ function PillContents({
           : 'grid-cols-[3rem_minmax(0,auto)]',
       )}
     >
-      <span className="flex items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
+      <span className="flex items-center justify-center border-e border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
         <img className="icon opacity-80" src={iconUrl} alt="" />
       </span>
       <span className="flex min-w-0 items-center justify-between">
@@ -466,6 +466,7 @@ export default function AttributePill({
       } else {
         setClosing(false);
       }
+      return undefined;
     });
     setClosing(true);
   };
@@ -642,7 +643,7 @@ export default function AttributePill({
                   aria-label={intl.formatMessage(messages.renameFieldLabel)}
                   aria-invalid={isValid ? undefined : true}
                   aria-describedby={isValid ? undefined : validationId}
-                  className="h-full w-full rounded-l-none! outline-none!"
+                  className="h-full w-full rounded-s-none! outline-none!"
                   placeholder={intl.formatMessage(messages.renamePlaceholder)}
                   value={draftName}
                   onChange={(value: string | undefined) =>

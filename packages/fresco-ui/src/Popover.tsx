@@ -185,6 +185,11 @@ type PopoverContentProps = Omit<
   keepMounted?: boolean;
   align?: 'start' | 'center' | 'end';
   anchor?: Element | React.RefObject<Element | null> | null;
+  /**
+   * Padding around the content. The default suits prose and forms; a popup
+   * that holds a list of options takes `xs`, as menus and comboboxes do.
+   */
+  spacing?: ComponentPropsWithoutRef<typeof MotionSurface>['spacing'];
 };
 
 function PopoverContent({
@@ -196,6 +201,7 @@ function PopoverContent({
   className,
   align = 'center',
   anchor,
+  spacing = 'md',
   ...props
 }: PopoverContentProps) {
   const { mounted } = usePopoverContext();
@@ -220,7 +226,7 @@ function PopoverContent({
               render={
                 <BaseUISharedPopoverContainer
                   className={className}
-                  spacing="md"
+                  spacing={spacing}
                 />
               }
               {...props}
@@ -237,6 +243,19 @@ function PopoverContent({
       </AnimatePresence>
     </BasePopover.Portal>
   );
+}
+
+/**
+ * The popup's heading. Base UI points the popup's `aria-labelledby` at it, so
+ * placing one inside `PopoverContent` is what gives the popup (a
+ * `role="dialog"`) its accessible name.
+ *
+ * Every `PopoverContent` needs a name from one of three places: a
+ * `PopoverTitle`, an `aria-label`, or an `aria-labelledby` passed to
+ * `PopoverContent` itself. Use `render` to draw the title as a `Heading`.
+ */
+function PopoverTitle(props: ComponentProps<typeof BasePopover.Title>) {
+  return <BasePopover.Title {...props} />;
 }
 
 export function ArrowSvg(props: ComponentProps<'svg'>) {
@@ -266,4 +285,4 @@ export function ArrowSvg(props: ComponentProps<'svg'>) {
   );
 }
 
-export { Popover, PopoverContent, PopoverTrigger };
+export { Popover, PopoverContent, PopoverTitle, PopoverTrigger };

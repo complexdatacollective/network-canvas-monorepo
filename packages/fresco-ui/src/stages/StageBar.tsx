@@ -24,7 +24,7 @@ type StageBarProps = {
 
 /**
  * A stage sequence as a strip of equal segments, one per stage, each in its
- * interface's colour from `STAGE_TYPE_COLORS`. Reads a protocol's shape at a
+ * stage type's colour from `STAGE_TYPES`. Reads a protocol's shape at a
  * glance: how long it is and where its name generators, censuses and
  * sociograms fall.
  */

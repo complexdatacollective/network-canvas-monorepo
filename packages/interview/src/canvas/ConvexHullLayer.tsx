@@ -209,15 +209,26 @@ export default function ConvexHullLayer({
           el.setAttribute('points', points);
         }
       }
-
-      rafRef.current = requestAnimationFrame(updateHulls);
     };
 
-    rafRef.current = requestAnimationFrame(updateHulls);
+    // Redraw when a position changes, at most once a frame, so a canvas where
+    // nothing moves does no work.
+    updateHulls();
+    const unsubscribe = store.subscribe(
+      (state) => state.positions,
+      () => {
+        rafRef.current ??= requestAnimationFrame(() => {
+          rafRef.current = null;
+          updateHulls();
+        });
+      },
+    );
 
     return () => {
+      unsubscribe();
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
       for (const el of elementsRef.current) {
         if (el.parentNode === svg) svg.removeChild(el);

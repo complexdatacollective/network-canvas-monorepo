@@ -46,6 +46,7 @@
     "./IdentityMark": "./src/IdentityMark.tsx",
     "./Kbd": "./src/Kbd.tsx",
     "./Label": "./src/Label.tsx",
+    "./LocaleDirectionProvider": "./src/LocaleDirectionProvider.tsx",
     "./LocaleLoadFailureToast": "./src/LocaleLoadFailureToast.tsx",
     "./Modal": "./src/Modal/index.tsx",
     "./Modal/ModalBackdrop": "./src/Modal/ModalBackdrop.tsx",
@@ -55,6 +56,7 @@
     "./Node": "./src/Node.tsx",
     "./NodeDropAnimation": "./src/NodeDropAnimation.tsx",
     "./OptionLabel": "./src/OptionLabel.tsx",
+    "./pageActivity": "./src/pageActivity.ts",
     "./Pips": "./src/Pips.tsx",
     "./Popover": "./src/Popover.tsx",
     "./PortalContainer": "./src/PortalContainer.tsx",
@@ -174,6 +176,7 @@
     "./hooks/useResizablePanel": "./src/hooks/useResizablePanel.ts",
     "./hooks/useSafeAnimate": "./src/hooks/useSafeAnimate.ts",
     "./hooks/useSafeLocalStorage": "./src/hooks/useSafeLocalStorage.tsx",
+    "./hooks/useSelectOnFocus": "./src/hooks/useSelectOnFocus.ts",
     "./hooks/useTokenRadius": "./src/hooks/useTokenRadius.ts",
     "./layout/AppArea": "./src/layout/AppArea.tsx",
     "./layout/AppFrame": "./src/layout/AppFrame.tsx",
@@ -189,6 +192,7 @@
     "./navigation/SiteFooter": "./src/navigation/SiteFooter.tsx",
     "./navigation/SiteNavigation": "./src/navigation/SiteNavigation.tsx",
     "./navigation/SiteNavigation.constants": "./src/navigation/SiteNavigation.constants.ts",
+    "./navigation/SiteNavigation.messages": "./src/navigation/SiteNavigation.messages.ts",
     "./navigation/TeamAndStudySwitcher": "./src/navigation/TeamAndStudySwitcher.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
     "./stages/StageBar": "./src/stages/StageBar.tsx",
@@ -209,7 +213,8 @@
     "./utils/composeEventHandlers": "./src/utils/composeEventHandlers.ts",
     "./utils/cva": "./src/utils/cva.ts",
     "./utils/finalFocus": "./src/utils/finalFocus.ts",
-    "./utils/foldText": "./src/utils/foldText.ts"
+    "./utils/foldText": "./src/utils/foldText.ts",
+    "./utils/saveBlob": "./src/utils/saveBlob.ts"
   },
   "publishConfig": {
     "exports": {
@@ -333,6 +338,10 @@
         "types": "./dist/Label.d.ts",
         "default": "./dist/Label.js"
       },
+      "./LocaleDirectionProvider": {
+        "types": "./dist/LocaleDirectionProvider.d.ts",
+        "default": "./dist/LocaleDirectionProvider.js"
+      },
       "./LocaleLoadFailureToast": {
         "types": "./dist/LocaleLoadFailureToast.d.ts",
         "default": "./dist/LocaleLoadFailureToast.js"
@@ -368,6 +377,10 @@
       "./OptionLabel": {
         "types": "./dist/OptionLabel.d.ts",
         "default": "./dist/OptionLabel.js"
+      },
+      "./pageActivity": {
+        "types": "./dist/pageActivity.d.ts",
+        "default": "./dist/pageActivity.js"
       },
       "./Pips": {
         "types": "./dist/Pips.d.ts",
@@ -845,6 +858,10 @@
         "types": "./dist/hooks/useSafeLocalStorage.d.ts",
         "default": "./dist/hooks/useSafeLocalStorage.js"
       },
+      "./hooks/useSelectOnFocus": {
+        "types": "./dist/hooks/useSelectOnFocus.d.ts",
+        "default": "./dist/hooks/useSelectOnFocus.js"
+      },
       "./hooks/useTokenRadius": {
         "types": "./dist/hooks/useTokenRadius.d.ts",
         "default": "./dist/hooks/useTokenRadius.js"
@@ -904,6 +921,10 @@
       "./navigation/SiteNavigation.constants": {
         "types": "./dist/navigation/SiteNavigation.constants.d.ts",
         "default": "./dist/navigation/SiteNavigation.constants.js"
+      },
+      "./navigation/SiteNavigation.messages": {
+        "types": "./dist/navigation/SiteNavigation.messages.d.ts",
+        "default": "./dist/navigation/SiteNavigation.messages.js"
       },
       "./navigation/TeamAndStudySwitcher": {
         "types": "./dist/navigation/TeamAndStudySwitcher.d.ts",
@@ -985,6 +1006,10 @@
       "./utils/foldText": {
         "types": "./dist/utils/foldText.d.ts",
         "default": "./dist/utils/foldText.js"
+      },
+      "./utils/saveBlob": {
+        "types": "./dist/utils/saveBlob.d.ts",
+        "default": "./dist/utils/saveBlob.js"
       }
     },
     "access": "public"
@@ -1060,6 +1085,7 @@
     "@vitest/browser-playwright": "catalog:",
     "chromatic": "catalog:",
     "jsdom": "catalog:",
+    "oxc-transform-react": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",
     "tinyglobby": "^0.2.17",

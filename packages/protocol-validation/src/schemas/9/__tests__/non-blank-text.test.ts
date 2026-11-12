@@ -14,10 +14,7 @@ import { narrativeStage } from '../stages/narrative.ts';
 import { networkComposerStage } from '../stages/network-composer.ts';
 import { ComponentTypes } from '../variables/types.ts';
 import { VariableSchema } from '../variables/variable.ts';
-import {
-  narrativePedigreeWords,
-  networkComposerWords,
-} from './canvas-stage-words.ts';
+import { narrativePedigreeWords } from './canvas-stage-words.ts';
 
 const issuesOf = (
   schema: { safeParse: (value: unknown) => unknown },
@@ -41,7 +38,10 @@ const BLANK_TRANSLATIONS = [
 ] as const;
 
 describe('nonBlankText', () => {
-  const required = localizedString(nonBlankText(), 'markdown');
+  const required = localizedString(nonBlankText(), {
+    format: 'markdown',
+    lines: 'single',
+  });
 
   it('accepts a translation with text in it', () => {
     expect(required.safeParse({ en: 'How old are you?' }).success).toBe(true);
@@ -124,7 +124,6 @@ describe('a Network Composer field caption', () => {
       layoutVariable: 'layout',
       background: { concentricCircles: 4 },
       edges: [],
-      ...networkComposerWords(),
       nodeForm: {
         fields: [
           {
@@ -149,6 +148,7 @@ const rosterStage = {
   id: 'roster',
   type: 'NameGeneratorRoster',
   allAddedNotice: localized('There is nothing left to add from this list.'),
+  unnamedLabel: localized('Unnamed {count}'),
   label: localized('Roster'),
   subject: { entity: 'node', type: 'person' },
   dataSource: 'rosterAsset',
@@ -271,7 +271,6 @@ const composerField = (field: Record<string, unknown>) => ({
   layoutVariable: 'layout',
   background: { concentricCircles: 4 },
   edges: [],
-  ...networkComposerWords(),
   nodeForm: {
     fields: [{ variable: 'age', label: localized('Age'), ...field }],
   },
@@ -450,10 +449,19 @@ describe('option labels', () => {
       { label: localized('Blue'), value: 'blue' },
     ],
   });
+  const ordinalVariable = (label: Record<string, string>) => ({
+    name: 'Closeness',
+    type: 'ordinal',
+    options: [
+      { label, value: 1 },
+      { label: localized('Very close'), value: 2 },
+    ],
+  });
 
   it.each([
     ['a Boolean choice', booleanVariable],
     ['a categorical option', categoricalVariable],
+    ['an ordinal option', ordinalVariable],
   ])('%s accepts a label with text', (_n, variable) => {
     expect(VariableSchema.safeParse(variable({ en: 'Red' })).success).toBe(
       true,
@@ -465,6 +473,8 @@ describe('option labels', () => {
     ['a Boolean choice', '   ', booleanVariable],
     ['a categorical option', '', categoricalVariable],
     ['a categorical option', '   ', categoricalVariable],
+    ['an ordinal option', '', ordinalVariable],
+    ['an ordinal option', '   ', ordinalVariable],
   ])('%s rejects the label %j', (_n, text, variable) => {
     expect(
       VariableSchema.safeParse(variable({ en: 'Red', fr: text })).success,

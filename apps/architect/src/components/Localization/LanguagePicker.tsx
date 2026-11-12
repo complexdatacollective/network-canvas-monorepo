@@ -6,9 +6,9 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import ComboboxField from '@codaco/fresco-ui/form/fields/Combobox/Combobox';
 import type { ComboboxOption } from '@codaco/fresco-ui/form/fields/Combobox/shared';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
-import type { LocaleTag } from '@codaco/protocol-validation';
+import { describableLocale, type LocaleTag } from '@codaco/protocol-validation';
 
-import type { LanguageChoice } from './languageChoices';
+import { describeLanguage, type LanguageChoice } from './languageChoices';
 
 const messages = defineMessages({
   otherLanguages: {
@@ -24,8 +24,9 @@ const messages = defineMessages({
   },
   searchLanguages: {
     id: 'architect.localization.languageActions.searchLanguages',
-    defaultMessage: 'Search languages',
-    description: 'Placeholder of the search box in the list of languages.',
+    defaultMessage: 'Search languages or type a language code',
+    description:
+      'Placeholder of the search box in the list of languages. A language that is not in the list can be added by typing its language code, such as "haw" or "es-419".',
   },
   noLanguagesFound: {
     id: 'architect.localization.languageActions.noLanguagesFound',
@@ -51,12 +52,11 @@ export const languageOptionText = (
   { name, locale }: LanguageChoice,
 ) => intl.formatMessage(messages.languageOption, { name, tag: locale });
 
-const renderLanguageOption = (
-  choices: ReadonlyMap<string | number, LanguageChoice>,
-  intl: IntlShape,
-) =>
+type ChoiceOf = (option: ComboboxOption) => LanguageChoice | undefined;
+
+const renderLanguageOption = (choiceOf: ChoiceOf, intl: IntlShape) =>
   function LanguageOption(option: ComboboxOption) {
-    const choice = choices.get(option.value);
+    const choice = choiceOf(option);
     if (!choice) return null;
     return (
       <span className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3">
@@ -125,6 +125,7 @@ export const FittedNames = ({ names }: { names: readonly string[] }) => {
     // field, so measure again once they load.
     void document.fonts?.ready.then(() => {
       if (!cancelled) fit();
+      return undefined;
     });
     const observer = new ResizeObserver(fit);
     observer.observe(box);
@@ -147,14 +148,10 @@ export const FittedNames = ({ names }: { names: readonly string[] }) => {
 };
 
 // Null when nothing is chosen, so the trigger shows its placeholder.
-const renderChosenNames = (
-  choices: ReadonlyMap<string | number, LanguageChoice>,
-) =>
+const renderChosenNames = (choiceOf: ChoiceOf) =>
   function ChosenNames(selected: ComboboxOption[]) {
     if (selected.length === 0) return null;
-    const names = selected.flatMap(
-      (option) => choices.get(option.value)?.name ?? [],
-    );
+    const names = selected.flatMap((option) => choiceOf(option)?.name ?? []);
     // Keyed by the names, so a new list is measured afresh from all of them.
     return <FittedNames key={names.join('\n')} names={names} />;
   };
@@ -169,23 +166,43 @@ export const chosenLanguages = (
   );
 };
 
+const NONE_UNAVAILABLE: readonly LocaleTag[] = [];
+
 type LanguagePickerProps = {
   label: string;
   hint?: string;
   choices: readonly LanguageChoice[];
+  /**
+   * Languages that are already taken, such as a protocol's own. A language
+   * typed into the search box is not offered when it is one of these or one of
+   * `choices`.
+   */
+  unavailable?: readonly LocaleTag[];
   initialValue: LocaleTag[];
+  /** Choose one language rather than several. */
+  single?: boolean;
+  /** Shown while nothing is chosen. Defaults to the text for several. */
+  placeholder?: string;
+  /** The error when nothing is chosen. Defaults to the text for several. */
+  requiredMessage?: string;
 };
 
 /**
- * A searchable list of languages to choose several from. The closed list names
- * the chosen languages, so they are visible without opening it. Read the result with
+ * A searchable list of languages to choose several from, or one with `single`. The closed list names
+ * the chosen languages, so they are visible without opening it. A language
+ * code typed into the search box (`haw`, `es-419`) is offered as well when it
+ * names a language that is not in `choices`. Read the result with
  * `chosenLanguages(values)`.
  */
 export const LanguagePicker = ({
   label,
   hint,
   choices,
+  unavailable = NONE_UNAVAILABLE,
   initialValue,
+  single = false,
+  placeholder,
+  requiredMessage,
 }: LanguagePickerProps) => {
   const intl = useAppIntl();
   const choicesByLocale = useMemo(
@@ -204,6 +221,31 @@ export const LanguagePicker = ({
       })),
     [choices],
   );
+  // A language typed rather than listed is described when it is chosen, so
+  // it is shown like any other.
+  const choiceOf = useCallback<ChoiceOf>(
+    (option) =>
+      choicesByLocale.get(option.value) ??
+      (typeof option.value === 'string'
+        ? describeLanguage(option.value, intl.locale)
+        : undefined),
+    [choicesByLocale, intl.locale],
+  );
+  const optionFromSearch = useCallback(
+    (search: string): ComboboxOption | undefined => {
+      const locale = describableLocale(search);
+      if (
+        locale === undefined ||
+        choicesByLocale.has(locale) ||
+        unavailable.includes(locale)
+      ) {
+        return undefined;
+      }
+      const { name, autonym } = describeLanguage(locale, intl.locale);
+      return { value: locale, label: [name, autonym, locale].join(' ') };
+    },
+    [choicesByLocale, intl.locale, unavailable],
+  );
   return (
     <Field<typeof ComboboxField>
       name="languages"
@@ -212,13 +254,17 @@ export const LanguagePicker = ({
       component={ComboboxField}
       initialValue={initialValue}
       options={options}
-      renderOption={renderLanguageOption(choicesByLocale, intl)}
-      renderValue={renderChosenNames(choicesByLocale)}
-      placeholder={intl.formatMessage(messages.chooseLanguages)}
+      optionFromSearch={optionFromSearch}
+      renderOption={renderLanguageOption(choiceOf, intl)}
+      renderValue={renderChosenNames(choiceOf)}
+      single={single}
+      placeholder={placeholder ?? intl.formatMessage(messages.chooseLanguages)}
       searchPlaceholder={intl.formatMessage(messages.searchLanguages)}
       emptyMessage={intl.formatMessage(messages.noLanguagesFound)}
       showSelectAll={false}
-      required={intl.formatMessage(messages.chooseAtLeastOne)}
+      required={
+        requiredMessage ?? intl.formatMessage(messages.chooseAtLeastOne)
+      }
     />
   );
 };

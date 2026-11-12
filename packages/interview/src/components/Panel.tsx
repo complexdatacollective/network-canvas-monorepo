@@ -53,7 +53,7 @@ const Panel = ({
   }, [setCollapsed, noCollapse]);
 
   const panelClasses = cx(
-    'elevation-high shadow-none',
+    'elevation-high',
     'flex min-h-0 grow basis-0 flex-col overflow-hidden rounded border-b-10',
     'transition-all duration-500 ease-in-out',
     minimize && 'mb-0 grow-0 basis-0 border-b-0 opacity-0',

@@ -1,6 +1,6 @@
 import type {
   Codebook,
-  FamilyPedigreeWording,
+  CompleteFamilyPedigreeWording,
   LocalizedString,
   PedigreeParentKind,
   PedigreeSexAssignedAtBirth,
@@ -77,7 +77,7 @@ export const ownedOptionLabels = (
 /** The words of the option for each kind of child the stage asks about,
  * by the kind of parent the person is to them. */
 export const childKindWording = (
-  wording: FamilyPedigreeWording,
+  wording: CompleteFamilyPedigreeWording,
   kind: PedigreeParentKind,
 ): LocalizedString => {
   switch (kind) {

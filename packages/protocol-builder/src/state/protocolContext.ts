@@ -33,35 +33,59 @@ export type ProtocolReading =
 const STILL_READING: ProtocolReading = Object.freeze({ status: 'reading' });
 const UNREADABLE: ProtocolReading = Object.freeze({ status: 'unreadable' });
 
-type Derivation = Readonly<{
-  sections: ProtocolSections;
-  context: ProtocolBuilderProtocolContext;
-  reading: ProtocolReading;
-}>;
+/**
+ * One reading of the protocol: its sections, the read model parsed from them,
+ * and how far a reader of the whole protocol has got.
+ *
+ * A class rather than a plain record because `useQueries` passes whatever
+ * `combine` returns through the query layer's structural sharing, which walks
+ * plain objects and arrays and hands anything else back as it is. A plain
+ * record was walked in full — every section and the whole parsed protocol —
+ * by every reader on every render, because the `combine` below is a new
+ * function each render. `READINGS` already gives every reader the same record
+ * for the same revisions, which is the identity that walk was there to keep.
+ */
+class ProtocolDerivation {
+  readonly sections: ProtocolSections;
+  readonly context: ProtocolBuilderProtocolContext;
+  readonly reading: ProtocolReading;
+
+  constructor(
+    parts: Readonly<{
+      sections: ProtocolSections;
+      context: ProtocolBuilderProtocolContext;
+      reading: ProtocolReading;
+    }>,
+  ) {
+    this.sections = parts.sections;
+    this.context = parts.context;
+    this.reading = parts.reading;
+  }
+}
 
 /**
  * The last few readings of the protocol, keyed by the revisions they were made
  * from.
  *
- * Two things depend on this rather than on a hook's own memo. The record has to
- * be the SAME object for every reader at a given set of revisions, so that the
- * query layer's structural sharing recognises an unchanged combination without
- * walking every section of the protocol. And the derivation parses every
- * section against the protocol schema, which a dozen components ask for on one
- * page.
+ * Two things depend on this rather than on a hook's own memo. The reading has
+ * to be the SAME object for every reader at a given set of revisions, because
+ * it is what keeps each reader's answer the same object from one render to the
+ * next: nothing downstream compares it by content. And the derivation parses
+ * every section against the protocol schema, which a dozen components ask for
+ * on one page.
  *
  * More than one entry because two readers can render against different
  * revisions inside one commit: a component that has not re-rendered since the
  * last revision is still reading the previous one.
  */
-const READINGS = new Map<string, Derivation>();
+const READINGS = new Map<string, ProtocolDerivation>();
 const READING_LIMIT = 4;
 
 function reading(
   results: readonly Readonly<{ data?: CachedSection; isError: boolean }>[],
   ids: readonly ProtocolSectionId[],
   list: Readonly<{ listed: boolean; failed: boolean }>,
-): Derivation {
+): ProtocolDerivation {
   const sections: Record<string, SectionDoc> = {};
   const parts: string[] = [];
   let failed = list.failed;
@@ -89,7 +113,7 @@ function reading(
   const cached = READINGS.get(revisions);
   if (cached !== undefined) return cached;
   const complete = list.listed && parts.length === ids.length;
-  const derived: Derivation = {
+  const derived = new ProtocolDerivation({
     sections,
     context: protocolContextFromSections(sections),
     // A failed read wins over a partial one: the section it was for is not on
@@ -99,7 +123,7 @@ function reading(
       : complete
         ? { status: 'read', sections }
         : STILL_READING,
-  };
+  });
   READINGS.set(revisions, derived);
   for (const key of READINGS.keys()) {
     if (READINGS.size <= READING_LIMIT) break;
@@ -108,7 +132,7 @@ function reading(
   return derived;
 }
 
-function useReading(): Derivation {
+function useReading(): ProtocolDerivation {
   const { protocolId, adapter } = useProtocolBuilderContext();
   const { data: list, isError: listFailed } = useQuery(
     adapter.rpcQuery('ListSections', { protocolId }),

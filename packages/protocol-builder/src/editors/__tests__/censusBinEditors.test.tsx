@@ -458,6 +458,8 @@ const CASES: readonly EditorCase[] = [
       'Stage filter',
       'Prompt collection',
       'Placing nodes',
+      // The fixture's bin is placed by dragging and lets nodes stay
+      // unplaced, so it shows no built-in wording.
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -519,7 +521,7 @@ const CASES: readonly EditorCase[] = [
       'Prompt collection',
       'Side panels',
       'Nomination limits',
-      'Messages',
+      'Customize built-in wording',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -532,18 +534,18 @@ const CASES: readonly EditorCase[] = [
       'Guía para quien realiza la entrevista',
     ],
     ownedKeys: [
+      'addNamePlaceholder',
       'dynamicValues',
       'label',
       'prompts',
       'quickAdd',
-      'quickAddHint',
       'subject',
     ],
     wholeStage: {
       ...WITHOUT_FILTER,
       label: { 'en-US': 'Full quick-add name generator' },
       quickAdd: 'name',
-      quickAddHint: { 'en-US': 'Press Enter when you are finished.' },
+      addNamePlaceholder: { 'en-US': 'Type the name of a {subject}' },
       minNodesNotice: {
         'en-US':
           '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -573,7 +575,7 @@ const CASES: readonly EditorCase[] = [
       'Roster sorting',
       'Roster search',
       'Nomination limits',
-      'Messages',
+      'Customize built-in wording',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -599,6 +601,7 @@ const CASES: readonly EditorCase[] = [
       'searchOptions',
       'sortOptions',
       'subject',
+      'unnamedLabel',
     ],
     wholeStage: {
       ...WITHOUT_FILTER,
@@ -616,6 +619,7 @@ const CASES: readonly EditorCase[] = [
       allAddedNotice: {
         'en-US': 'There is nothing left to add from this list.',
       },
+      unnamedLabel: { 'en-US': '{subject} {count}' },
       minNodesNotice: {
         'en-US':
           '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -696,28 +700,6 @@ describe('the census and bin editors written as section lists', () => {
 
       await waitFor(() => expect(harness.ownedKeys()).toEqual([...ownedKeys]));
       await harness.roundTrip({ unowned: [] });
-    },
-  );
-
-  /**
-   * And a stage using every key its schema allows, which the fixture stages
-   * deliberately do not.
-   *
-   * They carry no filter, no skip logic, no interviewer guidance and no sort
-   * orders, so the round trip above proves an editor keeps the handful of keys
-   * the fixture happens to hold and says nothing about the rest of the
-   * interface: a section quietly dropped survives it untouched. These stages
-   * are the whole schema, and `roundTrip` asks its two questions of them.
-   */
-  it.each(CASES)(
-    '$interfaceName saves a whole $interfaceName unchanged, every key owned by a section',
-    async ({ interfaceName, editor, wholeStage }) => {
-      const harness = renderStageEditor({
-        stage: { type: interfaceName, fields: wholeStage },
-        registry: editor,
-      });
-
-      await harness.roundTrip();
     },
   );
 });

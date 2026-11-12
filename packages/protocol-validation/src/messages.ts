@@ -77,6 +77,13 @@ export const protocolFileErrorMessages = defineMessages({
     description:
       'Researcher-facing explanation and recovery guidance for a protocol file import failure: upgradeStepFailed.',
   },
+  upgradeRefusedContent: {
+    id: 'protocolValidation.file.upgradeRefusedContent',
+    defaultMessage:
+      'This protocol cannot be upgraded to the current version, because it contains something the current version does not accept. In the version of Architect the protocol was made with, correct each problem listed, then open the protocol again. Nothing has been changed on this device.',
+    description:
+      'Shown to a researcher when opening an older protocol, which must be upgraded first, is refused because of the protocol’s own content: for example a prompt, an option value or an attribute name left empty. The host lists each problem, with the stage and field or the attribute and option, in English beneath this text. Architect is the app researchers design protocols in; “the version of Architect the protocol was made with” is the older release that created the file.',
+  },
   missingVersion: {
     id: 'protocolValidation.file.missingVersion',
     defaultMessage:

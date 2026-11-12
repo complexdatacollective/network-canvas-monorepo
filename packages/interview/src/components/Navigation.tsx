@@ -397,7 +397,7 @@ const Navigation = ({
   return (
     <>
       <MotionSurface
-        role="navigation"
+        as="nav"
         className={cx(navigationVariants({ orientation }), className)}
         spacing="xs"
         shadow="xs"

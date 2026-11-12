@@ -186,12 +186,16 @@ describe('the language chooser’s languages in Architect', () => {
     expect(
       within(rowOf('French')).queryByText('Missing translations'),
     ).not.toBeInTheDocument();
+    // The translation table belongs to the Languages page.
     expect(
-      screen.getByRole('link', { name: 'Open translation table' }),
-    ).toHaveAttribute('href', '/protocol/localization?table=open');
+      screen.queryByRole('link', { name: 'Open translation table' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^Edit .* translations$/ }),
+    ).not.toBeInTheDocument();
     // The sections the package's own editor has, besides its list.
     expect(
-      screen.getByRole('heading', { name: 'Participant wording' }),
+      screen.getByRole('heading', { name: 'Customize built-in wording' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Heading' })).toHaveValue(
       'Choose a language',
@@ -216,45 +220,6 @@ describe('the language chooser’s languages in Architect', () => {
     expect(readStageDraft().stage?.label).toEqual(LABEL);
     expect(readStageDraft().dirty).toBe(false);
     expect(finishedEditing()).not.toBeInTheDocument();
-  });
-
-  it('opens the translation table from an untouched stage without asking', async () => {
-    await openEditor();
-
-    await userEvent.click(
-      screen.getByRole('link', { name: 'Open translation table' }),
-    );
-
-    expect(window.location.pathname + window.location.search).toBe(
-      '/protocol/localization?table=open',
-    );
-    expect(globalThis.__architectDialogMocks.openDialog).not.toHaveBeenCalled();
-  });
-
-  it('asks before leaving unsaved changes to the stage for the translation table', async () => {
-    const { name } = await openEditor();
-    await userEvent.clear(name);
-    await userEvent.type(name, 'Pick a language');
-    await waitFor(() => expect(readStageDraft().dirty).toBe(true));
-    const { openDialog } = globalThis.__architectDialogMocks;
-
-    openDialog.mockResolvedValueOnce(false);
-    await userEvent.click(
-      screen.getByRole('link', { name: 'Open translation table' }),
-    );
-    await waitFor(() => expect(openDialog).toHaveBeenCalledTimes(1));
-    expect(window.location.pathname).toBe('/');
-
-    openDialog.mockResolvedValueOnce(true);
-    await userEvent.click(
-      screen.getByRole('link', { name: 'Open translation table' }),
-    );
-    await waitFor(() =>
-      expect(window.location.pathname + window.location.search).toBe(
-        '/protocol/localization?table=open',
-      ),
-    );
-    expect(openDialog).toHaveBeenCalledTimes(2);
   });
 
   it('leaves nothing to save after removing a language from an untouched stage', async () => {
@@ -298,7 +263,7 @@ describe('the language chooser’s languages in Architect', () => {
   it('changes the language of a language’s text in the open stage too', async () => {
     const { store } = await openEditor();
     globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
-      language: 'es',
+      languages: ['es'],
     });
 
     await userEvent.click(
@@ -320,6 +285,59 @@ describe('the language chooser’s languages in Architect', () => {
     };
     expect(savedStage(store)).toMatchObject({ title: heading });
     expect(readStageDraft().stage).toMatchObject({ title: heading });
+  });
+
+  it('gives the open stage’s unsaved, reworded heading Network Canvas’s wording in a language added from it', async () => {
+    const { store } = await openEditor();
+    globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
+      languages: ['es', 'ja'],
+    });
+
+    const heading = screen.getByRole('textbox', { name: 'Heading' });
+    await userEvent.clear(heading);
+    await userEvent.type(heading, 'Pick your language');
+    await waitFor(() =>
+      expect(readStageDraft().stage).toMatchObject({
+        title: { en: 'Pick your language' },
+      }),
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Add languages' }),
+    );
+
+    await waitFor(() =>
+      expect(getProtocol(store.getState())?.localization.locales).toEqual([
+        'en',
+        'fr',
+        'de',
+        'es',
+        'ja',
+      ]),
+    );
+    // Spanish gains Network Canvas's heading although English was reworded;
+    // the French and German translations stay as they were, and Japanese,
+    // which Network Canvas has no wording in, gains nothing.
+    const expected = {
+      en: 'Pick your language',
+      fr: 'Choisissez une langue',
+      de: 'Wählen Sie eine Sprache aus',
+      es: 'Elige un idioma',
+    };
+    await waitFor(() =>
+      expect(
+        (readStageDraft().stage as { title?: unknown } | undefined)?.title,
+      ).toEqual(expected),
+    );
+    expect(readStageDraft().dirty).toBe(true);
+    expect(savedStage(store)).toMatchObject({
+      title: {
+        en: 'Choose a language',
+        fr: 'Choisissez une langue',
+        de: 'Wählen Sie eine Sprache aus',
+        es: 'Elige un idioma',
+      },
+    });
   });
 
   it('saves a stage edited across a language’s removal as a valid protocol', async () => {

@@ -13,7 +13,8 @@ type InformationProps = StageProps<'Information'>;
  */
 const Information = ({ stage: { title, items } }: InformationProps) => (
   <ScrollArea className="m-0 size-full">
-    <div className="interface mx-auto flex min-h-full max-w-[80ch] flex-col justify-center select-text">
+    {/* oxlint-disable-next-line tailwindcss/no-conflicting-classes -- min-h-full deliberately overrides the interface utility's min-h-0, so the stage fills the scroll area */}
+    <div className="interface mx-auto min-h-full max-w-[80ch] select-text">
       <Surface className="grow-0" noContainer spacing="lg" shadow="lg">
         <LocalizedText
           value={title}

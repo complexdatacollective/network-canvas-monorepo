@@ -22,5 +22,16 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "storybook-static", "lib/db/generated"]
+  // schema-8 is the source of the `fresco-schema-8` package and is never part
+  // of the app's program. The app imports the installed copy, where @codaco/*
+  // resolves to the pinned schema 8 releases. pnpm hard-links that copy to
+  // these files, so once TypeScript has opened them here it can take the
+  // installed copy to live here too (seen on macOS), and resolve @codaco/* to
+  // the workspace's schema 9 packages instead.
+  "exclude": [
+    "node_modules",
+    "storybook-static",
+    "lib/db/generated",
+    "schema-8"
+  ]
 }

@@ -650,7 +650,7 @@ export default function TeamActivity() {
         </Heading>
         <Alert>{intl.formatMessage(messages.forbidden)}</Alert>
         <div>
-          <Button asChild variant="outline">
+          <Button asChild>
             <Link to="/team/$teamId" params={{ teamId }}>
               {intl.formatMessage(messages.backToStudies)}
             </Link>
@@ -671,7 +671,7 @@ export default function TeamActivity() {
             {intl.formatMessage(messages.intro)}
           </Paragraph>
         </div>
-        <Button asChild size="sm" variant="outline">
+        <Button asChild size="sm">
           <Link to="/team/$teamId" params={{ teamId }}>
             {intl.formatMessage(messages.backToStudies)}
           </Link>
@@ -823,7 +823,7 @@ export default function TeamActivity() {
             <Button
               size="sm"
               type="button"
-              variant="outline"
+              variant="text"
               disabled={!hasActiveFilter(staged) && !hasActiveFilter(applied)}
               onClick={() => {
                 setStaged(EMPTY_FILTERS);
@@ -851,7 +851,12 @@ export default function TeamActivity() {
         </form>
       </Surface>
 
-      <Paragraph className="sr-only" role="status" margin="none">
+      <Paragraph
+        className="sr-only"
+        render={<output />}
+        aria-live="polite"
+        margin="none"
+      >
         {activity.isPending
           ? intl.formatMessage(messages.loading)
           : intl.formatMessage(messages.eventsShown, { count: items.length })}
@@ -872,7 +877,6 @@ export default function TeamActivity() {
           <Button
             className="mt-3"
             size="sm"
-            variant="outline"
             onClick={() => void activity.refetch()}
           >
             {intl.formatMessage(messages.retry)}
@@ -956,7 +960,6 @@ export default function TeamActivity() {
           {activity.hasNextPage ? (
             <div>
               <Button
-                variant="outline"
                 disabled={activity.isFetchingNextPage}
                 onClick={() => void activity.fetchNextPage()}
               >
@@ -988,7 +991,12 @@ function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
 
   if (detail.isPending) {
     return (
-      <div className="flex items-center gap-3" role="status">
+      <div
+        className="flex items-center gap-3"
+        // The live region holds a Spinner and a Paragraph, which are blocks; an <output> may hold only inline content.
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- holds block children
+        role="status"
+      >
         <Spinner size="sm" />
         <Paragraph margin="none">
           {intl.formatMessage(messages.loadingEvent)}
@@ -1004,7 +1012,6 @@ function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
         <Button
           className="mt-3"
           size="sm"
-          variant="outline"
           onClick={() => void detail.refetch()}
         >
           {intl.formatMessage(messages.retry)}

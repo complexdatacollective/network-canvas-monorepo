@@ -178,7 +178,7 @@ describe.skipIf(!testDb)('RequireSessionLive', () => {
       Effect.gen(function* () {
         const fixture = yield* seedInterviewFixture();
         const sessionId = yield* insertSession(fixture);
-        const token = yield* tokenFor(fixture, sessionId);
+        const token = Redacted.value(yield* tokenFor(fixture, sessionId));
 
         expect(
           refusedAs(

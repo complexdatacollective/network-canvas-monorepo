@@ -14,9 +14,9 @@ import { getStorageUnavailable } from '~/ducks/modules/app';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 
 import {
-  FinishStageTextRefusal,
-  FinishStageTextRefusalTitle,
-} from './FinishStageTextAlert';
+  DownloadRefusalMessage,
+  DownloadRefusalTitle,
+} from './DefaultLanguageTextAlert';
 const messages = defineMessages({
   thisProtocolIsnTBeingSavedOn: {
     id: 'architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn',
@@ -91,12 +91,12 @@ const StorageUnavailableBanner = () => {
             void dispatch(exportNetcanvas())
               .unwrap()
               .then((result) => {
-                if (result.status === 'missing-finish-stage-text') {
+                if (result.status === 'download-refused') {
                   void openDialog({
                     type: 'acknowledge',
                     intent: 'destructive',
-                    title: createElement(FinishStageTextRefusalTitle),
-                    description: createElement(FinishStageTextRefusal, {
+                    title: createElement(DownloadRefusalTitle),
+                    description: createElement(DownloadRefusalMessage, {
                       problem: result.problem,
                     }),
                     actions: {
@@ -108,9 +108,9 @@ const StorageUnavailableBanner = () => {
                       },
                     },
                   });
-                  return;
+                  return undefined;
                 }
-                if (result.status !== 'unresolved-assets') return;
+                if (result.status !== 'unresolved-assets') return undefined;
                 void openDialog({
                   type: 'acknowledge',
                   intent: 'destructive',
@@ -131,6 +131,7 @@ const StorageUnavailableBanner = () => {
                     },
                   },
                 });
+                return undefined;
               })
               .catch(() => {
                 void openDialog({

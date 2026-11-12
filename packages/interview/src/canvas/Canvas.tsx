@@ -44,6 +44,7 @@ export function nodeSelectedForToggle(
       return state.isEdgeSource;
     case 'highlight':
       return state.highlighted;
+    case null:
     default:
       return false;
   }

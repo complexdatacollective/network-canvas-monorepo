@@ -106,6 +106,44 @@ describe('a stage the protocol has not answered for yet', () => {
   });
 });
 
+describe('what the host’s action slot is told about the lock', () => {
+  const showAccess = ({ access }: { access: string }) => (
+    <p data-testid="access">{access}</p>
+  );
+
+  it('says pending until the protocol answers, then editing', async () => {
+    const gate = gatedAcquire();
+    renderStageEditor({
+      stageId: STAGE_ID,
+      sections: nameSection,
+      adapter: gate.adapter,
+      actions: showAccess,
+    });
+
+    expect(await screen.findByTestId('access')).toHaveTextContent('pending');
+
+    await act(async () => {
+      gate.release();
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('access')).toHaveTextContent('editing');
+    });
+  });
+
+  it('says readOnly for a stage somebody else holds, which pending is not', async () => {
+    renderStageEditor({
+      stageId: STAGE_ID,
+      sections: nameSection,
+      readOnly: true,
+      actions: showAccess,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('access')).toHaveTextContent('readOnly');
+    });
+  });
+});
+
 describe('what a save writes', () => {
   it('hands back the whole section, changed only where the researcher changed it', async () => {
     const seeded = loadFixtureStage(STAGE_ID);

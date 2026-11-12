@@ -18,6 +18,7 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
+import { sociogramStage } from '@codaco/protocol-validation';
 
 import { DynamicTextPreview } from '../../../../fields/DynamicTextPreview.tsx';
 import EntityTypePickerField from '../../../../fields/EntityTypePickerField.tsx';
@@ -30,6 +31,7 @@ import type {
 } from '../../../../form/rowDialog.tsx';
 import { asLocalizedString } from '../../../../localization/localizedText.ts';
 import { useLocalizedText } from '../../../../localization/ProtocolLocalization.tsx';
+import { markdownTextShapeAt } from '../../../../localization/textShape.ts';
 import { variablesForSubject } from '../../../../protocol-context.ts';
 import { canvasMessages } from '../../../../sections/canvas/canvasMessages.ts';
 import {
@@ -54,6 +56,12 @@ import SortOrderRows from '../../../../sections/prompts/SortOrderRows.tsx';
 import { useStageSubject } from '../../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../../state/protocolContext.ts';
 import { sociogramPromptMessages as messages } from './sociogramPromptMessages.ts';
+
+const PROMPT_TEXT_SHAPE = markdownTextShapeAt(sociogramStage, [
+  'prompts',
+  0,
+  'text',
+]);
 
 const TEXT_FIELD = 'text';
 const LAYOUT_VARIABLE_FIELD = 'layout.layoutVariable';
@@ -274,10 +282,16 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
    * box are what the rule looks like on screen.
    */
   const [drawChosenHere, setDrawChosenHere] = useState(false);
-  useEffect(() => {
-    if (createdEdge === undefined || createdEdge === committedCreate) return;
+  // Latched as soon as a connection other than the stored one is chosen, and
+  // adjusted during render rather than in an effect: the notice and the locked
+  // tick box it shows must not trail the choice by a frame.
+  if (
+    !drawChosenHere &&
+    createdEdge !== undefined &&
+    createdEdge !== committedCreate
+  ) {
     setDrawChosenHere(true);
-  }, [committedCreate, createdEdge]);
+  }
 
   /**
    * A connection the researcher has just said this prompt draws is shown too.
@@ -425,8 +439,8 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           name={TEXT_FIELD}
           label={intl.formatMessage(messages.promptTextLabel)}
           component={LocalizedRichTextField}
+          shape={PROMPT_TEXT_SHAPE}
           dynamicValues="prompt"
-          singleLine
           placeholder={intl.formatMessage(messages.promptTextPlaceholder)}
           initialValue={asLocalizedString(item[TEXT_FIELD])}
           required={intl.formatMessage(messages.promptTextRequired)}

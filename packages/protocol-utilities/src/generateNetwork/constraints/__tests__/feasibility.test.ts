@@ -14,6 +14,7 @@ import { protocolUtilitiesCatalogLoaders } from '../../../locales/catalogs.ts';
 import { formatConstraintConflictReason } from '../../../messages.ts';
 import { resolveGenerationConfig } from '../../config.ts';
 import { CONTENT_STAGE_TYPES } from '../../contentStages.ts';
+import { describeValue } from '../describeValue.ts';
 import { SyntheticDataConstraintError } from '../error.ts';
 import { analyseFeasibility } from '../feasibility.ts';
 import { MAX_TEXT_DRAW_LENGTH } from '../valueSpace.ts';
@@ -1055,6 +1056,7 @@ describe('a unique group whose members a roster populates unevenly', () => {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     maxNodesNotice: {
       en: 'You have completed this task. Click the next arrow to continue.',
     },
@@ -1246,6 +1248,7 @@ describe('values a prompt fixes', () => {
       ...fixingGenerator(2, 'stage-roster'),
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
     } as unknown as Stage;
 
     expect(
@@ -1263,6 +1266,7 @@ describe('values a prompt fixes', () => {
       ...fixingGenerator(2, 'stage-roster'),
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
     } as unknown as Stage;
 
     const conflicts = analyseFeasibility(uniqueFlag, [stage], config, {
@@ -1278,6 +1282,7 @@ describe('values a prompt fixes', () => {
       ...fixingGenerator(8, 'stage-roster'),
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
     } as unknown as Stage;
 
     expect(
@@ -1363,6 +1368,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     minNodesNotice: {
       en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
     },
@@ -1459,7 +1465,9 @@ describe('a value a prompt fixes and a roster row carries', () => {
       });
       const flags = network.nodes
         .map((node) => node[entityAttributesProperty].flagged)
-        .toSorted((left, right) => String(left).localeCompare(String(right)));
+        .toSorted((left, right) =>
+          describeValue(left).localeCompare(describeValue(right)),
+        );
 
       expect(flags, `seed ${seed}`).toEqual([false, true]);
     }
@@ -2958,6 +2966,7 @@ describe('roster rows the rules turn away, at the seam the counts feed', () => {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     maxNodesNotice: {
       en: 'You have completed this task. Click the next arrow to continue.',
     },

@@ -67,13 +67,12 @@ const initialFields: SectionDoc = {
 const JudgesItselfInvalid = (() => {
   const [invalid, setInvalid] = useState(false);
   return (
-    <button
-      type="button"
+    <input
+      type="checkbox"
+      aria-label="Refuse my own value"
       aria-invalid={invalid ? true : undefined}
-      onClick={() => setInvalid(true)}
-    >
-      Refuse my own value
-    </button>
+      onChange={() => setInvalid(true)}
+    />
   );
 }) as ComponentType<Record<string, unknown>>;
 
@@ -152,7 +151,7 @@ describe('the sections a stage editor publishes to its host', () => {
     const unsubscribe = probe.store().subscribe(notified);
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Refuse my own value' }),
+      screen.getByRole('checkbox', { name: 'Refuse my own value' }),
     );
 
     // The form was told nothing: the flip is read off the page, so the store

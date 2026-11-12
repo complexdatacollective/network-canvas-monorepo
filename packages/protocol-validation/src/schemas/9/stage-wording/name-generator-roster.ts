@@ -34,6 +34,22 @@ const ALL_ADDED_NOTICE = {
   'zh-Hant': '此清單中已沒有可新增的內容。',
 } as const satisfies SuppliedWording;
 
+/**
+ * The label of an item the roster has no name for, numbered to tell unnamed
+ * items apart.
+ */
+const UNNAMED_LABEL = {
+  'en': 'Unnamed {count}',
+  'de': 'Ohne Namen {count}',
+  'es': 'Sin nombre {count}',
+  'fr': 'Sans nom {count}',
+  'it': 'Senza nome {count}',
+  'nl': 'Zonder naam {count}',
+  'pt-BR': 'Sem nome {count}',
+  'zh-Hans': '未命名 {count}',
+  'zh-Hant': '未命名 {count}',
+} as const satisfies SuppliedWording;
+
 /** The Name Generator for Roster Data's settings Network Canvas words. */
 export const NAME_GENERATOR_ROSTER_SUPPLIED_TEXT: readonly SuppliedStageSetting[] =
   [
@@ -49,4 +65,5 @@ export const NAME_GENERATOR_ROSTER_SUPPLIED_TEXT: readonly SuppliedStageSetting[
       when: hasMaximumNodes,
     },
     { path: ['allAddedNotice'], message: ALL_ADDED_NOTICE },
+    { path: ['unnamedLabel'], message: UNNAMED_LABEL },
   ];

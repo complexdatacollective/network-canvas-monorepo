@@ -83,6 +83,23 @@ describe('the locale the first render lands in', () => {
     expect(document.documentElement.lang).toBe('en-GB');
   });
 
+  it.each(['en-XA', 'ar-XB'])(
+    'is never a development pseudo-locale (%s) found in the mirror',
+    async (pseudoLocale) => {
+      // A build that wrote one must not leave the next visit opening in it:
+      // the development registry declares these tags, so nothing downstream
+      // of the mirror would turn one away.
+      window.localStorage.setItem(MIRROR_KEY, pseudoLocale);
+      setBrowserLanguages(['en-GB', 'en']);
+
+      await renderFirstPaint();
+
+      expect(resolveInitialLocale()).toBe('en-GB');
+      expect(rendered?.locale).toBe('en-GB');
+      expect(document.documentElement.dir).not.toBe('rtl');
+    },
+  );
+
   it('is what the browser negotiates when there is no mirror', async () => {
     setBrowserLanguages(['en-GB', 'en']);
 

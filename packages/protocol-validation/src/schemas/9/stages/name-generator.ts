@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import type { MessageArguments } from '../../../localization/messageArguments.ts';
+import {
+  EVERY_VERSION,
+  type MessageArguments,
+} from '../../../localization/messageArguments.ts';
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import {
   FormSchema,
@@ -8,19 +11,8 @@ import {
   nameGeneratorPromptSchema,
   panelsSchema,
 } from '../common/index.ts';
-import {
-  localizedMessage,
-  localizedString,
-  nonBlankText,
-} from '../localized-string.ts';
-import {
-  hasMinimumNodes,
-  hasMaximumNodes,
-  requireWhenShown,
-  type StageRecord,
-} from '../stage-wording/conditions.ts';
-import { MIN_NODES_NOTICE } from '../stage-wording/name-generator.ts';
-import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
+import { localizedMessage, nonBlankText } from '../localized-string.ts';
+import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
 import { baseStageSchema } from './base.ts';
 
 // Shared by NameGenerator and NameGeneratorQuickAdd: a node-count window must be
@@ -47,66 +39,57 @@ export const nameGeneratorBehavioursSchema = z
   .optional();
 
 /**
- * What a minimum's notice may use: how many people are still needed, which
- * every translation must show where the supplied wording does.
+ * What a minimum's notice may use: how many nodes are needed, which it must
+ * show, and the name of the stage's node type.
  */
-export const NODE_COUNT_ARGUMENTS: MessageArguments = requireSuppliedPlacements(
-  { count: { kind: 'plural' } },
-  MIN_NODES_NOTICE,
-);
+export const MIN_NODES_ARGUMENTS: MessageArguments = {
+  count: { kind: 'plural', required: EVERY_VERSION },
+  ...SUBJECT_ARGUMENTS,
+};
+
+/**
+ * What a maximum's notice may use: the most nodes the stage takes, and the
+ * name of its node type.
+ */
+export const MAX_NODES_ARGUMENTS: MessageArguments = {
+  count: { kind: 'plural' },
+  ...SUBJECT_ARGUMENTS,
+};
 
 /**
  * The words a name generator shows about its limits,
  * which Network Canvas supplies (`stage-wording/name-generator.ts`). Each is
- * shown only in some configurations, so each is required only while its
- * configuration is on (`requireNameGeneratorWording`).
+ * shown only in some configurations; a stage that omits one shows Network
+ * Canvas's wording.
  */
 export const nameGeneratorWording = {
   minNodesNotice: localizedMessage(nonBlankText(), {
-    arguments: NODE_COUNT_ARGUMENTS,
+    arguments: MIN_NODES_ARGUMENTS,
   }).optional(),
-  maxNodesNotice: localizedString(nonBlankText(), 'plain').optional(),
+  maxNodesNotice: localizedMessage(nonBlankText(), {
+    arguments: MAX_NODES_ARGUMENTS,
+  }).optional(),
 };
 
-/** Refuses a name generator that shows a setting it does not hold. */
-export const requireNameGeneratorWording = (
-  stage: StageRecord,
-  ctx: z.RefinementCtx,
-): void =>
-  requireWhenShown(stage, ctx, [
-    {
-      name: 'minNodesNotice',
-      when: hasMinimumNodes,
-      message: 'A stage with a minimum needs a minimum notice.',
-    },
-    {
-      name: 'maxNodesNotice',
-      when: hasMaximumNodes,
-      message: 'A stage with a maximum needs a maximum notice.',
-    },
-  ]);
-
-export const nameGeneratorStage = baseStageSchema
-  .extend({
-    type: z.literal('NameGenerator'),
-    form: FormSchema,
-    subject: NodeStageSubjectSchema,
-    panels: panelsSchema,
-    prompts: z
-      .array(nameGeneratorPromptSchema)
-      .min(1)
-      .superRefine((prompts, ctx) => {
-        // Check for duplicate prompt IDs
-        const duplicatePromptId = findDuplicateId(prompts);
-        if (duplicatePromptId) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-            path: [],
-          });
-        }
-      }),
-    behaviours: nameGeneratorBehavioursSchema,
-    ...nameGeneratorWording,
-  })
-  .superRefine(requireNameGeneratorWording);
+export const nameGeneratorStage = baseStageSchema.extend({
+  type: z.literal('NameGenerator'),
+  form: FormSchema,
+  subject: NodeStageSubjectSchema,
+  panels: panelsSchema,
+  prompts: z
+    .array(nameGeneratorPromptSchema)
+    .min(1)
+    .superRefine((prompts, ctx) => {
+      // Check for duplicate prompt IDs
+      const duplicatePromptId = findDuplicateId(prompts);
+      if (duplicatePromptId) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+          path: [],
+        });
+      }
+    }),
+  behaviours: nameGeneratorBehavioursSchema,
+  ...nameGeneratorWording,
+});

@@ -13,9 +13,10 @@ type FormDialogProps = Omit<DialogProps, 'dismissible' | 'footer'> & {
   busy?: boolean;
   /**
    * Given whether the dialog is being held open, so a Cancel action in it can
-   * be disabled to match.
+   * be disabled to match. Called rather than rendered as a component, so
+   * the footer it returns keeps its state across renders.
    */
-  footer?: (heldOpen: boolean) => ReactNode;
+  renderFooter?: (heldOpen: boolean) => ReactNode;
 };
 
 /**
@@ -30,13 +31,17 @@ type FormDialogProps = Omit<DialogProps, 'dismissible' | 'footer'> & {
  */
 export default function FormDialog({
   busy = false,
-  footer,
+  renderFooter,
   ...props
 }: FormDialogProps) {
   const isSubmitting = useFormStore((state) => state.isSubmitting);
   const heldOpen = isSubmitting || busy;
 
   return (
-    <Dialog {...props} dismissible={!heldOpen} footer={footer?.(heldOpen)} />
+    <Dialog
+      {...props}
+      dismissible={!heldOpen}
+      footer={renderFooter?.(heldOpen)}
+    />
   );
 }

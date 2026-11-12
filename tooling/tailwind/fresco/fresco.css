@@ -26,6 +26,9 @@
 /* Tailwind v4 @theme block defining the Fresco design system token surface. */
 @import './theme.css';
 
+/* Stage-type (interface) colours, shared with apps that keep their own theme. */
+@import '../shared/interfaces.css';
+
 /* `motion-reduce:` / `motion-safe:` and the global reduced-motion rule, keyed
    off the preference `AnimationProvider` resolves. */
 @import './reduced-motion.css';
@@ -41,6 +44,9 @@
 @import './themes/default.css';
 @import './themes/interview.css';
 @import './themes/studio.css';
+
+/* Sets text marked as Arabic in the themes' Arabic stacks (Readex Pro). */
+@import './arabic-text.css';
 
 /* Custom Tailwind plugins, loaded from TypeScript source. Tailwind compiles
    `@plugin` modules through jiti, which handles TS directly and registers the

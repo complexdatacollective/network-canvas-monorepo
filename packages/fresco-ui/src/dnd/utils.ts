@@ -39,6 +39,7 @@ export const boundsHitDetector: HitDetector = (x, y, dropTargets) => {
 // Performance utilities for drag and drop
 
 // Throttle function using requestAnimationFrame
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- published export: removing `TReturn` would break consumers that pass it explicitly
 export function rafThrottle<TArgs extends readonly unknown[], TReturn = void>(
   fn: (...args: TArgs) => TReturn,
 ): ((...args: TArgs) => void) & { cancel: () => void } {

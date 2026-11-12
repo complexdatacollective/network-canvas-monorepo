@@ -343,6 +343,14 @@
     "defaultMessage": "Return to start screen",
     "description": "The aria-label text in components / Brand."
   },
+  "architect.builtInWording.missingInDefaultLanguage": {
+    "defaultMessage": "Network Canvas has no built-in wording, such as button labels and messages, in {language}. Translate it into {language}, or make a language that has built-in wording the default. The protocol can’t be downloaded until then.",
+    "description": "Shown while the protocol’s default language is one Network Canvas has no built-in wording in (for example Mexican Spanish or Japanese), so the wording Network Canvas supplies (button labels, messages and similar) has no text in it. The researcher can translate that wording into the language in the translation table, or make another of the protocol’s languages that Network Canvas has wording in (for example Spanish) the default. language is the name of the default language, for example “Spanish (Mexico)”."
+  },
+  "architect.builtInWording.showMissing": {
+    "defaultMessage": "Show the wording to translate",
+    "description": "Link in the notice about built-in wording missing in the protocol’s default language. It opens the translation table showing only the text that has no translation in that language."
+  },
   "architect.chrome.codebook.controlsColumn.deleteAttribute": {
     "defaultMessage": "Delete attribute",
     "description": "Researcher-facing explanatory text in components / Codebook / ControlsColumn."
@@ -671,6 +679,10 @@
     "defaultMessage": "No attributes.",
     "description": "The emptyText text in components / Codebook / VariableList."
   },
+  "architect.codebook.variableList.tableLabel": {
+    "defaultMessage": "Attributes",
+    "description": "Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached."
+  },
   "architect.codebook.variables.actions": {
     "defaultMessage": "Actions",
     "description": "Visible text in components / Codebook / Variables."
@@ -690,6 +702,10 @@
   "architect.codebook.variables.noAttributes": {
     "defaultMessage": "No attributes.",
     "description": "The emptyText text in components / Codebook / Variables."
+  },
+  "architect.codebook.variables.tableLabel": {
+    "defaultMessage": "Attributes",
+    "description": "Accessible name of the table listing the attributes of a type, announced by screen readers when it is reached."
   },
   "architect.codebook.variables.unknown": {
     "defaultMessage": "Unknown",
@@ -1053,7 +1069,7 @@
   },
   "architect.finishStageText.cannotBeDownloadedYet": {
     "defaultMessage": "This protocol can’t be downloaded yet",
-    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language."
+    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, while Network Canvas’s built-in wording has no text in that language, or while two labels participants choose between are the same."
   },
   "architect.finishStageText.editFinishStage": {
     "defaultMessage": "Edit the stage that ends the interview",
@@ -1206,50 +1222,6 @@
   "architect.form.fields.variablePicker.variableSpotlight.youCannotCreateANewAttribute": {
     "defaultMessage": "You cannot create a new attribute from here. Please create one or more attributes elsewhere in your protocol, and return here to select them.",
     "description": "Visible text in components / Form / Fields / VariablePicker / VariableSpotlight."
-  },
-  "architect.home.demoSubtitle.categoricalBin": {
-    "defaultMessage": "Categorical Bin",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.connections": {
-    "defaultMessage": "Connections",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.dyadCensus": {
-    "defaultMessage": "Dyad Census",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.egoForm": {
-    "defaultMessage": "Ego Form",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.information": {
-    "defaultMessage": "Information",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.nameGenerator": {
-    "defaultMessage": "Name Generator",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.narrative": {
-    "defaultMessage": "Narrative",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.ordinalBin": {
-    "defaultMessage": "Ordinal Bin",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.quickAdd": {
-    "defaultMessage": "Quick Add",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.roster": {
-    "defaultMessage": "Roster",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
-  },
-  "architect.home.demoSubtitle.tieStrength": {
-    "defaultMessage": "Tie Strength",
-    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
   },
   "architect.home.home.architectIsTheProtocolDesignerFor": {
     "defaultMessage": "Architect is the protocol designer for Network Canvas. Compose name generators, capture ordinal and categorical data, map connections, and explore narratives.",
@@ -1451,77 +1423,77 @@
     "defaultMessage": "Your protocols are saved only on this device. They are never uploaded to a server.",
     "description": "Visible text in components / Home / LibraryPanel."
   },
-  "architect.home.timelineScript.config.closeOut": {
-    "defaultMessage": "Close out",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.closeTies": {
-    "defaultMessage": "Close ties",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.closeness": {
-    "defaultMessage": "Closeness",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.consent": {
-    "defaultMessage": "Consent",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.contactFrequency": {
-    "defaultMessage": "Contact frequency",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
   "architect.home.timelineScript.config.debrief": {
     "defaultMessage": "Debrief",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.demographics": {
-    "defaultMessage": "Demographics",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.groupMembership": {
-    "defaultMessage": "Group membership",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.keyMoments": {
-    "defaultMessage": "Key moments",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.relationshipType": {
-    "defaultMessage": "Relationship type",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.sociogram": {
-    "defaultMessage": "Sociogram",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.storyExchange": {
-    "defaultMessage": "Story exchange",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.supportNetwork": {
-    "defaultMessage": "Support network",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.supportPaths": {
-    "defaultMessage": "Support paths",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.trustLevel": {
-    "defaultMessage": "Trust level",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.weakTies": {
-    "defaultMessage": "Weak ties",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
   },
   "architect.home.timelineScript.config.welcome": {
     "defaultMessage": "Welcome",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
   },
   "architect.home.timelineScript.config.whoKnowsWhom": {
     "defaultMessage": "Who knows whom",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.aboutYou": {
+    "defaultMessage": "About you",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.addAcquaintances": {
+    "defaultMessage": "Add acquaintances",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.agreeToTakePart": {
+    "defaultMessage": "Agree to take part",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.discussSupport": {
+    "defaultMessage": "Discuss support",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.discussYourNetwork": {
+    "defaultMessage": "Discuss your network",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.drawSupportTies": {
+    "defaultMessage": "Draw support ties",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.findClassmates": {
+    "defaultMessage": "Find classmates",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.finishTheInterview": {
+    "defaultMessage": "Finish the interview",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.mapYourNetwork": {
+    "defaultMessage": "Map your network",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.nameCloseFriends": {
+    "defaultMessage": "Name close friends",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.rateCloseness": {
+    "defaultMessage": "Rate closeness",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.rateContact": {
+    "defaultMessage": "Rate contact",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room. Here the participant rates how often they are in contact with each person."
+  },
+  "architect.home.timelineScript.title.rateTieStrength": {
+    "defaultMessage": "Rate tie strength",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.sortByGroup": {
+    "defaultMessage": "Sort by group",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
+  },
+  "architect.home.timelineScript.title.sortByRelationship": {
+    "defaultMessage": "Sort by relationship",
+    "description": "Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room."
   },
   "architect.home.transitMap.protocolTimeline": {
     "defaultMessage": "Protocol timeline",
@@ -1699,6 +1671,38 @@
     "defaultMessage": "Copy",
     "description": "Visible text in components / JsonPreviewOverlay."
   },
+  "architect.labelCollisions.description": {
+    "defaultMessage": "Participants could not tell these apart. The protocol can’t be downloaded until each pair has different labels.",
+    "description": "Shown under the title of the warning about labels that are the same, above the list of pairs. “These” and “each pair” are the pairs of answer options or diseases listed below it. Researcher-facing."
+  },
+  "architect.labelCollisions.diseasePair": {
+    "defaultMessage": "Diseases {first, number} and {second, number} of the stage “{stage}” have the same label in {language}: “{firstLabel}” and “{secondLabel}”.",
+    "description": "One item in the warning about labels that are the same: two diseases (conditions a participant reports for their family members) of a Narrative Pedigree stage whose labels a participant reading the language would see as the same text. first and second are the diseases’ positions in the stage’s list, counting from 1. stage is the stage’s name. language is the name of the language, for example “Spanish”. firstLabel and secondLabel are the two labels as a participant reads them in that language; they may differ only in capital letters or spaces."
+  },
+  "architect.labelCollisions.downloadRefused": {
+    "defaultMessage": "Some answer options or diseases have the same label in one of the protocol’s languages, so participants could not tell them apart. The Stages page lists them. The protocol can’t be downloaded until each pair has different labels.",
+    "description": "Shown in the dialog that refuses to download (or send) a protocol while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have the same label in one of the protocol’s languages, as a participant would see it: written the same, differing only in capital letters or spaces at either end, or because one has no translation in that language and shows another language’s text instead. Researcher-facing. “The Stages page” is the Architect page listing the protocol’s stages, where a notice names each pair."
+  },
+  "architect.labelCollisions.editAttribute": {
+    "defaultMessage": "Edit the attribute “{attribute}”",
+    "description": "Link after an item in the warning about labels that are the same, when the two options have the same label in the protocol’s default language. It opens the codebook editor where the attribute’s options are edited. attribute is the attribute’s name."
+  },
+  "architect.labelCollisions.editStage": {
+    "defaultMessage": "Edit the stage “{stage}”",
+    "description": "Link after an item in the warning about labels that are the same, when the two diseases have the same label in the protocol’s default language. It opens the editor of the stage the diseases belong to. stage is the stage’s name."
+  },
+  "architect.labelCollisions.optionPair": {
+    "defaultMessage": "Options {first, number} and {second, number} of the attribute “{attribute}” have the same label in {language}: “{firstLabel}” and “{secondLabel}”.",
+    "description": "One item in the warning about labels that are the same: two answer options of one attribute (a question in the codebook with a fixed list of answers) whose labels a participant reading the language would see as the same text. first and second are the options’ positions in the attribute’s list, counting from 1. attribute is the attribute’s name. language is the name of the language, for example “Spanish”. firstLabel and secondLabel are the two labels as a participant reads them in that language; they may differ only in capital letters or spaces."
+  },
+  "architect.labelCollisions.title": {
+    "defaultMessage": "Some labels are the same",
+    "description": "Title of the warning on the stage list shown while two answer options of one attribute, or two diseases of a Narrative Pedigree stage, have the same label in one of the protocol’s languages: a participant would see the same text, perhaps differing only in capital letters or spaces at either end. Researcher-facing."
+  },
+  "architect.labelCollisions.translate": {
+    "defaultMessage": "Edit the translations into {language}",
+    "description": "Link after an item in the warning about labels that are the same, when the two labels are the same only in a language other than the protocol’s default language, often because one of them has no translation into it. It opens the translation table showing that language beside the default one. language is the name of that language, for example “Spanish”."
+  },
   "architect.legacyProtocol.couldNotOpenInArchitect": {
     "defaultMessage": "Could not open in Architect {version}",
     "description": "Title of the error dialog shown when a protocol file could not be passed to the previous version of Architect. {version} is that version’s number (for example 8)."
@@ -1735,6 +1739,22 @@
     "defaultMessage": "{stages, plural, one {# stage} other {# stages}} · {nodes, plural, one {# node type} other {# node types}} · {edges, plural, one {# edge type} other {# edge types}}",
     "description": "Researcher-facing Architect control or feedback."
   },
+  "architect.localization.addBaseLanguage.cancel": {
+    "defaultMessage": "Don’t add {base}",
+    "description": "Button that declines the offer: the regional variant the researcher chose is still added (or the protocol still created in it), without also adding the language it belongs to. base is that language (for example Spanish)."
+  },
+  "architect.localization.addBaseLanguage.confirm": {
+    "defaultMessage": "Add {base}",
+    "description": "Button that also adds the language a regional variant belongs to, as another of the protocol’s languages. base is that language (for example Spanish)."
+  },
+  "architect.localization.addBaseLanguage.description": {
+    "defaultMessage": "Network Canvas has built-in wording, such as button labels and the closing screen, in {base} but not in {language}. If you also add {base}, participants using {language} see the {base} wording wherever you haven’t written your own.{isDefault, select, true { Because {language} is the default language, the protocol can’t be downloaded until its built-in wording is translated into {language}, or {base} is made the default.} other {}}",
+    "description": "Explanation in the question asked when a regional variant of a language Network Canvas has built-in wording in is added to a protocol. language is the added language (for example Mexican Spanish); base is the language it is a variant of (for example Spanish). Adding the base language as a second language lets the interview show its built-in wording in place of any the researcher has not written for the variant. isDefault is true when the added language is the protocol’s default language, whose text must be complete before the protocol can be downloaded."
+  },
+  "architect.localization.addBaseLanguage.title": {
+    "defaultMessage": "Also add {base}?",
+    "description": "Title of the question asked when the researcher adds a language to a protocol that Network Canvas has no built-in wording in, but that is a regional variant of a language it has wording in. base is that language (for example Spanish, when the added language is Mexican Spanish)."
+  },
   "architect.localization.languageActions.addDescription": {
     "defaultMessage": "Participants can take the interview in any of the protocol’s languages. Until you translate the wording into a new language, participants who use it see the closest translation available instead.",
     "description": "Explanation in the dialog that adds languages to a protocol."
@@ -1748,8 +1768,8 @@
     "description": "Title of the dialog that adds languages to a protocol."
   },
   "architect.localization.languageActions.changeDescription": {
-    "defaultMessage": "Use this when the wording recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Every {language} translation is recorded as the language you choose instead. Nothing is translated or deleted.",
-    "description": "Explanation in the dialog that records the translations of one protocol language as another language. language is the name of the language being changed."
+    "defaultMessage": "Use this when the wording recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Everything recorded as {language} is recorded as the language you choose instead. Wording you wrote or changed moves as it is, without being translated or deleted. Built-in wording you haven’t changed becomes Network Canvas’s version of it in the language you choose. Any built-in wording that Network Canvas doesn’t have in that language is removed, and you’ll need to write it.",
+    "description": "Explanation in the dialog that records the translations of one protocol language as another language. language is the name of the language being changed. Built-in wording is the text Network Canvas supplies, such as button labels and the closing screen. Text the researcher wrote, or built-in wording they reworded, keeps its words and moves to the chosen language. Built-in wording they have not changed is replaced, item by item, with Network Canvas’s wording in the chosen language; an item Network Canvas has no wording for in that language is removed, and the researcher must write it."
   },
   "architect.localization.languageActions.changeSubmit": {
     "defaultMessage": "Change language",
@@ -1808,8 +1828,8 @@
     "description": "Title of the confirmation before a language is removed from a protocol."
   },
   "architect.localization.languageActions.searchLanguages": {
-    "defaultMessage": "Search languages",
-    "description": "Placeholder of the search box in the list of languages."
+    "defaultMessage": "Search languages or type a language code",
+    "description": "Placeholder of the search box in the list of languages. A language that is not in the list can be added by typing its language code, such as \"haw\" or \"es-419\"."
   },
   "architect.localization.languageChooserAlert.description": {
     "defaultMessage": "This protocol has more than one language but no Language Chooser stage. Each interview opens in the language that best matches the participant’s browser settings. Add a Language Chooser stage if participants should choose the language themselves.",
@@ -1983,6 +2003,14 @@
     "defaultMessage": "Default",
     "description": "Badge beside the name of the protocol’s default language, in the heading of its column in the translation table."
   },
+  "architect.localization.translationTable.duplicateDiseaseLabel": {
+    "defaultMessage": "Another disease has the same name in {language}. Give each disease a name participants can tell apart.",
+    "description": "Shown in a cell of the translation table holding a disease’s name, on a Narrative Pedigree stage, when participants reading the cell’s language would see the same name for another disease, either because it is written the same or because one of them has no translation and shows another language’s text instead. language is the cell’s language."
+  },
+  "architect.localization.translationTable.duplicateOptionLabel": {
+    "defaultMessage": "Another option of this attribute has the same label in {language}. Give each option a label participants can tell apart.",
+    "description": "Shown in a cell of the translation table holding the label of one of an attribute’s answer options (including the two answers of a yes-or-no attribute), when participants reading the cell’s language would see the same label for another option of the same attribute, either because it is written the same or because one of them has no translation and shows another language’s text instead. language is the cell’s language."
+  },
   "architect.localization.translationTable.filter": {
     "defaultMessage": "Translations to show",
     "description": "Accessible name of the menu above the translation table that chooses whether it shows every localized string or only those with a translation missing."
@@ -1998,6 +2026,10 @@
   "architect.localization.translationTable.help": {
     "defaultMessage": "Help",
     "description": "Button in the toolbar of the translation table that opens a short explanation of the table and how to edit it."
+  },
+  "architect.localization.translationTable.interfaceTextWithoutDefaultLanguage": {
+    "defaultMessage": "This text needs words in {language}, the protocol’s default language.",
+    "description": "Shown in a cell of the translation table holding words the interview itself shows, such as a button’s label, when the cell is in the protocol’s default language and has been emptied: those words always need a translation in the default language. language is the default language."
   },
   "architect.localization.translationTable.keyboardHelp": {
     "defaultMessage": "Select a cell to edit it. Your changes are kept in the table until you select Save, and each cell is checked when you leave it. Press Escape to undo your changes to a cell. When the cursor is on the first or last line of a cell, the up and down arrow keys move to the previous or next row. Ctrl+Enter (⌘+Enter on a Mac) also moves to the next row, as Enter does in a cell with one line. In a cell with formatting, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.",
@@ -2047,6 +2079,14 @@
     "defaultMessage": "This is the only translation, and it is in {language}. Add a translation in another language before clearing it.",
     "description": "Shown in a cell of the translation table when its translation is emptied but is the only translation the localized string has, which cannot be removed. language is the language of the cell."
   },
+  "architect.localization.translationTable.problemInNamedPlace": {
+    "defaultMessage": "Saving these translations would leave a problem in {place}, “{name}”, so nothing was saved. Details: {details}",
+    "description": "Shown above the translation table when saving is refused because the translations would break a rule of the protocol in a place that is not one of the table’s cells. place names the kind of place, such as “Stage 3” or “Node type”, and name is its name, such as the stage’s name. details is the technical description of the problem, in English, kept for support."
+  },
+  "architect.localization.translationTable.problemInPlace": {
+    "defaultMessage": "Saving these translations would leave a problem in {place}, so nothing was saved. Details: {details}",
+    "description": "Shown above the translation table when saving is refused because the translations would break a rule of the protocol in a place that is not one of the table’s cells. place names that place, such as “Stage 3” or “Node type”. details is the technical description of the problem, in English, kept for support."
+  },
   "architect.localization.translationTable.progress": {
     "defaultMessage": "{translated, number} of {total, number} translated",
     "description": "Read by screen readers in the heading of a language’s column in the translation table: how many of the protocol’s localized strings have a translation into it."
@@ -2075,9 +2115,17 @@
     "defaultMessage": "Shown in {language}*",
     "description": "Tag in an empty cell of the translation table, under the wording participants see instead of the missing translation, when they may see another language instead. The asterisk refers to a note below the table explaining that the participant’s browser can list a language that has a translation. language is the language of the wording shown."
   },
+  "architect.localization.translationTable.stageLabelTooLong": {
+    "defaultMessage": "A stage name can be at most {max, number} characters long. Shorten this one.",
+    "description": "Shown in a cell of the translation table holding a stage’s name when the name is longer than a stage name may be. max is the most characters it may have."
+  },
   "architect.localization.translationTable.textColumn": {
     "defaultMessage": "Location",
     "description": "Heading of the first column of the translation table, which names each localized string by where it is in the protocol."
+  },
+  "architect.localization.translationTable.textNotUsable": {
+    "defaultMessage": "The protocol cannot hold this text as it is written. Details: {details}",
+    "description": "Shown in a cell of the translation table when its text breaks one of the protocol’s rules that Architect has no explanation of its own for. details is the technical description of the problem, in English, kept for support."
   },
   "architect.localization.translationTable.textRemoved": {
     "defaultMessage": "This translation cannot be saved, because the wording it belongs to, or its language, has been removed from the protocol.",
@@ -2393,19 +2441,23 @@
   },
   "architect.projectNav.projectActions.download": {
     "defaultMessage": "Download",
-    "description": "Visible text in components / ProjectNav / ProjectActions."
-  },
-  "architect.projectNav.projectActions.downloadActions": {
-    "defaultMessage": "Download actions",
-    "description": "The aria-label text in components / ProjectNav / ProjectActions."
+    "description": "Item in the Export menu that saves the protocol as a .netcanvas file."
   },
   "architect.projectNav.projectActions.downloaded": {
     "defaultMessage": "Downloaded",
-    "description": "Visible text in components / ProjectNav / ProjectActions."
+    "description": "Label of the Export toolbar button for a moment after the protocol was saved as a file with Download."
   },
   "architect.projectNav.projectActions.downloading": {
     "defaultMessage": "Downloading...",
-    "description": "Visible text in components / ProjectNav / ProjectActions."
+    "description": "Label of the Export toolbar button while the protocol is being saved as a file with Download."
+  },
+  "architect.projectNav.projectActions.export": {
+    "defaultMessage": "Export",
+    "description": "Toolbar button that opens a menu of ways to get the protocol out of Architect: Download (save it as a file) and Send to Interviewer."
+  },
+  "architect.projectNav.projectActions.exportActions": {
+    "defaultMessage": "Export actions",
+    "description": "Accessible name, read by screen readers, of the toolbar group holding the Export button."
   },
   "architect.projectNav.projectActions.navigationActions": {
     "defaultMessage": "Navigation actions",
@@ -2437,15 +2489,15 @@
   },
   "architect.projectNav.projectActions.sendToInterviewer": {
     "defaultMessage": "Send to Interviewer",
-    "description": "Toolbar button beside Download. It opens Interviewer (the app that runs interviews) in a new browser tab and passes it this protocol to import."
+    "description": "Item in the Export menu, below Download. It opens Interviewer (the app that runs interviews) in a new browser tab and passes it this protocol to import."
   },
   "architect.projectNav.projectActions.sending": {
     "defaultMessage": "Sending...",
-    "description": "Label of the Send to Interviewer toolbar button while Interviewer opens in a new browser tab and the protocol is passed to it."
+    "description": "Label of the Export toolbar button while Interviewer opens in a new browser tab and the protocol is passed to it by Send to Interviewer."
   },
   "architect.projectNav.projectActions.sent": {
     "defaultMessage": "Sent",
-    "description": "Label of the Send to Interviewer toolbar button for a moment after Interviewer received the protocol."
+    "description": "Label of the Export toolbar button for a moment after Interviewer received the protocol from Send to Interviewer."
   },
   "architect.projectNav.projectActions.sourceActions": {
     "defaultMessage": "Source actions",
@@ -2616,7 +2668,7 @@
     "description": "Sentence in the dialog offering to upgrade an older protocol, introducing the box below it that lists every change the upgrade makes to the protocol."
   },
   "architect.protocolOpenDialogs.upgradeMakesACopy": {
-    "defaultMessage": "Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.",
+    "defaultMessage": "Upgrading creates a separate copy of your protocol and opens it. Your original protocol will not be changed.",
     "description": "Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy at the current schema and opens it, and that the original protocol stays as it was."
   },
   "architect.protocolSummary.asset.english": {
@@ -3133,11 +3185,11 @@
   },
   "architect.sendToInterviewer.notReached": {
     "defaultMessage": "Interviewer didn’t receive it. Check that your browser lets Architect open new tabs, then try again. You can also download the protocol and open the file in Interviewer.",
-    "description": "Body of the dialog shown when Interviewer (the app that runs interviews) could not be opened in a new browser tab, or opened but did not receive the protocol. \"Download\" means saving the protocol as a .netcanvas file with the Download button."
+    "description": "Body of the dialog shown when Interviewer (the app that runs interviews) could not be opened in a new browser tab, or opened but did not receive the protocol. \"Download\" means saving the protocol as a .netcanvas file with Download in the Export menu."
   },
   "architect.sendToInterviewer.notSentTitle": {
     "defaultMessage": "Your protocol wasn’t sent to Interviewer",
-    "description": "Title of the dialog shown when the \"Send to Interviewer\" button, which opens Interviewer (the app that runs interviews) in a new browser tab and passes it the protocol, did not manage to pass it on."
+    "description": "Title of the dialog shown when \"Send to Interviewer\" (an item in the Export menu), which opens Interviewer (the app that runs interviews) in a new browser tab and passes it the protocol, did not manage to pass it on."
   },
   "architect.sendToInterviewer.oK": {
     "defaultMessage": "OK",
@@ -3967,6 +4019,18 @@
     "defaultMessage": "Failed to Open Protocol",
     "description": "The title text in utils / describeMigrationFailure."
   },
+  "architect.utility.utils.describeMigrationFailure.optionsHaveTheSameLabelWhenMade": {
+    "defaultMessage": "Options {first, number} and {second, number} of the attribute “{attribute}” have the same label: “{firstLabel}” and “{secondLabel}”. That was allowed when this protocol was made, but participants could not tell them apart. Open this protocol in the version of Architect that created it, give the options different labels, then open it here again.",
+    "description": "Shown when Architect cannot open a protocol made with an older version because two answer options of one attribute (a question in the codebook with a fixed list of answers) have the same label as a participant would see it: written the same, or differing only in capital letters or spaces at either end. first and second are the options’ positions in the list, counting from 1. attribute is the attribute’s name. firstLabel and secondLabel are the two labels. Architect does not change the labels itself: the researcher changes them in the older Architect."
+  },
+  "architect.utility.utils.describeMigrationFailure.stageNameTooLong": {
+    "defaultMessage": "A stage name is too long",
+    "description": "Title of the dialog shown when Architect cannot open a protocol made with an older version because a stage’s name is longer than a stage name may now be."
+  },
+  "architect.utility.utils.describeMigrationFailure.stageNameTooLongWhenMade": {
+    "defaultMessage": "The stage name “{name}” is longer than {max, number} characters. That was allowed when this protocol was made, but a longer name does not fit where stage names are shown. Open this protocol in the version of Architect that created it, shorten the name, then open it here again.",
+    "description": "Shown when Architect cannot open a protocol made with an older version because a stage’s name is longer than a stage name may now be. name is the stage’s name. max is the most characters a stage name may have. Architect does not shorten the name itself: the researcher does, in the older Architect."
+  },
   "architect.utility.utils.describeMigrationFailure.thatWasAllowedWhen": {
     "defaultMessage": "{location, select, ego {Two attributes on the interviewee are both named \"{name}\".} named {Two attributes on \"{ownerLabel}\" are both named \"{name}\".} other {Two attributes are both named \"{name}\".}} That was allowed when this protocol was made, but they cannot both exist now — a researcher reading a dropdown could not tell them apart. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.",
     "description": "The message text in utils / describeMigrationFailure."
@@ -3978,6 +4042,10 @@
   "architect.utility.utils.describeMigrationFailure.twoAttributesShareAName": {
     "defaultMessage": "Two attributes share a name",
     "description": "The title text in utils / describeMigrationFailure."
+  },
+  "architect.utility.utils.describeMigrationFailure.twoOptionsHaveTheSameLabel": {
+    "defaultMessage": "Two options have the same label",
+    "description": "Title of the dialog shown when Architect cannot open a protocol made with an older version because two answer options of one attribute have the same label: a participant would see the same text, perhaps differing only in capital letters or spaces at either end."
   },
   "architect.utility.utils.downloadActiveProtocol.oK": {
     "defaultMessage": "OK",

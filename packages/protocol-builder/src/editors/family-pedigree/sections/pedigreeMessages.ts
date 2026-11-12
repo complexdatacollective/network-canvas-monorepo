@@ -711,12 +711,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Body of the confirmation shown before the completeness requirement is switched off, saying what is lost.',
   },
-  trackerTextTitle: {
-    id: 'protocolBuilder.pedigree.trackerTextTitle',
-    defaultMessage: 'Completeness checklist',
-    description:
-      'Heading of a group in the participant wording section, shown only when the stage has a completeness requirement. It holds the words of the checklist that shows participants who and what is still missing from their family, and the side panel’s questions about brothers, sisters and children.',
-  },
   trackerParentsLabel: {
     id: 'protocolBuilder.pedigree.trackerParentsLabel',
     defaultMessage: 'Missing parents item',
@@ -770,13 +764,6 @@ export const familyPedigreeMessages = defineMessages({
     defaultMessage: 'Note about continuing anyway',
     description:
       'Label of the box holding the note that tells participants they may continue without completing the checklist.',
-  },
-  trackerRecommendedNoteHint: {
-    id: 'protocolBuilder.pedigree.trackerRecommendedNoteHint',
-    defaultMessage:
-      'Shown under the checklist when completeness is recommended, not required.',
-    description:
-      'Guidance under the continuing-anyway note box. Recommended and Required are the two choices, made earlier in the editor, for whether participants may continue with an incomplete family.',
   },
   completenessClearConfirm: {
     id: 'protocolBuilder.pedigree.completenessClearConfirm',
@@ -1110,54 +1097,6 @@ export const familyPedigreeMessages = defineMessages({
       'The interface already records this attribute itself, so these fields cannot collect it as well. Choose another attribute, or remove the field.',
     description:
       'Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth, participant marker or relationship to the participant) or as the attribute a nomination prompt sets.',
-  },
-  wordingPointerTool: {
-    id: 'protocolBuilder.pedigree.wording.pointerTool',
-    defaultMessage: 'Pointer tool button',
-    description:
-      'Label of the button that selects and moves people on the family tree.',
-  },
-  wordingConnectTool: {
-    id: 'protocolBuilder.pedigree.wording.connectTool',
-    defaultMessage: 'Connect tool button',
-    description:
-      'Label of the button that connects two people on the family tree.',
-  },
-  wordingDisconnectTool: {
-    id: 'protocolBuilder.pedigree.wording.disconnectTool',
-    defaultMessage: 'Disconnect tool button',
-    description:
-      'Label of the button that removes a connection between two people on the family tree.',
-  },
-  wordingConnectHint: {
-    id: 'protocolBuilder.pedigree.wording.connectHint',
-    defaultMessage: 'Connect hint',
-    description:
-      'Label of the hint shown while the participant chooses the first person to connect.',
-  },
-  wordingDisconnectHint: {
-    id: 'protocolBuilder.pedigree.wording.disconnectHint',
-    defaultMessage: 'Disconnect hint',
-    description:
-      'Label of the hint shown while the participant chooses a connection to remove.',
-  },
-  wordingFramingChoiceTitle: {
-    id: 'protocolBuilder.pedigree.wording.framingChoiceTitle',
-    defaultMessage: 'Wording question',
-    description:
-      'Label of the question asking which words to use for family members. Shown only when participants choose the words.',
-  },
-  wordingFramingChoiceDescription: {
-    id: 'protocolBuilder.pedigree.wording.framingChoiceDescription',
-    defaultMessage: 'Wording question explanation',
-    description:
-      'Label of the explanation under the question asking which words to use for family members.',
-  },
-  wordingFramingControlLabel: {
-    id: 'protocolBuilder.pedigree.wording.framingControlLabel',
-    defaultMessage: 'Wording control label',
-    description:
-      'Label of the control that lets the participant change the words used for family members.',
   },
   wordingPlaceholderParentsNote: {
     id: 'protocolBuilder.pedigree.wording.placeholderParentsNote',
@@ -1590,48 +1529,5 @@ export const familyPedigreeMessages = defineMessages({
       'Unavailable answers hint: both parents the same sex at birth',
     description:
       'Label of the hint explaining that both parents cannot be a new child’s genetic parents because they are recorded with the same sex at birth.',
-  },
-  wordingTitle: {
-    id: 'protocolBuilder.pedigree.wording.title',
-    defaultMessage: 'Participant wording',
-    description:
-      'Heading of the section holding the words the participant sees on this stage.',
-  },
-  wordingDescription: {
-    id: 'protocolBuilder.pedigree.wording.description',
-    defaultMessage:
-      'The words the interface shows the participant while they draw their family, in the order they meet them. Each starts with Network Canvas’s wording in each language the protocol has, and you can change it.',
-    description: 'Description of the participant wording section.',
-  },
-  wordingDrawingTitle: {
-    id: 'protocolBuilder.pedigree.wording.drawingTitle',
-    defaultMessage: 'Drawing the family',
-    description:
-      'Heading of the group of words shown while the participant draws their family on the canvas.',
-  },
-  wordingConnectingTitle: {
-    id: 'protocolBuilder.pedigree.wording.connectingTitle',
-    defaultMessage: 'Connecting people',
-    description:
-      'Heading of the group of words shown while the participant connects and removes people.',
-  },
-  wordingAddingTitle: {
-    id: 'protocolBuilder.pedigree.wording.addingTitle',
-    defaultMessage: 'Adding a family member',
-    description:
-      'Heading of the group of words shown in the side panel for a family member the participant adds or edits.',
-  },
-  wordingChoosesFramingHint: {
-    id: 'protocolBuilder.pedigree.wording.choosesFramingHint',
-    defaultMessage:
-      'Shown only when participants choose the words used for family members.',
-    description:
-      'Hint on the wording settings that are shown only when participants choose the words used for family members.',
-  },
-  wordingGenderIdentityHint: {
-    id: 'protocolBuilder.pedigree.wording.genderIdentityHint',
-    defaultMessage: 'Shown only when the interface asks about gender identity.',
-    description:
-      'Hint on the gender identity wording setting, which is shown only when the interface asks about gender identity.',
   },
 });

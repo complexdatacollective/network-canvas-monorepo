@@ -40,7 +40,7 @@ const fragmentsOf = (
 ): readonly string[] => {
   const parts = word.split(SOFT_HYPHEN);
   const plain = parts.join('');
-  if (mode === 'anywhere') return [...plain];
+  if (mode === 'anywhere') return Array.from(plain);
   if (honourSoftHyphens && parts.length > 1) return parts;
   if (mode === 'hyphens') {
     const known = HYPHENATION_POINTS[plain.toLowerCase()];

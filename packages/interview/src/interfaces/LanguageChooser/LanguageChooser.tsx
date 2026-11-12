@@ -9,6 +9,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import { LocalizedText } from '../../localization/LocalizedText';
 import { useProtocolLocale } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import type { StageProps } from '../../types';
 
 type LanguageChooserProps = StageProps<'LanguageChooser'>;
@@ -19,12 +20,14 @@ type LanguageChooserProps = StageProps<'LanguageChooser'>;
  * interface alike; leaving the preselected language unchanged states nothing.
  * Its heading is the stage's own text, so it too changes with the choice.
  */
-const LanguageChooser = ({ stage: { title } }: LanguageChooserProps) => {
+const LanguageChooser = ({ stage }: LanguageChooserProps) => {
   const headingId = useId();
+  const title = useStageWording(stage).text('title');
   const { locale, options, setLocale } = useProtocolLocale();
 
   return (
     <ScrollArea className="m-0 size-full">
+      {/* oxlint-disable-next-line tailwindcss/no-conflicting-classes -- min-h-full deliberately overrides the interface utility's min-h-0, so the stage fills the scroll area */}
       <div className="interface mx-auto min-h-full max-w-[80ch]">
         <Surface className="grow-0" noContainer spacing="lg" shadow="lg">
           <LocalizedText

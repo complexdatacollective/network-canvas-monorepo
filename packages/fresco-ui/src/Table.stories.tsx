@@ -5,7 +5,7 @@ import {
   useTable,
 } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { DataTableColumnHeader } from './DataTable/ColumnHeader';
 import { DataTable } from './DataTable/DataTable';
@@ -107,11 +107,46 @@ function SortableDataTableExample() {
     manualPagination: true,
   });
 
-  return <DataTable table={table} showPagination={false} />;
+  return (
+    <DataTable table={table} aria-label="Team members" showPagination={false} />
+  );
 }
 
+/**
+ * A sortable data table. The sort state is on the header cell (`aria-sort`),
+ * every header cell is a column header, and the table has a name.
+ */
 export const Sortable: Story = {
   render: () => <SortableDataTableExample />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      canvas.getByRole('table', { name: 'Team members' }),
+    ).toBeVisible();
+    for (const header of canvas.getAllByRole('columnheader')) {
+      await expect(header).toHaveAttribute('scope', 'col');
+    }
+    await expect(
+      canvas.getByRole('columnheader', { name: /Name/ }),
+    ).toHaveAttribute('aria-sort', 'ascending');
+    await expect(
+      canvas.getByRole('columnheader', { name: /Email/ }),
+    ).toHaveAttribute('aria-sort', 'none');
+
+    await userEvent.click(canvas.getByRole('button', { name: /Email/ }));
+    await userEvent.click(
+      await within(document.body).findByRole('menuitemradio', {
+        name: 'Sort descending',
+      }),
+    );
+    await expect(
+      canvas.getByRole('columnheader', { name: /Email/ }),
+    ).toHaveAttribute('aria-sort', 'descending');
+    await expect(
+      canvas.getByRole('columnheader', { name: /Name/ }),
+    ).toHaveAttribute('aria-sort', 'none');
+  },
 };
 
 export const Default: Story = {
@@ -257,7 +292,7 @@ export const WithManyColumns: Story = {
 
 export const WithLongContent: Story = {
   render: () => (
-    <Table>
+    <Table aria-label="Titles and descriptions">
       <TableHeader>
         <TableRow>
           <TableHead>Title</TableHead>
@@ -339,17 +374,17 @@ export const WithAlignment: Story = {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="text-left">Left</TableHead>
+          <TableHead className="text-start">Start</TableHead>
           <TableHead className="text-center">Center</TableHead>
-          <TableHead className="text-right">Right</TableHead>
+          <TableHead className="text-end">End</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {[1, 2, 3].map((i) => (
           <TableRow key={i}>
-            <TableCell className="text-left">Left aligned</TableCell>
+            <TableCell className="text-start">Start aligned</TableCell>
             <TableCell className="text-center">Center aligned</TableCell>
-            <TableCell className="text-right">Right aligned</TableCell>
+            <TableCell className="text-end">End aligned</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -360,7 +395,7 @@ export const WithAlignment: Story = {
 export const Responsive: Story = {
   render: () => (
     <div className="max-w-md">
-      <Table>
+      <Table aria-label="People">
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
@@ -402,7 +437,7 @@ function RightToLeftDataTableExample() {
     state: { pagination: { pageIndex: 3, pageSize: 25 } },
   });
 
-  return <DataTable table={table} />;
+  return <DataTable table={table} aria-label="الأعضاء" />;
 }
 
 const rtlData = [
@@ -443,6 +478,62 @@ export const RightToLeft: Story = {
     // Reading order first: "previous" sits to the right of "next".
     await expect(previous.getBoundingClientRect().left).toBeGreaterThan(
       next.getBoundingClientRect().left,
+    );
+  },
+};
+
+function ScrollingDataTableExample() {
+  const columns = useMemo<DataTableColumnDef<SampleRow>[]>(
+    () => [
+      { accessorKey: 'name', header: 'Name' },
+      { accessorKey: 'email', header: 'Email address' },
+      { accessorKey: 'role', header: 'Role in the study' },
+    ],
+    [],
+  );
+
+  const table = useTable({
+    features: dataTableFeatures,
+    data: sampleData,
+    columns,
+    manualPagination: true,
+  });
+
+  return (
+    <div style={{ width: 240 }}>
+      <DataTable
+        table={table}
+        aria-label="Team members"
+        showPagination={false}
+      />
+    </div>
+  );
+}
+
+/**
+ * A table wider than its container scrolls sideways. That scroller is then a
+ * named region and a tab stop, so a keyboard user can scroll it with the arrow
+ * keys; a table that fits has neither.
+ */
+export const ScrollsHorizontally: Story = {
+  render: () => <ScrollingDataTableExample />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const region = await canvas.findByRole('region', { name: 'Team members' });
+    await expect(region).toHaveAttribute('tabindex', '0');
+    await expect(region.scrollWidth).toBeGreaterThan(region.clientWidth);
+
+    await userEvent.tab();
+    await expect(region).toHaveFocus();
+
+    // The surface around the scroller clips overflow, so the focus ring has to
+    // be drawn inside the scroller rather than outside it.
+    // The offset animates in, so wait for it to settle.
+    await waitFor(() =>
+      expect(
+        Number.parseFloat(getComputedStyle(region).outlineOffset),
+      ).toBeLessThan(0),
     );
   },
 };

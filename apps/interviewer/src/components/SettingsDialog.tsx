@@ -78,28 +78,33 @@ const messages = defineMessages({
   storageUsage: {
     id: 'interviewer.settingsDialog.storageUsage',
     defaultMessage: 'Storage usage',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Accessible name of the storage usage progress bar in Settings, About section, read only by screen readers.',
   },
   couldNotRefreshSyntheticSessionInfo: {
     id: 'interviewer.settingsDialog.couldNotRefreshSyntheticSessionInfo',
     defaultMessage: 'Could not refresh synthetic session info',
-    description: 'User-facing message in Interviewer Settings Dialog.',
+    description:
+      'Title of an error toast shown when Settings cannot reload the protocol list and synthetic session count from device storage.',
   },
   theProtocolListAndSessionCountAbove: {
     id: 'interviewer.settingsDialog.theProtocolListAndSessionCountAbove',
     defaultMessage:
       'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
-    description: 'User-facing message in Interviewer Settings Dialog.',
+    description:
+      'Body of the error toast whose title says synthetic session info could not be refreshed; warns that the protocol list and session count in the Synthetic data section may be out of date.',
   },
   generationFailed: {
     id: 'interviewer.settingsDialog.generationFailed',
     defaultMessage: 'Generation failed',
-    description: 'User-facing message in Interviewer Settings Dialog.',
+    description:
+      'Title of an error toast shown when generating synthetic interview sessions fails.',
   },
   thisCannotBeUndone: {
     id: 'interviewer.settingsDialog.thisCannotBeUndone',
     defaultMessage: 'This cannot be undone.',
-    description: 'User-facing message in Interviewer Settings Dialog.',
+    description:
+      'Warning line in the confirmation dialog for deleting all synthetic sessions; says the deletion is permanent.',
   },
   unknown: {
     id: 'interviewer.settingsDialog.unknown',
@@ -110,156 +115,185 @@ const messages = defineMessages({
   settings: {
     id: 'interviewer.settingsDialog.settings',
     defaultMessage: 'Settings',
-    description: 'Visible copy in Interviewer Settings Dialog.',
+    description:
+      'Title of the Settings dialog, opened from the gear button in the top bar of the home screen.',
   },
   settingsSections: {
     id: 'interviewer.settingsDialog.settingsSections',
     defaultMessage: 'Settings sections',
-    description: 'The aria-label label in Interviewer Settings Dialog.',
+    description:
+      'Accessible name of the tab list that switches between Settings sections (About, Language, Interview and so on), read only by screen readers.',
   },
   appVersion: {
     id: 'interviewer.settingsDialog.appVersion',
     defaultMessage: 'App version',
-    description: 'The title label in Interviewer Settings Dialog.',
+    description:
+      'Row title in Settings, About section, above the installed Interviewer version number.',
   },
   networkCanvasInterviewer: {
     id: 'interviewer.settingsDialog.networkCanvasInterviewer',
     defaultMessage: 'Network Canvas Interviewer',
-    description: 'The desc label in Interviewer Settings Dialog.',
+    description:
+      'Row description under the App version title in Settings, About section; the name of this app.',
   },
   storage: {
     id: 'interviewer.settingsDialog.storage',
     defaultMessage: 'Storage',
-    description: 'The title label in Interviewer Settings Dialog.',
+    description:
+      'Row title in Settings, About section, for how much of the device storage quota the app uses.',
   },
   offlineStorage: {
     id: 'interviewer.settingsDialog.offlineStorage',
     defaultMessage: 'Offline storage',
-    description: 'The title label in Interviewer Settings Dialog.',
+    description:
+      "Row title in Settings, About section, for whether the browser protects the app's stored data from being cleared automatically.",
   },
   installationID: {
     id: 'interviewer.settingsDialog.installationID',
     defaultMessage: 'Installation ID',
-    description: 'The title label in Interviewer Settings Dialog.',
+    description:
+      'Row title in Settings, About section, above the identifier of this installation of the app on this device.',
   },
   uniquePerDeviceIdentifier: {
     id: 'interviewer.settingsDialog.uniquePerDeviceIdentifier',
     defaultMessage: 'Unique per-device identifier',
-    description: 'The desc label in Interviewer Settings Dialog.',
+    description:
+      'Row description under the Installation ID title; says the identifier is different on each device.',
   },
   showSampleProtocolOnHomeScreen: {
     id: 'interviewer.settingsDialog.showSampleProtocolOnHomeScreen',
     defaultMessage: 'Show sample protocol on home screen',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Toggle label in Settings, About section; controls whether the sample protocol card appears on the home screen.',
   },
   reShowsTheOneClickSampleProtocol: {
     id: 'interviewer.settingsDialog.reShowsTheOneClickSampleProtocol',
     defaultMessage:
       'Re-shows the one-click sample protocol card next to the Import card.',
-    description: 'The hint label in Interviewer Settings Dialog.',
+    description:
+      'Hint under the sample protocol toggle; turning it on brings back the sample protocol card next to the Import card on the home screen.',
   },
   allowStageNavigation: {
     id: 'interviewer.settingsDialog.allowStageNavigation',
     defaultMessage: 'Allow stage navigation',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Toggle label in Settings, Interview section; controls whether participants can jump between interview stages from the progress bar.',
   },
   letParticipantsMoveBetweenStagesByTapping: {
     id: 'interviewer.settingsDialog.letParticipantsMoveBetweenStagesByTapping',
     defaultMessage:
       'Let participants move between stages by tapping the progress bar during an interview, which opens a stages menu.',
-    description: 'The hint label in Interviewer Settings Dialog.',
+    description:
+      'Hint under the Allow stage navigation toggle; explains that tapping the progress bar during an interview opens a menu of stages.',
   },
   whenOffParticipantsCanOnlyMoveForwards: {
     id: 'interviewer.settingsDialog.whenOffParticipantsCanOnlyMoveForwards',
     defaultMessage:
       'When off, participants can only move forwards and backwards one stage at a time. Turning this on lets them jump directly to any stage, which is useful for piloting a protocol but is usually left off for real interviews.',
-    description: 'Visible copy in Interviewer Settings Dialog.',
+    description:
+      'Explanatory paragraph in Settings, Interview section, about the Allow stage navigation toggle: what happens when it is off and why a researcher might turn it on.',
   },
   exportGraphML: {
     id: 'interviewer.settingsDialog.exportGraphML',
     defaultMessage: 'Export GraphML',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Toggle label in Settings, Data export section; GraphML is a network file format. Controls whether exports include GraphML files.',
   },
   includeGraphMLFilesInInterviewExports: {
     id: 'interviewer.settingsDialog.includeGraphMLFilesInInterviewExports',
     defaultMessage: 'Include GraphML files in interview exports.',
-    description: 'The hint label in Interviewer Settings Dialog.',
+    description:
+      'Hint under the Export GraphML toggle; says exported interview archives will contain GraphML (network file format) files.',
   },
   exportCSV: {
     id: 'interviewer.settingsDialog.exportCSV',
     defaultMessage: 'Export CSV',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Toggle label in Settings, Data export section; CSV is a spreadsheet file format. Controls whether exports include CSV files.',
   },
   includeCSVFilesAttributesEdgesEgoIn: {
     id: 'interviewer.settingsDialog.includeCSVFilesAttributesEdgesEgoIn',
     defaultMessage:
       'Include CSV files (attributes, edges, ego) in interview exports.',
-    description: 'The hint label in Interviewer Settings Dialog.',
+    description:
+      'Hint under the Export CSV toggle; says exported interview archives will contain CSV (spreadsheet) files for node attributes, edges and ego data.',
   },
   exportNodePositionsAsScreenCoordinatePixels: {
     id: 'interviewer.settingsDialog.exportNodePositionsAsScreenCoordinatePixels',
     defaultMessage: 'Export node positions as screen-coordinate pixels',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Toggle label in Settings, Data export section; controls whether sociogram node positions are exported as pixel coordinates instead of normalised values.',
   },
   sociogramNodePositionsAreExportedInPixel: {
     id: 'interviewer.settingsDialog.sociogramNodePositionsAreExportedInPixel',
     defaultMessage:
       'Sociogram node positions are exported in pixel coordinates relative to the layout below.',
-    description: 'The hint label in Interviewer Settings Dialog.',
+    description:
+      'Hint under the screen-coordinate toggle; says positions of nodes in sociogram stages are exported in pixels relative to the screen layout size set in the two fields below.',
   },
   screenLayoutWidth: {
     id: 'interviewer.settingsDialog.screenLayoutWidth',
     defaultMessage: 'Screen layout width',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Field label for a number input in Settings, Data export section: the screen layout width, in pixels, used to scale exported sociogram positions.',
   },
   pixels: {
     id: 'interviewer.settingsDialog.pixels',
     defaultMessage: 'Pixels',
-    description: 'The hint label in Interviewer Settings Dialog.',
+    description:
+      'Hint under the screen layout width and height number inputs; names the unit (screen pixels).',
   },
   screenLayoutHeight: {
     id: 'interviewer.settingsDialog.screenLayoutHeight',
     defaultMessage: 'Screen layout height',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Field label for a number input in Settings, Data export section: the screen layout height, in pixels, used to scale exported sociogram positions.',
   },
   enableAnalytics: {
     id: 'interviewer.settingsDialog.enableAnalytics',
     defaultMessage: 'Enable analytics',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Toggle label in Settings, Privacy section; controls whether anonymous usage and error data is sent.',
   },
   sendAnonymousUsageAndErrorDataTo: {
     id: 'interviewer.settingsDialog.sendAnonymousUsageAndErrorDataTo',
     defaultMessage:
       'Send anonymous usage and error data to help the Network Canvas team improve the app.',
-    description: 'The hint label in Interviewer Settings Dialog.',
+    description:
+      'Hint under the Enable analytics toggle; says anonymous usage and error data is sent to help the Network Canvas team improve the app.',
   },
   whenAnalyticsAreEnabledTheAppSends: {
     id: 'interviewer.settingsDialog.whenAnalyticsAreEnabledTheAppSends',
     defaultMessage:
       'When analytics are enabled, the app sends a small amount of anonymous information about how it is used — for example which interview stages and features are exercised, when protocols are imported, when data is exported, and details of any errors or crashes. This helps us find bugs and decide what to improve.',
-    description: 'Visible copy in Interviewer Settings Dialog.',
+    description:
+      'Paragraph in Settings, Privacy section explaining what anonymous information is sent when analytics are on and why.',
   },
   noParticipantDataIsEverCollected: {
     id: 'interviewer.settingsDialog.noParticipantDataIsEverCollected',
     defaultMessage: 'No participant data is ever collected.',
-    description: 'Visible copy in Interviewer Settings Dialog.',
+    description:
+      'Title of an information alert in Settings, Privacy section; a reassurance that analytics never include participant data.',
   },
   networkDataResponsesCaseIDsProtocolContents: {
     id: 'interviewer.settingsDialog.networkDataResponsesCaseIDsProtocolContents',
     defaultMessage:
       'Network data, responses, case IDs, protocol contents, and asset files never leave this device. Analytics also contain no user-identifiable information.',
-    description: 'Visible copy in Interviewer Settings Dialog.',
+    description:
+      'Body of the information alert in Settings, Privacy section; lists the data (network data, responses, case IDs, protocol contents, assets) that never leaves the device.',
   },
   enableAppSecurity: {
     id: 'interviewer.settingsDialog.enableAppSecurity',
     defaultMessage: 'Enable app security',
-    description: 'The title label in Interviewer Settings Dialog.',
+    description:
+      'Row title in Settings, Security section, shown only when no device lock is set up; offers to set up a PIN, passphrase or biometric lock.',
   },
   runTheGetStartedWizardToConfigure: {
     id: 'interviewer.settingsDialog.runTheGetStartedWizardToConfigure',
     defaultMessage:
       'Run the Get started wizard to configure a device lock and choose your security preferences.',
-    description: 'The desc label in Interviewer Settings Dialog.',
+    description:
+      'Row description under Enable app security; tells the researcher the Get started button runs a setup wizard for the device lock and security preferences.',
   },
   getStarted: {
     id: 'interviewer.settingsDialog.getStarted',
@@ -267,16 +301,18 @@ const messages = defineMessages({
     description:
       'Action that opens security setup for a device currently used without a lock.',
   },
-  useTheLockButtonInTheTop: {
+  lockButtonHint: {
     id: 'interviewer.settingsDialog.useTheLockButtonInTheTop',
     defaultMessage: 'Use the lock button in the top bar to lock immediately.',
-    description: 'Visible copy in Interviewer Settings Dialog.',
+    description:
+      'Information alert in Settings, Security section, shown when a device lock is set; points to the lock button in the top bar for locking immediately.',
   },
   generateSyntheticInterviewSessionsToValidateThe: {
     id: 'interviewer.settingsDialog.generateSyntheticInterviewSessionsToValidateThe',
     defaultMessage:
       'Generate synthetic interview sessions to validate the export pipeline. Synthetic sessions appear in the regular Sessions list and export identically to real sessions.',
-    description: 'Visible copy in Interviewer Settings Dialog.',
+    description:
+      'Introductory paragraph of Settings, Synthetic data section; explains that generated fake interview sessions are for testing the export process and mix in with real sessions.',
   },
   protocol: {
     id: 'interviewer.settingsDialog.protocol',
@@ -287,44 +323,52 @@ const messages = defineMessages({
   importAProtocolFirst: {
     id: 'interviewer.settingsDialog.importAProtocolFirst',
     defaultMessage: 'Import a protocol first.',
-    description: 'User-facing message in Interviewer Settings Dialog.',
+    description:
+      'Hint under the disabled protocol selector in Settings, Synthetic data section, shown when no protocol has been imported yet.',
   },
   theProtocolUsedToShapeGeneratedSessions: {
     id: 'interviewer.settingsDialog.theProtocolUsedToShapeGeneratedSessions',
     defaultMessage: 'The protocol used to shape generated sessions.',
-    description: 'User-facing message in Interviewer Settings Dialog.',
+    description:
+      'Hint under the protocol selector in Settings, Synthetic data section; says the chosen protocol determines the structure of the generated sessions.',
   },
   numberOfSessions: {
     id: 'interviewer.settingsDialog.numberOfSessions',
     defaultMessage: 'Number of sessions',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Field label for a number input in Settings, Synthetic data section: how many synthetic interview sessions to generate.',
   },
   simulateParticipantDropOut: {
     id: 'interviewer.settingsDialog.simulateParticipantDropOut',
     defaultMessage: 'Simulate participant drop-out',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Toggle label in Settings, Synthetic data section; controls whether some generated sessions are left unfinished, as if participants stopped early.',
   },
   someSessionsWillBeLeftIncompleteTo: {
     id: 'interviewer.settingsDialog.someSessionsWillBeLeftIncompleteTo',
     defaultMessage:
       'Some sessions will be left incomplete to mirror real-world data.',
-    description: 'The hint label in Interviewer Settings Dialog.',
+    description:
+      'Hint under the Simulate participant drop-out toggle; says some generated sessions will be incomplete.',
   },
   respectSkipLogicAndFiltering: {
     id: 'interviewer.settingsDialog.respectSkipLogicAndFiltering',
     defaultMessage: 'Respect skip logic and filtering',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      "Toggle label in Settings, Synthetic data section; controls whether generated sessions follow the protocol's skip logic and stage filters.",
   },
   applyProtocolSkipLogicAndStageFilters: {
     id: 'interviewer.settingsDialog.applyProtocolSkipLogicAndStageFilters',
     defaultMessage:
       'Apply protocol skip logic and stage filters during generation.',
-    description: 'The hint label in Interviewer Settings Dialog.',
+    description:
+      "Hint under the skip logic toggle; says the protocol's skip logic and stage filters are applied while generating.",
   },
   generating: {
     id: 'interviewer.settingsDialog.generating',
     defaultMessage: 'Generating…',
-    description: 'User-facing message in Interviewer Settings Dialog.',
+    description:
+      'Label of the Generate button in Settings, Synthetic data section while generation is running; an in-progress state, not a command.',
   },
   generate: {
     id: 'interviewer.settingsDialog.generate',
@@ -335,7 +379,8 @@ const messages = defineMessages({
   generationProgress: {
     id: 'interviewer.settingsDialog.generationProgress',
     defaultMessage: 'Generation progress',
-    description: 'The label label in Interviewer Settings Dialog.',
+    description:
+      'Accessible name of the progress bar shown while synthetic sessions are being generated, read only by screen readers.',
   },
   currentTotalInterviewsGenerated: {
     id: 'interviewer.settingsDialog.currentTotalInterviewsGenerated',
@@ -347,7 +392,8 @@ const messages = defineMessages({
   deleteSyntheticData: {
     id: 'interviewer.settingsDialog.deleteSyntheticData',
     defaultMessage: 'Delete synthetic data',
-    description: 'The title label in Interviewer Settings Dialog.',
+    description:
+      'Row title in Settings, Synthetic data section, for the control that deletes all generated sessions.',
   },
   deleteAll: {
     id: 'interviewer.settingsDialog.deleteAll',
@@ -364,7 +410,8 @@ const messages = defineMessages({
   about: {
     id: 'interviewer.settingsDialog.about',
     defaultMessage: 'About',
-    description: 'Administration text in Interviewer SettingsDialog.',
+    description:
+      'Settings navigation tab for the About section: app version, storage and installation details.',
   },
   language: {
     id: 'interviewer.settingsDialog.language',
@@ -381,12 +428,14 @@ const messages = defineMessages({
   dataExport: {
     id: 'interviewer.settingsDialog.dataExport',
     defaultMessage: 'Data export',
-    description: 'Administration text in Interviewer SettingsDialog.',
+    description:
+      'Settings navigation tab for the section with options for what exported interview data contains.',
   },
   privacy: {
     id: 'interviewer.settingsDialog.privacy',
     defaultMessage: 'Privacy',
-    description: 'Administration text in Interviewer SettingsDialog.',
+    description:
+      'Settings navigation tab for the section about analytics and what data is sent.',
   },
   security: {
     id: 'interviewer.settingsDialog.security',
@@ -397,7 +446,8 @@ const messages = defineMessages({
   syntheticData: {
     id: 'interviewer.settingsDialog.syntheticData',
     defaultMessage: 'Synthetic data',
-    description: 'Administration text in Interviewer SettingsDialog.',
+    description:
+      'Settings navigation tab for the section that generates and deletes fake interview sessions for testing.',
   },
   generated: {
     id: 'interviewer.settingsDialog.generated',
@@ -417,31 +467,36 @@ const messages = defineMessages({
     id: 'interviewer.settingsDialog.deleted',
     defaultMessage:
       '{count, plural, one {Deleted # synthetic session} other {Deleted # synthetic sessions}}',
-    description: 'Administration text in Interviewer SettingsDialog.',
+    description:
+      'Success toast after synthetic sessions are deleted; count is the number deleted.',
   },
   syntheticCount: {
     id: 'interviewer.settingsDialog.syntheticCount',
     defaultMessage:
       '{count, plural, one {There is currently # synthetic session on this device.} other {There are currently # synthetic sessions on this device.}}',
-    description: 'Administration text in Interviewer SettingsDialog.',
+    description:
+      'Row description in Settings, Synthetic data section; count is how many synthetic sessions are currently stored on this device.',
   },
   storageUsed: {
     id: 'interviewer.settingsDialog.storageUsed',
     defaultMessage:
       '{hasPercent, select, true {{used} of {total} ({percent})} other {{used} of {total}}}',
-    description: 'Administration text in Interviewer SettingsDialog.',
+    description:
+      'Row description under Storage in Settings, About section. used is the amount stored, total is the storage quota, percent is the share used; hasPercent is true or other, and selects whether the percentage is shown.',
   },
   storageProtected: {
     id: 'interviewer.settingsDialog.storageProtected',
     defaultMessage:
       '{hasUsage, select, true {Offline storage: protected from eviction · {used} used} other {Offline storage: protected from eviction}}',
-    description: 'Administration text in Interviewer SettingsDialog.',
+    description:
+      'Row description under Offline storage in Settings, About section, when the browser protects stored data from automatic removal. used is the amount stored; hasUsage selects whether it is shown.',
   },
   storageBestEffort: {
     id: 'interviewer.settingsDialog.storageBestEffort',
     defaultMessage:
       'Offline storage: best-effort — it may be cleared under storage pressure',
-    description: 'Administration text in Interviewer SettingsDialog.',
+    description:
+      'Row description under Offline storage in Settings, About section, when the browser may clear stored data if the device runs low on space.',
   },
   bestEffort: {
     id: 'interviewer.settingsDialog.bestEffort',
@@ -458,7 +513,8 @@ const messages = defineMessages({
   generationFailedHelp: {
     id: 'interviewer.settingsDialog.generationFailedHelp',
     defaultMessage: 'Synthetic data could not be generated. Please try again.',
-    description: 'Administration text in Interviewer SettingsDialog.',
+    description:
+      'Body of the error toast shown when generating synthetic sessions fails for an unexpected reason; asks the researcher to try again.',
   },
 });
 
@@ -734,6 +790,7 @@ export function SettingsDialog({
     simulateDropOut,
     respectSkipLogicAndFiltering,
     toast,
+    // oxlint-disable-next-line react/memo-dependencies -- every listed value is read; the rule cannot follow a try/finally and reports each dependency of one as unused
     reloadSyntheticWithFeedback,
     onDataChange,
     analytics,
@@ -783,6 +840,7 @@ export function SettingsDialog({
     });
   }, [
     confirm,
+    // oxlint-disable-next-line react/memo-dependencies -- every listed value is read; the rule cannot follow a try/finally and reports each dependency of one as unused
     onDataChange,
     reloadSyntheticWithFeedback,
     syntheticCount,
@@ -864,7 +922,7 @@ export function SettingsDialog({
         className="min-h-0 flex-1"
       >
         <ScrollArea
-          viewportClassName="@container pr-4"
+          viewportClassName="@container pe-4"
           className="min-w-0 flex-1"
         >
           <TabsPanel value="about">
@@ -1167,7 +1225,7 @@ export function SettingsDialog({
                 {auth.kind === 'unlocked' && auth.mode !== 'none' ? (
                   <>
                     <Alert variant="info">
-                      {intl.formatMessage(messages.useTheLockButtonInTheTop)}
+                      {intl.formatMessage(messages.lockButtonHint)}
                     </Alert>
                     <SecurityBehaviorControls
                       value={behavior}

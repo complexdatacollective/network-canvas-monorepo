@@ -11,6 +11,8 @@ import { defineConfig } from 'vitest/config';
 import { BROWSER_VIEWPORT } from '@codaco/vitest-config/modern/browser-viewport';
 import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
 
+import DurationSequencer from './vitest.sequencer';
+
 const here = dirname(fileURLToPath(import.meta.url));
 
 /**
@@ -46,10 +48,13 @@ const MAPBOX_ALIAS = {
  * panel nobody reads in CI.
  */
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react({ compiler: true })],
   resolve: { alias: [MAPBOX_ALIAS] },
   test: {
     globals: true,
+    // Only consulted under `--shard`, which CI passes to split this suite
+    // across three runners; see vitest.sequencer.ts.
+    sequence: { sequencer: DurationSequencer },
     projects: [
       {
         extends: true,

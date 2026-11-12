@@ -11,6 +11,7 @@ import {
   textSizeVariants,
 } from '@codaco/fresco-ui/styles/controlVariants';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
+import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 
 // `controlVariants` lays a control out on one line it truncates; this one
 // wraps, so its box follows the text. One line is as tall as `InputField`:
@@ -51,8 +52,9 @@ const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
  *
  * Like `StageNameInput`, it is a `<textarea>` sized by a hidden copy of its
  * text laid out behind it in the same grid cell, and the value stays one
- * paragraph: Enter adds nothing and pasted line breaks become spaces, because
- * the interview shows these texts as a single run of words.
+ * paragraph: Enter adds nothing and pasted line breaks become spaces
+ * (`lineBreaksAsSpaces`), because the interview shows
+ * these texts as a single run of words and the schema refuses a line break.
  */
 export default function WrappingTextField({
   value,
@@ -62,7 +64,7 @@ export default function WrappingTextField({
   ...props
 }: WrappingTextFieldProps) {
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    onChange?.(event.target.value.replace(/\r\n|[\r\n]/g, ' '));
+    onChange?.(lineBreaksAsSpaces(event.target.value));
   };
 
   const text = value ?? '';

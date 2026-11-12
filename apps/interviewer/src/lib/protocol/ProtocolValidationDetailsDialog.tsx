@@ -16,50 +16,50 @@ const messages = defineMessages({
     id: 'interviewer.protocolValidationDetailsDialog.protocolValidationErrors',
     defaultMessage: 'Protocol validation errors',
     description:
-      'The aria-label label in Interviewer Protocol Validation Details Dialog.',
+      'Accessible name of the scrollable list of technical validation errors in the protocol validation failed dialog, read only by screen readers.',
   },
   ifYouWouldLikeSupportPostYour: {
     id: 'interviewer.protocolValidationDetailsDialog.ifYouWouldLikeSupportPostYour',
     defaultMessage:
       'If you would like support, post your protocol along with these errors on the <link>community forum</link>, or email <link1>info@networkcanvas.com</link1> with this information.',
     description:
-      'Visible copy in Interviewer Protocol Validation Details Dialog.',
+      'Paragraph in the protocol validation failed dialog pointing to help. link wraps the community forum link text and link1 wraps the email address.',
   },
   validationErrorsCopiedToClipboard: {
     id: 'interviewer.protocolValidationDetailsDialog.validationErrorsCopiedToClipboard',
     defaultMessage: 'Validation errors copied to clipboard.',
     description:
-      'User-facing message in Interviewer Protocol Validation Details Dialog.',
+      'Status line in the dialog footer confirming the validation errors were copied to the clipboard.',
   },
   validationErrorsCouldNotBeCopied: {
     id: 'interviewer.protocolValidationDetailsDialog.validationErrorsCouldNotBeCopied',
     defaultMessage: 'Validation errors could not be copied.',
     description:
-      'User-facing message in Interviewer Protocol Validation Details Dialog.',
+      'Status line in the dialog footer shown when copying the validation errors to the clipboard did not work.',
   },
   copied: {
     id: 'interviewer.protocolValidationDetailsDialog.copied',
     defaultMessage: 'Copied',
     description:
-      'User-facing message in Interviewer Protocol Validation Details Dialog.',
+      'Label of the copy button in the protocol validation dialog after the errors were copied; confirms the action happened.',
   },
   copy: {
     id: 'interviewer.protocolValidationDetailsDialog.copy',
     defaultMessage: 'Copy',
     description:
-      'User-facing message in Interviewer Protocol Validation Details Dialog.',
+      'Button in the protocol validation failed dialog footer that copies the validation errors to the clipboard. Verb.',
   },
   title: {
     id: 'interviewer.protocolValidationDetailsDialog.title',
     defaultMessage: 'Protocol validation failed',
     description:
-      'Administration text in Interviewer ProtocolValidationDetailsDialog.',
+      'Title of the dialog shown when an imported protocol file does not pass validation and cannot be installed.',
   },
   description: {
     id: 'interviewer.protocolValidationDetailsDialog.description',
     defaultMessage: 'Details of the validation errors can be found below:',
     description:
-      'Administration text in Interviewer ProtocolValidationDetailsDialog.',
+      'Subtitle of the protocol validation failed dialog, introducing the list of errors shown beneath it.',
   },
 });
 
@@ -136,7 +136,7 @@ export function ProtocolValidationDetailsDialogBody({
         aria-label={intl.formatMessage(messages.protocolValidationErrors)}
         className="inset-surface bg-surface-1 text-surface-1-contrast publish-colors h-64! flex-none overflow-hidden rounded-sm"
         fade={false}
-        viewportClassName="my-1.5 mr-1.5 px-4 py-2.5"
+        viewportClassName="my-1.5 me-1.5 px-4 py-2.5"
       >
         <ol lang="en" dir="ltr" className="list-decimal space-y-3 ps-5 text-sm">
           {visibleIssues.map((issue, index) => (
@@ -186,7 +186,7 @@ function ProtocolValidationDetailsDialogFooter({
       <Paragraph
         intent="smallText"
         aria-live="polite"
-        className="phone-landscape:mr-auto min-h-lh"
+        className="phone-landscape:me-auto min-h-lh"
         emphasis={copyStatus === 'failed' ? 'default' : 'muted'}
         margin="none"
       >

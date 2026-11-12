@@ -8,6 +8,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../generateNetwork.ts';
+import { describeValue } from '../generateNetwork/constraints/describeValue.ts';
 import { SyntheticDataConstraintError } from '../generateNetwork/constraints/error.ts';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
@@ -143,7 +144,7 @@ describe('generateNetwork constraint conformance', () => {
     });
 
     const ego = network.ego?.[entityAttributesProperty] ?? {};
-    expect(String(ego.a)).toHaveLength(24);
+    expect(describeValue(ego.a)).toHaveLength(24);
     expect(ego.b).toBe(ego.a);
   });
 
@@ -164,7 +165,7 @@ describe('generateNetwork constraint conformance', () => {
       (node) => node[entityAttributesProperty].code,
     );
     expect(codes).toHaveLength(5);
-    expect(codes.every((code) => String(code).length === 4)).toBe(true);
+    expect(codes.every((code) => describeValue(code).length === 4)).toBe(true);
     expect(new Set(codes).size).toBe(5);
   });
 
@@ -408,7 +409,7 @@ describe('generateNetwork constraint conformance', () => {
     const min = earliest.toISOString().slice(0, 10);
 
     for (const node of network.nodes) {
-      const seen = String(node[entityAttributesProperty].seen);
+      const seen = describeValue(node[entityAttributesProperty].seen);
       expect(seen >= min && seen <= today).toBe(true);
     }
   });
@@ -464,12 +465,14 @@ describe('generateNetwork constraint conformance', () => {
       complain(
         failures,
         new Set(bands).size === bands.length,
-        () => `seed ${seed}: bands ${bands.join(', ')} repeat a unique value`,
+        () =>
+          `seed ${seed}: bands ${bands.map(describeValue).join(', ')} repeat a unique value`,
       );
       complain(
         failures,
         bands.every((band) => values.includes(Number(band))),
-        () => `seed ${seed}: bands ${bands.join(', ')} leave the option list`,
+        () =>
+          `seed ${seed}: bands ${bands.map(describeValue).join(', ')} leave the option list`,
       );
     }
 
@@ -507,6 +510,7 @@ describe('generateNetwork constraint conformance', () => {
         id: 'stage-roster',
         type: 'NameGeneratorRoster',
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
+        unnamedLabel: { en: 'Unnamed {count}' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
         },
@@ -1084,7 +1088,8 @@ describe('a strict date comparison at the end of the calendar', () => {
         complain(
           failures,
           since === '9999-12-31' && until === '9999-12-31',
-          () => `seed ${seed}: ${String(since)} then ${String(until)}`,
+          () =>
+            `seed ${seed}: ${describeValue(since)} then ${describeValue(until)}`,
         );
       }
     }
@@ -1122,7 +1127,7 @@ describe('cross-variable rules across a seed sweep', () => {
     for (let seed = 1; seed <= SEEDS; seed++) {
       const { network } = generateNetwork({ seed, ...egoProtocol(variables) });
       const ego = network.ego?.[entityAttributesProperty] ?? {};
-      const a = String(ego.a);
+      const a = describeValue(ego.a);
 
       complain(
         failures,
@@ -1132,7 +1137,7 @@ describe('cross-variable rules across a seed sweep', () => {
       complain(
         failures,
         ego.b === ego.a,
-        () => `seed ${seed}: b "${String(ego.b)}" is not a "${a}"`,
+        () => `seed ${seed}: b "${describeValue(ego.b)}" is not a "${a}"`,
       );
     }
 
@@ -1151,14 +1156,15 @@ describe('cross-variable rules across a seed sweep', () => {
       complain(
         failures,
         ego.b === ego.a,
-        () => `seed ${seed}: b ${String(ego.b)} is not a ${String(ego.a)}`,
+        () =>
+          `seed ${seed}: b ${describeValue(ego.b)} is not a ${describeValue(ego.a)}`,
       );
       for (const [id, values] of Object.entries(offered)) {
         complain(
           failures,
           values.includes(Number(ego[id])),
           () =>
-            `seed ${seed}: ${id} holds ${String(ego[id])}, which it does not offer`,
+            `seed ${seed}: ${id} holds ${describeValue(ego[id])}, which it does not offer`,
         );
       }
     }
@@ -1221,9 +1227,9 @@ describe('cross-variable rules across a seed sweep', () => {
 
       for (const node of network.nodes) {
         const attrs = node[entityAttributesProperty];
-        const code = String(attrs.code);
-        const alias = String(attrs.alias);
-        const nickname = String(attrs.nickname);
+        const code = describeValue(attrs.code);
+        const alias = describeValue(attrs.alias);
+        const nickname = describeValue(attrs.nickname);
         const low = Number(attrs.low);
         const high = Number(attrs.high);
 
@@ -1308,7 +1314,9 @@ describe('cross-variable rules across a seed sweep', () => {
 
       for (const node of network.nodes) {
         const attrs = node[entityAttributesProperty];
-        const dates = ['start', 'middle', 'end'].map((id) => String(attrs[id]));
+        const dates = ['start', 'middle', 'end'].map((id) =>
+          describeValue(attrs[id]),
+        );
 
         for (const [index, date] of dates.entries()) {
           complain(
@@ -1484,12 +1492,13 @@ describe('rules spanning a fixed and a drawn attribute', () => {
         complain(
           failures,
           a === false,
-          () => `seed ${seed}: a is ${String(a)}, not the pinned false`,
+          () => `seed ${seed}: a is ${describeValue(a)}, not the pinned false`,
         );
         complain(
           failures,
           b === a,
-          () => `seed ${seed}: b ${String(b)} is not a ${String(a)}`,
+          () =>
+            `seed ${seed}: b ${describeValue(b)} is not a ${describeValue(a)}`,
         );
       }
     }
@@ -1516,12 +1525,13 @@ describe('rules spanning a fixed and a drawn attribute', () => {
         complain(
           failures,
           a === false,
-          () => `seed ${seed}: a is ${String(a)}, not the pinned false`,
+          () => `seed ${seed}: a is ${describeValue(a)}, not the pinned false`,
         );
         complain(
           failures,
           b !== a,
-          () => `seed ${seed}: b ${String(b)} equals a ${String(a)}`,
+          () =>
+            `seed ${seed}: b ${describeValue(b)} equals a ${describeValue(a)}`,
         );
       }
     }
@@ -1575,7 +1585,7 @@ describe('rules spanning a fixed and a drawn attribute', () => {
           failures,
           Number(retired) > Number(age),
           () =>
-            `seed ${seed}: retired ${String(retired)} is not above age ${String(age)}`,
+            `seed ${seed}: retired ${describeValue(retired)} is not above age ${describeValue(age)}`,
         );
       }
     }
@@ -1693,7 +1703,7 @@ describe('a rule between two fixed attributes', () => {
           failures,
           a === false && b === false,
           () =>
-            `seed ${seed}: a ${String(a)} and b ${String(b)}, not both false`,
+            `seed ${seed}: a ${describeValue(a)} and b ${describeValue(b)}, not both false`,
         );
       }
     }
@@ -1707,6 +1717,7 @@ describe('a rule between two fixed attributes', () => {
       id: 'stage-1',
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
       label: 'Roster',
       subject: { entity: 'node', type: 'person' },
       prompts: [
@@ -1781,7 +1792,7 @@ describe('a rule between two fixed attributes', () => {
           failures,
           Number(retired) > Number(age),
           () =>
-            `seed ${seed}: retired ${String(retired)} is not above age ${String(age)}`,
+            `seed ${seed}: retired ${describeValue(retired)} is not above age ${describeValue(age)}`,
         );
       }
     }
@@ -1830,7 +1841,7 @@ describe('a rule between two fixed attributes', () => {
           failures,
           Number(retired) > Number(age),
           () =>
-            `seed ${seed}: retired ${String(retired)} is not above age ${String(age)}`,
+            `seed ${seed}: retired ${describeValue(retired)} is not above age ${describeValue(age)}`,
         );
       }
     }
@@ -1895,7 +1906,8 @@ describe('a rule between two fixed attributes', () => {
         complain(
           failures,
           a === b,
-          () => `seed ${seed}: b ${String(b)} is not a ${String(a)}`,
+          () =>
+            `seed ${seed}: b ${describeValue(b)} is not a ${describeValue(a)}`,
         );
       }
     }
@@ -1930,7 +1942,8 @@ describe('a rule between two fixed attributes', () => {
         complain(
           failures,
           a !== b,
-          () => `seed ${seed}: b ${String(b)} equals a ${String(a)}`,
+          () =>
+            `seed ${seed}: b ${describeValue(b)} equals a ${describeValue(a)}`,
         );
       }
     }
@@ -1963,7 +1976,7 @@ describe('a rule between two fixed attributes', () => {
           failures,
           a === false && b === false,
           () =>
-            `seed ${seed}: a ${String(a)} and b ${String(b)}, not both false`,
+            `seed ${seed}: a ${describeValue(a)} and b ${describeValue(b)}, not both false`,
         );
       }
     }
@@ -2143,6 +2156,7 @@ describe('a fixed value its own rules reject', () => {
       id: 'stage-1',
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
       label: 'Roster',
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'p1', text: 'Pick people', ...extra }],
@@ -3124,6 +3138,7 @@ describe('a unique value a prompt fixes', () => {
         id: 'stage-roster',
         type: 'NameGeneratorRoster',
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
+        unnamedLabel: { en: 'Unnamed {count}' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
         },
@@ -3153,6 +3168,7 @@ describe('a unique value a prompt fixes', () => {
         id: 'stage-fix',
         type: 'NameGeneratorRoster',
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
+        unnamedLabel: { en: 'Unnamed {count}' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
         },
@@ -3245,6 +3261,7 @@ describe('a unique value a prompt fixes', () => {
         id: 'stage-roster',
         type: 'NameGeneratorRoster',
         allAddedNotice: { en: 'There is nothing left to add from this list.' },
+        unnamedLabel: { en: 'Unnamed {count}' },
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
         },
@@ -3333,6 +3350,7 @@ describe('a unique value a prompt fixes', () => {
       id: 'stage-roster',
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
       minNodesNotice: {
         en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
       },
@@ -3401,6 +3419,7 @@ describe('a unique value two roster rows share', () => {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     minNodesNotice: {
       en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
     },
@@ -3676,6 +3695,7 @@ describe('roster values held against an earlier stage', () => {
       id,
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      unnamedLabel: { en: 'Unnamed {count}' },
       minNodesNotice: {
         en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
       },
@@ -3880,7 +3900,7 @@ describe('a variable a roster row and a prompt both settle', () => {
   function shapeOf(nodes: NcNode[]): string[] {
     return nodes.map((node) => {
       const { flag, name } = node[entityAttributesProperty];
-      return `${String(node.stageId)}:${node[entityPrimaryKeyProperty]}:${String(flag)}:${String(name)}`;
+      return `${String(node.stageId)}:${node[entityPrimaryKeyProperty]}:${describeValue(flag)}:${describeValue(name)}`;
     });
   }
 
@@ -3994,7 +4014,7 @@ describe('a variable a roster row and a prompt both settle', () => {
       );
       complain(
         failures,
-        new Set(flags.map((flag) => String(flag))).size === flags.length,
+        new Set(flags.map((flag) => describeValue(flag))).size === flags.length,
         () => `seed ${seed}: flags ${flags.map(String).join(', ')} repeat`,
       );
       complain(
@@ -4028,6 +4048,7 @@ describe('two roster rows a caller gave one primary key', () => {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    unnamedLabel: { en: 'Unnamed {count}' },
     minNodesNotice: {
       en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
     },

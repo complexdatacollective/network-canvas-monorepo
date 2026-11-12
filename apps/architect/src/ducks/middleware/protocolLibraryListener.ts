@@ -103,6 +103,6 @@ startAppListening({
   actionCreator: protocolCommitAccepted,
   effect: (action, listenerApi) => {
     if (!action.payload.persistenceAllowed) return;
-    persistAcceptedCommit(action.payload, listenerApi.getState);
+    persistAcceptedCommit(action.payload, () => listenerApi.getState());
   },
 });

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { migrateProtocol } from '@codaco/protocol-validation';
+import schema8Protocol from '@codaco/protocols/e2e/release-smoke-schema8/protocol.json';
 import { messageText } from '~/test/messageText';
 
 import { describeMigrationFailure } from '../describeMigrationFailure';
@@ -112,5 +114,68 @@ describe('describeMigrationFailure', () => {
       'This protocol could not be brought up to date. Open it in the version of Architect that created it, check its settings, and try again.',
     );
     expect(detail).toBe('stages.3.prompts must contain at least 1 element');
+  });
+
+  /**
+   * A schema 8 protocol, refused as Architect's open path refuses it: by
+   * `migrateProtocol`'s own error, described for the researcher.
+   */
+  const refusalOf = (change: (document: Record<string, unknown>) => void) => {
+    const document = structuredClone(schema8Protocol) as Record<
+      string,
+      unknown
+    >;
+    change(document);
+    try {
+      migrateProtocol(document, 9, { name: 'Refused' });
+    } catch (error) {
+      if (!(error instanceof Error)) throw error;
+      return describeMigrationFailure(error, document);
+    }
+    throw new Error('The protocol was not refused');
+  };
+
+  // Network Canvas does not reword a label: it is what a participant chooses
+  // between, so the researcher changes it where the protocol was made.
+  it('names two options that read the same, and where to tell them apart', () => {
+    const { title, message, detail } = refusalOf((document) => {
+      const codebook = document.codebook as {
+        ego?: { variables?: Record<string, unknown> };
+      };
+      codebook.ego = {
+        ...codebook.ego,
+        variables: {
+          ...codebook.ego?.variables,
+          closeness: {
+            name: 'Closeness',
+            type: 'categorical',
+            options: [
+              { label: 'Close', value: 'close' },
+              { label: 'close ', value: 'near' },
+            ],
+          },
+        },
+      };
+    });
+
+    expect(messageText(title)).toBe('Two options have the same label');
+    expect(messageText(message)).toBe(
+      'Options 1 and 2 of the attribute “Closeness” have the same label: “Close” and “close ”. That was allowed when this protocol was made, but participants could not tell them apart. Open this protocol in the version of Architect that created it, give the options different labels, then open it here again.',
+    );
+    expect(detail).toContain('"Closeness"');
+  });
+
+  it('names a stage whose name is too long, and where to shorten it', () => {
+    const name =
+      'A welcome to everyone who takes part in this study today, and thanks for the hour you are giving us all';
+    const { title, message } = refusalOf((document) => {
+      const [first] = document.stages as Record<string, unknown>[];
+      if (first) first.label = name;
+    });
+
+    expect(messageText(title)).toBe('A stage name is too long');
+    expect(messageText(message)).toBe(
+      `The stage name “${name}” is longer than 100 characters. That was allowed when this protocol was made, but a longer name does not fit where stage names are shown. Open this protocol in the version of Architect that created it, shorten the name, then open it here again.`,
+    );
   });
 });

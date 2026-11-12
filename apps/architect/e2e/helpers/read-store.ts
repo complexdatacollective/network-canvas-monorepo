@@ -54,7 +54,7 @@ async function readActiveRow(page: Page): Promise<Row | null> {
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
         const req = indexedDB.open(dbName);
         req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.addEventListener('error', () => reject(req.error));
       });
       const result = await new Promise<unknown>((resolve, reject) => {
         const store = db
@@ -63,7 +63,7 @@ async function readActiveRow(page: Page): Promise<Row | null> {
         // Prefer the active id; fall back to the most-recently-updated row.
         const req = activeId ? store.get(activeId) : store.getAll();
         req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.addEventListener('error', () => reject(req.error));
       });
       db.close();
       // getAll() returns rows ordered by primary key (id), not recency, so sort
@@ -162,7 +162,7 @@ export async function readAssetKeys(page: Page): Promise<string[]> {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.addEventListener('error', () => reject(req.error));
     });
     // A versionless open in a session where the app has not created its Dexie
     // DB yet yields a store-less database, and a transaction on it throws.
@@ -176,7 +176,7 @@ export async function readAssetKeys(page: Page): Promise<string[]> {
         .objectStore('assets')
         .getAllKeys();
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.addEventListener('error', () => reject(req.error));
     });
     db.close();
     return result.map(String);
@@ -205,8 +205,9 @@ export async function readStoreCounts(page: Page): Promise<StoreCounts> {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () =>
-        reject(new Error(`indexedDB.open(${dbName}) failed: ${req.error}`));
+      req.addEventListener('error', () =>
+        reject(new Error(`indexedDB.open(${dbName}) failed: ${req.error}`)),
+      );
     });
     const count = (store: string) =>
       new Promise<number>((resolve, reject) => {
@@ -219,8 +220,9 @@ export async function readStoreCounts(page: Page): Promise<StoreCounts> {
           .objectStore(store)
           .count();
         req.onsuccess = () => resolve(req.result);
-        req.onerror = () =>
-          reject(new Error(`count("${store}") failed: ${req.error}`));
+        req.addEventListener('error', () =>
+          reject(new Error(`count("${store}") failed: ${req.error}`)),
+        );
       });
     try {
       return {
@@ -304,7 +306,7 @@ export async function readLegacyLibraryFingerprint(
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.addEventListener('error', () => reject(req.error));
     });
     try {
       const storeNames = [...db.objectStoreNames].toSorted();
@@ -315,7 +317,7 @@ export async function readLegacyLibraryFingerprint(
           const rows = await new Promise<unknown[]>((resolve, reject) => {
             const req = store.getAll();
             req.onsuccess = () => resolve(req.result);
-            req.onerror = () => reject(req.error);
+            req.addEventListener('error', () => reject(req.error));
           });
           return {
             name: storeName,
@@ -380,7 +382,7 @@ export async function readLibraryRows(
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
         const req = indexedDB.open(dbName);
         req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.addEventListener('error', () => reject(req.error));
       });
       try {
         if (!db.objectStoreNames.contains(store)) {
@@ -392,7 +394,7 @@ export async function readLibraryRows(
             .objectStore(store)
             .getAll();
           req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
+          req.addEventListener('error', () => reject(req.error));
         });
       } finally {
         db.close();
@@ -439,7 +441,7 @@ export async function readHandoffRecords(
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.addEventListener('error', () => reject(req.error));
     });
     try {
       if (!db.objectStoreNames.contains('handoffs')) return [];
@@ -449,7 +451,7 @@ export async function readHandoffRecords(
           .objectStore('handoffs')
           .getAll();
         req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.addEventListener('error', () => reject(req.error));
       });
       return await Promise.all(
         rows.map(async (row) => {

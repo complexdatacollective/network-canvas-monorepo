@@ -387,6 +387,8 @@ function stepTerm(
           return 'donorConceivedChild';
         case 'surrogate':
           return 'surrogacyChild';
+        case 'adoptive':
+        case 'biological':
         default:
           return pick(gender, {
             woman: 'daughter',
@@ -870,7 +872,7 @@ export function formatPersonLabel(
     case 'name':
       return label.name;
     case 'you':
-      return words.text(words.wording.you);
+      return words.you;
     case 'term':
       return formatRelativeTerm(label.term, words);
     case 'relativeOf': {

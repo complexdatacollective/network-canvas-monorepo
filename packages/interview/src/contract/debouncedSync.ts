@@ -124,15 +124,17 @@ export function createDebouncedSyncHandler(
     }
   };
 
+  const runQueuedWrite = async () => {
+    try {
+      await runWrite();
+    } finally {
+      queuedWrites -= 1;
+    }
+  };
+
   const enqueueWrite = () => {
     queuedWrites += 1;
-    queue = queue.then(async () => {
-      try {
-        await runWrite();
-      } finally {
-        queuedWrites -= 1;
-      }
-    });
+    queue = queue.then(runQueuedWrite);
   };
 
   return (id, session, options) => {

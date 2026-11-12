@@ -306,6 +306,7 @@ describe("what a roster's cards show", () => {
         'minNodesNotice',
         'maxNodesNotice',
         'allAddedNotice',
+        'unnamedLabel',
       ],
     });
   });

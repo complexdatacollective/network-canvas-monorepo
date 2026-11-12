@@ -26,7 +26,7 @@ import {
   ASSETS,
   callerOf,
   EDIT,
-  enUS,
+  inEnglish,
   formFields,
   GRACE,
   setupProtocolBuilderSuite,
@@ -149,7 +149,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId,
           document: Redacted.make({
             ...Redacted.value(before.document),
-            label: enUS('Renamed without the lock'),
+            label: inEnglish('Renamed without the lock'),
           }),
           revision: before.revision,
         }),
@@ -200,7 +200,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     if (held.lock !== 'held') throw new Error('the section was already taken');
     const document = Redacted.make({
       ...Redacted.value(held.document),
-      label: enUS('Renamed by its holder'),
+      label: inEnglish('Renamed by its holder'),
     });
     const written = await call(
       ADA,
@@ -219,7 +219,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('GetSection', { protocolId, sectionId }),
     );
     expect(Redacted.value(read.document).label).toEqual(
-      enUS('Renamed by its holder'),
+      inEnglish('Renamed by its holder'),
     );
     expect(read.revision.sequence).toBe(written.revision.sequence);
 
@@ -249,8 +249,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: enUS('Created by the host'),
-          title: enUS('Created by the host'),
+          label: inEnglish('Created by the host'),
+          title: inEnglish('Created by the host'),
           items: [],
         }),
         position: 1,
@@ -301,8 +301,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: enUS('Created past the end'),
-          title: enUS('Created past the end'),
+          label: inEnglish('Created past the end'),
+          title: inEnglish('Created past the end'),
           items: [],
         }),
         position: orderBefore.length + 5,
@@ -399,14 +399,14 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       Redacted.make({
         type: 'FinishSession',
         mode: 'confirmation',
-        label: enUS(label),
-        content: enUS(`# ${label}\n\nThank you.`),
-        finishedContent: enUS(
+        label: inEnglish(label),
+        content: inEnglish(`# ${label}\n\nThank you.`),
+        finishedContent: inEnglish(
           '# Interview Finished\n\nThank you for participating!',
         ),
-        finishLabel: enUS('Finish'),
-        finishConfirmation: enUS('Finish this interview?'),
-        finishFailed: enUS('The interview could not be finished.'),
+        finishLabel: inEnglish('Finish'),
+        finishConfirmation: inEnglish('Finish this interview?'),
+        finishFailed: inEnglish('The interview could not be finished.'),
         outcome: 'ineligible',
       });
     const before = await call(
@@ -477,8 +477,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       rewrite: (document: Readonly<Record<string, unknown>>) => ({
         id: document.id,
         type: 'Information',
-        label: enUS('No longer the end'),
-        title: enUS('No longer the end'),
+        label: inEnglish('No longer the end'),
+        title: inEnglish('No longer the end'),
         items: [],
       }),
     },
@@ -489,14 +489,14 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         id: document.id,
         type: 'FinishSession',
         mode: 'confirmation',
-        label: enUS('A second end'),
-        content: enUS('# A second end\n\nThank you.'),
-        finishedContent: enUS(
+        label: inEnglish('A second end'),
+        content: inEnglish('# A second end\n\nThank you.'),
+        finishedContent: inEnglish(
           '# Interview Finished\n\nThank you for participating!',
         ),
-        finishLabel: enUS('Finish'),
-        finishConfirmation: enUS('Finish this interview?'),
-        finishFailed: enUS('The interview could not be finished.'),
+        finishLabel: inEnglish('Finish'),
+        finishConfirmation: inEnglish('Finish this interview?'),
+        finishFailed: inEnglish('The interview could not be finished.'),
         outcome: 'completed',
       }),
     },
@@ -830,7 +830,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             sectionId: stage.sectionId,
             document: Redacted.make({
               ...Redacted.value(held.document),
-              label: enUS('Renamed'),
+              label: inEnglish('Renamed'),
             }),
             revision: held.revision,
             promote: {
@@ -884,8 +884,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label: enUS('Never registered'),
-              title: enUS('Never registered'),
+              label: inEnglish('Never registered'),
+              title: inEnglish('Never registered'),
               items: [],
             }),
           }),
@@ -928,8 +928,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     if (staged.status !== 'ok') throw new Error('staging failed');
     const document = Redacted.make({
       type: 'Information',
-      label: enUS('Made once'),
-      title: enUS('Made once'),
+      label: inEnglish('Made once'),
+      title: inEnglish('Made once'),
       items: [],
     });
     const promote = {
@@ -987,7 +987,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       sectionId: stage.sectionId,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: enUS('Saved without a promotion'),
+        label: inEnglish('Saved without a promotion'),
       }),
       revision: held.revision,
     };
@@ -1003,8 +1003,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       kind: 'stage' as const,
       document: Redacted.make({
         type: 'Information',
-        label: enUS('Made without a promotion'),
-        title: enUS('Made without a promotion'),
+        label: inEnglish('Made without a promotion'),
+        title: inEnglish('Made without a promotion'),
         items: [],
       }),
     };
@@ -1041,7 +1041,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       sectionId: stage.sectionId,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: enUS('Saved before the restart'),
+        label: inEnglish('Saved before the restart'),
       }),
       revision: held.revision,
     };
@@ -1156,7 +1156,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Renamed, and hashed as itself'),
+          label: inEnglish('Renamed, and hashed as itself'),
         }),
         revision: held.revision,
       }),
@@ -1386,6 +1386,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       let ended = false;
       void channel.ended.then(() => {
         ended = true;
+        return undefined;
       });
       try {
         const before = charged.length;
@@ -1422,7 +1423,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       sectionId,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: enUS('Renamed before the removal'),
+        label: inEnglish('Renamed before the removal'),
       }),
       revision: held.revision,
     });
@@ -1446,8 +1447,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       kind: 'stage',
       document: Redacted.make({
         type: 'Information',
-        label: enUS(label),
-        title: enUS(label),
+        label: inEnglish(label),
+        title: inEnglish(label),
         items: [],
       }),
     });
@@ -1478,5 +1479,196 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       await restore();
       await call(who, host.rpc('ReleaseLock', { protocolId, sectionId }));
     }
+  });
+  describe('shared words saved with a stage', () => {
+    const SETTINGS = sid('settings');
+
+    /** One shared word as the settings hold it, or undefined. */
+    const heldWord = async (group: string, key: string) => {
+      const settings = await call(
+        ADA,
+        host.rpc('GetSection', { protocolId, sectionId: SETTINGS }),
+      );
+      const text: unknown = Redacted.value(settings.document).interfaceText;
+      const groups =
+        typeof text === 'object' && text !== null
+          ? (text as Record<string, Record<string, unknown> | undefined>)
+          : {};
+      return { word: groups[group]?.[key], revision: settings.revision };
+    };
+
+    it('writes the words a submit carries into the settings, in the stage’s revision', async () => {
+      const sectionId = stageSection(reference.stageId);
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+      const reworded = inEnglish('No place matched that search');
+      expect(
+        (await heldWord('geospatial', 'searchFailed')).word,
+      ).toBeUndefined();
+
+      const written = await call(
+        ADA,
+        host.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId,
+          document: Redacted.make({
+            ...Redacted.value(held.document),
+            label: inEnglish('Saved with its words'),
+          }),
+          revision: held.revision,
+          interfaceText: [
+            { group: 'geospatial', key: 'searchFailed', value: reworded },
+          ],
+        }),
+      );
+      await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+
+      const after = await heldWord('geospatial', 'searchFailed');
+      expect(after.word).toEqual(reworded);
+      expect(after.revision.sequence).toBe(written.revision.sequence);
+      // Every other shared word the protocol held is kept.
+      expect((await heldWord('navigation', 'back')).word).toBeDefined();
+    });
+
+    it('writes the words a create carries into the settings, in the new stage’s revision', async () => {
+      const reworded = inEnglish('The map could not be shown');
+      expect(
+        (await heldWord('geospatial', 'mapUnavailable')).word,
+      ).toBeUndefined();
+
+      const created = await call(
+        ADA,
+        host.rpc('Create', {
+          protocolId,
+          requestId: randomUUID(),
+          kind: 'stage',
+          document: Redacted.make({
+            type: 'Information',
+            label: inEnglish('Created with its words'),
+            title: inEnglish('Created with its words'),
+            items: [],
+          }),
+          interfaceText: [
+            { group: 'geospatial', key: 'mapUnavailable', value: reworded },
+          ],
+        }),
+      );
+
+      const after = await heldWord('geospatial', 'mapUnavailable');
+      expect(after.word).toEqual(reworded);
+      expect(after.revision.sequence).toBe(created.revision.sequence);
+    });
+
+    it('refuses a submit carrying words while another editor holds the settings', async () => {
+      const stage = await createStage(ADA, 'Saved behind held settings');
+      const settings = await call(
+        GRACE,
+        host.rpc('AcquireLock', { protocolId, sectionId: SETTINGS }),
+      );
+      expect(settings.lock).toBe('held');
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+      );
+      const before = await heldWord('geospatial', 'searchFailed');
+
+      try {
+        const error = await expectRpcFailure(
+          callExit(
+            ADA,
+            host.rpc('Submit', {
+              protocolId,
+              requestId: randomUUID(),
+              sectionId: stage.sectionId,
+              document: Redacted.make({
+                ...Redacted.value(held.document),
+                label: inEnglish('Renamed behind held settings'),
+              }),
+              revision: held.revision,
+              interfaceText: [
+                {
+                  group: 'geospatial',
+                  key: 'searchFailed',
+                  value: inEnglish('Not written behind a held lock'),
+                },
+              ],
+            }),
+          ),
+          'SectionsLocked',
+        );
+        expect(error.blocked.map((entry) => entry.sectionId)).toEqual([
+          SETTINGS,
+        ]);
+        expect(error.blocked[0]?.holder?.userId).toBe(GRACE.principal.userId);
+        const after = await call(
+          ADA,
+          host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
+        );
+        expect(after.revision).toEqual(held.revision);
+        expect((await heldWord('geospatial', 'searchFailed')).word).toEqual(
+          before.word,
+        );
+      } finally {
+        await call(
+          GRACE,
+          host.rpc('ReleaseLock', { protocolId, sectionId: SETTINGS }),
+        );
+        await call(
+          ADA,
+          host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+        );
+      }
+    });
+
+    it('writes neither the stage nor its words when the words cannot be saved', async () => {
+      const sectionId = stageSection(reference.stageId);
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+      const before = await heldWord('geospatial', 'offlineNotice');
+
+      const refused = await expectRpcFailure(
+        callExit(
+          ADA,
+          host.rpc('Submit', {
+            protocolId,
+            requestId: randomUUID(),
+            sectionId,
+            document: Redacted.make({
+              ...Redacted.value(held.document),
+              label: inEnglish('Refused with its words'),
+            }),
+            revision: held.revision,
+            interfaceText: [
+              {
+                group: 'geospatial',
+                key: 'offlineNotice',
+                value: inEnglish(' '),
+              },
+            ],
+          }),
+        ),
+        'InvalidShape',
+      );
+      await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+
+      expect(refused.sectionId).toBe(SETTINGS);
+      const after = await heldWord('geospatial', 'offlineNotice');
+      expect(after.word).toBeUndefined();
+      expect(after.revision).toEqual(before.revision);
+      const stage = await call(
+        ADA,
+        host.rpc('GetSection', { protocolId, sectionId }),
+      );
+      expect(Redacted.value(stage.document).label).not.toEqual(
+        inEnglish('Refused with its words'),
+      );
+    });
   });
 });

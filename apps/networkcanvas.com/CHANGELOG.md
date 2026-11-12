@@ -1,5 +1,87 @@
 # networkcanvas.com
 
+## 0.9.0
+
+### Minor Changes
+
+- Four sections of the homepage are redesigned, with animation that follows
+  the page as you scroll. With reduced motion turned on, each section shows its
+  finished state without moving.
+
+  - **Tools**: a single thread runs down the section. It reaches Architect, where
+    a study is designed, then splits toward Interviewer (in person) and Fresco
+    (on the web), and the two strands meet again in the network both of them
+    collect. Each tool's card opens out of the thread as it arrives.
+  - **Design Principles**: one illustration stays beside the five principles
+    and changes as you read each one. A plain network takes on types, turns into
+    an interview between two speech bubbles, lines up into an ordered list, flows
+    through the steps of a study, and ends as a community of people grouped by
+    institution.
+  - **Grants**: the grants form a stack of cards that settle on top of one
+    another as you scroll, with each funder's logo sized to look balanced
+    against the others.
+  - **Recent Publications**: the eight newest publications are shown as cards.
+    On wider screens they sit beside a network that joins every publication to
+    its authors, and the publication you are reading is highlighted in it. A new
+    introduction and a final card link to the full list, giving the number of
+    publications and authors. The section is translated into every language the
+    website offers.
+
+### Patch Changes
+
+- A protocol previewed from the protocol gallery is shown in one language,
+  including its buttons and messages, chosen from the protocol's own languages.
+- The language chosen in the site's language switcher is now kept for every
+  Network Canvas website on networkcanvas.com, including the protocol gallery,
+  rather than for one host. The site's language is chosen with the same
+  negotiation as the apps.
+- The Classic download buttons on Get Started, the "Documentation" buttons on the
+  Summer 2026 update and the "Home page" button on the error page are now filled
+  buttons rather than outlines.
+
+## 0.8.0
+
+### Minor Changes
+
+- In the protocol gallery, each stage in a protocol's stage list now shows its stage type's icon in a coloured badge, and the stage bars on gallery cards use the stage colours Architect now uses.
+- Protocol previews in the gallery now run schema 9 protocols, the protocol
+  version that lets names be written in any language and text be translated, and
+  upgrade older gallery protocols to it before they open. A translated protocol
+  opens in the first of your browser's languages that it offers, and its
+  language chooser stage lets you switch. Stage lists show stage names in the
+  protocol's default language. A protocol made with a newer version of
+  Network Canvas than the preview can run now says so, instead of being reported
+  as invalid with an offer to try again.
+
+  The schema note on the Get Started app cards now says the browser-based
+  Architect, Interviewer and Fresco use schema 9.
+
+### Patch Changes
+
+- Add two publications to the list: a dissertation showing how Network Canvas supports bilingual language research, and a study of how supportive relationships persist in a sober-active recovery community.
+- The brand colors Mustard, Neon Carrot, Sea Serpent, Kiwi and Paradise Pink shift slightly in hue, and Neon Coral becomes slightly lighter and less saturated, following the shared color palette used across Network Canvas. Mustard leans toward amber, Neon Carrot toward red, and Sea Serpent toward blue, so the accents, illustrations and highlights on the site's update pages look a little different.
+- Add a publication evaluating Network Canvas for social network data collection among adolescent and young adult survivors of cancer.
+- Menu, select and combobox items now have a small gap between them, so a run of checked or selected items no longer merges into one block.
+- The protocol gallery names the new Finish Screen stage, the screen that ends
+  an interview, in every language the website is available in. A gallery
+  protocol's preview now ends at that stage, which the protocol carries in the
+  updated protocol format.
+
+  Finishing a preview now shows the finished text of the protocol's own Finish
+  Screen, with buttons to start the preview again or go back
+  to the protocol, in place of the website's separate "Preview finished" screen.
+  Those buttons are labelled in the interview's language, like the rest of the
+  finished screen, and follow it when it changes.
+
+- The Updates search count is now an `<output>` element, so screen readers
+  announce it as before without an added role.
+- Protocol gallery previews show schema 9 stages without introduction panels.
+  Forms and censuses open on their first question, and a gallery protocol
+  upgraded from schema 8 shows each former introduction panel, other than an
+  Ego Form's, as an Information stage just before its stage.
+- Clearer translations of the protocol gallery's stage names and the Get Started
+  page's note on schema versions, after blind back-translation and review.
+
 ## 0.7.0
 
 ### Minor Changes

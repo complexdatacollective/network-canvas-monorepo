@@ -2,10 +2,9 @@ import type {
   SuppliedStageSetting,
   SuppliedWording,
 } from '../supplied-stage-setting.ts';
-import { hasMapSearch } from './conditions.ts';
 
 /** The notice while the device is offline and the map cannot load. */
-const OFFLINE_NOTICE = {
+export const OFFLINE_NOTICE = {
   'en': 'You are offline — the map will not load until you reconnect.',
   'de': 'Sie sind offline – die Karte wird erst geladen, wenn Sie wieder verbunden sind.',
   'es': 'No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte.',
@@ -19,7 +18,7 @@ const OFFLINE_NOTICE = {
 } as const satisfies SuppliedWording;
 
 /** What the participant is told when the map cannot be drawn at all. */
-const MAP_UNAVAILABLE = {
+export const MAP_UNAVAILABLE = {
   'en': 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
   'en-GB':
     'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organiser. You may be able to continue your interview by selecting the next arrow.',
@@ -50,7 +49,7 @@ const OUTSIDE_AREAS_LABEL = {
 } as const satisfies SuppliedWording;
 
 /** The notice when a search could not run, which says nothing about the place. */
-const SEARCH_FAILED = {
+export const SEARCH_FAILED = {
   'en': 'Search could not be completed. Try again in a moment.',
   'de': 'Die Suche konnte nicht abgeschlossen werden. Versuchen Sie es gleich noch einmal.',
   'es': 'No se pudo completar la búsqueda. Vuelve a intentarlo en un momento.',
@@ -62,10 +61,10 @@ const SEARCH_FAILED = {
   'zh-Hant': '無法完成搜尋。請稍後再試。',
 } as const satisfies SuppliedWording;
 
-/** The Geospatial's settings Network Canvas words. */
+/**
+ * The Geospatial's settings Network Canvas words. Its notices, which every
+ * map shows alike, are interface text (`interface-text-wording.ts`).
+ */
 export const GEOSPATIAL_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
-  { path: ['offlineNotice'], message: OFFLINE_NOTICE },
-  { path: ['mapUnavailable'], message: MAP_UNAVAILABLE },
   { path: ['outsideAreasLabel'], message: OUTSIDE_AREAS_LABEL },
-  { path: ['searchFailed'], message: SEARCH_FAILED, when: hasMapSearch },
 ];

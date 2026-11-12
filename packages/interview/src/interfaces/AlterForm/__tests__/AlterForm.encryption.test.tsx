@@ -145,7 +145,7 @@ async function renderAlterForm({
   render(
     <Provider store={store}>
       <TestProtocolLocalization>
-        <InterviewI18nProvider requestedLocale="en">
+        <InterviewI18nProvider>
           <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
             <DialogProvider>
               <Harness />

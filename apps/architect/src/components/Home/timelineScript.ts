@@ -1,187 +1,116 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
+import { interfaceNameMessages } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import type { StageType } from '@codaco/protocol-validation';
 import type { ConfigMessage } from '~/i18n/formatConfig';
 
-const configMessages = defineMessages({
+const titleMessages = defineMessages({
   welcome: {
     id: 'architect.home.timelineScript.config.welcome',
     defaultMessage: 'Welcome',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  consent: {
-    id: 'architect.home.timelineScript.config.consent',
-    defaultMessage: 'Consent',
+  agreeToTakePart: {
+    id: 'architect.home.timelineScript.title.agreeToTakePart',
+    defaultMessage: 'Agree to take part',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  demographics: {
-    id: 'architect.home.timelineScript.config.demographics',
-    defaultMessage: 'Demographics',
+  aboutYou: {
+    id: 'architect.home.timelineScript.title.aboutYou',
+    defaultMessage: 'About you',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  closeTies: {
-    id: 'architect.home.timelineScript.config.closeTies',
-    defaultMessage: 'Close ties',
+  nameCloseFriends: {
+    id: 'architect.home.timelineScript.title.nameCloseFriends',
+    defaultMessage: 'Name close friends',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  weakTies: {
-    id: 'architect.home.timelineScript.config.weakTies',
-    defaultMessage: 'Weak ties',
+  addAcquaintances: {
+    id: 'architect.home.timelineScript.title.addAcquaintances',
+    defaultMessage: 'Add acquaintances',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  supportNetwork: {
-    id: 'architect.home.timelineScript.config.supportNetwork',
-    defaultMessage: 'Support network',
+  findClassmates: {
+    id: 'architect.home.timelineScript.title.findClassmates',
+    defaultMessage: 'Find classmates',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  relationshipType: {
-    id: 'architect.home.timelineScript.config.relationshipType',
-    defaultMessage: 'Relationship type',
+  sortByRelationship: {
+    id: 'architect.home.timelineScript.title.sortByRelationship',
+    defaultMessage: 'Sort by relationship',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  groupMembership: {
-    id: 'architect.home.timelineScript.config.groupMembership',
-    defaultMessage: 'Group membership',
+  sortByGroup: {
+    id: 'architect.home.timelineScript.title.sortByGroup',
+    defaultMessage: 'Sort by group',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  contactFrequency: {
-    id: 'architect.home.timelineScript.config.contactFrequency',
-    defaultMessage: 'Contact frequency',
+  rateContact: {
+    id: 'architect.home.timelineScript.title.rateContact',
+    defaultMessage: 'Rate contact',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room. Here the participant rates how often they are in contact with each person.',
   },
-  closeness: {
-    id: 'architect.home.timelineScript.config.closeness',
-    defaultMessage: 'Closeness',
+  rateCloseness: {
+    id: 'architect.home.timelineScript.title.rateCloseness',
+    defaultMessage: 'Rate closeness',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
   whoKnowsWhom: {
     id: 'architect.home.timelineScript.config.whoKnowsWhom',
     defaultMessage: 'Who knows whom',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  trustLevel: {
-    id: 'architect.home.timelineScript.config.trustLevel',
-    defaultMessage: 'Trust level',
+  rateTieStrength: {
+    id: 'architect.home.timelineScript.title.rateTieStrength',
+    defaultMessage: 'Rate tie strength',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  sociogram: {
-    id: 'architect.home.timelineScript.config.sociogram',
-    defaultMessage: 'Sociogram',
+  mapYourNetwork: {
+    id: 'architect.home.timelineScript.title.mapYourNetwork',
+    defaultMessage: 'Map your network',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  supportPaths: {
-    id: 'architect.home.timelineScript.config.supportPaths',
-    defaultMessage: 'Support paths',
+  drawSupportTies: {
+    id: 'architect.home.timelineScript.title.drawSupportTies',
+    defaultMessage: 'Draw support ties',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  storyExchange: {
-    id: 'architect.home.timelineScript.config.storyExchange',
-    defaultMessage: 'Story exchange',
+  discussYourNetwork: {
+    id: 'architect.home.timelineScript.title.discussYourNetwork',
+    defaultMessage: 'Discuss your network',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  keyMoments: {
-    id: 'architect.home.timelineScript.config.keyMoments',
-    defaultMessage: 'Key moments',
+  discussSupport: {
+    id: 'architect.home.timelineScript.title.discussSupport',
+    defaultMessage: 'Discuss support',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
   debrief: {
     id: 'architect.home.timelineScript.config.debrief',
     defaultMessage: 'Debrief',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
-  closeOut: {
-    id: 'architect.home.timelineScript.config.closeOut',
-    defaultMessage: 'Close out',
+  finishTheInterview: {
+    id: 'architect.home.timelineScript.title.finishTheInterview',
+    defaultMessage: 'Finish the interview',
     description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
-  },
-});
-
-// `sub` is written here rather than read from `INTERFACE_NAMES`: those are the
-// New Stage screen's names, deliberately long enough to pick an interface by
-// ("Name Generator (using forms)"), and this is a tracking-wide 12px caption.
-const demoSubtitleMessages = defineMessages({
-  information: {
-    id: 'architect.home.demoSubtitle.information',
-    defaultMessage: 'Information',
-    description:
-      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
-  },
-  egoForm: {
-    id: 'architect.home.demoSubtitle.egoForm',
-    defaultMessage: 'Ego Form',
-    description:
-      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
-  },
-  nameGenerator: {
-    id: 'architect.home.demoSubtitle.nameGenerator',
-    defaultMessage: 'Name Generator',
-    description:
-      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
-  },
-  quickAdd: {
-    id: 'architect.home.demoSubtitle.quickAdd',
-    defaultMessage: 'Quick Add',
-    description:
-      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
-  },
-  roster: {
-    id: 'architect.home.demoSubtitle.roster',
-    defaultMessage: 'Roster',
-    description:
-      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
-  },
-  categoricalBin: {
-    id: 'architect.home.demoSubtitle.categoricalBin',
-    defaultMessage: 'Categorical Bin',
-    description:
-      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
-  },
-  ordinalBin: {
-    id: 'architect.home.demoSubtitle.ordinalBin',
-    defaultMessage: 'Ordinal Bin',
-    description:
-      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
-  },
-  dyadCensus: {
-    id: 'architect.home.demoSubtitle.dyadCensus',
-    defaultMessage: 'Dyad Census',
-    description:
-      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
-  },
-  tieStrength: {
-    id: 'architect.home.demoSubtitle.tieStrength',
-    defaultMessage: 'Tie Strength',
-    description:
-      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
-  },
-  connections: {
-    id: 'architect.home.demoSubtitle.connections',
-    defaultMessage: 'Connections',
-    description:
-      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
-  },
-  narrative: {
-    id: 'architect.home.demoSubtitle.narrative',
-    defaultMessage: 'Narrative',
-    description:
-      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
+      'Title of a stage in the illustrative home-page timeline, saying what happens on that stage. App demo copy, not an authored protocol; keep it short, as the label has little room.',
   },
 });
 
@@ -191,98 +120,36 @@ export type TimelineStop = {
   sub: string;
 };
 
+/**
+ * An illustrative protocol, in interview order. Each stop names what happens
+ * on the stage; its subtitle is the interface's own researcher-facing name,
+ * read from the stage type so a stop cannot claim the wrong interface.
+ */
+const STOPS: { type: StageType; label: ConfigMessage }[] = [
+  { type: 'Information', label: titleMessages.welcome },
+  { type: 'Information', label: titleMessages.agreeToTakePart },
+  { type: 'EgoForm', label: titleMessages.aboutYou },
+  { type: 'NameGenerator', label: titleMessages.nameCloseFriends },
+  { type: 'NameGeneratorQuickAdd', label: titleMessages.addAcquaintances },
+  { type: 'NameGeneratorRoster', label: titleMessages.findClassmates },
+  { type: 'CategoricalBin', label: titleMessages.sortByRelationship },
+  { type: 'CategoricalBin', label: titleMessages.sortByGroup },
+  { type: 'OrdinalBin', label: titleMessages.rateContact },
+  { type: 'OrdinalBin', label: titleMessages.rateCloseness },
+  { type: 'DyadCensus', label: titleMessages.whoKnowsWhom },
+  { type: 'TieStrengthCensus', label: titleMessages.rateTieStrength },
+  { type: 'Sociogram', label: titleMessages.mapYourNetwork },
+  { type: 'Sociogram', label: titleMessages.drawSupportTies },
+  { type: 'Narrative', label: titleMessages.discussYourNetwork },
+  { type: 'Narrative', label: titleMessages.discussSupport },
+  { type: 'Information', label: titleMessages.debrief },
+  { type: 'FinishSession', label: titleMessages.finishTheInterview },
+];
+
 export const TIMELINE_SCRIPT: (Omit<TimelineStop, 'label' | 'sub'> & {
   label: ConfigMessage;
   sub: ConfigMessage;
-})[] = [
-  {
-    type: 'Information',
-    label: configMessages.welcome,
-    sub: demoSubtitleMessages.information,
-  },
-  {
-    type: 'Information',
-    label: configMessages.consent,
-    sub: demoSubtitleMessages.information,
-  },
-  {
-    type: 'EgoForm',
-    label: configMessages.demographics,
-    sub: demoSubtitleMessages.egoForm,
-  },
-  {
-    type: 'NameGenerator',
-    label: configMessages.closeTies,
-    sub: demoSubtitleMessages.nameGenerator,
-  },
-  {
-    type: 'NameGeneratorQuickAdd',
-    label: configMessages.weakTies,
-    sub: demoSubtitleMessages.quickAdd,
-  },
-  {
-    type: 'NameGeneratorRoster',
-    label: configMessages.supportNetwork,
-    sub: demoSubtitleMessages.roster,
-  },
-  {
-    type: 'CategoricalBin',
-    label: configMessages.relationshipType,
-    sub: demoSubtitleMessages.categoricalBin,
-  },
-  {
-    type: 'CategoricalBin',
-    label: configMessages.groupMembership,
-    sub: demoSubtitleMessages.categoricalBin,
-  },
-  {
-    type: 'OrdinalBin',
-    label: configMessages.contactFrequency,
-    sub: demoSubtitleMessages.ordinalBin,
-  },
-  {
-    type: 'OrdinalBin',
-    label: configMessages.closeness,
-    sub: demoSubtitleMessages.ordinalBin,
-  },
-  {
-    type: 'DyadCensus',
-    label: configMessages.whoKnowsWhom,
-    sub: demoSubtitleMessages.dyadCensus,
-  },
-  {
-    type: 'TieStrengthCensus',
-    label: configMessages.trustLevel,
-    sub: demoSubtitleMessages.tieStrength,
-  },
-  {
-    type: 'Sociogram',
-    label: configMessages.sociogram,
-    sub: demoSubtitleMessages.connections,
-  },
-  {
-    type: 'Sociogram',
-    label: configMessages.supportPaths,
-    sub: demoSubtitleMessages.connections,
-  },
-  {
-    type: 'Narrative',
-    label: configMessages.storyExchange,
-    sub: demoSubtitleMessages.narrative,
-  },
-  {
-    type: 'Narrative',
-    label: configMessages.keyMoments,
-    sub: demoSubtitleMessages.narrative,
-  },
-  {
-    type: 'Information',
-    label: configMessages.debrief,
-    sub: demoSubtitleMessages.information,
-  },
-  {
-    type: 'Information',
-    label: configMessages.closeOut,
-    sub: demoSubtitleMessages.information,
-  },
-];
+})[] = STOPS.map((stop) => ({
+  ...stop,
+  sub: interfaceNameMessages[stop.type],
+}));

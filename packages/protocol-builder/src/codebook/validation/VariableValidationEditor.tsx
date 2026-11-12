@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -288,9 +288,9 @@ export default function VariableValidationEditor({
    * Cleared during render rather than in an effect: a frame of the old text
    * over the new value is a frame of something untrue.
    */
-  const seenValue = useRef(value);
-  if (seenValue.current !== value) {
-    seenValue.current = value;
+  const [seenValue, setSeenValue] = useState(value);
+  if (seenValue !== value) {
+    setSeenValue(value);
     setDrafts((current) => (Object.keys(current).length > 0 ? {} : current));
   }
   /**
@@ -572,7 +572,7 @@ export default function VariableValidationEditor({
         >
           <legend
             className={cx(
-              'bg-input absolute -top-4 left-6 z-10 rounded px-4 py-1',
+              'bg-input absolute inset-s-6 -top-4 z-10 rounded px-4 py-1',
               "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:rounded-t before:border-x-2 before:border-t-2 before:content-['']",
             )}
           >

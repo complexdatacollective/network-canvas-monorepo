@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  getClearedLocaleCookie,
-  getLocaleCookie,
+  getLocaleCookies,
   getLocalizedPathname,
   readLocalePreference,
 } from '~/lib/i18n/clientLocale';
@@ -27,16 +26,52 @@ describe('client locale selection', () => {
     },
   );
 
-  it('persists an explicit locale for one year', () => {
-    expect(getLocaleCookie('en-US')).toBe(
-      'NEXT_LOCALE=en-US; Path=/; Max-Age=31536000; SameSite=Lax',
-    );
+  it('persists an explicit locale for one year on every Network Canvas website', () => {
+    expect(
+      getLocaleCookies('en-US', 'protocolgallery.networkcanvas.com'),
+    ).toEqual([
+      'NEXT_LOCALE=; Path=/; Max-Age=0; SameSite=Lax',
+      'NEXT_LOCALE=en-US; Path=/; Domain=networkcanvas.com; Max-Age=31536000; SameSite=Lax',
+    ]);
   });
 
   it('expires the preference so the edge negotiates again', () => {
-    expect(getClearedLocaleCookie()).toBe(
+    expect(getLocaleCookies(null, 'networkcanvas.com')).toEqual([
       'NEXT_LOCALE=; Path=/; Max-Age=0; SameSite=Lax',
-    );
+      'NEXT_LOCALE=; Path=/; Domain=networkcanvas.com; Max-Age=0; SameSite=Lax',
+    ]);
+  });
+
+  // A cookie store that ignores the host-only flag when matching (RFC 6265, as
+  // jsdom's does) sees both cookies as one on the apex host.
+  it.each(['networkcanvas.com', 'protocolgallery.networkcanvas.com'])(
+    'keeps the choice in the cookie store on %s',
+    (host) => {
+      // Vitest's jsdom environment exposes its JSDOM instance.
+      const { jsdom } = globalThis as unknown as {
+        jsdom: { reconfigure: (options: { url: string }) => void };
+      };
+      const before = window.location.href;
+      jsdom.reconfigure({ url: `https://${host}/` });
+      try {
+        document.cookie = 'NEXT_LOCALE=fr; Path=/';
+        for (const cookie of getLocaleCookies('es', host)) {
+          document.cookie = cookie;
+        }
+        expect(document.cookie).toBe('NEXT_LOCALE=es');
+      } finally {
+        for (const cookie of getLocaleCookies(null, host)) {
+          document.cookie = cookie;
+        }
+        jsdom.reconfigure({ url: before });
+      }
+    },
+  );
+
+  it("keeps a deploy preview's choice to that preview", () => {
+    expect(getLocaleCookies('es', 'deploy-preview-1--nc.netlify.app')).toEqual([
+      'NEXT_LOCALE=es; Path=/; Max-Age=31536000; SameSite=Lax',
+    ]);
   });
 
   it.each([

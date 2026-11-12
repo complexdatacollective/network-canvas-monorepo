@@ -19,6 +19,8 @@ import { use, useMemo, type ReactNode } from 'react';
 import { SuperJSON } from 'superjson';
 import { z } from 'zod/mini';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { dataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import { type OperatorCondition } from '@codaco/fresco-ui/DataTable/filters/types';
@@ -33,6 +35,15 @@ import { InterviewsSelectionBar } from './InterviewsSelectionBar';
 import { searchParamsUrlKeys, sortableFields, sortOrder } from './searchParams';
 
 type InterviewRow = GetInterviewsQuery[number];
+
+const messages = defineMessages({
+  tableLabel: {
+    id: 'fresco.InterviewsTable.InterviewsTableRows.tableLabel',
+    defaultMessage: 'Interviews',
+    description:
+      'Accessible name of the table listing interviews, announced by screen readers when it is reached.',
+  },
+});
 
 // Mirror of searchParams.ts's networkConditionSchema, with `entityLabel` added
 // so the parsed value is a valid fresco-ui OperatorCondition for the popover.
@@ -116,6 +127,7 @@ export default function InterviewsTableRows({
 }) {
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
   'use no memo';
+  const intl = useAppIntl();
   const data = use(interviewsPromise);
   const rows = useMemo(
     () => SuperJSON.parse<GetInterviewsQuery>(data.rows),
@@ -269,7 +281,11 @@ export default function InterviewsTableRows({
 
   return (
     <>
-      <DataTable table={table} toolbar={toolbar} />
+      <DataTable
+        table={table}
+        aria-label={intl.formatMessage(messages.tableLabel)}
+        toolbar={toolbar}
+      />
       <InterviewsSelectionBar
         selectedCount={selectedCount}
         totalCount={data.totalCount}

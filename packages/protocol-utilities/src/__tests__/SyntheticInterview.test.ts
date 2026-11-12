@@ -3019,13 +3019,15 @@ describe('validation rules on the generated ego', () => {
 // The builder's output carries no protocol name, which the schema requires;
 // everything else that is parsed came from the builder.
 const expectValid = (synth: SyntheticInterview) => {
-  const { localization, schemaVersion, codebook, stages } = synth.getProtocol();
+  const { localization, schemaVersion, codebook, stages, interfaceText } =
+    synth.getProtocol();
   const result = CurrentProtocolSchema.safeParse({
     name: 'Localized protocol',
     localization,
     schemaVersion,
     codebook,
     stages,
+    interfaceText,
   });
   expect(result.error?.issues ?? []).toEqual([]);
   if (!result.success) throw new Error('The built protocol is invalid');
@@ -3287,13 +3289,13 @@ describe('SyntheticInterview stage wording', () => {
       .addStage('NameGeneratorQuickAdd', {
         subject: { entity: 'node', type: person.id },
         quickAdd: nameVariable.id,
-        wording: { quickAddHint: 'Type a name, then press {Enter}' },
+        wording: { addNamePlaceholder: 'Type a name, then press {Enter}' },
       })
       .addPrompt({ text: 'Who do you know?' });
 
     const { stages } = expectValid(synth);
     expect(stages[0]).toMatchObject({
-      quickAddHint: {
+      addNamePlaceholder: {
         'en-US': escapeMessageText('Type a name, then press {Enter}'),
       },
     });
@@ -3322,21 +3324,17 @@ describe('SyntheticInterview stage wording', () => {
 
   it('writes a dotted wording name inside its group and keeps the rest', () => {
     const synth = new SyntheticInterview();
-    const person = synth.addNodeType({ name: 'Person' });
-    const layout = person.addVariable({ name: 'layout', type: 'layout' });
-    synth
-      .addStage('Narrative', {
-        subject: { entity: 'node', type: person.id },
-        behaviours: { freeDraw: true },
-        wording: { 'tooltips.enableDrawing': 'Draw now {now}' },
-      })
-      .addPreset({ layoutVariable: layout.id });
+    synth.addStage('FamilyPedigree', {
+      wording: { 'nodeConfiguration.nameField.hint': 'Their first name {now}' },
+    });
 
     const { stages } = expectValid(synth);
     expect(stages[0]).toMatchObject({
-      tooltips: {
-        enableDrawing: { 'en-US': escapeMessageText('Draw now {now}') },
-        disableDrawing: { 'en-US': expect.any(String) },
+      nodeConfiguration: {
+        nameField: {
+          hint: { 'en-US': escapeMessageText('Their first name {now}') },
+          prompt: { 'en-US': expect.any(String) },
+        },
       },
     });
   });

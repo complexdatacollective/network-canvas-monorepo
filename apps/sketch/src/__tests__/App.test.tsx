@@ -15,6 +15,7 @@ import {
   describeCall,
   jobStatus,
   jsonResponse,
+  requestBodyText,
   succeededJob,
 } from './fixtures.ts';
 
@@ -27,7 +28,7 @@ const mockApi = (finalStatus: JobStatus, { openaiAvailable = false } = {}) => {
     if (url === '/api/config')
       return jsonResponse(configResponse(openaiAvailable));
     if (url === '/api/jobs' && method === 'POST') {
-      posts.push(JSON.parse(String(init?.body)));
+      posts.push(JSON.parse(requestBodyText(init)));
       return jsonResponse({ jobId: 'job-1' });
     }
     if (url === '/api/jobs/job-1') return jsonResponse(finalStatus);
@@ -323,7 +324,7 @@ describe('Sketch flow', () => {
         if (url === '/api/config') return jsonResponse(configResponse(true));
         if (url === '/api/jobs' && method === 'POST') {
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double reading its own request
-          const body = JSON.parse(String(init?.body)) as Record<
+          const body = JSON.parse(requestBodyText(init)) as Record<
             string,
             unknown
           >;

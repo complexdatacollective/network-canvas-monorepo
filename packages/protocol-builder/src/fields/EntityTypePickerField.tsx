@@ -49,6 +49,7 @@ import {
 } from '../rules/ruleCodebook.ts';
 import { useEntityTypes, type EntityTypeSummary } from '../state/hooks.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import { useLatest } from '../state/useLatest.ts';
 
 /**
  * What the researcher is asked before a change that costs them something.
@@ -340,16 +341,15 @@ const DELETED_TARGET_TITLES = defineMessages({
  */
 function useRefuseUneditableChange(): (controlUneditable?: boolean) => boolean {
   const { readOnly, reportRefusedWrite } = useStageEditorForm();
-  const liveReadOnly = useRef(readOnly);
-  liveReadOnly.current = readOnly;
+  const liveReadOnly = useLatest(readOnly);
 
   return useCallback(
     (controlUneditable = false) => {
-      if (!liveReadOnly.current && !controlUneditable) return false;
+      if (!liveReadOnly() && !controlUneditable) return false;
       reportRefusedWrite(READ_ONLY_MESSAGE);
       return true;
     },
-    [reportRefusedWrite],
+    [liveReadOnly, reportRefusedWrite],
   );
 }
 
@@ -400,8 +400,7 @@ function useConfirmEntityTypeChange(): (
    * through. Both kinds, because the target's kind is not known until the
    * question is answered.
    */
-  const liveTypes = useRef({ node: nodeTypes, edge: edgeTypes });
-  liveTypes.current = { node: nodeTypes, edge: edgeTypes };
+  const liveTypes = useLatest({ node: nodeTypes, edge: edgeTypes });
 
   return useCallback(
     async (question, target) => {
@@ -421,7 +420,7 @@ function useConfirmEntityTypeChange(): (
       // judge a target against.
       if (refuseUneditableChange()) return false;
 
-      const stillDefined = liveTypes.current[target.entityType].some(
+      const stillDefined = liveTypes()[target.entityType].some(
         (summary) => summary.id === target.typeId,
       );
       if (stillDefined) return true;
@@ -440,7 +439,7 @@ function useConfirmEntityTypeChange(): (
       });
       return false;
     },
-    [confirm, intl, openDialog, refuseUneditableChange],
+    [confirm, intl, liveTypes, openDialog, refuseUneditableChange],
   );
 }
 
@@ -470,7 +469,7 @@ function EdgeChip({
       )}
       style={chipStyle}
     >
-      <Icon name="links" className="mr-2.5 size-6" style={iconStyle} />
+      <Icon name="links" className="me-2.5 size-6" style={iconStyle} />
       {label}
     </span>
   );
@@ -943,11 +942,15 @@ export default function EntityTypePickerField({
    * and the closure resuming under them must not write what they can no longer
    * choose.
    */
-  const judgeAgainst = useRef({ blockChangeReason, value, readOnly, disabled });
-  judgeAgainst.current = { blockChangeReason, value, readOnly, disabled };
+  const judgeAgainst = useLatest({
+    blockChangeReason,
+    value,
+    readOnly,
+    disabled,
+  });
 
   const refuseBlockedChange = (nextType: string): boolean => {
-    const { blockChangeReason: reason, value: current } = judgeAgainst.current;
+    const { blockChangeReason: reason, value: current } = judgeAgainst();
     if (
       reason === undefined ||
       current === undefined ||
@@ -1003,7 +1006,7 @@ export default function EntityTypePickerField({
     // answered inside the confirm above, for every caller of it; what is
     // left here is this picker's reading of itself, which a section can
     // withdraw on its own.
-    const live = judgeAgainst.current;
+    const live = judgeAgainst();
     if (refuseUneditableChange(live.readOnly || live.disabled)) return;
     // Asked AGAIN, on the protocol as it stands now. The researcher has
     // agreed to what this change costs their stage, which is a different

@@ -53,9 +53,8 @@ const buttonSpecificVariants = cva({
       'default-inverted': 'bg-white text-(--component-text)',
       'raised':
         'ui-enabled:hover:elevation-medium ui-enabled:hover:-translate-y-0.5 ui-enabled:active:border-b-transparent border-(--component-raised-edge) bg-(--component-text) tracking-widest text-(--component-bg) uppercase [--component-raised-edge:color-mix(in_oklab,var(--component-text)_78%,var(--color-black)_22%)]',
-      // The hover repaint these four share is NOT here: it is a compound
+      // The hover repaint these three share is NOT here: it is a compound
       // variant below, so a selected control can be given it by omission.
-      'outline': 'border-2 border-(--component-text) text-(--component-text)',
       'text': 'text-(--component-text)',
       'dashed':
         'border-2 border-dashed border-(--component-text) text-(--component-text)',
@@ -63,7 +62,7 @@ const buttonSpecificVariants = cva({
         'control-glass border-(--component-text) text-(--component-text)',
       'link': cx(
         NATIVE_LINK_ROOT_CLASS_NAME,
-        'font-body elevation-none hover:elevation-none! ui-disabled:[&>span]:bg-[length:0%_2px]! h-auto! overflow-visible p-0! tracking-normal hover:translate-none! active:translate-none!',
+        'font-body elevation-none hover:elevation-none! ui-disabled:[&>span]:bg-size-[0%_2px]! h-auto! overflow-visible p-0! tracking-normal hover:translate-none! active:translate-none!',
       ),
     },
     textStyle: {
@@ -129,7 +128,7 @@ const buttonSpecificVariants = cva({
     selected: false,
   },
   compoundVariants: [
-    // Hover inverts these four to their own text colour — but only while the
+    // Hover inverts these three to their own text colour — but only while the
     // control is not already wearing the selected treatment. Once a toggle is
     // on or a disclosure is open, the colour is carrying state, and hover has
     // nothing left to say; repainting it over the top just discards the state.
@@ -137,7 +136,7 @@ const buttonSpecificVariants = cva({
     // Withheld rather than guarded, and that distinction is the whole reason
     // this sits in a compound variant. See `hasAriaSelectedState`.
     {
-      variant: ['outline', 'text', 'dashed', 'glass'],
+      variant: ['text', 'dashed', 'glass'],
       selected: false,
       className:
         'ui-enabled:hover:bg-(--component-text) ui-enabled:hover:text-(--component-bg)',
@@ -148,15 +147,15 @@ const buttonSpecificVariants = cva({
       color: 'default',
       className: 'interview:outline-(--component-text)',
     },
-    // Default color bg is too light to use as outline or text color
+    // Default color bg is too light to use as a border or text color
     {
-      variant: ['outline', 'text', 'dashed', 'glass'],
+      variant: ['text', 'dashed', 'glass'],
       color: 'default',
       className:
         'interview:[--component-text:var(--neutral)] ui-enabled:hover:[--component-text:var(--neutral)] [--component-text:var(--neutral-contrast)]',
     },
     {
-      variant: ['outline', 'dashed', 'glass'],
+      variant: ['dashed', 'glass'],
       color: ['dynamic', 'default'],
       className: 'border-current',
     },

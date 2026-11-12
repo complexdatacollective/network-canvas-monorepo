@@ -6,6 +6,8 @@ import {
   type HttpServerResponse,
 } from 'effect/http';
 
+import { isProbe } from '../probes.ts';
+
 const recordStatus = (response: HttpServerResponse.HttpServerResponse) =>
   Effect.annotateCurrentSpan('http.response.status_code', response.status);
 
@@ -23,6 +25,9 @@ export const HttpSpanLive = HttpRouter.middleware(
           kind: 'server',
           root: true,
           attributes: { 'http.request.method': request.method },
+          // Orchestrators probe every few seconds, and readiness queries the
+          // database: unsampled, the probe and its checks are never exported.
+          sampled: !isProbe(request.url),
         }),
       ),
     ),

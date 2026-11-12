@@ -79,3 +79,39 @@ describe('SignInForm after a password sign-in', () => {
     expect(mockPush).not.toHaveBeenCalledWith(TWO_FACTOR_SETUP_PATH);
   });
 });
+
+// A "back" arrow points at where the reader came from: left, or right in a
+// right-to-left language. The icon is drawn pointing left and turned round by
+// the stylesheet, which this environment does not load, so the check is that
+// each back button asks for the turn.
+describe('SignInForm back buttons', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const backArrow = () =>
+    screen
+      .getByRole('button', { name: 'Back to sign in' })
+      .querySelector('svg');
+
+  it('turns the arrow round on the two-factor step', async () => {
+    mockLogin.mockResolvedValue({
+      success: false,
+      requiresTwoFactor: true,
+      twoFactorToken: 'token',
+    });
+
+    await signIn();
+
+    await screen.findByRole('button', { name: 'Back to sign in' });
+    expect(backArrow()).toHaveClass('rtl:rotate-180');
+  });
+
+  it('turns the arrow round on the recovery-code step', async () => {
+    render(view);
+    fireEvent.click(screen.getByRole('button', { name: /Trouble signing in/ }));
+
+    await screen.findByRole('button', { name: 'Back to sign in' });
+    expect(backArrow()).toHaveClass('rtl:rotate-180');
+  });
+});

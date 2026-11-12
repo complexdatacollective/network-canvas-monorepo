@@ -5,6 +5,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import { DEFAULT_FINISH_SESSION_TEXT } from '../finish-session-defaults.ts';
+import { interfaceTextFor } from '../interface-text.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   pedigreeCompletenessText,
@@ -19,9 +20,14 @@ const options = (...labels: [string, string | number][]) =>
 /**
  * One protocol holding every participant-facing field family the schema
  * declares, each carrying copy. `localization-coverage.test.ts` lists exactly
- * those values.
+ * those values. It holds the interface text it uses, as every protocol must.
  */
-export const completeProtocol = () => ({
+export const completeProtocol = () => {
+  const protocol = protocolDocument();
+  return { ...protocol, interfaceText: interfaceTextFor(protocol) };
+};
+
+const protocolDocument = () => ({
   name: 'Localization coverage',
   schemaVersion: 9 as const,
   localization: { defaultLocale: 'en', locales: ['en'] },
@@ -306,7 +312,7 @@ export const completeProtocol = () => ({
     {
       id: 'quickAdd',
       type: 'NameGeneratorQuickAdd',
-      quickAddHint: localized('Press Enter when you are finished.'),
+      addNamePlaceholder: localized('Type a name, then press Enter'),
       label: localized('Quick add'),
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'name',
@@ -336,6 +342,7 @@ export const completeProtocol = () => ({
       sortOptions: {
         sortableProperties: [{ label: localized('Sort by'), variable: 'name' }],
       },
+      unnamedLabel: localized('Unnamed {count}'),
       prompts: [{ id: 'p1', text: localized('Pick from the roster') }],
     },
     {
@@ -361,15 +368,7 @@ export const completeProtocol = () => ({
       quickAdd: 'name',
       layoutVariable: 'layoutPosition',
       background: { concentricCircles: 3 },
-      addNamePlaceholder: localized('Type a name, then press Enter'),
-      overtakenEditNotice: localized('Your edit has not been saved.'),
       convexHullVariable: 'category',
-      groupsHeading: localized('Groups'),
-      tooltips: {
-        addPerson: localized('Add node'),
-        automaticLayout: localized('Automatic layout'),
-        drawConnection: localized('Draw edge'),
-      },
       nodeForm: {
         fields: [
           {
@@ -502,13 +501,6 @@ export const completeProtocol = () => ({
       attributesHeading: localized('Attributes'),
       linksHeading: localized('Links'),
       groupsHeading: localized('Groups'),
-      tooltips: {
-        enableDrawing: localized('Enable drawing'),
-        disableDrawing: localized('Disable drawing'),
-        freezeAnnotations: localized('Freeze annotations'),
-        unfreezeAnnotations: localized('Unfreeze annotations'),
-        resetAnnotations: localized('Reset annotations'),
-      },
     },
     {
       id: 'anonymisation',
@@ -529,12 +521,6 @@ export const completeProtocol = () => ({
     {
       id: 'geospatial',
       type: 'Geospatial',
-      offlineNotice: localized(
-        'You are offline — the map will not load until you reconnect.',
-      ),
-      mapUnavailable: localized(
-        'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
-      ),
       outsideAreasLabel: localized('Outside Selectable Areas'),
       label: localized('Map'),
       subject: { entity: 'node', type: 'person' },
@@ -548,9 +534,6 @@ export const completeProtocol = () => ({
         targetFeatureProperty: 'name',
         allowSearch: true,
       },
-      searchFailed: localized(
-        'Search could not be completed. Try again in a moment.',
-      ),
       prompts: [
         {
           id: 'p1',
@@ -566,6 +549,9 @@ export const completeProtocol = () => ({
       label: localized('Family'),
       subject: { entity: 'node', type: 'relative' },
       prompt: localized('Build your family'),
+      // Participants choose the words, so the protocol holds the framing
+      // question's text.
+      framing: 'participantPreference',
       nodeConfiguration: {
         nameAttribute: 'displayName',
         nameField: pedigreeNameField(),
@@ -616,21 +602,9 @@ export const completeProtocol = () => ({
         },
       ],
       showAtRiskStatuses: true,
-      keyHeading: localized('Key'),
       saveSnapshot: localized('Save snapshot'),
-      tooltips: {
-        clearFocus: localized('Clear focus'),
-      },
       conditionText: {
         selectCondition: localized('Select a condition'),
-        notation: {
-          affected: localized('Has this condition'),
-          obligateAffected: localized('Will develop this condition'),
-          obligateCarrier: localized('Carries this condition'),
-          atRiskAffected: localized('May develop this condition'),
-          atRiskCarrier: localized('May carry this condition'),
-          unknown: localized('Not known'),
-        },
         snapshotCondition: localized('{title}: {condition}'),
         snapshotInheritance: localized(
           '{title}: {condition} — inheritance for {name}',

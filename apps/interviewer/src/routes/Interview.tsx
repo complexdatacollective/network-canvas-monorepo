@@ -16,7 +16,6 @@ import {
   AppI18nProvider,
   AppMessage,
   useAppIntl,
-  useAppLocale,
   useLocaleCatalog,
 } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
@@ -35,8 +34,8 @@ import {
   type StepChangeHandler,
   type SyncHandler,
   getLastAvailableAuthoredStageIndex,
+  useContentLocaleIn,
 } from '@codaco/interview';
-import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   getLocaleMetadata,
@@ -44,7 +43,7 @@ import {
 } from '@codaco/protocol-validation';
 import { Interviewer8Frame } from '~/components/Interviewer8Frame';
 import { offlineMessages } from '~/components/offlineMessages';
-import { interviewerLocales } from '~/i18n/locales';
+import { interviewerDefaultLocale, interviewerLocales } from '~/i18n/locales';
 import { browserLanguages } from '~/i18n/preference';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { POSTHOG_APP_KEY, POSTHOG_APP_NAME } from '~/lib/analytics/config';
@@ -95,13 +94,15 @@ const messages = defineMessages({
   interviewUnavailable: {
     id: 'interviewer.interview.interviewUnavailable',
     defaultMessage: 'Interview unavailable',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Heading of the full-screen message shown in place of an interview that cannot be opened because its protocol is incompatible or an older version is unavailable.',
   },
   theProtocolThisInterviewUsesCouldNot: {
     id: 'interviewer.interview.theProtocolThisInterviewUsesCouldNot',
     defaultMessage:
       'The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      "Body under the Interview unavailable heading when the interview's protocol could not be migrated to this app version. Architect is the protocol design app.",
   },
   thisInterviewUsesAnOlderSchema: {
     id: 'interviewer.interview.thisInterviewUsesAnOlderSchema',
@@ -113,18 +114,21 @@ const messages = defineMessages({
   returnHome: {
     id: 'interviewer.interview.returnHome',
     defaultMessage: 'Return home',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Button on the interview error screens that goes back to the home screen. Verb phrase.',
   },
   interviewNotFound: {
     id: 'interviewer.interview.interviewNotFound',
     defaultMessage: 'Interview not found',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Heading of the full-screen message shown when the opened interview address matches no stored interview.',
   },
   thisInterviewMayHaveBeenDeletedOr: {
     id: 'interviewer.interview.thisInterviewMayHaveBeenDeletedOr',
     defaultMessage:
       'This interview may have been deleted, or the protocol it used is no longer installed.',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Body under the Interview not found heading, suggesting the interview was deleted or its protocol was removed from the device.',
   },
   interviewCouldNotBeOpened: {
     id: 'interviewer.interview.interviewCouldNotBeOpened',
@@ -142,13 +146,15 @@ const messages = defineMessages({
   readOnlyReview: {
     id: 'interviewer.interview.readOnlyReview',
     defaultMessage: 'Read-only review',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Title of the notice shown at the top while a finished interview is open for review only. Read-only is an adjective.',
   },
   changesMadeWhileReviewingThisInterviewWill: {
     id: 'interviewer.interview.changesMadeWhileReviewingThisInterviewWill',
     defaultMessage:
       'Changes made while reviewing this interview will not be saved.',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Description in the read-only review notice warning that edits made while reviewing a finished interview are not kept.',
   },
 });
 
@@ -469,16 +475,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const reportLoadFailure = useEffectEvent((cause: unknown) => {
     captureException(cause, { feature: 'interview-load' });
   });
-
-  // The interview's messages load while the session below is unlocked and
-  // decrypted, rather than once the Shell mounts, and with them Interviewer's
-  // own messages in that language for the finish dialog's description. A
-  // failure here is retried by the Shell itself.
-  useEffect(() => {
-    loadInterviewCatalog(requestedLocales)
-      .then(({ locale }) => interviewerCatalogSource.load(locale))
-      .catch(() => undefined);
-  }, [requestedLocales]);
 
   // Gated exit shared by the Shell exit button and the completed state's Exit.
   const handleExit = useCallback(async () => {
@@ -868,12 +864,11 @@ function LoadFailure({
 }
 
 // Host messages that render inside the Shell (the finish dialog's explanation,
-// the completed state's Exit) take the interview's interface language from the
-// Shell's provider; the interview never uses Interviewer's own language.
-// Interviewer's catalog for that language is loaded when the interview is (see
-// the route), so this normally renders at once; the boundary keeps a late
-// catalog from suspending the whole interview behind the Shell's loading
-// screen.
+// the completed state's Exit) take the language the interview shows, which it
+// negotiates from the protocol's languages; the interview never uses
+// Interviewer's own language. Interviewer's catalog for that language loads
+// here when it is not Interviewer's own; the boundary keeps a late catalog
+// from suspending the whole interview behind the Shell's loading screen.
 function InterviewLanguageMessage({ message }: { message: MessageDescriptor }) {
   return (
     <Suspense fallback={null}>
@@ -887,7 +882,10 @@ function InterviewLanguageMessageText({
 }: {
   message: MessageDescriptor;
 }) {
-  const { locale } = useAppLocale();
+  const locale = useContentLocaleIn(
+    interviewerLocales.map((entry) => entry.locale),
+    interviewerDefaultLocale,
+  );
   const catalog = useLocaleCatalog(interviewerCatalogSource, locale);
   const direction =
     interviewerLocales.find((entry) => entry.locale === catalog.locale)

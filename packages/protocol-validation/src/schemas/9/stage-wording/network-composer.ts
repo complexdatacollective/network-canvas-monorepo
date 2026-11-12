@@ -1,12 +1,13 @@
-import type {
-  SuppliedStageSetting,
-  SuppliedWording,
-} from '../supplied-stage-setting.ts';
+import type { SuppliedWording } from '../supplied-stage-setting.ts';
+
+// The words every Network Composer stage shows alike, which the protocol holds
+// once as interface text (`interface-text-wording.ts`), in every language
+// Network Canvas supplies.
 
 type Stage = Readonly<Record<string, unknown>>;
 
-/** The name field that adds a person, before anything is typed in it. */
-const ADD_NAME_PLACEHOLDER = {
+/** The name field that adds a node, before anything is typed in it. */
+export const ADD_NAME_PLACEHOLDER = {
   'en': 'Type a name, then press Enter',
   'de': 'Namen eingeben und mit Enter bestätigen',
   'es': 'Escribe un nombre y pulsa Intro',
@@ -18,8 +19,8 @@ const ADD_NAME_PLACEHOLDER = {
   'zh-Hant': '輸入名字後按 Enter',
 } as const satisfies SuppliedWording;
 
-/** What the participant is told when an undo or redo has overtaken an edit. */
-const OVERTAKEN_EDIT_NOTICE = {
+/** What the interviewer is told when an undo or redo has overtaken an edit. */
+export const OVERTAKEN_EDIT_NOTICE = {
   'en': 'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
   'de': '„Rückgängig“ oder „Wiederholen“ hat eine Antwort geändert, während Sie sie bearbeitet haben. Deshalb wurde Ihre Änderung nicht gespeichert. Um Ihre Änderung zu behalten, ändern Sie diese Antwort erneut. Wenn Sie fortfahren, geht Ihre Änderung verloren.',
   'es': 'Deshacer o rehacer cambió una respuesta mientras la editabas, así que tu cambio no se ha guardado. Para conservarlo, vuelve a cambiar esa respuesta. Si continúas, se perderá tu cambio.',
@@ -34,7 +35,7 @@ const OVERTAKEN_EDIT_NOTICE = {
     '復原或重做在您編輯某個回答時變更了該回答，因此您的修改尚未儲存。若要保留您的修改，請再次變更該回答。如果繼續，您的修改將會遺失。',
 } as const satisfies SuppliedWording;
 
-/** The heading over the groups, and the words on the Groups tool. */
+/** The Groups tool's name, shown in its tooltip. */
 export const GROUPS_HEADING = {
   'en': 'Groups',
   'de': 'Gruppen',
@@ -47,7 +48,7 @@ export const GROUPS_HEADING = {
   'zh-Hant': '群組',
 } as const satisfies SuppliedWording;
 
-const ADD_PERSON_TOOLTIP = {
+export const ADD_NODE_TOOLTIP = {
   'en': 'Add node',
   'de': 'Knoten hinzufügen',
   'es': 'Añadir un elemento',
@@ -59,7 +60,7 @@ const ADD_PERSON_TOOLTIP = {
   'zh-Hant': '新增節點',
 } as const satisfies SuppliedWording;
 
-const AUTOMATIC_LAYOUT_TOOLTIP = {
+export const AUTOMATIC_LAYOUT_TOOLTIP = {
   'en': 'Automatic layout',
   'de': 'Automatisches Layout',
   'es': 'Disposición automática',
@@ -71,7 +72,7 @@ const AUTOMATIC_LAYOUT_TOOLTIP = {
   'zh-Hant': '自動版面配置',
 } as const satisfies SuppliedWording;
 
-const DRAW_CONNECTION_TOOLTIP = {
+export const DRAW_EDGE_TOOLTIP = {
   'en': 'Draw edge',
   'de': 'Verbindung zeichnen',
   'es': 'Dibujar una conexión',
@@ -83,29 +84,50 @@ const DRAW_CONNECTION_TOOLTIP = {
   'zh-Hant': '繪製關係',
 } as const satisfies SuppliedWording;
 
-/** The Groups tool and its heading appear only once the stage has groups. */
-const hasGroups = (stage: Stage) => stage.convexHullVariable !== undefined;
+/** The Groups tool appears only once the stage has groups. */
+export const hasGroups = (stage: Stage) =>
+  stage.convexHullVariable !== undefined;
 
-/** The connection tool appears only once the stage has edge types. */
-const hasEdgeTypes = (stage: Stage) => {
+/** The edge tool appears only once the stage has edge types. */
+export const hasEdgeTypes = (stage: Stage) => {
   const edges = stage.edges;
   return Array.isArray(edges) && edges.length > 0;
 };
 
-/** The Network Composer's settings Network Canvas words. */
-export const NETWORK_COMPOSER_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
-  { path: ['addNamePlaceholder'], message: ADD_NAME_PLACEHOLDER },
-  { path: ['overtakenEditNotice'], message: OVERTAKEN_EDIT_NOTICE },
-  {
-    path: ['groupsHeading'],
-    message: GROUPS_HEADING,
-    when: hasGroups,
-  },
-  { path: ['tooltips', 'addPerson'], message: ADD_PERSON_TOOLTIP },
-  { path: ['tooltips', 'automaticLayout'], message: AUTOMATIC_LAYOUT_TOOLTIP },
-  {
-    path: ['tooltips', 'drawConnection'],
-    message: DRAW_CONNECTION_TOOLTIP,
-    when: hasEdgeTypes,
-  },
-];
+const isRecord = (value: unknown): value is Stage =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const edgeTypesOf = (stage: Stage): readonly Stage[] =>
+  Array.isArray(stage.edges) ? stage.edges.filter(isRecord) : [];
+
+/** A form the inspector shows: one with fields to answer. */
+const hasFields = (form: unknown) =>
+  isRecord(form) && Array.isArray(form.fields) && form.fields.length > 0;
+
+/**
+ * The inspector shows a form, and so can say that an undo or redo overtook an
+ * edit in it, only for a selected node while the stage gives nodes fields to
+ * answer, or for a selected edge of a type the stage gives fields.
+ */
+export const hasInspectorForm = (stage: Stage) =>
+  hasFields(stage.nodeForm) ||
+  edgeTypesOf(stage).some((edgeType) => hasFields(edgeType.form));
+
+/**
+ * Whether the codebook has an edge type the stage does not draw. An edge of
+ * such a type, made on another stage, is the only one the inspector names
+ * simply as a connection.
+ */
+export const leavesEdgeTypesUndrawn = (
+  stage: Stage,
+  codebookEdgeTypes: readonly string[],
+) => {
+  const drawn = new Set(
+    edgeTypesOf(stage).flatMap(({ subject }) =>
+      isRecord(subject) && typeof subject.type === 'string'
+        ? [subject.type]
+        : [],
+    ),
+  );
+  return codebookEdgeTypes.some((type) => !drawn.has(type));
+};

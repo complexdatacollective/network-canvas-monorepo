@@ -21,6 +21,7 @@ import {
   textSizeVariants,
 } from '../../styles/controlVariants';
 import { cva, cx, type VariantProps } from '../../utils/cva';
+import { isRightToLeft } from '../../utils/horizontalOverflow';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
@@ -292,11 +293,18 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
 
       let nextIndex: number | undefined;
 
-      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      // Along the row, the key pointing towards its end moves on: the left
+      // arrow in a right-to-left language, where the options run from the
+      // right.
+      const rightToLeft = isRightToLeft(e.currentTarget);
+      const forwardKey = rightToLeft ? 'ArrowLeft' : 'ArrowRight';
+      const backKey = rightToLeft ? 'ArrowRight' : 'ArrowLeft';
+
+      if (e.key === 'ArrowDown' || e.key === forwardKey) {
         e.preventDefault();
         const next = currentEnabledIndex + 1;
         nextIndex = enabledIndices[next >= enabledIndices.length ? 0 : next];
-      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      } else if (e.key === 'ArrowUp' || e.key === backKey) {
         e.preventDefault();
         const prev = currentEnabledIndex - 1;
         nextIndex = enabledIndices[prev < 0 ? enabledIndices.length - 1 : prev];
@@ -329,6 +337,7 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
             useColumns,
             className,
           })}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a listbox of rich option cards, which <select> cannot render.
           role="listbox"
           aria-orientation={orientation}
           aria-label={fieldsetProps['aria-label']}

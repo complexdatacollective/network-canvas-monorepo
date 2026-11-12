@@ -56,11 +56,11 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import Table from '~/components/Assets/Table';
-import ExternalLink from '~/components/ExternalLink';
 import {
-  FinishStageTextRefusal,
-  FinishStageTextRefusalTitle,
-} from '~/components/FinishStageTextAlert';
+  DownloadRefusalMessage,
+  DownloadRefusalTitle,
+} from '~/components/DefaultLanguageTextAlert';
+import ExternalLink from '~/components/ExternalLink';
 import { APP_SCHEMA_VERSION } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
@@ -73,7 +73,7 @@ import { getProtocolAssetCount } from '~/utils/assetUtils';
 import {
   downloadLegacyProtocolAsNetcanvas,
   downloadProtocolAsNetcanvas,
-  MissingFinishStageTextError,
+  DownloadRefusedError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
 import { beginExport } from '~/utils/criticalOperation';
@@ -591,11 +591,12 @@ const PanelRow = ({
       : openItem;
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- itemProps carries Collection's option role and roving tabIndex, which the rule cannot see through the spread.
     <div
       {...itemProps}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className="group focusable hover:bg-surface-1 data-focused:bg-surface-1 flex w-full shrink-0 cursor-pointer items-center gap-2.5 rounded px-5 py-2.5 text-left transition-colors"
+      className="group focusable hover:bg-surface-1 data-focused:bg-surface-1 flex w-full shrink-0 cursor-pointer items-center gap-2.5 rounded px-5 py-2.5 text-start transition-colors"
     >
       <div className="flex shrink-0 items-center justify-center">
         <img
@@ -753,6 +754,7 @@ const GalleryCard = () => {
   return (
     <Surface
       ref={cardRef}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a labelled card of a link and a dismiss button: not form controls for a <fieldset>, and not worth a landmark.
       role="group"
       aria-label={intl.formatMessage(messages.protocolGallery)}
       spacing="sm"
@@ -776,7 +778,7 @@ const GalleryCard = () => {
         color="dynamic"
         size="sm"
         aria-label={intl.formatMessage(messages.dismiss)}
-        className="absolute top-1 right-2"
+        className="absolute inset-e-2 top-1"
         onClick={handleDismiss}
         icon={<X />}
       />
@@ -889,14 +891,14 @@ const LibraryPanel = ({
       try {
         await download();
       } catch (error) {
-        // Nor one whose finish stage has no heading or text in its default
-        // language: no host would import it.
-        if (error instanceof MissingFinishStageTextError) {
+        // Nor one no host would import: its finish stage has no heading or
+        // text in its default language, or two labels read the same.
+        if (error instanceof DownloadRefusedError) {
           void openDialog({
             type: 'acknowledge',
             intent: 'destructive',
-            title: createElement(FinishStageTextRefusalTitle),
-            description: createElement(FinishStageTextRefusal, {
+            title: createElement(DownloadRefusalTitle),
+            description: createElement(DownloadRefusalMessage, {
               problem: error.problem,
             }),
             actions: {

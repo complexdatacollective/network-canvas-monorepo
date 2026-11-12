@@ -513,6 +513,38 @@
       },
       "continue": {
         "en": "Continue"
+      },
+      "exitFailed": {
+        "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en": "Show screen"
       }
     },
     "buttons": {
@@ -521,9 +553,6 @@
       },
       "done": {
         "en": "Done"
-      },
-      "delete": {
-        "en": "Delete"
       },
       "yes": {
         "en": "Yes"
@@ -536,17 +565,31 @@
       },
       "resumeLayout": {
         "en": "Resume automatic layout"
+      },
+      "copy": {
+        "en": "Copy"
+      },
+      "copied": {
+        "en": "Copied"
       }
     },
     "messages": {
       "stageError": {
         "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "itemUnavailable": {
-        "en": "This item could not be displayed."
-      },
       "error": {
         "en": "An error occurred."
+      },
+      "unnamed": {
+        "en": "Unnamed"
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en": "Search"
+      },
+      "searchNoMatch": {
+        "en": "Nothing matched your search term."
       }
     },
     "forms": {

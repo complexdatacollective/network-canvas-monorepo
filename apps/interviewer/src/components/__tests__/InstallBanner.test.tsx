@@ -42,7 +42,6 @@ const stubEnvironment = ({
     removeEventListener: vi.fn(),
   }));
   vi.stubGlobal('navigator', {
-    ...navigator,
     platform,
     maxTouchPoints: touchPoints,
     userAgent: iosChrome

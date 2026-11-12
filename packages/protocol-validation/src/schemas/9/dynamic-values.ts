@@ -7,6 +7,7 @@ import {
   MISSING_CASE,
 } from '../../localization/dynamicValueMessages.ts';
 import type { StageSubject } from './common/subjects.ts';
+import { placesByTapping } from './stage-wording/bins.ts';
 import type { VariableType } from './variables/types.ts';
 
 const DYNAMIC_VALUE_PATH = 'dynamicValuePath' as const;
@@ -271,11 +272,7 @@ export type DynamicValueStage = Readonly<{
  * being placed is active, and its prompt is shown about it.
  */
 const placesOneNodeAtATime = (stage: DynamicValueStage): boolean =>
-  BIN_STAGE_TYPES.has(stage.type) &&
-  typeof stage.behaviours === 'object' &&
-  stage.behaviours !== null &&
-  'interactionMode' in stage.behaviours &&
-  stage.behaviours.interactionMode === 'select';
+  BIN_STAGE_TYPES.has(stage.type) && placesByTapping(stage);
 
 /**
  * What a form field's form describes: its entity, and whether that is the

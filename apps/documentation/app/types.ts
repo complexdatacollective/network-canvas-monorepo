@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { type Locale, locales } from '~/lib/i18n/locales';
+
 export const sections = [
   'get-started',
   'design-protocols',
@@ -19,16 +21,7 @@ export function toSection(value: string | undefined): Section | undefined {
   return sections.find((candidate) => candidate === value);
 }
 
-export const locales = ['en'] as const;
-
 const zlocales = z.enum(locales);
-
-export type Locale = (typeof locales)[number];
-
-// Narrow a string to a documentation locale, or undefined when it names none.
-export function toLocale(value: string | undefined): Locale | undefined {
-  return locales.find((candidate) => candidate === value);
-}
 
 const _itemTypes = [
   'section', // Top level workflow sections

@@ -14,6 +14,7 @@
   },
   "ignore": [
     "@codaco/architect-classic",
+    "@codaco/community-theme",
     "@codaco/interviewer-classic",
     "@codaco/documentation",
     "networkcanvas.com",
@@ -24,6 +25,7 @@
     "@codaco/studio-server",
     "@codaco/studio-sync",
     "@codaco/studio-web",
+    "@codaco/e2e-helpers",
     "@codaco/effect-query",
     "@codaco/protocol-builder",
     "@codaco/protocol-builder-core",

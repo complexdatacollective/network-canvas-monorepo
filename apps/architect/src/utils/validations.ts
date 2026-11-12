@@ -1,7 +1,6 @@
 import {
   get,
   isEmpty,
-  isEqual,
   isNil,
   isNull,
   isRegExp,
@@ -194,25 +193,16 @@ const isBeforeOrSame = (left: unknown, right: unknown): boolean =>
     ? left <= right
     : Number(left) <= Number(right);
 
-// Case-insensitive AND Unicode-canonical: a precomposed and a decomposed
-// spelling of the same text are the same answer to a participant, so they are
-// the same value here too. See `@codaco/shared-consts`' `canonical-text`.
-const isRoughlyEqual = (left: unknown, right: unknown) => {
-  if (typeof left === 'string' && typeof right === 'string') {
-    return normalizeForComparison(left) === normalizeForComparison(right);
-  }
-
-  return isEqual(left, right);
-};
-
 /**
  * The key under which two names — or two option values — are the same name.
  * It reads a value the way it is saved (`normalizeCodebookName`), as text (the
  * option values `1` and `"1"` both export to the column `variable_1`), and
  * case-insensitively, like the rest of the editors' duplicate checks.
  */
+const nameText = (value: unknown) => normalizeCodebookName(String(value));
+
 export const nameComparisonKey = (value: unknown) =>
-  normalizeForComparison(normalizeCodebookName(String(value)));
+  normalizeForComparison(nameText(value));
 
 export function createValidations(intl: IntlShape = defaultIntl) {
   const required =
@@ -371,8 +361,6 @@ export function createValidations(intl: IntlShape = defaultIntl) {
       return undefined;
     };
 
-  const uniqueArrayAttribute = uniqueInArray(isRoughlyEqual);
-
   // For option values, which are names: see `nameComparisonKey`.
   const uniqueArrayName = uniqueInArray((left, right) => {
     const key = nameComparisonKey(right);
@@ -397,7 +385,7 @@ export function createValidations(intl: IntlShape = defaultIntl) {
         return messageWithDefault(
           message,
           intl.formatMessage(messages.valueIsAlreadyInUse, {
-            value: normalizeCodebookName(String(value)),
+            value: nameText(value),
           }),
         );
       }
@@ -519,11 +507,7 @@ export function createValidations(intl: IntlShape = defaultIntl) {
     (value) => {
       try {
         const regexp = new RegExp(
-          value instanceof RegExp || typeof value === 'string'
-            ? value
-            : value === undefined
-              ? ''
-              : String(value),
+          value instanceof RegExp || typeof value === 'string' ? value : '',
         );
         if (isRegExp(regexp)) {
           return undefined;
@@ -556,7 +540,6 @@ export function createValidations(intl: IntlShape = defaultIntl) {
     required,
     requiredAcceptsNull,
     requiredAcceptsZero,
-    uniqueArrayAttribute,
     uniqueArrayName,
     uniqueByList,
     validRegExp,

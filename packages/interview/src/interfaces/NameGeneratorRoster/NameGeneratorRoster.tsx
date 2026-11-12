@@ -44,12 +44,15 @@ import { DynamicTextParts } from '../../dynamicValues/DynamicText';
 import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { useStageSubjectName } from '../../hooks/useStageSubjectName';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import {
   useLocalizedString,
   useContentLocale,
+  useResolveLocalizedMessage,
   useResolveLocalizedString,
 } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import { getNodeVariables } from '../../selectors/interface';
 import {
   getSearchOptions,
@@ -78,7 +81,7 @@ import useItems, { type UseItemElement } from './useItems';
 
 const ErrorMessage = () => (
   <div className="flex flex-1 flex-col items-center justify-center gap-2">
-    <Icon name="warning" />
+    <Icon name="warning" aria-hidden />
     <Heading level="h2" className="sr-only">
       <AppMessage message={interfaceMessages.errorHeading} />
     </Heading>
@@ -95,6 +98,8 @@ const CARD_MIN_WIDTH = 400;
 // handle can never drag the panel narrow enough for a card to overflow.
 const SOURCE_PANEL_MIN_WIDTH = CARD_MIN_WIDTH + 32;
 
+const itemLabel = (item: UseItemElement) => item.props.label;
+
 const layout = new GridLayout<UseItemElement>({
   gap: 2,
   minItemWidth: CARD_MIN_WIDTH,
@@ -108,8 +113,10 @@ const keyExtractor = (item: UseItemElement) => item.id;
 const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const intl = useAppIntl();
   const { stage } = props;
+  // The stage's own words, and Network Canvas's where the stage holds none.
+  const wording = useStageWording(stage);
   const { text: panelTitleText, parts: panelTitleParts } = useLocalizedString(
-    stage.panelTitle,
+    wording.text('panelTitle'),
   );
   const panelTitle =
     panelTitleParts === undefined ? (
@@ -117,9 +124,14 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     ) : (
       <DynamicTextParts parts={panelTitleParts} />
     );
-  const { text: allAddedNotice } = useLocalizedString(stage.allAddedNotice);
+  const subject = useStageSubjectName();
+  const resolveMessage = useResolveLocalizedMessage();
+  const allAddedNotice = resolveMessage(wording.text('allAddedNotice'), {
+    subject,
+  }).text;
   // The protocol's interface text words the search (`search.searchLabel`).
   const searchLabel = intl.formatMessage(commonMessages.search);
+  const loadingStatus = intl.formatMessage(runtimeMessages.loadingStatus);
 
   const { isLastPrompt } = usePrompts();
 
@@ -269,8 +281,8 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     stageNodeCount,
     minNodes,
     maxNodes,
-    minNodesNotice: stage.minNodesNotice,
-    maxNodesNotice: stage.maxNodesNotice,
+    minNodesNotice: wording.shown('minNodesNotice'),
+    maxNodesNotice: wording.shown('maxNodesNotice'),
     isLastPrompt,
   });
 
@@ -473,7 +485,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
               <Collection
                 items={filteredItems}
                 keyExtractor={keyExtractor}
-                textValueExtractor={(item: UseItemElement) => item.props.label}
+                textValueExtractor={itemLabel}
                 viewportClassName="px-2"
                 layout={layout}
                 renderItem={renderItem}
@@ -496,7 +508,11 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                     <div>
                       {searchOptions && (
                         <div className="flex flex-wrap gap-2 p-2">
-                          <CollectionFilterInput placeholder={searchLabel} />
+                          <CollectionFilterInput
+                            placeholder={searchLabel}
+                            loadingText={loadingStatus}
+                            indexingText={loadingStatus}
+                          />
                         </div>
                       )}
                       {sortableProperties && sortableProperties.length > 0 && (
@@ -527,7 +543,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                     dropTargetId={sourceDropTargetId}
                     nodeColor={dropNodeColor}
                     nodeShape={nodeTypeDefinition?.shape.default}
-                    message={intl.formatMessage(runtimeMessages.dropToRemove)}
+                    message={intl.formatMessage(runtimeMessages.dropToRemove, {
+                      subject,
+                    })}
                   />
                 )}
               </AnimatePresence>

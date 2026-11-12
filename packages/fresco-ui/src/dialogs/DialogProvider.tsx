@@ -261,6 +261,7 @@ type ConfirmOptions = {
 };
 
 export type DialogContextType = {
+  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- published export: removing `T` would break consumers that pass it explicitly
   closeDialog: <T = boolean>(id: string, value: T | null) => Promise<void>;
   openDialog: <D extends AnyDialog>(
     dialogProps: D,
@@ -835,9 +836,9 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
           >
             {dialog.actions.primary.label}
           </Button>
-          <span role="status" className="sr-only">
+          <output aria-live="polite" className="sr-only">
             {isLoading ? intl.formatMessage(messages.pleaseWait) : null}
-          </span>
+          </output>
         </>
       );
     }

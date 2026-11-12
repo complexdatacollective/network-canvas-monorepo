@@ -33,8 +33,14 @@ const tasksOf = (s: NStage): string[] => {
       return [s.kind];
     // a text screen, an Ego Form (which keeps its own introduction) and a
     // narrative (a view for the interviewer to discuss) set no new task
-    default:
+    case 'information':
+    case 'egoForm':
+    case 'narrative':
       return [];
+    default: {
+      const unhandled: never = s;
+      throw new Error('Unhandled stage kind', { cause: unhandled });
+    }
   }
 };
 
@@ -127,8 +133,14 @@ const draft = (
         title: 'On the map',
         text: `On the next screen you will see a map. For each of the ${plural} you named, tap the place the question asks about.`,
       };
-    default:
+    case 'information':
+    case 'egoForm':
+    case 'narrative':
       return { title: '', text: '' };
+    default: {
+      const unhandled: never = s;
+      throw new Error('Unhandled stage kind', { cause: unhandled });
+    }
   }
 };
 

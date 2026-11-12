@@ -36,7 +36,7 @@ async function readProtocolIds(page: Page): Promise<string[]> {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const req = indexedDB.open(dbName);
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.addEventListener('error', () => reject(req.error));
     });
     if (!db.objectStoreNames.contains('protocols')) {
       db.close();
@@ -48,7 +48,7 @@ async function readProtocolIds(page: Page): Promise<string[]> {
         .objectStore('protocols')
         .getAllKeys();
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.addEventListener('error', () => reject(req.error));
     });
     db.close();
     return keys.map(String);
@@ -106,9 +106,11 @@ const VIEW_CONTROLS: readonly ViewControl[] = [
   { role: 'button', name: /^return to stages$/i },
   { role: 'button', name: /^open menu$/i },
   { role: 'combobox', name: /^interface language:/i },
+  // Its Download and Send to Interviewer items read the saved copy; neither
+  // writes anything here.
+  { role: 'button', name: /^export$/i },
+  // The Codebook's network resources each offer a Download button.
   { role: 'button', name: /^download$/i },
-  // Sends the saved copy, as Download does; it writes nothing here.
-  { role: 'button', name: /^send to interviewer$/i },
   { role: 'button', name: /^print$/i },
   // The browser's own storage warning, offering to install the app.
   {

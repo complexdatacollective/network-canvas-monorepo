@@ -177,13 +177,14 @@ const StageDraftConflictDialog = ({
       // Read at the moment the copy is built, from the editor's own form, so
       // the one download offered to save this work is not missing the last few
       // seconds of typing.
-      const stage = readStageDraft().stage;
+      const { stage, interfaceText } = readStageDraft();
       const withDraft = stage
         ? buildProtocolWithStage(
             protocol,
             stage,
             latest.current.stageId,
             latest.current.insertAtIndex,
+            interfaceText,
           )
         : protocol;
 
@@ -267,6 +268,7 @@ const StageDraftConflictDialog = ({
       // dialog away rather than leave a stale choice on screen.
       if (id) void latest.current.closeDialog(id, null);
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new `choiceRequest` (the banner asking to see this again) is the trigger to close and re-ask; its value is not needed
   }, [stageConflictPending, choiceRequest]);
 
   return null;

@@ -747,7 +747,7 @@ export type AddRelativeRequest =
   | {
       relation: 'child';
       /** A partner of the anchor, `'unknown'` for someone not shown, or null. */
-      otherParent: string | 'unknown' | null;
+      otherParent: string | null;
       /** The anchor's kind of parent to the child. A child conceived with
        * the anchor's donated egg or sperm, or carried by the anchor as a
        * surrogate, is the other parent's biological child. */

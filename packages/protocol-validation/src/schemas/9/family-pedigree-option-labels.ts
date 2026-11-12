@@ -246,24 +246,10 @@ export const suppliedOptionLabel = (
 };
 
 /**
- * The label Network Canvas writes for one value of a set in a protocol
- * language: the language's supplied label, or, in the default language of a
- * protocol whose default Network Canvas supplies no labels in, the English
- * one, since participants choose from these answers and a protocol needs one
- * in its default language. `undefined` where it writes none.
- */
-const writtenOptionLabel = (
-  set: SuppliedOptionLabelSet,
-  value: string,
-  locale: LocaleTag,
-  isDefault: boolean,
-): string | undefined =>
-  suppliedOptionLabel(set, value, locale) ??
-  (isDefault ? suppliedOptionLabel(set, value, 'en') : undefined);
-
-/**
  * The label Network Canvas writes for one value of a set in each of the
- * protocol's languages (see `writtenOptionLabel`).
+ * protocol's languages: its label in exactly that language, and none in any
+ * other. A label with no wording in the default language must be written
+ * there before the protocol leaves its editor (`findBuiltInWordingProblems`).
  */
 export const suppliedOptionLabels = (
   set: SuppliedOptionLabelSet,
@@ -272,12 +258,7 @@ export const suppliedOptionLabels = (
 ): LocalizedString => {
   const label: Record<LocaleTag, string> = {};
   for (const locale of localization.locales) {
-    const text = writtenOptionLabel(
-      set,
-      value,
-      locale,
-      locale === localization.defaultLocale,
-    );
+    const text = suppliedOptionLabel(set, value, locale);
     if (text !== undefined) label[locale] = text;
   }
   return label;
@@ -285,35 +266,14 @@ export const suppliedOptionLabels = (
 
 type LabelledOption = Readonly<{ value: unknown; label?: unknown }>;
 
-const labelOf = (option: LabelledOption): LocalizedString =>
-  typeof option.label === 'object' && option.label !== null
-    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an object-valued label is a language-to-text map; callers only compare its entries with supplied text
-      (option.label as LocalizedString)
-    : {};
-
 /**
- * Whether every option's label in the protocol's default language is still
- * exactly the label Network Canvas wrote there: the researcher has not
- * reworded any of them.
- */
-export const hasSuppliedOptionLabels = (
-  set: SuppliedOptionLabelSet,
-  options: readonly LabelledOption[],
-  defaultLocale: LocaleTag,
-): boolean =>
-  options.every((option) => {
-    const text =
-      typeof option.value === 'string'
-        ? writtenOptionLabel(set, option.value, defaultLocale, true)
-        : undefined;
-    return text !== undefined && labelOf(option)[defaultLocale] === text;
-  });
-
-/**
- * The options as Network Canvas labels them after a change to the protocol's
- * languages (see `suppliedTextAfterLanguageChange`), when their labels in the
- * default language before it are still the ones it wrote; `undefined`
- * otherwise, as the labels are then the researcher's.
+ * The options as they read after a change to the protocol's languages (see
+ * `suppliedTextAfterLanguageChange`), each label on its own: a language the
+ * protocol did not have gains Network Canvas's label for each option with no
+ * label in it, whether or not the researcher has reworded that label or
+ * another, and Network Canvas's label for a corrected language becomes its
+ * label for the language as corrected. An option whose value or label is not
+ * one Network Canvas could have written is left as it is.
  */
 export const suppliedOptionLabelsAfterLanguageChange = <
   Option extends LabelledOption,
@@ -321,20 +281,22 @@ export const suppliedOptionLabelsAfterLanguageChange = <
   set: SuppliedOptionLabelSet,
   options: readonly Option[],
   change: LanguageChange,
-): Option[] | undefined => {
-  if (!hasSuppliedOptionLabels(set, options, change.before.defaultLocale))
-    return undefined;
-  return options.map((option) => {
-    const { value } = option;
-    if (typeof value !== 'string') return option;
+): Option[] =>
+  options.map((option) => {
+    const { value, label } = option;
+    if (
+      typeof value !== 'string' ||
+      typeof label !== 'object' ||
+      label === null
+    )
+      return option;
     return {
       ...option,
       label: suppliedTextAfterLanguageChange(
-        labelOf(option),
-        (locale, isDefault) =>
-          writtenOptionLabel(set, value, locale, isDefault),
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an object-valued label is a language-to-text map; its translations are kept as they are, except one that equals the supplied label
+        label as LocalizedString,
+        (locale) => suppliedOptionLabel(set, value, locale),
         change,
       ),
     };
   });
-};

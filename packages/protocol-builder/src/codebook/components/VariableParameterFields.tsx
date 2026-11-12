@@ -8,12 +8,17 @@ import DatePickerField from '@codaco/fresco-ui/form/fields/DatePicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import {
+  ComposerFormFieldSchema,
+  VariableSchema,
+} from '@codaco/protocol-validation';
+import {
   RELATIVE_DATE_PICKER_DEFAULT_AFTER,
   RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
 } from '@codaco/shared-consts';
 
 import { LocalizedRichTextField } from '../../fields/LocalizedStringField.tsx';
 import { asLocalizedString } from '../../localization/localizedText.ts';
+import { markdownTextShapeAt } from '../../localization/textShape.ts';
 import {
   DAY_OFFSET_KEYS,
   dateResolutionOf,
@@ -167,6 +172,19 @@ const SelectControl = NativeSelectField;
 const MIN_LABEL_PATH = ['parameters', 'minLabel'];
 const MAX_LABEL_PATH = ['parameters', 'maxLabel'];
 
+// What a scale's end labels may hold, as declared where they are written: a
+// scalar attribute's in the codebook, and a Network Composer field's own.
+const END_LABEL_SHAPES = {
+  codebook: {
+    minLabel: markdownTextShapeAt(VariableSchema, MIN_LABEL_PATH),
+    maxLabel: markdownTextShapeAt(VariableSchema, MAX_LABEL_PATH),
+  },
+  composer: {
+    minLabel: markdownTextShapeAt(ComposerFormFieldSchema, MIN_LABEL_PATH),
+    maxLabel: markdownTextShapeAt(ComposerFormFieldSchema, MAX_LABEL_PATH),
+  },
+};
+
 export type VariableParameterFieldsProps = Readonly<{
   shape: ParameterShape;
   /** The block as the draft holds it, which may be anything until it saves. */
@@ -209,6 +227,8 @@ export default function VariableParameterFields({
 }: VariableParameterFieldsProps) {
   const intl = useAppIntl();
   const held = readParameters(parameters);
+  const endLabels =
+    END_LABEL_SHAPES[labelsShowValues ? 'composer' : 'codebook'];
   // Changing the resolution takes the two bounds away, which is right and must
   // not be silent: the hint says it will happen, and this says that it has.
   const [clearedBounds, setClearedBounds] = useState(false);
@@ -249,7 +269,7 @@ export default function VariableParameterFields({
           label={intl.formatMessage(parameterFieldMessages.minLabelLabel)}
           hint={intl.formatMessage(parameterFieldMessages.minLabelHint)}
           component={LocalizedRichTextField}
-          singleLine
+          shape={endLabels.minLabel}
           placeholder={intl.formatMessage(
             parameterFieldMessages.minLabelPlaceholder,
           )}
@@ -267,7 +287,7 @@ export default function VariableParameterFields({
           label={intl.formatMessage(parameterFieldMessages.maxLabelLabel)}
           hint={intl.formatMessage(parameterFieldMessages.maxLabelHint)}
           component={LocalizedRichTextField}
-          singleLine
+          shape={endLabels.maxLabel}
           placeholder={intl.formatMessage(
             parameterFieldMessages.maxLabelPlaceholder,
           )}
@@ -374,7 +394,7 @@ export default function VariableParameterFields({
           announcement this wrapper exists to avoid. The words are announced
           once, by the region that was already being watched, and the alert
           keeps the treatment a sighted reader recognises. */}
-      <div role="status" aria-live="polite">
+      <output aria-live="polite" className="block">
         {clearedBounds && (
           <Alert variant="info" role="presentation" className="my-7">
             <AlertDescription>
@@ -382,7 +402,7 @@ export default function VariableParameterFields({
             </AlertDescription>
           </Alert>
         )}
-      </div>
+      </output>
       <UnconnectedField
         name="parameter-min"
         label={intl.formatMessage(parameterFieldMessages.minLabel)}

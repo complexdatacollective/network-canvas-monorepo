@@ -125,6 +125,8 @@ export const asSchema8Protocol = (
       stage.type !== 'FinishSession',
   );
   delete document.localization;
+  // Schema 8 has no interface text: the interview showed its own words.
+  delete document.interfaceText;
   document.schemaVersion = 8;
   return ProtocolSchemaV8.parse(document);
 };

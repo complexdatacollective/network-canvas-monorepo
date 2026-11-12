@@ -18,7 +18,7 @@ const themeOptions = [
   { id: 'system', icon: SunMoon },
 ] as const;
 
-const THEME_ICON_STROKE_CLASS = '[&>.lucide]:[stroke-width:3.5]';
+const THEME_ICON_STROKE_CLASS = '[&>.lucide]:stroke-[3.5]';
 
 export type ThemeSwitcherTheme = (typeof themeOptions)[number]['id'];
 

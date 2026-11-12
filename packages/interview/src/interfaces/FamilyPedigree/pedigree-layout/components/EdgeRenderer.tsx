@@ -220,6 +220,7 @@ function getAuxiliaryStyle(edgeType: AuxiliaryConnector['edgeType']) {
     case 'biological':
     // 'partner' is never an auxiliary connector, but the relationship-type
     // union admits it; fall back to a solid line.
+    case 'partner':
     default:
       return { strokeWidth: EDGE_WIDTH };
   }
@@ -1205,6 +1206,7 @@ export function PedigreeEdgeSvg({
     <svg
       version="1.1"
       xmlns="http://www.w3.org/2000/svg"
+      // oxlint-disable-next-line tailwindcss/enforce-logical -- the drawing's own coordinates start at its top left
       className="absolute top-0 left-0"
       width={width}
       height={height}

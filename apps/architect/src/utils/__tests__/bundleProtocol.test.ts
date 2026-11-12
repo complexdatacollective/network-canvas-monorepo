@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
+  interfaceTextShownBy,
 } from '@codaco/protocol-validation';
 
 import type { StoredAsset } from '../assetDB';
@@ -11,7 +12,7 @@ import {
   bundleLegacyProtocol,
   bundleProtocol,
   downloadProtocolAsNetcanvas,
-  MissingFinishStageTextError,
+  DownloadRefusedError,
   UnresolvedAssetsError,
 } from '../bundleProtocol';
 import type { LegacyStoredProtocolRow } from '../legacyProtocolLibrary';
@@ -227,13 +228,22 @@ describe('the finish stage text guard', () => {
   const japanese = { defaultLocale: 'ja', locales: ['ja'] };
   // As Architect creates a protocol in a language Network Canvas supplies no
   // closing text for.
-  const japaneseProtocol = (): CurrentProtocol => ({
-    ...makeProtocol({ 'id-1': asset('image', 'photo.jpg', 'Photo') }),
-    localization: japanese,
-    stages: [
-      createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
-    ],
-  });
+  // The interview's shared words are written in Japanese, as a researcher
+  // would write them: Network Canvas has no wording there.
+  const japaneseProtocol = (): CurrentProtocol => {
+    const protocol = {
+      ...makeProtocol({ 'id-1': asset('image', 'photo.jpg', 'Photo') }),
+      localization: japanese,
+      stages: [
+        createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+      ],
+    };
+    const interfaceText: Record<string, Record<string, { ja: string }>> = {};
+    for (const { group, key } of interfaceTextShownBy(protocol)) {
+      (interfaceText[group] ??= {})[key] = { ja: '日本語' };
+    }
+    return { ...protocol, interfaceText };
+  };
 
   beforeEach(() => {
     getAssetById.mockReset();
@@ -242,7 +252,7 @@ describe('the finish stage text guard', () => {
 
   it('refuses to bundle a protocol whose finish stage has no closing or finished text in the default language', async () => {
     const refusal = bundleProtocol(japaneseProtocol());
-    await expect(refusal).rejects.toBeInstanceOf(MissingFinishStageTextError);
+    await expect(refusal).rejects.toBeInstanceOf(DownloadRefusedError);
     await expect(refusal).rejects.toMatchObject({
       problem: {
         stageId: 'end',
@@ -284,7 +294,27 @@ describe('the finish stage text guard', () => {
     ).rejects.toMatchObject({ problem: { missing: ['finishedContent'] } });
   });
 
-  it('bundles it once both are written in the default language', async () => {
+  it('then refuses it while its built-in wording has none in the default language', async () => {
+    const protocol = japaneseProtocol();
+    const [finish] = protocol.stages;
+    if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
+    await expect(
+      bundleProtocol({
+        ...protocol,
+        stages: [
+          {
+            ...finish,
+            content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
+            finishedContent: { ja: '# 終了しました' },
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      problem: { kind: 'builtInWording', locale: 'ja', count: 3 },
+    });
+  });
+
+  it('bundles it once its closing, finished and built-in text are written in the default language', async () => {
     const protocol = japaneseProtocol();
     const [finish] = protocol.stages;
     if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
@@ -295,6 +325,9 @@ describe('the finish stage text guard', () => {
           ...finish,
           content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
           finishedContent: { ja: '# 終了しました' },
+          finishLabel: { ja: '終了' },
+          finishConfirmation: { ja: 'インタビューを終了しますか?' },
+          finishFailed: { ja: 'インタビューを終了できませんでした。' },
         },
       ],
     });
@@ -305,7 +338,7 @@ describe('the finish stage text guard', () => {
   it('passes the refusal through a download unwrapped, so its caller can describe it', async () => {
     await expect(
       downloadProtocolAsNetcanvas(japaneseProtocol(), 'Japanese'),
-    ).rejects.toBeInstanceOf(MissingFinishStageTextError);
+    ).rejects.toBeInstanceOf(DownloadRefusedError);
   });
 });
 

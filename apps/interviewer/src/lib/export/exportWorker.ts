@@ -29,13 +29,16 @@ export type ExportWorkerMessage =
 // module actually runs against, keeping the file type-checkable inside the
 // app's DOM-lib TS program without `as` assertions.
 declare const self: {
-  onmessage: ((message: MessageEvent<ExportWorkerStart>) => void) | null;
+  addEventListener: (
+    type: 'message',
+    listener: (message: MessageEvent<ExportWorkerStart>) => void,
+  ) => void;
   postMessage: (message: ExportWorkerMessage) => void;
 };
 
 // Cancellation has no in-band message: the client simply terminates the
 // worker, which frees the pipeline and everything it buffered outright.
-self.onmessage = (message) => {
+self.addEventListener('message', (message) => {
   const payload = message.data;
   if (payload.type !== 'start') return;
   void (async () => {
@@ -64,4 +67,4 @@ self.onmessage = (message) => {
       });
     }
   })();
-};
+});

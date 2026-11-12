@@ -139,4 +139,5 @@ globalThis.Worker ??= WorkerStub;
 
 // jsdom cannot scroll elements. Keep real form focus handling available when
 // invalid submissions scroll the containing element before focusing a field.
-Element.prototype.scrollTo ??= vi.fn();
+if (!Reflect.has(Element.prototype, 'scrollTo'))
+  Element.prototype.scrollTo = vi.fn();

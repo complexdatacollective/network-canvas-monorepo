@@ -4,7 +4,6 @@ import { initSwipeNavigationGuard } from '../swipeNavigationGuard';
 
 function stubNavigator({ chromium }: { chromium: boolean }) {
   vi.stubGlobal('navigator', {
-    ...navigator,
     platform: 'MacIntel',
     maxTouchPoints: 0,
     ...(chromium ? { userAgentData: {} } : {}),

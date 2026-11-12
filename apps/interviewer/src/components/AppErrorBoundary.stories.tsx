@@ -52,6 +52,27 @@ export const ErrorFallback: Story = {
   },
 };
 
+/**
+ * The recovery dialog is written the way its language is: right to left when
+ * the language on screen is.
+ */
+export const ErrorFallbackInARightToLeftLanguage: Story = {
+  globals: { appDirection: 'rtl' },
+  render: () => (
+    <AppErrorBoundary>
+      <Thrower />
+    </AppErrorBoundary>
+  ),
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement.ownerDocument.body);
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Something went wrong.',
+    });
+    await expect(dialog.closest('[dir]')).toHaveAttribute('dir', 'rtl');
+    await expect(getComputedStyle(dialog).direction).toBe('rtl');
+  },
+};
+
 export const ProviderOptionalRecovery: Story = {
   render: () => (
     // Bootstrap can already have selected Spanish before locale startup fails.

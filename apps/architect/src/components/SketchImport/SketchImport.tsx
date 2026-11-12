@@ -60,15 +60,10 @@ type ImportState = 'waiting' | 'importing' | 'timeout' | 'error';
 
 // What Sketch is told when an import does not open. Sketch shows its own copy
 // and offers the download, so this is a diagnostic, not researcher-facing text.
-const describeFailure = (result: ProtocolOpenResult): string => {
-  switch (result.status) {
-    case 'error':
-    case 'validation-error':
-      return result.message;
-    default:
-      return PROTOCOL_OPEN_FAILURE_MESSAGE;
-  }
-};
+const describeFailure = (result: ProtocolOpenResult): string =>
+  result.status === 'error' || result.status === 'validation-error'
+    ? result.message
+    : PROTOCOL_OPEN_FAILURE_MESSAGE;
 
 /**
  * `/import-from-sketch`: receives a protocol from Sketch over postMessage and

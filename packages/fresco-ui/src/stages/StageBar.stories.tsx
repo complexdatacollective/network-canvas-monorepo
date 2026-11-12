@@ -2,13 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import type { StageType } from '@codaco/protocol-validation';
 
-import Paragraph from '../typography/Paragraph';
 import { StageBar } from './StageBar';
-import {
-  STAGE_TYPE_COLORS,
-  stageTypeColorStyle,
-  stageTypeIcon,
-} from './stageTypes';
 
 const meta = {
   title: 'Components/StageBar',
@@ -19,7 +13,7 @@ const meta = {
       description: {
         component: `
 A stage sequence as a strip of equal segments, one per stage, each in its
-interface's colour from \`STAGE_TYPE_COLORS\`. It reads a protocol's shape at a
+stage type's colour from \`STAGE_TYPES\`. It reads a protocol's shape at a
 glance: how long it is and where its name generators, censuses and sociograms
 fall.
 
@@ -39,7 +33,7 @@ Props:
 - \`label\` — an accessible summary. With it the bar is an \`img\` with that name; without it the bar is decoration hidden from assistive technology, on the assumption the same information is written out beside it.
 - Any other \`div\` attributes, including \`className\` for width and spacing.
 
-\`STAGE_TYPE_COLORS\` and \`STAGE_TYPE_ICONS\` are the single maps of stage type to palette colour and to a Lucide icon, both keyed by the protocol schema's stage union so a new stage type cannot ship without either. \`isStageType\` narrows a type read from protocol JSON; \`stageTypeColorStyle\` gives a stage type's colour as CSS variables and \`stageTypeIcon\` its icon component. The icon is decoration wherever the stage is already named in text, so render it with \`aria-hidden\`.
+Each stage type's colour and icon, and the tokens behind them, are documented in **Design System / Stage Types**.
         `,
       },
     },
@@ -98,37 +92,5 @@ export const InNarrowContainer: Story = {
     <div className="max-w-40">
       <StageBar stages={mixedSequence} />
     </div>
-  ),
-};
-
-export const AllStageTypes: Story = {
-  args: { stages: mixedSequence },
-  render: () => (
-    <dl className="tablet-portrait:grid-cols-2 grid gap-x-8 gap-y-4">
-      {(Object.keys(STAGE_TYPE_COLORS) as StageType[]).map((type) => {
-        const { color, contrast } = stageTypeColorStyle(type);
-        const StageIcon = stageTypeIcon(type);
-        return (
-          <div key={type} className="flex items-center gap-3">
-            <span
-              aria-hidden
-              className="flex size-10 shrink-0 items-center justify-center rounded-full"
-              style={{ backgroundColor: color, color: contrast }}
-            >
-              <StageIcon className="size-5" />
-            </span>
-            <dt className="font-monospace text-sm">{type}</dt>
-            <Paragraph
-              intent="caption"
-              emphasis="muted"
-              margin="none"
-              render={<dd />}
-            >
-              {STAGE_TYPE_COLORS[type]}
-            </Paragraph>
-          </div>
-        );
-      })}
-    </dl>
   ),
 };

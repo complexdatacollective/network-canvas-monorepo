@@ -101,7 +101,7 @@ export function NewsTicker({
               <NewsItem {...activeNewsItem} />
             ) : null
           ) : (
-            <div className="animate-marquee flex w-max gap-12 focus-within:[animation-play-state:paused] hover:[animation-play-state:paused] motion-reduce:animate-none">
+            <div className="animate-marquee flex w-max gap-12 focus-within:[animation-play-state:paused] hover:[animation-play-state:paused] motion-reduce:animate-none rtl:[--marquee-travel:50%]">
               {newsItems.map((item) => (
                 <NewsItem key={`first-${item.id}`} {...item} />
               ))}

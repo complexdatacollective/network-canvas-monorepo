@@ -137,7 +137,7 @@
      * `--cerulean-blue-hue`. Sharing a hue band with `--warning` is safe
      * because separation comes from chroma and lightness, not hue: the ground
      * is 0.008 chroma at L 0.982 against a 0.221-chroma fill at L 0.579
-     * (4.3:1). `--selected` clears the ground the same way, and gained hue
+     * (4.41:1). `--selected` clears the ground the same way, and gained hue
      * distance in the bargain — mustard (86.39) is now 26 degrees off the
      * neutral rather than 6.
      *
@@ -146,8 +146,14 @@
      */
     --base-hue: 60;
 
-    --heading-font: 'Nunito Variable', sans-serif;
-    --body-font: 'Inclusive Sans Variable', sans-serif;
+    /*
+     * The Latin face of each stack, named on its own so that text marked as
+     * Arabic can add Readex Pro after it (see ../arabic-text.css).
+     */
+    --heading-face: 'Nunito Variable';
+    --body-face: 'Inclusive Sans Variable';
+    --heading-font: var(--heading-face), sans-serif;
+    --body-font: var(--body-face), sans-serif;
 
     /*
      * Redeclared (not inherited) so the calc resolves against THIS region's
@@ -320,14 +326,14 @@
     /*
      * CHANGED: the mustard pair from the mockup, replacing the default
      * theme's off-palette `oklch(91% 0.21 80)`. The highlight clears the
-     * warmed ground on lightness and chroma, not only hue (1.73:1 fill
-     * against the ground, 1.80:1 against `--surface`), which is what had to
+     * warmed ground on lightness and chroma, not only hue (1.79:1 fill
+     * against the ground, 1.86:1 against `--surface`), which is what had to
      * survive the retint.
      *
      * The ink is the mockup's `--mustard-ink` taken from L 0.5 down to 0.4,
      * chroma untouched: at 0.5 it was 3.29:1 on the fill, under AA for the
      * normal-size text a pressed Button or a selected nav item puts there.
-     * At 0.4 it is 5.06:1, and it only helps the tinted variant the Button
+     * At 0.4 it is 4.98:1, and it only helps the tinted variant the Button
      * uses for open triggers (`bg-selected/15`, 8.38:1).
      *
      * Fixed on the ink and NOT by darkening the fill, unlike `--success`
@@ -567,7 +573,7 @@
     /*
      * CHANGED: the mockup's dark sea green, with dark ink. At L 0.74 a solid
      * fill needs a dark foreground to clear WCAG AA — the default dark
-     * theme's white would land near 2.5:1.
+     * theme's white would land near 2.1:1.
      */
     --success: oklch(0.74 0.16 var(--sea-green-hue));
     --success-contrast: oklch(0.16 0.03 var(--base-hue));

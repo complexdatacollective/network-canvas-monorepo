@@ -105,6 +105,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -144,6 +145,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -194,6 +196,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -248,6 +251,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -265,7 +269,7 @@ describe('useComposerActions', () => {
     expect(store.getState().session.network.edges).toHaveLength(0);
 
     await act(async () => {
-      undoStore.getState().undo();
+      await undoStore.getState().undo();
     });
 
     const nodes = store.getState().session.network.nodes;
@@ -302,6 +306,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -351,6 +356,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -374,7 +380,7 @@ describe('useComposerActions', () => {
     ).toEqual(newPos);
 
     await act(async () => {
-      undoStore.getState().undo();
+      await undoStore.getState().undo();
     });
 
     expect(
@@ -384,7 +390,7 @@ describe('useComposerActions', () => {
     ).toEqual(prevPos);
 
     await act(async () => {
-      undoStore.getState().redo();
+      await undoStore.getState().redo();
     });
 
     expect(
@@ -424,6 +430,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -472,6 +479,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -538,6 +546,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -603,6 +612,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -682,6 +692,7 @@ describe('useComposerActions', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -812,6 +823,7 @@ describe('useComposerActions deleting while another change is being made', () =>
             quickAdd: QUICK_ADD_VAR,
             layoutVariable: LAYOUT_VAR,
             useEncryption: false,
+            automaticLayoutDefault: false,
             currentStep: 0,
             undoStore,
             dispatch: store.dispatch as Parameters<
@@ -863,6 +875,7 @@ describe('useComposerActions reading the network when a change is made', () => {
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
           useEncryption: false,
+          automaticLayoutDefault: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -954,5 +967,56 @@ describe('useComposerActions reading the network when a change is made', () => {
 
     await settle(saving);
     expect(built).toBe(true);
+  });
+
+  const automaticLayoutOf = (store: ReturnType<typeof makeStore>) =>
+    store.getState().session.stageMetadata?.[0];
+  const noneShown = () => new Map<string, { x: number; y: number }>();
+
+  it('makes every switch of the automatic layout a step, so an undo asked for while they wait reverses the newest', async () => {
+    const before = { x: 0.1, y: 0.1 };
+    const { store, undoStore, actions, settle } = setUp([at('a', before)]);
+
+    // Two presses while the history is busy, then an undo.
+    const first = actions().toggleAutomaticLayout(noneShown);
+    const second = actions().toggleAutomaticLayout(noneShown);
+    const undoing = undoStore.getState().undo();
+    await settle(first, second, undoing);
+
+    // On, then off; the undo reverses switching it off.
+    expect(automaticLayoutOf(store)).toEqual({ automaticLayout: true });
+    expect(undoStore.getState().past).toHaveLength(1);
+    expect(undoStore.getState().future).toHaveLength(1);
+
+    // The layout saves a position of its own; the next undo puts the earlier
+    // one back.
+    await act(async () => {
+      await store
+        .dispatch(
+          updateNode({
+            nodeId: 'a',
+            attributePatch: {
+              set: { [LAYOUT_VAR]: { x: 0.6, y: 0.6 } },
+              unset: [],
+            },
+            currentStep: 0,
+          }),
+        )
+        .unwrap();
+      await undoStore.getState().undo();
+    });
+    expect(automaticLayoutOf(store)).toEqual({ automaticLayout: false });
+    expect(layoutOf(store, 'a')).toEqual(before);
+  });
+
+  it('saves a placed position without making it a step', async () => {
+    const { store, undoStore, actions, settle } = setUp([
+      at('a', { x: 0.1, y: 0.1 }),
+    ]);
+
+    await settle(actions().placeNode('a', { x: 0.4, y: 0.5 }));
+
+    expect(layoutOf(store, 'a')).toEqual({ x: 0.4, y: 0.5 });
+    expect(undoStore.getState().past).toHaveLength(0);
   });
 });

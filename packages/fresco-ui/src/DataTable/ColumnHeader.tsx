@@ -250,7 +250,14 @@ export function DataTableColumnHeader<TData extends RowData, TValue>({
 
       {canFilter && filterConfig && (
         <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-          <PopoverContent align="start" anchor={buttonRef}>
+          <PopoverContent
+            align="start"
+            anchor={buttonRef}
+            // Named for the action that opened it, as the menu item read it.
+            aria-label={intl.formatMessage(messages.filterAction, {
+              isFiltered: String(isFiltered),
+            })}
+          >
             <div className="flex flex-col gap-2">
               <FilterRenderer
                 filterConfig={filterConfig}

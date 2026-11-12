@@ -6,30 +6,39 @@ import {
   getLocalizedStringDescriptor,
   type LocalizedString,
   type LocalizedStringFormat,
+  type LocalizedTextLines,
+  type LocalizedTextShape,
 } from '../schemas/9/localized-string.ts';
 // Imported from its own module for the reason given in
-// `collectEntityAttributeReferences.ts`: the schema module calls back into
-// this one, and `../schemas/index.ts` would read the schema before it exists.
-import { ProtocolSchemaV9 } from '../schemas/9/schema.ts';
+// `collectEntityAttributeReferences.ts`.
+import { ProtocolStructureSchema } from '../schemas/9/protocol-structure.ts';
 
 export type LocalizedStringHit = Readonly<{
   path: (string | number)[];
   value: LocalizedString;
   format: LocalizedStringFormat;
+  /** One line or several (see `LocalizedTextShape`). */
+  lines: LocalizedTextLines;
   /** The arguments a localized message may use; absent for literal text. */
   arguments?: MessageArguments;
   /** Where text that may show dynamic values sits; absent where it may not. */
   dynamicValues?: DynamicValueSite;
+  /** The text may have no translation at all (see `localizedString`). */
+  mayBeEmpty?: true;
 }>;
 
 export type LocalizedStringSite = Readonly<{
   path: (string | number)[];
   value: unknown;
   format: LocalizedStringFormat;
+  /** One line or several (see `LocalizedTextShape`). */
+  lines: LocalizedTextLines;
   /** The arguments a localized message may use; absent for literal text. */
   arguments?: MessageArguments;
   /** Where text that may show dynamic values sits; absent where it may not. */
   dynamicValues?: DynamicValueSite;
+  /** The text may have no translation at all (see `localizedString`). */
+  mayBeEmpty?: true;
   /** The tagged declaration, shared by every site it describes. */
   schema: z.ZodType;
   /** The owning object lets the field be left out. */
@@ -176,12 +185,14 @@ const walk = (
         path,
         value,
         format: descriptor.format,
+        lines: descriptor.lines,
         ...(descriptor.arguments === undefined
           ? {}
           : { arguments: descriptor.arguments }),
         ...(descriptor.dynamicValues === undefined
           ? {}
           : { dynamicValues: descriptor.dynamicValues }),
+        ...(descriptor.mayBeEmpty === true ? { mayBeEmpty: true } : {}),
         schema: node,
         ...context,
       },
@@ -275,18 +286,84 @@ export const collectLocalizedStringsFromSchema = (
             path: site.path,
             value: site.value,
             format: site.format,
+            lines: site.lines,
             ...(site.arguments === undefined
               ? {}
               : { arguments: site.arguments }),
             ...(site.dynamicValues === undefined
               ? {}
               : { dynamicValues: site.dynamicValues }),
+            ...(site.mayBeEmpty === true ? { mayBeEmpty: true } : {}),
           },
         ]
       : [],
   );
 
+const samePath = (
+  a: readonly (string | number)[],
+  b: readonly (string | number)[],
+) => a.length === b.length && a.every((part, index) => part === b[index]);
+
+/**
+ * The shape `schema` declares for the localized field at `path`, for an
+ * editor to configure itself from the declaration rather than restate it.
+ * A number in `path` stands for any element of an array.
+ *
+ * The field is found by the walk that finds a protocol's text for the
+ * translation table (`collectLocalizedStringSites`): a value holding only
+ * that field is walked against the schema, so optional fields, pipes and
+ * unions are read as they are there. Throws when nothing is declared at
+ * `path`, so an editor naming a field that does not exist fails as soon as
+ * it loads.
+ */
+export const localizedTextShapeAt = (
+  schema: z.ZodType,
+  path: readonly (string | number)[],
+): LocalizedTextShape => {
+  const probe = path.reduceRight<unknown>(
+    (inner, part) => (typeof part === 'number' ? [inner] : { [part]: inner }),
+    {},
+  );
+  const target = path.map((part) => (typeof part === 'number' ? 0 : part));
+  const site = collectLocalizedStringSites(schema, probe).find((candidate) =>
+    samePath(candidate.path, target),
+  );
+  if (site === undefined) {
+    throw new Error(`No localized text is declared at ${path.join('.')}.`);
+  }
+  return { format: site.format, lines: site.lines };
+};
+
 export const collectLocalizedStrings = (
   protocol: unknown,
 ): LocalizedStringHit[] =>
-  collectLocalizedStringsFromSchema(ProtocolSchemaV9, protocol);
+  collectLocalizedStringsFromSchema(ProtocolStructureSchema, protocol);
+
+/** A participant-facing string, with the declaration of the field it is in. */
+export type LocalizedStringField = LocalizedStringHit &
+  Readonly<{
+    /**
+     * The field's tagged declaration. Parsing a candidate value with it
+     * applies every rule the field declares, so a rule added to a declaration
+     * reaches each place that checks a value this way unchanged.
+     */
+    schema: z.ZodType;
+  }>;
+
+/**
+ * Every participant-facing string in a protocol, exactly as
+ * `collectLocalizedStrings` finds it, each with its field's declaration.
+ */
+export const collectLocalizedStringFields = (
+  protocol: unknown,
+): LocalizedStringField[] => {
+  const schemas = new Map(
+    collectLocalizedStringSites(ProtocolStructureSchema, protocol).map(
+      (site) => [JSON.stringify(site.path), site.schema],
+    ),
+  );
+  return collectLocalizedStrings(protocol).flatMap((hit) => {
+    const schema = schemas.get(JSON.stringify(hit.path));
+    return schema === undefined ? [] : [{ ...hit, schema }];
+  });
+};

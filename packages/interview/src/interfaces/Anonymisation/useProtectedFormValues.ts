@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 
 import type { Variable } from '@codaco/protocol-validation';
@@ -72,7 +72,6 @@ export function useProtectedFormValues(
   const scope = useDecryptionScope();
   const { requirePassphrase } = usePassphrase();
   const reportUnreadable = useReportUnreadable();
-  const [, rerender] = useReducer((count: number) => count + 1, 0);
 
   const savesEncrypted = useMemo(
     () => fields.some(({ variable }) => variables[variable]?.encrypted),
@@ -147,21 +146,12 @@ export function useProtectedFormValues(
   });
 
   useEffect(() => {
-    if (!scope || !missing) return undefined;
-
-    let current = true;
-    void Promise.all(
-      stored.flatMap(({ attribute }) =>
-        attribute.status === 'encrypted'
-          ? [decryptInScope(scope, attribute.value)]
-          : [],
-      ),
-    ).then(() => {
-      if (current) rerender();
-    });
-    return () => {
-      current = false;
-    };
+    if (!scope || !missing) return;
+    for (const { attribute } of stored) {
+      if (attribute.status === 'encrypted') {
+        void decryptInScope(scope, attribute.value);
+      }
+    }
   }, [scope, missing, stored]);
 
   const stableValues = useSameWhileUnchanged(values);

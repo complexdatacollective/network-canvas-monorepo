@@ -33,10 +33,7 @@ import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
-import {
-  useOptionalLocalizedText,
-  useResolveLocalizedString,
-} from '../../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -50,7 +47,6 @@ import {
   getStageMetadata,
 } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
-import { updateStageMetadata } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
@@ -111,17 +107,18 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const { currentStep } = useCurrentStep();
   const shouldReduceMotion = usePrefersReducedMotion();
   const resolve = useResolveLocalizedString();
-  const drawConnectionText = useOptionalLocalizedText(
-    stage.tooltips.drawConnection,
-  );
-  const groupsText = useOptionalLocalizedText(stage.groupsHeading);
-  // The stage's own words for its tools (`stage-wording/network-composer.ts`).
+  // The words every Network Composer shows alike, which the protocol holds
+  // as interface text (`interface-text-wording.ts`).
   const toolWords: ComposerToolWords = {
-    addNamePlaceholder: resolve(stage.addNamePlaceholder).text,
-    addPerson: resolve(stage.tooltips.addPerson).text,
-    automaticLayout: resolve(stage.tooltips.automaticLayout).text,
-    drawConnection: drawConnectionText,
-    groups: groupsText,
+    addNamePlaceholder: intl.formatMessage(
+      interfaceMessages.addNamePlaceholder,
+    ),
+    addPerson: intl.formatMessage(interfaceMessages.composerAddNode),
+    automaticLayout: intl.formatMessage(
+      interfaceMessages.composerAutomaticLayout,
+    ),
+    drawConnection: intl.formatMessage(interfaceMessages.composerDrawEdge),
+    groups: intl.formatMessage(interfaceMessages.composerGroups),
   };
 
   const layoutVariable = stage.layoutVariable;
@@ -264,6 +261,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     quickAdd: stage.quickAdd,
     layoutVariable: stage.layoutVariable,
     useEncryption: quickAddEncrypted,
+    automaticLayoutDefault,
     currentStep,
     undoStore,
     dispatch,
@@ -338,9 +336,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleNodeDragEnd = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
+      // In automatic layout a drag only nudges the layout, which decides
+      // where the person comes to rest, so the move is saved without being a
+      // step to undo.
+      if (layoutMode === 'AUTOMATIC') {
+        void actions.placeNode(nodeId, position);
+        return;
+      }
       void actions.repositionNode(nodeId, position);
     },
-    [actions],
+    [actions, layoutMode],
   );
 
   // Nodes are added by name from the tool palette (not by tapping the canvas),
@@ -494,17 +499,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     [composerStore, undoStore, actions, deleteEntities],
   );
 
-  const handleToggleAutomaticLayout = useCallback(
-    (next: boolean) => {
-      dispatch(
-        updateStageMetadata({
-          currentStep,
-          metadata: { automaticLayout: next },
-        }),
-      );
-    },
-    [dispatch, currentStep],
-  );
+  const handleToggleAutomaticLayout = useCallback(() => {
+    void actions.toggleAutomaticLayout(() => canvasStore.getState().positions);
+  }, [actions, canvasStore]);
 
   const edgeEntries = (stage.edges ?? []).map((edgeDef) => {
     const edgeType = edgeDef.subject.type;
@@ -707,9 +704,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   return (
     // tabIndex makes the div focusable so keydown events reach it.
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- shortcut catcher: undo/redo and the editor keys bubble here from the controls inside (which keep their own semantics) or arrive while the root holds programmatic focus.
     <div
       ref={rootRef}
-      className={`interface relative h-full overflow-hidden${
+      className={`interface h-full overflow-hidden${
         stageBackground.image === undefined ? '' : ' p-0'
       }`}
       data-testid="network-composer"
@@ -738,7 +736,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         {selectionGroupOptions.length > 0 && (
           <div
             key="selection-group-membership"
-            className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center pr-4 pl-24 min-[68rem]:px-4"
+            className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center ps-24 pe-4 min-[68rem]:px-4"
           >
             <MotionSurface
               floating
@@ -846,7 +844,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
               composerStore.getState().deselectDeleted();
             }}
             guardDraft={composerStore.getState().guardDraft}
-            overtakenEditNotice={resolve(stage.overtakenEditNotice).text}
+            overtakenEditNotice={intl.formatMessage(
+              interfaceMessages.overtakenEditNotice,
+            )}
           />
         )}
       </ComposerDrawer>

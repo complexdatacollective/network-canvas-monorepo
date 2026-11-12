@@ -170,7 +170,7 @@ export class AnonymisationFixture {
   async holdKeyDerivation(): Promise<() => Promise<void>> {
     await this.page.evaluate((eventName) => {
       const subtle = crypto.subtle;
-      const deriveKey = subtle.deriveKey;
+      const deriveKey = subtle.deriveKey.bind(subtle);
       const released = new Promise<void>((resolve) => {
         window.addEventListener(eventName, () => resolve(), { once: true });
       });
@@ -178,7 +178,7 @@ export class AnonymisationFixture {
         configurable: true,
         value: async (...args: unknown[]) => {
           await released;
-          return Reflect.apply(deriveKey, subtle, args);
+          return Reflect.apply(deriveKey, undefined, args);
         },
       });
     }, RELEASE_KEY_DERIVATION_EVENT);

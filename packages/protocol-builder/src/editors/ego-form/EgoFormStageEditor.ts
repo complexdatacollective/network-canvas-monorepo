@@ -14,7 +14,7 @@ import { defineStageEditor } from '../defineStageEditor.tsx';
  * reading it from the stage — there is no `subject` in the document to read.
  *
  * Its introduction is the heading and text shown above the questions, so the
- * form itself has no title.
+ * form itself has no title. It shows no built-in wording of its own.
  */
 export const egoFormStageEditor = defineStageEditor('EgoForm', [
   introduction(),

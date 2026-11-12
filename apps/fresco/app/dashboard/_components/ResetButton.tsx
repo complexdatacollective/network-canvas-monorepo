@@ -90,7 +90,7 @@ const ResetButton = () => {
               }}
               color="primary"
             >
-              {isResetting && <Loader2 className="mr-2 size-5 animate-spin" />}
+              {isResetting && <Loader2 className="me-2 size-5 animate-spin" />}
               {isResetting
                 ? intl.formatMessage(messages.copyResetting)
                 : intl.formatMessage(messages.copyDeleteAllData)}

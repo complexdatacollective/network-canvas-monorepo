@@ -65,8 +65,9 @@
   --fade-height: max(1.5rem, 8%);
   &::before,
   &::after {
-    @apply pointer-events-none absolute left-0 block transition-[height] duration-100 ease-out content-[''];
-    right: var(--scrollbar-width, 0px);
+    @apply pointer-events-none absolute start-0 block transition-[height] duration-100 ease-out content-[''];
+    /* The scrollbar is on the end edge: the left in a right-to-left language. */
+    inset-inline-end: var(--scrollbar-width, 0px);
   }
   &::before {
     @apply top-0 z-1 bg-linear-to-b from-(--published-bg,var(--background)) to-transparent;

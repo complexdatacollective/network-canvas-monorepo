@@ -634,7 +634,7 @@ export const ServerSideValidation: Story = {
     >
       <div className="bg-surface-1 text-text/70 rounded-sm p-3 text-sm">
         Submit to trigger a simulated server response. Try these values:
-        <ul className="ml-5 list-disc">
+        <ul className="ms-5 list-disc">
           <li>
             <code className="bg-surface-2 rounded px-1">username=taken</code> →
             field-level error on username

@@ -163,11 +163,11 @@ function buildInterview(args: StoryArgs): {
 }
 
 const NameGeneratorStoryWrapper = (args: StoryArgs) => {
+  // Keyed on what the args say rather than on the props object, which is new
+  // on every render, so the interview is rebuilt only when a control changes.
   const configKey = JSON.stringify(args);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const { interview, demoStageStep } = useMemo(
-    () => buildInterview(args),
+    () => buildInterview(JSON.parse(configKey) as StoryArgs),
     [configKey],
   );
   const rawPayload = useMemo(
@@ -245,6 +245,40 @@ type Story = StoryObj<StoryArgs>;
 
 export const Default: Story = {
   render: (args) => <NameGeneratorStoryWrapper {...args} />,
+};
+
+/**
+ * The button that adds a person sits in the bottom corner at the end of the
+ * line, which is the left in a right-to-left interview, and the shading
+ * behind it darkens the same corner.
+ */
+export const AddButtonInARightToLeftInterview: Story = {
+  globals: { appDirection: 'rtl' },
+  render: (args) => <NameGeneratorStoryWrapper {...args} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const add = await canvas.findByRole(
+      'button',
+      { name: 'Add a person' },
+      { timeout: 10_000 },
+    );
+    await expect(getComputedStyle(add).direction).toBe('rtl');
+
+    const stage = canvasElement.getBoundingClientRect();
+    const button = add.getBoundingClientRect();
+    await expect(button.left + button.width / 2).toBeLessThan(
+      stage.left + stage.width / 4,
+    );
+
+    const shading = canvas.getByTestId('add-corner-shade');
+    await expect(shading.getBoundingClientRect().left).toBeCloseTo(
+      stage.left,
+      0,
+    );
+    await expect(getComputedStyle(shading).backgroundImage).toMatch(
+      /radial-gradient\([^,]*at (left bottom|0% 100%)/,
+    );
+  },
 };
 
 /**

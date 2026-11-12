@@ -113,30 +113,28 @@ function AddNodeField({
       // The name counts as being saved from Enter, while it is still being
       // checked, so leaving the stage waits for it.
       const adding = (async () => {
-        try {
-          const name =
-            typeof fieldProps.value === 'string' ? fieldProps.value.trim() : '';
-          fieldProps.onChange(name);
+        const name =
+          typeof fieldProps.value === 'string' ? fieldProps.value.trim() : '';
+        fieldProps.onChange(name);
 
-          // Gate on the target variable's codebook validation (required,
-          // maxLength, unique, ...) before creating anything.
-          const isValid = await validateForm();
-          if (!isValid) return false;
+        // Gate on the target variable's codebook validation (required,
+        // maxLength, unique, ...) before creating anything.
+        const isValid = await validateForm();
+        if (!isValid) return false;
 
-          // Preserves the pre-existing guard: a blank/whitespace-only name is a
-          // silent no-op, independent of codebook rules (no fallback to
-          // `required` — a rule-less variable behaves exactly as before).
-          if (name === '') return true;
+        // Preserves the pre-existing guard: a blank/whitespace-only name is a
+        // silent no-op, independent of codebook rules (no fallback to
+        // `required` — a rule-less variable behaves exactly as before).
+        if (name === '') return true;
 
-          const created = await onCreate(name);
-          if (created) setFieldToReset({ name: targetVariable });
-          return created;
-        } finally {
-          submissionInProgress.current = false;
-          setIsSubmitting(false);
-          onAddingChange?.(false);
-        }
-      })();
+        const created = await onCreate(name);
+        if (created) setFieldToReset({ name: targetVariable });
+        return created;
+      })().finally(() => {
+        submissionInProgress.current = false;
+        setIsSubmitting(false);
+        onAddingChange?.(false);
+      });
       trackWrite(adding);
     },
     [

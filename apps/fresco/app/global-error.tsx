@@ -121,7 +121,7 @@ ${error.stack}`;
             {copied
               ? intl.formatMessage(messages.copyCopied)
               : intl.formatMessage(messages.copyCopyDebugInformation)}
-            <ClipboardCopy className="ml-2" />
+            <ClipboardCopy className="ms-2" />
           </Button>
           <Button onClick={handleReset} color="primary" className="flex">
             {intl.formatMessage(commonMessages.retry)}

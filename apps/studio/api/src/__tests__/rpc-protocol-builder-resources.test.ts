@@ -22,7 +22,7 @@ import {
   ASSETS,
   callerOf,
   EDIT,
-  enUS,
+  inEnglish,
   GRACE,
   holdingEvents,
   holdingStaging,
@@ -100,7 +100,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Names a secret'),
+          label: inEnglish('Names a secret'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
@@ -148,7 +148,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId: stage.sectionId,
           document: Redacted.make({
             ...Redacted.value(held.document),
-            label: enUS('Renamed'),
+            label: inEnglish('Renamed'),
           }),
           revision: held.revision,
           promote: { editId: EDIT, resourceIds: ['never-staged'] },
@@ -166,7 +166,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
     );
     expect(Redacted.value(after.document).label).toEqual(
-      enUS('Renamed beside a bad promotion'),
+      inEnglish('Renamed beside a bad promotion'),
     );
     expect(after.revision).toEqual(held.revision);
     const assets = await call(
@@ -222,7 +222,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Reads its key back'),
+          label: inEnglish('Reads its key back'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
@@ -277,7 +277,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Seals its key'),
+          label: inEnglish('Seals its key'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
@@ -372,7 +372,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Keeps its key'),
+          label: inEnglish('Keeps its key'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
@@ -502,8 +502,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: enUS('Carries a secret'),
-          title: enUS('Carries a secret'),
+          label: inEnglish('Carries a secret'),
+          title: inEnglish('Carries a secret'),
           items: [],
         }),
         promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
@@ -547,8 +547,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           kind: 'stage',
           document: Redacted.make({
             type: 'Information',
-            label: enUS('Never made'),
-            title: enUS('Never made'),
+            label: inEnglish('Never made'),
+            title: inEnglish('Never made'),
             items: [],
           }),
           promote: { editId: EDIT, resourceIds: ['never-staged'] },
@@ -604,7 +604,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Saved once'),
+          label: inEnglish('Saved once'),
         }),
         revision: held.revision,
         promote,
@@ -623,7 +623,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Saved once'),
+          label: inEnglish('Saved once'),
         }),
         revision: held.revision,
         promote,
@@ -1245,7 +1245,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId: stage.sectionId,
           document: Redacted.make({
             ...Redacted.value(held.document),
-            label: enUS('Renamed'),
+            label: inEnglish('Renamed'),
           }),
           revision: held.revision,
           promote: { editId: edit, resourceIds: [resourceId] },
@@ -1470,7 +1470,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId: stage.sectionId,
           document: Redacted.make({
             ...Redacted.value(held.document),
-            label: enUS('Renamed with a file'),
+            label: inEnglish('Renamed with a file'),
           }),
           revision: held.revision,
           promote,
@@ -1497,7 +1497,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: enUS('Renamed with a file'),
+          label: inEnglish('Renamed with a file'),
         }),
         revision: held.revision,
         promote,

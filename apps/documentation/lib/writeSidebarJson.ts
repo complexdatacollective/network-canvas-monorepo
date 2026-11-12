@@ -4,12 +4,8 @@ import { join } from 'node:path';
 
 import matter from 'gray-matter';
 
-import {
-  locales,
-  type SidebarLocaleDefinition,
-  toLocale,
-  type TSideBar,
-} from '~/app/types';
+import { type SidebarLocaleDefinition, type TSideBar } from '~/app/types';
+import { locales, toLocale } from '~/lib/i18n/locales';
 
 import {
   createFolderEntry,

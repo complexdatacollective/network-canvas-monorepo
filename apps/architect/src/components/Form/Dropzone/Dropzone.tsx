@@ -2,6 +2,7 @@
 import { TriangleAlert } from 'lucide-react';
 import {
   useCallback,
+  useEffect,
   useId,
   useImperativeHandle,
   useState,
@@ -16,7 +17,6 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import { cva, cx } from '~/utils/cva';
 
 import { acceptsFiles, getRejectedExtensions } from './helpers';
-import useTimer from './useTimer';
 
 // Rich-text tag renderers live at module scope so they keep one identity across
 // renders (an inline arrow returning JSX is a component defined during render).
@@ -153,18 +153,20 @@ const Dropzone = ({
 
   const isDisabled = disabled || state.isActive;
 
-  useTimer(
-    () => {
+  // A hover or an error clears itself five seconds after it last changed.
+  const { isHover, isError } = state;
+  useEffect(() => {
+    if (!isHover && !isError) return undefined;
+    const timer = setTimeout(() => {
       setState((previousState) => ({
         ...previousState,
         isHover: false,
         isError: false,
         error: previousState.isError ? null : previousState.error,
       }));
-    },
-    5000,
-    [state.isHover, state.isError],
-  );
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isHover, isError]);
 
   const resetState = useCallback(() => {
     setState((previousState) => ({ ...previousState, ...initialState }));

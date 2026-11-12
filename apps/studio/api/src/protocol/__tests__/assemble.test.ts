@@ -46,7 +46,15 @@ describe('assembleProtocolSections', () => {
           }
         ).interfaceText ?? {},
       );
-    expect(groups()).toEqual(['navigation', 'buttons', 'messages']);
+    // The groups every interview shows.
+    const ALWAYS = [
+      'navigation',
+      'interviewer',
+      'buttons',
+      'messages',
+      'search',
+    ];
+    expect(groups()).toEqual(ALWAYS);
 
     sections['stage:form'] = {
       id: 'form',
@@ -55,11 +63,13 @@ describe('assembleProtocolSections', () => {
       form: { fields: [] },
     };
     sections.stageOrder = { stages: ['form', 'finish'] };
-    expect(groups()).toEqual(['navigation', 'buttons', 'messages', 'forms']);
+    // An Ego Form can ask whether to discard changes. It shows no text of
+    // its own kind: its only such text was read only by screen readers.
+    expect(groups()).toEqual([...ALWAYS, 'forms']);
 
     sections.stageOrder = { stages: ['finish'] };
     delete sections['stage:form'];
-    expect(groups()).toEqual(['navigation', 'buttons', 'messages']);
+    expect(groups()).toEqual(ALWAYS);
   });
 
   it('rejects a missing settings section', () => {

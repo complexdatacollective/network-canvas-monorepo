@@ -415,7 +415,7 @@ export default function CodebookSurface({
             <AlertTitle>{intl.formatMessage(messages.issuesTitle)}</AlertTitle>
             <AlertDescription>
               <ul
-                className="list-disc space-y-1 pl-5"
+                className="list-disc space-y-1 ps-5"
                 aria-label={intl.formatMessage(messages.issuesListLabel)}
               >
                 {/* An issue's message is a plain string carrying either this

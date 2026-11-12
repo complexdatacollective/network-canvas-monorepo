@@ -4,7 +4,8 @@ import type { ComponentProps } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector, useStore } from 'react-redux';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { commonMessages } from '@codaco/app-i18n/common';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -48,6 +49,7 @@ import {
   useResolveLocalizedString,
   useResolveLocalizedStringIn,
 } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -272,7 +274,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   useCompletePlacement({
     unplacedCount: uncategorisedNodes.length,
     required: stage.behaviours?.requireCompletePlacement,
-    notice: stage.unplacedNodesNotice,
+    notice: useStageWording(stage).shown('unplacedNodesNotice'),
   });
 
   // Reset expanded bin when prompt changes. Compared during render so the new
@@ -329,6 +331,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   // resolved once and would otherwise name the lock for as long as it is open.
   const readNodeLabel = async (node: NcNode) => {
     const source = readNodeLabelSource(node, stageVariables);
+    // oxlint-disable-next-line typescript/unbound-method -- the scope registry is keyed by this exact function, so it cannot be wrapped; Redux's getState does not read `this`
     const scope = getDecryptionScope(store.getState);
     if (source.status === 'encrypted' && scope) {
       await decryptInScope(scope, source.value);
@@ -347,6 +350,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
       otherVariable,
       stageVariables,
     );
+    // oxlint-disable-next-line typescript/unbound-method -- the scope registry is keyed by this exact function, so it cannot be wrapped; Redux's getState does not read `this`
     const scope = getDecryptionScope(store.getState);
     if (encrypted?.status !== 'encrypted' || !scope) return undefined;
     const outcome = await decryptInScope(scope, encrypted.value);
@@ -458,6 +462,8 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
           />
         ),
         intent: 'default',
+        // Worded by the protocol's Save, as the Family Pedigree's forms are.
+        submitLabel: <AppMessage message={commonMessages.save} />,
         // Saving inside the dialog means a refused save keeps it open with
         // the answer as typed and the reason shown, ready to retry.
         onSubmit: async (values) => {

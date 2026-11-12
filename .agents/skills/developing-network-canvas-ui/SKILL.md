@@ -66,6 +66,8 @@ When adding a new public `@codaco/fresco-ui` component or subpath, read [the sha
 
 ## Accessibility
 
+The standard is WCAG 2.2 AA. `docs/accessibility.md` states which apps it covers, the rules every researcher-facing screen follows (keyboard parity, reorderable lists, data tables, validation problems, lock state, chart equivalents), and what the automated checks do and do not prove.
+
 Every interactive component must be fully keyboard operable and expose state changes to assistive technology.
 
 - **Use Base UI primitives.** Existing wrappers such as `Modal`, `Popover`, `Tooltip`, `DropdownMenu`, and `DatePicker` provide focus management, Escape handling, roving focus, and ARIA semantics.
@@ -87,6 +89,20 @@ Useful exemplars include `packages/fresco-ui/src/dnd/useAccessibilityAnnouncemen
 - Render participant markdown through `RenderMarkdown`; never use `dangerouslySetInnerHTML`.
 
 Tone rules apply to participant-facing surfaces. Accessibility and internationalisation apply to all UI.
+
+### Right-to-left layouts
+
+Arabic is a supported language, so every layout is read in both directions. Write it against the reading direction, not against a side of the screen.
+
+- **Use logical utilities.** `ms-*`/`me-*`, `ps-*`/`pe-*`, `start-*`/`end-*`, `border-s`/`border-e`, `rounded-s`/`rounded-e`, `text-start`/`text-end`, `float-start`. In `@codaco/fresco-ui` and `@codaco/interview` the `tailwindcss/enforce-logical` lint rule rewrites the physical spellings on save.
+- **Keep a physical side only when a physical side is meant**: an element placed from measured or pointer coordinates, one of a mirrored pair, or a value Base UI reports from the left. Say which in an `oxlint-disable-next-line tailwindcss/enforce-logical -- reason` comment. `left-1/2` with `-translate-x-1/2` centres in either direction and is allowed as it stands.
+- **Transforms and `background-position` have no logical form.** Flip them with the `rtl:` variant, or with a custom property the `rtl:` variant changes when Motion animates the value (see `NavDrawer`).
+- **Icons that point along the reading order turn round** (`rtl:rotate-180` on a "next" chevron). Icons that depict a thing do not.
+- **Arrow keys follow the layout.** Base UI components do this from the direction context. A hand-written key handler reads the element's own direction (`isRightToLeft` in `utils/horizontalOverflow`) or, inside an interview, Base UI's `useDirection()`: the key pointing towards the end of a row moves forward. Where the items are placed on physical sides (the family tree's add buttons), wrap the Base UI component in `<DirectionProvider direction="ltr">` so its keys match where they are drawn.
+- **Pointer geometry is measured from the start edge**, which is the right in a right-to-left language.
+- **Content that is left-to-right in every language stays so**: codes, numbers in boxes, coordinates on a canvas. Set `dir="ltr"` on it.
+- **A panel leaves by the edge it sits against.** A drawer on the end edge takes `swipeDirection` from the direction and flips its entry and exit transforms with `rtl:` (see `ComposerDrawer`).
+- **Check it.** Storybook's Direction toolbar mirrors any story, and the "Pseudo right-to-left" language does the same in the development build of Architect, Interviewer and Studio. A story that pins `globals: { appDirection: 'rtl' }` can assert the behaviour in its `play` function.
 
 ## Visual style
 

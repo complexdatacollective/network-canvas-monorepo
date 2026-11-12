@@ -163,6 +163,7 @@ function AutoPersist({
     }, AUTOSAVE_DELAY);
     pendingSaveRef.current = handle;
     return () => clearTimeout(handle);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- each edit to `values` restarts the debounce; `onSettled` saves what the form holds then
   }, [values, isDirty, onSettled, pendingSaveRef]);
 
   return null;
@@ -402,7 +403,7 @@ function AttributeFormInner({
         () => undefined,
       );
       savesUnderWay.current = settled;
-      void settled.then(() => {
+      void settled.finally(() => {
         if (savesUnderWay.current === settled) savesUnderWay.current = null;
       });
       return call;

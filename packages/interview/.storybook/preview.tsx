@@ -2,6 +2,7 @@ import addonA11y from '@storybook/addon-a11y';
 
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 import addonDocs from '@storybook/addon-docs';
 import {
   DocsContainer,
@@ -22,6 +23,11 @@ import { type PropsWithChildren, StrictMode } from 'react';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 
 import './preview.css';
+import {
+  globalTypes as i18nGlobalTypes,
+  initialGlobals as i18nInitialGlobals,
+  withAppI18n,
+} from './i18n';
 import Providers from './Providers';
 
 (mapboxgl as unknown as { workerUrl: string }).workerUrl = mapboxWorkerUrl;
@@ -108,27 +114,39 @@ export default definePreview({
         dynamicTitle: true,
       },
     },
+    ...i18nGlobalTypes,
   },
   initialGlobals: {
     reducedMotion: 'user' satisfies ReducedMotion,
+    ...i18nInitialGlobals,
   },
   decorators: [
+    // Three decorators, innermost first. The language and direction sit
+    // between the other two: inside the root element, so that element is
+    // still the first thing in the canvas, as it was before the toolbar and
+    // as a play function that sizes the canvas's first child relies on; and
+    // around the providers, so a dialog or toast they render is in the
+    // toolbar's language and direction too.
     (Story, { globals }) => (
+      <Providers
+        reducedMotion={
+          isReducedMotion(globals.reducedMotion)
+            ? globals.reducedMotion
+            : 'user'
+        }
+      >
+        <Story />
+      </Providers>
+    ),
+    withAppI18n,
+    (Story) => (
       <StrictMode>
         {/*
          * Required by Base UI's portal-based dialogs/popovers:
          * https://base-ui.com/react/overview/quick-start#portals
          */}
         <ThemedRegion theme="interview" className="root h-full">
-          <Providers
-            reducedMotion={
-              isReducedMotion(globals.reducedMotion)
-                ? globals.reducedMotion
-                : 'user'
-            }
-          >
-            <Story />
-          </Providers>
+          <Story />
         </ThemedRegion>
       </StrictMode>
     ),

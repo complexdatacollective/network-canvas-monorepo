@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, waitFor } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -1167,6 +1167,37 @@ export const FullFeatured: Story = {
 
 export const MultiplePresets: Story = {
   render: () => <NarrativeStoryWrapper buildFn={buildMultiplePresets} />,
+};
+
+/**
+ * "Next" and "previous" follow the reading direction: in a right-to-left
+ * interview the next preset is to the left, and each chevron points the way
+ * its button goes.
+ */
+export const PresetNavigationInARightToLeftInterview: Story = {
+  globals: { appDirection: 'rtl' },
+  render: () => <NarrativeStoryWrapper buildFn={buildMultiplePresets} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const next = await canvas.findByRole(
+      'button',
+      { name: 'Next preset' },
+      { timeout: 10_000 },
+    );
+    const previous = canvas.getByRole('button', { name: 'Previous preset' });
+    await expect(getComputedStyle(next).direction).toBe('rtl');
+
+    await expect(next.getBoundingClientRect().right).toBeLessThanOrEqual(
+      previous.getBoundingClientRect().left,
+    );
+    // The icons are drawn pointing right for "next" and left for "previous",
+    // and are turned round to point the other way.
+    for (const button of [next, previous]) {
+      const chevron = button.querySelector('svg');
+      if (!chevron) throw new Error('The button has no icon');
+      await expect(getComputedStyle(chevron).rotate).toBe('180deg');
+    }
+  },
 };
 
 export const WithFreeDraw: Story = {

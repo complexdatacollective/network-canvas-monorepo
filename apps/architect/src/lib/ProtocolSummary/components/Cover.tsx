@@ -63,7 +63,7 @@ const Cover = () => {
 
   return (
     <div className="relative flex h-(--page-size-height) flex-col items-center justify-center print:h-screen">
-      <div className="border-platinum absolute top-0 left-0 flex w-full items-center justify-between border-b-2">
+      <div className="border-platinum absolute inset-s-0 top-0 flex w-full items-center justify-between border-b-2">
         <Heading level="h2" margin="none">
           {intl.formatMessage(messages.protocolSummaryDocument)}
         </Heading>

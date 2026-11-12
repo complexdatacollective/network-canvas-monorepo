@@ -23,6 +23,12 @@ import { getProtocolColumns } from './Columns';
 import { type GetData } from './ProtocolsTable';
 
 const messages = defineMessages({
+  tableLabel: {
+    id: 'fresco.ProtocolsTable.ProtocolsTableClient.tableLabel',
+    defaultMessage: 'Protocols',
+    description:
+      'Accessible name of the table listing protocols, announced by screen readers when it is reached.',
+  },
   byName: {
     id: 'fresco.ProtocolsTable.ProtocolsTableClient.byName',
     defaultMessage: 'by name',
@@ -87,6 +93,7 @@ const ProtocolsTableClient = ({ dataPromise }: { dataPromise: GetData }) => {
     <>
       <DataTable
         table={table}
+        aria-label={intl.formatMessage(messages.tableLabel)}
         toolbar={
           <DataTableToolbar
             table={table}

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, cleanup, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -30,6 +33,25 @@ const newsItems: [NewsItem] = [
 ];
 
 describe('NewsTicker', () => {
+  // The strip overflows towards the end edge and travels towards the start
+  // edge. The stylesheet is not loaded here, so this holds the two halves of
+  // that together: the strip asks for the other way in a right-to-left
+  // language, and the animation takes its distance from what the strip asks.
+  it('runs the marquee the other way in a right-to-left language', () => {
+    const { container } = renderWithIntl(<NewsTicker newsItems={newsItems} />);
+
+    expect(container.querySelector('.animate-marquee')).toHaveClass(
+      'rtl:[--marquee-travel:50%]',
+    );
+    const stylesheet = readFileSync(
+      join(__dirname, '..', '..', '..', 'app', 'globals.css'),
+      'utf8',
+    );
+    expect(stylesheet).toContain(
+      'transform: translateX(var(--marquee-travel, -50%));',
+    );
+  });
+
   it('switches to the compact marquee at tablet portrait width', () => {
     const { container } = renderWithIntl(<NewsTicker newsItems={newsItems} />);
     const ticker = container.firstElementChild;
@@ -84,7 +106,9 @@ describe('NewsTicker', () => {
       'Second fixture research story',
     );
 
-    act(() => vi.advanceTimersByTime(16000));
+    act(() => {
+      vi.advanceTimersByTime(16000);
+    });
     expect(desktopTicker).toHaveTextContent('Fixture-only research news');
     expect(desktopTicker).not.toHaveTextContent(
       'Second fixture research story',

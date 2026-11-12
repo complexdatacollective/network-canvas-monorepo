@@ -16,7 +16,6 @@ import {
   Shell,
   type SyncHandler,
 } from '@codaco/interview';
-import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { currentProtocolToPayload } from '@codaco/interview/contract';
 import {
   type ConstraintConflict,
@@ -28,7 +27,7 @@ import {
   type CurrentProtocol,
   getLocaleMetadata,
   type LocaleTag,
-  selectProtocolLocale,
+  resolveProtocolLocale,
   type Stage,
 } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
@@ -240,13 +239,6 @@ export function PreviewHost() {
   // by a language chooser stage. Requested languages cannot override one, so
   // from then on the toolbar's choice is stated to the interview instead.
   const [preferenceHeld, setPreferenceHeld] = useState(false);
-  // The interview's messages load during the handshake and the synthetic
-  // network build, rather than once the Shell mounts, in the language the
-  // Shell will negotiate from the same inputs. A failure here is retried by
-  // the Shell itself.
-  useEffect(() => {
-    loadInterviewCatalog(browserLanguages, statedLocale).catch(() => undefined);
-  }, [browserLanguages, statedLocale]);
   useEffect(() => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- lib.dom types window.opener as any; it is a WindowProxy or null, possibly cross-origin, so instanceof Window cannot check it
     const opener = window.opener as Window | null;
@@ -327,6 +319,7 @@ export function PreviewHost() {
       window.removeEventListener('message', onMessage);
       clearTimeout(timeoutId);
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `retryNonce` is bumped by Try again to run the handshake afresh; its value is not needed
   }, [retryNonce]);
   // Nothing in a preview is saved, so there is no finish to record. Once this
   // resolves the interview shows its completed state, as it would for a
@@ -428,7 +421,7 @@ export function PreviewHost() {
         <Paragraph margin="none" className="max-w-xl">
           {intl.formatMessage(messages.syntheticDataCouldnTBeGeneratedBecause)}
         </Paragraph>
-        <div className="flex w-full max-w-xl flex-col gap-3 text-left">
+        <div className="flex w-full max-w-xl flex-col gap-3 text-start">
           {failure.conflicts.map((conflict, index) => (
             <Alert
               key={`${conflict.entity}-${conflict.variableIds.join(',')}-${index}`}
@@ -491,8 +484,9 @@ export function PreviewHost() {
     );
   }
   // The language the interview shows, chosen as the interview chooses it.
-  const shownLocale = selectProtocolLocale(
-    statedLocale === null ? browserLanguages : [statedLocale],
+  const shownLocale = resolveProtocolLocale(
+    statedLocale,
+    browserLanguages,
     interviewPayload.protocol.localization,
   );
   return (

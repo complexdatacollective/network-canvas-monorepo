@@ -641,6 +641,9 @@
       },
       "allAddedNotice": {
         "en": "There is nothing left to add from this list."
+      },
+      "unnamedLabel": {
+        "en": "Unnamed {count}"
       }
     },
     {
@@ -753,8 +756,8 @@
           "dataSource": "existing"
         }
       ],
-      "quickAddHint": {
-        "en": "Press Enter when you are finished."
+      "addNamePlaceholder": {
+        "en": "Type a name, then press Enter"
       }
     },
     {
@@ -1195,17 +1198,8 @@
           "variable": "classmate_home_country"
         }
       ],
-      "offlineNotice": {
-        "en": "You are offline — the map will not load until you reconnect."
-      },
-      "mapUnavailable": {
-        "en": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow."
-      },
       "outsideAreasLabel": {
         "en": "Outside Selectable Areas"
-      },
-      "searchFailed": {
-        "en": "Search could not be completed. Try again in a moment."
       }
     },
     {
@@ -1428,23 +1422,6 @@
       },
       "groupsHeading": {
         "en": "Groups"
-      },
-      "tooltips": {
-        "enableDrawing": {
-          "en": "Enable drawing"
-        },
-        "disableDrawing": {
-          "en": "Disable drawing"
-        },
-        "freezeAnnotations": {
-          "en": "Freeze annotations"
-        },
-        "unfreezeAnnotations": {
-          "en": "Unfreeze annotations"
-        },
-        "resetAnnotations": {
-          "en": "Reset annotations"
-        }
       }
     },
     {
@@ -1584,27 +1561,7 @@
             ]
           }
         }
-      ],
-      "addNamePlaceholder": {
-        "en": "Type a name, then press Enter"
-      },
-      "overtakenEditNotice": {
-        "en": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost."
-      },
-      "groupsHeading": {
-        "en": "Groups"
-      },
-      "tooltips": {
-        "addPerson": {
-          "en": "Add node"
-        },
-        "automaticLayout": {
-          "en": "Automatic layout"
-        },
-        "drawConnection": {
-          "en": "Draw edge"
-        }
-      }
+      ]
     },
     {
       "id": "reflection",
@@ -1745,6 +1702,38 @@
       },
       "continue": {
         "en": "Continue"
+      },
+      "exitFailed": {
+        "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en": "Show screen"
       }
     },
     "buttons": {
@@ -1763,25 +1752,37 @@
       "no": {
         "en": "No"
       },
+      "save": {
+        "en": "Save"
+      },
       "pauseLayout": {
         "en": "Pause automatic layout"
       },
       "resumeLayout": {
         "en": "Resume automatic layout"
+      },
+      "copy": {
+        "en": "Copy"
+      },
+      "copied": {
+        "en": "Copied"
       }
     },
     "messages": {
       "stageError": {
         "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "itemUnavailable": {
-        "en": "This item could not be displayed."
-      },
       "error": {
         "en": "An error occurred."
       },
       "externalDataError": {
         "en": "External data could not be loaded."
+      },
+      "loading": {
+        "en": "Loading…"
+      },
+      "unnamed": {
+        "en": "Unnamed"
       }
     },
     "search": {
@@ -1815,6 +1816,56 @@
       },
       "unique": {
         "en": "Must be unique."
+      }
+    },
+    "quickAdd": {
+      "quickAddHint": {
+        "en": "Press Enter when you are finished."
+      }
+    },
+    "networkComposer": {
+      "addNamePlaceholder": {
+        "en": "Type a name, then press Enter"
+      },
+      "overtakenEditNotice": {
+        "en": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost."
+      },
+      "groupsHeading": {
+        "en": "Groups"
+      },
+      "addNodeTooltip": {
+        "en": "Add node"
+      },
+      "automaticLayoutTooltip": {
+        "en": "Automatic layout"
+      },
+      "drawEdgeTooltip": {
+        "en": "Draw edge"
+      },
+      "connection": {
+        "en": "Connection"
+      }
+    },
+    "narrative": {
+      "toggleDrawing": {
+        "en": "Toggle drawing"
+      },
+      "toggleFreezing": {
+        "en": "Toggle freezing annotations"
+      },
+      "resetAnnotations": {
+        "en": "Reset annotations"
+      }
+    },
+    "geospatial": {
+      "offlineNotice": {
+        "en": "You are offline — the map will not load until you reconnect."
+      },
+      "mapUnavailable": {
+        "en": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow."
+      },
+      "searchFailed": {
+        "en": "Search could not be completed. Try again in a moment."
       }
     }
   }

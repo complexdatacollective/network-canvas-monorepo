@@ -139,7 +139,8 @@ after the fact is marked in place.
 | `searchOptions`             | `editors/name-generator-roster/sections/SearchOptionsSection.tsx`                                                                                                                                                                                                                     | family E  |
 | `rosterColumns`             | `editors/name-generator-roster/sections/rosterColumns.ts`                                                                                                                                                                                                                             | family E  |
 | `networkCanvas`             | `sections/background/`, `sections/canvas/`, `sections/canvas-behaviours/`, `sections/form-fields/composerFormFieldMessages.ts`, `editors/sociogram/sections/prompts/`, `editors/narrative/sections/presets/`, `editors/network-composer/sections/composerMessages.ts`                 | family F  |
-| `localizedTextNames`        | `localization/localizedTextNames.ts`                                                                                                                                                                                                                                                  | languages |
+| `localizedTextNames`        | `localization/localizedTextNames.ts`, `localization/interfaceTextNames.ts`                                                                                                                                                                                                            | languages |
+| `stageWording`              | `sections/supplied-wording/`                                                                                                                                                                                                                                                          | languages |
 
 Family E added one the reserved list did not hold, on the same terms:
 
@@ -364,13 +365,14 @@ do not exist yet. Recorded rather than dropped, so nobody re-reserves a name
 for something else or reopens a decision that has been made:
 
 - **`autoName`** — `naming/` produces a stage's proposed `label`, which is
-  SAVED into the protocol document and then read back by `dedupeStageLabel` to
-  decide uniqueness and cut to 50 characters by `truncateToWord`. A translated
-  proposal would stop colliding with the same stage named in another language,
-  and would be cut in a different place, so the same configuration would
-  acquire a different stored name depending on who created it. It is the
-  `INTERFACE_NAMES` case and stays English; the argument is written out over
-  `STAGE_TYPE_NAMES`.
+  SAVED into the protocol document as the default language's text. It is not
+  app copy, so it has no ids here: it follows the PROTOCOL's default language,
+  not the language Architect is shown in, and its wording is a table in
+  `@codaco/protocol-validation` (`stage-wording/stage-names.ts`) with one
+  entry per language Network Canvas supplies protocol wording for. Where the
+  default language is none of those, no name is proposed. A test
+  (`naming/__tests__/stageNameWording.test.ts`) keeps its names for kinds of
+  stage identical to `protocolBuilder.interface.*` above.
 - **`markdown`** — `markdown/markdownAdapter.ts` transforms a document tree
   and holds no copy.
 - **`builderSection`** — `sections/BuilderSection.tsx` renders only the words

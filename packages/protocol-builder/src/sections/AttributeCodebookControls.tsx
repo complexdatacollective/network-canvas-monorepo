@@ -96,18 +96,20 @@ export default function AttributeCodebookControls({
    * other than this effect writing it.
    */
   const rulesWeWrote = useRef<unknown>(undefined);
+  // The row is no longer inventing anything: the create landed, or an
+  // attribute the codebook already holds was picked instead. The draft the
+  // notice is about went with the invention, so there is nothing left for it
+  // to report. Cleared while rendering rather than in the effect below, which
+  // is how a state reset that follows from the props is meant to be written.
+  if (rulesField === undefined && rulesDropped.length > 0) {
+    setRulesDropped(NOTHING_DROPPED);
+  }
   useEffect(() => {
     const previousKind = kindTheDraftWasWrittenFor.current;
     kindTheDraftWasWrittenFor.current = inventedType;
-    // The row is no longer inventing anything: the create landed, or an
-    // attribute the codebook already holds was picked instead. The draft the
-    // notice is about went with the invention, so there is nothing left for it
-    // to report. Asked before the kind is compared, because a row that leaves
-    // the invention with no kind chosen leaves it without moving one.
-    if (rulesField === undefined) {
-      setRulesDropped(NOTHING_DROPPED);
-      return;
-    }
+    // Asked before the kind is compared, because a row that leaves the
+    // invention with no kind chosen leaves it without moving one.
+    if (rulesField === undefined) return;
     if (previousKind === inventedType) {
       // The researcher has been back to the rules since the change of kind
       // that took some away: the draft they are looking at is the one the
@@ -130,6 +132,7 @@ export default function AttributeCodebookControls({
     // invention. One that takes more away replaces the list, because what it
     // names is the rules that have just gone.
     if (dropped.length === 0) return;
+    // oxlint-disable-next-line react/set-state-in-effect -- the notice and the write-back to the form are one reaction to the form store's draft moving beneath this component; the write cannot happen while rendering, and the notice must name exactly the rules the write took away, so both stay in the effect
     setRulesDropped(dropped);
     rulesWeWrote.current = kept;
     setFieldValue(rulesField, kept);
@@ -138,10 +141,9 @@ export default function AttributeCodebookControls({
   if (inventing === undefined && rulesDropped.length === 0) return null;
 
   return (
-    <div
-      role="status"
+    <output
       aria-live="polite"
-      className={rulesDropped.length === 0 ? undefined : 'mb-8'}
+      className={rulesDropped.length === 0 ? 'block' : 'mb-8 block'}
     >
       {rulesDropped.length > 0 && (
         <Alert variant="info" role="presentation">
@@ -155,6 +157,6 @@ export default function AttributeCodebookControls({
           </AlertDescription>
         </Alert>
       )}
-    </div>
+    </output>
   );
 }

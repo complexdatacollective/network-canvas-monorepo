@@ -51,7 +51,9 @@ function PreviewOn({
     closeSession: closeMap,
     onSessionExited: mapExited,
   } = useDialogSession<Record<string, never>>();
-  useEffect(() => openMap({}), []);
+  useEffect(() => {
+    openMap({});
+  }, [openMap]);
   const [accepted, setAccepted] = useState('Nothing accepted yet.');
 
   return (
@@ -64,9 +66,9 @@ function PreviewOn({
       >
         Set the starting view on a map
       </Button>
-      <p role="status" aria-label="Accepted view">
+      <output aria-live="polite" aria-label="Accepted view" className="block">
         {accepted}
-      </p>
+      </output>
       {map !== null && (
         <MapPreviewDialog
           open={map.open}
@@ -186,6 +188,27 @@ export const TakingTheView: Story = {
         canvas.getByRole('status', { name: 'Accepted view' }),
       ).toHaveTextContent('Accepted 0, 0 at zoom 0.');
     });
+  },
+};
+
+/**
+ * The arrow on the button that takes the view points the way reading goes:
+ * to the left in a right-to-left language.
+ */
+export const TakingTheViewInARightToLeftLanguage: Story = {
+  ...TakingTheView,
+  globals: { appDirection: 'rtl' },
+  play: async () => {
+    await awaitPassiveEffects();
+    const dialog = await screen.findByRole('dialog');
+    const use = await within(dialog).findByRole('button', {
+      name: 'Use this view',
+    });
+    await expect(getComputedStyle(use).direction).toBe('rtl');
+    const arrow = use.querySelector('svg');
+    if (!arrow) throw new Error('The button has no icon');
+    // Drawn pointing right, and turned round.
+    await expect(getComputedStyle(arrow).rotate).toBe('180deg');
   },
 };
 

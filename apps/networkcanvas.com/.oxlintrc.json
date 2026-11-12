@@ -4,7 +4,12 @@
   "jsPlugins": ["oxlint-tailwindcss"],
   "settings": {
     "tailwindcss": {
-      "entryPoint": "apps/networkcanvas.com/app/globals.css"
+      "entryPoint": "apps/networkcanvas.com/app/globals.css",
+      "variablePatterns": [
+        "[a-z](?:Class|ClassNames?|Classes)$",
+        "_CLASS(?:ES|_NAMES?)?$"
+      ],
+      "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
     }
   },
   "rules": {
@@ -12,8 +17,27 @@
     "import/no-unassigned-import": "off",
     "tailwindcss/no-unknown-classes": "error",
     "tailwindcss/no-duplicate-classes": "error",
-    "tailwindcss/no-conflicting-classes": "warn",
+    // `focusable` sets its transition only under :focus-visible, a more
+    // specific selector, so an element's own transition classes apply until
+    // the ring shows. The rule reads that nested block as unconditional.
+    "tailwindcss/no-conflicting-classes": [
+      "error",
+      {
+        "allow": [
+          [
+            "(^|:)focusable(-within)?$",
+            "(^|:)(transition|duration|ease|delay)(-|$)"
+          ]
+        ]
+      }
+    ],
     "tailwindcss/no-unnecessary-whitespace": "error",
-    "tailwindcss/enforce-canonical": "warn"
+    "tailwindcss/enforce-canonical": "error",
+    // Right-to-left languages. The same rule, with the same exception, as
+    // `@codaco/fresco-ui`'s configuration, which says why.
+    "tailwindcss/enforce-logical": [
+      "error",
+      { "direction": "inline", "allowlist": ["(^|:)left-1/2$"] }
+    ]
   }
 }

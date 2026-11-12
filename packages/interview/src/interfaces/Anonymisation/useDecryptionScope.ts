@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useReducer, useState } from 'react';
-import { useSelector, useStore } from 'react-redux';
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useStore } from 'react-redux';
 
-import { getEncryptionKeyId } from '../../store/modules/ui';
 import type { RootState } from '../../store/store';
 import {
   type DecryptionScope,
@@ -12,45 +11,44 @@ import {
   getDecryptionScope,
   type OutcomeOf,
   readCachedOutcome,
+  subscribeToDecryptionScope,
 } from './decryptionScope';
 
-/** The decryption scope of this interview's key, while one is in force. */
+/**
+ * The decryption scope of this interview's key, while one is in force. It is
+ * read only through this subscription, and replaced whenever a key is put in
+ * force or an outcome is recorded, so nothing computed from it (by a render,
+ * or by the React Compiler's memoization) outlives what it read.
+ */
 export function useDecryptionScope() {
   const store = useStore<RootState>();
-  // Subscribed so that a component re-renders when the key in force changes.
-  useSelector(getEncryptionKeyId);
-  return getDecryptionScope(store.getState);
+  const subscribe = useCallback(
+    (listener: () => void) => subscribeToDecryptionScope(store, listener),
+    [store],
+  );
+  // oxlint-disable-next-line typescript/unbound-method -- the scope registry is keyed by this exact function, so it cannot be wrapped; Redux's getState does not read `this`
+  const read = () => getDecryptionScope(store.getState);
+  return useSyncExternalStore(subscribe, read, read);
 }
 
 /**
  * The decryption scope of this interview's key once every one of `values`
  * has been decrypted in it; `undefined` until then, and while no key is in
- * force. Meanwhile it decrypts them and re-renders when they are, but never
- * asks for the passphrase. Pass a memoized list: a new array on every render
- * restarts the work.
+ * force. Meanwhile it decrypts them, but never asks for the passphrase. Pass
+ * a memoized list: a new array on every render restarts the work.
  */
 export function useDecryptedScope(
   values: readonly EncryptedValue[],
 ): DecryptionScope | undefined {
   const scope = useDecryptionScope();
-  const [, rerender] = useReducer((count: number) => count + 1, 0);
 
   const decrypted =
     scope !== undefined &&
     values.every((value) => readCachedOutcome(scope, value) !== undefined);
 
   useEffect(() => {
-    if (!scope || decrypted) return undefined;
-
-    let current = true;
-    void Promise.all(values.map((value) => decryptInScope(scope, value))).then(
-      () => {
-        if (current) rerender();
-      },
-    );
-    return () => {
-      current = false;
-    };
+    if (!scope || decrypted) return;
+    for (const value of values) void decryptInScope(scope, value);
   }, [scope, decrypted, values]);
 
   return decrypted ? scope : undefined;
@@ -75,52 +73,21 @@ export function useCachedOutcomes(): OutcomeOf {
 /**
  * The outcome of decrypting each of `values` with this interview's key, as
  * far as it is known. Meanwhile it decrypts them, but never asks for the
- * passphrase. The function is replaced whenever one of them settles or the key
- * in force changes, so whatever was computed with it knows to read again; it
- * reads the key's decryption scope on every call rather than keeping any
- * plaintext. Pass a memoized list: a new array on every render restarts the
- * work.
+ * passphrase. The function is replaced with the scope, whenever an outcome is
+ * recorded or the key in force changes, so whatever was computed with it
+ * knows to read again; it reads the key's decryption scope on every call
+ * rather than keeping any plaintext. Pass a memoized list: a new array on
+ * every render restarts the work.
  */
 export function useDecryptedOutcomes(
   values: readonly EncryptedValue[],
 ): OutcomeOf {
   const scope = useDecryptionScope();
-  const [, rerender] = useReducer((count: number) => count + 1, 0);
-  const settled = scope
-    ? values.filter((value) => readCachedOutcome(scope, value)).length
-    : 0;
-
-  const [reader, setReader] = useState(() => ({
-    scope,
-    settled,
-    read: outcomesIn(scope),
-  }));
-
-  // Replaced during render, so nothing reads through the previous key's scope
-  // or keeps what it read before another answer decrypted.
-  const current =
-    reader.scope === scope && reader.settled === settled
-      ? reader
-      : { scope, settled, read: outcomesIn(scope) };
-  if (current !== reader) setReader(current);
 
   useEffect(() => {
-    if (!scope) return undefined;
+    if (!scope) return;
+    for (const value of values) void decryptInScope(scope, value);
+  }, [scope, values]);
 
-    const pending = values.filter((value) => !readCachedOutcome(scope, value));
-    // Another component may have decrypted one between this render and now.
-    if (values.length - pending.length !== settled) rerender();
-
-    let live = true;
-    for (const value of pending) {
-      void decryptInScope(scope, value).then(() => {
-        if (live) rerender();
-      });
-    }
-    return () => {
-      live = false;
-    };
-  }, [scope, values, settled]);
-
-  return current.read;
+  return useMemo(() => outcomesIn(scope), [scope]);
 }

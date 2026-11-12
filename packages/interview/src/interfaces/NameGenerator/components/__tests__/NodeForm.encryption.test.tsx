@@ -94,7 +94,7 @@ async function renderNodeForm({
   const tree = () => (
     <Provider store={store}>
       <TestProtocolLocalization>
-        <InterviewI18nProvider requestedLocale="en">
+        <InterviewI18nProvider>
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
             <NodeForm
               selectedNode={selected}

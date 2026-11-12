@@ -128,6 +128,7 @@ export function useSessionQuery({
 
   useEffect(() => {
     void reloadData();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a new `refreshKey` is the caller asking for the rows again; its value is not needed
   }, [reloadData, refreshKey]);
 
   const rows: StoredSessionLite[] = data?.rows ?? [];

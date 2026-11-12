@@ -1,6 +1,7 @@
 import plugin from 'tailwindcss/plugin';
 
-import { type Elevation, generateShadowLayers } from './jwc.js';
+import { scopedColor } from '../scopedColor.js';
+import { type ElevationOptions, elevationShadow } from './shadows.ts';
 
 /**
  * Plugin that adds `elevation` utilities that create shadows based on the
@@ -56,60 +57,10 @@ import { type Elevation, generateShadowLayers } from './jwc.js';
  *
  */
 
-type PluginConfig = {
-  oomph?: number; // 0-1, affects shadow intensity/opacity
-  crispy?: number; // 0-1, affects blur sharpness (0=softer, 1=crisper)
-  lightX?: number; // 0-1, horizontal light position (0=left, 1=right)
-  lightY?: number; // 0-1, vertical light position (0=top, 1=bottom)
-  resolution?: number; // 0-1, affects detail level of shadow layers
-  opacityScaleFactor?: number; // multiplier for overall opacity
-};
-
-// Rewrite `var(--color-X)` references to `var(--X)` so --scoped-bg /
-// --scoped-text point at the bare semantic tokens declared by the
-// theme files (`--background`, `--text`, etc.) rather than going
-// through Tailwind's `--color-*` indirection. Tailwind's
-// `api.theme(...)` resolves color tokens to their `--color-*` form
-// regardless of `@theme inline`, so we strip the prefix at plugin
-// emit time. Literal values (oklch(...), currentColor) are
-// unchanged because they don't match the pattern.
-const stripColorPrefix = (value: string) =>
-  value.replace(/var\(--color-/g, 'var(--');
-
-const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
-  plugin.withOptions<PluginConfig>(
+const elevationPlugin: ReturnType<typeof plugin.withOptions<ElevationOptions>> =
+  plugin.withOptions<ElevationOptions>(
     (options = {}) =>
       (api) => {
-        const {
-          lightX = 0,
-          lightY = -0.5,
-          oomph = 0.5,
-          crispy = 0.5,
-          resolution = 0.5,
-          opacityScaleFactor = 0.5,
-        } = options;
-
-        const defaultShadowColor = 'oklch(10% 1 180)';
-
-        const generateShadow = (elevation: Elevation) => {
-          return generateShadowLayers(
-            elevation,
-            oomph,
-            crispy,
-            {
-              x: lightX,
-              y: lightY,
-            },
-            resolution,
-          )
-            .map(({ opacity, blurRadius, spreadRadius, offsetX, offsetY }) => {
-              const boostedOpacity = opacity * opacityScaleFactor;
-              // Clamp chroma
-              return `${offsetX} ${offsetY} ${blurRadius} ${spreadRadius} oklch(from var(--published-bg, ${defaultShadowColor}) clamp(0.025, calc(l - 0.5), 0.1) clamp(0.2, calc(c * 2), 0.5) h / ${boostedOpacity})`;
-            })
-            .join(', ');
-        };
-
         // Reset --scoped-bg on elements with bg-* but not publish-colors
         // This prevents child elements from overriding the published background
         api.addBase({
@@ -123,13 +74,13 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
             'box-shadow': 'none',
           },
           '.elevation-low': {
-            'box-shadow': generateShadow('low'),
+            'box-shadow': elevationShadow('low', options),
           },
           '.elevation-medium': {
-            'box-shadow': generateShadow('medium'),
+            'box-shadow': elevationShadow('medium', options),
           },
           '.elevation-high': {
-            'box-shadow': generateShadow('high'),
+            'box-shadow': elevationShadow('high', options),
           },
           '.publish-colors': {
             // These need to be css Color values.
@@ -150,11 +101,16 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
         // `modifiers: 'any'` ensures alpha-modified classes like `bg-primary/90`
         // still set --scoped-bg. Shadow derivation uses the solid color, so the
         // alpha on the visible background is intentionally discarded here.
+        // `scopedColor` skips values that are not colours (`bg-[length:200%_100%]`).
+        // The callbacks name their return type because the inferred one gives
+        // the empty branch an optional `undefined` property, which Tailwind's
+        // CSS-in-JS type rejects.
         api.matchUtilities(
           {
-            bg: (value) => ({
-              '--scoped-bg': stripColorPrefix(value),
-            }),
+            bg: (value): Record<string, string> => {
+              const color = scopedColor(value);
+              return color === null ? {} : { '--scoped-bg': color };
+            },
           },
           {
             values: colorValues('backgroundColor'),
@@ -164,9 +120,10 @@ const elevationPlugin: ReturnType<typeof plugin.withOptions<PluginConfig>> =
 
         api.matchUtilities(
           {
-            text: (value) => ({
-              '--scoped-text': stripColorPrefix(value),
-            }),
+            text: (value): Record<string, string> => {
+              const color = scopedColor(value);
+              return color === null ? {} : { '--scoped-text': color };
+            },
           },
           {
             values: colorValues('textColor'),

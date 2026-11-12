@@ -59,13 +59,13 @@ export default function SandboxCredentials() {
         <div className="flex flex-col space-y-2">
           <div>
             <div>
-              <span className="mr-2 font-semibold">
+              <span className="me-2 font-semibold">
                 {intl.formatMessage(messages.username)}
               </span>
               <span>{intl.formatMessage(messages.admin)}</span>
             </div>
             <div>
-              <span className="mr-2 font-semibold">
+              <span className="me-2 font-semibold">
                 {intl.formatMessage(messages.password)}
               </span>
               <span>{intl.formatMessage(messages.administrator1)}</span>

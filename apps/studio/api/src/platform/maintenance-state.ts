@@ -33,7 +33,9 @@ const READING_BOUND = Duration.millis(500);
 
 /**
  * A reading that fails or times out answers the last value it read, and
- * `initial` until one has been read.
+ * `initial` until one has been read. Readings are polled every second, so each
+ * read runs under an unsampled span: the exporter drops it and the SQL spans
+ * beneath it.
  */
 export const cachedReading = <A>(options: {
   readonly name: string;
@@ -45,6 +47,7 @@ export const cachedReading = <A>(options: {
     const lastValue = Effect.map(Ref.get(last), ({ value }) => value);
 
     const fresh = options.read.pipe(
+      Effect.withSpan(`reading ${options.name}`, { sampled: false }),
       Effect.timeout(READING_BOUND),
       Effect.tap((value) => Ref.set(last, { value, failing: false })),
       Effect.catchCause((cause) =>
@@ -93,6 +96,7 @@ export const windowedReading = <A>(options: {
 
     const readIn = (window: number) =>
       options.read.pipe(
+        Effect.withSpan(`reading ${options.name}`, { sampled: false }),
         Effect.timeout(READING_BOUND),
         Effect.matchCauseEffect({
           onSuccess: (value) =>

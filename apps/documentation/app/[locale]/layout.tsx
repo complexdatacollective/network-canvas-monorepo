@@ -1,5 +1,6 @@
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import type { Metadata } from 'next';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
@@ -8,11 +9,11 @@ import { notFound } from 'next/navigation';
 
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import type { Messages } from '~/app/types';
-import { locales } from '~/app/types';
 import { LayoutComponent } from '~/components/Layout';
 import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import { env } from '~/env';
+import { locales } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
 
 export async function generateMetadata({

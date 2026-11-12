@@ -12,7 +12,7 @@ const toggleOwnVariants = cva({
   base: cx(
     'border-0',
     'relative inline-flex aspect-2/1 items-center rounded-full p-[0.2em]',
-    'focusable outline-(--input-border)',
+    'focusable [--focus-color:var(--input-border)]',
     'transition-all duration-200',
   ),
   variants: {

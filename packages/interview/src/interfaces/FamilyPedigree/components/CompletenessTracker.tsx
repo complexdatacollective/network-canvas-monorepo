@@ -25,13 +25,21 @@ import { useContentFormat } from '../../../localization/useContentFormat';
 import type { CompletenessItem, CompletenessProgress } from '../completeness';
 import { messages } from '../messages';
 import type { Family } from '../model';
-import { showPiped, usePedigreePiped } from '../pedigreeWords';
+import {
+  type CompletenessWording,
+  showPiped,
+  usePedigreePiped,
+} from '../pedigreeWords';
 
-/** The stage's completeness setting: its enforcement and its wording. */
+/**
+ * The stage's completeness setting: its enforcement, and its wording as the
+ * interview shows it.
+ */
 type TrackerCompleteness = Pick<
   NonNullable<FamilyPedigreeStageDefinition['completeness']>,
-  'enforcement' | 'itemText' | 'recommendedNote'
->;
+  'enforcement'
+> &
+  CompletenessWording;
 
 type CompletenessTrackerProps = {
   progress: CompletenessProgress;
@@ -165,7 +173,7 @@ function CompletenessTracker({
   );
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLElement>(null);
 
   // The list shows while it is pinned, while the mouse is over the ring or
   // the list, or while keyboard focus is on either. Closing it hides it
@@ -315,9 +323,8 @@ function CompletenessTracker({
     >
       <div className="flex min-h-0 flex-col gap-3">
         {progress.checklist.length > 0 && (
-          <div
+          <section
             ref={listRef}
-            role="region"
             aria-label={progressLabel}
             tabIndex={-1}
             className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain outline-none"
@@ -348,7 +355,7 @@ function CompletenessTracker({
                       <div className="flex flex-col items-start gap-2">
                         <button
                           type="button"
-                          className="focusable cursor-pointer text-left underline-offset-4 hover:underline"
+                          className="focusable cursor-pointer text-start underline-offset-4 hover:underline"
                           onClick={() => {
                             // The list is put away for what it leads to, the
                             // person's panel, which it would otherwise cover.
@@ -389,7 +396,7 @@ function CompletenessTracker({
             {completeness.enforcement === 'recommended' && (
               <p className="text-sm opacity-80">{recommendedNote}</p>
             )}
-          </div>
+          </section>
         )}
       </div>
     </ToolbarPopover>

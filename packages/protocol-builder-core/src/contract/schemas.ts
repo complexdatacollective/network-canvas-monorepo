@@ -329,6 +329,37 @@ export const ResourcePromotionRequestSchema = Schema.Struct({
   resourceIds: Schema.NonEmptyArray(NonEmptyString),
 });
 
+/**
+ * One entry of the interview's shared words (a protocol's `interfaceText`),
+ * by group and name, as it reads after the write: its text by language.
+ */
+const InterfaceTextUpdateSchema = Schema.Struct({
+  group: NonEmptyString,
+  key: NonEmptyString,
+  value: Schema.Record(Schema.String, Schema.String),
+});
+
+/**
+ * The shared words a stage brings into use, written with it.
+ *
+ * Every stage of a kind shares some words, which the protocol holds once in
+ * its settings, and only while one of its stages shows them. A stage saved
+ * with a setting that shows one the protocol does not hold yet carries the
+ * entry's wording here (Network Canvas's, or the researcher's own, written in
+ * the editor before the save), and the host writes it into the settings in
+ * the stage's own revision, so the stage and the words it shows are one
+ * change. Each entry replaces the one it names and leaves the rest alone.
+ *
+ * Taken on the terms a promotion's manifest is: the settings are a section
+ * like any other, so an editor holding them refuses the write, and words the
+ * settings cannot hold refuse it as `InvalidShape` of the settings. Non-empty
+ * when present, for the reason a promotion is: an empty one would make the
+ * write touch the settings for nothing.
+ */
+const StageInterfaceTextSchema = Schema.NonEmptyArray(
+  InterfaceTextUpdateSchema,
+);
+
 export const SubmitInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
   requestId: RequestIdSchema,
@@ -341,6 +372,8 @@ export const SubmitInputSchema = Schema.Struct({
    */
   revision: RevisionSchema,
   promote: Schema.optionalKey(ResourcePromotionRequestSchema),
+  /** For a stage: the shared words it brings in (`StageInterfaceTextSchema`). */
+  interfaceText: Schema.optionalKey(StageInterfaceTextSchema),
 });
 
 export const SubmitResultSchema = Schema.Struct({
@@ -370,6 +403,11 @@ export const CreateInputSchema = Schema.Struct({
    * revision of it to submit them with afterwards.
    */
   promote: Schema.optionalKey(ResourcePromotionRequestSchema),
+  /**
+   * For a stage: the shared words it brings in, written in the same revision
+   * (`StageInterfaceTextSchema`).
+   */
+  interfaceText: Schema.optionalKey(StageInterfaceTextSchema),
 });
 
 export const CreateResultSchema = Schema.Struct({

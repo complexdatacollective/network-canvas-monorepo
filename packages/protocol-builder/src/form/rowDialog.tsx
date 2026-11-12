@@ -4,9 +4,7 @@ import {
   type ComponentType,
   type ReactNode,
   useContext,
-  useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 
@@ -384,23 +382,41 @@ function useRowEditorSession(
   expand: RowListConfig['expand'],
 ): RowEditorSession | null {
   const [session, setSession] = useState<RowEditorSession | null>(null);
-  // Read through a ref rather than depended on: a section binds its expansion
-  // to whatever it reads the row against, and rebuilding the session when that
-  // moves would reopen the dialog on a fresh store over the researcher's draft.
-  const expandRef = useRef(expand);
-  expandRef.current = expand;
-  const stored = useMemo(
-    () => (item ? stripManagedProperties<RowValues>(item) : undefined),
-    [item],
-  );
-  const row = useMemo(() => {
-    if (stored === undefined) return undefined;
-    return expandRef.current ? expandRef.current(stored) : stored;
-  }, [stored]);
-  const layoutId =
-    typeof item?._internalId === 'string' ? item._internalId : undefined;
 
-  useEffect(() => {
+  // The session follows the list's editing state, and is adjusted during the
+  // render that sees it change rather than in an effect, so the dialog never
+  // draws a frame holding the previous session's row.
+  //
+  // It is compared on the row object the list hands over, never on a value
+  // worked out from it here. A derived value is a new object on every render
+  // unless memoized, and memoizing is only a hint: the React Compiler drops it
+  // when nothing this hook returns reads the value, and a new object every
+  // render would set state every render.
+  //
+  // `expand` is read when the session is built, not depended on: a section
+  // binds its expansion to whatever it reads the row against, and rebuilding
+  // the session when that moves would reopen the dialog on a fresh store over
+  // the researcher's draft.
+  const [seen, setSeen] = useState<
+    | Readonly<{
+        item: ArrayFieldEditorProps<RowValues>['item'];
+        index: number | null;
+        isNewItem: boolean;
+      }>
+    | undefined
+  >(undefined);
+  if (
+    seen === undefined ||
+    seen.item !== item ||
+    seen.index !== index ||
+    seen.isNewItem !== isNewItem
+  ) {
+    setSeen({ item, index, isNewItem });
+    const stored = item ? stripManagedProperties<RowValues>(item) : undefined;
+    const layoutId =
+      typeof item?._internalId === 'string' ? item._internalId : undefined;
+    const row =
+      stored === undefined ? undefined : expand ? expand(stored) : stored;
     setSession((previous) => {
       if (row === undefined) {
         return previous?.open ? { ...previous, open: false } : previous;
@@ -418,7 +434,7 @@ function useRowEditorSession(
         ...(isNewItem || layoutId === undefined ? {} : { layoutId }),
       };
     });
-  }, [index, isNewItem, layoutId, row, stored]);
+  }
 
   return session;
 }

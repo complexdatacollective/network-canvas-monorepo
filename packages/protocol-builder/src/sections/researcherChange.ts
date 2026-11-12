@@ -1,5 +1,5 @@
 import { isEqual } from 'es-toolkit/compat';
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { stageDraftValue, useStageValue } from '../form/stageFormHooks.ts';
@@ -63,12 +63,11 @@ export function useOnResearcherChange(
   // would reset on it.
   const committed = stageDraftValue(committedFields, path);
 
-  // Held in a ref rather than depended on: a caller spells its reset inline,
-  // so the callback is a new function every render and depending on it would
-  // run this effect on every one of them. The effect runs on the VALUES, and
-  // uses whichever callback the latest render gave it.
-  const latestOnChange = useRef(onChange);
-  latestOnChange.current = onChange;
+  // An effect event rather than a dependency: a caller spells its reset
+  // inline, so the callback is a new function every render and depending on it
+  // would run this effect on every one of them. The effect runs on the VALUES,
+  // and uses whichever callback the latest render gave it.
+  const reset = useEffectEvent(onChange);
 
   /**
    * The last reading, and whether there has been one at all.
@@ -110,6 +109,6 @@ export function useOnResearcherChange(
     awaitingReseedTo.current = null;
     if (expected !== null && isEqual(expected.value, value)) return;
 
-    latestOnChange.current(value);
+    reset(value);
   }, [committed, value]);
 }

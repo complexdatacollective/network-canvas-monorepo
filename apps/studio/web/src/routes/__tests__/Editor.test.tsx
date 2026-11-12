@@ -7,11 +7,13 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { Effect, Layer, Predicate, Redacted, Schema } from 'effect';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
+import { NotLockHolder } from '@codaco/protocol-builder-core/contract/errors';
 import {
   HostSession,
   HostUnauthorized,
@@ -51,7 +53,11 @@ import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
 import { HostClient } from '../../runtime/hostClient.ts';
 import { hostRuntime } from '../../runtime/hostSession.ts';
-import { installFetchStub, requestUrl } from '../../test/fetchStub.ts';
+import {
+  installFetchStub,
+  requestBodyText,
+  requestUrl,
+} from '../../test/fetchStub.ts';
 import {
   FakeWebSocket,
   installInProcessHost,
@@ -94,7 +100,7 @@ const lockLogsSent = () =>
         new URL(requestUrl(input), window.location.href).pathname ===
         BROWSER_LOG_PATHS.researcher,
     )
-    .flatMap(([, init]) => browserLogRecords(decodeLogs(String(init?.body))))
+    .flatMap(([, init]) => browserLogRecords(decodeLogs(requestBodyText(init))))
     .filter((record) => record.body.stringValue === 'Editing lock refused')
     .map((record) =>
       record.attributes.find(
@@ -106,6 +112,9 @@ const lockAnswer = {
   requested: 0,
   gate: Promise.resolve(),
 };
+
+/** Whether the host now says every save is from somebody who no longer holds the lock. */
+const lockTaken = { away: false };
 
 const DRAFT_SECTIONS = {
   settings: {
@@ -335,6 +344,10 @@ function servedBy(handle: InMemoryHandlers): HandlersLayer {
             }),
       );
     },
+    Submit: (input) =>
+      lockTaken.away
+        ? Effect.fail(new NotLockHolder({ sectionId: input.sectionId }))
+        : handle.Submit(input),
     ListSections: (input) =>
       Effect.map(handle.ListSections(input), ({ sectionIds }) => ({
         sectionIds: [
@@ -481,6 +494,7 @@ beforeEach(async () => {
   telemetry.on = false;
   lockAnswer.requested = 0;
   lockAnswer.gate = Promise.resolve();
+  lockTaken.away = false;
   await seedHost(HOST_SECTIONS);
   vi.mocked(authClient.getSession).mockReset();
   vi.mocked(authClient.getSession).mockResolvedValue({
@@ -986,10 +1000,50 @@ describe('Studio editor shell', () => {
         /could not confirm whether the screen was added/i,
       ),
     ).toBeInTheDocument();
-    expect(add).toBeDisabled();
+    // Unavailable but still focusable, and a press does nothing.
+    expect(add).toBeEnabled();
+    expect(add).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(add);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh outline' }));
-    await waitFor(() => expect(add).toBeEnabled());
+    const refresh = screen.getByRole('button', { name: 'Refresh outline' });
+    refresh.focus();
+    fireEvent.click(refresh);
+    expect(refresh).toBeEnabled();
+    expect(refresh).toHaveAttribute('aria-disabled', 'true');
+    await waitFor(() => expect(add).toHaveAttribute('aria-disabled', 'false'));
+    // The alert, and the Refresh button in it, are gone; focus is not.
+    expect(refresh).not.toBeInTheDocument();
+    expect(add).toHaveFocus();
+    // Counted only now, once the outline has been read back: the press while
+    // Add was unavailable would have reached the server well before this.
+    expect(addInformationStage).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps focus on Add while the screen it asked for is being added', async () => {
+    let finishAdd = () => {};
+    addInformationStage.mockReturnValueOnce(
+      Effect.promise(
+        () =>
+          new Promise<{ sequence: string; hash: string }>((resolve) => {
+            finishAdd = () => resolve({ sequence: '3', hash: 'r3' });
+          }),
+      ),
+    );
+    renderEditor();
+    await screen.findByRole('heading', { name: 'Protocol sections' });
+
+    const add = screen.getByRole('button', { name: 'Add' });
+    add.focus();
+    fireEvent.click(add);
+
+    await waitFor(() => expect(add).toHaveAttribute('aria-disabled', 'true'));
+    expect(add).toBeEnabled();
+    expect(add).toHaveFocus();
+    fireEvent.click(add);
+
+    await act(async () => finishAdd());
+    await waitFor(() => expect(add).toHaveAttribute('aria-disabled', 'false'));
+    expect(addInformationStage).toHaveBeenCalledTimes(1);
   });
 
   /**
@@ -1071,11 +1125,18 @@ describe('Studio editor shell', () => {
       await screen.findByText(/could not confirm the new screen order/i),
     ).toBeInTheDocument();
     for (const button of screen.getAllByRole('button', { name: /^Move / })) {
-      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('aria-disabled', 'true');
     }
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
-    await waitFor(() => expect(moveUp).toBeEnabled());
+    const refresh = screen.getByRole('button', { name: 'Refresh order' });
+    refresh.focus();
+    fireEvent.click(refresh);
+    await waitFor(() =>
+      expect(moveUp).toHaveAttribute('aria-disabled', 'false'),
+    );
+    // The alert went with its Refresh button; focus heads the reread list.
+    expect(refresh).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add' })).toHaveFocus();
   });
 
   it('offers no move that would put a screen after the finish stage', async () => {
@@ -1087,19 +1148,19 @@ describe('Studio editor shell', () => {
       name: 'Move Finish up',
     });
 
-    expect(finishUp).toBeDisabled();
+    expect(finishUp).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByRole('button', { name: 'Move Finish down' }),
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByRole('button', { name: 'Move Follow-up down' }),
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByRole('button', { name: 'Move Follow-up up' }),
-    ).toBeEnabled();
+    ).toHaveAttribute('aria-disabled', 'false');
     expect(
       screen.getByRole('button', { name: 'Move Welcome, from the host down' }),
-    ).toBeEnabled();
+    ).toHaveAttribute('aria-disabled', 'false');
   });
 });
 
@@ -1685,3 +1746,771 @@ async function socketNumber(count: number): Promise<FakeWebSocket> {
   if (socket === undefined) throw new Error('no socket was opened');
   return socket;
 }
+
+/**
+ * What the screen-reader live regions on the page say right now, joined.
+ *
+ * Read from the DOM rather than from the code that writes them, so a message
+ * that never reached a live region fails here however it was produced.
+ */
+function liveRegionText(): string {
+  return [...document.querySelectorAll('[role="status"], [aria-live]')]
+    .map((region) => region.textContent)
+    .join(' ')
+    .trim();
+}
+
+const THREE_SCREENS: Readonly<Record<string, SectionDoc>> = {
+  ...HOST_SECTIONS,
+  stageOrder: { stages: [STAGE_A, STAGE_B, STAGE_C] },
+  [`stage:${STAGE_C}`]: {
+    id: STAGE_C,
+    type: 'Information',
+    label: enUS('Third'),
+    title: enUS('Third'),
+    items: [],
+  },
+};
+
+/**
+ * Makes `protocols.moveStage` write the order it was asked for, but only once
+ * the test lets it: the time between the request and the answer is where the
+ * old outline disabled the focused button and dropped focus.
+ */
+function holdMoves() {
+  let order = [STAGE_A, STAGE_B, STAGE_C];
+  let gate = Promise.resolve();
+  let open = () => {};
+  moveStage.mockImplementation(({ stageId, toIndex }) =>
+    Effect.promise(() => gate).pipe(
+      Effect.map(() => {
+        order = order.filter((id) => id !== stageId);
+        order.splice(toIndex, 0, stageId);
+        commandWrote.set(STAGE_ORDER, { stages: [...order] });
+        return { sequence: '3', hash: 'r3' };
+      }),
+    ),
+  );
+  return {
+    hold() {
+      const { promise, resolve } = Promise.withResolvers<void>();
+      gate = promise;
+      open = resolve;
+    },
+    release() {
+      open();
+    },
+  };
+}
+
+/**
+ * After a move the server lost: refreshes the order, lets focus fall to the
+ * page body, and has a collaborator move Welcome down a place, which is when a
+ * control still waiting on the lost move would take focus.
+ */
+async function expectCollaboratorReorderLeavesFocusAlone(): Promise<void> {
+  fireEvent.click(await screen.findByRole('button', { name: 'Refresh order' }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Move Follow-up up' }),
+    ).toHaveAttribute('aria-disabled', 'false'),
+  );
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+
+  await act(() => collaboratorRepairsStageOrder([STAGE_B, STAGE_A, STAGE_C]));
+  await waitFor(() =>
+    expect(outlineScreens()).toEqual([
+      'Follow-upInformation',
+      'Welcome, from the hostInformation',
+      'ThirdInformation',
+    ]),
+  );
+  await nextFrames();
+  expect(document.activeElement).toBe(document.body);
+}
+
+/** Two animation frames: long enough for any refocus a reorder schedules to run. */
+const nextFrames = async () => {
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+};
+
+const nameButton = (name: string) =>
+  screen.getByRole('button', { name: `${name}Information` });
+
+describe('reordering screens in the outline', () => {
+  // A browser blurs a focused element when its list item is repositioned in
+  // the DOM; jsdom keeps focus where it was. Without standing in for that,
+  // every "focus is still there afterwards" assertion below would hold with
+  // no refocus at all.
+  let blurMovedFocus: MutationObserver;
+  beforeEach(async () => {
+    blurMovedFocus = new MutationObserver((records) => {
+      const focused = document.activeElement;
+      if (!(focused instanceof HTMLElement)) return;
+      for (const record of records) {
+        for (const removed of record.removedNodes) {
+          if (removed.contains(focused)) focused.blur();
+        }
+      }
+    });
+    blurMovedFocus.observe(document.body, { childList: true, subtree: true });
+    await seedHost(THREE_SCREENS);
+  });
+  afterEach(() => blurMovedFocus.disconnect());
+
+  it('announces the new position, and keeps focus on the moved screen while the server answers and after the list reorders', async () => {
+    const moves = holdMoves();
+    moves.hold();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+    const welcome = nameButton('Welcome, from the host');
+    expect(welcome).toHaveAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown');
+    welcome.focus();
+
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    await waitFor(() => expect(moveStage).toHaveBeenCalledTimes(1));
+
+    // The server has not answered: the list has not moved, nothing is said,
+    // and the control the researcher is on is still the one they are on.
+    expect(welcome).toHaveFocus();
+    expect(liveRegionText()).not.toMatch(/Moved/);
+
+    // A second press while the first is in flight is not a second move.
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    expect(moveStage).toHaveBeenCalledTimes(1);
+
+    await act(async () => moves.release());
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'Welcome, from the hostInformation',
+        'ThirdInformation',
+      ]),
+    );
+    expect(
+      await screen.findByText(
+        'Moved Welcome, from the host to position 2 of 3.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(welcome).toHaveFocus());
+  });
+
+  it('keeps focus on a screen that reaches either end of the list, and ignores a press that would leave it', async () => {
+    holdMoves();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+    const followUp = nameButton('Follow-up');
+    followUp.focus();
+
+    fireEvent.keyDown(followUp, { key: 'ArrowUp' });
+    await waitFor(() =>
+      expect(outlineScreens()[0]).toBe('Follow-upInformation'),
+    );
+    await waitFor(() => expect(followUp).toHaveFocus());
+
+    // Already first: nothing is asked of the server, and focus does not move.
+    fireEvent.keyDown(followUp, { key: 'ArrowUp' });
+    expect(moveStage).toHaveBeenCalledTimes(1);
+    expect(followUp).toHaveFocus();
+
+    const third = nameButton('Third');
+    third.focus();
+    fireEvent.keyDown(third, { key: 'ArrowDown' });
+    expect(moveStage).toHaveBeenCalledTimes(1);
+    expect(third).toHaveFocus();
+
+    // And a screen moved onto the last place keeps focus there too.
+    const welcome = nameButton('Welcome, from the host');
+    welcome.focus();
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'ThirdInformation',
+        'Welcome, from the hostInformation',
+      ]),
+    );
+    expect(
+      await screen.findByText(
+        'Moved Welcome, from the host to position 3 of 3.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(welcome).toHaveFocus());
+  });
+
+  it('leaves an unavailable move button focusable, so a press at the end of the list does not lose the researcher’s place', async () => {
+    holdMoves();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+    const moveDown = screen.getByRole('button', { name: 'Move Third down' });
+
+    expect(moveDown).not.toBeDisabled();
+    expect(moveDown).toHaveAttribute('aria-disabled', 'true');
+    moveDown.focus();
+    fireEvent.click(moveDown);
+
+    expect(moveStage).not.toHaveBeenCalled();
+    expect(moveDown).toHaveFocus();
+  });
+
+  it('keeps focus on the move button that was pressed, and says where the screen went', async () => {
+    const moves = holdMoves();
+    moves.hold();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+    const moveDown = screen.getByRole('button', {
+      name: 'Move Welcome, from the host down',
+    });
+    moveDown.focus();
+
+    fireEvent.click(moveDown);
+    await waitFor(() => expect(moveStage).toHaveBeenCalledTimes(1));
+    // In flight: the button is unavailable but is still where focus is.
+    expect(moveDown).toHaveAttribute('aria-disabled', 'true');
+    expect(moveDown).toHaveFocus();
+
+    await act(async () => moves.release());
+    await waitFor(() =>
+      expect(outlineScreens()[1]).toBe('Welcome, from the hostInformation'),
+    );
+    expect(
+      await screen.findByText(
+        'Moved Welcome, from the host to position 2 of 3.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(moveDown).toHaveFocus());
+    expect(moveDown).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  /**
+   * A move the server did not keep leaves the screen where it was, so its
+   * control has nothing to wait for. Still waiting, it would take focus the
+   * next time anything shifted the screen, here a collaborator's reorder
+   * landing while focus is on the page body (the one place a waiting control
+   * takes it back from).
+   */
+  it('stops waiting to take focus back after a move the server did not keep, when using the buttons', async () => {
+    moveStage.mockReturnValueOnce(Effect.die(new Error('response lost')));
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+
+    const welcomeDown = screen.getByRole('button', {
+      name: 'Move Welcome, from the host down',
+    });
+    welcomeDown.focus();
+    fireEvent.click(welcomeDown);
+    await expectCollaboratorReorderLeavesFocusAlone();
+    expect(welcomeDown).not.toHaveFocus();
+  });
+
+  it('stops waiting to take focus back after a move the server did not keep, when using the arrow keys', async () => {
+    moveStage.mockReturnValueOnce(Effect.die(new Error('response lost')));
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+
+    const welcome = nameButton('Welcome, from the host');
+    welcome.focus();
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    await expectCollaboratorReorderLeavesFocusAlone();
+    expect(welcome).not.toHaveFocus();
+  });
+
+  /**
+   * The move lands while the researcher is somewhere else: they moved on
+   * deliberately, and the control they left does not call them back.
+   */
+  it('leaves focus where the researcher put it while a move was landing, when using the buttons', async () => {
+    const moves = holdMoves();
+    moves.hold();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+
+    const welcomeDown = screen.getByRole('button', {
+      name: 'Move Welcome, from the host down',
+    });
+    welcomeDown.focus();
+    fireEvent.click(welcomeDown);
+    await waitFor(() => expect(moveStage).toHaveBeenCalledTimes(1));
+    const add = screen.getByRole('button', { name: 'Add' });
+    add.focus();
+
+    await act(async () => moves.release());
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'Welcome, from the hostInformation',
+        'ThirdInformation',
+      ]),
+    );
+    await nextFrames();
+    expect(add).toHaveFocus();
+  });
+
+  it('leaves focus where the researcher put it while a move was landing, when using the arrow keys', async () => {
+    const moves = holdMoves();
+    moves.hold();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+
+    const welcome = nameButton('Welcome, from the host');
+    welcome.focus();
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    await waitFor(() => expect(moveStage).toHaveBeenCalledTimes(1));
+    const add = screen.getByRole('button', { name: 'Add' });
+    add.focus();
+
+    await act(async () => moves.release());
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'Welcome, from the hostInformation',
+        'ThirdInformation',
+      ]),
+    );
+    await nextFrames();
+    expect(add).toHaveFocus();
+  });
+
+  it('does not leave another screen waiting for focus when its key is pressed during a move', async () => {
+    const moves = holdMoves();
+    moves.hold();
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+
+    const welcome = nameButton('Welcome, from the host');
+    welcome.focus();
+    fireEvent.keyDown(welcome, { key: 'ArrowDown' });
+    await waitFor(() => expect(moveStage).toHaveBeenCalledTimes(1));
+    // Third asks to move while Welcome's move is still with the server: no
+    // move of Third is sent, so Third has nothing to wait for.
+    const third = nameButton('Third');
+    third.focus();
+    fireEvent.keyDown(third, { key: 'ArrowUp' });
+    await act(async () => moves.release());
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'Welcome, from the hostInformation',
+        'ThirdInformation',
+      ]),
+    );
+    expect(moveStage).toHaveBeenCalledTimes(1);
+
+    // Welcome then moves down past Third, which shifts Third up a place. The
+    // control that made THIS move is the one to get focus back; Third, still
+    // waiting from its press, would take it first.
+    await nextFrames();
+    const welcomeDown = screen.getByRole('button', {
+      name: 'Move Welcome, from the host down',
+    });
+    welcomeDown.focus();
+    fireEvent.click(welcomeDown);
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'ThirdInformation',
+        'Welcome, from the hostInformation',
+      ]),
+    );
+    await waitFor(() => expect(welcomeDown).toHaveFocus());
+    await nextFrames();
+    expect(welcomeDown).toHaveFocus();
+  });
+
+  it('does not announce a move the server did not keep', async () => {
+    moveStage.mockReturnValueOnce(Effect.die(new Error('response lost')));
+    renderEditor();
+    await screen.findByRole('button', { name: 'ThirdInformation' });
+    const followUp = nameButton('Follow-up');
+    followUp.focus();
+
+    fireEvent.keyDown(followUp, { key: 'ArrowUp' });
+
+    expect(
+      await screen.findByText(/could not confirm the new screen order/i),
+    ).toBeInTheDocument();
+    expect(liveRegionText()).not.toMatch(/Moved/);
+    expect(followUp).toHaveFocus();
+  });
+
+  it('says why a key press that would leave a screen after the finish screen did nothing', async () => {
+    await seedHost(ENDS_AT_FINISH);
+    renderEditor();
+    const followUp = await screen.findByRole('button', {
+      name: 'Follow-upInformation',
+    });
+    followUp.focus();
+
+    fireEvent.keyDown(followUp, { key: 'ArrowDown' });
+
+    expect(
+      await screen.findByText(
+        'Follow-up cannot move there, because the interview has to end with its finish screen.',
+      ),
+    ).toBeInTheDocument();
+    expect(moveStage).not.toHaveBeenCalled();
+    expect(followUp).toHaveFocus();
+  });
+});
+
+const BLANK_TITLE: Readonly<Record<string, SectionDoc>> = {
+  ...ENDS_AT_FINISH,
+  [`stage:${STAGE_B}`]: {
+    ...DRAFT_SECTIONS[`stage:${STAGE_B}`],
+    title: enUS(''),
+  },
+};
+
+const inspector = async () =>
+  within(await screen.findByRole('complementary', { name: 'Inspector' }));
+
+/** The visible label of the control that has focus, as a screen reader reads it. */
+function focusedLabel(): string {
+  const ids = document.activeElement?.getAttribute('aria-labelledby') ?? '';
+  return ids
+    .split(' ')
+    .map((id) => document.getElementById(id)?.textContent ?? '')
+    .join(' ')
+    .trim();
+}
+
+describe('the validation problems', () => {
+  it('are controls that open the screen they are about and focus the field', async () => {
+    await seedHost(BLANK_TITLE);
+    renderEditor();
+    // The first screen is open; the problem is in the second.
+    await findStageNameField();
+
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
+    );
+
+    await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+    expect(
+      screen.getByRole('button', { name: 'Follow-upInformation' }),
+    ).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('focus the field of the screen they open after unsaved changes are discarded', async () => {
+    await seedHost(BLANK_TITLE);
+    renderEditor();
+    // The open screen has a field of the same name as the one the problem is
+    // about, and it is that screen which is dirty.
+    const openField = await findStageNameField();
+    fireEvent.change(openField, { target: { value: 'Unsaved welcome' } });
+
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
+    );
+    const discard = await screen.findByRole('button', {
+      name: 'Discard changes',
+    });
+    // Everything focus passes through on the way. A field of the screen being
+    // closed would be focused and then taken off the page with its screen,
+    // even if something put focus right again afterwards.
+    const focused: Element[] = [];
+    const record = (event: FocusEvent) => {
+      if (event.target instanceof Element) focused.push(event.target);
+    };
+    document.addEventListener('focusin', record);
+    try {
+      fireEvent.click(discard);
+      await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+    } finally {
+      document.removeEventListener('focusin', record);
+    }
+
+    expect(focused.filter((element) => !element.isConnected)).toEqual([]);
+    expect(openField).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Follow-upInformation' }),
+    ).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('open a section after unsaved changes are discarded, and focus it', async () => {
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      settings: { ...DRAFT_SECTIONS.settings, name: '' },
+    });
+    renderEditor();
+    const openField = await findStageNameField();
+    fireEvent.change(openField, { target: { value: 'Unsaved welcome' } });
+
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Settings$/ }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Protocol settings' }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('stop waiting for a field once the researcher opens something else', async () => {
+    await seedHost(BLANK_TITLE);
+    // Follow-up is somebody else's, so its fields stay disabled and the
+    // problem's field is waited for.
+    await collaborator().rpcCall('AcquireLock', {
+      protocolId: DRAFT.protocol.id,
+      sectionId: sectionId({ kind: 'stage', stageId: STAGE_B }),
+    });
+    renderEditor();
+    await findStageNameField();
+
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
+    );
+    expect(
+      await screen.findByText(/is editing this stage, so you can read it/),
+    ).toBeInTheDocument();
+
+    // The researcher moves on, to a screen with a field of the same name that
+    // can be edited, before the wait is over.
+    const welcome = screen.getByRole('button', {
+      name: 'Welcome, from the hostInformation',
+    });
+    welcome.focus();
+    fireEvent.click(welcome);
+    await waitFor(() =>
+      expect(welcome).toHaveAttribute('aria-current', 'page'),
+    );
+    await waitFor(async () =>
+      expect(await findStageNameField()).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 3500));
+    expect(welcome).toHaveFocus();
+  });
+
+  it('focus the field at once when its screen is already open', async () => {
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      [`stage:${STAGE_A}`]: {
+        ...HOST_SECTIONS[`stage:${STAGE_A}`],
+        title: enUS(''),
+      },
+    });
+    renderEditor();
+    await findStageNameField();
+
+    fireEvent.click(
+      await (
+        await inspector()
+      ).findByRole('button', {
+        name: /Welcome, from the host$/,
+      }),
+    );
+
+    await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+  });
+
+  it('open a section of the protocol that is not a screen', async () => {
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      settings: { ...DRAFT_SECTIONS.settings, name: '' },
+    });
+    renderEditor();
+    await findStageNameField();
+
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Settings$/ }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Protocol settings' }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('go to the screen entry when the problem is about the screen and no field', async () => {
+    renderEditor();
+    await findStageNameField();
+
+    // No finish screen: the schema anchors this at the last screen, not at
+    // any one of its fields.
+    fireEvent.click(
+      await (
+        await inspector()
+      ).findByRole('button', {
+        name: /must end with a finish stage.*Follow-up$/,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Follow-upInformation' }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('go to the outline when the problem is about the interview as a whole', async () => {
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      stageOrder: { stages: [STAGE_A, STAGE_B, FINISH, 'no-such-stage'] },
+    });
+    renderEditor();
+
+    fireEvent.click(
+      await (
+        await inspector()
+      ).findByRole('button', {
+        name: 'stageOrder names missing stage no-such-stage',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('navigation', { name: 'Protocol sections' }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('are counted aloud once the number has settled, and not for the number the editor opened with', async () => {
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      stageOrder: { stages: [STAGE_A, STAGE_B, FINISH, 'no-such-stage'] },
+    });
+    renderEditor();
+    expect(
+      await screen.findByRole('button', { name: '1 validation problem' }),
+    ).toBeInTheDocument();
+    // Opening on a protocol with a problem says nothing aloud: the button
+    // beside the title already does, and the editor has only just opened.
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(liveRegionText()).not.toMatch(/validation problem/);
+
+    // A collaborator puts it right.
+    await act(async () => {
+      await collaboratorRepairsStageOrder([STAGE_A, STAGE_B, FINISH]);
+    });
+    await waitFor(
+      () => expect(liveRegionText()).toMatch(/No validation problems\./),
+      { timeout: 3000 },
+    );
+
+    // And then breaks it again.
+    await act(async () => {
+      await collaboratorRepairsStageOrder([
+        STAGE_A,
+        'gone',
+        FINISH,
+        'also-gone',
+      ]);
+    });
+    await waitFor(
+      () => expect(liveRegionText()).toMatch(/1 validation problem\./),
+      { timeout: 3000 },
+    );
+  });
+});
+
+describe('the editing lock', () => {
+  it('is announced when it is lost in the middle of an edit, by a region that was already on the page', async () => {
+    // A first screen that is complete, so a save is refused for the lock and
+    // not for what is missing from it.
+    await seedHost({
+      ...HOST_SECTIONS,
+      [`stage:${STAGE_A}`]: {
+        ...HOST_SECTIONS[`stage:${STAGE_A}`],
+        items: [{ id: 'item-1', type: 'text', content: enUS('Hello') }],
+      },
+    });
+    renderEditor();
+    const nameField = await findStageNameField();
+    // The regions exist, empty, before anything has happened: one that is
+    // added together with its text is often not read out.
+    const regions = [
+      ...document.querySelectorAll('output[aria-live="polite"]'),
+    ];
+    expect(regions.length).toBeGreaterThan(0);
+    expect(regions.map((each) => each.textContent).join('')).toBe('');
+
+    // The host takes the stage away: the researcher's next save is refused.
+    lockTaken.away = true;
+    fireEvent.change(nameField, { target: { value: 'Edited' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save screen' }));
+
+    await waitFor(
+      () =>
+        expect(liveRegionText()).toMatch(
+          /You can no longer edit Welcome, from the host\. It is now read-only\./,
+        ),
+      { timeout: 3000 },
+    );
+    // The very element that was there before, with its text changed.
+    expect(
+      regions.some(
+        (each) => each.isConnected && /no longer edit/.test(each.textContent),
+      ),
+    ).toBe(true);
+    // And the screen really is read-only now.
+    expect(
+      await screen.findByText(/is editing this stage, so you can read it/),
+    ).toBeInTheDocument();
+  });
+
+  it('is announced when a screen the researcher opens is held by somebody else', async () => {
+    await collaborator().rpcCall('AcquireLock', {
+      protocolId: DRAFT.protocol.id,
+      sectionId: sectionId({ kind: 'stage', stageId: STAGE_A }),
+    });
+    renderEditor();
+
+    await waitFor(
+      () =>
+        expect(liveRegionText()).toMatch(
+          /Welcome, from the host is read-only, because somebody else is editing it\./,
+        ),
+      { timeout: 3000 },
+    );
+  });
+
+  it('says nothing old about a screen reopened after somebody else let it go', async () => {
+    const stageA = sectionId({ kind: 'stage', stageId: STAGE_A });
+    await collaborator().rpcCall('AcquireLock', {
+      protocolId: DRAFT.protocol.id,
+      sectionId: stageA,
+    });
+    renderEditor();
+    await waitFor(
+      () => expect(liveRegionText()).toMatch(/somebody else is editing it/),
+      { timeout: 3000 },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    await screen.findByRole('heading', { name: 'Protocol settings' });
+    await collaborator().rpcCall('ReleaseLock', {
+      protocolId: DRAFT.protocol.id,
+      sectionId: stageA,
+    });
+    // The screen is slow to arrive this time: longer than an announcement
+    // takes to settle. Nothing known about it yet is worth saying.
+    unreadableSections.set(stageA, 'withheld');
+    fireEvent.click(nameButton('Welcome, from the host'));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(liveRegionText()).not.toMatch(/read-only|edit/);
+
+    act(() => answerWithheldSections());
+    await findStageNameField();
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(liveRegionText()).not.toMatch(/read-only|edit/);
+  });
+
+  it('says nothing about a screen that simply opens and can be edited', async () => {
+    renderEditor();
+    await findStageNameField();
+
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(liveRegionText()).not.toMatch(/read-only|edit/);
+  });
+});

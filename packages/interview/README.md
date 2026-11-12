@@ -43,7 +43,7 @@ consumers import them in order:
 
 ```css
 /* styles/globals.css */
-@import '@codaco/tailwind-config/fresco.css'; /* Tailwind v4 + theme + plugins + fonts */
+@import '@codaco/tailwind-config/fresco.css'; /* Tailwind v4 + theme + plugins */
 @import '@codaco/fresco-ui/styles.css'; /* @source glue for fresco-ui's classes */
 @import '@codaco/interview/styles.css'; /* @source glue for interview's classes */
 ```
@@ -394,7 +394,7 @@ The interview package emits PostHog events directly — there is no `onError`-st
 
 PII contract: events never include protocol-network data, protocol-author content (stage labels, prompt text, codebook labels, asset names), or participant input (form values, free-text, alter labels, search queries, passphrases). Events include only structural identifiers (stage type/index, prompt index, random node/edge UUIDs), codebook **internal ids** (e.g. `"person"`, `"friend"`), counts, durations, and package-defined discriminators.
 
-The full event taxonomy lives at [`docs/superpowers/specs/2026-05-05-interview-analytics-design.md`](../../docs/superpowers/specs/2026-05-05-interview-analytics-design.md).
+The full event taxonomy lives in [`src/analytics/events.ts`](./src/analytics/events.ts).
 
 ### Toast viewport
 

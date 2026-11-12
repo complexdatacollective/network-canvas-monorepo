@@ -72,6 +72,9 @@
         // the tests are not entries, and everything reachable only from a test
         // reads as unused.
         "scripts/**/*.test.mjs",
+        // The source invariants run from their own config (see
+        // `//#test:invariants`), which knip does not detect either.
+        "scripts/invariants/vitest.config.mts",
         // Run by name from `pnpm check:mapbox-tokens`; its own test spawns it
         // as a process rather than importing it, so nothing imports it at all.
         "scripts/buildtime/check-mapbox-tokens.mjs",
@@ -104,6 +107,14 @@
     "apps/networkcanvas.com": {
       "entry": ["lib/i18n/request.ts", "netlify/edge-functions/locale.ts"]
     },
+    // The landing page's message descriptors are read by i18n:extract, not
+    // imported: the theme's JavaScript runs inside Discourse. Its modules
+    // are imported by .gjs components, which knip cannot parse, and import
+    // Discourse's own modules, which Discourse supplies at runtime.
+    "apps/community-theme": {
+      "entry": ["src/*.messages.ts", "theme/javascripts/discourse/lib/*.js"],
+      "ignoreDependencies": ["discourse-i18n"]
+    },
     "apps/documentation": {
       "ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
     },
@@ -118,8 +129,13 @@
       // schema-8/src is the bundled schema 8 interview's package
       // (`fresco-schema-8`, installed from `file:./schema-8`); the app imports
       // it through its package exports, which resolve to the installed copy,
-      // so knip cannot see that the source files are used.
-      "entry": ["release-test/scripts/*.mjs", "schema-8/src/*.js"],
+      // so knip cannot see that the source files are used. Fresco's tsconfig
+      // excludes schema-8, so its declarations need listing as well.
+      "entry": [
+        "release-test/scripts/*.mjs",
+        "schema-8/src/*.js",
+        "schema-8/src/*.d.ts"
+      ],
       "project": ["**/*.{js,jsx,ts,tsx}", "release-test/scripts/*.mjs"],
       "ignore": ["knip.config.ts"],
       "ignoreDependencies": [
@@ -186,6 +202,7 @@
       "ignoreDependencies": [
         "@fontsource-variable/inclusive-sans",
         "@fontsource-variable/nunito",
+        "@fontsource-variable/readex-pro",
         "@tailwindcss/cli"
       ]
     },
@@ -202,7 +219,8 @@
       "project": ["shared/**/*.ts"],
       "ignoreDependencies": [
         "@fontsource-variable/inclusive-sans",
-        "@fontsource-variable/nunito"
+        "@fontsource-variable/nunito",
+        "@fontsource-variable/readex-pro"
       ]
     },
     "tooling/vitest": {
@@ -323,6 +341,9 @@
       }
     },
     "workers/development-protocol": {},
-    "workers/posthog-proxy": {}
+    "workers/posthog-proxy": {},
+    "workers/protocol-review": {
+      "ignoreDependencies": ["cloudflare"]
+    }
   }
 }

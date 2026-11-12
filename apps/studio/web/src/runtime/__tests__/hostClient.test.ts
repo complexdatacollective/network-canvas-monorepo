@@ -68,6 +68,7 @@ describe('a connection that stops answering', () => {
       )
       .then((exit) => {
         call = exit;
+        return exit;
       });
     void runtime
       .runPromiseExit(
@@ -77,6 +78,7 @@ describe('a connection that stops answering', () => {
       )
       .then((exit) => {
         stream = exit;
+        return exit;
       });
     await vi.waitFor(() =>
       expect(served.map(({ tag }) => tag)).toEqual(
@@ -88,8 +90,9 @@ describe('a connection that stops answering', () => {
     if (socket === undefined) throw new Error('no socket was opened');
     socket.freeze();
 
+    const settled = () => call !== undefined && stream !== undefined;
     let quietFor = 0;
-    while ((call === undefined || stream === undefined) && quietFor < 15) {
+    while (!settled() && quietFor < 15) {
       await runtime.runPromise(TestClock.adjust('1 second'));
       quietFor += 1;
       await new Promise((resolve) => setTimeout(resolve, 10));

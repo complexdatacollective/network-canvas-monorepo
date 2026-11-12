@@ -90,7 +90,7 @@ const meta = {
     searchable: { control: 'boolean' },
     variant: {
       control: 'select',
-      options: ['text', 'outline', 'glass', 'default', 'raised', 'dashed'],
+      options: ['text', 'glass', 'default', 'raised', 'dashed'],
     },
     color: {
       control: 'select',
@@ -252,7 +252,11 @@ export const KeyboardWithoutSearch: Story = {
     await expect(within(popup).queryByRole('textbox')).not.toBeInTheDocument();
     // Base UI moves focus into the list on the next animation frame, and a
     // key pressed before then lands on the trigger instead.
-    const list = within(popup).getByRole('listbox');
+    // The list holds the focus here, so a screen reader announces its name
+    // as it lands: the popup's heading.
+    const list = within(popup).getByRole('listbox', {
+      name: 'Interface language',
+    });
     await waitFor(() => expect(list).toHaveFocus());
 
     await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}');

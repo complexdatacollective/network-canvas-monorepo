@@ -11,6 +11,7 @@ import {
 
 import { generateNetwork } from '../generateNetwork.ts';
 import { resolveGenerationConfig } from '../generateNetwork/config.ts';
+import { describeValue } from '../generateNetwork/constraints/describeValue.ts';
 import { analyseFeasibility } from '../generateNetwork/constraints/feasibility.ts';
 import { delegatedValidationContradictions } from '../generateNetwork/constraints/validationContradictions.ts';
 
@@ -551,9 +552,9 @@ function satisfiesRules(
         continue;
       }
       const ownComparable =
-        variable.type === 'datetime' ? String(own) : Number(own);
+        variable.type === 'datetime' ? describeValue(own) : Number(own);
       const otherComparable =
-        variable.type === 'datetime' ? String(other) : Number(other);
+        variable.type === 'datetime' ? describeValue(other) : Number(other);
       switch (rule.kind) {
         case 'greaterThanVariable':
           if (!(ownComparable > otherComparable)) return false;

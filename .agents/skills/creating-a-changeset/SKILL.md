@@ -149,5 +149,5 @@ them.
 - Gated-product changesets live in `.changeset/` like everyone else; the normal
   release intentionally leaves them alone until that product's release PR
   consumes them.
-- Full model: `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`
-  and each app's `RELEASING.md`.
+- Each app's `RELEASING.md` describes its release process, and the root
+  `CLAUDE.md` describes the release lanes.

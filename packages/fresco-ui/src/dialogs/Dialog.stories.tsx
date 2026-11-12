@@ -261,7 +261,7 @@ function PopupsInsideADialogExample() {
       >
         <div className="flex flex-col items-start gap-4">
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" />}>
+            <DropdownMenuTrigger render={<Button />}>
               Editing language
             </DropdownMenuTrigger>
             <DropdownMenuContent>
@@ -294,9 +294,7 @@ function PopupsInsideADialogExample() {
             onChange={(next) => setPeople(next ?? [])}
           />
           <Popover>
-            <PopoverTrigger render={<Button variant="outline" />}>
-              Formatting help
-            </PopoverTrigger>
+            <PopoverTrigger render={<Button />}>Formatting help</PopoverTrigger>
             <PopoverContent>
               <Paragraph margin="none">Wrap a word in asterisks.</Paragraph>
               <Button size="sm">Insert an example</Button>

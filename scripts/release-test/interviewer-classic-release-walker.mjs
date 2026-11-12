@@ -1033,8 +1033,11 @@ try {
   platformHandle = await factory();
   run.onCleanup(() => platformHandle.close());
   if (args.phase === 'verify-imports') {
-    await importProtocols(platformHandle, run.step, null, () =>
-      platformHandle.driver.eval(STATE),
+    await importProtocols(
+      platformHandle,
+      (name, body) => run.step(name, body),
+      null,
+      () => platformHandle.driver.eval(STATE),
     );
   } else {
     await journey(platformHandle);

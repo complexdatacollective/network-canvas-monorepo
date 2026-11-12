@@ -1,9 +1,10 @@
 import { isEqual } from 'es-toolkit/compat';
-import { useMemo, useRef } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
 
+import { richTextToolbarFor } from '../localization/textShape.ts';
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
@@ -30,16 +31,15 @@ type RichTextFieldProps = CreateFormFieldProps<
      * is a promise about the value, and a document the editor was free to split
      * left the serializer joining two paragraphs into one line by inventing a
      * separator — "Never met" saved as " Never met".
+     *
+     * The editor opens one line tall and grows as the text wraps.
+     *
+     * For a localized field, take it from the field's declaration
+     * (`textFieldPropsFor`) rather than writing it here.
      */
     'singleLine'?: boolean;
     /** Toolbar features to withhold, e.g. `['bold', 'lists']`. */
     'disallowedTypes'?: string[];
-    /**
-     * One line tall, for a short label such as an option's; implies
-     * `singleLine`. A prompt is `singleLine` alone and keeps the tall editing
-     * area.
-     */
-    'compact'?: boolean;
   }
 >;
 
@@ -55,21 +55,11 @@ const asRichTextContent = (value: unknown): RichTextContent | undefined =>
 const RichTextField = ({
   value,
   onChange,
-  singleLine: singleLineProp = false,
-  compact = false,
+  singleLine = false,
   disallowedTypes = [],
   ...props
 }: RichTextFieldProps) => {
-  const singleLine = singleLineProp || compact;
-  const toolbarOptions = {
-    bold: !disallowedTypes.includes('bold'),
-    italic: !disallowedTypes.includes('italic'),
-    links: !singleLine,
-    headings: !singleLine && !disallowedTypes.includes('headings'),
-    lists: !singleLine && !disallowedTypes.includes('lists'),
-    thematicBreak: !singleLine && !disallowedTypes.includes('thematic_break'),
-    history: !disallowedTypes.includes('history'),
-  };
+  const toolbarOptions = richTextToolbarFor(singleLine, disallowedTypes);
 
   const markdown = typeof value === 'string' ? value : null;
   const normalizedContent = useMemo(
@@ -91,19 +81,19 @@ const RichTextField = ({
   // rewrite, no reflow. A value that did NOT come from this editor (a write
   // made elsewhere in the form, a different stage) does not match and
   // normalises as before.
-  const lastEmitted = useRef<{
+  const [lastEmitted, setLastEmitted] = useState<{
     markdown: string;
     content: RichTextContent | undefined;
   } | null>(null);
   const content =
-    lastEmitted.current?.markdown === markdown
-      ? lastEmitted.current.content
+    lastEmitted?.markdown === markdown
+      ? lastEmitted.content
       : normalizedContent;
 
   const handleChange = (nextValue: unknown) => {
     const nextContent = asRichTextContent(nextValue);
     const nextMarkdown = richTextContentToMarkdown(nextContent, singleLine);
-    lastEmitted.current = { markdown: nextMarkdown, content: nextContent };
+    setLastEmitted({ markdown: nextMarkdown, content: nextContent });
 
     // The editor emits a change as it mounts. Committing a value that
     // round-trips to the same document would dirty the stage merely by
@@ -124,7 +114,6 @@ const RichTextField = ({
     <RichTextEditorField
       {...props}
       singleLine={singleLine}
-      compact={compact}
       changeMode="input"
       toolbarOptions={toolbarOptions}
       value={content}

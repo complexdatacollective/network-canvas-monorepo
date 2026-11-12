@@ -113,10 +113,10 @@ const messages = defineMessages({
 });
 
 const EMPTY_CLASSES =
-  'flex grow basis-full items-start rounded px-7 py-5 text-current/80 [&_svg]:mr-3 [&_svg]:mt-1 [&_svg]:shrink-0';
+  'flex grow basis-full items-start rounded px-7 py-5 text-current/80 [&_svg]:me-3 [&_svg]:mt-1 [&_svg]:shrink-0';
 
 const CREATE_NEW_CLASSES =
-  'flex items-center justify-center px-5 py-1 font-medium text-current [&_svg]:mr-5 [&_svg]:h-5';
+  'flex items-center justify-center px-5 py-1 font-medium text-current [&_svg]:me-5 [&_svg]:h-5';
 
 const RESULTS_ID = 'variable-spotlight-results';
 
@@ -148,6 +148,8 @@ type VariableSpotlightItem =
       value: string;
       variableType: string;
     };
+
+const itemLabel = (item: VariableSpotlightItem) => item.label;
 
 type VariableSpotlightProps = {
   open: boolean;
@@ -539,7 +541,7 @@ const VariableSpotlight = ({
                 aria-label={intl.formatMessage(messages.attributeResults)}
                 items={collectionItems}
                 keyExtractor={(item) => item.id}
-                textValueExtractor={(item) => item.label}
+                textValueExtractor={itemLabel}
                 layout={layout}
                 renderItem={renderItem}
                 selectionMode="single"

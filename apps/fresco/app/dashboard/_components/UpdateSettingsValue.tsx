@@ -149,7 +149,7 @@ export default function UpdateSettingsValue({
             onClick={handleSave}
             color="primary"
           >
-            {isSaving && <Loader2 className="mr-2 animate-spin" />}
+            {isSaving && <Loader2 className="me-2 animate-spin" />}
             {isSaving
               ? intl.formatMessage(messages.copySaving)
               : intl.formatMessage(commonMessages.save)}

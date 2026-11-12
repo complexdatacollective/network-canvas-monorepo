@@ -1,14 +1,59 @@
-import type { MessageArguments } from '../../localization/messageArguments.ts';
-import type { LocalizedStringFormat } from './localized-string.ts';
+import {
+  EVERY_VERSION,
+  type MessageArguments,
+} from '../../localization/messageArguments.ts';
+import type { LocalizedTextShape } from './localized-string.ts';
+import {
+  CONNECT_HINT,
+  CONNECT_TOOL,
+  DISCONNECT_HINT,
+  DISCONNECT_TOOL,
+  FRAMING_CHOICE_DESCRIPTION,
+  FRAMING_CHOICE_TITLE,
+  FRAMING_CONTROL_LABEL,
+  POINTER_TOOL,
+} from './stage-wording/family-pedigree.ts';
+import {
+  MAP_UNAVAILABLE,
+  OFFLINE_NOTICE,
+  SEARCH_FAILED,
+} from './stage-wording/geospatial.ts';
+import { QUICK_ADD_HINT } from './stage-wording/name-generator-quick-add.ts';
+import {
+  CARRIES,
+  CLEAR_FOCUS_TOOLTIP,
+  HAS_CONDITION,
+  KEY_HEADING,
+  MAY_CARRY,
+  MAY_DEVELOP,
+  NOT_KNOWN,
+  WILL_DEVELOP,
+} from './stage-wording/narrative-pedigree.ts';
+import {
+  RESET_ANNOTATIONS_TOOLTIP,
+  TOGGLE_DRAWING_TOOLTIP,
+  TOGGLE_FREEZING_TOOLTIP,
+} from './stage-wording/narrative.ts';
+import {
+  ADD_NAME_PLACEHOLDER,
+  ADD_NODE_TOOLTIP,
+  AUTOMATIC_LAYOUT_TOOLTIP,
+  DRAW_EDGE_TOOLTIP,
+  GROUPS_HEADING,
+  OVERTAKEN_EDIT_NOTICE,
+} from './stage-wording/network-composer.ts';
 import type { SuppliedWording } from './supplied-stage-setting.ts';
 
 // The wording Network Canvas supplies for the interface text a protocol holds
-// (`interface-text.ts`), in every language Network Canvas ships, with the
-// arguments the English message uses. Each entry is the catalog text of the
-// message it stands in for, as the interview, fresco-ui and app-i18n
-// catalogs word it; the exceptions are the two entries that merge several
-// messages (`buttons.yes` and `messages.error`, see their `ids`). Update the
-// wording here when a catalog's wording changes.
+// (`interface-text.ts`), in every language Network Canvas supplies, with the
+// arguments its message may use and those it must show, which hold for any
+// rewording or translation of it too. Each entry's English is the English of
+// the message it stands in for, as the interview, fresco-ui and app-i18n word
+// it; the exceptions are the entries that merge several messages
+// (`buttons.yes`, `messages.error` and `search.searchLabel`, see their
+// `ids`). The interview's own messages are written in English only: their
+// translations are these, and live nowhere else. Update the wording here when
+// a message's English changes.
 
 export type InterfaceTextEntry = Readonly<{
   /**
@@ -20,11 +65,11 @@ export type InterfaceTextEntry = Readonly<{
   ids: readonly string[];
   arguments?: MessageArguments;
   /**
-   * How the text is written: markdown for a message the researcher may format
-   * and add links to, which the interview renders as markdown. Absent, the
-   * text is plain.
+   * What the text may hold (see `LocalizedTextShape`): markdown, over several
+   * lines, for a message the researcher may format and add links to, which
+   * the interview renders as markdown. Absent, the text is one plain line.
    */
-  format?: LocalizedStringFormat;
+  shape?: LocalizedTextShape;
   message: SuppliedWording;
 }>;
 
@@ -84,6 +129,154 @@ export const NAVIGATION_INTERFACE_TEXT = {
       'pt-BR': 'Continuar',
       'zh-Hans': '继续',
       'zh-Hant': '繼續',
+    },
+  },
+  exitFailed: {
+    ids: ['interview.navigation.exitFailed'],
+    message: {
+      'en': 'Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.',
+      'de': 'Ihre Antworten konnten nicht gespeichert werden, daher wurde das Interview nicht geschlossen. Bitte versuchen Sie es erneut. Wenn das Problem weiterhin besteht, wenden Sie sich an die Studienleitung.',
+      'es': 'No se pudieron guardar tus respuestas, así que la entrevista no se ha cerrado. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.',
+      'fr': 'Vos réponses n’ont pas pu être enregistrées, l’entretien n’a donc pas été fermé. Veuillez réessayer. Si le problème persiste, contactez l’équipe responsable de l’étude.',
+      'it': 'Non è stato possibile salvare le tue risposte, quindi l’intervista non è stata chiusa. Riprova. Se il problema persiste, contatta chi organizza lo studio.',
+      'nl': 'Je antwoorden konden niet worden opgeslagen, daarom is het interview niet gesloten. Probeer het opnieuw. Blijft het probleem zich voordoen, neem dan contact op met de organisator van het onderzoek.',
+      'pt-BR':
+        'Não foi possível salvar suas respostas, por isso a entrevista não foi fechada. Tente novamente. Se o problema continuar, entre em contato com a equipe responsável pelo estudo.',
+      'zh-Hans':
+        '无法保存您的回答，因此访谈尚未关闭。请重试。如果问题仍然存在，请联系研究组织者。',
+      'zh-Hant':
+        '無法儲存您的回答，因此訪談尚未關閉。請再試一次。如果問題持續發生，請聯絡研究團隊。',
+    },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+export const INTERVIEWER_INTERFACE_TEXT = {
+  exitReview: {
+    ids: ['interview.navigation.exitReview'],
+    message: {
+      'en': 'Exit review',
+      'de': 'Durchsicht verlassen',
+      'es': 'Salir de la revisión',
+      'fr': 'Quitter la consultation',
+      'it': 'Esci dalla revisione',
+      'nl': 'Bekijkmodus verlaten',
+      'pt-BR': 'Sair da revisão',
+      'zh-Hans': '退出查看',
+      'zh-Hant': '離開檢閱',
+    },
+  },
+  exitReviewTitle: {
+    ids: ['interview.navigation.exitReviewTitle'],
+    message: {
+      'en': 'Exit this review?',
+      'de': 'Diese Durchsicht verlassen?',
+      'es': '¿Salir de esta revisión?',
+      'fr': 'Quitter cette consultation ?',
+      'it': 'Vuoi uscire da questa revisione?',
+      'nl': 'Bekijkmodus verlaten?',
+      'pt-BR': 'Sair desta revisão?',
+      'zh-Hans': '退出此次查看？',
+      'zh-Hant': '要離開這次檢閱嗎？',
+    },
+  },
+  exitReviewDescription: {
+    ids: ['interview.navigation.exitReviewDescription'],
+    message: {
+      'en': 'Changes made during this review will not be saved.',
+      'de': 'Änderungen, die Sie während dieser Durchsicht vornehmen, werden nicht gespeichert.',
+      'es': 'Los cambios realizados durante esta revisión no se guardarán.',
+      'fr': 'Les modifications apportées pendant cette consultation ne seront pas enregistrées.',
+      'it': 'Le modifiche apportate durante questa revisione non verranno salvate.',
+      'nl': 'Wijzigingen die je in de bekijkmodus aanbrengt, worden niet opgeslagen.',
+      'pt-BR': 'As alterações feitas durante esta revisão não serão salvas.',
+      'zh-Hans': '查看期间所做的更改不会被保存。',
+      'zh-Hant': '在這次檢閱中所做的變更不會儲存。',
+    },
+  },
+  hiddenScreen: {
+    ids: ['interview.runtime.hiddenByAnswers'],
+    message: {
+      'en': 'Hidden by answers',
+      'de': 'Durch Antworten ausgeblendet',
+      'es': 'Oculta por las respuestas',
+      'fr': 'Masqué par les réponses',
+      'it': 'Nascosta in base alle risposte',
+      'nl': 'Verborgen door antwoorden',
+      'pt-BR': 'Oculta pelas respostas',
+      'zh-Hans': '因回答而隐藏',
+      'zh-Hant': '因回答而隱藏',
+    },
+  },
+  outsidePath: {
+    ids: ['interview.runtime.outsideCurrentPath'],
+    message: {
+      'en': 'Outside current path',
+      'de': 'Außerhalb des aktuellen Verlaufs',
+      'es': 'Fuera del recorrido actual',
+      'fr': 'En dehors du parcours actuel',
+      'it': 'Fuori dal percorso attuale',
+      'nl': 'Buiten het huidige pad',
+      'pt-BR': 'Fora do caminho atual',
+      'zh-Hans': '不在当前路径中',
+      'zh-Hant': '不在目前路徑上',
+    },
+  },
+  showScreenTitle: {
+    ids: ['interview.navigation.showTitle'],
+    message: {
+      'en': 'Show this screen?',
+      'de': 'Diese Seite anzeigen?',
+      'es': '¿Mostrar esta pantalla?',
+      'fr': 'Afficher cet écran ?',
+      'it': 'Vuoi mostrare questa schermata?',
+      'nl': 'Dit scherm tonen?',
+      'pt-BR': 'Mostrar esta tela?',
+      'zh-Hans': '显示此页面？',
+      'zh-Hant': '要顯示此畫面嗎？',
+    },
+  },
+  hiddenScreenDescription: {
+    ids: ['interview.navigation.hiddenScreen'],
+    message: {
+      'en': 'This screen is hidden based on the answers given so far. Do you want to show it anyway?',
+      'de': 'Diese Seite ist aufgrund der bisherigen Antworten ausgeblendet. Möchten Sie sie trotzdem anzeigen?',
+      'es': 'Esta pantalla está oculta según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?',
+      'fr': 'Cet écran est masqué en fonction des réponses données jusqu’à présent. Voulez-vous quand même l’afficher ?',
+      'it': 'Questa schermata è nascosta in base alle risposte date finora. Vuoi mostrarla comunque?',
+      'nl': 'Dit scherm is verborgen op basis van de antwoorden die tot nu toe zijn gegeven. Wil je het toch tonen?',
+      'pt-BR':
+        'Esta tela está oculta com base nas respostas dadas até agora. Deseja mostrá-la mesmo assim?',
+      'zh-Hans': '根据目前的回答，此页面已被隐藏。仍要显示吗？',
+      'zh-Hant': '根據目前的回答，此畫面已隱藏。仍要顯示嗎？',
+    },
+  },
+  outsidePathDescription: {
+    ids: ['interview.navigation.outsidePath'],
+    message: {
+      'en': 'This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?',
+      'de': 'Diese Seite liegt aufgrund der bisherigen Antworten außerhalb des aktuellen Interviewverlaufs. Möchten Sie sie trotzdem anzeigen?',
+      'es': 'Esta pantalla queda fuera del recorrido actual de la entrevista según las respuestas dadas hasta ahora. ¿Quieres mostrarla de todos modos?',
+      'fr': 'Cet écran se trouve en dehors du parcours actuel de l’entretien, compte tenu des réponses données jusqu’à présent. Voulez-vous quand même l’afficher ?',
+      'it': 'Questa schermata è al di fuori del percorso attuale dell’intervista, in base alle risposte date finora. Vuoi mostrarla comunque?',
+      'nl': 'Dit scherm valt op basis van de antwoorden die tot nu toe zijn gegeven buiten het huidige pad van het interview. Wil je het toch tonen?',
+      'pt-BR':
+        'Esta tela está fora do caminho atual da entrevista, com base nas respostas dadas até agora. Deseja mostrá-la mesmo assim?',
+      'zh-Hans': '根据目前的回答，此页面不在当前的访谈路径中。仍要显示吗？',
+      'zh-Hant': '根據目前的回答，此畫面不在目前的訪談路徑上。仍要顯示嗎？',
+    },
+  },
+  showScreen: {
+    ids: ['interview.navigation.showScreen'],
+    message: {
+      'en': 'Show screen',
+      'de': 'Seite anzeigen',
+      'es': 'Mostrar pantalla',
+      'fr': 'Afficher l’écran',
+      'it': 'Mostra la schermata',
+      'nl': 'Scherm tonen',
+      'pt-BR': 'Mostrar tela',
+      'zh-Hans': '显示页面',
+      'zh-Hant': '顯示畫面',
     },
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
@@ -215,12 +408,114 @@ export const BUTTONS_INTERFACE_TEXT = {
       'zh-Hant': '繼續自動版面配置',
     },
   },
+  copy: {
+    ids: ['interview.runtime.copy'],
+    message: {
+      'en': 'Copy',
+      'de': 'Kopieren',
+      'es': 'Copiar',
+      'fr': 'Copier',
+      'it': 'Copia',
+      'nl': 'Kopiëren',
+      'pt-BR': 'Copiar',
+      'zh-Hans': '复制',
+      'zh-Hant': '複製',
+    },
+  },
+  copied: {
+    ids: ['interview.runtime.copied'],
+    message: {
+      'en': 'Copied',
+      'de': 'Kopiert',
+      'es': 'Copiado',
+      'fr': 'Copié',
+      'it': 'Copiato',
+      'nl': 'Gekopieerd',
+      'pt-BR': 'Copiado',
+      'zh-Hans': '已复制',
+      'zh-Hant': '已複製',
+    },
+  },
+  zoomOut: {
+    ids: ['interview.interfaces.zoomOut'],
+    message: {
+      'en': 'Zoom out',
+      'de': 'Verkleinern',
+      'es': 'Alejar',
+      'fr': 'Zoom arrière',
+      'it': 'Riduci',
+      'nl': 'Uitzoomen',
+      'pt-BR': 'Diminuir zoom',
+      'zh-Hans': '缩小',
+      'zh-Hant': '縮小',
+    },
+  },
+
+  zoomIn: {
+    ids: ['interview.interfaces.zoomIn'],
+    message: {
+      'en': 'Zoom in',
+      'de': 'Vergrößern',
+      'es': 'Acercar',
+      'fr': 'Zoom avant',
+      'it': 'Ingrandisci',
+      'nl': 'Inzoomen',
+      'pt-BR': 'Aumentar zoom',
+      'zh-Hans': '放大',
+      'zh-Hant': '放大',
+    },
+  },
+
+  undo: {
+    ids: ['interview.interfaces.undo'],
+    message: {
+      'en': 'Undo',
+      'de': 'Rückgängig',
+      'es': 'Deshacer',
+      'fr': 'Annuler',
+      'it': 'Annulla',
+      'nl': 'Ongedaan maken',
+      'pt-BR': 'Desfazer',
+      'zh-Hans': '撤销',
+      'zh-Hant': '復原',
+    },
+  },
+
+  redo: {
+    ids: ['interview.interfaces.redo'],
+    message: {
+      'en': 'Redo',
+      'de': 'Wiederholen',
+      'es': 'Rehacer',
+      'fr': 'Rétablir',
+      'it': 'Ripeti',
+      'nl': 'Opnieuw uitvoeren',
+      'pt-BR': 'Refazer',
+      'zh-Hans': '重做',
+      'zh-Hant': '重做',
+    },
+  },
+
+  skip: {
+    ids: ['interview.familyPedigree.skipStep'],
+    message: {
+      'en': 'Skip',
+      'de': 'Überspringen',
+      'es': 'Omitir',
+      'fr': 'Passer',
+      'it': 'Salta',
+      'nl': 'Overslaan',
+      'pt-BR': 'Pular',
+      'zh-Hans': '跳过',
+      'zh-Hant': '略過',
+    },
+  },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
 export const MESSAGES_INTERFACE_TEXT = {
   stageError: {
     ids: ['interview.runtime.taskErrorDescription'],
-    format: 'markdown',
+    shape: { format: 'markdown', lines: 'multiple' },
     message: {
       'en': '# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.',
       'en-GB':
@@ -280,11 +575,43 @@ export const MESSAGES_INTERFACE_TEXT = {
       'zh-Hant': '無法載入外部資料。',
     },
   },
+  loading: {
+    ids: ['common.loading'],
+    message: {
+      'en': 'Loading…',
+      'de': 'Wird geladen…',
+      'es': 'Cargando…',
+      'fr': 'Chargement…',
+      'it': 'Caricamento…',
+      'nl': 'Laden…',
+      'pt-BR': 'Carregando…',
+      'zh-Hans': '正在加载…',
+      'zh-Hant': '正在載入…',
+    },
+  },
+  unnamed: {
+    ids: ['interview.runtime.unnamed'],
+    message: {
+      'en': 'Unnamed',
+      'de': 'Ohne Namen',
+      'es': 'Sin nombre',
+      'fr': 'Sans nom',
+      'it': 'Senza nome',
+      'nl': 'Zonder naam',
+      'pt-BR': 'Sem nome',
+      'zh-Hans': '未命名',
+      'zh-Hant': '未命名',
+    },
+  },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
 export const SEARCH_INTERFACE_TEXT = {
   searchLabel: {
-    ids: ['common.search'],
+    ids: [
+      'common.search',
+      'interview.runtime.filter',
+      'frescoUi.collectionFilterInput.searchPlaceholder',
+    ],
     message: {
       'en': 'Search',
       'de': 'Suchen',
@@ -394,23 +721,6 @@ export const PASSPHRASE_INTERFACE_TEXT = {
       'zh-Hant': '您的回答尚未儲存。請輸入您的通關密語，然後再試一次。',
     },
   },
-  protectedAnswersUnavailable: {
-    ids: ['interview.runtime.protectedAnswersUnavailable'],
-    message: {
-      'en': 'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.',
-      'de': 'Durch eine Passphrase geschützte Antworten können in diesem Interview nicht angezeigt oder gespeichert werden. Bitte informieren Sie die Person, die Sie für diese Studie gewonnen hat.',
-      'es': 'Las respuestas protegidas por una frase de contraseña no se pueden mostrar ni guardar en esta entrevista. Avisa a la persona que te invitó a participar en este estudio.',
-      'fr': 'Les réponses protégées par une phrase secrète ne peuvent être ni affichées ni enregistrées dans cet entretien. Veuillez en informer la personne responsable de votre recrutement dans cette étude.',
-      'it': 'Le risposte protette da una passphrase non possono essere mostrate né salvate in questa intervista. Avvisa la persona che ti ha invitato a partecipare a questo studio.',
-      'nl': 'Antwoorden die met een wachtzin zijn beschermd, kunnen in dit interview niet worden getoond of opgeslagen. Laat het de persoon weten die je voor dit onderzoek heeft geworven.',
-      'pt-BR':
-        'Respostas protegidas por uma frase secreta não podem ser exibidas nem salvas nesta entrevista. Avise a pessoa que recrutou você para este estudo.',
-      'zh-Hans':
-        '本次访谈无法显示或保存受密码短语保护的回答。请告知招募您参与本研究的人员。',
-      'zh-Hant':
-        '本次訪談無法顯示或儲存受通關密語保護的回答。請告知邀請您參加本研究的人員。',
-    },
-  },
   answerUnavailable: {
     ids: ['interview.runtime.answerUnavailable'],
     message: {
@@ -470,6 +780,20 @@ export const PASSPHRASE_INTERFACE_TEXT = {
       'zh-Hant': '通關密語驗證成功！請點選「下一步」繼續。',
     },
   },
+  passwordPlaceholder: {
+    ids: ['frescoUi.passwordField.placeholder'],
+    message: {
+      'en': 'Enter password',
+      'de': 'Passwort eingeben',
+      'es': 'Introduce la contraseña',
+      'fr': 'Saisissez le mot de passe',
+      'it': 'Inserisci la password',
+      'nl': 'Wachtwoord invoeren',
+      'pt-BR': 'Digite a senha',
+      'zh-Hans': '输入密码',
+      'zh-Hant': '輸入密碼',
+    },
+  },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
 export const FORMS_INTERFACE_TEXT = {
@@ -503,6 +827,16 @@ export const FORMS_INTERFACE_TEXT = {
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
+/**
+ * What a message comparing an answer with an earlier one may use: whether the
+ * earlier question has a label, and that label, which the message must show
+ * when there is one.
+ */
+const COMPARED_ANSWER_ARGUMENTS = {
+  hasLabel: { kind: 'select', cases: ['true'] },
+  label: { kind: 'text', required: [{ hasLabel: 'true' }] },
+} as const satisfies MessageArguments;
+
 export const VALIDATION_INTERFACE_TEXT = {
   required: {
     ids: ['frescoUi.validation.required'],
@@ -520,7 +854,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minLength: {
     ids: ['frescoUi.validation.minLengthError'],
-    arguments: { min: { kind: 'plural' } },
+    arguments: { min: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}',
       'de': '{min, plural, one {Geben Sie mindestens # Zeichen ein.} other {Geben Sie mindestens # Zeichen ein.}}',
@@ -536,7 +870,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxLength: {
     ids: ['frescoUi.validation.maxLengthError'],
-    arguments: { max: { kind: 'plural' } },
+    arguments: { max: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}',
       'de': '{max, plural, one {Geben Sie höchstens # Zeichen ein.} other {Geben Sie höchstens # Zeichen ein.}}',
@@ -552,7 +886,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minValue: {
     ids: ['frescoUi.validation.minValueError'],
-    arguments: { min: { kind: 'text' } },
+    arguments: { min: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Enter a value greater than or equal to {min}.',
       'de': 'Geben Sie einen Wert größer oder gleich {min} ein.',
@@ -567,7 +901,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxValue: {
     ids: ['frescoUi.validation.maxValueError'],
-    arguments: { max: { kind: 'text' } },
+    arguments: { max: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Enter a value less than or equal to {max}.',
       'de': 'Geben Sie einen Wert kleiner oder gleich {max} ein.',
@@ -582,7 +916,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minDate: {
     ids: ['frescoUi.validation.minDate'],
-    arguments: { min: { kind: 'text' } },
+    arguments: { min: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Must be on or after {min}.',
       'de': 'Darf nicht früher als {min} sein.',
@@ -597,7 +931,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxDate: {
     ids: ['frescoUi.validation.maxDate'],
-    arguments: { max: { kind: 'text' } },
+    arguments: { max: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Must be on or before {max}.',
       'de': 'Darf nicht später als {max} sein.',
@@ -612,7 +946,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minSelected: {
     ids: ['frescoUi.validation.minSelectedError'],
-    arguments: { count: { kind: 'plural' } },
+    arguments: { count: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{count, plural, one {Select at least # value.} other {Select at least # values.}}',
       'de': '{count, plural, one {Wählen Sie mindestens # Wert aus.} other {Wählen Sie mindestens # Werte aus.}}',
@@ -628,7 +962,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxSelected: {
     ids: ['frescoUi.validation.maxSelectedError'],
-    arguments: { count: { kind: 'plural' } },
+    arguments: { count: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}',
       'de': '{count, plural, one {Wählen Sie höchstens # Wert aus.} other {Wählen Sie höchstens # Werte aus.}}',
@@ -658,10 +992,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   differentFrom: {
     ids: ['frescoUi.validation.differentFromError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be different from your answer to ''{label}''.} other {Your answer must be different from your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss sich von Ihrer Antwort auf „{label}“ unterscheiden.} other {Ihre Antwort muss sich von Ihrer vorherigen Antwort unterscheiden.}}',
@@ -679,10 +1010,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   sameAs: {
     ids: ['frescoUi.validation.sameAsError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss mit Ihrer Antwort auf „{label}“ übereinstimmen.} other {Ihre Antwort muss mit Ihrer vorherigen Antwort übereinstimmen.}}',
@@ -700,10 +1028,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   greaterThan: {
     ids: ['frescoUi.validation.greaterThanError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be greater than your answer to ''{label}''.} other {Your answer must be greater than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss größer sein als Ihre Antwort auf „{label}“.} other {Ihre Antwort muss größer sein als Ihre vorherige Antwort.}}',
@@ -721,10 +1046,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   lessThan: {
     ids: ['frescoUi.validation.lessThanError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be less than your answer to ''{label}''.} other {Your answer must be less than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss kleiner sein als Ihre Antwort auf „{label}“.} other {Ihre Antwort muss kleiner sein als Ihre vorherige Antwort.}}',
@@ -742,10 +1064,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   greaterThanOrEqual: {
     ids: ['frescoUi.validation.greaterThanOrEqualError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be the same as or greater than your answer to ''{label}''.} other {Your answer must be the same as or greater than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss mindestens so groß sein wie Ihre Antwort auf „{label}“.} other {Ihre Antwort muss mindestens so groß sein wie Ihre vorherige Antwort.}}',
@@ -763,10 +1082,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   lessThanOrEqual: {
     ids: ['frescoUi.validation.lessThanOrEqualError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be the same as or less than your answer to ''{label}''.} other {Your answer must be the same as or less than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort darf höchstens so groß sein wie Ihre Antwort auf „{label}“.} other {Ihre Antwort darf höchstens so groß sein wie Ihre vorherige Antwort.}}',
@@ -781,5 +1097,376 @@ export const VALIDATION_INTERFACE_TEXT = {
       'zh-Hant':
         '{hasLabel, select, true {您的答案必須等於或小於「{label}」的答案。} other {您的答案必須等於或小於先前的答案。}}',
     },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/** The family tree view controls both pedigree stages show. */
+export const FAMILY_TREE_VIEW_INTERFACE_TEXT = {
+  zoomOutDescription: {
+    ids: ['interview.familyPedigree.zoomOutDescription'],
+    message: {
+      'en': 'Make your family tree smaller, to see more of it at once.',
+      'de': 'Verkleinern Sie Ihren Stammbaum, um mehr davon auf einmal zu sehen.',
+      'es': 'Aleja la vista para ver más de tu árbol familiar a la vez.',
+      'fr': 'Réduisez l’affichage de votre arbre généalogique pour en voir davantage à la fois.',
+      'it': 'Riduci il tuo albero genealogico per vederne di più alla volta.',
+      'nl': 'Maak je stamboom kleiner om er meer tegelijk van te zien.',
+      'pt-BR':
+        'Diminua o zoom para ver mais da sua árvore genealógica de uma vez.',
+      'zh-Hans': '缩小您的家谱图，以便一次查看更多内容。',
+      'zh-Hant': '縮小您的家譜圖，以便一次檢視更多內容。',
+    },
+  },
+  zoomInDescription: {
+    ids: ['interview.familyPedigree.zoomInDescription'],
+    message: {
+      'en': 'Make your family tree bigger, to see part of it more closely.',
+      'de': 'Vergrößern Sie Ihren Stammbaum, um einen Teil davon genauer zu sehen.',
+      'es': 'Acerca la vista para ver una parte de tu árbol familiar con más detalle.',
+      'fr': 'Agrandissez l’affichage de votre arbre généalogique pour en voir une partie de plus près.',
+      'it': 'Ingrandisci il tuo albero genealogico per vederne una parte più da vicino.',
+      'nl': 'Maak je stamboom groter om een deel ervan van dichterbij te bekijken.',
+      'pt-BR':
+        'Aumente o zoom para ver uma parte da sua árvore genealógica mais de perto.',
+      'zh-Hans': '放大您的家谱图，以便更仔细地查看其中一部分。',
+      'zh-Hant': '放大您的家譜圖，以便更仔細地檢視其中一部分。',
+    },
+  },
+  showWholeFamily: {
+    ids: ['interview.familyPedigree.showWholeFamily'],
+    message: {
+      'en': 'Show the whole family',
+      'de': 'Ganze Familie anzeigen',
+      'es': 'Mostrar toda la familia',
+      'fr': 'Afficher toute la famille',
+      'it': 'Mostra tutta la famiglia',
+      'nl': 'Hele familie tonen',
+      'pt-BR': 'Mostrar a família inteira',
+      'zh-Hans': '显示整个家庭',
+      'zh-Hant': '顯示整個家庭',
+    },
+  },
+  showWholeFamilyDescription: {
+    ids: ['interview.familyPedigree.showWholeFamilyDescription'],
+    message: {
+      'en': 'Fit your whole family tree on the screen.',
+      'de': 'Stellen Sie die Ansicht so ein, dass Ihr ganzer Stammbaum auf den Bildschirm passt.',
+      'es': 'Ajusta la vista para que todo tu árbol familiar quepa en la pantalla.',
+      'fr': 'Ajustez l’affichage pour que tout votre arbre généalogique tienne à l’écran.',
+      'it': 'Adatta la vista per far stare tutto il tuo albero genealogico sullo schermo.',
+      'nl': 'Pas de weergave aan zodat je hele stamboom op het scherm past.',
+      'pt-BR':
+        'Ajuste a visualização para que toda a sua árvore genealógica caiba na tela.',
+      'zh-Hans': '调整视图，使您的整个家谱图显示在屏幕上。',
+      'zh-Hant': '調整檢視，使您的整個家譜圖顯示在螢幕上。',
+    },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/**
+ * Every Family Pedigree stage's own controls. The framing question and its
+ * control are shown only by a stage whose participants choose the words
+ * (see `INTERFACE_TEXT_GROUPS`).
+ */
+export const FAMILY_PEDIGREE_INTERFACE_TEXT = {
+  pointerTool: {
+    ids: ['interview.familyPedigree.pointerTool'],
+    message: POINTER_TOOL,
+  },
+  pointerToolDescription: {
+    ids: ['interview.familyPedigree.pointerToolDescription'],
+    message: {
+      'en': 'Select a family member to edit their details or add their relatives.',
+      'de': 'Wählen Sie ein Familienmitglied aus, um Angaben zu dieser Person zu bearbeiten oder ihre Verwandten hinzuzufügen.',
+      'es': 'Selecciona a un familiar para editar sus datos o añadirle familiares.',
+      'fr': 'Sélectionnez un membre de votre famille pour modifier ses informations ou lui ajouter des proches.',
+      'it': 'Seleziona un familiare per modificarne i dettagli o aggiungere i suoi familiari.',
+      'nl': 'Selecteer een familielid om de gegevens van die persoon te bewerken of familieleden toe te voegen.',
+      'pt-BR':
+        'Selecione um familiar para editar as informações dessa pessoa ou adicionar familiares a ela.',
+      'zh-Hans': '选择一位家庭成员，以编辑其信息或添加其亲属。',
+      'zh-Hant': '選擇一位家庭成員，以編輯其資料或新增其親屬。',
+    },
+  },
+  connectTool: {
+    ids: ['interview.familyPedigree.connectTool'],
+    message: CONNECT_TOOL,
+  },
+  connectToolDescription: {
+    ids: ['interview.familyPedigree.connectToolDescription'],
+    message: {
+      'en': 'Select two family members to connect them and say how they are related.',
+      'de': 'Wählen Sie zwei Familienmitglieder aus, um sie zu verbinden und anzugeben, in welcher Beziehung sie zueinander stehen.',
+      'es': 'Selecciona a dos familiares para conectarlos e indicar qué relación hay entre ellos.',
+      'fr': 'Sélectionnez deux membres de votre famille pour les relier et choisir leur lien de parenté.',
+      'it': 'Seleziona due familiari per collegarli e indicare come sono imparentati.',
+      'nl': 'Selecteer twee familieleden om ze te verbinden en aan te geven wat hun relatie is.',
+      'pt-BR':
+        'Selecione dois familiares para conectá-los e indicar qual é o parentesco entre eles.',
+      'zh-Hans': '选择两位家庭成员，将他们连接起来，并选择他们的亲属关系。',
+      'zh-Hant': '選擇兩位家庭成員，將他們連結起來，並選擇他們的親屬關係。',
+    },
+  },
+  connectHint: {
+    ids: ['interview.familyPedigree.connectHint'],
+    message: CONNECT_HINT,
+  },
+  disconnectTool: {
+    ids: ['interview.familyPedigree.disconnectTool'],
+    message: DISCONNECT_TOOL,
+  },
+  disconnectToolDescription: {
+    ids: ['interview.familyPedigree.disconnectToolDescription'],
+    message: {
+      'en': 'Select two connected family members to remove the connection between them.',
+      'de': 'Wählen Sie zwei verbundene Familienmitglieder aus, um die Verbindung zwischen ihnen zu entfernen.',
+      'es': 'Selecciona a dos familiares conectados para eliminar la conexión entre ellos.',
+      'fr': 'Sélectionnez deux membres de votre famille reliés entre eux pour supprimer le lien qui les unit.',
+      'it': 'Seleziona due familiari collegati per rimuovere il collegamento tra loro.',
+      'nl': 'Selecteer twee verbonden familieleden om de verbinding tussen hen te verwijderen.',
+      'pt-BR':
+        'Selecione dois familiares conectados para remover a conexão entre eles.',
+      'zh-Hans': '选择两位已连接的家庭成员，以移除他们之间的连接。',
+      'zh-Hant': '選擇兩位已連結的家庭成員，以解除他們之間的連結。',
+    },
+  },
+  disconnectHint: {
+    ids: ['interview.familyPedigree.disconnectHint'],
+    message: DISCONNECT_HINT,
+  },
+  framingControlLabel: {
+    ids: ['interview.familyPedigree.framingControlLabel'],
+    message: FRAMING_CONTROL_LABEL,
+  },
+  framingControlDescription: {
+    ids: ['interview.familyPedigree.framingControlDescription'],
+    message: {
+      'en': 'Choose the relationship words your family tree uses for your relatives.',
+      'de': 'Wählen Sie, welche Bezeichnungen für Verwandte Ihr Stammbaum verwendet.',
+      'es': 'Elige qué términos de parentesco usa tu árbol familiar para nombrar a tus familiares.',
+      'fr': 'Choisissez les termes de parenté utilisés dans votre arbre généalogique pour désigner vos proches.',
+      'it': 'Scegli i termini di parentela usati nel tuo albero genealogico per indicare i tuoi familiari.',
+      'nl': 'Kies welke benamingen voor familieleden je stamboom gebruikt.',
+      'pt-BR':
+        'Escolha os termos de parentesco que sua árvore genealógica usa para seus familiares.',
+      'zh-Hans': '选择您的家谱图使用哪一套亲属称谓。',
+      'zh-Hant': '選擇您的家譜圖使用哪一套親屬稱謂。',
+    },
+  },
+  framingChoiceTitle: {
+    ids: ['interview.familyPedigree.framingChoiceTitle'],
+    message: FRAMING_CHOICE_TITLE,
+  },
+  framingChoiceDescription: {
+    ids: ['interview.familyPedigree.framingChoiceDescription'],
+    message: FRAMING_CHOICE_DESCRIPTION,
+  },
+  undoDescription: {
+    ids: ['interview.familyPedigree.undoDescription'],
+    message: {
+      'en': 'Undo your last change to your family tree.',
+      'de': 'Machen Sie Ihre letzte Änderung an Ihrem Stammbaum rückgängig.',
+      'es': 'Deshaz el último cambio que hiciste en tu árbol familiar.',
+      'fr': 'Annulez la dernière modification apportée à votre arbre généalogique.',
+      'it': 'Annulla l’ultima modifica al tuo albero genealogico.',
+      'nl': 'Maak je laatste wijziging aan je stamboom ongedaan.',
+      'pt-BR': 'Desfaça a última alteração feita na sua árvore genealógica.',
+      'zh-Hans': '撤销您对家谱图所做的最近一次更改。',
+      'zh-Hant': '復原您對家譜圖所做的最近一次變更。',
+    },
+  },
+  redoDescription: {
+    ids: ['interview.familyPedigree.redoDescription'],
+    message: {
+      'en': 'Bring back the change you undid.',
+      'de': 'Stellen Sie die Änderung wieder her, die Sie rückgängig gemacht haben.',
+      'es': 'Vuelve a hacer el cambio que deshiciste.',
+      'fr': 'Rétablissez la modification que vous avez annulée.',
+      'it': 'Ripristina la modifica che hai annullato.',
+      'nl': 'Voer de wijziging die je ongedaan hebt gemaakt opnieuw uit.',
+      'pt-BR': 'Traga de volta a alteração que você desfez.',
+      'zh-Hans': '恢复您最近一次撤销的更改。',
+      'zh-Hant': '重新套用您最近一次復原的變更。',
+    },
+  },
+  trackerAllDetails: {
+    ids: ['interview.familyPedigree.trackerAllDetails'],
+    message: {
+      'en': 'Add required details for all family members',
+      'de': 'Fügen Sie die erforderlichen Angaben für alle Familienmitglieder hinzu',
+      'es': 'Añade los datos obligatorios de todos los miembros de la familia',
+      'fr': 'Ajoutez les informations requises pour tous les membres de la famille',
+      'it': 'Aggiungi le informazioni obbligatorie per tutti i familiari',
+      'nl': 'Voeg de vereiste gegevens over alle familieleden toe',
+      'pt-BR': 'Adicione as informações obrigatórias de todos os familiares',
+      'zh-Hans': '补全所有家庭成员的必要信息',
+      'zh-Hant': '填寫所有家庭成員的必要資訊',
+    },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/**
+ * The button an opened bin shows on a Categorical Bin that places nodes by
+ * tapping, which places the node being placed in that bin.
+ */
+export const CATEGORICAL_BIN_INTERFACE_TEXT = {
+  placeHere: {
+    ids: ['interview.interfaces.binSelectPlaceHere'],
+    message: {
+      'en': 'Place here',
+      'de': 'Hier platzieren',
+      'es': 'Colocar aquí',
+      'fr': 'Placer ici',
+      'it': 'Posiziona qui',
+      'nl': 'Hier plaatsen',
+      'pt-BR': 'Posicionar aqui',
+      'zh-Hans': '放在这里',
+      'zh-Hant': '放在這裡',
+    },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/** Every quick-add Name Generator stage's own words. */
+export const QUICK_ADD_INTERFACE_TEXT = {
+  quickAddHint: {
+    ids: ['interview.interfaces.quickAddHint'],
+    message: QUICK_ADD_HINT,
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/**
+ * Every Network Composer stage's own words. The Groups tool's name and the
+ * edge tool's tooltip are shown only by a stage with groups and edge types,
+ * the notice about an overtaken edit only by one whose inspector has a form,
+ * and the name of a connection of another type only while the codebook has an
+ * edge type the stage does not draw (see `INTERFACE_TEXT_GROUPS`).
+ */
+export const NETWORK_COMPOSER_INTERFACE_TEXT = {
+  addNamePlaceholder: {
+    ids: ['interview.interfaces.addNamePlaceholder'],
+    message: ADD_NAME_PLACEHOLDER,
+  },
+  overtakenEditNotice: {
+    ids: ['interview.interfaces.overtakenEditNotice'],
+    message: OVERTAKEN_EDIT_NOTICE,
+  },
+  groupsHeading: {
+    ids: ['interview.interfaces.composerGroups'],
+    message: GROUPS_HEADING,
+  },
+  addNodeTooltip: {
+    ids: ['interview.interfaces.composerAddNode'],
+    message: ADD_NODE_TOOLTIP,
+  },
+  automaticLayoutTooltip: {
+    ids: ['interview.interfaces.composerAutomaticLayout'],
+    message: AUTOMATIC_LAYOUT_TOOLTIP,
+  },
+  drawEdgeTooltip: {
+    ids: ['interview.interfaces.composerDrawEdge'],
+    message: DRAW_EDGE_TOOLTIP,
+  },
+  connection: {
+    ids: ['interview.runtime.connection'],
+    message: {
+      'en': 'Connection',
+      'de': 'Verbindung',
+      'es': 'Conexión',
+      'fr': 'Lien',
+      'it': 'Collegamento',
+      'nl': 'Verbinding',
+      'pt-BR': 'Conexão',
+      'zh-Hans': '连接',
+      'zh-Hant': '連結',
+    },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/** Every Narrative stage's drawing tools, shown while its drawing is on. */
+export const NARRATIVE_INTERFACE_TEXT = {
+  toggleDrawing: {
+    ids: ['interview.interfaces.toggleDrawing'],
+    message: TOGGLE_DRAWING_TOOLTIP,
+  },
+  toggleFreezing: {
+    ids: ['interview.interfaces.toggleFreezing'],
+    message: TOGGLE_FREEZING_TOOLTIP,
+  },
+  resetAnnotations: {
+    ids: ['interview.interfaces.resetAnnotations'],
+    message: RESET_ANNOTATIONS_TOOLTIP,
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/**
+ * What a condition's name may be called in the rows of a Narrative
+ * Pedigree's key: the condition the key is showing.
+ */
+const CONDITION_ARGUMENTS = {
+  condition: { kind: 'text' },
+} as const satisfies MessageArguments;
+
+/**
+ * Every Narrative Pedigree stage's key, and the button that clears its focus.
+ * The at-risk rows are shown only by a stage that shows at-risk statuses (see
+ * `INTERFACE_TEXT_GROUPS`).
+ */
+export const NARRATIVE_PEDIGREE_INTERFACE_TEXT = {
+  keyHeading: {
+    ids: ['interview.narrativePedigree.keyHeading'],
+    message: KEY_HEADING,
+  },
+  hasCondition: {
+    ids: ['interview.narrativePedigree.keyHasCondition'],
+    arguments: CONDITION_ARGUMENTS,
+    message: HAS_CONDITION,
+  },
+  willDevelop: {
+    ids: ['interview.narrativePedigree.keyWillDevelop'],
+    arguments: CONDITION_ARGUMENTS,
+    message: WILL_DEVELOP,
+  },
+  carries: {
+    ids: ['interview.narrativePedigree.keyCarries'],
+    arguments: CONDITION_ARGUMENTS,
+    message: CARRIES,
+  },
+  mayDevelop: {
+    ids: ['interview.narrativePedigree.keyMayDevelop'],
+    arguments: CONDITION_ARGUMENTS,
+    message: MAY_DEVELOP,
+  },
+  mayCarry: {
+    ids: ['interview.narrativePedigree.keyMayCarry'],
+    arguments: CONDITION_ARGUMENTS,
+    message: MAY_CARRY,
+  },
+  notKnown: {
+    ids: ['interview.narrativePedigree.keyNotKnown'],
+    arguments: CONDITION_ARGUMENTS,
+    message: NOT_KNOWN,
+  },
+  clearFocus: {
+    ids: ['interview.narrativePedigree.clearFocus'],
+    message: CLEAR_FOCUS_TOOLTIP,
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+/**
+ * Every Geospatial stage's notices about its map. The search's notice is
+ * shown only by a map with a search (see `INTERFACE_TEXT_GROUPS`).
+ */
+export const GEOSPATIAL_INTERFACE_TEXT = {
+  offlineNotice: {
+    ids: ['interview.interfaces.mapOffline'],
+    message: OFFLINE_NOTICE,
+  },
+  mapUnavailable: {
+    ids: ['interview.interfaces.mapUnavailable'],
+    message: MAP_UNAVAILABLE,
+  },
+  searchFailed: {
+    ids: ['interview.interfaces.searchFailed'],
+    message: SEARCH_FAILED,
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;

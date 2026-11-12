@@ -14,6 +14,7 @@ import {
 import type { CatalogMessages } from '@codaco/app-i18n/locales';
 import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
+import { serializeLocalePreferenceCookies } from '@codaco/shared-consts';
 import { updateLocale } from '~/actions/locale';
 import {
   frescoLocales,
@@ -130,7 +131,11 @@ function LocaleSession({
     // A request's account is authoritative, including Automatic. Keep the
     // mirror agreeing after sign-in without a client-side renegotiation flash.
     try {
-      document.cookie = `${localeMirrorCookie}=${initial.preference ?? ''}; Path=/; SameSite=Lax; Max-Age=${initial.preference === null ? 0 : 31536000}`;
+      for (const cookie of serializeLocalePreferenceCookies(
+        localeMirrorCookie,
+        initial.preference,
+      ))
+        document.cookie = cookie;
     } catch {
       /* Cookie policy can disable the convenience mirror. */
     }
@@ -147,26 +152,25 @@ function LocaleSession({
       setSaveState('saving');
       pending.current = true;
       const generation = ++sequence.current;
-      queue.current = queue.current
-        .catch(() => undefined)
-        .then(async () => {
+      const save = async () => {
+        if (!mounted.current || generation !== sequence.current) return;
+        try {
+          const result = await updateLocale(preference, initial.userId);
           if (!mounted.current || generation !== sequence.current) return;
-          try {
-            const result = await updateLocale(preference, initial.userId);
-            if (!mounted.current || generation !== sequence.current) return;
-            if (!result.success)
-              throw new Error('Locale preference was not saved');
-            pending.current = false;
-            setSaveState('saved');
-            router.refresh();
-          } catch {
-            if (!mounted.current || generation !== sequence.current) return;
-            // The choice stays applied for this visit; the switcher offers a
-            // retry that sends it again.
-            pending.current = false;
-            setSaveState('failed');
-          }
-        });
+          if (!result.success)
+            throw new Error('Locale preference was not saved');
+          pending.current = false;
+          setSaveState('saved');
+          router.refresh();
+        } catch {
+          if (!mounted.current || generation !== sequence.current) return;
+          // The choice stays applied for this visit; the switcher offers a
+          // retry that sends it again.
+          pending.current = false;
+          setSaveState('failed');
+        }
+      };
+      queue.current = queue.current.catch(() => undefined).then(save);
     },
     [initial.userId, router],
   );

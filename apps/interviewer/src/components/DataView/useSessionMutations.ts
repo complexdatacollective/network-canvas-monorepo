@@ -5,6 +5,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
+import { saveBlob } from '@codaco/fresco-ui/utils/saveBlob';
 import type { ExportEvent } from '@codaco/network-exporters/events';
 import type { ExportWarning } from '@codaco/network-exporters/output';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -18,7 +19,6 @@ import {
 } from '~/lib/db/api';
 import type { StoredSessionLite } from '~/lib/db/types';
 import { buildExportOptions, runExport } from '~/lib/export/exportSessions';
-import { saveBlob } from '~/lib/files/download';
 
 import { useShowExportWarnings } from './useShowExportWarnings';
 
@@ -32,72 +32,85 @@ const messages = defineMessages({
   exportComplete: {
     id: 'interviewer.sessionMutations.exportComplete',
     defaultMessage: 'Export complete',
-    description: 'User-facing message in Interviewer Session Mutations.',
+    description:
+      'Title of the success toast shown after the exported interview archive has been saved.',
   },
   exportFailed: {
     id: 'interviewer.sessionMutations.exportFailed',
     defaultMessage: 'Export failed',
-    description: 'User-facing message in Interviewer Session Mutations.',
+    description:
+      'Title of the error toast shown when saving the exported interview archive fails.',
   },
   deleteFailed: {
     id: 'interviewer.sessionMutations.deleteFailed',
     defaultMessage: 'Delete failed',
-    description: 'User-facing message in Interviewer Session Mutations.',
+    description:
+      'Title of the error toast shown when deleting the selected interviews fails.',
   },
   markUnfinished: {
     id: 'interviewer.sessionMutations.markUnfinished',
     defaultMessage: 'Mark unfinished?',
-    description: 'User-facing message in Interviewer Session Mutations.',
+    description:
+      'Title of the confirmation dialog asked before reopening a finished interview. Unfinished is a state.',
   },
   thisInterviewWillBecomeEditableAndCan: {
     id: 'interviewer.sessionMutations.thisInterviewWillBecomeEditableAndCan',
     defaultMessage:
       'This interview will become editable and can be resumed. Its existing responses and export history will be kept.',
-    description: 'User-facing message in Interviewer Session Mutations.',
+    description:
+      'Explanation in the confirmation dialog for reopening a finished interview: it can be edited and resumed, and keeps its responses and export history.',
   },
   markUnfinished2: {
     id: 'interviewer.sessionMutations.markUnfinished2',
     defaultMessage: 'Mark unfinished',
-    description: 'User-facing message in Interviewer Session Mutations.',
+    description:
+      'Confirm button in the dialog for reopening a finished interview; it marks that interview as unfinished. Verb phrase.',
   },
   interviewMarkedUnfinished: {
     id: 'interviewer.sessionMutations.interviewMarkedUnfinished',
     defaultMessage: 'Interview marked unfinished',
-    description: 'User-facing message in Interviewer Session Mutations.',
+    description:
+      'Title of the success toast shown after a finished interview was reopened (marked unfinished).',
   },
   couldNotMarkInterviewUnfinished: {
     id: 'interviewer.sessionMutations.couldNotMarkInterviewUnfinished',
     defaultMessage: 'Could not mark interview unfinished',
-    description: 'User-facing message in Interviewer Session Mutations.',
+    description:
+      'Title of the error toast shown when reopening a finished interview (marking it unfinished) fails.',
   },
   deleteSelected: {
     id: 'interviewer.sessionMutations.deleteSelected',
     defaultMessage:
       '{count, plural, one {Delete # interview?} other {Delete # interviews?}}',
-    description: 'Administration text in Interviewer useSessionMutations.',
+    description:
+      'Title of the confirmation dialog asked before deleting interviews from the table. count is the number of selected interviews.',
   },
   deleteDescription: {
     id: 'interviewer.sessionMutations.deleteDescription',
     defaultMessage:
       '{count, plural, one {This record will be permanently removed from this device. This cannot be undone.} other {These records will be permanently removed from this device. This cannot be undone.}}',
-    description: 'Administration text in Interviewer useSessionMutations.',
+    description:
+      'Warning in the delete confirmation dialog: the selected interviews are removed from this device for good. count is the number of selected interviews.',
   },
   deleted: {
     id: 'interviewer.sessionMutations.deleted',
     defaultMessage:
       '{count, plural, one {Deleted # interview} other {Deleted # interviews}}',
-    description: 'Administration text in Interviewer useSessionMutations.',
+    description:
+      'Title of the success toast shown after interviews were deleted. count is the number of interviews deleted.',
   },
   resumable: {
     id: 'interviewer.sessionMutations.resumable',
     defaultMessage: '{caseId} can now be resumed.',
-    description: 'Administration text in Interviewer useSessionMutations.',
+    description:
+      'Body of the toast shown after an interview was reopened. caseId is the case ID of that interview; it can be resumed now.',
   },
   operationFailed: {
     id: 'interviewer.sessionMutations.operationFailed',
     defaultMessage:
       'The operation could not be completed. Your interview data remains on this device. Please try again.',
-    description: 'Administration text in Interviewer useSessionMutations.',
+    description:
+      'Body of an error toast under a failed export, delete or reopen action, reassuring the researcher that no interview data was lost and they can retry.',
   },
 });
 
@@ -347,11 +360,11 @@ export function useSessionMutations({
     } = exportFlow;
     setExportFlow({ ...exportFlow, phase: 'saving' });
     try {
-      const outcome = await saveBlob(
-        blob,
-        fileName,
-        intl.formatMessage(messages.zipArchive),
-      );
+      const outcome = await saveBlob(blob, fileName, {
+        description: intl.formatMessage(messages.zipArchive),
+        mimeType: 'application/zip',
+        extension: '.zip',
+      });
       if (!outcome.saved) {
         // The archive is retained and the dialog stays open in the ready
         // state — that is the retry affordance; sessions are NOT marked

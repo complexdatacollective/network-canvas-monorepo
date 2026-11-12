@@ -109,7 +109,7 @@ function SimpleInlineItem({
         />
       )}
       <div className="flex-1">{item.label}</div>
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ms-auto flex items-center gap-1">
         <IconButton
           size="sm"
           variant="text"
@@ -469,7 +469,7 @@ function TagInlineItem({
       <motion.div layout className="flex-1">
         {item.label}
       </motion.div>
-      <motion.div layout className="ml-auto flex items-center gap-1">
+      <motion.div layout className="ms-auto flex items-center gap-1">
         <IconButton
           size="sm"
           variant="text"
@@ -619,7 +619,7 @@ function ContactDisplayItem({
           <span className="text-sm text-current/50">{item.phone}</span>
         )}
       </div>
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ms-auto flex items-center gap-1">
         <IconButton
           size="sm"
           variant="text"

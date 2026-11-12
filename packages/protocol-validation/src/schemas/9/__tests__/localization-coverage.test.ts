@@ -10,18 +10,26 @@ import {
   collectLocalizedStringsFromSchema,
 } from '../../../utils/collectLocalizedStrings.ts';
 import { localized } from '../../../utils/test-utils.ts';
+import { builtInWordingPaths } from '../built-in-wording.ts';
 import { PEDIGREE_RELATIONSHIP_KINDS } from '../family-pedigree-values.ts';
 import {
   type LocalizedStringFormat,
+  type LocalizedTextLines,
+  type LocalizedTextShape,
   localizedString,
 } from '../localized-string.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
+import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
 import {
   PEDIGREE_PERSON_ARGUMENTS,
   PEDIGREE_WORDING_ARGUMENTS,
 } from '../stages/family-pedigree.ts';
-import { NODE_COUNT_ARGUMENTS } from '../stages/name-generator.ts';
+import { UNNAMED_LABEL_ARGUMENTS } from '../stages/name-generator-roster.ts';
+import {
+  MAX_NODES_ARGUMENTS,
+  MIN_NODES_ARGUMENTS,
+} from '../stages/name-generator.ts';
 import {
   SNAPSHOT_CONDITION_ARGUMENTS,
   SNAPSHOT_INHERITANCE_ARGUMENTS,
@@ -30,9 +38,20 @@ import { completeProtocol } from './complete-localized-protocol.ts';
 
 type Path = readonly (string | number)[];
 
+const PLAIN_LINE: LocalizedTextShape = { format: 'plain', lines: 'single' };
+const MARKDOWN_LINE: LocalizedTextShape = {
+  format: 'markdown',
+  lines: 'single',
+};
+const MARKDOWN_BLOCKS: LocalizedTextShape = {
+  format: 'markdown',
+  lines: 'multiple',
+};
+
 type ExpectedSite = Readonly<{
   path: Path;
   format: LocalizedStringFormat;
+  lines: LocalizedTextLines;
   // Whether the field's own rule allows an empty translation.
   allowsEmpty: boolean;
   // Whether the field may have no translation at all: only the finish
@@ -45,16 +64,16 @@ type ExpectedSite = Readonly<{
 
 const site = (
   path: Path,
-  format: LocalizedStringFormat,
+  { format, lines }: LocalizedTextShape,
   allowsEmpty = false,
   allowsNoTranslation = false,
-): ExpectedSite => ({ path, format, allowsEmpty, allowsNoTranslation });
+): ExpectedSite => ({ path, format, lines, allowsEmpty, allowsNoTranslation });
 
 const messageSite = (
   path: Path,
   declaration: MessageArguments,
 ): ExpectedSite => ({
-  ...site(path, 'plain'),
+  ...site(path, PLAIN_LINE),
   arguments: declaration,
 });
 
@@ -88,14 +107,20 @@ const stage = (index: number, ...rest: (string | number)[]) => [
 
 const EXPECTED_SITES: readonly ExpectedSite[] = [
   // Codebook variable option copy.
-  site([...personVariable('category'), 'options', 0, 'label'], 'markdown'),
-  site([...personVariable('category'), 'options', 1, 'label'], 'markdown'),
-  site([...personVariable('strength'), 'options', 0, 'label'], 'markdown'),
-  site([...personVariable('strength'), 'options', 1, 'label'], 'markdown'),
-  site([...personVariable('closeness'), 'parameters', 'minLabel'], 'markdown'),
-  site([...personVariable('closeness'), 'parameters', 'maxLabel'], 'markdown'),
-  site([...personVariable('flag'), 'options', 0, 'label'], 'markdown'),
-  site([...personVariable('flag'), 'options', 1, 'label'], 'markdown'),
+  site([...personVariable('category'), 'options', 0, 'label'], MARKDOWN_LINE),
+  site([...personVariable('category'), 'options', 1, 'label'], MARKDOWN_LINE),
+  site([...personVariable('strength'), 'options', 0, 'label'], MARKDOWN_LINE),
+  site([...personVariable('strength'), 'options', 1, 'label'], MARKDOWN_LINE),
+  site(
+    [...personVariable('closeness'), 'parameters', 'minLabel'],
+    MARKDOWN_LINE,
+  ),
+  site(
+    [...personVariable('closeness'), 'parameters', 'maxLabel'],
+    MARKDOWN_LINE,
+  ),
+  site([...personVariable('flag'), 'options', 0, 'label'], MARKDOWN_LINE),
+  site([...personVariable('flag'), 'options', 1, 'label'], MARKDOWN_LINE),
   // The answers a Family Pedigree asks for, which participants choose from,
   // so none may be blank.
   ...Array.from({ length: 5 }, (_, index) =>
@@ -110,7 +135,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
         index,
         'label',
       ],
-      'markdown',
+      MARKDOWN_LINE,
     ),
   ),
   ...Array.from({ length: 4 }, (_, index) =>
@@ -125,11 +150,11 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
         index,
         'label',
       ],
-      'markdown',
+      MARKDOWN_LINE,
     ),
   ),
-  site([...knowsVariable('tieStrength'), 'options', 0, 'label'], 'markdown'),
-  site([...knowsVariable('tieStrength'), 'options', 1, 'label'], 'markdown'),
+  site([...knowsVariable('tieStrength'), 'options', 0, 'label'], MARKDOWN_LINE),
+  site([...knowsVariable('tieStrength'), 'options', 1, 'label'], MARKDOWN_LINE),
   ...Array.from({ length: PEDIGREE_RELATIONSHIP_KINDS.length }, (_, index) =>
     site(
       [
@@ -142,107 +167,104 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
         index,
         'label',
       ],
-      'markdown',
+      MARKDOWN_LINE,
     ),
   ),
 
   // Every stage's label.
   ...Array.from({ length: 21 }, (_, index) =>
-    site(stage(index, 'label'), 'plain', false, index === FINISH_STAGE_INDEX),
+    site(
+      stage(index, 'label'),
+      PLAIN_LINE,
+      false,
+      index === FINISH_STAGE_INDEX,
+    ),
   ),
 
   // The Language Chooser's heading, which Network Canvas supplies.
-  site(stage(0, 'title'), 'plain'),
+  site(stage(0, 'title'), PLAIN_LINE),
 
-  site(stage(1, 'title'), 'plain'),
-  site(stage(1, 'items', 0, 'content'), 'markdown'),
-  site(stage(1, 'items', 1, 'description'), 'plain'),
+  site(stage(1, 'title'), PLAIN_LINE),
+  site(stage(1, 'items', 0, 'content'), MARKDOWN_BLOCKS),
+  site(stage(1, 'items', 1, 'description'), PLAIN_LINE),
 
-  site(stage(2, 'introductionPanel', 'title'), 'plain'),
-  site(stage(2, 'introductionPanel', 'text'), 'markdown'),
-  site(stage(2, 'form', 'fields', 0, 'prompt'), 'markdown'),
-  site(stage(2, 'form', 'fields', 0, 'hint'), 'markdown'),
+  site(stage(2, 'introductionPanel', 'title'), PLAIN_LINE),
+  site(stage(2, 'introductionPanel', 'text'), MARKDOWN_BLOCKS),
+  site(stage(2, 'form', 'fields', 0, 'prompt'), MARKDOWN_LINE),
+  site(stage(2, 'form', 'fields', 0, 'hint'), MARKDOWN_LINE),
 
-  site(stage(3, 'form', 'title'), 'plain'),
-  site(stage(3, 'form', 'fields', 0, 'prompt'), 'markdown'),
-  messageSite(stage(3, 'minNodesNotice'), NODE_COUNT_ARGUMENTS),
-  site(stage(3, 'maxNodesNotice'), 'plain'),
-  site(stage(3, 'panels', 0, 'title'), 'plain'),
-  site(stage(3, 'panels', 1, 'title'), 'plain'),
-  site(stage(3, 'prompts', 0, 'text'), 'markdown'),
+  site(stage(3, 'form', 'title'), PLAIN_LINE),
+  site(stage(3, 'form', 'fields', 0, 'prompt'), MARKDOWN_LINE),
+  messageSite(stage(3, 'minNodesNotice'), MIN_NODES_ARGUMENTS),
+  messageSite(stage(3, 'maxNodesNotice'), MAX_NODES_ARGUMENTS),
+  site(stage(3, 'panels', 0, 'title'), PLAIN_LINE),
+  site(stage(3, 'panels', 1, 'title'), PLAIN_LINE),
+  site(stage(3, 'prompts', 0, 'text'), MARKDOWN_LINE),
 
-  site(stage(4, 'quickAddHint'), 'plain'),
-  site(stage(4, 'prompts', 0, 'text'), 'markdown'),
+  messageSite(stage(4, 'addNamePlaceholder'), SUBJECT_ARGUMENTS),
+  site(stage(4, 'prompts', 0, 'text'), MARKDOWN_LINE),
 
-  site(stage(5, 'panelTitle'), 'plain'),
-  messageSite(stage(5, 'minNodesNotice'), NODE_COUNT_ARGUMENTS),
-  site(stage(5, 'maxNodesNotice'), 'plain'),
-  site(stage(5, 'allAddedNotice'), 'plain'),
-  site(stage(5, 'cardOptions', 'additionalProperties', 0, 'label'), 'plain'),
-  site(stage(5, 'sortOptions', 'sortableProperties', 0, 'label'), 'plain'),
-  site(stage(5, 'prompts', 0, 'text'), 'markdown'),
+  site(stage(5, 'panelTitle'), PLAIN_LINE),
+  messageSite(stage(5, 'minNodesNotice'), MIN_NODES_ARGUMENTS),
+  messageSite(stage(5, 'maxNodesNotice'), MAX_NODES_ARGUMENTS),
+  messageSite(stage(5, 'allAddedNotice'), SUBJECT_ARGUMENTS),
+  site(stage(5, 'cardOptions', 'additionalProperties', 0, 'label'), PLAIN_LINE),
+  site(stage(5, 'sortOptions', 'sortableProperties', 0, 'label'), PLAIN_LINE),
+  messageSite(stage(5, 'unnamedLabel'), UNNAMED_LABEL_ARGUMENTS),
+  site(stage(5, 'prompts', 0, 'text'), MARKDOWN_LINE),
 
-  site(stage(6, 'prompts', 0, 'text'), 'markdown'),
+  site(stage(6, 'prompts', 0, 'text'), MARKDOWN_LINE),
 
   // The composer's own scale end labels are separate sites from the codebook
   // scalar's, and override them.
-  site(stage(7, 'nodeForm', 'fields', 0, 'label'), 'markdown'),
-  site(stage(7, 'nodeForm', 'fields', 0, 'hint'), 'markdown'),
-  site(stage(7, 'nodeForm', 'fields', 0, 'parameters', 'minLabel'), 'markdown'),
-  site(stage(7, 'nodeForm', 'fields', 0, 'parameters', 'maxLabel'), 'markdown'),
-  site(stage(7, 'nodeForm', 'fields', 1, 'label'), 'markdown'),
-  site(stage(7, 'edges', 0, 'label'), 'plain'),
-  site(stage(7, 'edges', 0, 'form', 'fields', 0, 'label'), 'markdown'),
-  // The Network Composer's own words, which Network Canvas supplies.
-  site(stage(7, 'addNamePlaceholder'), 'plain'),
-  site(stage(7, 'overtakenEditNotice'), 'plain'),
-  site(stage(7, 'tooltips', 'addPerson'), 'plain'),
-  site(stage(7, 'tooltips', 'automaticLayout'), 'plain'),
-  site(stage(7, 'tooltips', 'drawConnection'), 'plain'),
-  site(stage(7, 'groupsHeading'), 'plain'),
+  site(stage(7, 'nodeForm', 'fields', 0, 'label'), MARKDOWN_LINE),
+  site(stage(7, 'nodeForm', 'fields', 0, 'hint'), MARKDOWN_LINE),
+  site(
+    stage(7, 'nodeForm', 'fields', 0, 'parameters', 'minLabel'),
+    MARKDOWN_LINE,
+  ),
+  site(
+    stage(7, 'nodeForm', 'fields', 0, 'parameters', 'maxLabel'),
+    MARKDOWN_LINE,
+  ),
+  site(stage(7, 'nodeForm', 'fields', 1, 'label'), MARKDOWN_LINE),
+  site(stage(7, 'edges', 0, 'label'), PLAIN_LINE),
+  site(stage(7, 'edges', 0, 'form', 'fields', 0, 'label'), MARKDOWN_LINE),
 
-  site(stage(8, 'form', 'fields', 0, 'prompt'), 'markdown'),
+  site(stage(8, 'form', 'fields', 0, 'prompt'), MARKDOWN_LINE),
 
-  site(stage(9, 'form', 'fields', 0, 'prompt'), 'markdown'),
+  site(stage(9, 'form', 'fields', 0, 'prompt'), MARKDOWN_LINE),
 
-  site(stage(10, 'prompts', 0, 'text'), 'markdown'),
+  site(stage(10, 'prompts', 0, 'text'), MARKDOWN_LINE),
 
-  site(stage(11, 'prompts', 0, 'text'), 'markdown'),
-  site(stage(11, 'prompts', 0, 'negativeLabel'), 'markdown'),
+  site(stage(11, 'prompts', 0, 'text'), MARKDOWN_LINE),
+  site(stage(11, 'prompts', 0, 'negativeLabel'), MARKDOWN_LINE),
 
-  site(stage(12, 'prompts', 0, 'text'), 'markdown'),
-  site(stage(12, 'unplacedNodesNotice'), 'plain'),
+  site(stage(12, 'prompts', 0, 'text'), MARKDOWN_LINE),
+  messageSite(stage(12, 'unplacedNodesNotice'), SUBJECT_ARGUMENTS),
 
-  site(stage(13, 'prompts', 0, 'text'), 'markdown'),
-  site(stage(13, 'prompts', 0, 'otherVariablePrompt'), 'markdown'),
-  site(stage(13, 'prompts', 0, 'otherOptionLabel'), 'markdown'),
+  site(stage(13, 'prompts', 0, 'text'), MARKDOWN_LINE),
+  site(stage(13, 'prompts', 0, 'otherVariablePrompt'), MARKDOWN_LINE),
+  site(stage(13, 'prompts', 0, 'otherOptionLabel'), MARKDOWN_LINE),
 
-  site(stage(14, 'presets', 0, 'label'), 'plain'),
-  site(stage(14, 'presets', 0, 'highlight', 0, 'label'), 'plain'),
-  site(stage(14, 'presets', 0, 'edges', 'display', 0, 'label'), 'plain'),
-  site(stage(14, 'attributesHeading'), 'plain'),
-  site(stage(14, 'linksHeading'), 'plain'),
-  site(stage(14, 'groupsHeading'), 'plain'),
-  site(stage(14, 'tooltips', 'enableDrawing'), 'plain'),
-  site(stage(14, 'tooltips', 'disableDrawing'), 'plain'),
-  site(stage(14, 'tooltips', 'freezeAnnotations'), 'plain'),
-  site(stage(14, 'tooltips', 'unfreezeAnnotations'), 'plain'),
-  site(stage(14, 'tooltips', 'resetAnnotations'), 'plain'),
+  site(stage(14, 'presets', 0, 'label'), PLAIN_LINE),
+  site(stage(14, 'presets', 0, 'highlight', 0, 'label'), PLAIN_LINE),
+  site(stage(14, 'presets', 0, 'edges', 'display', 0, 'label'), PLAIN_LINE),
+  site(stage(14, 'attributesHeading'), PLAIN_LINE),
+  site(stage(14, 'linksHeading'), PLAIN_LINE),
+  site(stage(14, 'groupsHeading'), PLAIN_LINE),
 
-  site(stage(15, 'explanationText'), 'markdown'),
+  site(stage(15, 'explanationText'), MARKDOWN_BLOCKS),
 
-  site(stage(16, 'prompts', 0, 'text'), 'markdown'),
+  site(stage(16, 'prompts', 0, 'text'), MARKDOWN_LINE),
 
-  site(stage(17, 'prompts', 0, 'text'), 'markdown'),
-  site(stage(17, 'offlineNotice'), 'plain'),
-  site(stage(17, 'mapUnavailable'), 'plain'),
-  site(stage(17, 'outsideAreasLabel'), 'plain'),
-  site(stage(17, 'searchFailed'), 'plain'),
+  site(stage(17, 'prompts', 0, 'text'), MARKDOWN_LINE),
+  site(stage(17, 'outsideAreasLabel'), PLAIN_LINE),
 
-  site(stage(18, 'prompt'), 'markdown'),
+  site(stage(18, 'prompt'), MARKDOWN_LINE),
   // The Family Pedigree's own wording, which Network Canvas supplies.
-  site(stage(18, 'nodeConfiguration', 'nameField', 'prompt'), 'plain'),
-  site(stage(18, 'nodeConfiguration', 'nameField', 'hint'), 'markdown'),
+  site(stage(18, 'nodeConfiguration', 'nameField', 'prompt'), PLAIN_LINE),
+  site(stage(18, 'nodeConfiguration', 'nameField', 'hint'), MARKDOWN_LINE),
   ...(
     [
       ['parents', 'listItem'],
@@ -260,7 +282,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
       PEDIGREE_PERSON_ARGUMENTS,
     ),
   ),
-  site(stage(18, 'completeness', 'recommendedNote'), 'plain'),
+  site(stage(18, 'completeness', 'recommendedNote'), PLAIN_LINE),
   // The stage's own words, which Network Canvas supplies: each has the
   // arguments its message declares (see `PEDIGREE_WORDING_ARGUMENTS`).
   ...Object.keys(familyPedigreeWordingIn()).map((key) => {
@@ -268,25 +290,17 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
       PEDIGREE_WORDING_ARGUMENTS;
     const argumentsOf = declaration[key];
     return argumentsOf === undefined
-      ? site(stage(18, 'wording', key), 'plain')
+      ? site(stage(18, 'wording', key), PLAIN_LINE)
       : messageSite(stage(18, 'wording', key), argumentsOf);
   }),
-  site(stage(18, 'form', 'fields', 0, 'prompt'), 'markdown'),
-  site(stage(18, 'form', 'fields', 0, 'hint'), 'markdown'),
-  site(stage(18, 'nominationPrompts', 0, 'text'), 'markdown'),
+  site(stage(18, 'form', 'fields', 0, 'prompt'), MARKDOWN_LINE),
+  site(stage(18, 'form', 'fields', 0, 'hint'), MARKDOWN_LINE),
+  site(stage(18, 'nominationPrompts', 0, 'text'), MARKDOWN_LINE),
 
-  site(stage(19, 'diseases', 0, 'label'), 'plain'),
+  site(stage(19, 'diseases', 0, 'label'), PLAIN_LINE),
   // The Narrative Pedigree's own words, which Network Canvas supplies.
-  site(stage(19, 'keyHeading'), 'plain'),
-  site(stage(19, 'saveSnapshot'), 'plain'),
-  site(stage(19, 'tooltips', 'clearFocus'), 'plain'),
-  site(stage(19, 'conditionText', 'selectCondition'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'affected'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'obligateAffected'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'obligateCarrier'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'atRiskAffected'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'atRiskCarrier'), 'plain'),
-  site(stage(19, 'conditionText', 'notation', 'unknown'), 'plain'),
+  site(stage(19, 'saveSnapshot'), PLAIN_LINE),
+  site(stage(19, 'conditionText', 'selectCondition'), PLAIN_LINE),
   messageSite(
     stage(19, 'conditionText', 'snapshotCondition'),
     SNAPSHOT_CONDITION_ARGUMENTS,
@@ -298,12 +312,17 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   // The finish stage's closing and finished text are markdown, so a
   // researcher can write each screen's heading and emphasise a word.
-  site(stage(FINISH_STAGE_INDEX, 'content'), 'markdown', false, true),
-  site(stage(FINISH_STAGE_INDEX, 'finishedContent'), 'markdown', false, true),
+  site(stage(FINISH_STAGE_INDEX, 'content'), MARKDOWN_BLOCKS, false, true),
+  site(
+    stage(FINISH_STAGE_INDEX, 'finishedContent'),
+    MARKDOWN_BLOCKS,
+    false,
+    true,
+  ),
   // The interview's own words on that screen, which Network Canvas supplies.
-  site(stage(FINISH_STAGE_INDEX, 'finishLabel'), 'plain'),
-  site(stage(FINISH_STAGE_INDEX, 'finishConfirmation'), 'plain'),
-  site(stage(FINISH_STAGE_INDEX, 'finishFailed'), 'plain'),
+  site(stage(FINISH_STAGE_INDEX, 'finishLabel'), PLAIN_LINE),
+  site(stage(FINISH_STAGE_INDEX, 'finishConfirmation'), PLAIN_LINE),
+  site(stage(FINISH_STAGE_INDEX, 'finishFailed'), PLAIN_LINE),
 ];
 
 const pathKey = (path: readonly PropertyKey[]) =>
@@ -361,17 +380,23 @@ describe('localized string coverage', () => {
   });
 
   it('finds exactly the expected localized sites', () => {
+    // The interface text the protocol holds is Network Canvas's, by group,
+    // and covered in `interface-text.test.ts`; these are the field families
+    // a protocol's own copy is written in.
     const found = collectLocalizedStrings(completeProtocol())
-      .map(({ path, format, arguments: declaration }) => ({
+      .filter(({ path }) => path[0] !== 'interfaceText')
+      .map(({ path, format, lines, arguments: declaration }) => ({
         path: pathKey(path),
         format,
+        lines,
         arguments: declaration,
       }))
       .toSorted((a, b) => a.path.localeCompare(b.path));
     const expected = EXPECTED_SITES.map(
-      ({ path, format, arguments: declaration }) => ({
+      ({ path, format, lines, arguments: declaration }) => ({
         path: pathKey(path),
         format,
+        lines,
         arguments: declaration,
       }),
     ).toSorted((a, b) => a.path.localeCompare(b.path));
@@ -387,11 +412,23 @@ describe('localized string coverage', () => {
     },
   );
 
+  // Wording Network Canvas supplies is written only in a language it has it
+  // in exactly, so a protocol in any other may hold it with no translation
+  // until the researcher writes it; `validateProtocol` stops such a protocol
+  // leaving its editor (`findBuiltInWordingProblems`).
+  const builtIn = builtInWordingPaths(withFinishStage(completeProtocol()));
+
+  it('finds supplied wording among the localized sites', () => {
+    expect(builtIn.size).toBeGreaterThan(0);
+    expect(builtIn.has(JSON.stringify(['stages', 0, 'title']))).toBe(true);
+  });
+
   it.each(EXPECTED_SITES.map((expected) => [siteName(expected), expected]))(
     'keeps the field rule for copy with no translation at %s',
     (_name, { path, allowsNoTranslation }) => {
       const paths = failurePaths(withValueAt(path, {}));
-      if (allowsNoTranslation) expect(paths).toEqual([]);
+      if (allowsNoTranslation || builtIn.has(JSON.stringify(path)))
+        expect(paths).toEqual([]);
       else expect(paths).toContain(pathKey(path));
     },
   );
@@ -445,6 +482,64 @@ describe('localized string coverage', () => {
   });
 });
 
+/**
+ * Every node of `schema` that carries the localized-string tag, found by
+ * walking the schema itself rather than a protocol, so a declaration no test
+ * protocol holds a value for is still found.
+ */
+const taggedDeclarations = (schema: z.ZodType): unknown[] => {
+  const seen = new Set<z.ZodType>();
+  const found: unknown[] = [];
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (!(value instanceof z.ZodType) || seen.has(value)) return;
+    seen.add(value);
+    const tag: unknown = value.meta()?.localizedString;
+    if (tag !== undefined) found.push(tag);
+    if (value instanceof z.ZodObject) Object.values(value.shape).forEach(visit);
+    if (value instanceof z.ZodLazy) visit(value.def.getter());
+    Object.values(value.def).forEach(visit);
+  };
+  visit(schema);
+  return found;
+};
+
+describe('declared text shapes', () => {
+  const declarations = taggedDeclarations(ProtocolSchemaV9);
+
+  it('finds the localized declarations of the whole protocol', () => {
+    // Interface text alone declares well over a hundred.
+    expect(declarations.length).toBeGreaterThan(200);
+  });
+
+  // An editor takes its toolbar and its line handling from the declaration,
+  // so a field declared without them could not be edited consistently.
+  it('declares plain or markdown, and one line or several, for every field', () => {
+    for (const declaration of declarations) {
+      expect(declaration).toMatchObject({
+        format: expect.stringMatching(/^(plain|markdown)$/),
+        lines: expect.stringMatching(/^(single|multiple)$/),
+      });
+    }
+  });
+
+  // No editor edits plain text over several lines.
+  it('declares every plain field one line', () => {
+    expect(
+      declarations.filter(
+        (declaration) =>
+          typeof declaration === 'object' &&
+          declaration !== null &&
+          Reflect.get(declaration, 'format') === 'plain' &&
+          Reflect.get(declaration, 'lines') !== 'single',
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe('codebook labels', () => {
   // Participants never read a type's or an attribute's name, so neither has a
   // label beside it.
@@ -478,7 +573,10 @@ describe('Network Composer scale end labels', () => {
     const typed = z.object({
       component: z.string(),
       parameters: z.looseObject({
-        minLabel: localizedString(z.string(), 'markdown').optional(),
+        minLabel: localizedString(z.string(), {
+          format: 'markdown',
+          lines: 'single',
+        }).optional(),
       }),
     });
     const opaque = z.object({

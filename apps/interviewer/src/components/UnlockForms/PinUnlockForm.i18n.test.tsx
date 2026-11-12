@@ -29,7 +29,7 @@ it('reformats a submitted PIN error without resubmitting and preserves focus for
   );
   const view = render(form('en'));
   await user.keyboard('00000000');
-  await expect(screen.findByText('Incorrect PIN.')).resolves.toBeVisible();
+  expect(await screen.findByText('Incorrect PIN.')).toBeVisible();
   expect(verifyPin).toHaveBeenCalledExactlyOnceWith('00000000');
   view.rerender(form('es'));
   await waitFor(() =>

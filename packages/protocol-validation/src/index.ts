@@ -45,6 +45,7 @@ import {
   validateNames,
 } from './utils/validateExternalData.ts';
 import validateProtocol, {
+  BUILT_IN_WORDING_MISSING,
   FINISH_STAGE_TEXT_MISSING,
   formatProtocolValidationIssues,
   ProtocolValidationError,
@@ -58,6 +59,7 @@ export {
   type ProtocolLocalizationWarning,
 } from './localization/analyzeProtocolLocalization.ts';
 export {
+  describableLocale,
   getLocaleMetadata,
   type LocaleMetadata,
   sortByLanguageName,
@@ -65,6 +67,7 @@ export {
 export {
   normalizeLocalePreferences,
   parseAcceptLanguage,
+  resolveProtocolLocale,
   selectProtocolLocale,
 } from './localization/localePreferences.ts';
 export {
@@ -91,8 +94,8 @@ export {
   requiredArgumentsOf,
 } from './localization/messageArguments.ts';
 // Values from the interview that a stage's text shows (see
-// `schemas/9/dynamic-values.ts`): the one message checker, the versions a
-// message reads for given values, and the placements a translation must keep.
+// `schemas/9/dynamic-values.ts`): the one message checker and the versions a
+// message reads for given values.
 export {
   DYNAMIC_VALUE_MARKER,
   DYNAMIC_VALUE_NAME,
@@ -102,11 +105,8 @@ export {
   dynamicMessageParts,
   dynamicValueNamesIn,
   findDynamicValueProblem,
-  findMissingDynamicPlacement,
   MISSING_CASE,
-  type MissingDynamicPlacement,
   pluralValueExamples,
-  TOO_MANY_DYNAMIC_VERSIONS,
 } from './localization/dynamicValueMessages.ts';
 export { escapeMarkdownText } from './localization/markdownText.ts';
 export {
@@ -132,6 +132,10 @@ export {
   type SessionMigrationStep,
 } from './migration/index.ts';
 export * from './migration/errors.ts';
+export {
+  formatRefusedContent,
+  type RefusedContentProblem,
+} from './migration/refusedContent.ts';
 export {
   detectSchemaVersion,
   getMigrationInfo,
@@ -185,6 +189,8 @@ export {
 export {
   type LocalizedString,
   type LocalizedStringFormat,
+  type LocalizedTextLines,
+  type LocalizedTextShape,
 } from './schemas/9/localized-string.ts';
 // A stage's dynamic values: the bindings, the path vocabulary, and the one
 // table of what each site can show, which validation and Architect share.
@@ -226,17 +232,24 @@ export {
 // What the Family Pedigree's localized messages may use, for an editor of
 // them.
 export {
+  type CompleteFamilyPedigreeWording,
   type FamilyPedigreeWording,
+  isCompleteFamilyPedigreeWording,
   PEDIGREE_PERSON_ARGUMENTS,
   PEDIGREE_WORDING_ARGUMENTS,
 } from './schemas/9/stages/family-pedigree.ts';
-// The arguments a name generator's minimum notice may use.
-export { NODE_COUNT_ARGUMENTS } from './schemas/9/stages/name-generator.ts';
+// The arguments a name generator's limit notices may use, and those of the
+// other words a stage shows about its nodes, for an editor of them.
+export {
+  MAX_NODES_ARGUMENTS,
+  MIN_NODES_ARGUMENTS,
+} from './schemas/9/stages/name-generator.ts';
+export { UNNAMED_LABEL_ARGUMENTS } from './schemas/9/stages/name-generator-roster.ts';
+export { SUBJECT_ARGUMENTS } from './schemas/9/stage-wording/subject.ts';
 export { familyPedigreeWordingIn } from './schemas/9/stage-wording/family-pedigree.ts';
 // The Family Pedigree option labels Network Canvas supplies, written into a
 // protocol by Architect.
 export {
-  hasSuppliedOptionLabels,
   isSuppliedOptionLabelSet,
   SUPPLIED_PEDIGREE_OPTION_LABELS,
   type SuppliedOptionLabelSet,
@@ -245,7 +258,22 @@ export {
   suppliedOptionLabelsAfterLanguageChange,
 } from './schemas/9/family-pedigree-option-labels.ts';
 // How text Network Canvas supplies follows a change to a protocol's languages.
-export { type LanguageChange } from './schemas/9/supplied-text.ts';
+export {
+  hasSuppliedWording,
+  type LanguageChange,
+  SUPPLIED_LANGUAGES,
+  suppliedBaseLanguage,
+} from './schemas/9/supplied-text.ts';
+// The wording a stage's proposed name is made from, in each language Network
+// Canvas supplies wording in.
+export {
+  type FinishKinds,
+  type MediaKinds,
+  type PanelSource,
+  type StageNameParts,
+  type StageNameWording,
+  stageNameWordingFor,
+} from './schemas/9/stage-wording/stage-names.ts';
 // The arguments of the Narrative Pedigree's snapshot titles, which the stage
 // editor offers the same placeholders as the schema declares.
 export {
@@ -253,11 +281,13 @@ export {
   SNAPSHOT_INHERITANCE_ARGUMENTS,
 } from './schemas/9/stages/narrative-pedigree.ts';
 // The stage settings whose wording Network Canvas supplies, written into a
-// stage by Architect when it is made and when a language is added.
+// stage by Architect when it is made and when a language is added, and the
+// text the interview shows for them.
 export {
   inapplicableStageSettings,
-  isSuppliedEnglishMessage,
   missingSuppliedStageText,
+  type ShownStageText,
+  stageWordingShown,
   type SuppliedStageText,
   suppliedStageText,
   suppliedStageSettingApplies,
@@ -269,7 +299,14 @@ export {
   INTERFACE_TEXT_MESSAGES,
   type InterfaceText,
   interfaceTextAfterLanguageChange,
+  interfaceTextArguments,
+  interfaceTextShown,
+  interfaceTextShownBy,
   type InterfaceTextUpdate,
+  interfaceTextWithUpdates,
+  sharedStageInterfaceTextUsed,
+  STAGE_TYPE_INTERFACE_TEXT,
+  suppliedInterfaceText,
   withInterfaceText,
 } from './schemas/9/interface-text.ts';
 // The finish stage text Network Canvas supplies, written into a protocol by
@@ -280,7 +317,6 @@ export {
   defaultFinishSessionFields,
   defaultFinishSessionText,
   type FinishSessionText,
-  hasDefaultFinishSessionText,
   defaultFinishSessionTextAfterLanguageChange,
 } from './schemas/9/finish-session-defaults.ts';
 export {
@@ -288,6 +324,10 @@ export {
   type FinishStageTextField,
   type FinishStageTextProblem,
 } from './schemas/9/finish-stage-text.ts';
+export {
+  type BuiltInWordingProblem,
+  findBuiltInWordingProblems,
+} from './schemas/9/built-in-wording.ts';
 export {
   findTimelineStructureProblems,
   isFinishSessionStage,
@@ -325,6 +365,7 @@ export {
 export {
   collectLocalizedStrings,
   collectLocalizedStringsFromSchema,
+  localizedTextShapeAt,
   type LocalizedStringHit,
 } from './utils/collectLocalizedStrings.ts';
 export { readRosterCsv } from './utils/readRosterCsv.ts';
@@ -359,6 +400,7 @@ export {
   type ExtractedAssets,
   extractProtocol,
   extractProtocolFromZip,
+  BUILT_IN_WORDING_MISSING,
   FINISH_STAGE_TEXT_MISSING,
   findCollidingAttributeNames,
   formatProtocolValidationIssues,
@@ -387,3 +429,33 @@ export {
   validateNames,
   validateProtocol,
 };
+
+// Each participant-facing string with its field's declaration, which the
+// translation table checks a cell's text against.
+export {
+  collectLocalizedStringFields,
+  type LocalizedStringField,
+} from './utils/collectLocalizedStrings.ts';
+// The rules some texts are held to beyond their own declaration, which every
+// place that edits them asks (see `localization/fieldTextRules.ts`).
+export {
+  type FieldTextProblem,
+  type FieldTextRule,
+  findFieldTextProblems,
+  lacksDefaultLanguageText,
+} from './localization/fieldTextRules.ts';
+// The rule every set of labels a participant tells apart is held to: a
+// Narrative Pedigree's diseases and an attribute's options.
+export {
+  type DuplicateLabel,
+  findDuplicateLocalizedLabels,
+  findDuplicateOptionLabels,
+  labelComparisonKey,
+} from './localization/duplicateLabels.ts';
+// Where a protocol breaks that rule, which refuses a protocol handed over but
+// not one being written.
+export {
+  DUPLICATE_LABEL,
+  findLabelCollisions,
+  type LabelCollision,
+} from './localization/labelCollisions.ts';

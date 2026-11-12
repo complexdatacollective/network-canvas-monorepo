@@ -5,6 +5,7 @@ import { expect, screen, userEvent, within } from 'storybook/test';
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
 import { UnorderedList } from '../../../typography/UnorderedList';
+import { expectInvalidControlToKeepFocusRing } from '../focusRingTestHelpers';
 import NativeSelectField from './Native';
 import type { SelectOption } from './shared';
 import StyledSelectField from './Styled';
@@ -127,6 +128,7 @@ export const Overview: Story = {
           </Paragraph>
           <div className="w-80">
             <NativeSelectField
+              aria-label="Native select"
               name="native-select"
               options={sampleOptions}
               placeholder="Select an option..."
@@ -154,6 +156,7 @@ export const Overview: Story = {
           </UnorderedList>
           <div className="w-80">
             <StyledSelectField
+              aria-label="Styled select"
               name="styled-select"
               options={sampleOptions}
               placeholder="Select an option..."
@@ -197,6 +200,7 @@ export const Sizes: Story = {
           </Heading>
           <div className="flex w-full flex-col gap-3">
             <NativeSelectField
+              aria-label="Native sm size"
               name="native-sm-size"
               size="sm"
               options={sampleOptions}
@@ -205,6 +209,7 @@ export const Sizes: Story = {
               onChange={(v) => setNativeSm(v ?? '')}
             />
             <NativeSelectField
+              aria-label="Native md size"
               name="native-md-size"
               size="md"
               options={sampleOptions}
@@ -213,6 +218,7 @@ export const Sizes: Story = {
               onChange={(v) => setNativeMd(v ?? '')}
             />
             <NativeSelectField
+              aria-label="Native lg size"
               name="native-lg-size"
               size="lg"
               options={sampleOptions}
@@ -229,6 +235,7 @@ export const Sizes: Story = {
           </Heading>
           <div className="flex w-full flex-col gap-3">
             <StyledSelectField
+              aria-label="Styled sm size"
               name="styled-sm-size"
               size="sm"
               options={sampleOptions}
@@ -237,6 +244,7 @@ export const Sizes: Story = {
               onChange={(v) => setStyledSm(v ?? '')}
             />
             <StyledSelectField
+              aria-label="Styled md size"
               name="styled-md-size"
               size="md"
               options={sampleOptions}
@@ -245,6 +253,7 @@ export const Sizes: Story = {
               onChange={(v) => setStyledMd(v ?? '')}
             />
             <StyledSelectField
+              aria-label="Styled lg size"
               name="styled-lg-size"
               size="lg"
               options={sampleOptions}
@@ -284,6 +293,7 @@ export const States: Story = {
               Normal
             </Paragraph>
             <NativeSelectField
+              aria-label="Native normal"
               name="native-normal"
               options={sampleOptions}
               placeholder="Normal state"
@@ -301,6 +311,7 @@ export const States: Story = {
               Disabled
             </Paragraph>
             <NativeSelectField
+              aria-label="Native disabled state"
               name="native-disabled-state"
               options={sampleOptions}
               disabled
@@ -318,6 +329,7 @@ export const States: Story = {
               Invalid
             </Paragraph>
             <NativeSelectField
+              aria-label="Native invalid state"
               name="native-invalid-state"
               options={sampleOptions}
               aria-invalid
@@ -343,6 +355,7 @@ export const States: Story = {
               Normal
             </Paragraph>
             <StyledSelectField
+              aria-label="Styled normal"
               name="styled-normal"
               options={sampleOptions}
               placeholder="Normal state"
@@ -360,6 +373,7 @@ export const States: Story = {
               Disabled
             </Paragraph>
             <StyledSelectField
+              aria-label="Styled disabled state"
               name="styled-disabled-state"
               options={sampleOptions}
               disabled
@@ -377,6 +391,7 @@ export const States: Story = {
               Invalid
             </Paragraph>
             <StyledSelectField
+              aria-label="Styled invalid state"
               name="styled-invalid-state"
               options={sampleOptions}
               aria-invalid
@@ -517,6 +532,7 @@ export const LongOptionList: Story = {
             Native Select
           </Heading>
           <NativeSelectField
+            aria-label="Countries native"
             name="countries-native"
             options={longOptions}
             placeholder="Select a country"
@@ -529,6 +545,7 @@ export const LongOptionList: Story = {
             Styled Select
           </Heading>
           <StyledSelectField
+            aria-label="Countries styled"
             name="countries-styled"
             options={longOptions}
             placeholder="Select a country"
@@ -568,6 +585,7 @@ export const NumericValues: Story = {
             Native Select
           </Heading>
           <NativeSelectField
+            aria-label="Numbers native"
             name="numbers-native"
             options={numericOptions}
             placeholder="Select a number"
@@ -583,6 +601,7 @@ export const NumericValues: Story = {
             Styled Select
           </Heading>
           <StyledSelectField
+            aria-label="Numbers styled"
             name="numbers-styled"
             options={numericOptions}
             placeholder="Select a number"
@@ -628,6 +647,7 @@ export const RightToLeft: Story = {
           Left to right
         </Heading>
         <NativeSelectField
+          aria-label="Direction ltr"
           name="direction-ltr"
           options={sampleOptions}
           value="option2"
@@ -638,6 +658,7 @@ export const RightToLeft: Story = {
           من اليمين إلى اليسار
         </Heading>
         <NativeSelectField
+          aria-label="Direction rtl"
           name="direction-rtl"
           options={[
             { value: 'overview', label: 'نظرة عامة' },
@@ -757,5 +778,71 @@ export const LocalizedOptions: Story = {
     ).toHaveAttribute('lang', 'es');
     await userEvent.click(friend);
     await expect(native).toHaveValue('friend');
+  },
+};
+
+/**
+ * An invalid select keeps its focus ring: its red border says the value is
+ * wrong, not which field the keyboard is in. The native select is ringed by
+ * the wrapper around it, the styled one by its own trigger.
+ */
+export const InvalidKeyboardFocusRing: Story = {
+  // This play reads a style that exists only while a control matches
+  // `:focus-visible`, which never matches in Chromatic's unfocused capture
+  // tab. `test:storybook` is where it runs; the invalid state itself is in
+  // the states story's snapshot.
+  parameters: { chromatic: { disableSnapshot: true } },
+  render: () => (
+    <div className="flex w-80 flex-col gap-6">
+      <NativeSelectField
+        aria-label="Native valid"
+        name="native-valid"
+        options={sampleOptions}
+        value="option1"
+      />
+      <NativeSelectField
+        aria-label="Native invalid"
+        aria-invalid
+        name="native-invalid"
+        options={sampleOptions}
+        value="option1"
+      />
+      <StyledSelectField
+        aria-label="Styled valid"
+        name="styled-valid"
+        options={sampleOptions}
+        value="option1"
+      />
+      <StyledSelectField
+        aria-label="Styled invalid"
+        aria-invalid
+        name="styled-invalid"
+        options={sampleOptions}
+        value="option1"
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expectInvalidControlToKeepFocusRing(
+      {
+        control: canvas.getByRole('combobox', { name: 'Native valid' }),
+        ringOn: 'wrapper',
+      },
+      {
+        control: canvas.getByRole('combobox', { name: 'Native invalid' }),
+        ringOn: 'wrapper',
+      },
+    );
+    await expectInvalidControlToKeepFocusRing(
+      {
+        control: canvas.getByRole('combobox', { name: 'Styled valid' }),
+        ringOn: 'control',
+      },
+      {
+        control: canvas.getByRole('combobox', { name: 'Styled invalid' }),
+        ringOn: 'control',
+      },
+    );
   },
 };

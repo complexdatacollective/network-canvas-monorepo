@@ -26,6 +26,7 @@ import {
   printMessageStructure,
 } from '@codaco/protocol-validation';
 
+import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
 import { asLocalizedString } from '../localization/localizedText.ts';
 import {
   countTokenId,
@@ -45,7 +46,6 @@ import {
   pluralCategories,
   UnreadableMessage,
 } from './DynamicTextField.tsx';
-import { LocalizedStringField } from './LocalizedStringField.tsx';
 import {
   type MessageArgumentLabels,
   messageArgumentLabels,
@@ -87,13 +87,13 @@ const messages = defineMessages({
     id: 'protocolBuilder.localizedMessage.placementMissing',
     defaultMessage: 'Include “{placeholder}” in this text.',
     description:
-      'Refusal shown under a text when a translation leaves out a placeholder, such as a person’s name or a number, that the original text shows. placeholder is the placeholder’s name, such as “Name”.',
+      'Refusal shown under a text that leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”.',
   },
   placementMissingIn: {
     id: 'protocolBuilder.localizedMessage.placementMissingIn',
     defaultMessage: 'Include “{placeholder}” in this version: {version}.',
     description:
-      'Refusal shown under a text written in several versions when one version of a translation leaves out a placeholder, such as a person’s name or a number, that the original shows there. placeholder is the placeholder’s name, such as “Name”; version is the label of the version, such as “About someone else”.',
+      'Refusal shown under a text written in several versions when one version leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”; version is the label of the version, such as “About someone else”.',
   },
   unreadable: {
     id: 'protocolBuilder.localizedMessage.unreadable',
@@ -196,23 +196,40 @@ export function localizedMessageValidation(
   return {
     schema: z.unknown().check(
       z.superRefine((value, ctx) => {
-        for (const [locale, message] of Object.entries(
-          asLocalizedString(value) ?? {},
-        )) {
-          const problem = localizedMessageProblem(message, declaration, locale);
-          if (problem !== undefined) {
-            ctx.addIssue({
-              code: 'custom',
-              input: value,
-              message: problemText(problem, message, declaration, locale, intl),
-              path: [],
-            });
-            return;
-          }
+        const problem = localizedMessageProblemText(value, declaration, intl);
+        if (problem !== undefined) {
+          ctx.addIssue({
+            code: 'custom',
+            input: value,
+            message: problem,
+            path: [],
+          });
         }
       }),
     ),
   };
+}
+
+/**
+ * Why a localized message cannot be saved, in words, for the first of its
+ * translations that cannot; undefined when every one can. The rule
+ * `localizedMessageValidation` holds a field to, for a control that is not a
+ * form's field.
+ */
+export function localizedMessageProblemText(
+  value: unknown,
+  declaration: MessageArguments,
+  intl: IntlShape,
+): string | undefined {
+  for (const [locale, message] of Object.entries(
+    asLocalizedString(value) ?? {},
+  )) {
+    const problem = localizedMessageProblem(message, declaration, locale);
+    if (problem !== undefined) {
+      return problemText(problem, message, declaration, locale, intl);
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -374,8 +391,10 @@ const FORMAT: MessageDocumentFormat = { markdown: false, singleLine: true };
 
 /**
  * A message's words in `locale`, read-only, each placeholder drawn as the
- * pill the editor draws and each set of versions folded to the pill of what
- * it chooses by, as the editor shows it folded: what a summary or an
+ * pill the editor draws. A set of versions that is the whole of the message,
+ * or of one version of it, is written out, a labelled line for each version,
+ * as the editor lists it open; a set among words is folded to the pill of
+ * what it chooses by, as the editor shows it folded. What a summary or an
  * unfocused table cell shows.
  */
 export function LocalizedMessageVersionsSummary({
@@ -404,6 +423,7 @@ export function LocalizedMessageVersionsSummary({
       multiline={false}
       valueLabel={valueLabel}
       switchSummary={labels.switchSummary}
+      versionLabel={labels.versionLabel}
     />
   );
 }
@@ -433,6 +453,7 @@ export type LocalizedMessageVersionsProps = Readonly<{
  * of text, its placeholders as pills, and a piece of text with a version for
  * each case (or for each kind of number) only where the text has one, folded
  * to a pill until it is opened, and able to hold another inside a version.
+ * Where the whole message is one such piece, its versions are listed open.
  * The insert menu (the toolbar button, or typing `{`) offers what the setting
  * declares: each placeholder, each select argument as wording for each of its
  * cases, and each number as wording that fits it, showing the number.
@@ -632,6 +653,9 @@ export function LocalizedMessageVersions({
       }}
       tokens={tokens}
       versions
+      // A message that is one plural or one choice is those versions and
+      // nothing else, so they are listed rather than folded to a pill.
+      openWholeMessageVersions
       insertMenu={insertMenu}
       value={content ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
       onChange={handleChange}

@@ -3,6 +3,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { geospatialWordingMessages } from '@codaco/protocol-builder/editors/geospatial/geospatialWording';
 import { binBehavioursMessages } from '@codaco/protocol-builder/sections/bin-behaviours/binBehavioursMessages';
 import { nameGeneratorWordingMessages } from '@codaco/protocol-builder/sections/name-generator-wording/nameGeneratorWording';
+import { stageWordingMessages } from '@codaco/protocol-builder/sections/supplied-wording/stageWordingMessages';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
 import MiniTable from '../MiniTable';
@@ -14,12 +15,10 @@ import { stageMessageArguments } from './stageMessageArguments';
 export type StageWordingKey =
   | 'minNodesNotice'
   | 'maxNodesNotice'
-  | 'quickAddHint'
+  | 'addNamePlaceholder'
   | 'allAddedNotice'
-  | 'offlineNotice'
-  | 'mapUnavailable'
+  | 'unnamedLabel'
   | 'outsideAreasLabel'
-  | 'searchFailed'
   | 'unplacedNodesNotice';
 
 /** A setting's label, and where the stage holds its wording. */
@@ -34,12 +33,10 @@ type StageWordingProps = {
 const STAGE_WORDING_SETTINGS: readonly WordingSetting[] = [
   [nameGeneratorWordingMessages.minNoticeLabel, 'minNodesNotice'],
   [nameGeneratorWordingMessages.maxNoticeLabel, 'maxNodesNotice'],
-  [nameGeneratorWordingMessages.quickAddHintLabel, 'quickAddHint'],
+  [nameGeneratorWordingMessages.addNamePlaceholderLabel, 'addNamePlaceholder'],
   [nameGeneratorWordingMessages.allAddedLabel, 'allAddedNotice'],
-  [geospatialWordingMessages.offlineLabel, 'offlineNotice'],
-  [geospatialWordingMessages.unavailableLabel, 'mapUnavailable'],
+  [nameGeneratorWordingMessages.unnamedLabelLabel, 'unnamedLabel'],
   [geospatialWordingMessages.outsideAreasLabel, 'outsideAreasLabel'],
-  [geospatialWordingMessages.searchFailedLabel, 'searchFailed'],
   [binBehavioursMessages.unplacedNoticeLabel, 'unplacedNodesNotice'],
 ];
 
@@ -74,9 +71,7 @@ const StageWording = ({ type, configuration }: StageWordingProps) => {
     return null;
   }
   return (
-    <SectionFrame
-      title={intl.formatMessage(nameGeneratorWordingMessages.title)}
-    >
+    <SectionFrame title={intl.formatMessage(stageWordingMessages.title)}>
       <MiniTable rotated rows={rows} />
     </SectionFrame>
   );

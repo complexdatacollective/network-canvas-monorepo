@@ -1,5 +1,8 @@
 import '@fontsource-variable/nunito';
 import '@fontsource-variable/inclusive-sans';
+// Text marked as Arabic. The shared rule loads only the Arabic subset, which
+// a browser fetches when a page shows Arabic, so it is not preloaded below.
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 // Resolves to the same hashed URLs the CSS above references, for the preloads
 // below. Latin only: every site locale's glyphs are in that subset.
 import inclusiveSansLatin from '@fontsource-variable/inclusive-sans/files/inclusive-sans-latin-wght-normal.woff2';
@@ -19,8 +22,10 @@ import { preload } from 'react-dom';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
+import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
+import { PageBackgroundVisibilityProvider } from '~/components/ui/pageBackgroundVisibility';
 import {
   getLocaleDirection,
   siteAppCatalogSource,
@@ -146,7 +151,11 @@ export default async function LocaleLayout({
                   manageDocument={false}
                   timeZone="UTC"
                 >
-                  {children}
+                  <LocaleDirectionProvider>
+                    <PageBackgroundVisibilityProvider>
+                      {children}
+                    </PageBackgroundVisibilityProvider>
+                  </LocaleDirectionProvider>
                 </AppI18nProvider>
               </NextIntlClientProvider>
             </ThemeProvider>

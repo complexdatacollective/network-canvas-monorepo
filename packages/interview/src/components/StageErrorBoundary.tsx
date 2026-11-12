@@ -79,7 +79,7 @@ class StageErrorBoundaryInner extends Component<
         <Surface noContainer className="mx-auto h-fit max-w-2xl grow-0">
           <div className="flex items-start gap-6">
             <div className="flex items-center justify-center">
-              <Icon name="error" />
+              <Icon name="error" aria-hidden />
             </div>
             <TaskErrorDescription />
           </div>

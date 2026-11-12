@@ -5,6 +5,8 @@ import { useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { usePageActive } from '@codaco/fresco-ui/pageActivity';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { updateSettings } from '~/lib/db/api';
 import type { StoredSessionLite } from '~/lib/db/types';
 
@@ -18,12 +20,14 @@ const messages = defineMessages({
   resumeLastInterview: {
     id: 'interviewer.resumePill.resumeLastInterview',
     defaultMessage: 'Resume last interview',
-    description: 'Visible copy in Interviewer Resume Pill.',
+    description:
+      'Small caption in the pill on the home screen; pressing the pill reopens the interview the researcher last worked on. Resume is a verb.',
   },
   untitled: {
     id: 'interviewer.resumePill.untitled',
     defaultMessage: 'Untitled',
-    description: 'User-facing message in Interviewer Resume Pill.',
+    description:
+      'Fallback shown in the resume pill in place of the case ID when the last interview has none.',
   },
 });
 
@@ -78,6 +82,9 @@ export function ResumePillView({
   onResume: () => void;
 }) {
   const intl = useAppIntl();
+  // The dot pulses only while the window is in front of the user; a browser
+  // keeps repainting the glow in a window that is on screen but not focused.
+  const pageActive = usePageActive();
   return (
     <motion.button
       key="resume-pill-button"
@@ -96,7 +103,10 @@ export function ResumePillView({
       <div className="flex size-20 shrink-0 items-center justify-center">
         <span
           aria-hidden
-          className="bg-sea-green animate-pulse-glow size-2 rounded-full shadow-[0_0_10px_oklch(var(--sea-green))]"
+          className={cx(
+            'bg-sea-green size-2 rounded-full shadow-[0_0_10px_oklch(var(--sea-green))]',
+            pageActive && 'animate-pulse-glow',
+          )}
         />
       </div>
 
@@ -108,7 +118,7 @@ export function ResumePillView({
         variants={contentPanelVariants}
         className="flex h-full shrink-0 items-center gap-4 overflow-hidden"
       >
-        <div className="ml-2 text-left whitespace-nowrap">
+        <div className="ms-2 text-start whitespace-nowrap">
           <div className="font-heading text-text/60 mb-0.5 text-xs font-black tracking-widest uppercase">
             {intl.formatMessage(messages.resumeLastInterview)}
           </div>
@@ -121,7 +131,7 @@ export function ResumePillView({
         </div>
         <div
           aria-hidden
-          className="bg-sea-green text-primary-contrast mr-3.5 inline-flex size-14 shrink-0 items-center justify-center rounded-full"
+          className="bg-sea-green text-primary-contrast me-3.5 inline-flex size-14 shrink-0 items-center justify-center rounded-full"
         >
           <Play size={14} />
         </div>

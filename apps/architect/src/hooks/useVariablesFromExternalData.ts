@@ -88,7 +88,7 @@ function useVariablesFromExternalData(
 
     fetchVariables()
       .then((variables) => {
-        if (cancelled) return;
+        if (cancelled) return undefined;
         setLoaded({
           dataSource,
           type,
@@ -97,6 +97,7 @@ function useVariablesFromExternalData(
           variables: asOptions ? toOptions(variables) : variables,
           variablesError: null,
         });
+        return undefined;
       })
       .catch((e: Error) => {
         // A resource whose file never arrived with the protocol is a state the

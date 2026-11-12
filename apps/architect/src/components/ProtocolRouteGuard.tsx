@@ -105,6 +105,7 @@ const ProtocolRouteGuard = ({ children }: ProtocolRouteGuardProps) => {
     // setter passes through the Router's aroundNav, which would raise the
     // leave-editor confirmation over a redirect the user never asked for.
     navigate('/', { replace: true });
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- each navigation while blocked is redirected again, so `location` is a trigger whose value is not needed
   }, [blocked, location]);
 
   if (!onProtocolRoute) return <>{children}</>;

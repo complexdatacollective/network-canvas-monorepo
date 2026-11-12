@@ -441,7 +441,7 @@ export function useEverythingBarResults({
     }
 
     return () => controller.abort();
-  }, [open, committedQuery, remoteKey, runProviderSearch]);
+  }, [open, committedQuery, remoteKey, runProviderSearch, controllerRef]);
 
   const isEmptyQuery = query.trim() === '';
   const remoteIsEmptyQuery = committedQuery.trim() === '';
@@ -635,17 +635,16 @@ export function useEverythingBarResults({
     derivationRef.current = derivation;
     optionKeysRef.current = optionKeys;
   });
-  // The rendered sequence as one value, so the effect below re-runs exactly
-  // when the set of options changes — not on every render.
-  const optionSequence = optionKeys.join('\u0000');
-
   // The highlight moves only when the researcher moves it, or when the item it
-  // names has left the list entirely.
-  useEffect(() => {
-    const keys = optionKeysRef.current;
-    if (highlightKey !== null && keys.includes(highlightKey)) return;
-    setHighlightKey(keys[0] ?? null);
-  }, [optionSequence, highlightKey]);
+  // names has left the list entirely. Settled during render, so no frame shows
+  // a highlight on an option that is gone.
+  if (
+    highlightKey === null
+      ? optionKeys.length > 0
+      : !optionKeys.includes(highlightKey)
+  ) {
+    setHighlightKey(optionKeys[0] ?? null);
+  }
 
   const revealSlice = useCallback(
     (group: EverythingBarGroup) => {
@@ -661,7 +660,7 @@ export function useEverythingBarResults({
       });
       if (firstRevealed) setHighlightKey(firstRevealed.key);
     },
-    [bound],
+    [bound, derivationRef],
   );
 
   // A group awaiting a continuation reveals its slice once every provider it
@@ -717,7 +716,7 @@ export function useEverythingBarResults({
         append: request.append,
       });
     },
-    [committedQuery, findRemoteProvider, runProviderSearch],
+    [committedQuery, controllerRef, findRemoteProvider, runProviderSearch],
   );
 
   const showMore = useCallback(
@@ -765,6 +764,8 @@ export function useEverythingBarResults({
       bound,
       committedQuery,
       compare,
+      controllerRef,
+      derivationRef,
       findRemoteProvider,
       revealSlice,
       runProviderSearch,

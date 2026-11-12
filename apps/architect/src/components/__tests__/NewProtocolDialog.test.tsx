@@ -312,6 +312,87 @@ describe('NewProtocolDialog protocol languages', () => {
   });
 });
 
+/**
+ * A template's name is a proposal: it is replaced by the first thing the
+ * researcher types, whether they type straight away or click into it first.
+ */
+describe('NewProtocolDialog naming a template', () => {
+  const TEMPLATE_NAME = 'Transnational Networks';
+
+  const renderTemplateDialog = () => {
+    const onSubmit = vi.fn();
+    render(
+      <NewProtocolDialog
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={onSubmit}
+        initialName={TEMPLATE_NAME}
+      />,
+    );
+    return onSubmit;
+  };
+
+  it('opens with the template name selected', async () => {
+    renderTemplateDialog();
+
+    await waitFor(() => expect(nameInput()).toHaveFocus());
+    expect(nameInput().selectionStart).toBe(0);
+    expect(nameInput().selectionEnd).toBe(TEMPLATE_NAME.length);
+  });
+
+  it('replaces the name when the researcher clicks into it before typing', async () => {
+    const user = userEvent.setup();
+    const onSubmit = renderTemplateDialog();
+    await waitFor(() => expect(nameInput()).toHaveFocus());
+
+    await user.pointer({
+      keys: '[MouseLeft]',
+      target: nameInput(),
+      offset: 7,
+    });
+    await user.keyboard('My study');
+    submit();
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({ name: 'My study' }),
+    );
+  });
+
+  it('places the caret on a later click', async () => {
+    const user = userEvent.setup();
+    renderTemplateDialog();
+    await waitFor(() => expect(nameInput()).toHaveFocus());
+
+    await user.pointer({ keys: '[MouseLeft]', target: nameInput(), offset: 7 });
+    await user.pointer({ keys: '[MouseLeft]', target: nameInput(), offset: 7 });
+
+    expect(nameInput().selectionStart).toBe(7);
+    expect(nameInput().selectionEnd).toBe(7);
+  });
+
+  it('places the caret in a name the researcher typed, even when it is all selected', async () => {
+    const user = userEvent.setup();
+    renderTemplateDialog();
+    await waitFor(() => expect(nameInput()).toHaveFocus());
+
+    await user.keyboard('My study');
+    nameInput().select();
+    await user.pointer({ keys: '[MouseLeft]', target: nameInput(), offset: 3 });
+
+    expect(nameInput().selectionStart).toBe(3);
+    expect(nameInput().selectionEnd).toBe(3);
+  });
+
+  it('selects nothing in a blank protocol’s empty name', async () => {
+    renderDialog();
+
+    await waitFor(() => expect(nameInput()).toHaveFocus());
+    await userEvent.setup().keyboard('Study');
+
+    expect(nameInput()).toHaveValue('Study');
+  });
+});
+
 const PROTOCOL_NAME_TOO_LONG_MESSAGE = createAppIntl({
   locale: 'en',
 }).formatMessage(protocolNameTooLongDescriptor, {

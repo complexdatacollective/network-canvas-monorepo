@@ -80,17 +80,15 @@
   },
   "Grants": {
     "heading": "Projets financés utilisant Network Canvas",
-    "introduction": "C’est avec fierté que nous voyons Network Canvas activement utilisé dans de nombreux projets financés par le gouvernement fédéral des États-Unis, dans des contextes de recherche, des institutions et des organismes de financement variés.",
-    "previous": "Projet précédent",
-    "next": "Projet suivant",
-    "show": "Afficher le projet {number}"
+    "introduction": "C’est avec fierté que nous voyons Network Canvas activement utilisé dans de nombreux projets financés par le gouvernement fédéral des États-Unis, dans des contextes de recherche, des institutions et des organismes de financement variés."
   },
   "Publications": {
     "heading": "Publications récentes utilisant Network Canvas",
-    "carouselLabel": "Carrousel des publications récentes",
-    "introduction": "Voici les 16 publications les plus récentes qui utilisent Network Canvas. Consultez la <all>liste complète des publications</all>.",
-    "submission": "Si vous souhaitez que votre publication soit mise en avant, faites-le-nous savoir en répondant au <thread>fil de discussion</thread> de notre site communautaire.",
-    "thread": "fil de discussion"
+    "introduction": "Network Canvas a facilité des recherches dans des disciplines variées, au sein d’un réseau émergent d’autrices et d’auteurs. Les <strong>{count}</strong> publications les plus récentes sont présentées ici. Cette liste est mise à jour automatiquement lorsque nous trouvons de nouvelles publications qui utilisent le logiciel.",
+    "viewAll": "Voir toutes les {count, plural, one {# publication} other {# publications}}, avec {authors, plural, one {# autrice ou auteur} other {# autrices et auteurs}}",
+    "legendPublication": "Publication",
+    "legendAuthor": "Autrice ou auteur",
+    "relatedLabel": "Publications ayant au moins une autrice ou un auteur en commun avec cette publication"
   },
   "PublicationsPage": {
     "metadata": {
@@ -336,7 +334,7 @@
       "bestFor": "Idéal pour",
       "downloadVersion": "Télécharger la version {version}",
       "platformAccessibleName": "{platform} pour {app}",
-      "schemaVersionInfo": "Architect Classic et Interviewer Classic prennent en charge les protocoles en schéma 7. Les versions web d’Architect, d’Interviewer et de Fresco utilisent le schéma 9, qui inclut les dernières fonctionnalités. La mise à niveau d’un protocole est irréversible : conservez le fichier d’origine en schéma 7 si vous avez encore besoin des applications Classic.",
+      "schemaVersionInfo": "Architect Classic et Interviewer Classic prennent en charge les protocoles qui utilisent un schéma plus ancien. Les versions web d’Architect, d’Interviewer et de Fresco utilisent le schéma le plus récent, qui inclut toutes les dernières fonctionnalités. La mise à niveau d’un protocole est irréversible : conservez une copie du fichier d’origine si vous avez encore besoin des applications Classic.",
       "schemaVersionLink": "En savoir plus sur les versions de schéma"
     },
     "platforms": {
@@ -389,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · Mode maintenance",
-        "description": "À utiliser uniquement si votre étude doit rester compatible avec Interviewer Classic et le schéma 7.",
+        "description": "À utiliser uniquement si votre étude doit rester compatible avec Interviewer Classic et son schéma plus ancien.",
         "bestFor": {
           "classicCompatibility": "Une étude existante qui doit rester compatible avec Interviewer Classic",
-          "editWithoutMigration": "Un protocole en schéma 7 qui doit continuer à être modifié sans migration"
+          "editWithoutMigration": "Un protocole qui utilise un schéma plus ancien et doit continuer à être modifié sans migration"
         }
       },
       "interviewerClassic": {
         "status": "Classic · Études existantes",
-        "description": "Pour les études établies en schéma 7 et les flux de travail hors ligne sur ordinateur ou tablette. Maintenu pour la compatibilité et la correction des bogues.",
+        "description": "Pour les études établies qui utilisent un schéma plus ancien et pour les flux de travail hors ligne sur ordinateur ou tablette. Maintenu pour la compatibilité et la correction des bogues.",
         "bestFor": {
-          "schema7Study": "Une étude établie qui dépend du schéma 7",
+          "schema7Study": "Une étude établie qui dépend d’un schéma plus ancien",
           "desktopTablet": "Conserver un flux de travail existant sur ordinateur ou tablette",
           "offlineCollection": "Études qui nécessitent l’ancien flux de collecte hors ligne"
         }

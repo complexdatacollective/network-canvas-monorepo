@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
-import { saveBlob } from '~/files/save';
+import { saveBlob } from '@codaco/fresco-ui/utils/saveBlob';
 import type { BackgroundDocument } from '~/model/types';
 import { useEditorStore } from '~/state/editorStore';
 
 import { downloadSvgFlow, editDocumentDetailsFlow } from '../fileActions';
 
-vi.mock('~/files/save', async (importOriginal) => {
-  const original = await importOriginal<typeof import('~/files/save')>();
+vi.mock('@codaco/fresco-ui/utils/saveBlob', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('@codaco/fresco-ui/utils/saveBlob')>();
   return { ...original, saveBlob: vi.fn() };
 });
 

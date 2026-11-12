@@ -1,65 +1,16 @@
-import { useTranslations } from 'next-intl';
-import type { ReactNode } from 'react';
-
-import { NativeLink } from '@codaco/fresco-ui/NativeLink';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { SectionHeading } from '~/components/ui/SectionHeading';
-import { externalLinks } from '~/lib/content';
-import { Link } from '~/lib/i18n/navigation';
 import type { Publication } from '~/lib/siteContent';
 
-import { PublicationRail } from './PublicationRail';
-
-const headingId = 'recent-publications-heading';
-
-function renderAllLink(chunks: ReactNode) {
-  return (
-    <NativeLink
-      href="/publications"
-      render={<Link href="/publications" />}
-      className="font-bold"
-    >
-      {chunks}
-    </NativeLink>
-  );
-}
-
-function renderThreadLink(chunks: ReactNode) {
-  return (
-    <NativeLink
-      href={externalLinks.shareYourWork}
-      target="_blank"
-      rel="noreferrer"
-      className="font-bold"
-    >
-      {chunks}
-    </NativeLink>
-  );
-}
+import { buildAuthorshipGraph } from './publicationNetworkLayout';
+import { PublicationsNetwork } from './PublicationsNetwork';
 
 export function Publications({
   publications,
 }: {
   publications: readonly Publication[];
 }) {
-  const t = useTranslations('Publications');
-
-  return (
-    <PublicationRail
-      publications={publications}
-      headingId={headingId}
-      railLabel={t('carouselLabel')}
-    >
-      <SectionHeading title={t('heading')} id={headingId}>
-        <Paragraph margin="none">
-          {t.rich('introduction', {
-            all: renderAllLink,
-          })}
-        </Paragraph>
-        <Paragraph margin="none" className="mt-3">
-          {t.rich('submission', { thread: renderThreadLink })}
-        </Paragraph>
-      </SectionHeading>
-    </PublicationRail>
-  );
+  // The network is laid out here, while the page is prerendered, so the
+  // browser receives a finished layout (and the network is in the HTML)
+  // instead of spending tens of milliseconds computing it after load.
+  const graph = buildAuthorshipGraph(publications);
+  return <PublicationsNetwork graph={graph} publications={publications} />;
 }

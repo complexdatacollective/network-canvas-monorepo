@@ -419,14 +419,17 @@ const AssetCard = ({
       <div className="bg-surface relative h-40 shrink-0 overflow-hidden rounded-t">
         <AssetPreview id={id} name={name} source={source} type={type} />
         {isUnresolved ? (
-          <Badge tone="destructive" className="absolute top-3 left-3 border-0">
+          <Badge
+            tone="destructive"
+            className="absolute inset-s-3 top-3 border-0"
+          >
             {intl.formatMessage(messages.missing)}
           </Badge>
         ) : (
           !isUsed && (
             <Badge
               tone="destructive"
-              className="absolute top-3 left-3 border-0"
+              className="absolute inset-s-3 top-3 border-0"
             >
               {intl.formatMessage(messages.unused)}
             </Badge>

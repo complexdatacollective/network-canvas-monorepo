@@ -216,7 +216,7 @@ function runtimeDomain(variable: Variable): FieldValue[] {
     case 'text':
       return ['', 'a', 'aa', 'aaa', 'aaaa'];
     case 'layout':
-      return [];
+    case 'location':
     default:
       return [];
   }

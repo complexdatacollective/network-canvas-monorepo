@@ -65,20 +65,27 @@ function assignmentsOf(table: Table, values: unknown): [string, unknown][] {
 const escapeLike = (value: string): string =>
   value.replaceAll(/[\\%_]/g, (character) => `\\${character}`);
 
-function patternOf(where: CleanedWhere): string {
+function patternOf(
+  where: CleanedWhere,
+  operator: 'contains' | 'starts_with' | 'ends_with',
+): string {
   if (!Predicate.isString(where.value)) {
     throw new BetterAuthError(
       `Studio's auth adapter needs a string for the "${where.operator}" operator on "${where.field}".`,
     );
   }
   const escaped = escapeLike(where.value);
-  switch (where.operator) {
+  switch (operator) {
     case 'starts_with':
       return `${escaped}%`;
     case 'ends_with':
       return `%${escaped}`;
-    default:
+    case 'contains':
       return `%${escaped}%`;
+    default: {
+      const unhandled: never = operator;
+      throw new Error('Unhandled pattern operator', { cause: unhandled });
+    }
   }
 }
 
@@ -128,8 +135,8 @@ function condition(sql: Sql, table: Table, where: CleanedWhere): Fragment {
     case 'starts_with':
     case 'ends_with':
       return insensitive
-        ? sql`${column} ilike ${patternOf(where)} escape '\\'`
-        : sql`${column} like ${patternOf(where)} escape '\\'`;
+        ? sql`${column} ilike ${patternOf(where, where.operator)} escape '\\'`
+        : sql`${column} like ${patternOf(where, where.operator)} escape '\\'`;
     case 'lt':
       return sql`${column} < ${where.value}`;
     case 'lte':

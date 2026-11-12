@@ -2,7 +2,10 @@
   "name": "Who feels like family? (queer youth discussion prototype)",
   "description": "Participant-defined family, belonging, support and narrative reflection. Hypothetical prototype for collaborator review, not a validated instrument.",
   "schemaVersion": 9,
-  "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US"]
+  },
   "lastModified": "2026-10-05T00:00:00.000Z",
   "codebook": {
     "node": {
@@ -33,19 +36,27 @@
             "component": "CheckboxGroup",
             "options": [
               {
-                "label": { "en-US": "Family I grew up with" },
+                "label": {
+                  "en-US": "Family I grew up with"
+                },
                 "value": "grew_up"
               },
               {
-                "label": { "en-US": "Chosen family" },
+                "label": {
+                  "en-US": "Chosen family"
+                },
                 "value": "chosen"
               },
               {
-                "label": { "en-US": "Partner or partner's family" },
+                "label": {
+                  "en-US": "Partner or partner's family"
+                },
                 "value": "partner"
               },
               {
-                "label": { "en-US": "Another kind of family" },
+                "label": {
+                  "en-US": "Another kind of family"
+                },
                 "value": "another"
               }
             ]
@@ -81,15 +92,21 @@
             "component": "RadioGroup",
             "options": [
               {
-                "label": { "en-US": "Not close right now" },
+                "label": {
+                  "en-US": "Not close right now"
+                },
                 "value": 1
               },
               {
-                "label": { "en-US": "Somewhat close" },
+                "label": {
+                  "en-US": "Somewhat close"
+                },
                 "value": 2
               },
               {
-                "label": { "en-US": "Very close" },
+                "label": {
+                  "en-US": "Very close"
+                },
                 "value": 3
               }
             ]
@@ -112,9 +129,13 @@
   "stages": [
     {
       "id": "researcher-notes",
-      "label": { "en-US": "Prototype notes (delete before fielding)" },
+      "label": {
+        "en-US": "Prototype notes (delete before fielding)"
+      },
       "type": "Information",
-      "title": { "en-US": "For researchers" },
+      "title": {
+        "en-US": "For researchers"
+      },
       "items": [
         {
           "id": "researcher-notes-text",
@@ -127,9 +148,13 @@
     },
     {
       "id": "welcome",
-      "label": { "en-US": "Welcome" },
+      "label": {
+        "en-US": "Welcome"
+      },
       "type": "Information",
-      "title": { "en-US": "Who feels like family to you?" },
+      "title": {
+        "en-US": "Who feels like family to you?"
+      },
       "items": [
         {
           "id": "welcome-text",
@@ -142,7 +167,9 @@
     },
     {
       "id": "name-family",
-      "label": { "en-US": "People who matter" },
+      "label": {
+        "en-US": "People who matter"
+      },
       "type": "NameGenerator",
       "subject": {
         "entity": "node",
@@ -152,22 +179,30 @@
         "fields": [
           {
             "variable": "name",
-            "prompt": { "en-US": "What name or nickname should we use?" }
+            "prompt": {
+              "en-US": "What name or nickname should we use?"
+            }
           },
           {
             "variable": "relationship_words",
             "prompt": {
               "en-US": "What words do you use for your relationship with this person?"
             },
-            "hint": { "en-US": "Optional. Use your own words." }
+            "hint": {
+              "en-US": "Optional. Use your own words."
+            }
           }
         ],
-        "title": { "en-US": "Name this person" }
+        "title": {
+          "en-US": "Name this person"
+        }
       },
       "prompts": [
         {
           "id": "family-now",
-          "text": { "en-US": "Who feels like family to you at the moment?" }
+          "text": {
+            "en-US": "Who feels like family to you at the moment?"
+          }
         },
         {
           "id": "family-complicated",
@@ -179,7 +214,9 @@
       "panels": [
         {
           "id": "already-named",
-          "title": { "en-US": "People already mentioned" },
+          "title": {
+            "en-US": "People already mentioned"
+          },
           "dataSource": "existing"
         }
       ]
@@ -205,7 +242,9 @@
     },
     {
       "id": "family-meanings",
-      "label": { "en-US": "Your words for family" },
+      "label": {
+        "en-US": "Your words for family"
+      },
       "type": "AlterForm",
       "subject": {
         "entity": "node",
@@ -215,12 +254,18 @@
         "fields": [
           {
             "variable": "family_categories",
-            "prompt": { "en-US": "Which descriptions fit this person?" },
-            "hint": { "en-US": "Optional. Select all that fit." }
+            "prompt": {
+              "en-US": "Which descriptions fit this person?"
+            },
+            "hint": {
+              "en-US": "Optional. Select all that fit."
+            }
           },
           {
             "variable": "category_words",
-            "prompt": { "en-US": "What other words would you use?" },
+            "prompt": {
+              "en-US": "What other words would you use?"
+            },
             "hint": {
               "en-US": "Optional. Your own words can sit alongside any categories you selected."
             }
@@ -230,7 +275,9 @@
     },
     {
       "id": "closeness",
-      "label": { "en-US": "Closeness now" },
+      "label": {
+        "en-US": "Closeness now"
+      },
       "type": "OrdinalBin",
       "subject": {
         "entity": "node",
@@ -249,7 +296,9 @@
     },
     {
       "id": "family-map",
-      "label": { "en-US": "Your family map" },
+      "label": {
+        "en-US": "Your family map"
+      },
       "type": "Sociogram",
       "subject": {
         "entity": "node",
@@ -359,24 +408,9 @@
       "groupsHeading": {
         "en-US": "Groups"
       },
-      "tooltips": {
-        "enableDrawing": {
-          "en-US": "Enable drawing"
-        },
-        "disableDrawing": {
-          "en-US": "Disable drawing"
-        },
-        "freezeAnnotations": {
-          "en-US": "Freeze annotations"
-        },
-        "unfreezeAnnotations": {
-          "en-US": "Unfreeze annotations"
-        },
-        "resetAnnotations": {
-          "en-US": "Reset annotations"
-        }
+      "label": {
+        "en-US": "The story of your family"
       },
-      "label": { "en-US": "The story of your family" },
       "type": "Narrative",
       "subject": {
         "entity": "node",
@@ -394,7 +428,9 @@
       "presets": [
         {
           "id": "everyone",
-          "label": { "en-US": "Everyone on your map" },
+          "label": {
+            "en-US": "Everyone on your map"
+          },
           "layoutVariable": "family_layout",
           "edges": {
             "display": [
@@ -409,25 +445,35 @@
         },
         {
           "id": "belonging",
-          "label": { "en-US": "Belonging and support" },
+          "label": {
+            "en-US": "Belonging and support"
+          },
           "layoutVariable": "family_layout",
           "groupVariable": "family_categories",
           "highlight": [
             {
               "variable": "feels_family",
-              "label": { "en-US": "feels_family" }
+              "label": {
+                "en-US": "feels_family"
+              }
             },
             {
               "variable": "emotional_support",
-              "label": { "en-US": "emotional_support" }
+              "label": {
+                "en-US": "emotional_support"
+              }
             },
             {
               "variable": "practical_support",
-              "label": { "en-US": "practical_support" }
+              "label": {
+                "en-US": "practical_support"
+              }
             },
             {
               "variable": "identity_affirming",
-              "label": { "en-US": "identity_affirming" }
+              "label": {
+                "en-US": "identity_affirming"
+              }
             }
           ],
           "edges": {
@@ -446,9 +492,13 @@
     },
     {
       "id": "debrief",
-      "label": { "en-US": "Reflection" },
+      "label": {
+        "en-US": "Reflection"
+      },
       "type": "Information",
-      "title": { "en-US": "How was making this map?" },
+      "title": {
+        "en-US": "How was making this map?"
+      },
       "items": [
         {
           "id": "debrief-text",
@@ -461,7 +511,9 @@
     },
     {
       "id": "finish",
-      "finishLabel": { "en-US": "Finish" },
+      "finishLabel": {
+        "en-US": "Finish"
+      },
       "finishConfirmation": {
         "en-US": "Are you sure you want to finish the interview?"
       },
@@ -470,7 +522,9 @@
       },
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": { "en-US": "Finish Interview" },
+      "label": {
+        "en-US": "Finish Interview"
+      },
       "content": {
         "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
@@ -493,6 +547,38 @@
       },
       "continue": {
         "en-US": "Continue"
+      },
+      "exitFailed": {
+        "en-US": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
+      }
+    },
+    "interviewer": {
+      "exitReview": {
+        "en-US": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en-US": "Exit this review?"
+      },
+      "exitReviewDescription": {
+        "en-US": "Changes made during this review will not be saved."
+      },
+      "hiddenScreen": {
+        "en-US": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en-US": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en-US": "Show this screen?"
+      },
+      "hiddenScreenDescription": {
+        "en-US": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
+      },
+      "outsidePathDescription": {
+        "en-US": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
+      },
+      "showScreen": {
+        "en-US": "Show screen"
       }
     },
     "buttons": {
@@ -502,25 +588,36 @@
       "done": {
         "en-US": "Done"
       },
-      "delete": {
-        "en-US": "Delete"
-      },
       "yes": {
         "en-US": "Yes"
       },
       "no": {
         "en-US": "No"
+      },
+      "copy": {
+        "en-US": "Copy"
+      },
+      "copied": {
+        "en-US": "Copied"
       }
     },
     "messages": {
       "stageError": {
         "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "itemUnavailable": {
-        "en-US": "This item could not be displayed."
-      },
       "error": {
         "en-US": "An error occurred."
+      },
+      "unnamed": {
+        "en-US": "Unnamed"
+      }
+    },
+    "search": {
+      "searchLabel": {
+        "en-US": "Search"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term."
       }
     },
     "forms": {
@@ -537,6 +634,17 @@
       },
       "unique": {
         "en-US": "Must be unique."
+      }
+    },
+    "narrative": {
+      "toggleDrawing": {
+        "en-US": "Toggle drawing"
+      },
+      "toggleFreezing": {
+        "en-US": "Toggle freezing annotations"
+      },
+      "resetAnnotations": {
+        "en-US": "Reset annotations"
       }
     }
   }

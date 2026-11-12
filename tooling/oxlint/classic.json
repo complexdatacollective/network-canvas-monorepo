@@ -1,10 +1,11 @@
 {
   // The classic apps (architect-classic, interviewer-classic) are frozen
-  // schema 7 codebases: they take fixes, not modernisation. Every rule the
-  // shared configs hold at "warn" is switched off here, so their warnings do
-  // not bury the ones worth acting on elsewhere. Rules at "error" still run.
-  // Extend this after the shared configs; a new "warn" rule added to
-  // `.oxlintrc.json` or `react.json` needs an "off" entry here too.
+  // schema 7 codebases: they take fixes, not modernisation. The rules the
+  // rest of the repo was cleaned up to satisfy are switched off here, because
+  // the classic apps were never brought up to them. Correctness rules and
+  // the other errors not listed here still run. Extend this after the shared
+  // configs; a rule added to or raised in `.oxlintrc.json` or `react.json`
+  // needs an "off" entry here unless the classic apps already pass it.
   "categories": {
     "suspicious": "off"
   },
@@ -12,11 +13,21 @@
     "no-console": "off",
     // The classic apps have no AnimationProvider to defer to.
     "no-restricted-imports": "off",
+    "no-extend-native": "off",
+    "no-new": "off",
+    "no-unexpected-multiline": "off",
+    "no-unmodified-loop-condition": "off",
+    "oxc/no-async-endpoint-handlers": "off",
     "import/no-cycle": "off",
     "import/no-duplicates": "off",
+    "import/no-named-as-default": "off",
+    "promise/always-return": "off",
     "promise/no-callback-in-promise": "off",
+    "promise/no-promise-in-callback": "off",
     "unicorn/consistent-function-scoping": "off",
+    "unicorn/no-array-fill-with-reference-type": "off",
     "unicorn/no-thenable": "off",
+    "unicorn/prefer-add-event-listener": "off",
 
     "typescript/await-thenable": "off",
     "typescript/consistent-return": "off",
@@ -24,18 +35,27 @@
     "typescript/no-base-to-string": "off",
     "typescript/no-explicit-any": "off",
     "typescript/no-floating-promises": "off",
+    "typescript/no-generated-empty-object-type": "off",
     "typescript/no-implied-eval": "off",
     "typescript/no-misused-spread": "off",
     "typescript/no-redundant-type-constituents": "off",
+    "typescript/no-unnecessary-type-parameters": "off",
+    "typescript/no-unsafe-enum-comparison": "off",
     "typescript/no-unsafe-type-assertion": "off",
     "typescript/no-useless-default-assignment": "off",
     "typescript/restrict-template-expressions": "off",
     "typescript/switch-exhaustiveness-check": "off",
     "typescript/unbound-method": "off",
 
+    "react/capitalized-calls": "off",
     "react/exhaustive-deps": "off",
+    "react/exhaustive-effect-dependencies": "off",
+    "react/hooks": "off",
+    "react/memo-dependencies": "off",
+    "react/no-unstable-nested-components": "off",
     "react/error-boundaries": "off",
     "react/globals": "off",
+    "react/iframe-missing-sandbox": "off",
     "react/immutability": "off",
     "react/incompatible-library": "off",
     "react/no-find-dom-node": "off",

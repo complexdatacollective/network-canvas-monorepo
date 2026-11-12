@@ -1,7 +1,17 @@
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import { VariableSchema } from '@codaco/protocol-validation';
 import { toCanonicalText } from '@codaco/shared-consts';
 
+import {
+  markdownTextShapeAt,
+  textFieldPropsFor,
+} from '../localization/textShape.ts';
 import RichTextField from './RichTextField.tsx';
+
+/** What an answer's label may hold, as the codebook declares it. */
+const OPTION_LABEL = textFieldPropsFor(
+  markdownTextShapeAt(VariableSchema, ['options', 0, 'label']),
+);
 
 export type OptionLabelFieldProps = CreateFormFieldProps<
   string,
@@ -30,15 +40,14 @@ export type OptionLabelFieldProps = CreateFormFieldProps<
  * already had, and worse, wrote a typed `*` or `_` straight through to the
  * participant as emphasis (#1892).
  *
- * `singleLine` is the whole of the restriction, and it is one word because
- * `RichTextField` and `RichTextEditorField` both read it: a label is one line
- * of a participant's reading, so the value is one paragraph, and the editor
+ * The codebook declares the label one line of markdown, and `singleLine` is
+ * the whole of the restriction, read from that declaration: `RichTextField`
+ * and `RichTextEditorField` both read it. A label is one line of a
+ * participant's reading, so the value is one paragraph, and the editor
  * offers bold and italic only — no heading, link, list or rule, none of which
  * a single-line document can even hold. Exactly the toolbar Architect withheld
- * for the same field.
- *
- * The editor is `compact`: a label is a few words, so the editing area is one
- * line tall (as tall as the toolbar above it) instead of the box a prompt gets.
+ * for the same field. It also sets the height: the editing area is one line
+ * tall (as tall as the toolbar above it) and grows as the text wraps.
  *
  * The label is written canonically (NFC), on the way out and nowhere else.
  * Two labels that read identically are then also identical bytes — which is
@@ -58,8 +67,7 @@ export default function OptionLabelField({
   return (
     <RichTextField
       {...props}
-      singleLine
-      compact
+      singleLine={OPTION_LABEL.singleLine}
       value={typeof value === 'string' ? value : ''}
       onChange={(next) => onChange?.(toCanonicalText(next ?? ''))}
     />

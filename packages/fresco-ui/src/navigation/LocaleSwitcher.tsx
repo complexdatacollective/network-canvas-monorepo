@@ -448,8 +448,12 @@ export default function LocaleSwitcher({
                 // corners while it is the last visible child.
                 notice === null && 'rounded-b-[inherit]',
               )}
+              aria-labelledby={headingId}
               render={
-                <ScrollArea viewportClassName="flex flex-col px-2 pb-2" />
+                <ScrollArea
+                  viewportClassName="flex flex-col px-2 pb-2"
+                  tabIndex={searchable ? -1 : 0}
+                />
               }
             >
               {(item: LocaleItem) => (
@@ -481,6 +485,8 @@ export default function LocaleSwitcher({
               )}
             </Combobox.List>
             <div
+              // An <output> may hold only phrasing content, and the spinner is a block.
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
               role="status"
               aria-live="polite"
               className={

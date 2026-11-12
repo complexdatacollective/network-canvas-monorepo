@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -8,7 +8,6 @@ import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
-import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { interfaceMessages } from '../../interfaces/messages';
 import { InterfaceTextOverlay } from '../InterfaceTextOverlay';
@@ -16,27 +15,29 @@ import { ProtocolLocalizationProvider } from '../ProtocolLocalizationProvider';
 
 const localization = { defaultLocale: 'en', locales: ['en', 'es'] };
 
-beforeAll(() => interviewCatalogSource.load('es'));
-
 afterEach(() => {
   document.body.innerHTML = '';
 });
 
 function Interview({
   interfaceText,
+  declared = localization,
+  requestedLocales = ['es'],
   children,
 }: {
   interfaceText: Parameters<typeof InterfaceTextOverlay>[0]['interfaceText'];
+  declared?: Readonly<{ defaultLocale: string; locales: string[] }>;
+  requestedLocales?: readonly string[];
   children: ReactNode;
 }) {
   return (
-    <InterviewI18nProvider requestedLocale={['es']}>
+    <InterviewI18nProvider>
       <ProtocolLocalizationProvider
-        localization={localization}
-        localeOptions={localization.locales.map((locale) =>
+        localization={declared}
+        localeOptions={declared.locales.map((locale) =>
           getLocaleMetadata(locale),
         )}
-        requestedLocales={['es']}
+        requestedLocales={requestedLocales}
         localePreference={null}
         onLocalePreferenceChange={vi.fn()}
       >
@@ -75,17 +76,7 @@ describe('InterfaceTextOverlay', () => {
     expect(screen.getByRole('button', { name: 'Anterior' })).toBeDefined();
   });
 
-  it('leaves a message the protocol holds no text for to the catalog', () => {
-    render(
-      <Interview interfaceText={undefined}>
-        <Buttons />
-      </Interview>,
-    );
-    const catalogWording = screen
-      .getAllByRole('button')
-      .map((button) => button.textContent);
-    document.body.innerHTML = '';
-
+  it('shows Network Canvas’s wording for a message the protocol holds no text for', () => {
     render(
       <Interview
         interfaceText={{
@@ -98,8 +89,57 @@ describe('InterfaceTextOverlay', () => {
 
     expect(
       screen.getAllByRole('button').map((button) => button.textContent),
-    ).toEqual(['Anterior', catalogWording[1]]);
-    expect(catalogWording[0]).not.toBe('Anterior');
+    ).toEqual(['Anterior', 'Continuar']);
+  });
+
+  it('shows Network Canvas’s wording throughout for a protocol that holds none', () => {
+    render(
+      <Interview interfaceText={undefined}>
+        <Buttons />
+      </Interview>,
+    );
+
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent),
+    ).toEqual(['Volver', 'Continuar']);
+  });
+
+  // The protocol's Spanish does not stand in for the English it lacks: each
+  // language is the protocol's where it holds it and Network Canvas's where
+  // it does not.
+  it('shows Network Canvas’s wording in a language the protocol’s text lacks', () => {
+    render(
+      <Interview
+        interfaceText={{ navigation: { back: { es: 'Anterior' } } }}
+        requestedLocales={['en']}
+      >
+        <Buttons />
+      </Interview>,
+    );
+
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent),
+    ).toEqual(['Back', 'Continue']);
+  });
+
+  // Network Canvas has no Swahili: the protocol's own words are shown where
+  // it holds them, and a message with no words at all keeps its catalog's.
+  it('shows only the protocol’s wording in a language Network Canvas has none in', () => {
+    const swahili = { defaultLocale: 'sw', locales: ['sw'] };
+
+    render(
+      <Interview
+        interfaceText={{ navigation: { back: { sw: 'Rudi' } } }}
+        declared={swahili}
+        requestedLocales={['sw']}
+      >
+        <Buttons />
+      </Interview>,
+    );
+
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent),
+    ).toEqual(['Rudi', 'Continue']);
   });
 
   // One wording serves every catalog message it stands in for.

@@ -147,6 +147,10 @@ const anyVersionShows = (
           );
         });
       }
+      case TYPE.number:
+      case TYPE.date:
+      case TYPE.time:
+      case TYPE.tag:
       default:
         return true;
     }
@@ -368,6 +372,10 @@ const findElementsProblem = (
         }
         break;
       }
+      case TYPE.number:
+      case TYPE.date:
+      case TYPE.time:
+      case TYPE.tag:
       default:
         return 'This text cannot format numbers, dates or times, or contain tags.';
     }
@@ -530,11 +538,6 @@ const flatten = (
   stateOf: (name: string) => DynamicValueState,
   plural: string | undefined,
   parts: MessagePart[],
-  /**
-   * Collects the values a plural chose a version by through an arm of their
-   * own category, not by falling back to `other`.
-   */
-  plurals: Set<string>,
 ) => {
   for (const element of elements) {
     if (element.type === TYPE.literal) pushText(parts, element.value);
@@ -551,7 +554,7 @@ const flatten = (
           ? element.options[key]
           : undefined) ?? element.options.other;
       if (option !== undefined) {
-        flatten(option.value, locale, stateOf, plural, parts, plurals);
+        flatten(option.value, locale, stateOf, plural, parts);
       }
     } else if (element.type === TYPE.plural) {
       const state = stateOf(element.value);
@@ -569,9 +572,8 @@ const flatten = (
             ? element.options[category]
             : undefined;
       const option = own ?? element.options.other;
-      if (own !== undefined) plurals.add(element.value);
       if (option !== undefined) {
-        flatten(option.value, locale, stateOf, element.value, parts, plurals);
+        flatten(option.value, locale, stateOf, element.value, parts);
       }
     }
   }
@@ -593,58 +595,9 @@ export const dynamicMessageParts = (
   const elements = parseMessage(message);
   if (typeof elements === 'string') return [message];
   const parts: MessagePart[] = [];
-  flatten(elements, locale, stateOf, undefined, parts, new Set());
+  flatten(elements, locale, stateOf, undefined, parts);
   return parts;
 };
-
-/** A version of a translation that leaves out a value its original shows. */
-export type MissingDynamicPlacement = Readonly<{
-  argument: string;
-  /** The version: what each value the two texts use is in it. */
-  when: Readonly<Record<string, string>>;
-}>;
-
-/**
- * The texts choose between more versions than can be compared one by one,
- * so whether the translation shows every value cannot be known.
- */
-export const TOO_MANY_DYNAMIC_VERSIONS = 'tooManyVersions';
-
-/**
- * The values the version of `message` for `scenario` shows, and the values
- * that version chose by a plural arm written for their category.
- */
-const versionIn = (
-  message: string,
-  locale: LocaleTag,
-  scenario: ReadonlyMap<string, DynamicValueState>,
-): Readonly<{ shown: ReadonlySet<string>; plurals: ReadonlySet<string> }> => {
-  const elements = parseMessage(message);
-  const parts: MessagePart[] = [];
-  const plurals = new Set<string>();
-  if (typeof elements !== 'string') {
-    flatten(
-      elements,
-      locale,
-      (name) => scenario.get(name) ?? { missing: false },
-      undefined,
-      parts,
-      plurals,
-    );
-  }
-  return {
-    shown: new Set(
-      parts.flatMap((part) =>
-        typeof part === 'string' ? [] : [part.argument],
-      ),
-    ),
-    plurals,
-  };
-};
-
-// Beyond this many combinations of states the check gives up rather than
-// stall: no realistic stage text uses enough values to reach it.
-const MAX_SCENARIOS = 20_000;
 
 // Numbers to try: whole numbers to 1,000 and a few millions to billions
 // (where some languages' `many` begins), then decimals with one, two and
@@ -719,156 +672,4 @@ const reachableCategories = (locale: LocaleTag): ReadonlySet<string> => {
     categoriesByLocale.set(locale, categories);
   }
   return categories;
-};
-
-type CountSample = Readonly<{
-  /** One count for each pair of categories the two languages give it. */
-  counts: readonly number[];
-  /**
-   * The categories of the translation's language that only one sampled
-   * number selects, by that number.
-   */
-  singleNumberCategories: ReadonlySet<string>;
-}>;
-
-const countSamples = new Map<string, CountSample>();
-
-/**
- * The counts a check comparing a text in `originalLocale` with one in
- * `locale` needs: a version of each text is chosen by its own language's
- * category for the count, so one count per pair of categories reaches every
- * pair of versions.
- */
-const countSampleFor = (
-  originalLocale: LocaleTag,
-  locale: LocaleTag,
-): CountSample => {
-  const key = `${originalLocale} ${locale}`;
-  const cached = countSamples.get(key);
-  if (cached !== undefined) return cached;
-  const byPair = new Map<string, number>();
-  const membersOf = new Map<string, number>();
-  for (const count of SAMPLE_COUNTS) {
-    const category = pluralCategoryOf(locale, count);
-    const pair = `${pluralCategoryOf(originalLocale, count)} ${category}`;
-    if (!byPair.has(pair)) byPair.set(pair, count);
-    membersOf.set(category, (membersOf.get(category) ?? 0) + 1);
-  }
-  const sample: CountSample = {
-    counts: [...byPair.values()],
-    singleNumberCategories: new Set(
-      [...membersOf].flatMap(([category, members]) =>
-        members === 1 ? [category] : [],
-      ),
-    ),
-  };
-  countSamples.set(key, sample);
-  return sample;
-};
-
-const describeState = (state: DynamicValueState): string => {
-  if (state.missing) return MISSING_CASE;
-  if (state.count !== undefined) return String(state.count);
-  return state.case ?? 'other';
-};
-
-/**
- * The first version of `translation` (written in `locale`) that leaves out a
- * value `original` (written in `originalLocale`) shows for the same values,
- * or undefined when the translation shows everything its original does: a
- * translation must show the values its original shows. Versions are compared
- * by what the values are, so languages with different plural categories
- * compare count by count. A plural category that only one number selects in
- * the translation's language may leave its number out (Arabic `zero`); since
- * a number answer may be negative, English `one`, which holds 1 and -1, may
- * not. Meant for messages
- * `findDynamicValueProblem` accepts. `TOO_MANY_DYNAMIC_VERSIONS` when the
- * two texts choose between too many versions to compare: such a translation
- * is not accepted unchecked.
- */
-export const findMissingDynamicPlacement = (
-  original: string,
-  originalLocale: LocaleTag,
-  translation: string,
-  locale: LocaleTag,
-  values: DynamicValueArguments,
-): MissingDynamicPlacement | typeof TOO_MANY_DYNAMIC_VERSIONS | undefined => {
-  const names = [
-    ...new Set([
-      ...dynamicValueNamesIn(original),
-      ...dynamicValueNamesIn(translation),
-    ]),
-  ].filter((name) => argumentOf(values, name) !== undefined);
-  if (names.length === 0) return undefined;
-
-  const { counts, singleNumberCategories } = countSampleFor(
-    originalLocale,
-    locale,
-  );
-
-  const statesFor = (name: string): readonly DynamicValueState[] => {
-    const value = argumentOf(values, name);
-    if (value === undefined) return [{ missing: false }];
-    const present: DynamicValueState[] = value.numeric
-      ? counts.map((count) => ({ missing: false, count }))
-      : [
-          { missing: false },
-          ...value.cases.map((key) => ({ missing: false, case: key })),
-        ];
-    return value.optional ? [{ missing: true }, ...present] : present;
-  };
-
-  const axes = names.map((name) => [name, statesFor(name)] as const);
-  const total = axes.reduce(
-    (product, [, states]) => product * states.length,
-    1,
-  );
-  if (total > MAX_SCENARIOS) return TOO_MANY_DYNAMIC_VERSIONS;
-
-  // A category that only one number selects may leave its number out. A
-  // number answer can be negative, and plural rules read a negative count
-  // as its size (English `one` holds -1 as well as 1), so in practice that
-  // is a category for zero alone.
-  const singleNumberCategory = (count: number | undefined): boolean =>
-    count !== undefined &&
-    singleNumberCategories.has(pluralCategoryOf(locale, count));
-
-  for (let index = 0; index < total; index += 1) {
-    const scenario = new Map<string, DynamicValueState>();
-    let rest = index;
-    for (const [name, states] of axes) {
-      const state = states[rest % states.length];
-      rest = Math.floor(rest / states.length);
-      if (state !== undefined) scenario.set(name, state);
-    }
-    const required = versionIn(original, originalLocale, scenario).shown;
-    if (required.size === 0) continue;
-    // The one-number waiver holds only where this version of the
-    // translation itself is the arm its plural writes for that category: a
-    // translation without one falls back to `other`, which is written for
-    // many numbers and so must show the value.
-    const { shown, plurals } = versionIn(translation, locale, scenario);
-    for (const name of required) {
-      if (shown.has(name)) continue;
-      const state = scenario.get(name);
-      if (
-        state !== undefined &&
-        !state.missing &&
-        plurals.has(name) &&
-        singleNumberCategory(state.count)
-      ) {
-        continue;
-      }
-      return {
-        argument: name,
-        when: Object.fromEntries(
-          [...scenario].map(([each, eachState]) => [
-            each,
-            describeState(eachState),
-          ]),
-        ),
-      };
-    }
-  }
-  return undefined;
 };

@@ -66,12 +66,21 @@ export function useGeoJsonFeatureProperties(
   const { busy, failure, retry, run, clear } = useResourceAttempt();
   const [names, setNames] = useState<readonly string[] | undefined>(undefined);
   const [unreadable, setUnreadable] = useState(false);
-
-  const load = useCallback(() => {
-    // Dropped before the next layer is asked for, so a picker never offers the
-    // previous layer's properties against the newly chosen one.
+  // What the properties were read from. A layer's properties are only ever
+  // shown against that layer: choosing another, another client, or leaving the
+  // selection and choosing the same layer again, drops what was read before,
+  // so a picker never offers the previous layer's properties against the
+  // newly chosen one, and a read from before the selection was left does not
+  // come back while the new one is pending or after it fails. Adjusted during
+  // the render that sees the change, so no frame draws the stale ones.
+  const [asked, setAsked] = useState({ resourceId, resources });
+  if (asked.resourceId !== resourceId || asked.resources !== resources) {
+    setAsked({ resourceId, resources });
     setNames(undefined);
     setUnreadable(false);
+  }
+
+  const load = useCallback(() => {
     if (resourceId === undefined || resourceId === '') {
       clear();
       return;

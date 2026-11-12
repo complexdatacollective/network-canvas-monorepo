@@ -227,13 +227,22 @@ export const noticeFor = (
     return error.state === 'completed' ? 'finished' : 'ended';
   }
   if (error instanceof SessionTakenOver) return 'takenOver';
-  switch (refusalOf(error)?.kind) {
+  const kind = refusalOf(error)?.kind;
+  switch (kind) {
     case 'unauthorized':
       return scope === 'link' ? 'invalid' : 'ended';
     case 'rateLimited':
       return 'rateLimited';
-    default:
+    case 'forbidden':
+    case 'maintenance':
+    case 'notFound':
+    case 'transport':
+    case undefined:
       return undefined;
+    default: {
+      const unhandled: never = kind;
+      throw new Error('Unhandled refusal kind', { cause: unhandled });
+    }
   }
 };
 

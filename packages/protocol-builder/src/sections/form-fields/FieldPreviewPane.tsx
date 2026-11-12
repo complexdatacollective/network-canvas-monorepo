@@ -1,5 +1,5 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
-import { type ReactNode, Suspense, useContext, useId, useMemo } from 'react';
+import { type ReactNode, useContext, useId, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -12,12 +12,12 @@ import {
 } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
-import Spinner from '@codaco/fresco-ui/Spinner';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   createInitialNetwork,
+  InterfaceTextOverlay,
   InterviewI18nProvider,
   ProtocolField,
   type ProtocolFieldDefinition,
@@ -27,6 +27,7 @@ import {
   type ComponentType,
   ComponentTypesKeys,
   getLocaleMetadata,
+  type InterfaceText,
   isBlankText,
   type LocaleTag,
   type LocalizedString,
@@ -213,14 +214,19 @@ const passPreviewValidation = () => ({ success: true as const });
 /**
  * The protocol's languages, as the interview resolves the field's copy in
  * them: the language being edited, falling back as a participant's would.
+ * The field's own words around its control, such as a password field's
+ * placeholder, come from the protocol's interface text in that language, as
+ * they do in the interview.
  */
 function PreviewProtocolLanguage({
   localization,
   locale,
+  interfaceText,
   children,
 }: Readonly<{
   localization: ProtocolLocalization;
   locale: LocaleTag;
+  interfaceText: InterfaceText | undefined;
   children: ReactNode;
 }>) {
   const localeOptions = useMemo(
@@ -240,11 +246,13 @@ function PreviewProtocolLanguage({
           everything inside, the participant's popups included, takes the
           language being previewed and lays out in its direction, and no text
           inside marks a language of its own. */}
-      <DirectionProvider direction={direction}>
-        <div lang={locale} dir={direction}>
-          {children}
-        </div>
-      </DirectionProvider>
+      <InterfaceTextOverlay interfaceText={interfaceText}>
+        <DirectionProvider direction={direction}>
+          <div lang={locale} dir={direction}>
+            {children}
+          </div>
+        </DirectionProvider>
+      </InterfaceTextOverlay>
     </ProtocolLocalizationProvider>
   );
 }
@@ -616,45 +624,35 @@ export default function FieldPreviewPane({
               key={`${previewIdentity}:${field.type}:${field.component}`}
               onSubmit={passPreviewValidation}
             >
-              {/* The interview's catalog for this language may not have
-                  loaded yet, and the provider suspends until it has. */}
-              <Suspense
-                fallback={
-                  <div
-                    aria-busy
-                    className="flex min-h-56 items-center justify-center"
-                  >
-                    <Spinner />
-                  </div>
-                }
-              >
-                <InterviewI18nProvider requestedLocale={intl.locale}>
-                  <PreviewProtocolLanguage {...languages}>
-                    {/* Re-parents the participant's own popups — a scale's
+              <InterviewI18nProvider>
+                <PreviewProtocolLanguage
+                  {...languages}
+                  interfaceText={protocolContext.interfaceText}
+                >
+                  {/* Re-parents the participant's own popups — a scale's
                           value bubble, a date picker — into the region that
                           carries the previewed language and direction. */}
-                    <PortalContainerProvider>
-                      <PreviewField field={field}>
-                        {(previewed) => (
-                          <ProtocolField
-                            field={previewed}
-                            name="preview-value"
-                            {...(labelWithValues === undefined
-                              ? {}
-                              : { label: labelWithValues })}
-                            {...(hintWithValues === undefined
-                              ? {}
-                              : { hint: hintWithValues })}
-                            {...(validationContext === undefined
-                              ? {}
-                              : { validationContext })}
-                          />
-                        )}
-                      </PreviewField>
-                    </PortalContainerProvider>
-                  </PreviewProtocolLanguage>
-                </InterviewI18nProvider>
-              </Suspense>
+                  <PortalContainerProvider>
+                    <PreviewField field={field}>
+                      {(previewed) => (
+                        <ProtocolField
+                          field={previewed}
+                          name="preview-value"
+                          {...(labelWithValues === undefined
+                            ? {}
+                            : { label: labelWithValues })}
+                          {...(hintWithValues === undefined
+                            ? {}
+                            : { hint: hintWithValues })}
+                          {...(validationContext === undefined
+                            ? {}
+                            : { validationContext })}
+                        />
+                      )}
+                    </PreviewField>
+                  </PortalContainerProvider>
+                </PreviewProtocolLanguage>
+              </InterviewI18nProvider>
               <div className="flex justify-end">
                 <Button type="submit">
                   {intl.formatMessage(messages.checkResponse)}

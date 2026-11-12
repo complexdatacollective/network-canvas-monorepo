@@ -3,9 +3,13 @@ import type {
   SuppliedWording,
 } from '../supplied-stage-setting.ts';
 import { NAME_GENERATOR_SUPPLIED_TEXT } from './name-generator.ts';
+import { ADD_NAME_PLACEHOLDER } from './network-composer.ts';
 
-/** The line under the quick-add field, with the Enter key named in it. */
-const QUICK_ADD_HINT = {
+/**
+ * The line under the quick-add field, with the Enter key named in it, which
+ * every quick-add stage shows alike (`interface-text-wording.ts`).
+ */
+export const QUICK_ADD_HINT = {
   'en': 'Press Enter when you are finished.',
   'de': 'Drücken Sie Enter, wenn Sie fertig sind.',
   'es': 'Pulsa Intro cuando hayas terminado.',
@@ -21,5 +25,6 @@ const QUICK_ADD_HINT = {
 export const NAME_GENERATOR_QUICK_ADD_SUPPLIED_TEXT: readonly SuppliedStageSetting[] =
   [
     ...NAME_GENERATOR_SUPPLIED_TEXT,
-    { path: ['quickAddHint'], message: QUICK_ADD_HINT },
+    // Worded as a Network Composer's name field is by default.
+    { path: ['addNamePlaceholder'], message: ADD_NAME_PLACEHOLDER },
   ];

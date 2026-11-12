@@ -48,6 +48,7 @@ import {
   teamRoles,
   teamRolesLabel,
 } from '../lib/teamRoles.ts';
+import { useNow } from '../lib/useNow.ts';
 import { rpcCall, rpcKey } from '../runtime/rpc.ts';
 
 /**
@@ -115,7 +116,11 @@ function useTeamStateRefresh(
     activeMember,
     activeTeam,
   });
-  latestState.current = { activeMember, activeTeam };
+  // Before the inspection effect below, which reads it: effects of one
+  // component run in the order written.
+  useLayoutEffect(() => {
+    latestState.current = { activeMember, activeTeam };
+  });
   const mounted = useRef(true);
   const pendingInspections = useRef<Array<(refreshed: boolean) => void>>([]);
   const refreshQueue = useRef<Promise<void>>(Promise.resolve());
@@ -131,13 +136,17 @@ function useTeamStateRefresh(
       latestState.current.activeTeam.error === null &&
       latestState.current.activeMember.error === null;
     for (const resolve of inspections) resolve(refreshed);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `inspectionVersion` is the re-run trigger: each request bumps it so the inspection runs after the render that carries the refreshed state.
   }, [inspectionVersion]);
 
   useEffect(() => {
     mounted.current = true;
+    // The queue is one array for the life of the component, so the cleanup
+    // can hold it directly.
+    const queue = pendingInspections.current;
     return () => {
       mounted.current = false;
-      const inspections = pendingInspections.current.splice(0);
+      const inspections = queue.splice(0);
       for (const resolve of inspections) resolve(false);
     };
   }, []);
@@ -519,7 +528,6 @@ export default function TeamMembers({ teamId }: { teamId: string }) {
           <Button
             className="mt-4"
             size="sm"
-            variant="outline"
             disabled={retrying}
             onClick={() => void retryTeamAccess()}
           >
@@ -537,7 +545,12 @@ export default function TeamMembers({ teamId }: { teamId: string }) {
         </Surface>
       ) : (
         <Surface spacing="lg">
-          <div className="flex items-center gap-3" role="status">
+          <div
+            className="flex items-center gap-3"
+            // The live region holds a Spinner and a Paragraph, which are blocks; an <output> may hold only inline content.
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- holds block children
+            role="status"
+          >
             <Spinner size="sm" />
             <Paragraph margin="none">
               {intl.formatMessage(messages.loadingAccess)}
@@ -589,10 +602,10 @@ function TeamManagement(props: {
   const assignableRoles = canAssignOwner
     ? teamRoleOptions
     : teamRoleOptions.filter((role) => role.value !== 'owner');
+  const now = useNow();
   const pendingInvitations = team.invitations.filter(
     (invitation) =>
-      invitation.status === 'pending' &&
-      invitation.expiresAt.getTime() > Date.now(),
+      invitation.status === 'pending' && invitation.expiresAt.getTime() > now,
   );
 
   const beginMutation = () => {
@@ -612,6 +625,7 @@ function TeamManagement(props: {
     focusClearedInviteFormRef.current = false;
     const email = inviteFormRef.current?.elements.namedItem('email');
     if (email instanceof HTMLInputElement) email.focus();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `inviteFormKey` is the re-run trigger: the form remounts under a new key, and focus belongs on the new one.
   }, [inviteFormKey]);
 
   const retryTeamRefresh = async () => {
@@ -784,12 +798,11 @@ function TeamManagement(props: {
             className="mt-4"
             variant={message.kind === 'error' ? 'destructive' : 'default'}
           >
-            <span role="status">{message.text}</span>
+            <output aria-live="polite">{message.text}</output>
             {refreshRecovery && (
               <Button
                 className="mt-3"
                 size="sm"
-                variant="outline"
                 disabled={refreshingTeamDetails}
                 onClick={() => void retryTeamRefresh()}
               >

@@ -16,7 +16,7 @@ export const smallSizeVariants = cva({
 });
 
 // Scale-specific Slider Variants (for VisualAnalogScale and LikertScale)
-// Uses base-ui slider which sets --slider-thumb-position CSS custom property
+// Base UI's slider places the thumb itself, from the start edge of the track.
 export const sliderRootVariants = cva({
   base: cx('relative flex w-full touch-none items-center select-none'),
   variants: {
@@ -61,13 +61,13 @@ export const sliderTrackVariants = cva({
 
 const sliderThumbOwnVariants = cva({
   base: cx(
-    // Positioning - base-ui sets --slider-thumb-position
+    // Base UI sets the thumb's position along the track inline, from the
+    // start edge, and the translate that centres it on that point.
     'absolute top-1/2 aspect-square -translate-1/2',
-    'left-(--slider-thumb-position)',
     // Appearance
     'block rounded-full',
     // focusable-within: the nested <input type="range"> receives focus, not the div
-    'focusable-within outline-primary',
+    'focusable-within [--focus-color:var(--primary)]',
     'transition-colors duration-200',
   ),
   variants: {
@@ -310,15 +310,30 @@ export const inertReadOnlyVariants = cva({
 //      variants are applied to *is itself* focusable, e.g. Base UI's
 //      `Select.Trigger` renders a <button> with these classes applied directly.
 //      No-op for wrapper <div>s around inputs since they aren't tabbable.
+const keyboardFocusRing = cx(
+  'has-[input:focus-visible,textarea:focus-visible,select:focus-visible]:focus-styles focus-visible:focus-styles outline-(--focus-color,currentColor)',
+  // Safari builds a date or time input out of separate fields for the day,
+  // the month and so on, and puts focus on those. The input itself then
+  // matches `:focus` and never `:focus-visible`, however focus reached it, so
+  // the selector above leaves it with no ring. These inputs take typing, and
+  // an input that takes typing rings however it was focused (a text input
+  // rings on a click too), so `:focus` is the right test for them.
+  'has-[input:is([type=date],[type=time],[type=datetime-local],[type=month],[type=week]):focus]:focus-styles',
+);
+
 export const interactiveStateVariants = cva({
   base: cx('transition-colors duration-200'),
   variants: {
     state: {
+      // A disabled control takes no focus, so it has no ring.
       disabled: cx('focus-within:border-input-contrast/50'),
+      // A read-only control does take focus, and shows it by darkening its
+      // border rather than with the ring.
       readOnly: cx('focus-within:border-input-contrast/70'),
-      invalid: '',
-      normal:
-        'has-[input:focus-visible,textarea:focus-visible,select:focus-visible]:focus-styles focus-visible:focus-styles outline-(--focus-color,currentColor)',
+      // The red border says the value is wrong, not which field the keyboard
+      // is in, so an invalid control rings exactly as a valid one does.
+      invalid: keyboardFocusRing,
+      normal: keyboardFocusRing,
     },
   },
   defaultVariants: {
@@ -451,7 +466,7 @@ export const nativeSelectVariants = cva({
     'appearance-none border-none bg-transparent bg-none p-0 outline-none focus:ring-0',
     'disabled:bg-transparent', // Prevent browser default disabled background from overriding wrapper
     'bg-no-repeat',
-    'bg-[length:1.2em_1.2em]',
+    'bg-size-[1.2em_1.2em]',
     // The chevron belongs at the inline end, on the same edge as the padding
     // that reserves room for it. `background-position` has no logical
     // keywords, so that edge is two physical declarations rather than one

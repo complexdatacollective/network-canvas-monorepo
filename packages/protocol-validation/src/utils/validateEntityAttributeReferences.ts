@@ -1,4 +1,4 @@
-import type { Codebook } from '../schemas/9/schema.ts';
+import type { Codebook } from '../schemas/9/codebook/index.ts';
 import { VARIABLE_REFERENCE_VALIDATIONS } from '../schemas/9/variables/validation.ts';
 import {
   collectEntityAttributeReferences,

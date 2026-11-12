@@ -21,11 +21,18 @@ import { useSessionQuery } from './useSessionQuery';
 import { useSessionSelection } from './useSessionSelection';
 
 const messages = defineMessages({
+  tableLabel: {
+    id: 'interviewer.dataView.tableLabel',
+    defaultMessage: 'Interviews',
+    description:
+      'Accessible name of the table listing collected interviews, announced by screen readers when it is reached.',
+  },
   allStrongSelectedCountStrongMatchingInterviewsAre: {
     id: 'interviewer.dataView.allStrongSelectedCountStrongMatchingInterviewsAre',
     defaultMessage:
       '{selectedCount, plural, one {The <strong>#</strong> matching interview is selected.} other {All <strong>#</strong> matching interviews are selected.}}',
-    description: 'Visible copy in Interviewer Data View.',
+    description:
+      'Banner above the interview table after selection was extended to every interview matching the current filters. selectedCount is that number; strong makes it bold.',
   },
   clearSelection: {
     id: 'interviewer.dataView.clearSelection',
@@ -37,28 +44,33 @@ const messages = defineMessages({
     id: 'interviewer.dataView.allStrongLengthStrongOnThisPage',
     defaultMessage:
       '{length, plural, one {The <strong>#</strong> interview on this page is selected.} other {All <strong>#</strong> on this page are selected.}}',
-    description: 'Visible copy in Interviewer Data View.',
+    description:
+      'Banner above the interview table after the checkbox selected every row on the current page. length is the number of rows on the page; strong makes it bold.',
   },
   selectAllTotalCountMatching: {
     id: 'interviewer.dataView.selectAllTotalCountMatching',
     defaultMessage:
       '{totalCount, plural, one {Select the # match →} other {Select all # matching →}}',
-    description: 'Visible copy in Interviewer Data View.',
+    description:
+      'Button in the selection banner that extends selection from the current page to all interviews matching the filters. totalCount is the number of matching interviews.',
   },
   loadingInterviews: {
     id: 'interviewer.dataView.loadingInterviews',
     defaultMessage: 'Loading interviews…',
-    description: 'User-facing message in Interviewer Data View.',
+    description:
+      'Placeholder shown in the empty interview table while interviews are still being read from the device.',
   },
   noInterviewsMatchThisFilter: {
     id: 'interviewer.dataView.noInterviewsMatchThisFilter',
     defaultMessage: 'No interviews match this filter.',
-    description: 'User-facing message in Interviewer Data View.',
+    description:
+      'Placeholder shown in the interview table when a search or filter is active and no interview matches it.',
   },
   noInterviewsRecordedYet: {
     id: 'interviewer.dataView.noInterviewsRecordedYet',
     defaultMessage: 'No interviews recorded yet.',
-    description: 'User-facing message in Interviewer Data View.',
+    description:
+      'Placeholder shown in the interview table when no filter is active and the device holds no interviews yet.',
   },
 });
 
@@ -333,6 +345,10 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
       >
         <DataTable
           table={table}
+          aria-label={intl.formatMessage(messages.tableLabel)}
+          // The selection lives in `useSessionSelection` (it can span pages
+          // that were never fetched), not in the table's `rowSelection`.
+          selectedCount={selectedCount}
           bodyScroll
           emptyText={
             !loaded

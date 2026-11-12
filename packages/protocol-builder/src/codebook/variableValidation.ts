@@ -351,7 +351,7 @@ const hasTypeValidations = (type: string): type is VariableType =>
  */
 export const rulesSurvivingTypeChange = <TValue>(
   validation: Readonly<Record<string, TValue>>,
-  nextType: VariableType | string,
+  nextType: string,
 ): Readonly<{ kept: Record<string, TValue>; dropped: string[] }> => {
   const accepted: Readonly<Record<string, unknown>> = hasTypeValidations(
     nextType,

@@ -48,14 +48,13 @@ const exportOptions = {
 
 // Stands in for the export worker: captures the start message and lets tests
 // drive the reply protocol.
-class FakeWorker {
+class FakeWorker extends EventTarget {
   static instances: FakeWorker[] = [];
-  onmessage: ((message: { data: ExportWorkerMessage }) => void) | null = null;
-  onerror: ((event: { message: string }) => void) | null = null;
   posted: ExportWorkerStart[] = [];
   terminated = false;
 
   constructor() {
+    super();
     FakeWorker.instances.push(this);
   }
 
@@ -68,7 +67,7 @@ class FakeWorker {
   }
 
   reply(message: ExportWorkerMessage) {
-    this.onmessage?.({ data: message });
+    this.dispatchEvent(new MessageEvent('message', { data: message }));
   }
 }
 

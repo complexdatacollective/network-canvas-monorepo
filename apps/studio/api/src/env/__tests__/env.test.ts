@@ -246,7 +246,7 @@ describe('database and auth', () => {
       'Authorization=Bearer%20collector-key, x-tenant=lab',
     );
     const headers = readEnv().telemetryHeaders;
-    expect(String(headers)).toBe('<redacted>');
+    expect(JSON.stringify(headers)).toBe('"<redacted>"');
     expect(headers === undefined ? null : Redacted.value(headers)).toEqual({
       'Authorization': 'Bearer collector-key',
       'x-tenant': 'lab',

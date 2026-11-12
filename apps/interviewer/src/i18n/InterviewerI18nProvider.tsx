@@ -1,4 +1,3 @@
-import { DirectionProvider } from '@base-ui/react/direction-provider';
 import {
   createContext,
   useCallback,
@@ -8,14 +7,16 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 
-import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import { isPseudoLocale } from '@codaco/app-i18n/locales';
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
+import LocaleDirectionProvider from '@codaco/fresco-ui/LocaleDirectionProvider';
 
 import { interviewerCatalogSource } from '../locales/catalogs';
 import { interviewerDefaultLocale, interviewerLocales } from './locales';
 import {
   browserLanguages,
   LOCALE_PREFERENCE_KEY,
+  localePreferenceStore,
   negotiateLocale,
   readPreference,
 } from './preference';
@@ -63,20 +64,14 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
     )
       return;
     setCurrentPreference(next);
-    if (next === PSEUDO_LOCALE) {
+    if (isPseudoLocale(next)) {
       // Development inspection must not replace a real device preference.
       setSaveState('idle');
       return;
     }
-    try {
-      if (next === null) localStorage.removeItem(LOCALE_PREFERENCE_KEY);
-      else localStorage.setItem(LOCALE_PREFERENCE_KEY, next);
-      setSaveState('saved');
-    } catch {
-      // Apply the current choice even when storage is blocked, and tell the
-      // researcher that reloading cannot restore it.
-      setSaveState('failed');
-    }
+    // Apply the current choice even when storage is blocked, and tell the
+    // researcher that reloading cannot restore it.
+    setSaveState(localePreferenceStore.write(next) ? 'saved' : 'failed');
     setRequested(browserLanguages());
   }, []);
 
@@ -96,7 +91,7 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const requestedLocale =
-    preference === PSEUDO_LOCALE
+    preference !== null && isPseudoLocale(preference)
       ? preference
       : negotiateLocale(preference, requested);
   const automaticLocale = negotiateLocale(null, requested);
@@ -123,14 +118,7 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
           setPreference,
         }}
       >
-        <DirectionProvider
-          direction={
-            interviewerLocales.find((entry) => entry.locale === catalog.locale)
-              ?.direction ?? 'ltr'
-          }
-        >
-          {children}
-        </DirectionProvider>
+        <LocaleDirectionProvider>{children}</LocaleDirectionProvider>
       </PreferenceContext.Provider>
     </AppI18nProvider>
   );

@@ -1,0 +1,40 @@
+// Topics and posts.
+
+// The topic title is the shared Heading's subheading (text-2xl, black), with
+// that step's leading and tracking.
+#topic-title h1 {
+  font-size: var(--nc-text-2xl);
+  line-height: var(--nc-text-2xl--line-height);
+  letter-spacing: var(--nc-text-2xl--letter-spacing);
+}
+
+#topic-title .fancy-title {
+  font-family: var(--nc-heading-font);
+  font-weight: 900;
+}
+
+// Post text is set like the shared Paragraph: text-base with its leading.
+.cooked {
+  line-height: var(--nc-text-base--line-height);
+
+  blockquote,
+  aside.quote .title,
+  aside.quote blockquote {
+    border-inline-start: 4px solid var(--nc-accent);
+    background: var(--nc-surface-1);
+  }
+
+  blockquote {
+    border-radius: var(--nc-radius-xs);
+  }
+
+  pre code,
+  code {
+    border-radius: var(--nc-radius-xs);
+  }
+
+  hr {
+    border: 0;
+    border-top: 2px solid var(--nc-outline);
+  }
+}

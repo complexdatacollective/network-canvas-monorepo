@@ -3,7 +3,6 @@ import { LayoutGroup } from 'motion/react';
 import {
   type Dispatch,
   type ReactNode,
-  type RefObject,
   type SetStateAction,
   useCallback,
   useContext,
@@ -36,10 +35,15 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   collectLocalizedStringsFromSchema,
   findDynamicValueProblems,
+  type InterfaceTextUpdate,
   type LocalizationDeclaration,
   stageSchema,
 } from '@codaco/protocol-validation';
-import { applyCommands, type Command } from '@codaco/studio-sync/apply';
+import {
+  applyCommands,
+  type Command,
+  contentHash,
+} from '@codaco/studio-sync/apply';
 
 import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import {
@@ -52,12 +56,15 @@ import type {
 } from '../stage-editor-contract.ts';
 import {
   savedStageFields,
+  SHARED_WORDING_PATH,
   stageDocument,
+  stageFieldsOf,
   type StageFormDraft,
   type StageIdentity,
 } from '../stageDocument.ts';
 import { NOT_READY_MESSAGE, useStageEdit } from '../stageEdit.tsx';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import { useLatest } from '../state/useLatest.ts';
 import {
   dormantFieldsOf,
   mountedPathsOf,
@@ -69,6 +76,14 @@ import {
 } from './outlineStore.ts';
 import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
 import { rewriteFormStore } from './rewriteFormStore.ts';
+import {
+  pendingSharedWording,
+  settleSharedWording,
+  sharedWordingAsk,
+  sharedWordingFieldName,
+  sharedWordingInForm,
+  sharedWordingIssues,
+} from './sharedWordingDraft.ts';
 import {
   type OwnCommandsResult,
   StageEditorFormContext,
@@ -146,12 +161,11 @@ export default function StageEditorShell(props: StageEditorShellProps) {
       key={`${identity.type}:${identity.id}:${discarded}`}
       committedFields={committedFields}
     >
-      {(document, working, setDocument, saved, setSaved) => (
+      {(document, setDocument, saved, setSaved) => (
         <StageEditorFormBody
           {...props}
           identity={identity}
           document={document}
-          working={working}
           setDocument={setDocument}
           saved={saved}
           setSaved={setSaved}
@@ -202,21 +216,41 @@ function StageDocument({
   committedFields: StageFormDraft;
   children: (
     document: StageFormDraft,
-    working: RefObject<StageFormDraft>,
     setDocument: Dispatch<SetStateAction<StageFormDraft>>,
     saved: StageFormDraft,
     setSaved: Dispatch<SetStateAction<StageFormDraft>>,
   ) => ReactNode;
 }>) {
-  const working = useRef<StageFormDraft>(committedFields);
   const [document, setDocument] = useState<StageFormDraft>(committedFields);
   const [saved, setSaved] = useState<StageFormDraft>(committedFields);
 
   return (
     <FormStoreProvider initialValues={document}>
-      {children(document, working, setDocument, saved, setSaved)}
+      {children(document, setDocument, saved, setSaved)}
     </FormStoreProvider>
   );
+}
+
+/**
+ * The working document, as a cell a write can update and the next write read
+ * in the same turn. A class rather than a ref because the editor hands
+ * callbacks that read it to the context it publishes, and a ref read from
+ * those callbacks would look to the React Compiler like a ref read in render.
+ */
+class WorkingDocument {
+  #draft: StageFormDraft;
+
+  constructor(initial: StageFormDraft) {
+    this.#draft = initial;
+  }
+
+  read(): StageFormDraft {
+    return this.#draft;
+  }
+
+  write(next: StageFormDraft): void {
+    this.#draft = next;
+  }
 }
 
 function StageEditorFormBody({
@@ -226,7 +260,6 @@ function StageEditorFormBody({
   className,
   identity,
   document,
-  working,
   setDocument,
   saved,
   setSaved,
@@ -236,7 +269,6 @@ function StageEditorFormBody({
   Readonly<{
     identity: StageIdentity;
     document: StageFormDraft;
-    working: RefObject<StageFormDraft>;
     setDocument: Dispatch<SetStateAction<StageFormDraft>>;
     saved: StageFormDraft;
     setSaved: Dispatch<SetStateAction<StageFormDraft>>;
@@ -250,12 +282,25 @@ function StageEditorFormBody({
   // here: only a held stage has a holder to name, and only a stage still
   // opening is worth trying again in a moment.
   const readOnly = access !== 'editing';
+  // This body is only drawn for a stage the protocol opened, so `unavailable`
+  // (which the shell above answers by drawing something else) cannot be the
+  // access a host's slot is called with.
+  const slotAccess = access === 'unavailable' ? 'pending' : access;
   const writeRefusal =
     access === 'readOnly' ? READ_ONLY_MESSAGE : NOT_READY_MESSAGE;
   const intl = useAppIntl();
   const localization = useProtocolLocalization();
-  const { codebook } = useProtocolContext();
+  const protocol = useProtocolContext();
+  const { codebook } = protocol;
+  // Read by the shared words a save writes, which a host also reads from a
+  // store subscription: the protocol as it stands then, not as it was when
+  // the callback was made.
+  const latestProtocol = useLatest(protocol);
   const storeApi = useContext(FormStoreContext);
+  // The document as the controls last left it, and what a structural write
+  // reads and writes. Held in the body that does both, and seeded from the
+  // document it mounts with; the caller's key remounts the two together.
+  const [working] = useState(() => new WorkingDocument(document));
   const formRef = useRef<HTMLFormElement>(null);
   const fieldScope = useFormFieldScope();
   const outline = useMemo(() => new SectionOutlineStore(), []);
@@ -278,9 +323,17 @@ function StageEditorFormBody({
   const clearRefusedWrite = useCallback(() => {
     setRefusedWrite(undefined);
   }, []);
-  useEffect(() => {
-    if (!readOnly) clearRefusedWrite();
-  }, [clearRefusedWrite, readOnly]);
+  // A refusal reported while the stage cannot be written goes the moment the
+  // stage can be, and only then: a list editor also reports refusals on a
+  // writable stage (a batch it chose not to issue), and those stand until the
+  // next write. Adjusted during the render that sees the access change rather
+  // than in an effect, which would draw one frame of a writable stage still
+  // carrying a refusal banner.
+  const [wasReadOnly, setWasReadOnly] = useState(readOnly);
+  if (wasReadOnly !== readOnly) {
+    setWasReadOnly(readOnly);
+    if (!readOnly) setRefusedWrite(undefined);
+  }
 
   /**
    * The one way a refused structural write is said out loud, wherever the
@@ -308,14 +361,45 @@ function StageEditorFormBody({
    * researcher's unsaved form as no change at all.
    */
   const liveDraft = useCallback((): StageFormDraft => {
-    if (storeApi === undefined) return working.current;
+    if (storeApi === undefined) return working.read();
     return documentFromSubmission({
-      currentFields: working.current,
+      currentFields: working.read(),
       submittedValues: storeApi.getState().getFormValues(),
       mountedPaths: mountedPathsOf(storeApi),
       dormantFields: dormantFieldsOf(storeApi),
     });
-  }, [storeApi]);
+  }, [storeApi, working]);
+
+  /**
+   * The shared words a save would write with the stage as the form holds it
+   * now (see `pendingSharedWording`): read, like `liveDraft`, rather than
+   * subscribed.
+   */
+  const sharedWordingToSave = useCallback(
+    (fields: StageFormDraft) =>
+      storeApi === undefined
+        ? []
+        : pendingSharedWording(
+            latestProtocol(),
+            identity,
+            fields,
+            (group, key) => sharedWordingInForm(storeApi, group, key),
+          ),
+    [identity, latestProtocol, storeApi],
+  );
+  const pendingWording = useCallback(
+    () => sharedWordingToSave(liveDraft()),
+    [liveDraft, sharedWordingToSave],
+  );
+
+  /**
+   * The shared words of the last save nobody answered, kept with what the
+   * researcher had asked for then: see `handleSubmit`. Any answer clears them.
+   */
+  const unresolvedWording = useRef<
+    | Readonly<{ ask: string; wording: readonly InterfaceTextUpdate[] }>
+    | undefined
+  >(undefined);
 
   /**
    * How this form writes structurally, as a list editor commits one row
@@ -335,12 +419,20 @@ function StageEditorFormBody({
         return { draft: before, refused: true };
       }
       const next = applyCommands(before, [...commands]);
-      working.current = next;
+      working.write(next);
       setDocument(next);
       clearRefusedWrite();
       return { draft: next, refused: false };
     },
-    [clearRefusedWrite, liveDraft, readOnly, reportRefusedWrite, writeRefusal],
+    [
+      clearRefusedWrite,
+      liveDraft,
+      readOnly,
+      reportRefusedWrite,
+      setDocument,
+      working,
+      writeRefusal,
+    ],
   );
 
   /**
@@ -353,11 +445,11 @@ function StageEditorFormBody({
       if (storeApi !== undefined) {
         rewriteFormStore(storeApi, liveDraft(), rewrite);
       }
-      working.current = rewrite(working.current);
+      working.write(rewrite(working.read()));
       setDocument(rewrite);
       setSaved(rewrite);
     },
-    [liveDraft, setDocument, setSaved, storeApi],
+    [liveDraft, setDocument, setSaved, storeApi, working],
   );
 
   const handleSubmit = useCallback<FormSubmitHandler>(
@@ -381,7 +473,7 @@ function StageEditorFormBody({
         savedStageFields(
           identity,
           documentFromSubmission({
-            currentFields: working.current,
+            currentFields: working.read(),
             submittedValues: values as Record<string, FieldValue>,
             mountedPaths: mountedPathsOf(storeApi),
             dormantFields: dormantFieldsOf(storeApi),
@@ -390,7 +482,7 @@ function StageEditorFormBody({
         ),
         saved,
       );
-      working.current = fields;
+      working.write(fields);
 
       // The schema's reading of the stage. Anchored problems go to the
       // outline, which files each under the section that answers for it and
@@ -401,12 +493,37 @@ function StageEditorFormBody({
       // section's problems named by that section, then the rules about the
       // stage as a whole. The unattributed ones are deliberately not here;
       // they are what a host's own issue surfacing is for.
-      const { sections: anchored, whole } = stageProblems(
+      const { sections: stageIssues, whole } = stageProblems(
         identity,
         fields,
         localization,
         codebook,
       );
+      // The shared words the stage brings in are saved with it, so a word
+      // that cannot be saved refuses the stage, as a setting of its own
+      // would, and is answered for by the field that holds it.
+      //
+      // Worked out from the protocol as well as the draft, and a save that
+      // lands changes what the protocol holds: a save whose answer was lost
+      // would otherwise send different words when it is asked again, under a
+      // different request id, and a stage being added would be added twice.
+      // So while the researcher asks for the same thing (the same stage and
+      // the same words of their own) after a save nobody answered, the same
+      // words go. After an answer they are worked out again: a refused save
+      // wrote nothing, and a collaborator may have saved words for the same
+      // entries since.
+      const ask = contentHash({
+        stage: stageFieldsOf(fields),
+        wording: sharedWordingAsk(storeApi),
+      });
+      const kept = unresolvedWording.current;
+      const wording =
+        kept?.ask === ask ? kept.wording : sharedWordingToSave(fields);
+      const wordingIssues =
+        localization === undefined
+          ? []
+          : sharedWordingIssues(wording, localization.defaultLocale, intl);
+      const anchored = [...stageIssues, ...wordingIssues];
       outline.setValidationIssues(anchored);
       if (anchored.length > 0 || whole.length > 0) {
         const said = [...sectionProblems(sections.getSnapshot()), ...whole];
@@ -416,10 +533,24 @@ function StageEditorFormBody({
         return {
           success: false,
           formErrors: said.length > 0 ? said : [INVALID_STAGE_MESSAGE],
+          // A shared word answers for itself beside its field, which takes
+          // focus as a refused field does, once its part has opened over it.
+          fieldErrors: Object.fromEntries(
+            wordingIssues.map(({ path: [, group, key], message }) => [
+              sharedWordingFieldName(String(group), String(key)),
+              [message],
+            ]),
+          ),
         };
       }
 
-      const outcome = await save(fields);
+      // Forgotten before the save, so that one which throws — a refusal there
+      // is no outcome for — is an answer like any other.
+      unresolvedWording.current = undefined;
+      const outcome = await save(fields, wording);
+      if (outcome.status === 'unanswered') {
+        unresolvedWording.current = { ask, wording };
+      }
       if (outcome.status === 'saved') {
         // A save is the only thing that may move the baselines the form's
         // dirty flag is measured against, and Studio's discard prompt reads
@@ -433,7 +564,16 @@ function StageEditorFormBody({
         // is the other question a section can ask about the stage: what the
         // researcher agreed to, as against what the form is holding now.
         setSaved(fields);
-        storeApi.getState().rebaseToDocument(fields);
+        // The shared words it wrote are the protocol's now, and those it left
+        // out (an entry the stage stopped using) are gone with the draft.
+        storeApi.getState().rebaseToDocument({
+          ...fields,
+          [SHARED_WORDING_PATH]: settleSharedWording(
+            storeApi,
+            wording,
+            localization,
+          ),
+        });
         clearRefusedWrite();
         return { success: true };
       }
@@ -452,14 +592,18 @@ function StageEditorFormBody({
       codebook,
       discardDraft,
       identity,
+      intl,
       localization,
       outline,
       readOnly,
       save,
       saved,
       sections,
+      setDocument,
       setSaved,
+      sharedWordingToSave,
       storeApi,
+      working,
       writeRefusal,
     ],
   );
@@ -530,6 +674,7 @@ function StageEditorFormBody({
             committedFields: document,
             savedFields: saved,
             liveDraft,
+            pendingSharedWording: pendingWording,
             applyOwnCommands,
             mapDocuments,
             reportRefusedWrite,
@@ -547,6 +692,7 @@ function StageEditorFormBody({
       liveDraft,
       mapDocuments,
       outline,
+      pendingWording,
       readOnly,
       reportRefusedWrite,
       saved,
@@ -577,7 +723,13 @@ function StageEditorFormBody({
         */}
         <div className="phone-landscape:px-6 px-4">
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-            {header?.({ formId, readOnly, sections, problems })}
+            {header?.({
+              formId,
+              readOnly,
+              access: slotAccess,
+              sections,
+              problems,
+            })}
             <form
               id={formId}
               ref={formRef}
@@ -618,7 +770,13 @@ function StageEditorFormBody({
                 <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
               </LayoutGroup>
             </form>
-            {actions?.({ formId, readOnly, sections, problems })}
+            {actions?.({
+              formId,
+              readOnly,
+              access: slotAccess,
+              sections,
+              problems,
+            })}
           </div>
         </div>
       </div>
@@ -694,17 +852,11 @@ function stageProblems(
 
   // What the protocol's own check asks of the values a stage's text shows,
   // and which the stage's schema cannot: that each is bound and can be shown
-  // there, and that every translation shows each value the default-language
-  // text shows. An edit to the default-language text is what usually breaks
-  // the last of these, in translations nobody touched; a stage saved without
-  // asking would leave the protocol invalid until it is next checked whole.
+  // there. A stage saved without asking would leave the protocol invalid
+  // until it is next checked whole.
   const seen = new Set<string>();
   for (const problem of findDynamicValueProblems(
-    {
-      codebook,
-      stages: [document],
-      defaultLocale: localization?.defaultLocale,
-    },
+    { codebook, stages: [document] },
     collectLocalizedStringsFromSchema(stageSchema, document).map((hit) => ({
       ...hit,
       path: ['stages', 0, ...hit.path],

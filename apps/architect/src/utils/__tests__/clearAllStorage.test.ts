@@ -13,7 +13,7 @@ const LEGACY_DB_NAME = LEGACY_LIBRARIES[0].dbName;
 const request = <T>(req: IDBRequest<T>) =>
   new Promise<T>((resolve, reject) => {
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.addEventListener('error', () => reject(req.error));
   });
 
 // Architect 8's library, laid out as its Dexie lays it out.
@@ -34,7 +34,7 @@ const seedArchitect8Library = async () => {
       .objectStore('protocols')
       .put({ id: 'v8-row', name: 'Schema 8 study', schemaVersion: 8 });
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
+    transaction.addEventListener('error', () => reject(transaction.error));
   });
   db.close();
 };
@@ -64,7 +64,7 @@ const originalLocation = window.location;
 beforeEach(async () => {
   Object.defineProperty(window, 'location', {
     configurable: true,
-    value: { ...originalLocation, reload },
+    value: { reload },
   });
   reload.mockReset();
   await assetDb.protocols.put({

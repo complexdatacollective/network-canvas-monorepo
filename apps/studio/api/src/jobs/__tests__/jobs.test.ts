@@ -110,7 +110,7 @@ describe.skipIf(!db)('a job’s trace', () => {
           yield* worker.drainOnce(QUEUE);
 
           const drain = observed.spans.find(
-            (span) => span.name === 'JobWorker.drainOnce',
+            (span) => span.name === 'JobWorker.process',
           );
           const [span] = handleSpans(observed.spans);
           assert.isDefined(drain);
@@ -119,6 +119,57 @@ describe.skipIf(!db)('a job’s trace', () => {
           assert.isTrue(
             Option.isSome(parent) && parent.value.spanId === drain?.spanId,
           );
+        }).pipe(Effect.provide(layerWorker()), Effect.provide(observed.layer));
+      },
+    );
+
+    suite.effect(
+      'samples nothing a poll records when it claims nothing',
+      () => {
+        const observed = observe();
+        return Effect.gen(function* () {
+          yield* clearQueue;
+          const worker = yield* JobWorker;
+          yield* worker.work(QUEUE, () => Effect.succeed('completed'));
+          const before = observed.spans.length;
+          const step = yield* worker.drainOnce(QUEUE);
+          const recorded = observed.spans.slice(before);
+
+          assert.strictEqual(step._tag, 'idle');
+          assert.isAbove(recorded.length, 0);
+          assert.deepStrictEqual(
+            recorded.filter((span) => span.sampled).map((span) => span.name),
+            [],
+          );
+        }).pipe(Effect.provide(layerWorker()), Effect.provide(observed.layer));
+      },
+    );
+
+    suite.effect(
+      'samples the processing of a job a poll claims, though not the claim',
+      () => {
+        const observed = observe();
+        return Effect.gen(function* () {
+          yield* clearQueue;
+          const worker = yield* JobWorker;
+          const jobs = yield* Jobs;
+          yield* asApp(
+            MaintenanceScope.open(
+              jobs.enqueue(QUEUE, { deliveryId: DELIVERY_ID }),
+            ),
+          );
+          yield* worker.work(QUEUE, () => Effect.succeed('completed'));
+          const step = yield* worker.drainOnce(QUEUE);
+
+          assert.strictEqual(step._tag, 'settled');
+          const sampled = new Set(
+            observed.spans
+              .filter((span) => span.sampled)
+              .map((span) => span.name),
+          );
+          assert.isTrue(sampled.has('JobWorker.process'));
+          assert.isTrue(sampled.has('JobWorker.handle'));
+          assert.isFalse(sampled.has('JobWorker.claim'));
         }).pipe(Effect.provide(layerWorker()), Effect.provide(observed.layer));
       },
     );

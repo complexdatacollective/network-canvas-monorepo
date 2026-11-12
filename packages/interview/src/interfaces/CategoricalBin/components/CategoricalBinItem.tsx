@@ -153,6 +153,7 @@ export const useSummaryFits = (
     observer.observe(title);
     observer.observe(summaryText);
     return () => observer.disconnect();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `hasSummary` says when the summary text mounts or unmounts, which the refs alone never re-run this for
   }, [contentRef, titleRef, summaryTextRef, hasSummary]);
 
   return fits;
@@ -280,7 +281,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
           label={label}
           render={<Heading level="h3" className="[&_strong]:font-black" />}
         />
-        <span className="ml-auto text-sm opacity-60">
+        <span className="ms-auto text-sm opacity-60">
           {contentFormat.formatNumber(nodes.length)}
         </span>
       </button>
@@ -402,7 +403,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         // than a child so neither button sits inside the other.
         <button
           type="button"
-          className="focusable absolute inset-0 cursor-pointer rounded-full outline-(--cat-color) focus-visible:-outline-offset-6 aria-disabled:cursor-default"
+          className="focusable absolute inset-0 cursor-pointer rounded-full [--focus-color:var(--cat-color)] focus-visible:-outline-offset-6 aria-disabled:cursor-default"
           onClick={(e) => {
             e.stopPropagation();
             void handleSelect();

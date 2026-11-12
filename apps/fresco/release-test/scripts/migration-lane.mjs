@@ -872,11 +872,20 @@ async function resume() {
       fileStem: IMPORTS[key],
       upload: uploadProtocol,
     });
+  // Fresco's notifications are dialogs to assistive technology too, and an
+  // import ends with one ("Protocol imported successfully"). It asks nothing,
+  // so a dialog inside the notifications viewport is not counted.
   const openDialog = async () => {
-    const dialog = desk.getByRole('dialog').first();
-    if (!(await dialog.isVisible().catch(() => false))) return null;
-    const text = (await dialog.textContent().catch(() => '')) ?? '';
-    return text.trim().slice(0, 160) || '(a dialog with no text)';
+    for (const dialog of await desk.getByRole('dialog').all()) {
+      if (!(await dialog.isVisible().catch(() => false))) continue;
+      const isNotification = await dialog
+        .evaluate((el) => Boolean(el.closest('[data-testid="toast-viewport"]')))
+        .catch(() => false);
+      if (isNotification) continue;
+      const text = (await dialog.textContent().catch(() => '')) ?? '';
+      return text.trim().slice(0, 160) || '(a dialog with no text)';
+    }
+    return null;
   };
   // The schema badges a protocol's row in the protocols table carries, or
   // null when the table has no row for it: an absent row carries no badge

@@ -5,9 +5,9 @@ import { AppErrorMessage, AppMessage } from '@codaco/app-i18n/react';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import {
-  FinishStageTextRefusal,
-  FinishStageTextRefusalTitle,
-} from '~/components/FinishStageTextAlert';
+  DownloadRefusalMessage,
+  DownloadRefusalTitle,
+} from '~/components/DefaultLanguageTextAlert';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 import type { AppDispatch } from '~/ducks/store';
 
@@ -61,12 +61,12 @@ const runDownload = async (
     const result = await dispatch(
       exportNetcanvas(await readProtocol()),
     ).unwrap();
-    if (result.status === 'missing-finish-stage-text') {
+    if (result.status === 'download-refused') {
       void openDialog({
         type: 'acknowledge',
         intent: 'destructive',
-        title: createElement(FinishStageTextRefusalTitle),
-        description: createElement(FinishStageTextRefusal, {
+        title: createElement(DownloadRefusalTitle),
+        description: createElement(DownloadRefusalMessage, {
           problem: result.problem,
         }),
         actions: {
@@ -139,8 +139,9 @@ const runDownload = async (
  * canonical protocol is not what the researcher is being offered — rescuing an
  * uncommitted stage draft, which lives outside `activeProtocol`.
  *
- * Nor is one whose finish stage has no heading or text in its default
- * language: no host would import it (`MissingFinishStageTextError`).
+ * Nor is one no host would import (`DownloadRefusedError`): its finish
+ * stage has no heading or text in its default language, or two labels
+ * participants choose between read the same.
  */
 export const downloadActiveProtocol = (
   dispatch: AppDispatch,

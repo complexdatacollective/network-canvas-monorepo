@@ -12,6 +12,7 @@ import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 import { ErrorReport } from '@codaco/studio-contract/schema/telemetry';
 
 import { ResearcherErrorTelemetry } from '../../lib/errorTelemetry.ts';
+import { requestBodyText } from '../../test/fetchStub.ts';
 import { installRpcHarness, type RpcHarness } from '../../test/rpcHarness.ts';
 import {
   type SendReport,
@@ -81,7 +82,7 @@ const settledStatus = async (harness: RpcHarness) => {
 
 const reportCalls = () =>
   fetchSpy.mock.calls.filter(([, init]) =>
-    String(init?.body ?? '').includes('telemetry.report'),
+    requestBodyText(init).includes('telemetry.report'),
   );
 
 const renderResearcher = (telemetry: boolean) => {
@@ -132,7 +133,7 @@ describe('browser error reporting', () => {
       expect(url.pathname.replace(/\/$/, '')).toBe('/rpc');
       expect(init?.credentials).toBe('omit');
     }
-    const body = String(reportCalls()[0]?.[1]?.body);
+    const body = requestBodyText(reportCalls()[0]?.[1]);
     expect(body).toContain('"type":"TypeError"');
     expect(body).toContain('"surface":"researcher"');
     expect(body).toContain('/assets/index-abc123.js');

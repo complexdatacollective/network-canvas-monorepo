@@ -42,74 +42,87 @@ const messages = defineMessages({
   interviewerAPPVERSION: {
     id: 'interviewer.statusRow.interviewerAPPVERSION',
     defaultMessage: 'Interviewer {APP_VERSION}',
-    description: 'Visible copy in Interviewer Status Row.',
+    description:
+      'Version indicator at the bottom right of the home screen; APP_VERSION is the installed version number. Replaced by an update control when an update is available.',
   },
   strongProtocolCountStrongProtocols: {
     id: 'interviewer.statusRow.strongProtocolCountStrongProtocols',
     defaultMessage:
       '{protocolCount, plural, one {<strong>#</strong> protocol} other {<strong>#</strong> protocols}}',
-    description: 'Administration text in Interviewer StatusRow.',
+    description:
+      'Count in the footer of the home screen, linking to the data view. protocolCount is the number of installed protocols; the strong tags bold the number.',
   },
   strongInterviewCountStrongInterviews: {
     id: 'interviewer.statusRow.strongInterviewCountStrongInterviews',
     defaultMessage:
       '{interviewCount, plural, one {<strong>#</strong> interview} other {<strong>#</strong> interviews}}',
-    description: 'Administration text in Interviewer StatusRow.',
+    description:
+      'Count in the footer of the home screen, linking to the data view. interviewCount is the number of stored interviews; the strong tags bold the number.',
   },
   notEncryptedNoAppSecurityIsEnrolled: {
     id: 'interviewer.statusRow.notEncryptedNoAppSecurityIsEnrolled',
     defaultMessage:
       'Not encrypted. No app security is enrolled — data is stored unencrypted. Enrol a PIN, passphrase, or biometric in Settings to encrypt it.',
-    description: 'Visible copy in Interviewer Status Row.',
+    description:
+      'Explanation opened by tapping the Not encrypted chip in the home footer; says no app lock is set up so data is stored unencrypted, and how to fix it in Settings.',
   },
   encryptedInterviewDataIsEncryptedAtRest: {
     id: 'interviewer.statusRow.encryptedInterviewDataIsEncryptedAtRest',
     defaultMessage:
       'Encrypted. Interview data is encrypted at rest with your enrolled unlock method.',
-    description: 'Visible copy in Interviewer Status Row.',
+    description:
+      "Explanation opened by tapping the Encrypted chip in the home footer; says interview data is stored encrypted using the researcher's unlock method.",
   },
   storagePersistent: {
     id: 'interviewer.statusRow.storagePersistent',
     defaultMessage: 'Storage persistent',
-    description: 'Visible copy in Interviewer Status Row.',
+    description:
+      "Status chip in the home footer: the browser has promised not to clear this app's data automatically. Describes a state, not an instruction.",
   },
   storageBestEffort: {
     id: 'interviewer.statusRow.storageBestEffort',
     defaultMessage: 'Storage best effort',
-    description: 'Visible copy in Interviewer Status Row.',
+    description:
+      'Status chip in the home footer for an installed app: the browser keeps data but does not guarantee it. Describes a state, not an instruction.',
   },
   storageNotPersistent: {
     id: 'interviewer.statusRow.storageNotPersistent',
     defaultMessage: 'Storage not persistent',
-    description: 'Visible copy in Interviewer Status Row.',
+    description:
+      "Status chip in the home footer: the browser may clear this app's stored data. Describes a state, not an instruction.",
   },
   notEncrypted: {
     id: 'interviewer.statusRow.notEncrypted',
     defaultMessage: 'Not encrypted',
-    description: 'Visible copy in Interviewer Status Row.',
+    description:
+      'Status chip in the home footer: stored data is not encrypted because no app lock is set up. Describes a state, not an instruction.',
   },
   encrypted: {
     id: 'interviewer.statusRow.encrypted',
     defaultMessage: 'Encrypted',
-    description: 'Visible copy in Interviewer Status Row.',
+    description:
+      "Status chip in the home footer: stored data is encrypted with the researcher's unlock method. Describes a state, not an instruction.",
   },
   installedStorage: {
     id: 'interviewer.statusRow.installedStorage',
     defaultMessage:
       '{hasUsage, select, true {Storage best effort. Installed-app data is kept separate from browsing data and is not cleared routinely, but it is not guaranteed against eviction if disk space runs low. Export interviews regularly. {used} stored.} other {Storage best effort. Installed-app data is kept separate from browsing data and is not cleared routinely, but it is not guaranteed against eviction if disk space runs low. Export interviews regularly.}}',
-    description: 'Administration text in Interviewer StatusRow.',
+    description:
+      'Explanation opened from the storage chip in the home footer for an installed app whose data is best-effort: kept separate from browsing data but not guaranteed; advises exporting regularly. used is the amount stored; hasUsage selects whether it is shown.',
   },
   persistentStorage: {
     id: 'interviewer.statusRow.persistentStorage',
     defaultMessage:
       '{hasUsage, select, true {Storage persistent. {used} stored.} other {Storage persistent.}}',
-    description: 'Administration text in Interviewer StatusRow.',
+    description:
+      'Explanation opened from the storage chip in the home footer when storage is persistent. used is the amount stored; hasUsage selects whether it is shown.',
   },
   temporaryStorage: {
     id: 'interviewer.statusRow.temporaryStorage',
     defaultMessage:
       '{hasUsage, select, true {Storage not persistent. {used} stored.} other {Storage not persistent.}}',
-    description: 'Administration text in Interviewer StatusRow.',
+    description:
+      'Explanation opened from the storage chip in the home footer when storage is not persistent. used is the amount stored; hasUsage selects whether it is shown.',
   },
 });
 
@@ -140,7 +153,11 @@ const variants = {
   },
 } as const;
 
+// `not-sr-only` resets white-space along with the rest of `sr-only`, so the
+// label that appears on a landscape tablet states `whitespace-nowrap` under the
+// same variant to keep it on one line.
 const compactLabelClassName =
+  // oxlint-disable-next-line tailwindcss/no-conflicting-classes -- tablet-landscape:whitespace-nowrap deliberately overrides the white-space that tablet-landscape:not-sr-only resets
   'tablet-landscape:not-sr-only sr-only tablet-landscape:whitespace-nowrap';
 const statusTriggerClassName =
   'focusable inline-flex cursor-help items-center gap-1.5 rounded-sm';
@@ -188,11 +205,12 @@ function StatusChipPopover({
 }) {
   const [open, setOpen] = useState(false);
   const triggerId = useId();
-  const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   // True between pointerdown and pointerup on the trigger, which is the window
   // the focus it causes lands in — how focus from a press is told apart from
-  // focus from tabbing on.
+  // focus from tabbing on. Safari does not focus a button on a press, so
+  // there the click alone opens the popover.
   const pressing = useRef(false);
   // Set when a press's own focus opened the popover, and consumed by that same
   // press's click. Never set by keyboard focus.
@@ -226,12 +244,11 @@ function StatusChipPopover({
       <PopoverTrigger
         id={triggerId}
         openOnHover
-        nativeButton={false}
         render={
-          <span
+          <button
+            type="button"
             ref={triggerRef}
             id={triggerId}
-            tabIndex={0}
             data-testid={testId}
             className={className}
             onPointerDown={() => {
@@ -258,7 +275,7 @@ function StatusChipPopover({
               }
             }}
             onClick={(
-              event: React.MouseEvent<HTMLSpanElement> & {
+              event: React.MouseEvent<HTMLButtonElement> & {
                 preventBaseUIHandler?: () => void;
               },
             ) => {
@@ -272,7 +289,7 @@ function StatusChipPopover({
             }}
           >
             {chip}
-          </span>
+          </button>
         }
       />
       <PopoverContent
@@ -573,6 +590,7 @@ export function StatusRow({ protocolCount, interviewCount }: StatusRowProps) {
     return () => {
       active = false;
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- a change of security mode is the trigger to read durability again, as above; its value is not needed
   }, [mode]);
 
   return (

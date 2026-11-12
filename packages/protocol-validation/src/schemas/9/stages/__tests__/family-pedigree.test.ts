@@ -179,7 +179,13 @@ describe('familyPedigreeStage', () => {
         ...base,
         nodeConfiguration: withoutNameField,
       }).success,
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        nodeConfiguration: { ...base.nodeConfiguration, nameField: {} },
+      }).success,
+    ).toBe(true);
     const { hint: _hint, ...promptOnly } = pedigreeNameField();
     expect(
       familyPedigreeStage.safeParse({
@@ -195,38 +201,23 @@ describe('familyPedigreeStage', () => {
       for (const key of keys) delete wording[key];
       return { ...base, wording };
     };
-    const FRAMING_WORDS = [
-      'framingChoiceTitle',
-      'framingChoiceDescription',
-      'framingControlLabel',
-    ];
-
-    it('requires the framing words while participants choose the words', () => {
-      expect(
-        familyPedigreeStage.safeParse({
-          ...without(...FRAMING_WORDS),
-          framing: 'participantPreference',
-        }).success,
-      ).toBe(false);
-      expect(
-        familyPedigreeStage.safeParse({
-          ...without(...FRAMING_WORDS),
-          framing: 'gendered',
-        }).success,
-      ).toBe(true);
+    it('holds no framing words, which every Family Pedigree shares', () => {
       expect(
         familyPedigreeStage.safeParse({
           ...base,
-          wording: familyPedigreeWordingIn(),
           framing: 'participantPreference',
+          wording: {
+            ...familyPedigreeWordingIn(),
+            framingChoiceTitle: { en: 'How should we describe your family?' },
+          },
         }).success,
-      ).toBe(true);
+      ).toBe(false);
     });
 
-    it('requires the gender identity question while the stage asks about gender identity', () => {
+    it('accepts a stage that asks about gender identity without its question, which the interview words itself', () => {
       expect(
         familyPedigreeStage.safeParse(without('genderIdentityLabel')).success,
-      ).toBe(false);
+      ).toBe(true);
       const nodeConfiguration: Record<string, unknown> = {
         ...base.nodeConfiguration,
       };
@@ -258,14 +249,14 @@ describe('familyPedigreeStage', () => {
       });
     };
 
-    it('is required wherever the family must be complete', () => {
+    it('may be left to the interview wherever the family must be complete', () => {
       expect(
         familyPedigreeStage.safeParse(
           withCompleteness(pedigreeCompletenessText()),
         ).success,
       ).toBe(true);
       expect(familyPedigreeStage.safeParse(withCompleteness({})).success).toBe(
-        false,
+        true,
       );
     });
 

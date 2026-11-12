@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, waitFor, within } from 'storybook/test';
 
 import Heading from './Heading';
 import Paragraph from './Paragraph';
@@ -102,7 +103,6 @@ const meta = {
   component: TypeScaleDemo,
   parameters: {
     layout: 'fullscreen',
-    a11y: { disable: true },
     docs: {
       description: {
         component:
@@ -382,4 +382,175 @@ export const LineHeightDemo: Story = {
       </div>
     </div>
   ),
+};
+
+/**
+ * Text marked as Arabic (`lang="ar"`) is set in Readex Pro, which follows the
+ * Latin face in the heading and the body stack. Text in another language that
+ * uses the Arabic script, such as Persian, is left to a system font: Readex
+ * Pro lacks its extra letters. The samples are Article 1 of the Universal
+ * Declaration of Human Rights in the United Nations' Arabic, English and
+ * Persian texts.
+ *
+ * The last line of each section is a small tracked label in the monospace
+ * stack. In Arabic it leads with Readex Pro, and in Arabic and Persian it
+ * takes no letter-spacing, which would pull the joined letters apart in
+ * Safari.
+ */
+export const ArabicScript: Story = {
+  render: () => (
+    <div className="mx-auto grid max-w-4xl gap-12 p-8">
+      <section lang="ar" dir="rtl">
+        <Heading level="h1" variant="page-heading">
+          الإعلان العالمي لحقوق الإنسان
+        </Heading>
+        <Paragraph intent="lead">
+          يولد جميع الناس أحرارًا متساوين في الكرامة والحقوق.
+        </Paragraph>
+        <Heading level="h2">المادة 1</Heading>
+        <Paragraph>
+          <strong>يولد جميع الناس أحرارًا متساوين في الكرامة والحقوق.</strong>{' '}
+          وقد وهبوا عقلًا وضميرًا وعليهم أن يعامل بعضهم بعضًا بروح الإخاء.
+        </Paragraph>
+        <Paragraph>
+          العربية ·{' '}
+          <span lang="fa" data-testid="persian-in-arabic">
+            فارسی
+          </span>
+        </Paragraph>
+        <p
+          className="font-monospace text-xs tracking-widest uppercase"
+          data-testid="arabic-label"
+        >
+          البيانات غير مشفَّرة · Interviewer 8.5.2
+        </p>
+      </section>
+      <section lang="en" dir="ltr">
+        <Heading level="h1" variant="page-heading">
+          Universal Declaration of Human Rights
+        </Heading>
+        <Paragraph intent="lead">
+          All human beings are born free and equal in dignity and rights.
+        </Paragraph>
+        <Heading level="h2">
+          Arabic (
+          <span lang="ar" dir="rtl" data-testid="arabic-in-heading">
+            العربية
+          </span>
+          )
+        </Heading>
+        <Paragraph>
+          An Arabic phrase inside English text takes Readex Pro where it is
+          marked:{' '}
+          <span lang="ar" dir="rtl" data-testid="arabic-in-paragraph">
+            المادة 1
+          </span>
+          .
+        </Paragraph>
+        <p
+          className="font-monospace text-xs tracking-widest uppercase"
+          data-testid="english-label"
+        >
+          Not encrypted · Interviewer 8.5.2
+        </p>
+      </section>
+      <section lang="fa" dir="rtl" data-testid="persian">
+        <Heading level="h2">فارسی</Heading>
+        <Paragraph>
+          تمام افراد بشر آزاد به دنیا می‌آیند و از لحاظ حیثیت و حقوق با هم
+          برابرند.
+        </Paragraph>
+        <p
+          className="font-monospace text-xs tracking-widest uppercase"
+          data-testid="persian-label"
+        >
+          رمزگذاری نشده · Interviewer 8.5.2
+        </p>
+      </section>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const stack = (element: Element) =>
+      getComputedStyle(element)
+        .fontFamily.split(',')
+        .map((family) => family.trim().replaceAll(/['"]/g, ''));
+
+    // Arabic text: the Latin face of its role, then Readex Pro.
+    await expect(
+      stack(canvas.getByRole('heading', { name: 'المادة 1' })),
+    ).toEqual(['Nunito Variable', 'Readex Pro Variable', 'sans-serif']);
+    await expect(
+      stack(canvas.getByText(/وقد وهبوا عقلًا/).closest('p') ?? canvasElement),
+    ).toEqual(['Inclusive Sans Variable', 'Readex Pro Variable', 'sans-serif']);
+
+    // Arabic marked inside English text takes the stack of the text around it.
+    await expect(stack(canvas.getByTestId('arabic-in-heading'))).toEqual([
+      'Nunito Variable',
+      'Readex Pro Variable',
+      'sans-serif',
+    ]);
+    await expect(stack(canvas.getByTestId('arabic-in-paragraph'))).toEqual([
+      'Inclusive Sans Variable',
+      'Readex Pro Variable',
+      'sans-serif',
+    ]);
+
+    // English and Persian are never offered Readex Pro, inside Arabic text
+    // or outside it.
+    await expect(
+      stack(canvas.getByRole('heading', { name: /^Universal Declaration/ })),
+    ).toEqual(['Nunito Variable', 'sans-serif']);
+    await expect(stack(canvas.getByTestId('persian-in-arabic'))).toEqual([
+      'Inclusive Sans Variable',
+      'sans-serif',
+    ]);
+    const persian = canvas.getByTestId('persian');
+    for (const element of persian.querySelectorAll('h2, p')) {
+      await expect(stack(element)).not.toContain('Readex Pro Variable');
+    }
+
+    // Monospace text: Readex Pro leads the stack for Arabic, because Safari
+    // never reaches a face behind the system monospace one. Its face claims
+    // Arabic code points only, so the Latin on the same line stays monospaced.
+    await expect(stack(canvas.getByTestId('arabic-label'))).toEqual([
+      'Readex Pro Variable',
+      'ui-monospace',
+      'Menlo',
+      'Monaco',
+      'Fira Code',
+      'monospace',
+    ]);
+    for (const id of ['english-label', 'persian-label']) {
+      await expect(stack(canvas.getByTestId(id))).toEqual([
+        'ui-monospace',
+        'Menlo',
+        'Monaco',
+        'Fira Code',
+        'monospace',
+      ]);
+    }
+
+    // Tracking is kept for Latin text and dropped for Arabic-script text,
+    // whose letters join.
+    // A letter-spacing of zero is reported as `normal`.
+    const tracking = (id: string) => {
+      const { letterSpacing } = getComputedStyle(canvas.getByTestId(id));
+      return letterSpacing === 'normal' ? 0 : Number.parseFloat(letterSpacing);
+    };
+    await expect(tracking('english-label')).toBeGreaterThan(0);
+    await expect(tracking('arabic-label')).toBe(0);
+    await expect(tracking('persian-label')).toBe(0);
+
+    // A face limited by unicode-range is fetched only when rendered text
+    // reaches it, so a loaded face means the Arabic text resolved to it.
+    await waitFor(() =>
+      expect(
+        [...document.fonts].find(
+          (face) =>
+            face.family.replaceAll(/['"]/g, '') === 'Readex Pro Variable',
+        )?.status,
+      ).toBe('loaded'),
+    );
+  },
 };

@@ -92,7 +92,7 @@ export default function Pair({
         className={cx(
           edgeColorMap[edgeColor],
           'mx-[-1.5rem] h-2 w-full transition-[background] duration-300 ease-out',
-          'bg-[linear-gradient(to_right,var(--edge-color)_50%,transparent_50%)] bg-[length:200%_100%]',
+          'bg-[linear-gradient(to_right,var(--edge-color)_50%,transparent_50%)] bg-size-[200%_100%]',
         )}
         variants={edgeVariants}
         initial="hideEdge"

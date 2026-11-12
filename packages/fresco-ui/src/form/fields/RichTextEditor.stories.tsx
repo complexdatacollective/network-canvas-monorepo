@@ -454,19 +454,18 @@ async function measureEditor(canvasElement: HTMLElement) {
 }
 
 /**
- * `compact` is for a short label, such as the name of an option: the text area
- * is one line tall and as tall as the toolbar above it, so the editor reads as
- * two equal rows. It needs `singleLine`, which the types enforce.
+ * `singleLine` is for text Enter cannot add a line to, such as a prompt or the
+ * name of an option. The text area opens one line tall, as tall as the toolbar
+ * above it, so the editor reads as two equal rows rather than as a box for
+ * paragraphs.
  */
-export const Compact: Story = {
+export const SingleLine: Story = {
   render: (args) => (
     <div className="flex w-[480px] flex-col gap-4">
       <div data-testid="editor">
         <RichTextEditorField
           {...args}
           singleLine
-          compact
-          toolbarOptions={{ headings: false, lists: false }}
           value={singleLineContent}
           onChange={action('onChange')}
         />
@@ -476,34 +475,135 @@ export const Compact: Story = {
   play: async ({ canvasElement }) => {
     const { editable, toolbar } = await measureEditor(canvasElement);
 
-    // Two equal rows, and neither one is the 120px box of a prompt.
+    // Two equal rows, and neither one is the 120px box of a multi-line editor.
     await expect(Math.abs(editable - toolbar)).toBeLessThanOrEqual(1);
     await expect(editable).toBeLessThan(120);
   },
 };
 
 /**
- * `singleLine` alone limits the value to one line and nothing else, so a
- * prompt keeps the tall editing area a multi-line editor opens at.
+ * Reaching the text with the keyboard rings the whole field, as it rings any
+ * other text control: the text is not an input element, so the ring has to
+ * name it.
  */
-export const SingleLinePrompt: Story = {
+export const KeyboardFocusRing: Story = {
+  render: (args) => (
+    <div className="flex w-[480px] flex-col gap-4">
+      <RichTextEditorField
+        {...args}
+        aria-label="Notes"
+        singleLine
+        value={singleLineContent}
+        onChange={action('onChange')}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const editor = await within(canvasElement).findByRole('textbox', {
+      name: 'Notes',
+    });
+    const field = editor.parentElement?.parentElement;
+    if (!field) throw new Error('No field');
+    await expect(getComputedStyle(field).outlineStyle).toBe('none');
+
+    await userEvent.tab();
+    await waitFor(() => expect(editor).toHaveFocus());
+    // The ring's width eases in, so it is read once it has settled.
+    await waitFor(() => {
+      expect(getComputedStyle(field).outlineStyle).toBe('solid');
+      expect(getComputedStyle(field).outlineWidth).toBe('2px');
+    });
+  },
+};
+
+/**
+ * An invalid field keeps its focus ring: its red border says it is wrong, not
+ * which field the keyboard is in.
+ */
+export const InvalidKeyboardFocusRing: Story = {
+  render: (args) => (
+    <div className="flex w-[480px] flex-col gap-4">
+      <RichTextEditorField
+        {...args}
+        aria-label="Notes"
+        aria-invalid
+        singleLine
+        value={singleLineContent}
+        onChange={action('onChange')}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const editor = await within(canvasElement).findByRole('textbox', {
+      name: 'Notes',
+    });
+    const field = editor.parentElement?.parentElement;
+    if (!field) throw new Error('No field');
+
+    await userEvent.tab();
+    await waitFor(() => expect(editor).toHaveFocus());
+    await waitFor(() => {
+      expect(getComputedStyle(field).outlineStyle).toBe('solid');
+      expect(getComputedStyle(field).outlineWidth).toBe('2px');
+    });
+    await expect(getComputedStyle(field).borderTopColor).not.toBe(
+      'rgba(0, 0, 0, 0)',
+    );
+  },
+};
+
+const wrappingLine: JSONContent = {
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: 'Within the past six months, who are the people you have discussed important personal matters with, whether in person, by phone, or online?',
+        },
+      ],
+    },
+  ],
+};
+
+/**
+ * A single line that is longer than the field wraps, and the row grows to
+ * hold it. The row keeps its padding, so the wrapped lines stay clear of the
+ * toolbar's border above and the field's edge below.
+ */
+export const SingleLineWrapped: Story = {
   render: (args) => (
     <div className="flex w-[480px] flex-col gap-4">
       <div data-testid="editor">
         <RichTextEditorField
           {...args}
           singleLine
-          toolbarOptions={{ headings: false, lists: false }}
-          value={singleLineContent}
+          value={wrappingLine}
           onChange={action('onChange')}
         />
       </div>
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const { editable } = await measureEditor(canvasElement);
+    const { editable, toolbar } = await measureEditor(canvasElement);
+    const text = canvasElement.querySelector('.tiptap p');
+    if (!text) throw new Error('the story did not render');
+    const lineHeight = Number.parseFloat(getComputedStyle(text).lineHeight);
+    const textBox = text.getBoundingClientRect();
+    const editableBox = canvasElement
+      .querySelector('.tiptap')
+      ?.parentElement?.getBoundingClientRect();
+    if (!editableBox) throw new Error('the story did not render');
 
-    await expect(editable).toBeGreaterThanOrEqual(120);
+    // The text wrapped, and the row grew past the toolbar's height to hold it.
+    await expect(textBox.height).toBeGreaterThan(lineHeight * 1.5);
+    await expect(editable).toBeGreaterThan(toolbar);
+    // Space between the wrapped lines and the row's edges.
+    await expect(textBox.top - editableBox.top).toBeGreaterThanOrEqual(12);
+    await expect(editableBox.bottom - textBox.bottom).toBeGreaterThanOrEqual(
+      12,
+    );
   },
 };
 
@@ -527,7 +627,7 @@ const tokenLine: JSONContent = {
  *
  * ```tsx
  * <RichTextEditorField
- *   compact
+ *   singleLine
  *   toolbarOptions={{ bold: false, italic: false, history: false }}
  *   tokens={[{ id: 'name', label: 'Name' }]}
  *   value={value}
@@ -544,7 +644,7 @@ export const WithTokens: Story = {
       <div data-testid="editor">
         <RichTextEditorField
           {...args}
-          compact
+          singleLine
           toolbarOptions={{ bold: false, italic: false, history: false }}
           tokens={[
             { id: 'name', label: 'Name' },
@@ -596,7 +696,7 @@ export const WithRequiredTokenNotPlaced: Story = {
       <div data-testid="editor">
         <RichTextEditorField
           {...args}
-          compact
+          singleLine
           toolbarOptions={{ bold: false, italic: false, history: false }}
           tokens={tokenButtons}
           changeMode="input"
@@ -654,7 +754,7 @@ export const WithTokensInTheText: Story = {
       <div data-testid="editor">
         <RichTextEditorField
           {...args}
-          compact
+          singleLine
           toolbarOptions={{ bold: false, italic: false, history: false }}
           tokens={tokenButtons}
           changeMode="input"
@@ -765,19 +865,25 @@ const insertMenu: RichTextInsertMenu = {
   ],
 };
 
-function EditorWithValue({ initial }: { initial: JSONContent | undefined }) {
+function EditorWithValue({
+  initial,
+  openWholeMessageVersions = false,
+}: {
+  initial: JSONContent | undefined;
+  openWholeMessageVersions?: boolean;
+}) {
   const [value, setValue] = useState(initial);
   return (
     <div className="flex w-[560px] flex-col gap-4">
       <RichTextEditorField
         id="versions-editor"
         name="versions-editor"
-        aria-describedby=""
         aria-label="Question"
         singleLine
         toolbarOptions={{ headings: false, lists: false }}
         tokens={offeredTokens}
         versions
+        openWholeMessageVersions={openWholeMessageVersions}
         insertMenu={insertMenu}
         changeMode="input"
         value={value}
@@ -921,35 +1027,225 @@ export const WithVersionsAndInsertMenu: Story = {
 };
 
 /**
+ * A field whose whole text is one set of versions, such as a message that is
+ * a plural or a choice and nothing more, with `openWholeMessageVersions`:
+ * the versions are listed open, one labelled row each, with no pill to open
+ * and nothing that folds when the field is left. Words typed beside them make
+ * the text a sentence with versions in it, which folds to a pill as before.
+ *
+ * ```tsx
+ * <RichTextEditorField versions openWholeMessageVersions … />
+ * ```
+ */
+export const WholeMessageVersionsOpen: Story = {
+  render: () => (
+    <EditorWithValue
+      openWholeMessageVersions
+      initial={{
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [nameVersions] }],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+
+    // Shown at rest, in the order given, with nothing to open.
+    const known = await canvas.findByRole('textbox', {
+      name: 'When Name is known',
+    });
+    const missing = canvas.getByRole('textbox', {
+      name: 'When Name is missing',
+    });
+    await expect(known).toBeVisible();
+    await expect(missing).toBeVisible();
+    await expect(known.getBoundingClientRect().top).toBeLessThan(
+      missing.getBoundingClientRect().top,
+    );
+    await expect(
+      canvasElement.querySelector('[data-versions-pill]'),
+    ).toBeNull();
+    const group = canvas.getByRole('group', { name: 'Whether Name is known' });
+    await expect(group.querySelector('[aria-expanded]')).toBeNull();
+
+    // Reached with Tab: the line (which shows the field's focus ring), then
+    // each row, which shows its own.
+    await userEvent.tab();
+    await waitFor(() => expect(editor).toHaveFocus());
+    const field = editor.parentElement?.parentElement;
+    if (!field) throw new Error('No field');
+    await waitFor(() =>
+      expect(getComputedStyle(field).outlineStyle).not.toBe('none'),
+    );
+    await userEvent.tab();
+    await waitFor(() => expect(known).toHaveFocus());
+    await userEvent.tab();
+    await waitFor(() => expect(missing).toHaveFocus());
+
+    // The arrow keys step between rows from a line's first or last place.
+    await userEvent.keyboard('{ArrowUp}');
+    await waitFor(() => expect(known).toHaveFocus());
+    await userEvent.keyboard('{ArrowDown}');
+    await waitFor(() => expect(missing).toHaveFocus());
+
+    // Escape hands the caret back to the line and hides nothing.
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(editor).toHaveFocus());
+    await expect(known).toBeVisible();
+    await expect(missing).toBeVisible();
+
+    // Leaving the field folds nothing either.
+    await userEvent.click(canvasElement.ownerDocument.body);
+    await expect(known).toBeVisible();
+    await expect(missing).toBeVisible();
+
+    // A version is written in place.
+    await userEvent.click(missing);
+    await userEvent.keyboard('this person');
+    await waitFor(() =>
+      expect(JSON.stringify(valueOf(canvasElement))).toContain('this person'),
+    );
+  },
+};
+
+/**
+ * The same versions in a sentence fold to a pill, whichever way the field is
+ * set: only a text that is nothing but the versions lists them open.
+ */
+export const VersionsInASentenceStayFolded: Story = {
+  render: () => (
+    <EditorWithValue
+      openWholeMessageVersions
+      initial={{
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Tell us about ' }, nameVersions],
+          },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const pill = await canvas.findByRole('button', { name: 'Name' });
+    await expect(pill).toHaveAttribute('aria-expanded', 'false');
+    await expect(
+      canvas.queryByRole('textbox', { name: 'When Name is known' }),
+    ).toBeNull();
+
+    // Opened by its pill, as before.
+    await userEvent.click(pill);
+    await expect(
+      await canvas.findByRole('textbox', { name: 'When Name is known' }),
+    ).toBeVisible();
+  },
+};
+
+/**
+ * Waits until the open insert menu's search box holds focus, as someone
+ * typing into it would. Keys pressed before then go wherever focus still is:
+ * in CI the first letter of a search has landed in the text instead.
+ */
+const searchHasFocus = async (body: ReturnType<typeof within>) => {
+  const search = await body.findByRole('combobox', { name: 'Search' });
+  await waitFor(() => expect(search).toHaveFocus());
+};
+
+const typeIntoTheInsertMenu = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  const body = within(canvasElement.ownerDocument.body);
+  const editor = await canvas.findByRole('textbox', { name: 'Question' });
+  await userEvent.click(editor);
+
+  await userEvent.keyboard('Aged {{');
+  await searchHasFocus(body);
+  await userEvent.keyboard('age{Enter}');
+  // Waited for as text, so a failure shows where the typing went.
+  await waitFor(() => expect(editor).toHaveTextContent(/^Aged Age$/));
+  await expect(editor.querySelector('[data-token="age"]')).not.toBeNull();
+
+  // Typed where the pick left the caret: after the item.
+  await userEvent.keyboard(' {{');
+  await searchHasFocus(body);
+  await userEvent.keyboard('{Escape}');
+  await waitFor(() => expect(editor).toHaveTextContent(/^Aged Age \{$/));
+
+  // Pasted where Escape left the caret: after the brace.
+  await userEvent.paste(' and {age}');
+  await waitFor(() =>
+    expect(editor.querySelectorAll('[data-token="age"]')).toHaveLength(2),
+  );
+  await expect(editor).toHaveTextContent(/^Aged Age \{ and Age$/);
+};
+
+/**
  * Typing `{` opens the menu at the caret. Choosing an item replaces the brace;
- * Escape closes the menu and keeps it as text. Pasting a placeholder written
- * as text, such as `{age}`, makes the placeholder.
+ * Escape closes the menu and keeps it as text. Either way the caret comes back
+ * where it was. Pasting a placeholder written as text, such as `{age}`, makes
+ * the placeholder.
  */
 export const InsertMenuFromTheKeyboard: Story = {
   render: () => <EditorWithValue initial={undefined} />,
+  play: ({ canvasElement }) => typeIntoTheInsertMenu(canvasElement),
+};
+
+/**
+ * Has `win` run as a slow device does, until the returned function puts it
+ * back. Animation frames come after the tasks already waiting, and every time
+ * an editor takes focus a long task follows, longer than the 200 ms within
+ * which ProseMirror takes back a caret the browser moved to the start of the
+ * text as it focused the editor.
+ */
+const runAsASlowDevice = (win: Window) => {
+  const requestFrame = win.requestAnimationFrame.bind(win);
+  const cancelFrame = win.cancelAnimationFrame.bind(win);
+  const cancelled = new Set<number>();
+  win.requestAnimationFrame = (callback) => {
+    const id = requestFrame((time) => {
+      win.setTimeout(() => {
+        if (!cancelled.delete(id)) callback(time);
+      });
+    });
+    return id;
+  };
+  win.cancelAnimationFrame = (id) => {
+    cancelled.add(id);
+    cancelFrame(id);
+  };
+  const longTaskOnFocus = ({ target }: FocusEvent) => {
+    if (!(target instanceof HTMLElement) || !target.isContentEditable) return;
+    const until = win.performance.now() + 250;
+    while (win.performance.now() < until) {
+      // The device is busy.
+    }
+  };
+  win.document.addEventListener('focusin', longTaskOnFocus);
+  return () => {
+    win.document.removeEventListener('focusin', longTaskOnFocus);
+    win.requestAnimationFrame = requestFrame;
+    win.cancelAnimationFrame = cancelFrame;
+  };
+};
+
+/**
+ * The same on a slow device: the caret still comes back where it was, rather
+ * than at the start of the text where the browser puts it as the editor takes
+ * focus.
+ */
+export const InsertMenuFromTheKeyboardOnASlowDevice: Story = {
+  render: () => <EditorWithValue initial={undefined} />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const body = within(canvasElement.ownerDocument.body);
-    const editor = await canvas.findByRole('textbox', { name: 'Question' });
-    await userEvent.click(editor);
-
-    await userEvent.keyboard('Aged {{');
-    await body.findByRole('combobox', { name: 'Search' });
-    await userEvent.keyboard('age{Enter}');
-    await waitFor(() =>
-      expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
+    const restore = runAsASlowDevice(
+      canvasElement.ownerDocument.defaultView ?? window,
     );
-    await expect(editor).toHaveTextContent(/^Aged Age$/);
-
-    await userEvent.keyboard(' {{');
-    await body.findByRole('combobox', { name: 'Search' });
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(editor).toHaveTextContent(/Age \{$/));
-
-    await userEvent.paste(' and {age}');
-    await waitFor(() =>
-      expect(editor.querySelectorAll('[data-token="age"]')).toHaveLength(2),
-    );
+    try {
+      await typeIntoTheInsertMenu(canvasElement);
+    } finally {
+      restore();
+    }
   },
 };
 
