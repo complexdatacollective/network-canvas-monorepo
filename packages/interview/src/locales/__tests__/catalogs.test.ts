@@ -20,6 +20,8 @@ import {
 
 import { interfaceTextMessages } from '../../i18n/interfaceTextMessages';
 import { stageWordingMessages } from '../../i18n/stageWordingMessages';
+import { ADDED_TEXT } from '../../wording/addedText';
+import { isAddedTextId } from '../../wording/addedTextIds';
 import { SUPPLIED_WORDING } from '../../wording/suppliedWording';
 
 const localesDir = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -167,5 +169,71 @@ describe('the catalogues of the wording Network Canvas supplies', () => {
       ...Object.values(stageWordingMessages),
     ].map(({ id }) => id);
     expect(declared.filter((id) => !wordingIds.includes(id))).toEqual([]);
+  });
+});
+
+// Text a correction adds within a schema version is the interview's own: no
+// protocol of that version can hold it, so it is shown as Network Canvas
+// words it, and it must be worded in every language Network Canvas supplies.
+// Its messages are those whose id begins `interview.added.` (see
+// `wording/addedTextIds.ts`). None exists until a correction needs one.
+describe('the catalogues of the text corrections have added', () => {
+  const addedDir = join(localesDir, 'added');
+
+  const readAdded = (locale: string) =>
+    JSON.parse(
+      readFileSync(join(addedDir, `${locale}.json`), 'utf8'),
+    ) as Record<string, string>;
+
+  const addedLocales = readdirSync(addedDir)
+    .filter((file) => file.endsWith('.json') && !file.endsWith('.source.json'))
+    .map((file) => file.replace(/\.json$/, ''));
+
+  /** The English of the messages corrections have added: what is translated. */
+  const addedEnglish: ExtractedCatalog = Object.fromEntries(
+    Object.entries(committedEn).filter(([id]) => isAddedTextId(id)),
+  );
+
+  it('has a catalogue for each supplied language, and no other', () => {
+    const expected = SUPPLIED_LANGUAGES.toSorted();
+    expect(addedLocales.toSorted()).toEqual(expected);
+    expect(Object.keys(ADDED_TEXT).toSorted()).toEqual(expected);
+  });
+
+  // A text the schema names is one a protocol may hold, and is read from the
+  // protocol first. A message cannot be both.
+  it('holds no text a protocol may hold', () => {
+    expect(wordingIds.filter(isAddedTextId)).toEqual([]);
+  });
+
+  // `pnpm --filter @codaco/interview i18n:extract` writes the English.
+  it('words every such text in English as its message is written, and nothing else', () => {
+    expect(readAdded(SOURCE_LOCALE)).toEqual(
+      Object.fromEntries(
+        Object.entries(addedEnglish).map(([id, { defaultMessage }]) => [
+          id,
+          defaultMessage,
+        ]),
+      ),
+    );
+  });
+
+  it.each(SUPPLIED_LANGUAGES.filter((locale) => locale !== SOURCE_LOCALE))(
+    'translates every such text into %s and nothing else, from today’s English',
+    (locale) => {
+      expect(
+        checkFullLocale(
+          addedEnglish,
+          readAdded(locale),
+          readTranslationSources(addedDir, locale),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  it('serves each catalogue as it is committed', () => {
+    for (const locale of addedLocales) {
+      expect(ADDED_TEXT[locale]).toEqual(readAdded(locale));
+    }
   });
 });

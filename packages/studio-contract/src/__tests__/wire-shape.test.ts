@@ -120,7 +120,6 @@ const VALID_AUDIT_EVENT = {
   actor: { kind: 'user', id: 'user-1', label: Redacted.make('Ada Lovelace') },
   subject: { type: 'user', id: 'user-2', label: Redacted.make('Grace Hopper') },
   resource: null,
-  title: 'Added a member',
   rendered: true,
 };
 
@@ -135,7 +134,6 @@ const ENCODED_AUDIT_EVENT = {
   actor: { kind: 'user', id: 'user-1', label: 'Ada Lovelace' },
   subject: { type: 'user', id: 'user-2', label: 'Grace Hopper' },
   resource: null,
-  title: 'Added a member',
   rendered: true,
 };
 
@@ -336,14 +334,14 @@ describe('the documents the rpc plane puts on the wire', () => {
   it('encodes AuditFilterOptions', () => {
     expect(
       encode(AuditFilterOptions)({
-        actions: [{ eventType: 'team.member.added', title: 'Added a member' }],
+        eventTypes: ['team.member.added'],
         actors: [
           { kind: 'user', id: 'user-1', label: Redacted.make('Ada Lovelace') },
         ],
         truncated: false,
       }),
     ).toStrictEqual({
-      actions: [{ eventType: 'team.member.added', title: 'Added a member' }],
+      eventTypes: ['team.member.added'],
       actors: [{ kind: 'user', id: 'user-1', label: 'Ada Lovelace' }],
       truncated: false,
     });

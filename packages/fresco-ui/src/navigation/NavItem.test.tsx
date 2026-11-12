@@ -60,6 +60,7 @@ describe('NavItem', () => {
   it('mirrors an icon that points along the line of text', () => {
     renderInList(
       <>
+        {/* oxlint-disable-next-line direction/inline-arrow-turns -- the test hands NavItem an arrow to see NavItem turn it */}
         <NavItem href="/study" label="Back to study" icon={ArrowLeft} />
         <NavItem href="/participants" label="Participants" icon={Users} />
       </>,

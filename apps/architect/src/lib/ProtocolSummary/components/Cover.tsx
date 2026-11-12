@@ -40,6 +40,12 @@ const messages = defineMessages({
     description:
       'Heading on the cover of the printable protocol summary, above the list of the languages the protocol is written in. Shown only for a protocol with more than one language.',
   },
+  fallbackLanguage: {
+    id: 'architect.protocolSummary.cover.fallbackLanguage',
+    defaultMessage: 'Fallback language: {language}',
+    description:
+      'Line on the cover of the printable protocol summary naming the protocol’s fallback language: the language participants see text in when an update adds that text to the interview and the protocol has no translation of it. Shown only for a protocol that names one, which is one whose default language Network Canvas has no built-in wording in. language is the name of the fallback language, for example “Spanish”.',
+  },
 });
 
 const Cover = () => {
@@ -48,6 +54,7 @@ const Cover = () => {
   const multilingual = useMultilingualSummary();
   const languages = useSummaryLanguages();
   const languageName = useLanguageName();
+  const { fallbackLocale } = protocol.localization;
 
   // The moment the document was made: read once, when the cover mounts, so a
   // re-render does not move it.
@@ -110,6 +117,15 @@ const Cover = () => {
             ))}
           </ul>
         </div>
+      )}
+      {/* Printed with one language too: a protocol written only in a
+          language Network Canvas has no wording in names one as well. */}
+      {fallbackLocale !== undefined && (
+        <p className="mt-4 mb-0 text-sm">
+          {intl.formatMessage(messages.fallbackLanguage, {
+            language: languageName(fallbackLocale),
+          })}
+        </p>
       )}
       <br />
       <br />

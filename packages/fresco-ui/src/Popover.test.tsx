@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -66,11 +66,14 @@ describe('Popover', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Open help' }));
     const help = await screen.findByRole('dialog', { name: 'Help' });
-    expect(help).toHaveClass('px-8', 'py-6');
+    // The padding is on the surface inside the dialog, which holds the content.
+    const helpSurface = within(help).getByText('Some prose.');
+    expect(helpSurface).toHaveClass('px-8', 'py-6');
 
     await userEvent.click(screen.getByRole('button', { name: 'Open list' }));
     const list = await screen.findByRole('dialog', { name: 'List' });
-    expect(list).toHaveClass('px-4', 'py-3');
-    expect(list).not.toHaveClass('px-8', 'py-6');
+    const listSurface = within(list).getByText('A list of options.');
+    expect(listSurface).toHaveClass('px-4', 'py-3');
+    expect(listSurface).not.toHaveClass('px-8', 'py-6');
   });
 });

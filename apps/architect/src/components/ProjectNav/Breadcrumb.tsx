@@ -22,7 +22,8 @@ type BreadcrumbProps = {
   items: BreadcrumbItem[];
 };
 
-const labelClasses = 'inline-block text-current truncate max-w-xs';
+const labelClasses =
+  'inline-block text-current truncate max-w-xs text-match-parent';
 
 // `truncate` clips the LOGICAL end of a string and puts the ellipsis there.
 // Under the app's inherited LTR base direction, bidi reordering places the
@@ -44,7 +45,7 @@ const Breadcrumb = ({ items }: BreadcrumbProps) => {
           {index > 0 && (
             <ChevronRight
               aria-hidden
-              className="size-4 shrink-0 text-current/40"
+              className="size-4 shrink-0 text-current/40 rtl:-scale-x-100"
             />
           )}
           {item.onClick ? (

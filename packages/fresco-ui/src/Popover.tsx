@@ -1,7 +1,7 @@
 'use client';
 
 import { Popover as BasePopover } from '@base-ui/react/popover';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion, type MotionProps } from 'motion/react';
 import {
   type ComponentProps,
   type ComponentPropsWithoutRef,
@@ -10,36 +10,90 @@ import {
   isValidElement,
   type ReactNode,
   useContext,
+  useId,
   useState,
 } from 'react';
 
-import { MotionSurface } from './layout/Surface';
+import Surface, { type SurfaceVariants } from './layout/Surface';
 import {
   POPOVER_ARROW_CLASS_NAME,
   POPOVER_ARROW_PADDING,
 } from './popoverArrow';
+import { type PopupSide, usePhysicalSide } from './popupSide';
 import { usePortalContainer } from './PortalContainer';
 import { cx } from './utils/cva';
 
-export function BaseUISharedPopoverContainer({
-  className,
-  ...props
-}: Omit<ComponentPropsWithoutRef<typeof MotionSurface>, 'className'> & {
+const popupAnimations = {
+  spring: {
+    initial: { opacity: 0, scale: 0.96 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.96 },
+    transition: { type: 'spring', duration: 0.5 },
+  },
+  enter: {
+    initial: { opacity: 0, scale: 0.96 },
+    animate: { opacity: 1, scale: 1 },
+    transition: { type: 'spring', duration: 0.5 },
+  },
+  none: {},
+} satisfies Record<string, MotionProps>;
+
+type BaseUISharedPopoverContainerProps = Omit<
+  ComponentPropsWithoutRef<typeof motion.div>,
+  'className' | 'children'
+> & {
+  /** The popup's Base UI arrow, if it has one. */
+  arrow?: ReactNode;
+  /** Classes for the surface the content sits on. */
   className?: string;
-}) {
+  spacing?: SurfaceVariants['spacing'];
+  shadow?: SurfaceVariants['shadow'];
+  /**
+   * `enter` animates in but closes at once, for popups that must not linger
+   * while a newer one opens; `none` does not animate.
+   */
+  animation?: keyof typeof popupAnimations;
+  children?: ReactNode;
+};
+
+/**
+ * What a Base UI popup renders as: an unstyled layer that Base UI positions
+ * and that carries the arrow, around a `Surface` holding the content.
+ *
+ * The arrow overhangs the popup's edge, so it sits outside the `Surface`.
+ * That leaves the `Surface` clipping its content to its rounded corners like
+ * every other `Surface`; anything drawn against its edge, such as a scroll
+ * fade or a highlighted row, stays inside the curve.
+ */
+export function BaseUISharedPopoverContainer({
+  arrow,
+  className,
+  spacing = 'xs',
+  shadow = 'md',
+  animation = 'spring',
+  children,
+  ...layerProps
+}: BaseUISharedPopoverContainerProps) {
   return (
-    <MotionSurface
-      floating
-      spacing="xs"
-      shadow="md"
-      noContainer
-      className={cx('max-w-(--available-width) overflow-visible', className)}
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.96 }}
-      transition={{ type: 'spring', duration: 0.5 }}
-      {...props}
-    />
+    <motion.div
+      {...popupAnimations[animation]}
+      {...layerProps}
+      // Base UI focuses this layer, so it shares the surface's corners for the
+      // focus outline to follow them.
+      className="relative rounded"
+    >
+      <Surface
+        floating
+        noContainer
+        spacing={spacing}
+        shadow={shadow}
+        className={cx('max-w-(--available-width)', className)}
+      >
+        {children}
+      </Surface>
+      {/* After the surface, so the arrow paints over its border. */}
+      {arrow}
+    </motion.div>
   );
 }
 
@@ -179,7 +233,7 @@ type PopoverContentProps = Omit<
 > & {
   className?: string;
   children: ReactNode;
-  side?: 'top' | 'right' | 'bottom' | 'left';
+  side?: PopupSide;
   sideOffset?: number;
   showArrow?: boolean;
   keepMounted?: boolean;
@@ -189,7 +243,7 @@ type PopoverContentProps = Omit<
    * Padding around the content. The default suits prose and forms; a popup
    * that holds a list of options takes `xs`, as menus and comboboxes do.
    */
-  spacing?: ComponentPropsWithoutRef<typeof MotionSurface>['spacing'];
+  spacing?: SurfaceVariants['spacing'];
 };
 
 function PopoverContent({
@@ -206,6 +260,7 @@ function PopoverContent({
 }: PopoverContentProps) {
   const { mounted } = usePopoverContext();
   const portalContainer = usePortalContainer();
+  const physicalSide = usePhysicalSide(side);
 
   return (
     <BasePopover.Portal
@@ -219,7 +274,7 @@ function PopoverContent({
             sideOffset={sideOffset}
             arrowPadding={POPOVER_ARROW_PADDING}
             align={align}
-            {...(side ? { side } : {})}
+            {...(physicalSide ? { side: physicalSide } : {})}
             {...(anchor ? { anchor } : {})}
           >
             <BasePopover.Popup
@@ -227,15 +282,17 @@ function PopoverContent({
                 <BaseUISharedPopoverContainer
                   className={className}
                   spacing={spacing}
+                  arrow={
+                    showArrow && (
+                      <BasePopover.Arrow className={POPOVER_ARROW_CLASS_NAME}>
+                        <ArrowSvg />
+                      </BasePopover.Arrow>
+                    )
+                  }
                 />
               }
               {...props}
             >
-              {showArrow && (
-                <BasePopover.Arrow className={POPOVER_ARROW_CLASS_NAME}>
-                  <ArrowSvg />
-                </BasePopover.Arrow>
-              )}
               {children}
             </BasePopover.Popup>
           </BasePopover.Positioner>
@@ -259,27 +316,44 @@ function PopoverTitle(props: ComponentProps<typeof BasePopover.Title>) {
 }
 
 export function ArrowSvg(props: ComponentProps<'svg'>) {
+  // Each arrow needs its own clip; useId's punctuation is not safe in `url()`.
+  const clipId = `popover-arrow-${useId().replace(/[^\w-]/g, '')}`;
   return (
-    // Proportional to the viewBox: a mismatch letterboxes the drawing and
+    // Drawn at 1:1, so the viewBox is in pixels. A 14px point whose legs run
+    // straight into the border, with no flat shoulders: the arrow has to fit
+    // between a popup's rounded corners, and a one-line tooltip beside its
+    // trigger can be a full pill with no straight border at all. y=8 is the
+    // border's centre line and y=9 its inner edge. The legs cross y=8 at x=1
+    // and x=15 and carry on, and the clip cuts the outline off along y=9: on a
+    // straight border the legs end flush with its inner edge, and where the
+    // border has already curved a pixel or so inward they still reach it
+    // instead of stopping short. The fill covers the border between the legs.
+    // The viewBox runs 2px wider than the point either side so the legs'
+    // outer edges are not cut off. A size that differs from the viewBox
     // invalidates POPOVER_ARROW_CLASS_NAME's offsets.
     <svg
       aria-hidden="true"
-      width="30"
-      height="15"
-      viewBox="0 0 20 10"
+      width="20"
+      height="10"
+      viewBox="-2 0 20 10"
       fill="none"
       {...props}
     >
+      <clipPath id={clipId}>
+        <rect x="-2" y="0" width="20" height="9" />
+      </clipPath>
       <path
-        d="M9.66437 2.60207L4.80758 6.97318C4.07308 7.63423 3.11989 8 2.13172 8H0V10H20V8H18.5349C17.5468 8 16.5936 7.63423 15.8591 6.97318L11.0023 2.60207C10.622 2.2598 10.0447 2.25979 9.66437 2.60207Z"
+        d="M-0.89 10L6.88 1.78Q8 0.6 9.12 1.78L16.89 10Z"
         className="fill-surface-popover"
       />
       <path
-        d="M0 8H2.13172C3.11989 8 4.07308 7.63423 4.80758 6.97318L9.66437 2.60207C10.0447 2.25979 10.622 2.2598 11.0023 2.60207L15.8591 6.97318C16.5936 7.63423 17.5468 8 18.5349 8H20"
+        d="M-0.89 10L6.88 1.78Q8 0.6 9.12 1.78L16.89 10"
         className="stroke-outline"
         fill="none"
         strokeWidth={2}
+        strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
+        clipPath={`url(#${clipId})`}
       />
     </svg>
   );

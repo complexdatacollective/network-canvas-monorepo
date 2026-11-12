@@ -21,6 +21,7 @@ import {
   type LocaleTag,
   type LocalizationDeclaration,
   type LocalizedString,
+  resolveAddedText,
   type ResolvedLocalizedString,
   resolveLocalizedString,
   resolveProtocolLocale,
@@ -386,6 +387,33 @@ export function useResolveLocalizedMessage(): (
         ...resolved,
         text: format(resolved.locale, resolved.text, values),
       };
+    },
+    [localization, resolutionOrder, format],
+  );
+}
+
+/**
+ * `useResolveLocalizedMessage` for text a correction added to the interview,
+ * which no protocol holds: `wording` is Network Canvas's own, by the language
+ * it is written in, and the language shown is the first the participant
+ * would be shown that it has wording in, or else the protocol's fallback
+ * language (see `resolveAddedText`). Undefined where there is none to show.
+ */
+export function useResolveAddedText(): (
+  wording: Readonly<Record<LocaleTag, string>>,
+  values: LocalizedMessageValues,
+) => Readonly<{ text: string; locale: LocaleTag }> | undefined {
+  const { localization, resolutionOrder, format } =
+    useProtocolLocalizationState();
+  return useCallback(
+    (wording: Readonly<Record<LocaleTag, string>>, values) => {
+      const resolved = resolveAddedText(wording, localization, resolutionOrder);
+      return resolved === undefined
+        ? undefined
+        : {
+            locale: resolved.locale,
+            text: format(resolved.locale, resolved.text, values),
+          };
     },
     [localization, resolutionOrder, format],
   );

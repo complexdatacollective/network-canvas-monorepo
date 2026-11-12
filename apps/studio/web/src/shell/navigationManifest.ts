@@ -695,6 +695,7 @@ export function editorDestinations(studyId: string): NavManifestEntry[] {
       // way out has to be where they will look for it.
       id: `study:${studyId}:editor:back`,
       label: navLabelMessages.backToStudy,
+      // oxlint-disable-next-line direction/inline-arrow-turns -- NavItem draws it with inlineIconClass, which turns it right to left
       icon: ArrowLeft,
       href: study,
       link: {

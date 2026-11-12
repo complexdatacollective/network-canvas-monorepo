@@ -1,11 +1,16 @@
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
 import '@codaco/tailwind-config/fonts/readex-pro.css';
+// Resolve to the same hashed URLs the CSS above references, for the preloads
+// below. Latin only: every documentation locale's glyphs are in that subset.
+import inclusiveSansLatin from '@fontsource-variable/inclusive-sans/files/inclusive-sans-latin-wght-normal.woff2';
+import nunitoLatin from '@fontsource-variable/nunito/files/nunito-latin-wght-normal.woff2';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import type { Metadata } from 'next';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { getNow, getTimeZone, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { preload } from 'react-dom';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
@@ -73,6 +78,17 @@ export default async function MainLayout(props: MainLayoutProps) {
   // The shared packages' messages, for the fresco-ui components that have
   // their own (the footer's language switcher).
   const appMessages = await documentationAppCatalogSource.load(locale);
+
+  // Not <link> elements: React hoists preloads into <head> itself, emitting
+  // each tag twice. crossOrigin is required even same-origin — @font-face
+  // always fetches in CORS mode, and without it the font downloads twice.
+  for (const href of [nunitoLatin, inclusiveSansLatin]) {
+    preload(href, {
+      as: 'font',
+      type: 'font/woff2',
+      crossOrigin: 'anonymous',
+    });
+  }
 
   return (
     <html lang={locale} suppressHydrationWarning>

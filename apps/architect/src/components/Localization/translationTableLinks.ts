@@ -1,6 +1,6 @@
 import type { LocaleTag } from '@codaco/protocol-validation';
 
-const LANGUAGES_PATH = '/protocol/localization';
+export const LANGUAGES_PATH = '/protocol/localization';
 const TABLE_PARAM = 'table';
 const TABLE_OPEN = 'open';
 const MISSING_PARAM = 'missing';

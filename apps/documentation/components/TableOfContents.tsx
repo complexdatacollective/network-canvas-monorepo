@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { type RefObject, useEffect, useRef } from 'react';
 
@@ -64,6 +65,7 @@ const TableOfContents = ({
   headings: HeadingNode[];
   sideBar?: boolean;
 }) => {
+  const t = useTranslations('TableOfContents');
   const sideBarRef = useRef<HTMLElement>(null);
 
   return (
@@ -85,7 +87,7 @@ const TableOfContents = ({
           : ({ level: 'h3' } as const))}
         className={cx(sideBar && 'mb-2')}
       >
-        Table of Contents
+        {t('title')}
       </Heading>
       {renderNodes(headings, sideBar, sideBarRef)}
     </aside>

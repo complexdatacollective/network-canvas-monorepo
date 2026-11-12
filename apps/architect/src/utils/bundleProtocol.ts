@@ -7,6 +7,7 @@ import { isBuiltInWordingSummary } from './defaultLanguageText';
 import {
   type DownloadRefusal,
   findDownloadRefusal,
+  isFallbackLanguageMissing,
   isLabelCollisionsSummary,
 } from './downloadRefusal';
 import {
@@ -48,8 +49,9 @@ export class UnresolvedAssetsError extends Error {
  * text a participant must read with none in the protocol's default language
  * (the stage that ends the interview has no heading or text, or Network
  * Canvas's built-in wording has none, as it is written only in a language
- * Network Canvas has it in exactly), or two labels a participant chooses
- * between that read the same. Architect lets a protocol be written and saved
+ * Network Canvas has it in exactly), no fallback language where its default
+ * language needs one, or two labels a participant chooses between that read
+ * the same. Architect lets a protocol be written and saved
  * like this (a new protocol in Mexican Spanish or Japanese starts so, and a
  * change of its languages can leave two labels reading the same) but not
  * handed out: a participant would meet empty screens and buttons, or two
@@ -65,9 +67,11 @@ export class DownloadRefusedError extends Error {
     super(
       isLabelCollisionsSummary(problem)
         ? 'Labels participants choose between read the same'
-        : isBuiltInWordingSummary(problem)
-          ? `${problem.count} built-in texts have no wording in ${problem.locale}`
-          : `The finish stage has no ${problem.missing.join(' or ')} in ${problem.locale}`,
+        : isFallbackLanguageMissing(problem)
+          ? `The protocol names no fallback language, which its default language (${problem.locale}) needs`
+          : isBuiltInWordingSummary(problem)
+            ? `${problem.count} built-in texts have no wording in ${problem.locale}`
+            : `The finish stage has no ${problem.missing.join(' or ')} in ${problem.locale}`,
     );
     this.name = 'DownloadRefusedError';
     this.problem = problem;

@@ -534,6 +534,7 @@
       // each app's _headers, _redirects and older-major pin.
       "inputs": [
         "scripts/**",
+        "tooling/oxlint/**",
         ".github/**",
         ".claude/**",
         ".agents/**",
@@ -572,6 +573,12 @@
         "package.json",
         "packages/**/*.{ts,tsx}",
         "apps/**/*.{ts,tsx}",
+        // The right-to-left fragment guard reads message catalogs and
+        // translated posts.
+        "packages/**/{locales,messages}/*.json",
+        "apps/**/{locales,messages}/*.json",
+        "apps/**/*.md",
+        "apps/**/*.mdx",
         "!**/node_modules/**",
         "!**/dist/**",
         "!**/.*/**"
