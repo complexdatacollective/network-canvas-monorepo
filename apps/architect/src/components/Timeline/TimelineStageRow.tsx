@@ -397,7 +397,7 @@ const TimelineStageRow = ({
               }
             />
             {deleteBlockedReason !== undefined && (
-              <TooltipContent side="left" className="max-w-64">
+              <TooltipContent side="inline-start" className="max-w-64">
                 {deleteBlockedReason}
               </TooltipContent>
             )}
