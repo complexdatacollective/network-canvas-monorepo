@@ -18,7 +18,7 @@ type Fields = { fields?: unknown[] };
 type ProtocolStage = {
   type: string;
   /** Localized, in Sketch's one language. */
-  label?: Partial<Record<typeof SKETCH_LOCALE, string>>;
+  label?: Partial<Record<string, string>>;
   filter?: unknown;
   form?: Fields;
   nodeForm?: Fields;
@@ -27,6 +27,8 @@ type ProtocolStage = {
   presets?: unknown[];
   behaviours?: { automaticLayout?: boolean };
   edges?: { form?: Fields }[];
+  nodeConfiguration?: { genderIdentity?: unknown };
+  nominationPrompts?: unknown[];
 };
 
 // The stages come from compile(), which gives every one a type; the other
@@ -138,6 +140,20 @@ const costOf = (s: ProtocolStage, n: number): Omit<StageCost, 'label'> => {
     case 'Narrative':
       screens += s.presets?.length ?? 1;
       break;
+    case 'FamilyPedigree': {
+      // each relative is added with their sex at birth, gender identity
+      // when asked, and the stage's form; each question about the family
+      // then takes one more screen
+      const perPerson =
+        1 +
+        (s.nodeConfiguration?.genderIdentity ? 1 : 0) +
+        (s.form?.fields?.length ?? 0);
+      const nominations = s.nominationPrompts?.length ?? 0;
+      screens += 1 + nominations;
+      itemsPerPerson += perPerson;
+      answers += n * (1 + perPerson) + nominations;
+      break;
+    }
     default:
       screens += 1;
   }
@@ -159,7 +175,8 @@ export const stageCosts = (
     if (!isProtocolStage(s))
       throw new Error(`stages[${i}] is not a stage with a string type.`);
     return {
-      label: s.label?.[SKETCH_LOCALE] ?? s.type,
+      label:
+        s.label?.[SKETCH_LOCALE] ?? Object.values(s.label ?? {})[0] ?? s.type,
       ...costOf(s, n),
     };
   });

@@ -30,12 +30,14 @@ const tasksOf = (s: NStage): string[] => {
     case 'bins':
     case 'networkComposer':
     case 'geospatial':
+    case 'familyPedigree':
       return [s.kind];
     // a text screen, an Ego Form (which keeps its own introduction) and a
     // narrative (a view for the interviewer to discuss) set no new task
     case 'information':
     case 'egoForm':
     case 'narrative':
+    case 'narrativePedigree':
       return [];
     default: {
       const unhandled: never = s;
@@ -133,9 +135,22 @@ const draft = (
         title: 'On the map',
         text: `On the next screen you will see a map. For each of the ${plural} you named, tap the place the question asks about.`,
       };
+    case 'familyPedigree':
+      return {
+        title: 'Your family',
+        text: [
+          'On the next screen you will draw your family tree, starting with yourself. Select a person to add their parents, partners, siblings or children, and answer a few questions about each person you add.',
+          ...(s.nominationPrompts.length
+            ? [
+                'Once your family is drawn, you will be asked some questions about them. For each one, select everyone it applies to.',
+              ]
+            : []),
+        ].join('\n\n'),
+      };
     case 'information':
     case 'egoForm':
     case 'narrative':
+    case 'narrativePedigree':
       return { title: '', text: '' };
     default: {
       const unhandled: never = s;
@@ -162,7 +177,8 @@ export const taskIntroductions = (
     if (
       !('nodeTypeId' in s) ||
       s.kind === 'nameGenerator' ||
-      s.kind === 'networkComposer'
+      s.kind === 'networkComposer' ||
+      s.kind === 'familyPedigree'
     )
       return true;
     return (
@@ -177,6 +193,9 @@ export const taskIntroductions = (
       s.skipLogic.mode === 'always_show' &&
       s.minNodes >= 1
     )
+      guaranteed.add(s.nodeTypeId);
+    // the participant is always in their own family
+    if (s.kind === 'familyPedigree' && s.skipLogic.mode === 'always_show')
       guaranteed.add(s.nodeTypeId);
     const fresh = tasksOf(s).filter((t) => !introduced.has(t));
     if (!fresh.length) return;

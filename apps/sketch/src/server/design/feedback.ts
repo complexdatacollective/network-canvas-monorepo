@@ -2,7 +2,7 @@
 import type { ProtocolValidationIssue } from '@codaco/protocol-validation';
 
 import type { NormalizedDesign } from './analyse.ts';
-import type { StageSource } from './compile.ts';
+import { DECLINED_TEXT, type StageSource } from './compile.ts';
 import { taskIntroductions } from './intros.ts';
 import type { DesignIssue } from './rules.ts';
 
@@ -122,6 +122,14 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
       questionKey: 'consent',
       draft: 'Do you agree to take part in this study?',
     });
+    stages.push({
+      stageKey: 'consent_declined',
+      kind: 'ending for declined consent',
+      purpose: 'Shown when the participant does not agree to take part',
+      title: 'none: return ""',
+      text: 'screen body (Markdown): a "# " heading, then that the interview has ended and nothing more will be asked',
+      draft: DECLINED_TEXT,
+    });
   }
   const intros = taskIntroductions(d);
   for (const s of d.stages) {
@@ -209,6 +217,36 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
           ),
         );
         break;
+      case 'familyPedigree':
+        slot('none: return ""', 'none: return ""');
+        s.attributeIds.forEach((a) =>
+          q(
+            `node:${s.nodeTypeId}`,
+            a,
+            attr(`node:${s.nodeTypeId}`, a).question,
+          ),
+        );
+        [s.prompt, ...s.nominationPrompts.map((p) => p.text)].forEach(
+          (draft, i) =>
+            prompts.push({
+              promptKey: `${s.id}/p${i + 1}`,
+              draft,
+              kind: i ? 'family pedigree question' : 'family pedigree',
+              needsNegativeLabel: false,
+            }),
+        );
+        break;
+      case 'narrativePedigree':
+        slot('none: return ""', 'none: return ""');
+        s.conditions.forEach((c, i) =>
+          prompts.push({
+            promptKey: `${s.id}/condition${i + 1}`,
+            draft: c.label,
+            kind: 'condition name (1-4 words)',
+            needsNegativeLabel: false,
+          }),
+        );
+        break;
       case 'bins':
       case 'geospatial':
       case 'narrative':
@@ -241,5 +279,11 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
         }),
       );
   }
-  return { summary: d.summary, stages, prompts, questions };
+  return {
+    language: d.language,
+    summary: d.summary,
+    stages,
+    prompts,
+    questions,
+  };
 };

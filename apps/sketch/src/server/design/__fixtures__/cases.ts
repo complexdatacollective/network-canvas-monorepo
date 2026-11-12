@@ -49,6 +49,8 @@ export const coverageDesign: StudyDesign = {
     itemsPerPerson: 4,
     minutes: 20,
   },
+  language: 'en',
+  endings: [],
   includeConsent: true,
   consentText: '',
   egoAttributes: [
@@ -420,6 +422,8 @@ export const messyDesign: StudyDesign = {
     itemsPerPerson: 4,
     minutes: 20,
   },
+  language: 'en',
+  endings: [],
   includeConsent: false,
   consentText: '',
   egoAttributes: [

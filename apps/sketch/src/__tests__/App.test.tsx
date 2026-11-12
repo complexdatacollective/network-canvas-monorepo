@@ -110,7 +110,7 @@ describe('Sketch flow', () => {
     expect(api.posts).toEqual([
       {
         description:
-          'Research questions\n1. Which nurses are central in the ward advice network?\n2. Do advice ties cross shift boundaries?\n\nResearch population\nAll nurses on one acute ward.\n\nStudy synopsis\nA sociocentric study.',
+          'Research questions\n1. Which nurses are central in the ward advice network?\n2. Do advice ties cross shift boundaries?\n\nResearch population\nAll nurses on one acute ward.\n\nMode of administration\nSelf-administered: participants complete the interview on their own, on a computer or tablet.\n\nStudy synopsis\nA sociocentric study.',
         provider: 'anthropic',
         jobId: expect.any(String),
       },

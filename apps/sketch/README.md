@@ -23,21 +23,32 @@ steps. They are the five rows the generating screen shows
    screening call fails, the job carries on as if it had passed.
 2. **Design.** The design model returns a `StudyDesign` (a constrained JSON
    object, `src/server/design/schema.ts`) under a byte-stable, cached system
-   prompt (`src/server/prompts/`). A deterministic preflight normalises and
+   prompt (`src/server/prompts/design.md` and `decision-guide.md`). A deterministic preflight normalises and
    checks it (`analyse.ts`), compiles it and validates the result. A design
    with problems gets **one** retry, with the problems spelled out as feedback.
+   A critic (the design model, with its own prompt in
+   `src/server/prompts/critic.md`) then reviews the chosen design and returns
+   its findings and edits to the design (`src/server/design/critique.ts`).
+   Code applies the edits, keeping each one only if the design still builds
+   as cleanly, and lists the findings on the researcher-notes screen.
+   `SKETCH_DESIGN_REVIEW=off` skips the review.
 3. **Wording.** A cheap model polishes titles, prompts and screen text. A
    wording failure is not fatal: the design's draft wording is kept.
 4. **Compile.** `compile.ts` turns the design plus wording into a schema 9
    protocol: codebook, stages, skip logic, filters and assets (placeholder
    roster CSVs, the world-countries GeoJSON for geospatial stages). The
-   protocol is in English, its one language, so every participant-facing text
-   is a localized string with an `en` translation. Only Ego Forms have an
+   protocol has one language, the design's `language`, so every
+   participant-facing text is a localized string with one translation. When
+   Network Canvas supplies no interface text in that language, its English
+   interface text is kept under the declared language and the researcher
+   notes say it needs translating. Only Ego Forms have an
    introduction panel, as schema 9 requires. Instead, the compiler puts an
    Information screen explaining the task before the first stage of each
    new kind of task (`intros.ts`), shown exactly when that stage is, unless
    the design already has an instructions screen there. It ends the interview
-   with a finish stage, and fills in the wording Network Canvas supplies for
+   with a finish stage (outcome completed), followed by one for declined
+   consent and one for each early ending in the design (outcome ineligible
+   or terminated), which the consent gate and skip logic route to. It fills in the wording Network Canvas supplies for
    each stage and for the interview itself, as Architect does for a new
    stage.
 5. **Validate.** `@codaco/protocol-validation` validates the protocol. Only a
@@ -69,7 +80,7 @@ The page then hands the protocol to Architect:
 | `src/handoff/`                 | Architect handoff and `.netcanvas` download.                                                       |
 | `src/server/pipeline.ts`       | The five steps, with injected provider adapters.                                                   |
 | `src/server/design/`           | Design schema, analysis, compiler, retry feedback, assets.                                         |
-| `src/server/prompts/`          | System prompts and the decision guide.                                                             |
+| `src/server/prompts/`          | System prompts and the decision guide, as Markdown files (`*.md`) the `.ts` modules import.        |
 | `src/server/providers/`        | Anthropic and OpenAI adapters behind one `ProviderAdapter` type.                                   |
 | `src/server/handlers.ts`       | Request handlers. The Netlify functions only wire production dependencies into them.               |
 | `src/server/jobs.ts`           | Job records, the research log and the daily budget, in Netlify Blobs.                              |
@@ -110,7 +121,9 @@ npx netlify dev --filter @codaco/sketch   # http://localhost:5186
 
 The `[dev]` block in `netlify.toml` serves `netlify dev` on
 `http://localhost:5186` and moves Vite to an inner port (5187), so the page
-keeps the one origin a development build of Architect accepts.
+keeps the one origin a development build of Architect accepts. It serves the
+bundled functions (`netlify/.bundled`), which `bundle-functions --watch`
+rebuilds on every change, because only that bundle loads the Markdown prompts.
 
 To try the Architect handoff locally, run Architect's dev server and start
 Sketch with `VITE_ARCHITECT_URL=http://localhost:5173 npx netlify dev --filter
@@ -251,6 +264,14 @@ tell users that what they type is stored.
 - **Geospatial works at country level only**, with a bundled 212 KB world map
   and the testing Mapbox token, which does not work on Fresco deployments and
   must be replaced there.
+- **Family trees get their own node type.** A Family Pedigree creates its
+  relatives, the participant among them, and one "Family relationship" edge
+  type; Sketch writes the structural attributes (sex assigned at birth,
+  gender identity when asked, the participant marker, relatives not recorded)
+  and leaves the participant out of later stages about the family. Gender
+  identity answers are written in English only. A Narrative Pedigree's
+  inheritance patterns are the model's assumption and the researcher notes
+  say so; at-risk statuses are turned off unless an interviewer is present.
 - **Skip logic cannot count.** "Fewer than 2 friends" cannot be expressed; the
   automatic skip covers "nobody named" only, so a dyad census with one alter
   shows one empty screen.
