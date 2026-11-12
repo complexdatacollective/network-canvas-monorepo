@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   suppliedWordingIn,
-  withoutSuppliedWording,
   withSuppliedWording,
-} from '../protocol-wording.ts';
+  withoutSuppliedWording,
+} from '../../../__tests__/suppliedWording.ts';
 
 // Swahili is a language Network Canvas has no wording in.
 const localization = { defaultLocale: 'en', locales: ['en', 'de', 'sw'] };

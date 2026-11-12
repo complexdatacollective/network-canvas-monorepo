@@ -5,10 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { Toaster } from '@codaco/fresco-ui/Toast';
-import {
-  createDefaultFinishSessionStage,
-  withInterfaceText,
-} from '@codaco/protocol-validation';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import { createDefaultFinishSessionStage } from '@codaco/protocol-validation';
 import { useProtocolImport } from '~/hooks/useProtocolImport';
 import { frescoLocales } from '~/i18n/locales';
 import {

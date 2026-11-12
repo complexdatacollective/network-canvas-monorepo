@@ -49,7 +49,9 @@ const SUPPLIED_LIKELY: ReadonlyMap<string, LocaleTag> = new Map(
  * (`en-GB`, `es-MX`) is not: it can have that language added beside it
  * instead (see `suppliedBaseLanguage`).
  */
-const suppliedLanguageOf = (locale: LocaleTag): LocaleTag | undefined => {
+export const suppliedLanguageOf = (
+  locale: LocaleTag,
+): LocaleTag | undefined => {
   const canonical = canonicalizeLocale(locale);
   if (canonical === undefined) return undefined;
   if (SUPPLIED_LANGUAGES.includes(canonical)) return canonical;

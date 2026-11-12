@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
   ProtocolValidationError,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 
 import { validateImportedProtocol } from '../validateImportedProtocol';

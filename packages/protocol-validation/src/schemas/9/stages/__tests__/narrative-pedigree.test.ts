@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
+import { familyPedigreeWordingIn } from '../../../../__tests__/suppliedWording.ts';
 import { labelCollisionIssues } from '../../../../localization/labelCollisions.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import { narrativePedigreeWords } from '../../__tests__/canvas-stage-words.ts';
@@ -11,7 +12,6 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../../schema.ts';
-import { familyPedigreeWordingIn } from '../../stage-wording/family-pedigree.ts';
 import { narrativePedigreeStage } from '../narrative-pedigree.ts';
 
 // Minimal valid FamilyPedigree stage (source). Its person type is its stage

@@ -490,9 +490,7 @@ describe('SlidesForm navigation ownership', () => {
       await goToStage?.(1);
     });
 
-    expect(
-      screen.queryByRole('button', { name: 'Discard changes' }),
-    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull();
     expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
   });
 
@@ -674,7 +672,7 @@ describe('SlidesForm navigation ownership', () => {
     });
 
     const discardChanges = await screen.findByRole('button', {
-      name: 'Discard changes',
+      name: 'Yes',
     });
     await act(async () => {
       fireEvent.click(discardChanges);

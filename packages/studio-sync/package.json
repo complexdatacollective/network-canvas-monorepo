@@ -29,6 +29,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@codaco/interview": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@noble/hashes": "^2.4.0",
     "drizzle-orm": "catalog:",

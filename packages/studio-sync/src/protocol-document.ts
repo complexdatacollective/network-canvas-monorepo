@@ -1,4 +1,4 @@
-import { withInterfaceText } from '@codaco/protocol-validation';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 
 import type { SectionDoc } from './apply.ts';
 import { parseSectionId } from './taxonomy.ts';

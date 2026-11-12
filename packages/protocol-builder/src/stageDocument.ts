@@ -1,11 +1,13 @@
 import { v4 as uuid } from 'uuid';
 
 import {
+  stageWithoutSuppliedText,
+  stageWithSuppliedText,
+} from '@codaco/interview/supplied-wording';
+import {
   isExclusiveVariantContainer,
   type LocalizationDeclaration,
   type StageType,
-  stageWithoutSuppliedText,
-  stageWithSuppliedText,
 } from '@codaco/protocol-validation';
 import {
   canonicalize,

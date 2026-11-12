@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  interfaceTextShown,
+  interfaceTextShownBy,
+  interfaceTextWithUpdates,
+  withInterfaceText,
+} from '../../../__tests__/suppliedWording.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
   BUILT_IN_WORDING_MISSING,
 } from '../../../validation/validate-protocol.ts';
 import { findBuiltInWordingProblems } from '../built-in-wording.ts';
 import { createDefaultFinishSessionStage } from '../finish-session-defaults.ts';
-import {
-  interfaceTextShown,
-  interfaceTextShownBy,
-  interfaceTextWithUpdates,
-  withInterfaceText,
-} from '../interface-text.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 
 type Localization = { defaultLocale: string; locales: string[] };

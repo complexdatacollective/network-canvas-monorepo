@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  withInterfaceText,
+  withoutSuppliedWording,
+  withSuppliedWording,
+  familyPedigreeWordingIn,
+} from '@codaco/interview/supplied-wording';
+import {
   collectLocalizedStrings,
   createDefaultFinishSessionStage,
   type CurrentProtocol,
@@ -13,10 +19,6 @@ import {
   suppliedOptionLabel,
   suppliedOptionLabels,
   validateProtocol,
-  familyPedigreeWordingIn,
-  withInterfaceText,
-  withoutSuppliedWording,
-  withSuppliedWording,
 } from '@codaco/protocol-validation';
 
 import {

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { localized } from '../../../../utils/test-utils.ts';
 import {
-  stageWithoutSuppliedText,
   stageWithSuppliedText,
-} from '../../supplied-stage-text.ts';
+  stageWithoutSuppliedText,
+} from '../../../../__tests__/suppliedWording.ts';
+import { localized } from '../../../../utils/test-utils.ts';
 import { categoricalBinStage } from '../categorical-bin.ts';
 import { ordinalBinStage } from '../ordinal-bin.ts';
 

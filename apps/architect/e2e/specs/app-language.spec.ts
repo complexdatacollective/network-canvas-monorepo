@@ -1,9 +1,7 @@
 import type { Page } from '@playwright/test';
 
-import {
-  CurrentProtocolSchema,
-  withInterfaceText,
-} from '@codaco/protocol-validation';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';

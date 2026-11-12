@@ -9,11 +9,11 @@ import {
 import {
   INTERFACE_TEXT_MESSAGES,
   type InterfaceText,
-  interfaceTextShown,
   type LocalizationDeclaration,
   type LocalizedString,
 } from '@codaco/protocol-validation';
 
+import { interfaceTextShown } from '../wording/suppliedWording';
 import type { LocalizedMessageValues } from './messageFormatter';
 import {
   useProtocolLocalization,

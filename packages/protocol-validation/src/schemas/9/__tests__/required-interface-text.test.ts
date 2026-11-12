@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import {
+  interfaceTextAsShown,
+  interfaceTextFor,
+  interfaceTextShownBy,
+  withInterfaceText,
+} from '../../../__tests__/suppliedWording.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
@@ -8,12 +14,6 @@ import validateProtocol, {
 } from '../../../validation/validate-protocol.ts';
 import { findBuiltInWordingProblems } from '../built-in-wording.ts';
 import { createDefaultFinishSessionStage } from '../finish-session-defaults.ts';
-import {
-  interfaceTextAsShown,
-  interfaceTextFor,
-  interfaceTextShownBy,
-  withInterfaceText,
-} from '../interface-text.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';

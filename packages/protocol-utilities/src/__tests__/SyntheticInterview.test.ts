@@ -12,7 +12,6 @@ import {
   escapeMessageText,
   type LocalizedString,
   messageText,
-  stageWordingShown,
 } from '@codaco/protocol-validation';
 import {
   NcNetworkSchema,
@@ -1006,14 +1005,7 @@ describe('SyntheticInterview', () => {
       expect(config).not.toHaveProperty('form');
       // The name question's words are Network Canvas's, which the interview
       // shows for a stage that holds none.
-      expect(
-        stageWordingShown(
-          config as { type: string },
-          protocol.localization,
-        ).find(
-          ({ path }) => path.join('.') === 'nodeConfiguration.nameField.prompt',
-        )?.value,
-      ).toEqual({ 'en-US': 'Name (optional)' });
+      expect(config.nodeConfiguration).not.toHaveProperty('nameField');
     });
 
     it('seeds the gender identity variable with the six default options and gives the other owned variables exactly the interface options', () => {
@@ -3220,7 +3212,7 @@ describe('FinishSession stage', () => {
     });
   });
 
-  it('writes English under a default language with no supplied text', () => {
+  it('writes its text under a default language with no supplied text', () => {
     const synth = new SyntheticInterview();
     synth.setLocalization({ defaultLocale: 'ja', locales: ['ja'] });
 
@@ -3234,8 +3226,9 @@ describe('FinishSession stage', () => {
       finishedContent: {
         ja: '# Interview Finished\n\nThank you for participating!',
       },
-      // Network Canvas has no wording in Japanese, so the fixture writes it.
-      finishLabel: { ja: 'Finish' },
+      // Network Canvas has no wording in Japanese, so the fixture writes it:
+      // a stand-in naming the text, since the words are the interview's.
+      finishLabel: { ja: 'finishLabel' },
     });
   });
 

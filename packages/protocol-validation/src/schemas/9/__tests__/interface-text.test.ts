@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
 import {
-  INTERFACE_TEXT_MESSAGES,
-  InterfaceTextSchema,
   interfaceTextAsShown,
   interfaceTextFor,
   interfaceTextShown,
@@ -11,6 +8,11 @@ import {
   interfaceTextWithUpdates,
   suppliedInterfaceText,
   withInterfaceText,
+} from '../../../__tests__/suppliedWording.ts';
+import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
+import {
+  INTERFACE_TEXT_MESSAGES,
+  InterfaceTextSchema,
 } from '../interface-text.ts';
 import { SUPPLIED_LANGUAGES } from '../supplied-text.ts';
 
@@ -729,7 +731,15 @@ describe('the interface text a protocol shows', () => {
         (message) => message.group === group && message.key === key,
       ).map(({ id }) => id);
 
-    expect(idsOf('navigation', 'back')).toEqual(['common.back']);
+    // The interview message that words the text, then what it stands in for.
+    expect(idsOf('navigation', 'back')).toEqual([
+      'interview.interfaceText.navigation.back',
+      'common.back',
+    ]);
+    // A text one of the interview's own messages words stands in for it alone.
+    expect(idsOf('navigation', 'exitInterview')).toEqual([
+      'interview.navigation.exitInterview',
+    ]);
   });
 
   it('lets one text stand in for several catalog messages', () => {
@@ -738,20 +748,22 @@ describe('the interface text a protocol shows', () => {
         (message) => message.group === group && message.key === key,
       ).map(({ id }) => id);
 
-    // The discard dialog’s confirm button reads as the Yes answer.
+    // The discard dialog’s confirm button is the Yes message itself, which
+    // also stands in for a yes-or-no field’s own Yes.
     expect(idsOf('buttons', 'yes')).toEqual([
+      'interview.interfaceText.buttons.yes',
       'frescoUi.booleanField.yes',
-      'interview.interfaces.discardChanges',
     ]);
     // The error message is the form’s and the generic one.
     expect(idsOf('messages', 'error')).toEqual([
+      'interview.interfaceText.messages.error',
       'common.genericError',
       'frescoUi.form.submitFailed',
     ]);
-    // Every search box and filter reads as the one search label.
+    // Every search box reads as the one search label.
     expect(idsOf('search', 'searchLabel')).toEqual([
+      'interview.interfaceText.search.searchLabel',
       'common.search',
-      'interview.runtime.filter',
       'frescoUi.collectionFilterInput.searchPlaceholder',
     ]);
     const ids = INTERFACE_TEXT_MESSAGES.map(({ id }) => id);

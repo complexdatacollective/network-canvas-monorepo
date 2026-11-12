@@ -110,14 +110,14 @@
     "screenshotAlt": "The {name} interface",
     "type": "Type",
     "creates": "Creates",
-    "usesPrompts": "Uses Prompts",
-    "schema": "Schema",
-    "availableIn": "Available In",
+    "usesPrompts": "Uses prompts",
     "requires": "Requires",
     "yes": "Yes",
     "no": "No",
-    "configureIn": "Configure in {app}",
-    "runIn": "Run in {app}"
+    "configureIn": "Configure in",
+    "runIn": "Run in",
+    "notAvailable": "{app} (not available)",
+    "schemaRequirement": "Requires <link>protocol schema</link> {version} or later."
   },
   "InterfaceNames": {
     "AlterEdgeForm": "Per Alter Edge Form",

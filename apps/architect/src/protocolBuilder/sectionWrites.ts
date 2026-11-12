@@ -1,11 +1,11 @@
 import { v4 as uuid } from 'uuid';
 
+import { interfaceTextWithUpdates } from '@codaco/interview/supplied-wording';
 import {
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
   isFinishSessionStage,
   NodeDefinitionSchema,
-  interfaceTextWithUpdates,
   stageSchema,
   type CurrentProtocol,
   type EntityDefinition,

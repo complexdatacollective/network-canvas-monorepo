@@ -6,6 +6,10 @@ import { z } from 'zod';
 
 import { asOneLine } from '@codaco/shared-consts';
 
+import {
+  stageWithoutSuppliedText,
+  withoutSuppliedWording,
+} from '../../../__tests__/suppliedWording.ts';
 import { dynamicValueNamesIn } from '../../../localization/dynamicValueMessages.ts';
 import {
   escapeMessageText,
@@ -28,7 +32,7 @@ import validateProtocol from '../../../validation/validate-protocol.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
 import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import migrationV8toV9 from '../migration.ts';
-import { withoutSuppliedWording } from '../protocol-wording.ts';
+import { withoutUnshownWording } from '../protocol-wording.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { suppliedStageSettingPaths } from '../supplied-stage-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
@@ -277,15 +281,25 @@ describe('v8 to v9 localization migration', () => {
     );
     expected.localization = ENGLISH_ONLY;
 
-    // The fixture words everything in Network Canvas's English; the migration
-    // holds none of that wording, so it is the fixture without it.
+    // The fixture words everything in Network Canvas's English. The migration
+    // writes none of that wording (the finish stage it adds holds none) and
+    // keeps what a document already holds, so it gives the fixture without
+    // the wording of settings it does not show. Stored by a tool that has the
+    // interview's catalogue, it holds none of it.
+    type Stored = Parameters<typeof withoutSuppliedWording>[0];
+    const kept = withoutUnshownWording(expected as unknown as Stored);
     const migrated = migrateStep(schema8Protocol());
-    expect(migrated).toEqual(
-      withoutSuppliedWording(
-        expected as Parameters<typeof withoutSuppliedWording>[0],
+    expect(migrated).toEqual({
+      ...kept,
+      stages: kept.stages?.map((stage) =>
+        isRecord(stage) && stage.type === 'FinishSession'
+          ? stageWithoutSuppliedText({ ...stage, type: stage.type })
+          : stage,
       ),
-    );
-    expect(migrated).not.toHaveProperty('interfaceText');
+    });
+    const stored = withoutSuppliedWording(migrated as unknown as Stored);
+    expect(stored).toEqual(withoutSuppliedWording(kept));
+    expect(stored).not.toHaveProperty('interfaceText');
   });
 
   it('migrates to a protocol schema 9 accepts', () => {

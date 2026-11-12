@@ -247,7 +247,6 @@ export {
 } from './schemas/9/stages/name-generator.ts';
 export { UNNAMED_LABEL_ARGUMENTS } from './schemas/9/stages/name-generator-roster.ts';
 export { SUBJECT_ARGUMENTS } from './schemas/9/stage-wording/subject.ts';
-export { familyPedigreeWordingIn } from './schemas/9/stage-wording/family-pedigree.ts';
 // The Family Pedigree option labels Network Canvas supplies, written into a
 // protocol by Architect.
 export {
@@ -281,40 +280,37 @@ export {
   SNAPSHOT_CONDITION_ARGUMENTS,
   SNAPSHOT_INHERITANCE_ARGUMENTS,
 } from './schemas/9/stages/narrative-pedigree.ts';
-// The stage settings whose wording Network Canvas supplies: the text the
-// interview shows for them, a stage as it is stored (its author's own wording
-// only) and as an editor holds it (with Network Canvas's wording filled in).
+// The texts Network Canvas words, which the schema fixes: where a stage holds
+// each setting and whether it applies, and the interface text entries with
+// the messages each stands in for. The words are the interview's.
 export {
   type ShownStageText,
-  stageWithoutSuppliedText,
-  stageWithSuppliedText,
-  stageWordingShown,
-  type SuppliedStageText,
-  suppliedStageText,
   suppliedStageSettingApplies,
+  suppliedStageSettingPaths,
+  type SuppliedStageText,
 } from './schemas/9/supplied-stage-text.ts';
-// The interview's shared words: the text shown for each, and what a protocol
-// holds of them (its author's own wording, for the entries it shows).
 export {
   INTERFACE_TEXT_MESSAGES,
   type InterfaceText,
   interfaceTextArguments,
-  interfaceTextAsShown,
-  interfaceTextShown,
-  interfaceTextShownBy,
   type InterfaceTextUpdate,
-  interfaceTextWithUpdates,
   sharedStageInterfaceTextUsed,
   STAGE_TYPE_INTERFACE_TEXT,
-  suppliedInterfaceText,
-  withInterfaceText,
 } from './schemas/9/interface-text.ts';
-// A whole protocol as it is stored, and with the wording it shows written out.
+// What is read of a protocol against Network Canvas's wording, given the
+// interview's catalogues; and what can be removed without them.
 export {
-  suppliedWordingIn,
-  withoutSuppliedWording,
-  withSuppliedWording,
+  stageWithoutUnshownWording,
+  SUPPLIED_TEXTS,
+  type SuppliedTextSite,
+  suppliedWordingFrom,
+  withoutUnshownInterfaceText,
+  withoutUnshownWording,
 } from './schemas/9/protocol-wording.ts';
+export type {
+  SuppliedText,
+  SuppliedWordingCatalogues,
+} from './schemas/9/supplied-stage-setting.ts';
 // The finish stage text Network Canvas supplies, written into a protocol by
 // the v8 → v9 migration and by Architect.
 export {

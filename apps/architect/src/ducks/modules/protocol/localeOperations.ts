@@ -2,6 +2,13 @@ import { createNextState } from '@reduxjs/toolkit';
 import { isEqual } from 'es-toolkit';
 
 import {
+  stageWithoutSuppliedText,
+  stageWithSuppliedText,
+  suppliedWordingIn,
+  withoutSuppliedWording,
+  withSuppliedWording,
+} from '@codaco/interview/supplied-wording';
+import {
   canonicalizeLocale,
   collectLocalizedStrings,
   type CurrentProtocol,
@@ -18,13 +25,8 @@ import {
   defaultFinishSessionTextAfterLanguageChange,
   type LanguageChange,
   needsFallbackLanguage,
-  stageWithoutSuppliedText,
-  stageWithSuppliedText,
   suppliedOptionLabelsAfterLanguageChange,
-  suppliedWordingIn,
   withFallbackLanguage,
-  withoutSuppliedWording,
-  withSuppliedWording,
 } from '@codaco/protocol-validation';
 import { withTranslation } from '~/utils/localizedText';
 

@@ -1,10 +1,10 @@
 import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { interfaceTextShownBy } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
-  interfaceTextShownBy,
 } from '@codaco/protocol-validation';
 
 import type { StoredAsset } from '../assetDB';

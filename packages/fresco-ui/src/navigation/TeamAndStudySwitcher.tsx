@@ -312,8 +312,12 @@ function Segment({
           {kicker}
         </span>
         <span
+          // A name someone typed takes its own direction and stays on the
+          // interface side, so in a right-to-left interface a Latin name is
+          // cut at its end and keeps its punctuation where it was typed.
+          dir="auto"
           className={cx(
-            'text-sm leading-tight font-semibold',
+            'text-match-parent text-sm leading-tight font-semibold',
             // One line, cut with an ellipsis when the container cannot hold
             // it. Below the collapse threshold the whole column gives way to
             // the mark instead — an ellipsis is for the widths in between,
@@ -473,7 +477,10 @@ function Segment({
                       {/* Wraps rather than truncating: this is where a name
                           too long for the frame above can be read in full. */}
                       <Select.ItemText className="flex min-w-0 flex-1 flex-col">
-                        <span className="text-sm leading-tight font-semibold wrap-break-word">
+                        <span
+                          dir="auto"
+                          className="text-match-parent text-sm leading-tight font-semibold wrap-break-word"
+                        >
                           {item.name}
                         </span>
                         {item.meta !== undefined && (

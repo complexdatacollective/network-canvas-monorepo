@@ -6,10 +6,8 @@ import { describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 
-import {
-  createDefaultFinishSessionStage,
-  interfaceTextShownBy,
-} from '@codaco/protocol-validation';
+import { interfaceTextShownBy } from '@codaco/interview/supplied-wording';
+import { createDefaultFinishSessionStage } from '@codaco/protocol-validation';
 
 import DefaultLanguageTextAlert from '../DefaultLanguageTextAlert';
 import { translationTableHref } from '../Localization/translationTableLinks';
