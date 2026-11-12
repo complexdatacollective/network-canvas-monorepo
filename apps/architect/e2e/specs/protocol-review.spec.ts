@@ -990,7 +990,7 @@ test.describe('results', () => {
     );
     await expect(dismissed.getByText('Dismissed')).toBeVisible();
 
-    await dismissed.getByRole('button', { name: 'Restore' }).click();
+    await dismissed.getByRole('button', { name: 'Undo dismiss' }).click();
     await expect(dismissed.getByText('Dismissed')).toHaveCount(0);
     await expect(reviewButton(page)).toHaveAccessibleName(countName(1));
     await expect(
@@ -1006,7 +1006,7 @@ test.describe('results', () => {
     await expect(
       mine.getByText('You chose to fix this yourself.'),
     ).toBeVisible();
-    await mine.getByRole('button', { name: 'Restore' }).click();
+    await mine.getByRole('button', { name: 'Decide later' }).click();
     await expect(reviewButton(page)).toHaveAccessibleName(countName(2));
     await expect(mine.getByText('You chose to fix this yourself.')).toHaveCount(
       0,

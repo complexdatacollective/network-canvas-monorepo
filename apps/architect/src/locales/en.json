@@ -2931,10 +2931,6 @@
     "defaultMessage": "A review lists the problems it finds in your protocol, most serious first. Nothing in your protocol changes until you choose.",
     "description": "Shown in the review panel while the protocol has no review: what a review gives the researcher."
   },
-  "architect.protocolReview.popover.restore": {
-    "defaultMessage": "Restore",
-    "description": "Button beside a dismissed problem, or one the researcher took on, that returns it to the problems still to decide."
-  },
   "architect.protocolReview.popover.resultsIntro": {
     "defaultMessage": "The results of your review are shown below in order of importance.",
     "description": "Line under the Protocol review heading, above the list of problems the review found."
@@ -2975,6 +2971,10 @@
     "defaultMessage": "Undo",
     "description": "Button beside \"Fixed for you\" that takes the fix back out of the protocol."
   },
+  "architect.protocolReview.popover.undoDismiss": {
+    "defaultMessage": "Undo dismiss",
+    "description": "Button beside a dismissed problem in the review list that returns it to the problems still to decide."
+  },
   "architect.protocolReview.problem.afterFix": {
     "defaultMessage": "After the fix",
     "description": "Label over a piece of text as the suggested fix would change it."
@@ -2998,6 +2998,10 @@
   "architect.protocolReview.problem.checkingFix": {
     "defaultMessage": "Checking whether this fix can be made for you…",
     "description": "Read by screen readers with the Fix for me button while Architect works out whether the fix leaves a valid protocol."
+  },
+  "architect.protocolReview.problem.decideLater": {
+    "defaultMessage": "Decide later",
+    "description": "Button on a problem the researcher said they will fix themselves that returns it to the problems still to decide."
   },
   "architect.protocolReview.problem.dismiss": {
     "defaultMessage": "Dismiss",
@@ -3059,10 +3063,6 @@
     "defaultMessage": "Problem {position, number} of {total, number}",
     "description": "Shows which problem found by the automated protocol review is open, when going through them one at a time."
   },
-  "architect.protocolReview.problem.restore": {
-    "defaultMessage": "Restore",
-    "description": "Button that returns a problem the researcher dismissed, or took on themselves, to the problems still to decide."
-  },
   "architect.protocolReview.problem.suggestedFix": {
     "defaultMessage": "Suggested fix",
     "description": "Heading of the part of a problem that describes how the automated protocol review suggests fixing it."
@@ -3070,6 +3070,10 @@
   "architect.protocolReview.problem.undo": {
     "defaultMessage": "Undo",
     "description": "Button that takes a fix made for the researcher back out of the protocol."
+  },
+  "architect.protocolReview.problem.undoDismiss": {
+    "defaultMessage": "Undo dismiss",
+    "description": "Button on a problem the researcher dismissed that returns it to the problems still to decide."
   },
   "architect.protocolReview.progressRing.label": {
     "defaultMessage": "Review progress",

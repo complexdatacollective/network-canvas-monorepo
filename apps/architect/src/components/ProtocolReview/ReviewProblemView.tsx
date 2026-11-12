@@ -156,11 +156,17 @@ const messages = defineMessages({
     description:
       'Button that takes a fix made for the researcher back out of the protocol.',
   },
-  restore: {
-    id: 'architect.protocolReview.problem.restore',
-    defaultMessage: 'Restore',
+  undoDismiss: {
+    id: 'architect.protocolReview.problem.undoDismiss',
+    defaultMessage: 'Undo dismiss',
     description:
-      'Button that returns a problem the researcher dismissed, or took on themselves, to the problems still to decide.',
+      'Button on a problem the researcher dismissed that returns it to the problems still to decide.',
+  },
+  decideLater: {
+    id: 'architect.protocolReview.problem.decideLater',
+    defaultMessage: 'Decide later',
+    description:
+      'Button on a problem the researcher said they will fix themselves that returns it to the problems still to decide.',
   },
   nextProblem: {
     id: 'architect.protocolReview.problem.nextProblem',
@@ -540,7 +546,11 @@ const ReviewProblemView = ({
                   unavailable={busy}
                   onClick={() => void decide('undecided')}
                 >
-                  {intl.formatMessage(messages.restore)}
+                  {intl.formatMessage(
+                    status === 'dismissed'
+                      ? messages.undoDismiss
+                      : messages.decideLater,
+                  )}
                 </GuardedButton>
               )}
               {status !== 'dismissed' && (

@@ -479,7 +479,7 @@ describe('the results', () => {
     const dismissedRow = within(panel).getByText('Dismissed').closest('li');
     if (!dismissedRow) throw new Error('No row');
     await userEvent.click(
-      within(dismissedRow).getByRole('button', { name: 'Restore' }),
+      within(dismissedRow).getByRole('button', { name: 'Undo dismiss' }),
     );
     await waitFor(() =>
       expect(findingOf(store, 'advice').status).toBe('undecided'),
@@ -1015,7 +1015,7 @@ describe('one problem at a time, in the panel', () => {
       within(dialog).queryByRole('button', { name: 'Dismiss' }),
     ).toBeNull();
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Restore' }),
+      within(dialog).getByRole('button', { name: 'Undo dismiss' }),
     );
 
     await waitFor(() =>
@@ -1045,7 +1045,7 @@ describe('one problem at a time, in the panel', () => {
 
     const dialog = await openProblemFromList('The welcome title is unclear');
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Restore' }),
+      within(dialog).getByRole('button', { name: 'Undo dismiss' }),
     );
     await waitFor(() =>
       expect(findingOf(reloaded, 'title').availability).toBe('available'),

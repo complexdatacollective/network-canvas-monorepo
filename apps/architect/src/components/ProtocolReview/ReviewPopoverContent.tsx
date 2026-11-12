@@ -179,11 +179,11 @@ const messages = defineMessages({
     description:
       'Read by screen readers after Undo in the review list took a fix back out of the protocol. {title} is the problem’s title, written by the review service.',
   },
-  restore: {
-    id: 'architect.protocolReview.popover.restore',
-    defaultMessage: 'Restore',
+  undoDismiss: {
+    id: 'architect.protocolReview.popover.undoDismiss',
+    defaultMessage: 'Undo dismiss',
     description:
-      'Button beside a dismissed problem, or one the researcher took on, that returns it to the problems still to decide.',
+      'Button beside a dismissed problem in the review list that returns it to the problems still to decide.',
   },
   goThrough: {
     id: 'architect.protocolReview.popover.goThrough',
@@ -599,7 +599,7 @@ const ReviewPopoverContent = ({
                   void dispatch(decideFinding(finding.id, 'undecided'))
                 }
               >
-                {intl.formatMessage(messages.restore)}
+                {intl.formatMessage(messages.undoDismiss)}
               </Button>
             )}
           </div>
