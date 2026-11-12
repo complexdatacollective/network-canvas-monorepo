@@ -441,7 +441,13 @@ export default function LocaleSwitcher({
             </Combobox.Empty>
             <Combobox.List
               ref={listRef}
-              className="max-h-96 overflow-hidden has-data-empty:hidden"
+              className={cx(
+                'max-h-96 overflow-hidden has-data-empty:hidden',
+                // The popup leaves overflow visible for its arrow, so the
+                // list clips its own scroll fade to the popup's rounded
+                // corners while it is the last visible child.
+                notice === null && 'rounded-b-[inherit]',
+              )}
               render={
                 <ScrollArea viewportClassName="flex flex-col px-2 pb-2" />
               }
