@@ -333,6 +333,96 @@ describe('writtenHolds', () => {
   });
 });
 
+describe('a fix that moves a member of an array', () => {
+  const stage = (id: string) => ({ id, label: id.toUpperCase() });
+  const ordered = (...ids: string[]) => ({ stages: ids.map(stage) });
+  const idsOf = (root: unknown) =>
+    (root as ReturnType<typeof ordered>).stages.map((s) => s.id);
+  /** Moves stage `id` to just before `before`, or to the end. */
+  const move = (id: string, before: string) => [
+    op('remove', `/stages/${id}`),
+    op('insert', `/stages/${before}`, stage(id)),
+  ];
+
+  it('stops holding once the move is undone', () => {
+    const original = ordered('a', 'b', 'c');
+    const { result, inverse, written } = writtenBy(original, move('a', 'c'));
+    expect(idsOf(result)).toEqual(['b', 'a', 'c']);
+    expect(writtenHolds(result, written)).toBe(true);
+    expect(writtenHolds(original, written)).toBe(false);
+    const undone = apply(result, inverse).result;
+    expect(undone).toEqual(original);
+    expect(writtenHolds(undone, written)).toBe(false);
+  });
+
+  it('stops holding when the researcher moves the member back', () => {
+    const { result, written } = writtenBy(
+      ordered('a', 'b', 'c'),
+      move('a', 'c'),
+    );
+    const back = apply(result, move('a', 'b')).result;
+    expect(idsOf(back)).toEqual(['a', 'b', 'c']);
+    expect(writtenHolds(back, written)).toBe(false);
+  });
+
+  it('stops holding when a member it was moved past is moved back across it', () => {
+    const { result, written } = writtenBy(
+      ordered('a', 'b', 'c'),
+      move('a', 'c'),
+    );
+    const across = apply(result, move('b', 'c')).result;
+    expect(idsOf(across)).toEqual(['a', 'b', 'c']);
+    expect(writtenHolds(across, written)).toBe(false);
+  });
+
+  it('holds through changes to the order that leave the move standing', () => {
+    const { result, written } = writtenBy(
+      ordered('a', 'b', 'c', 'd'),
+      move('a', 'c'),
+    );
+    // c and d were never passed, so where they stand says nothing about it.
+    const elsewhere = apply(result, [
+      ...move('d', 'b'),
+      op('insert', '/stages/-', stage('e')),
+      op('remove', '/stages/c'),
+    ]).result;
+    expect(idsOf(elsewhere)).toEqual(['d', 'b', 'a', 'e']);
+    expect(writtenHolds(elsewhere, written)).toBe(true);
+    // With b gone there is nothing left for a to stand after.
+    const without = apply(result, [op('remove', '/stages/b')]).result;
+    expect(writtenHolds(without, written)).toBe(true);
+  });
+
+  it('sees a move towards the start, and a move that also rewrites the member', () => {
+    const original = ordered('a', 'b', 'c');
+    const { result, inverse, written } = writtenBy(original, [
+      op('remove', '/stages/c'),
+      op('insert', '/stages/a', { id: 'c', label: 'Rewritten' }),
+    ]);
+    expect(idsOf(result)).toEqual(['c', 'a', 'b']);
+    expect(writtenHolds(result, written)).toBe(true);
+    expect(writtenHolds(apply(result, inverse).result, written)).toBe(false);
+    // The new wording kept, but back at the end: the order is undone.
+    const reordered = apply(result, [
+      op('remove', '/stages/c'),
+      op('insert', '/stages/-', { id: 'c', label: 'Rewritten' }),
+    ]).result;
+    expect(writtenHolds(reordered, written)).toBe(false);
+  });
+
+  it('sees a move inside a nested array', () => {
+    const original = {
+      stages: [{ id: 's', prompts: [{ id: 'p1' }, { id: 'p2' }] }],
+    };
+    const { result, inverse, written } = writtenBy(original, [
+      op('remove', '/stages/s/prompts/p1'),
+      op('insert', '/stages/s/prompts/-', { id: 'p1' }),
+    ]);
+    expect(writtenHolds(result, written)).toBe(true);
+    expect(writtenHolds(apply(result, inverse).result, written)).toBe(false);
+  });
+});
+
 describe('arrays that mix members with and without ids', () => {
   // A form's `fields` can hold both; its members are addressed by id.
   const mixed = () => ({

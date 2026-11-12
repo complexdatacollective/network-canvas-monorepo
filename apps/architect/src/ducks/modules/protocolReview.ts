@@ -1045,6 +1045,19 @@ const runChecks = async (dispatch: AppDispatch, getState: GetState) => {
     ) {
       return;
     }
+    // Nor does it answer the question if the finding was decided meanwhile.
+    // A fix that still fits once it is applied (a move does) is asked about
+    // as a fix just before its decision is recorded; that answer must not
+    // replace the Undo check the decision recorded.
+    const latest = now.review.findings.find(
+      (candidate) => candidate.finding.id === id,
+    );
+    if (
+      !latest ||
+      (statusOf(latest, protocol) === 'fixed') !== (kind === 'undo')
+    ) {
+      continue;
+    }
     dispatch(
       actions.fixChecked({ findingId: id, check: { protocol, kind, valid } }),
     );

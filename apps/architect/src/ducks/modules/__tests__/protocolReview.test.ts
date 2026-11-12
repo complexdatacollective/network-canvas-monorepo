@@ -516,6 +516,49 @@ describe('decisions', () => {
     expect(findingOf(store, 'prompt').status).toBe('fixed');
   });
 
+  it('returns a fix that reorders stages to undecided when the order is put back', async () => {
+    await open(store);
+    const stageIds = () => protocolOf(store).stages.map((stage) => stage.id);
+    const [first, second, ...rest] = protocolOf(store).stages;
+    if (!first || !second) throw new Error('The fixture needs two stages');
+    // Moves the first stage to just after the second.
+    const moved = makeFinding(
+      'order',
+      [
+        op('remove', `/stages/${first.id}`),
+        op('insert', `/stages/${rest[0]?.id ?? '-'}`, first),
+      ],
+      { stageId: first.id, category: 'structure' },
+    );
+    vi.stubGlobal(
+      'fetch',
+      answering({ ...RESULT, findings: [moved] }).fetchImpl,
+    );
+    await store.dispatch(startReview());
+    await store.dispatch(checkFixAvailability());
+    const original = stageIds();
+
+    expect(await store.dispatch(decideFinding('order', 'fix'))).toEqual({
+      ok: true,
+    });
+    expect(stageIds().slice(0, 2)).toEqual([second.id, first.id]);
+    expect(findingOf(store, 'order')).toMatchObject({
+      status: 'fixed',
+      canUndo: true,
+    });
+
+    // The stage's own content is as the fix left it; only the order is not.
+    store.dispatch(timelineActions.undo());
+    expect(stageIds()).toEqual(original);
+    expect(findingOf(store, 'order')).toMatchObject({
+      status: 'undecided',
+      canUndo: false,
+    });
+
+    store.dispatch(timelineActions.redo());
+    expect(findingOf(store, 'order').status).toBe('fixed');
+  });
+
   it('refuses Fix for me in a tab that does not own the saved copy', async () => {
     await reviewed(store);
     store.dispatch(setProtocolLockState('open-elsewhere'));

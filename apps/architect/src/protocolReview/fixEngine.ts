@@ -445,20 +445,98 @@ export const fixFits = (
  * value at `path`, or its absence. Together they are everything the fix
  * wrote, normalisation included (see `editProtocol`).
  */
-export type WrittenSnapshot = {
+type ValueSnapshot = {
   path: string;
   present: boolean;
   value: unknown;
 };
 
+/**
+ * Where a fix left a member of an array that it moved past others: the
+ * members it went past, by id, as those that now stand `before` it and
+ * `after` it. A member's value does not say where it stands, so a move is
+ * written in the order alone and is recorded here. Members the move did not
+ * pass are left out: where they stand says nothing about it.
+ */
+type PlacementSnapshot = {
+  path: string;
+  before: string[];
+  after: string[];
+};
+
+export type WrittenSnapshot = ValueSnapshot | PlacementSnapshot;
+
 /** What `root` holds at `path`, as a snapshot. */
-const snapshotAt = (root: unknown, path: string): WrittenSnapshot => {
+const snapshotAt = (root: unknown, path: string): ValueSnapshot => {
   const segments = parsePath(path);
   const read =
     segments === null ? { found: false as const } : readPath(root, segments);
   return read.found
     ? { path, present: true, value: read.value }
     : { path, present: false, value: null };
+};
+
+/**
+ * The ids of the array `path`'s member stands in, in order (null for a
+ * member without one), and the member's position among them; null when
+ * `path` names no member of an array by its id.
+ */
+const siblingsAt = (
+  root: unknown,
+  path: string,
+): { ids: (string | null)[]; at: number } | null => {
+  const segments = parsePath(path);
+  const id = segments?.at(-1);
+  if (!segments || id === undefined) return null;
+  const parent = readPath(root, segments.slice(0, -1));
+  if (!parent.found || !Array.isArray(parent.value)) return null;
+  const ids = parent.value.map((member: unknown) =>
+    hasStringId(member) ? member.id : null,
+  );
+  const at = ids.indexOf(id);
+  return at === -1 ? null : { ids, at };
+};
+
+/**
+ * Where the member at `path` stands in `after` against the members it has
+ * passed since `before`; null when it is not in the same array in both, or
+ * has passed none.
+ */
+const placementAt = (
+  before: unknown,
+  after: unknown,
+  path: string,
+): PlacementSnapshot | null => {
+  const was = siblingsAt(before, path);
+  const now = siblingsAt(after, path);
+  if (was === null || now === null) return null;
+  const passed = (from: number, to: number, side: (index: number) => boolean) =>
+    now.ids.slice(from, to).filter((id): id is string => {
+      const index = id === null ? -1 : was.ids.indexOf(id);
+      return index !== -1 && side(index);
+    });
+  const placement = {
+    path,
+    before: passed(0, now.at, (index) => index > was.at),
+    after: passed(now.at + 1, now.ids.length, (index) => index < was.at),
+  };
+  return placement.before.length + placement.after.length > 0
+    ? placement
+    : null;
+};
+
+/** Whether each member `placement` names that is still there is on its side. */
+const placementHolds = (root: unknown, placement: PlacementSnapshot) => {
+  const now = siblingsAt(root, placement.path);
+  if (now === null) return false;
+  const stands = (id: string, side: (index: number) => boolean) => {
+    const index = now.ids.indexOf(id);
+    return index === -1 || side(index);
+  };
+  return (
+    placement.before.every((id) => stands(id, (index) => index < now.at)) &&
+    placement.after.every((id) => stands(id, (index) => index > now.at))
+  );
 };
 
 /**
@@ -473,7 +551,9 @@ export const writtenHolds = (
   if (written.length === 0) return false;
   try {
     return written.every((snapshot) =>
-      sameStored(snapshotAt(root, snapshot.path), snapshot),
+      'before' in snapshot
+        ? placementHolds(root, snapshot)
+        : sameStored(snapshotAt(root, snapshot.path), snapshot),
     );
   } catch {
     return false;
@@ -507,7 +587,8 @@ const isUnderKey = (path: string, key: string) =>
  *   `root` as stored (`sameStored`) — so it also puts back, whole, every
  *   top-level key normalisation changed;
  * - `written` names every place the fix wrote by key and id only, read from
- *   the final result, so any later change to any of it is seen.
+ *   the final result, so any later change to any of it is seen — and, for a
+ *   member the fix moved within its array, the order it was moved into.
  *
  * Never throws.
  */
@@ -550,9 +631,13 @@ export const planFix = (
     if (!undone.ok || !sameStored(normalize(undone.result), root)) {
       return { ok: false, reason: 'invalid' };
     }
-    const written = [
-      ...new Set([...applied.anchors, ...keys.map(topLevel)]),
-    ].map((path) => snapshotAt(normalized, path));
+    const paths = [...new Set([...applied.anchors, ...keys.map(topLevel)])];
+    const written: WrittenSnapshot[] = [
+      ...paths.map((path) => snapshotAt(normalized, path)),
+      ...paths
+        .map((path) => placementAt(root, normalized, path))
+        .filter((placement) => placement !== null),
+    ];
     return { ok: true, result: normalized, inverse, written };
   } catch {
     return { ok: false, reason: 'invalid' };
