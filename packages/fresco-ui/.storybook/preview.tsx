@@ -16,6 +16,7 @@ import './preview.css';
 import {
   globalTypes as i18nGlobalTypes,
   initialGlobals as i18nInitialGlobals,
+  mirrorAddon,
   withAppI18n,
 } from './i18n';
 import Providers from './Providers';
@@ -80,13 +81,18 @@ const ThemedDocsContainer = ({
 // See: https://github.com/chromaui/addon-visual-tests/pull/404
 
 export default definePreview({
+  // Every story is checked right to left after its play function (see
+  // `mirrorAddon` in @codaco/storybook-config, first in `addons` so it runs
+  // after the accessibility audit); a story that is not a layout in the
+  // reading direction opts out with the `!mirror` tag and says why.
+  tags: ['mirror'],
   beforeEach: () => {
     // Playwright's Linux Firefox can leave a newly isolated story iframe
     // inactive. Activate its window before interactions so native focus and
     // keyboard input reach the story, while preserving per-file isolation.
     window.focus();
   },
-  addons: [addonDocs(), addonA11y(), addonVitest()],
+  addons: [mirrorAddon, addonDocs(), addonA11y(), addonVitest()],
   parameters: {
     options: {
       storySort: {

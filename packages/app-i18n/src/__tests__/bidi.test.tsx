@@ -8,6 +8,7 @@ import {
   createAppIntl,
   FIRST_STRONG_ISOLATE as FSI,
   POP_DIRECTIONAL_ISOLATE as PDI,
+  withoutBidiFormatting,
 } from '../messages.ts';
 import { createPseudoIntl } from '../pseudo.ts';
 import {
@@ -204,6 +205,33 @@ describe('bidi isolation of interpolated values', () => {
     );
     expect(container.textContent).toBe(
       `You joined ${isolated('team-b!')} as ${isolated('admin')}`,
+    );
+  });
+});
+
+describe('withoutBidiFormatting', () => {
+  it('removes every bidi formatting character and nothing else', () => {
+    const marks = [
+      '\u061C',
+      '\u200E',
+      '\u200F',
+      '\u202A',
+      '\u202B',
+      '\u202C',
+      '\u202D',
+      '\u202E',
+      '\u2066',
+      '\u2067',
+      '\u2068',
+      '\u2069',
+    ];
+    expect(
+      withoutBidiFormatting(`${marks.join('')}مرحبا P-007 ${isolated('Ada')}`),
+    ).toBe('مرحبا P-007 Ada');
+    // Neighbours of the set that are text, not formatting: the zero-width
+    // joiners Arabic shaping needs, and the word joiner.
+    expect(withoutBidiFormatting('\u200C\u200D\u2060')).toBe(
+      '\u200C\u200D\u2060',
     );
   });
 });

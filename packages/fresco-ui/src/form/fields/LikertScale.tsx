@@ -234,11 +234,14 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                     return (
                       <div
                         key={index}
+                        // From the start edge, like the labels below: the
+                        // slider runs from the right in a right-to-left
+                        // language.
                         className={cx(
                           sliderTickStyles,
-                          'absolute -translate-x-1/2',
+                          'absolute -translate-x-1/2 rtl:translate-x-1/2',
                         )}
-                        style={{ left: `${percentage}%` }}
+                        style={{ insetInlineStart: `${percentage}%` }}
                       />
                     );
                   })}

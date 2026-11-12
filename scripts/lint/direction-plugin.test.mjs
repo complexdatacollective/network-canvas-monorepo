@@ -79,6 +79,25 @@ describe('inline-arrow-turns', () => {
       `import { ArrowRight } from 'lucide-react';
        export const icons = { next: ArrowRight };`,
     ],
+    [
+      'an arrow handed to a component that does not turn it',
+      `import { ArrowRight } from 'lucide-react';
+       declare const Badge: (props: { icon: unknown }) => null;
+       export const A = () => <Badge icon={ArrowRight} />;`,
+    ],
+    [
+      'an arrow in a listed component’s other prop',
+      `import { ArrowRight } from 'lucide-react';
+       declare const NavItem: (props: { badge: unknown }) => null;
+       export const A = () => <NavItem badge={ArrowRight} />;`,
+    ],
+    [
+      'an arrow in story args whose meta names a component that does not turn it',
+      `import { ArrowRight } from 'lucide-react';
+       declare const Badge: unknown;
+       export default { component: Badge };
+       export const Story = { args: { icon: ArrowRight } };`,
+    ],
   ])('reports %s', (_label, source) => {
     expect(lint(source)).toEqual(['inline-arrow-turns']);
   });
@@ -106,6 +125,19 @@ describe('inline-arrow-turns', () => {
       `import { MoveRight } from 'lucide-react';
        declare const inlineIconClass: (icon: unknown) => string;
        export const A = () => <MoveRight className={inlineIconClass(MoveRight)} />;`,
+    ],
+    [
+      'handed to a component listed as turning that prop',
+      `import { ArrowLeft } from 'lucide-react';
+       declare const NavItem: (props: { icon: unknown }) => null;
+       export const A = () => <NavItem icon={ArrowLeft} />;`,
+    ],
+    [
+      'in story args whose meta names a component that turns it',
+      `import { ArrowLeft } from 'lucide-react';
+       declare const NavItem: unknown;
+       export default { component: NavItem };
+       export const Back = { args: { icon: ArrowLeft, label: 'Back' } };`,
     ],
   ])('accepts an arrow %s', (_label, source) => {
     expect(lint(source)).toEqual([]);

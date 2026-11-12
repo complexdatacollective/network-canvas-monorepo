@@ -22,6 +22,8 @@
  * browser checks in `@codaco/e2e-helpers/direction-audit` cover those.
  */
 
+import { readFileSync } from 'node:fs';
+
 // Icons whose whole meaning is a direction along the line: left or right and
 // nothing else. Diagonals (`ArrowUpRight`), two-headed arrows
 // (`ArrowLeftRight`) and vertical arrows mean the same in either direction.
@@ -32,6 +34,23 @@ const INLINE_ARROW =
 // that carries one.
 const TURNS_IN_RIGHT_TO_LEFT =
   /rtl:(?:-scale-x-100|rotate-180|-rotate-180)|inlineIconClass/;
+
+// Components that turn an arrow handed to them in a prop, by drawing it with
+// `inlineIconClass`: `{ NavItem: ['icon'] }`. The list lives beside
+// `inlineIconClass` in fresco-ui, where a test draws every entry with an
+// arrow, so an entry cannot outlive the turning it promises.
+const TURNED_BY = JSON.parse(
+  readFileSync(
+    new URL(
+      '../../../packages/fresco-ui/src/navigation/inlineIconProps.json',
+      import.meta.url,
+    ),
+    'utf8',
+  ),
+).components;
+
+const turnsProp = (component, prop) =>
+  Object.hasOwn(TURNED_BY, component) && TURNED_BY[component].includes(prop);
 
 const FORM_CONTROLS = new Set(['input', 'textarea', 'select']);
 
@@ -116,6 +135,29 @@ const literalValue = (attr) => {
   return undefined;
 };
 
+const propertyName = (property) =>
+  property.key.type === 'Identifier'
+    ? property.key.name
+    : typeof property.key.value === 'string'
+      ? property.key.value
+      : undefined;
+
+const componentsByFile = new WeakMap();
+
+/** Every component a stories file's meta names: `component: NavItem`. */
+const storyComponents = (context) => {
+  const program = context.sourceCode.ast;
+  const cached = componentsByFile.get(program);
+  if (cached) return cached;
+  const components = [
+    ...context.sourceCode
+      .getText()
+      .matchAll(/\bcomponent:\s*([A-Za-z_$][\w$]*)/g),
+  ].map((match) => match[1]);
+  componentsByFile.set(program, components);
+  return components;
+};
+
 const inlineArrowTurns = {
   meta: {
     type: 'problem',
@@ -127,7 +169,7 @@ const inlineArrowTurns = {
       drawn:
         '{{name}} points along the line of text, so it must point the other way right to left: add `rtl:-scale-x-100` (or fresco-ui’s `inlineIconClass`). If it means a physical side, disable this rule on the line and say so.',
       passed:
-        '{{name}} is passed on as a component, where nothing here can turn it round right to left. Turn it where it is drawn, or disable this rule on the line and say what turns it (or that it means a physical side).',
+        '{{name}} is passed on as a component, where nothing here can turn it round right to left. Turn it where it is drawn, hand it to a component that turns it (listed in fresco-ui’s inlineIconProps.json), or disable this rule on the line and say what turns it (or that it means a physical side).',
     },
     schema: [],
   },
@@ -173,6 +215,31 @@ const inlineArrowTurns = {
           parent?.type === 'CallExpression' &&
           parent.callee.type === 'Identifier' &&
           parent.callee.name === 'inlineIconClass'
+        ) {
+          return;
+        }
+        // `<NavItem icon={ChevronRight} />`: handed to a component that turns it.
+        const prop = parent?.parent;
+        const element = prop?.parent;
+        if (
+          parent?.type === 'JSXExpressionContainer' &&
+          prop?.type === 'JSXAttribute' &&
+          element?.type === 'JSXOpeningElement' &&
+          element.name.type === 'JSXIdentifier' &&
+          turnsProp(element.name.name, prop.name.name)
+        ) {
+          return;
+        }
+        // A story's `args: { icon: ChevronRight }`, in a stories file whose
+        // meta names a component that turns it (`component: NavItem`).
+        if (
+          parent?.type === 'Property' &&
+          parent.value === node &&
+          parent.parent?.parent?.type === 'Property' &&
+          propertyName(parent.parent.parent) === 'args' &&
+          storyComponents(context).some((component) =>
+            turnsProp(component, propertyName(parent)),
+          )
         ) {
           return;
         }

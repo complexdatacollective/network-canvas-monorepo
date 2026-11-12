@@ -380,6 +380,9 @@ const EncryptionBackground = ({
 
   return (
     <div
+      // Decoration drifting across the stage, not a layout: the right-to-left
+      // mirror check leaves it out.
+      data-direction-exempt
       className="pointer-events-none absolute inset-0 size-full overflow-hidden text-white/60 select-none transform-3d"
       style={{ perspective: '1000px' }}
     >

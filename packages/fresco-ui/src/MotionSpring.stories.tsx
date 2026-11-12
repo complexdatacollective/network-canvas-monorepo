@@ -30,7 +30,9 @@ const meta = {
       },
     },
   },
-  tags: ['autodocs'],
+  // Demonstrations of spring physics along the x axis, not layouts: the
+  // right-to-left mirror check does not apply.
+  tags: ['autodocs', '!mirror'],
 } satisfies Meta;
 
 export default meta;

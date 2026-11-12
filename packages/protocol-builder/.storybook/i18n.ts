@@ -40,21 +40,22 @@ import { protocolBuilderCatalogLoaders } from '../src/locales/catalogs.ts';
  * reads its catalogs synchronously, so a Storybook — a development tool with
  * nothing to save on download size — awaits them all before it renders.
  */
-export const { globalTypes, initialGlobals, withAppI18n } = storybookI18n({
-  locales: ecosystemLocales,
-  catalogs: Object.fromEntries(
-    await Promise.all(
-      ecosystemLocales.map(
-        async ({ locale }): Promise<[string, CatalogMessages]> => [
-          locale,
-          await loadCatalog(
+export const { globalTypes, initialGlobals, withAppI18n, mirrorAddon } =
+  storybookI18n({
+    locales: ecosystemLocales,
+    catalogs: Object.fromEntries(
+      await Promise.all(
+        ecosystemLocales.map(
+          async ({ locale }): Promise<[string, CatalogMessages]> => [
             locale,
-            commonCatalogLoaders,
-            frescoUiCatalogLoaders,
-            protocolBuilderCatalogLoaders,
-          ),
-        ],
+            await loadCatalog(
+              locale,
+              commonCatalogLoaders,
+              frescoUiCatalogLoaders,
+              protocolBuilderCatalogLoaders,
+            ),
+          ],
+        ),
       ),
     ),
-  ),
-});
+  });

@@ -7,7 +7,12 @@ import { configure } from 'storybook/test';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 
 import './preview.css';
-import { globalTypes, initialGlobals, withAppI18n } from './i18n.ts';
+import {
+  globalTypes,
+  initialGlobals,
+  mirrorAddon,
+  withAppI18n,
+} from './i18n.ts';
 
 /**
  * How long a play function's `waitFor`/`findBy*` may poll before giving up.
@@ -28,7 +33,12 @@ import { globalTypes, initialGlobals, withAppI18n } from './i18n.ts';
 configure({ asyncUtilTimeout: 10_000 });
 
 export default definePreview({
-  addons: [addonDocs(), addonA11y(), addonVitest()],
+  // Every story is checked right to left after its play function (see
+  // `mirrorAddon` in @codaco/storybook-config, first in `addons` so it runs
+  // after the accessibility audit); a story that is not a layout in the
+  // reading direction opts out with the `!mirror` tag and says why.
+  tags: ['mirror'],
+  addons: [mirrorAddon, addonDocs(), addonA11y(), addonVitest()],
   parameters: {
     // Every rule axe ships, at error level: no rule is turned off here, and a
     // story that opens a dialog is checked with the dialog open.

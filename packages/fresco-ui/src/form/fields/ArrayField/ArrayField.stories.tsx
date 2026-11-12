@@ -272,6 +272,10 @@ type Story = StoryObj<typeof meta>;
  * The SimpleInlineItem component handles both display and edit modes.
  */
 export const Default: Story = {
+  // Renders through Storybook's useArgs, which only Storybook's own render
+  // may call, so the mirror check cannot draw it afresh. The other stories
+  // here cover the same layout.
+  tags: ['!mirror'],
   args: {
     value: [],
     itemTemplate: () => ({ id: crypto.randomUUID(), label: '' }),
@@ -296,6 +300,10 @@ export const Default: Story = {
  * ArrayField with pre-populated items and sorting enabled.
  */
 export const WithInitialItems: Story = {
+  // Renders through Storybook's useArgs, which only Storybook's own render
+  // may call, so the mirror check cannot draw it afresh. The other stories
+  // here cover the same layout.
+  tags: ['!mirror'],
   args: {
     value: sampleItems,
     sortable: true,
@@ -321,6 +329,10 @@ export const WithInitialItems: Story = {
  * The add action is removed once the configured item limit is reached.
  */
 export const MaximumItems: Story = {
+  // Renders through Storybook's useArgs, which only Storybook's own render
+  // may call, so the mirror check cannot draw it afresh. The other stories
+  // here cover the same layout.
+  tags: ['!mirror'],
   args: {
     value: sampleItems.slice(0, 2),
     maxItems: 2,
@@ -1019,6 +1031,10 @@ The key difference from inline editing:
  * Performance test with many items.
  */
 export const ManyItems: Story = {
+  // Renders through Storybook's useArgs, which only Storybook's own render
+  // may call, so the mirror check cannot draw it afresh. The other stories
+  // here cover the same layout.
+  tags: ['!mirror'],
   args: {
     sortable: true,
     value: Array.from({ length: 20 }, (_, i) => ({

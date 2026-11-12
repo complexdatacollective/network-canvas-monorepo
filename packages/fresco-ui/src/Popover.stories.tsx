@@ -238,6 +238,9 @@ export const LayeredSurfaces: Story = {
 const ARROW_SIDES = ['top', 'right', 'bottom', 'left'] as const;
 
 export const ArrowAlignment: Story = {
+  // One popup on each physical side, on purpose: the right-to-left mirror
+  // check does not apply.
+  tags: ['!mirror'],
   args: {
     children: null,
   },
