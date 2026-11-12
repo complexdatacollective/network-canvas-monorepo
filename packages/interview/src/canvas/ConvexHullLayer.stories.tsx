@@ -107,7 +107,10 @@ const meta: Meta<typeof ConvexHullLayer> = {
   parameters: {
     layout: 'centered',
   },
-  tags: ['autodocs'],
+  // Hulls and the points they enclose are drawn by canvas coordinates, the
+  // same in either reading direction: the right-to-left mirror check does
+  // not apply.
+  tags: ['autodocs', '!mirror'],
 };
 
 export default meta;

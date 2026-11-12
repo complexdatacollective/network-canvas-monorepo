@@ -149,6 +149,9 @@ export const TEST_SHARDS = [
       { name: '@codaco/e2e-helpers', seconds: 4 },
       // Pure Node suite over the theme CSS (one file, well under a second).
       { name: '@codaco/tailwind-config', seconds: 2 },
+      // Pure Node suite over the forum theme's build and catalogs (three
+      // files, under half a second locally), estimated like the entries above.
+      { name: '@codaco/community-theme', seconds: 3 },
     ],
   },
   {
@@ -186,6 +189,9 @@ export const TEST_SHARDS = [
       { name: '@codaco/documentation', seconds: 7.9 },
       { name: '@codaco/app-i18n', seconds: 3.7 },
       { name: '@codaco/interface-images', seconds: 6.1 },
+      // Pure Node suite against a fake model (four files, about a second
+      // locally), estimated like the small entries in shard 2.
+      { name: '@codaco/protocol-review-worker', seconds: 3 },
     ],
   },
 ];

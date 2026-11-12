@@ -124,7 +124,7 @@ To add a participant manually:
 
 1. Navigate to the participants page in the dashboard.
    ![The participants page in the dashboard.](/assets/img/fresco-images/participants-page.png)
-2. Click the **Add Single Participant** button.
+2. Click the **Add Participant** button.
    ![Adding a single participant](/assets/img/fresco-images/participants-add-single.png)
 3. Enter a participant identifier, or click the **Generate** button to have one generated for you at random.
 4. Optionally, enter a participant label.
@@ -194,7 +194,7 @@ In Fresco, you can share two kinds of URLs with participants: **Unique Participa
 
 Unique participant URLs are unique URLs you can generate for each participant per protocol and share with the participant to allow them to complete an interview. These URLs take the participant directly to the interview for the specified protocol and link their responses to their participant identifier.
 
-To share unique participant URLs with participants, you can either copy each URL individually or export a CSV file containing all the URLs for a given protocol.
+To share unique participant URLs with participants, you can either copy each URL individually or export a CSV file containing the URLs for your participants.
 
 #### Manually copying a unique participant URL
 
@@ -206,12 +206,10 @@ To share unique participant URLs with participants, you can either copy each URL
 #### Exporting a CSV of unique participant URLs
 
 1. Navigate to the participants page in the dashboard.
-2. Click the **Export Participant URLs** button.
-3. Select the protocol you wish to generate URLs for from the dropdown.
-4. Optionally, select the participants you wish to generate URLs for. This option defaults to all participants.
-5. Click the **Export Participant URLs** button.
+2. Click the **Export Participants** button to export every participant in the list (if you have typed in the filter box, only the participants that match it), or select the checkboxes next to the participants you want and click **Export Selected**.
+3. Your browser will download a file named `participants.csv`.
 
-The CSV file will contain a row for each participant, with columns for the participant identifier, participant label, and the unique URL for the specified protocol. You can use this file to distribute the URLs to participants via email, SMS, or other methods.
+The CSV file will contain a row for each participant, with columns for the participant's internal ID, identifier, and label, followed by one `interview_url_<protocol name>` column for each installed protocol, holding that participant's unique URL for it. You can use this file to distribute the URLs to participants via email, SMS, or other methods.
 
 ### Anonymous participant URLs
 
@@ -220,7 +218,7 @@ If you enable anonymous recruitment, participants can self-enroll in the study u
 #### To generate an anonymous participant URL:
 
 1. Navigate to the protocols page in the dashboard.
-2. Click on the **Anonymous Participant URL** button for the protocol you wish to recruit participants for.
+2. In the **Anonymous Participation URL** column, which appears once anonymous recruitment is enabled, click the button for the protocol you wish to recruit participants for.
 3. The URL will be copied to your clipboard and will be in the following format:
 
 ```bash
@@ -335,9 +333,9 @@ The export always contains the entire log, regardless of any search or filter cu
 You can generate a CSV file of incomplete interview URLs in bulk for multiple participants by protocol. This can be useful for sending reminders to participants who have not yet completed their interview.
 
 1. Navigate to the interviews page in the dashboard.
-2. Click on the **Export Incomplete URLs** button.
+2. Click on the **Export Incomplete Interview URLs** button.
 3. Select the protocol you wish to generate URLs for from the dropdown.
-4. Click the **Export Incomplete URLs** button.
+4. Click the **Export** button.
 
 ## Exporting data
 
@@ -347,7 +345,7 @@ Once participants have completed interviews, you can export the data from the in
 
 1. Navigate to the interviews page in the dashboard.
 2. Select the checkboxes next to the interviews you wish to export.
-3. Click the **Export selected** button at the bottom of the table.
+3. Click the **Export Selected** button at the bottom of the table.
 4. Confirm the [file types and export options](/en/analyze-data/data-export) that you wish to use.
 5. Click **Start export process**.
 
@@ -387,7 +385,7 @@ Changing the interface language translates Fresco's own interface, including mes
 
 An interview's language comes from the participant's browser, not from Fresco's dashboard. When an interview opens, it uses the first of the browser's preferred languages that your protocol is written in (a close regional match counts, so a browser set to Mexican Spanish gets your Spanish), or your protocol's default language if there is none. A text that isn't translated into that language is shown in the best available other translation: in another of the browser's preferred languages that has it, or else the default language, or else any language of your protocol that has it. See [The default language and which translation participants see](/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see). A language chosen in the dashboard or on the sign-in screen, or the language of a researcher signed in to the dashboard, doesn't affect it.
 
-Everything an interview shows, including its buttons and messages such as Back, Continue and validation messages, comes from your protocol and is shown in the interview's language (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). The dashboard's language does not change it.
+Everything an interview shows, including its buttons and messages such as Back, Continue and validation messages, is shown in the interview's language: in your protocol's wording where you have changed it, and in Network Canvas's own otherwise (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). The dashboard's language does not change it.
 
 The only way for a participant to change the language during an interview is a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage in your protocol. Their choice lasts until the browser tab is closed, so it is used again if the participant reloads the page. It isn't saved with the interview or included in exported data: an interview resumed in another tab or on another device starts again from that browser's languages. It doesn't change any researcher account's language preference, and it doesn't change the answers already given.
 

@@ -1,5 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   CurrentProtocolSchema,
   type CurrentProtocol,
@@ -30,55 +31,57 @@ import { Timeline } from '../pageobjects/timeline.js';
 const STAGE_LABEL = 'Welcome';
 
 function twoScreenProtocol(): CurrentProtocol {
-  return CurrentProtocolSchema.parse({
-    name: 'Preview finish E2E',
-    schemaVersion: 9,
-    localization: { defaultLocale: 'en', locales: ['en'] },
-    codebook: { node: {}, edge: {}, ego: {} },
-    assetManifest: {},
-    stages: [
-      {
-        id: 'welcome',
-        type: 'Information',
-        label: { en: STAGE_LABEL },
-        title: { en: 'Welcome' },
-        items: [
-          {
-            id: 'welcome-text',
-            type: 'text',
-            content: { en: 'Thank you for taking part.' },
-          },
-        ],
-      },
-      {
-        id: 'closing',
-        type: 'Information',
-        label: { en: 'Closing' },
-        title: { en: 'Closing' },
-        items: [
-          {
-            id: 'closing-text',
-            type: 'text',
-            content: { en: 'That is everything we wanted to ask.' },
-          },
-        ],
-      },
-      {
-        id: 'finish',
-        type: 'FinishSession',
-        label: { en: 'Finish' },
-        mode: 'confirmation',
-        content: { en: '# All done\n\nThank you for your time.' },
-        finishedContent: {
-          en: '# Interview finished\n\nYour answers can no longer be changed.',
+  return CurrentProtocolSchema.parse(
+    withInterfaceText({
+      name: 'Preview finish E2E',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      codebook: { node: {}, edge: {}, ego: {} },
+      assetManifest: {},
+      stages: [
+        {
+          id: 'welcome',
+          type: 'Information',
+          label: { en: STAGE_LABEL },
+          title: { en: 'Welcome' },
+          items: [
+            {
+              id: 'welcome-text',
+              type: 'text',
+              content: { en: 'Thank you for taking part.' },
+            },
+          ],
         },
-        finishLabel: { en: 'Finish' },
-        finishConfirmation: { en: 'Finish this interview?' },
-        finishFailed: { en: 'The interview could not be finished.' },
-        outcome: 'completed',
-      },
-    ],
-  });
+        {
+          id: 'closing',
+          type: 'Information',
+          label: { en: 'Closing' },
+          title: { en: 'Closing' },
+          items: [
+            {
+              id: 'closing-text',
+              type: 'text',
+              content: { en: 'That is everything we wanted to ask.' },
+            },
+          ],
+        },
+        {
+          id: 'finish',
+          type: 'FinishSession',
+          label: { en: 'Finish' },
+          mode: 'confirmation',
+          content: { en: '# All done\n\nThank you for your time.' },
+          finishedContent: {
+            en: '# Interview finished\n\nYour answers can no longer be changed.',
+          },
+          finishLabel: { en: 'Finish' },
+          finishConfirmation: { en: 'Finish this interview?' },
+          finishFailed: { en: 'The interview could not be finished.' },
+          outcome: 'completed',
+        },
+      ],
+    }),
+  );
 }
 
 /**

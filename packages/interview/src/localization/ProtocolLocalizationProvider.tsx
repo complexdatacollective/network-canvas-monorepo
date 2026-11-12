@@ -21,6 +21,7 @@ import {
   type LocaleTag,
   type LocalizationDeclaration,
   type LocalizedString,
+  resolveAddedText,
   type ResolvedLocalizedString,
   resolveLocalizedString,
   resolveProtocolLocale,
@@ -222,6 +223,14 @@ export function useProtocolLocale(): Readonly<{
 }
 
 /**
+ * The languages the protocol declares, for working out what Network Canvas
+ * words in them (see `useStageWording`).
+ */
+export function useProtocolLocalization(): LocalizationDeclaration {
+  return useProtocolLocalizationState().localization;
+}
+
+/**
  * The participant's languages, most preferred first: the interview language,
  * then the browser's. Text Network Canvas does not take from the protocol,
  * such as a map's place names, is matched against them.
@@ -345,9 +354,9 @@ export function useLocalizedString(
 }
 
 /**
- * `useLocalizedString` for a setting the stage holds only while its
- * configuration shows it (see `missingRequiredStageSettings`): its text, or
- * undefined where the stage does not hold it.
+ * `useLocalizedString` for a setting the stage shows only under some
+ * configurations (see `StageWording`): its text, or undefined where the
+ * stage does not show it.
  */
 export function useOptionalLocalizedText(
   value: LocalizedString | undefined,
@@ -378,6 +387,33 @@ export function useResolveLocalizedMessage(): (
         ...resolved,
         text: format(resolved.locale, resolved.text, values),
       };
+    },
+    [localization, resolutionOrder, format],
+  );
+}
+
+/**
+ * `useResolveLocalizedMessage` for text a correction added to the interview,
+ * which no protocol holds: `wording` is Network Canvas's own, by the language
+ * it is written in, and the language shown is the first the participant
+ * would be shown that it has wording in, or else the protocol's fallback
+ * language (see `resolveAddedText`). Undefined where there is none to show.
+ */
+export function useResolveAddedText(): (
+  wording: Readonly<Record<LocaleTag, string>>,
+  values: LocalizedMessageValues,
+) => Readonly<{ text: string; locale: LocaleTag }> | undefined {
+  const { localization, resolutionOrder, format } =
+    useProtocolLocalizationState();
+  return useCallback(
+    (wording: Readonly<Record<LocaleTag, string>>, values) => {
+      const resolved = resolveAddedText(wording, localization, resolutionOrder);
+      return resolved === undefined
+        ? undefined
+        : {
+            locale: resolved.locale,
+            text: format(resolved.locale, resolved.text, values),
+          };
     },
     [localization, resolutionOrder, format],
   );

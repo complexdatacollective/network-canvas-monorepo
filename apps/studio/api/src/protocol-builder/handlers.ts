@@ -411,6 +411,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         sectionId,
         document,
         promote,
+        interfaceText,
       }) {
         const session = yield* openSession(protocolId);
         // Asked before planning: the first attempt already took the staged
@@ -451,6 +452,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               protocolId,
               submit(session, sectionId, Redacted.value(document), {
                 requestId,
+                ...(interfaceText === undefined ? {} : { interfaceText }),
                 ...(planned === undefined || promote === undefined
                   ? {}
                   : {
@@ -480,7 +482,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             }
             if (outcome.status === 'invalidShape') {
               return yield* new InvalidShape({
-                sectionId,
+                sectionId: outcome.sectionId ?? sectionId,
                 issues: outcome.issues,
               });
             }
@@ -510,6 +512,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         document,
         position,
         promote,
+        interfaceText,
       }) {
         const session = yield* openSession(protocolId);
         const already = yield* command(
@@ -548,6 +551,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                 kind,
                 document: Redacted.value(document),
                 ...(position === undefined ? {} : { position }),
+                ...(interfaceText === undefined ? {} : { interfaceText }),
                 ...(planned === undefined || promote === undefined
                   ? {}
                   : {

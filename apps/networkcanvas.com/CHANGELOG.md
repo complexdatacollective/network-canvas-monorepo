@@ -1,5 +1,98 @@
 # networkcanvas.com
 
+## 0.11.0
+
+### Minor Changes
+
+- networkcanvas.com is now available in Arabic (العربية) at `/ar/`, read right
+  to left: every page, the news posts, and the grant, team and publication
+  details. Visitors whose browser prefers Arabic, wherever they are, are sent
+  there automatically. The Arabic has been checked by reverse translation and
+  not yet reviewed by a native speaker.
+
+## 0.10.0
+
+### Minor Changes
+
+- The homepage's headings and Tools cards come in more cleanly.
+
+  - **Section headings** rise in word by word when they come into view, and then
+    stay.
+  - **Tools**: the Architect, Interviewer and Fresco cards open as the thread
+    reaches them, and close again as you scroll back up.
+  - The label shown when you point at a paper in the publications network has
+    more space around its title.
+
+  With reduced motion turned on, headings fade in without moving, and links
+  within the page jump straight to where they lead instead of gliding there.
+
+- The last three sections of the homepage have a new look.
+
+  - **Core Team**: each team member now has a portrait card. A thread draws
+    through the cards as you scroll, lighting a dot on each card as it reaches
+    it, and ends at a panel listing the Scientific Advisors. On a phone the cards
+    stack and the thread runs down their left side.
+  - **Institutions**: the Northwestern, Oxford and Complex Data Collective logos
+    now sit in a band of their own between two lines, larger and easier to read,
+    with the text about the project's funding and ownership below. In the dark
+    theme the logos take the colour of the text so they stay visible.
+  - **What next?**: documentation and the community forum are now two large
+    panels side by side, each with a small drawing. Collaboration follows as a
+    smaller row, and the mailing list sign-up appears as a letter rising out of
+    an envelope. Each panel's button has its own colour.
+
+  If your device is set to reduce motion, the thread is drawn in full straight
+  away with every dot lit, and the logos, drawings and letter appear in place
+  without moving.
+
+### Patch Changes
+
+- Add a new publication about mental-health self-diagnosis that used Network Canvas to collect personal-network data.
+- Text marked as Arabic is now set in Readex Pro, a typeface the site serves itself, so it
+  looks the same on every device. The file is fetched only by a page that shows
+  Arabic, and text in every other language is unchanged.
+- Describe schema compatibility on the Get Started page as "latest schema" and "older schema" instead of naming schema version numbers, in every language.
+- Address Spanish-speaking readers with the informal "tú" throughout the website, matching the Spanish in Architect, Interviewer and Fresco.
+
+## 0.9.0
+
+### Minor Changes
+
+- Four sections of the homepage are redesigned, with animation that follows
+  the page as you scroll. With reduced motion turned on, each section shows its
+  finished state without moving.
+
+  - **Tools**: a single thread runs down the section. It reaches Architect, where
+    a study is designed, then splits toward Interviewer (in person) and Fresco
+    (on the web), and the two strands meet again in the network both of them
+    collect. Each tool's card opens out of the thread as it arrives.
+  - **Design Principles**: one illustration stays beside the five principles
+    and changes as you read each one. A plain network takes on types, turns into
+    an interview between two speech bubbles, lines up into an ordered list, flows
+    through the steps of a study, and ends as a community of people grouped by
+    institution.
+  - **Grants**: the grants form a stack of cards that settle on top of one
+    another as you scroll, with each funder's logo sized to look balanced
+    against the others.
+  - **Recent Publications**: the eight newest publications are shown as cards.
+    On wider screens they sit beside a network that joins every publication to
+    its authors, and the publication you are reading is highlighted in it. A new
+    introduction and a final card link to the full list, giving the number of
+    publications and authors. The section is translated into every language the
+    website offers.
+
+### Patch Changes
+
+- A protocol previewed from the protocol gallery is shown in one language,
+  including its buttons and messages, chosen from the protocol's own languages.
+- The language chosen in the site's language switcher is now kept for every
+  Network Canvas website on networkcanvas.com, including the protocol gallery,
+  rather than for one host. The site's language is chosen with the same
+  negotiation as the apps.
+- The Classic download buttons on Get Started, the "Documentation" buttons on the
+  Summer 2026 update and the "Home page" button on the error page are now filled
+  buttons rather than outlines.
+
 ## 0.8.0
 
 ### Minor Changes

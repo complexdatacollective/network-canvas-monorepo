@@ -2,6 +2,7 @@ import { isEqual } from 'es-toolkit/compat';
 
 import { createMessageError, defineMessage } from '@codaco/app-i18n/messages';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
+import { findDuplicateOptionLabels } from '@codaco/protocol-validation';
 import {
   CodebookNameSchema,
   type ExportColumnEntity,
@@ -12,12 +13,7 @@ import {
 
 import { exportColumnRefusals } from '../../fields/variableNameRules.ts';
 import { type ProtocolLocalization } from '../../localization/localizedText.ts';
-import {
-  isOptionLabelEmpty,
-  optionLabelComparisonLocales,
-  optionLabelTextIn,
-  optionsWithLabelText,
-} from './optionCompleteness.ts';
+import { isOptionLabelEmpty } from './optionCompleteness.ts';
 
 /**
  * Case-insensitive AND Unicode-canonical: a precomposed and a decomposed
@@ -209,32 +205,30 @@ const duplicateLabelMessage = defineMessage({
  * `hasDuplicateLocalizedOptionLabels`; this is the one that says it where they
  * are typing.
  *
- * A label is compared one language at a time, against the others' labels in
- * that language. Given the protocol's languages, each label is read as the
- * interview shows it there, falling back where it has no translation; without
- * them, two options collide only where both have a translation that reads the
- * same.
+ * The rule is `@codaco/protocol-validation`'s `findDuplicateOptionLabels`,
+ * the one the protocol schema holds options to and every place an option
+ * label is edited asks: this option is reported when it is either of a pair
+ * that reads the same in some language.
  */
 export const optionLabelIssues = (
-  value: unknown,
+  index: number,
   rows: readonly unknown[],
   localization?: ProtocolLocalization,
-): string[] =>
-  cellIssues(
+): string[] => {
+  const row: unknown = rows[index];
+  const value =
+    typeof row === 'object' && row !== null
+      ? Reflect.get(row, 'label')
+      : undefined;
+  return cellIssues(
     isOptionLabelEmpty(value)
       ? createMessageError(rowRequiredMessage)
       : undefined,
-    !isOptionLabelEmpty(value) &&
-      optionLabelComparisonLocales(
-        localization === undefined ? [{ label: value }] : rows,
-        localization,
-      ).some((locale) =>
-        isDuplicatedInColumn(
-          optionsWithLabelText(rows, locale, localization),
-          'label',
-          optionLabelTextIn(value, locale, localization),
-        ),
-      )
+    findDuplicateOptionLabels(rows, localization).some(
+      (duplicate) =>
+        duplicate.index === index || duplicate.firstIndex === index,
+    )
       ? createMessageError(duplicateLabelMessage)
       : undefined,
   );
+};

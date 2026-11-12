@@ -292,6 +292,46 @@ export const KeyboardNavigation: Story = {
   },
 };
 
+/**
+ * In a right-to-left language the next card is to the left of the one in
+ * front, so everything that steps the deck is the mirror image of itself: the
+ * "next" button is on the left with its chevron pointing left, and the left
+ * arrow key steps forward.
+ */
+export const NavigationInARightToLeftLanguage: Story = {
+  globals: { appDirection: 'rtl' },
+  render: () => <DeckHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvasElement.ownerDocument.documentElement.dir).toBe('rtl');
+    const dots = await canvas.findAllByLabelText(/Go to card/);
+    await expect(dots).toHaveLength(4);
+    await canvas.findByLabelText('Choose a .netcanvas protocol file');
+
+    const next = canvas.getByLabelText('Next protocol');
+    const previous = canvas.getByLabelText('Previous protocol');
+    await expect(next.getBoundingClientRect().right).toBeLessThan(
+      previous.getBoundingClientRect().left,
+    );
+
+    // Each chevron is drawn pointing the way its button moves the deck.
+    for (const button of [next, previous]) {
+      const chevron = button.querySelector('svg');
+      if (!chevron) throw new Error('chevron not found');
+      await expect(getComputedStyle(chevron).rotate).toBe('180deg');
+    }
+
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}');
+    await waitFor(() =>
+      expect(dots[2]).toHaveAttribute('aria-current', 'true'),
+    );
+    await userEvent.keyboard('{ArrowRight}');
+    await waitFor(() =>
+      expect(dots[1]).toHaveAttribute('aria-current', 'true'),
+    );
+  },
+};
+
 // Starting an import pulls the deck to the pending card, which then fills
 // in place with the installed protocol.
 export const ImportTravelsToPendingCard: Story = {

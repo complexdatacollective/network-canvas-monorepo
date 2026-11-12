@@ -14,6 +14,7 @@ import type { LocalizedString } from './localized-string.ts';
  */
 export const SUPPLIED_LANGUAGES: readonly LocaleTag[] = [
   'en',
+  'ar',
   'de',
   'es',
   'fr',
@@ -49,7 +50,9 @@ const SUPPLIED_LIKELY: ReadonlyMap<string, LocaleTag> = new Map(
  * (`en-GB`, `es-MX`) is not: it can have that language added beside it
  * instead (see `suppliedBaseLanguage`).
  */
-const suppliedLanguageOf = (locale: LocaleTag): LocaleTag | undefined => {
+export const suppliedLanguageOf = (
+  locale: LocaleTag,
+): LocaleTag | undefined => {
   const canonical = canonicalizeLocale(locale);
   if (canonical === undefined) return undefined;
   if (SUPPLIED_LANGUAGES.includes(canonical)) return canonical;
@@ -137,38 +140,29 @@ export type LanguageChange = Readonly<{
 export type SuppliedTextIn = (locale: LocaleTag) => string | undefined;
 
 /**
- * Whether a text Network Canvas supplies is still its own: the researcher has
- * not changed it in the protocol's default language. Where Network Canvas
- * writes nothing in that language, it is still its own while the researcher
- * has written nothing there either.
- */
-export const isStillSupplied = (
-  value: LocalizedString,
-  supplied: SuppliedTextIn,
-  defaultLocale: LocaleTag,
-): boolean =>
-  (Object.hasOwn(value, defaultLocale) ? value[defaultLocale] : undefined) ===
-  supplied(defaultLocale);
-
-/**
  * One text Network Canvas supplies, as it reads after a change to the
- * protocol's languages, for a text the researcher has not changed in the
- * default language. Each translation that is still Network Canvas's text for
- * its language becomes Network Canvas's text for the language as it now is,
- * or is removed where it writes none there; a translation the researcher
- * wrote moves with its language; and a language with no translation gains
- * Network Canvas's text.
+ * protocol's languages. Each translation moves with its language, and one in
+ * a language that was removed goes with it. A translation that is Network
+ * Canvas's text for a language whose tag was corrected becomes its text for
+ * the corrected language, or is removed where it writes none there; any other
+ * translation keeps the text it has, so a translation is never overwritten.
+ * Then each language the protocol did not have before, whether added or the
+ * corrected tag of one, gains Network Canvas's text where it still has none
+ * and Network Canvas writes one there, even where the researcher has
+ * reworded the text in another language. Languages the protocol already had
+ * gain nothing, so removing a language or choosing another default changes
+ * nothing but the removed translations.
  */
 export const suppliedTextAfterLanguageChange = (
   value: LocalizedString,
   supplied: SuppliedTextIn,
-  { after, renamed = {} }: LanguageChange,
+  { before, after, renamed = {} }: LanguageChange,
 ): LocalizedString => {
   const next: Record<LocaleTag, string> = {};
   for (const [locale, text] of Object.entries(value)) {
     const target = renamed[locale] ?? locale;
     if (!after.locales.includes(target)) continue;
-    if (text !== supplied(locale)) {
+    if (target === locale || text !== supplied(locale)) {
       next[target] = text;
       continue;
     }
@@ -176,7 +170,8 @@ export const suppliedTextAfterLanguageChange = (
     if (replacement !== undefined) next[target] = replacement;
   }
   for (const locale of after.locales) {
-    if (next[locale] !== undefined) continue;
+    if (before.locales.includes(locale) || Object.hasOwn(next, locale))
+      continue;
     const text = supplied(locale);
     if (text !== undefined) next[locale] = text;
   }

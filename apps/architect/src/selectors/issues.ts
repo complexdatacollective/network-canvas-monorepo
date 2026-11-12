@@ -1,14 +1,18 @@
 import { createSelector } from '@reduxjs/toolkit';
 
+import { suppliedWordingIn } from '@codaco/interview/supplied-wording';
 import {
   analyzeProtocolLocalization,
-  collectLocalizedStrings,
+  collectLocalizedStringFields,
   type CurrentProtocol,
   type DynamicValueSite,
+  findLabelCollisions,
   findVariableRoleConflicts,
   type LocaleTag,
   type LocalizedString,
+  type LocalizedStringField,
   type LocalizedStringFormat,
+  type LocalizedTextLines,
   type MessageArguments,
   type ProtocolLocalizationWarning,
 } from '@codaco/protocol-validation';
@@ -18,11 +22,17 @@ import {
   TESTING_MAPBOX_TOKEN,
 } from '~/templates/testingMapboxToken';
 import { findDefaultLanguageTextProblem } from '~/utils/defaultLanguageText';
+import { findFallbackLanguageMissing } from '~/utils/downloadRefusal';
 
 import { getAllVariablesByUUID } from './codebook';
 import { getIsUsed } from './codebook/isUsed';
 import { getAssetIndex, utils } from './indexes';
-import { getAssetManifest, getCodebook, getProtocol } from './protocol';
+import {
+  getAssetManifest,
+  getCodebook,
+  getProtocol,
+  getProtocolAsShown,
+} from './protocol';
 
 /**
  * Selectors that surface protocol "issues" — things that are valid but
@@ -35,6 +45,8 @@ import { getAssetManifest, getCodebook, getProtocol } from './protocol';
  *  - A finish stage without its heading or text in the default language, or
  *    built-in wording without text there, which unlike the rest stops the
  *    protocol being downloaded
+ *  - Two labels participants choose between that read the same in some
+ *    language, which also stops it being downloaded
  *  - Several languages but no stage where participants choose one
  */
 
@@ -159,6 +171,29 @@ export const getDefaultLanguageTextProblem = createSelector(
 );
 
 /**
+ * The fallback language the protocol needs and has not been given
+ * (`findFallbackLanguageMissing`): its default language is one Network Canvas
+ * has no wording in. A protocol being written may lack it, but cannot be
+ * downloaded until it is chosen (`findDownloadRefusal`).
+ */
+export const getFallbackLanguageMissing = createSelector(
+  [getProtocol],
+  (protocol) => (protocol ? findFallbackLanguageMissing(protocol) : null),
+);
+
+/**
+ * Each pair of labels a participant chooses between that reads the same in
+ * some language (`findLabelCollisions`): two options of one attribute, or two
+ * diseases of one stage. A protocol being written may hold one — a change of
+ * its languages can leave two labels reading the same through fallback, and
+ * is made anyway — but cannot be downloaded until none is left
+ * (`findDownloadRefusal`).
+ */
+export const getLabelCollisions = createSelector([getProtocol], (protocol) =>
+  protocol ? findLabelCollisions(protocol) : [],
+);
+
+/**
  * True when the protocol offers more than one language but has no Language
  * Chooser stage. That is valid: each interview then opens in the protocol
  * language that best matches the participant's browser. It is worth a note
@@ -200,13 +235,18 @@ const EMPTY_COVERAGE: LocalizationCoverage = {
   warnings: [],
 };
 
-/** Every participant-facing string, in protocol order, walked once per edit. */
-const getLocalizedStrings = createSelector([getProtocol], (protocol) =>
-  protocol ? collectLocalizedStrings(protocol) : [],
+/**
+ * Every participant-facing string, in protocol order, with its field's
+ * declaration, walked once per edit. Read from the protocol with the wording
+ * it shows written out, so a text Network Canvas words is listed, with that
+ * wording, whether or not the protocol holds any of its own for it.
+ */
+const getLocalizedStrings = createSelector([getProtocolAsShown], (protocol) =>
+  protocol ? collectLocalizedStringFields(protocol) : [],
 );
 
 export const getLocalizationCoverage = createSelector(
-  [getProtocol, getLocalizedStrings],
+  [getProtocolAsShown, getLocalizedStrings],
   (protocol, strings): LocalizationCoverage => {
     if (!protocol) return EMPTY_COVERAGE;
     const { locales, defaultLocale } = protocol.localization;
@@ -251,7 +291,11 @@ export type TranslationPlace =
   /** The words the interview itself shows, such as its buttons. */
   | { kind: 'interface' };
 
-const locateTranslation = (
+/**
+ * Where the text at `path`, or anything else the protocol holds there, is
+ * edited, and its path below that place.
+ */
+export const locateTranslation = (
   protocol: CurrentProtocol,
   path: readonly (string | number)[],
 ): { key: string; place: TranslationPlace; field: (string | number)[] } => {
@@ -298,8 +342,16 @@ export type TranslationRow = {
   field: readonly (string | number)[];
   /** Whether participants see the string rendered as markdown. */
   format: LocalizedStringFormat;
+  /** Whether the string is one line or several, as its field declares. */
+  lines: LocalizedTextLines;
   /** Every translation the string has. */
   value: LocalizedString;
+  /**
+   * Network Canvas's own wording for the string, in the protocol's languages
+   * it has wording in, when it words the string: what a language reads as
+   * once the researcher's wording in it is cleared.
+   */
+  supplied?: LocalizedString;
   /** What a localized message may use (see `localizedMessage`), when it is one. */
   arguments?: MessageArguments;
   /**
@@ -308,6 +360,11 @@ export type TranslationRow = {
    * text like any other.
    */
   dynamicValues?: DynamicValueSite;
+  /**
+   * The declaration of the field the string is in: a candidate value parsed
+   * with it is held to every rule the field declares.
+   */
+  schema: LocalizedStringField['schema'];
 };
 
 export type TranslationGroup = {
@@ -347,22 +404,27 @@ const stageBindsValues = (
  * protocol's own texts, then the words the interview itself shows.
  */
 export const getTranslationGroups = createSelector(
-  [getProtocol, getLocalizedStrings],
+  [getProtocolAsShown, getLocalizedStrings],
   (protocol, strings): readonly TranslationGroup[] => {
     if (!protocol) return [];
     const groups = new Map<
       string,
       { place: TranslationPlace; rows: TranslationRow[] }
     >();
+    const suppliedWording = suppliedWordingIn(protocol);
     for (const hit of strings) {
       const { key, place, field } = locateTranslation(protocol, hit.path);
       const group = groups.get(key) ?? { place, rows: [] };
       groups.set(key, group);
+      const supplied = suppliedWording(hit.path);
       group.rows.push({
         path: hit.path,
         field,
         format: hit.format,
+        lines: hit.lines,
         value: hit.value,
+        ...(supplied === undefined ? {} : { supplied }),
+        schema: hit.schema,
         ...(hit.arguments === undefined ? {} : { arguments: hit.arguments }),
         ...(hit.dynamicValues === undefined ||
         !stageBindsValues(protocol, hit.path)

@@ -26,7 +26,7 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { optionLabelText } from '@codaco/fresco-ui/OptionLabel';
 import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
-  type FamilyPedigreeWording,
+  type CompleteFamilyPedigreeWording,
   type FormField,
   type FramingId,
   type LocalizedString,
@@ -114,7 +114,6 @@ import {
 } from '../model';
 import { childKindWording, type OwnedOptionLabels } from '../options';
 import {
-  configuredWord,
   joinPiped,
   type PedigreeWords,
   showPiped,
@@ -270,7 +269,7 @@ export type GenderIdentityOption = {
 /** The stage's wording for the name question (`nodeConfiguration.nameField`). */
 type NameFieldText = Readonly<{
   prompt: LocalizedString;
-  hint?: LocalizedString;
+  hint: LocalizedString;
 }>;
 
 type PersonFormProps = {
@@ -721,9 +720,7 @@ export default function PersonForm({
                 name={config.nameAttribute}
                 nameMode="opaque"
                 label={resolve(nameField.prompt).text}
-                {...(nameField.hint === undefined
-                  ? {}
-                  : { hint: resolve(nameField.hint).text })}
+                hint={resolve(nameField.hint).text}
                 initialValue={person?.name}
                 autoComplete="off"
                 // Someone new is named first, so the panel opens ready to type.
@@ -737,7 +734,7 @@ export default function PersonForm({
                 component={RadioGroupField}
                 name={config.genderIdentity.attribute}
                 nameMode="opaque"
-                label={text(configuredWord(wording.genderIdentityLabel))}
+                label={text(wording.genderIdentityLabel)}
                 options={genderIdentityOptions}
                 required
                 initialValue={person?.genderIdentity}
@@ -1499,7 +1496,7 @@ function TwinZygosityField({
  * twins' zygosity is unknown in the protocol's own Don't know.
  */
 const zygosityWording = (
-  wording: FamilyPedigreeWording,
+  wording: CompleteFamilyPedigreeWording,
   zygosity: Exclude<TwinZygosity, 'unknown'>,
 ): LocalizedString =>
   zygosity === 'identical'

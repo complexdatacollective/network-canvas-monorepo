@@ -14,29 +14,33 @@ const messages = defineMessages({
   copyResetting: {
     id: 'fresco.ResetButton.copyResetting',
     defaultMessage: 'Resetting...',
-    description: 'Researcher-facing ResetButton: Resetting...',
+    description:
+      'Label of the confirm button in the reset dialog, shown while all application data is being deleted.',
   },
   copyDeleteAllData: {
     id: 'fresco.ResetButton.copyDeleteAllData',
     defaultMessage: 'Delete all data',
-    description: 'Researcher-facing ResetButton: Delete all data',
+    description:
+      'Label of the destructive confirm button in the reset dialog in Settings. Pressing it permanently deletes all interviews, protocols and other data on the installation.',
   },
   resetAllAppData: {
     id: 'fresco.ResetButton.resetAllAppData',
     defaultMessage: 'Reset all app data',
-    description: 'Researcher-facing ResetButton: Reset all app data',
+    description:
+      'Label of the destructive button in Settings that opens a confirmation dialog before deleting all data on the installation.',
   },
   areYouSure: {
     id: 'fresco.ResetButton.areYouSure',
     defaultMessage: 'Are you sure?',
-    description: 'Researcher-facing ResetButton: Are you sure?',
+    description:
+      'Title of the dialog that asks the researcher to confirm deleting all data on the installation.',
   },
   thisActionWillDeleteALLApplicationData: {
     id: 'fresco.ResetButton.thisActionWillDeleteALLApplicationData',
     defaultMessage:
       'This action will delete ALL application data, including interviews and protocols. This action cannot be undone. Do you want to continue?',
     description:
-      'Researcher-facing ResetButton: This action will delete ALL application data, including interviews and protocols. This action cannot be undone. Do you w',
+      'Body text of the dialog that confirms deleting all data on the installation. Warns that interviews and protocols are lost for good; ALL is emphasised.',
   },
 });
 
@@ -90,7 +94,7 @@ const ResetButton = () => {
               }}
               color="primary"
             >
-              {isResetting && <Loader2 className="mr-2 size-5 animate-spin" />}
+              {isResetting && <Loader2 className="me-2 size-5 animate-spin" />}
               {isResetting
                 ? intl.formatMessage(messages.copyResetting)
                 : intl.formatMessage(messages.copyDeleteAllData)}

@@ -46,7 +46,7 @@ The CSV export creates separate files for each entity type in your protocol:
 
 #### Ego attribute list
 
-- **One row per ego** (participant)
+- **One row** for the interview's ego (participant)
 - **Filename format:** `caseID_sessionUUID_ego.csv` (see [How export files are named](#how-export-files-are-named))
 - **Contains:**
   - Ego-level variables you collected
@@ -57,10 +57,11 @@ The CSV export creates separate files for each entity type in your protocol:
 **Example structure:**
 
 ```csv
-ego_id,networkCanvasEgoUUID,networkCanvasCaseID,age,gender,sessionStart,sessionFinish
-1,abc123-def456,case_001,34,Male,2025-01-15 10:30,2025-01-15 11:15
-2,ghi789-jkl012,case_002,28,Female,2025-01-15 14:00,2025-01-15 14:45
+networkCanvasEgoUUID,networkCanvasCaseID,networkCanvasSessionID,networkCanvasProtocolName,sessionStart,sessionFinish,sessionExported,APP_VERSION,COMMIT_HASH,networkCanvasFinishOutcome,age,gender_female,gender_male,gender_non_binary
+abc123,case_001,sess456,My Study,2025-01-15T10:30:00.000Z,2025-01-15T11:15:00.000Z,2025-01-16T09:00:00.000Z,9.0.0,1a2b3c4,completed,34,false,true,false
 ```
+
+The identifier and session columns always come first, in this order, followed by your ego variables. A categorical variable such as `gender` becomes one `true`/`false` column per option (see the [Export Data Dictionary](/en/analyze-data/data-dictionary)).
 
 #### Alter attribute list
 
@@ -69,21 +70,20 @@ ego_id,networkCanvasEgoUUID,networkCanvasCaseID,age,gender,sessionStart,sessionF
 - **Contains:**
   - All alter attributes you collected
   - Network Canvas identifiers (alter UUID, ego UUID)
-  - Export-specific incrementing ID (unique only within this export)
+  - A `nodeID` number that identifies the alter only within this interview
 
 **Example structure:**
 
 ```csv
-ego_id,alter_id,networkCanvasUUID,networkCanvasEgoUUID,name,age,close_friend,contact_frequency
-1,1,xyz789,abc123-def456,John,32,true,Daily
-1,2,uvw456,abc123-def456,Sarah,29,true,Weekly
-2,1,rst123,ghi789-jkl012,Michael,31,false,Monthly
+nodeID,networkCanvasEgoUUID,networkCanvasUUID,name,age,close_friend,contact_frequency
+1,abc123,xyz789,John,32,true,Daily
+2,abc123,uvw456,Sarah,29,true,Weekly
 ```
 
 **Important notes:**
 
 - If your protocol defines multiple node types (e.g., "Person" and "Organization"), you'll receive a separate file for each type
-- The `alter_id` is an incrementing integer unique only within each ego's network and this specific export
+- The `nodeID` is numbered from 1 in each interview, across all of its node types, so a file for one node type can skip numbers. The same `nodeID` belongs to a different alter in each interview
 - The `networkCanvasUUID` is the permanent unique identifier for each alter
 
 #### Edge attribute list
@@ -98,15 +98,15 @@ ego_id,alter_id,networkCanvasUUID,networkCanvasEgoUUID,name,age,close_friend,con
 **Example structure:**
 
 ```csv
-ego_id,edge_id,edge_type,from,to,networkCanvasSourceUUID,networkCanvasTargetUUID,relationship_strength,frequency
-1,1,friendship,1,2,xyz789,uvw456,strong,high
+edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID,relationship_strength,frequency
+1,1,2,abc123,edg001,xyz789,uvw456,strong,high
 ```
 
 **Important notes:**
 
-- The `from` and `to` columns reference the `alter_id` from the alter attribute list
-- Multiple edge types create separate files
-- Empty edge files are created even if no edges were collected
+- The `from` and `to` columns hold the `nodeID` of the two alters the edge connects. `networkCanvasSourceUUID` and `networkCanvasTargetUUID` hold their `networkCanvasUUID`
+- Each edge type gets its own file. The edge type is in the file name, not in a column
+- If the interview has no edges at all, the export still writes one edge file, `caseID_sessionUUID_edgeList.csv`, that holds only the header row
 
 #### Why some values start with an apostrophe
 
@@ -361,7 +361,7 @@ nodeID,name,layout_x,layout_y,layout_screenSpaceX,layout_screenSpaceY
 ```
 
 If you drew your background in the [Background
-Creator](/en/design-protocols/key-concepts/responsive-svg-backgrounds#use-the-background-creator)
+Creator](/en/design-protocols/responsive-svg-backgrounds#use-the-background-creator)
 and defined zones there, leave **Use screen layout coordinates** disabled: its
 exported Python or R zone-assignment script reads the normalized
 `<layoutVariable>_x` / `<layoutVariable>_y` columns, which are exported by
@@ -421,7 +421,7 @@ Ego (participant)
 
 - Alter attributes
 - Ego-alter tie attributes
-- Reference to ego (ego_id or networkCanvasEgoUUID)
+- Reference to ego (`networkCanvasEgoUUID`)
 
 **Edge level:** Relationships between alters within each ego network, containing:
 
@@ -681,8 +681,8 @@ G.edges(data=True)   # edges with their attributes
 
 **Problem: Alter IDs don't match between files**
 
-- **Cause:** Using incrementing alter_id instead of networkCanvasUUID
-- **Solution:** Use `networkCanvasUUID` for linking across exports; `alter_id` is export-specific
+- **Cause:** Using `nodeID` instead of `networkCanvasUUID`. `nodeID` is numbered from 1 in every interview, so the same number belongs to a different alter in each one
+- **Solution:** Use `networkCanvasUUID` to tell alters apart when you combine files from several interviews or exports. Use `nodeID` only within one interview's files, for example to match the `from` and `to` columns of its edge files to its alters
 
 ### Data quality checks
 

@@ -15,17 +15,20 @@ const messages = defineMessages({
   welcomeToNetworkCanvasInterviewer: {
     id: 'interviewer.onboardingScreen.welcomeToNetworkCanvasInterviewer',
     defaultMessage: 'Welcome to Network Canvas Interviewer',
-    description: 'Visible copy in Interviewer Onboarding Screen.',
+    description:
+      'Main heading of the first-run welcome screen, shown before the device is set up.',
   },
   letSSetUpThisDevice: {
     id: 'interviewer.onboardingScreen.letSSetUpThisDevice',
     defaultMessage: "Let's set up this device.",
-    description: 'Visible copy in Interviewer Onboarding Screen.',
+    description:
+      'Line under the welcome heading, inviting the researcher to begin setting up this device.',
   },
   getStarted: {
     id: 'interviewer.onboardingScreen.getStarted',
     defaultMessage: 'Get started',
-    description: 'Visible copy in Interviewer Onboarding Screen.',
+    description:
+      'Button on the first-run welcome screen that opens the setup wizard.',
   },
 });
 

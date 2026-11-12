@@ -28,9 +28,11 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   AUDIT_CATEGORIES,
   AUDIT_OUTCOMES,
+  isAuditEventType,
   type AuditActorFilter,
   type AuditCategory,
   type AuditEventSummary,
+  type AuditEventType,
   type AuditOutcome,
 } from '@codaco/studio-contract/schema/audit';
 import type { AuditEventId, TeamId } from '@codaco/studio-contract/schema/ids';
@@ -102,6 +104,172 @@ const CATEGORY_LABELS: Record<AuditCategory, MessageDescriptor> = {
   security: categoryMessages.security,
   audit: categoryMessages.audit,
 };
+
+const eventTitleMessages = defineMessages({
+  auditReadDenied: {
+    id: 'studio.teamActivity.event.auditReadDenied',
+    defaultMessage: 'Activity log access denied',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused access to the team activity log.',
+  },
+  teamCreated: {
+    id: 'studio.teamActivity.event.teamCreated',
+    defaultMessage: 'Team created',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a team was created.',
+  },
+  memberRoleChanged: {
+    id: 'studio.teamActivity.event.memberRoleChanged',
+    defaultMessage: 'Member role changed',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a team member’s role was changed.',
+  },
+  memberRoleChangeDenied: {
+    id: 'studio.teamActivity.event.memberRoleChangeDenied',
+    defaultMessage: 'Member role change denied',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused permission to change a team member’s role.',
+  },
+  memberRoleChangeFailed: {
+    id: 'studio.teamActivity.event.memberRoleChangeFailed',
+    defaultMessage: 'Member role change failed',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a change to a team member’s role was attempted and did not complete.',
+  },
+  deniedAttemptsRateLimited: {
+    id: 'studio.teamActivity.event.deniedAttemptsRateLimited',
+    defaultMessage: 'Denied attempts rate limited',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: one person was refused the same action so many times that Studio stopped recording each attempt and recorded how many there were instead.',
+  },
+  invitationCreated: {
+    id: 'studio.teamActivity.event.invitationCreated',
+    defaultMessage: 'Invitation created',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was invited to join the team.',
+  },
+  invitationCreationDenied: {
+    id: 'studio.teamActivity.event.invitationCreationDenied',
+    defaultMessage: 'Invitation creation denied',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused permission to invite a person to the team.',
+  },
+  invitationCancelled: {
+    id: 'studio.teamActivity.event.invitationCancelled',
+    defaultMessage: 'Invitation cancelled',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: an invitation to join the team was cancelled.',
+  },
+  invitationCancellationDenied: {
+    id: 'studio.teamActivity.event.invitationCancellationDenied',
+    defaultMessage: 'Invitation cancellation denied',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused permission to cancel an invitation.',
+  },
+  invitationCancellationFailed: {
+    id: 'studio.teamActivity.event.invitationCancellationFailed',
+    defaultMessage: 'Invitation cancellation failed',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: cancelling an invitation was attempted and did not complete.',
+  },
+  invitationAccepted: {
+    id: 'studio.teamActivity.event.invitationAccepted',
+    defaultMessage: 'Invitation accepted',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: an invited person accepted and joined the team.',
+  },
+  invitationAcceptanceDenied: {
+    id: 'studio.teamActivity.event.invitationAcceptanceDenied',
+    defaultMessage: 'Invitation acceptance denied',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused when trying to accept an invitation.',
+  },
+  invitationAcceptanceFailed: {
+    id: 'studio.teamActivity.event.invitationAcceptanceFailed',
+    defaultMessage: 'Invitation acceptance failed',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: accepting an invitation was attempted and did not complete.',
+  },
+  protocolCreated: {
+    id: 'studio.teamActivity.event.protocolCreated',
+    defaultMessage: 'Protocol created',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a protocol (an interview design) was created.',
+  },
+  protocolDraftCommitted: {
+    id: 'studio.teamActivity.event.protocolDraftCommitted',
+    defaultMessage: 'Protocol draft committed',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a change to the draft of a protocol (an interview design) was saved.',
+  },
+  studyCreated: {
+    id: 'studio.teamActivity.event.studyCreated',
+    defaultMessage: 'Study created',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a study was created.',
+  },
+  studyCreationDenied: {
+    id: 'studio.teamActivity.event.studyCreationDenied',
+    defaultMessage: 'Study creation denied',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused permission to create a study.',
+  },
+  interviewStarted: {
+    id: 'studio.teamActivity.event.interviewStarted',
+    defaultMessage: 'Interview started',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a participant started an interview.',
+  },
+  interviewCompleted: {
+    id: 'studio.teamActivity.event.interviewCompleted',
+    defaultMessage: 'Interview completed',
+    description:
+      'Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a participant finished an interview.',
+  },
+});
+
+// One name per kind of action this build records. The contract's list is
+// what the server's registry is checked against, so a new kind of action
+// cannot reach this screen without a name here.
+const EVENT_TITLES: Record<AuditEventType, MessageDescriptor> = {
+  'audit.read_denied': eventTitleMessages.auditReadDenied,
+  'team.created': eventTitleMessages.teamCreated,
+  'team.member.role_changed': eventTitleMessages.memberRoleChanged,
+  'team.member.role_change_denied': eventTitleMessages.memberRoleChangeDenied,
+  'team.member.role_change_failed': eventTitleMessages.memberRoleChangeFailed,
+  'security.denied_attempts.rate_limited':
+    eventTitleMessages.deniedAttemptsRateLimited,
+  'team.invitation.created': eventTitleMessages.invitationCreated,
+  'team.invitation.creation_denied':
+    eventTitleMessages.invitationCreationDenied,
+  'team.invitation.cancelled': eventTitleMessages.invitationCancelled,
+  'team.invitation.cancellation_denied':
+    eventTitleMessages.invitationCancellationDenied,
+  'team.invitation.cancellation_failed':
+    eventTitleMessages.invitationCancellationFailed,
+  'team.invitation.accepted': eventTitleMessages.invitationAccepted,
+  'team.invitation.acceptance_denied':
+    eventTitleMessages.invitationAcceptanceDenied,
+  'team.invitation.acceptance_failed':
+    eventTitleMessages.invitationAcceptanceFailed,
+  'protocol.created': eventTitleMessages.protocolCreated,
+  'protocol.draft.committed': eventTitleMessages.protocolDraftCommitted,
+  'study.created': eventTitleMessages.studyCreated,
+  'study.creation_denied': eventTitleMessages.studyCreationDenied,
+  'interview.started': eventTitleMessages.interviewStarted,
+  'interview.completed': eventTitleMessages.interviewCompleted,
+};
+
+/**
+ * What an event is called, in the reader's language. History can hold a kind
+ * of action a newer server appended and this build has no name for: that one
+ * keeps its machine type, the row beside it saying it is unrecognised.
+ */
+function eventTitle(intl: IntlShape, eventType: string): string {
+  return isAuditEventType(eventType)
+    ? intl.formatMessage(EVENT_TITLES[eventType])
+    : eventType;
+}
 
 const outcomeMessages = defineMessages({
   succeeded: {
@@ -597,20 +765,16 @@ export default function TeamActivity() {
   });
 
   const actionOptions = useMemo(() => {
-    const byType = new Map<string, string>(
-      filterOptions.data?.actions.map(({ eventType, title }) => [
-        eventType,
-        title,
-      ]),
-    );
+    const eventTypes = new Set(filterOptions.data?.eventTypes);
     // An applied value the options no longer carry keeps its own entry, so the
     // select cannot silently fall back to its placeholder while the filter is
     // still applied.
-    if (applied.eventType !== '' && !byType.has(applied.eventType)) {
-      byType.set(applied.eventType, applied.eventType);
-    }
-    return [...byType.entries()].map(([value, label]) => ({ value, label }));
-  }, [filterOptions.data, applied.eventType]);
+    if (applied.eventType !== '') eventTypes.add(applied.eventType);
+    return [...eventTypes].map((eventType) => ({
+      value: eventType,
+      label: eventTitle(intl, eventType),
+    }));
+  }, [filterOptions.data, applied.eventType, intl]);
 
   const actorOptions = useMemo(() => {
     const byToken = new Map<
@@ -636,7 +800,7 @@ export default function TeamActivity() {
     void dialog.openDialog({
       id: `audit-event-${event.id}`,
       type: 'custom',
-      title: event.title,
+      title: eventTitle(intl, event.eventType),
       children: <ActivityEventDetail teamId={teamId} eventId={event.id} />,
     });
   };
@@ -927,14 +1091,18 @@ export default function TeamActivity() {
                         })}
                       </time>
                     </TableCell>
-                    <TableCell>{actorText(intl, event.actor)}</TableCell>
+                    {/* Who and what an event names are data: each takes its own
+                        direction, on the interface side. */}
+                    <TableCell dir="auto" className="text-match-parent">
+                      {actorText(intl, event.actor)}
+                    </TableCell>
                     <TableCell>
                       <Button
                         variant="link"
                         size="sm"
                         onClick={() => openDetail(event)}
                       >
-                        {event.title}
+                        {eventTitle(intl, event.eventType)}
                       </Button>
                       {!event.rendered && (
                         <Badge className="ms-2" appearance="outline">
@@ -942,7 +1110,7 @@ export default function TeamActivity() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell dir="auto" className="text-match-parent">
                       {/* eslint-disable-next-line formatjs/no-literal-string-in-jsx -- the em dash is locale-neutral typography, not copy */}
                       {targetLabel ?? target?.id ?? '—'}
                     </TableCell>
@@ -1113,7 +1281,11 @@ function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
         {fields.map((field) => (
           <div key={field.label} className="col-span-2 grid grid-cols-subgrid">
             <dt className="font-bold">{field.label}</dt>
-            <dd className="m-0 break-all">{field.value}</dd>
+            {/* A value is a name, an identifier or a translated word: each
+                takes its own direction, on the interface side. */}
+            <dd dir="auto" className="text-match-parent m-0 break-all">
+              {field.value}
+            </dd>
           </div>
         ))}
       </dl>

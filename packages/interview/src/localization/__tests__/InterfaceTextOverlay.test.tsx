@@ -8,8 +8,8 @@ import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
+import { interfaceTextMessages } from '../../i18n/interfaceTextMessages';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
-import { interfaceMessages } from '../../interfaces/messages';
 import { InterfaceTextOverlay } from '../InterfaceTextOverlay';
 import { ProtocolLocalizationProvider } from '../ProtocolLocalizationProvider';
 
@@ -21,19 +21,23 @@ afterEach(() => {
 
 function Interview({
   interfaceText,
+  declared = localization,
+  requestedLocales = ['es'],
   children,
 }: {
   interfaceText: Parameters<typeof InterfaceTextOverlay>[0]['interfaceText'];
+  declared?: Readonly<{ defaultLocale: string; locales: string[] }>;
+  requestedLocales?: readonly string[];
   children: ReactNode;
 }) {
   return (
     <InterviewI18nProvider>
       <ProtocolLocalizationProvider
-        localization={localization}
-        localeOptions={localization.locales.map((locale) =>
+        localization={declared}
+        localeOptions={declared.locales.map((locale) =>
           getLocaleMetadata(locale),
         )}
-        requestedLocales={['es']}
+        requestedLocales={requestedLocales}
         localePreference={null}
         onLocalePreferenceChange={vi.fn()}
       >
@@ -72,7 +76,7 @@ describe('InterfaceTextOverlay', () => {
     expect(screen.getByRole('button', { name: 'Anterior' })).toBeDefined();
   });
 
-  it('leaves a message the protocol holds no text for in English', () => {
+  it('shows Network Canvas’s wording for a message the protocol holds no text for', () => {
     render(
       <Interview
         interfaceText={{
@@ -85,7 +89,57 @@ describe('InterfaceTextOverlay', () => {
 
     expect(
       screen.getAllByRole('button').map((button) => button.textContent),
-    ).toEqual(['Anterior', 'Continue']);
+    ).toEqual(['Anterior', 'Continuar']);
+  });
+
+  it('shows Network Canvas’s wording throughout for a protocol that holds none', () => {
+    render(
+      <Interview interfaceText={undefined}>
+        <Buttons />
+      </Interview>,
+    );
+
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent),
+    ).toEqual(['Volver', 'Continuar']);
+  });
+
+  // The protocol's Spanish does not stand in for the English it lacks: each
+  // language is the protocol's where it holds it and Network Canvas's where
+  // it does not.
+  it('shows Network Canvas’s wording in a language the protocol’s text lacks', () => {
+    render(
+      <Interview
+        interfaceText={{ navigation: { back: { es: 'Anterior' } } }}
+        requestedLocales={['en']}
+      >
+        <Buttons />
+      </Interview>,
+    );
+
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent),
+    ).toEqual(['Back', 'Continue']);
+  });
+
+  // Network Canvas has no Swahili: the protocol's own words are shown where
+  // it holds them, and a message with no words at all keeps its catalog's.
+  it('shows only the protocol’s wording in a language Network Canvas has none in', () => {
+    const swahili = { defaultLocale: 'sw', locales: ['sw'] };
+
+    render(
+      <Interview
+        interfaceText={{ navigation: { back: { sw: 'Rudi' } } }}
+        declared={swahili}
+        requestedLocales={['sw']}
+      >
+        <Buttons />
+      </Interview>,
+    );
+
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent),
+    ).toEqual(['Rudi', 'Continue']);
   });
 
   // One wording serves every catalog message it stands in for.
@@ -96,7 +150,7 @@ describe('InterfaceTextOverlay', () => {
         <ul>
           <li>{intl.formatMessage(commonMessages.genericError)}</li>
           <li>{intl.formatMessage(formMessages.submitFailed)}</li>
-          <li>{intl.formatMessage(interfaceMessages.discardChanges)}</li>
+          <li>{intl.formatMessage(interfaceTextMessages['buttons.yes'])}</li>
         </ul>
       );
     }

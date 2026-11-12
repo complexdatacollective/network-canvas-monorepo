@@ -1,5 +1,10 @@
 import { Redacted, Schema } from 'effect';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+
+import {
+  AUDIT_EVENT_TYPES,
+  type AuditEventType,
+} from '@codaco/studio-contract/schema/audit';
 
 import {
   AUDIT_EVENT_PARSE_OPTIONS,
@@ -9,6 +14,7 @@ import {
   AuditEventInputSchema,
   encodeAuditEventInput,
   parseAuditEventInput,
+  type AuditEventInput,
   type AuditEventKey,
 } from '../events.ts';
 
@@ -52,7 +58,6 @@ describe('audit event registry', () => {
     const definitions = Object.entries(AUDIT_EVENT_REGISTRY);
     expect(definitions.length).toBeGreaterThan(0);
     for (const [key, definition] of definitions) {
-      expect(definition.title.length).toBeGreaterThan(0);
       expect(definition.detailFields.length).toBeGreaterThan(0);
       expect(definition.sensitiveFields).toEqual([]);
       expect(definition.createsAlert).toBe(
@@ -65,6 +70,23 @@ describe('audit event registry', () => {
       expect(auditEventKey(parsed)).toBe(key);
       expect(auditEventDefinition(parsed)).toBe(definition);
     }
+  });
+
+  // The client names each kind of action from the contract's list, so the
+  // registry and that list must agree: a type registered here but missing
+  // there would reach the activity screen as its machine id.
+  it('registers exactly the event types the contract names', () => {
+    expectTypeOf<
+      AuditEventInput['eventType']
+    >().toEqualTypeOf<AuditEventType>();
+    const registered = new Set(
+      Object.keys(AUDIT_EVENT_REGISTRY).map((key) =>
+        key.slice(0, key.lastIndexOf('@')),
+      ),
+    );
+    expect([...registered].toSorted()).toEqual(
+      [...AUDIT_EVENT_TYPES].toSorted(),
+    );
   });
 
   it('keeps rate-limit summaries bounded and timestamped', () => {

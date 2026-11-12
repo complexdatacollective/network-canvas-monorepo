@@ -55,6 +55,15 @@ workspace is in by reading the task list rather than the workflow:
 `command` is a real command — turbo lists a task for every workspace, with
 `<NONEXISTENT>` as the command where the script is absent.
 
+Every story also runs the right-to-left mirror check (`mirrorAddon` from
+`@codaco/storybook-config/i18n`, listed first in the preview's `addons` so its
+`afterEach` runs after the accessibility audit, on by default through the
+preview's `mirror` tag): the story is remounted in each direction
+and the two layouts compared with `@codaco/e2e-helpers/direction-audit`. It
+roughly doubles a Storybook's run time. A story opts out with `!mirror` and a
+comment; stories that render through Storybook's `useArgs` must, because a
+remount outside Storybook's own render cannot call preview hooks.
+
 Two constraints keep these suites deterministic, both documented at length in
 the configs themselves. Each project's `optimizeDeps.include` must list every
 dependency reachable only through Storybook's virtual project-annotations
@@ -193,8 +202,7 @@ verdict, or any unrecognised path (root configs, `.github/`, `scripts/`, the
 lockfile) re-runs the suite. Force-pushed refreshes of a release PR after
 unrelated merges to `main` therefore keep their E2E verdicts without
 re-running, while any change that ships in the lane re-runs as before (see
-`scripts/ci/release-e2e-policy.mjs` and
-`docs/superpowers/specs/2026-07-17-release-e2e-equivalence-reuse-design.md`).
+`scripts/ci/release-e2e-policy.mjs`).
 
 Merge groups run only a lightweight `quality` acknowledgement. The main
 ruleset requires every pull request to pass its full `quality` check before it

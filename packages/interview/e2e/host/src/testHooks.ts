@@ -35,8 +35,22 @@ type TestState = {
 
 type StateSubscriber = () => void;
 
+/**
+ * What the host renders from. It is replaced, never changed, whenever the
+ * state does, so a render that read it (or anything memoized from it) can
+ * tell that it has changed.
+ */
+type HostSnapshot = {
+  interviews: ReadonlyMap<string, InterviewEntry>;
+  protocols: ReadonlyMap<string, ProtocolPayload>;
+  mountGeneration: number;
+  allowStageNavigation: boolean;
+  requestedLocales: readonly string[];
+};
+
 let state: TestState = createEmptyState();
 const subscribers = new Set<StateSubscriber>();
+let snapshot: HostSnapshot | undefined;
 
 function createEmptyState(): TestState {
   return {
@@ -47,6 +61,7 @@ function createEmptyState(): TestState {
 }
 
 function notifySubscribers(): void {
+  snapshot = undefined;
   for (const subscriber of subscribers) {
     subscriber();
   }
@@ -88,6 +103,17 @@ function restoreState(): TestState {
 
 export function getTestState(): TestState {
   return state;
+}
+
+export function getHostSnapshot(): HostSnapshot {
+  snapshot ??= {
+    interviews: new Map(state.interviews),
+    protocols: new Map(state.protocols),
+    mountGeneration,
+    allowStageNavigation,
+    requestedLocales,
+  };
+  return snapshot;
 }
 
 export function subscribe(fn: StateSubscriber): () => void {
@@ -162,10 +188,6 @@ function getStoredSession(interviewId: string): SessionSnapshot | undefined {
 // Bumped by remountInterview; App keys Shell on it.
 let mountGeneration = 0;
 
-export function getMountGeneration(): number {
-  return mountGeneration;
-}
-
 /**
  * Unmounts the running interview and mounts it again from the session it
  * holds now, as a host does when a participant leaves and later resumes:
@@ -192,18 +214,10 @@ function remountInterview(interviewId: string): void {
 // StagesMenu-exclusion scenario flips this on, via setAllowStageNavigation.
 let allowStageNavigation = false;
 
-export function getAllowStageNavigation(): boolean {
-  return allowStageNavigation;
-}
-
 // Stands in for `navigator.languages`, which a real browser host passes. Empty
 // by default so every suite runs in the protocol's default language and
 // English built-in text, whatever locale the browser is launched with.
 let requestedLocales: readonly string[] = [];
-
-export function getRequestedLocales(): readonly string[] {
-  return requestedLocales;
-}
 
 function setRequestedLocales(locales: readonly string[]) {
   requestedLocales = locales;
@@ -229,6 +243,7 @@ export function installTestHooks(): void {
   // Restore persisted state so that protocols/interviews installed before
   // a page navigation (page.goto) survive the reload.
   state = restoreState();
+  snapshot = undefined;
   subscribers.clear();
 
   (globalThis as Record<string, unknown>).__test = {

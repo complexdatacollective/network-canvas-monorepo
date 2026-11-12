@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
+import { familyPedigreeWordingIn } from '../../../../__tests__/suppliedWording.ts';
 import { findExclusiveVariableConflicts } from '../../../../utils/findExclusiveVariableConflicts.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import {
@@ -17,7 +18,6 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../../schema.ts';
-import { familyPedigreeWordingIn } from '../../stage-wording/family-pedigree.ts';
 import {
   FAMILY_PEDIGREE_BUILD_PROMPT_ID,
   familyPedigreeStage,
@@ -179,7 +179,13 @@ describe('familyPedigreeStage', () => {
         ...base,
         nodeConfiguration: withoutNameField,
       }).success,
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        nodeConfiguration: { ...base.nodeConfiguration, nameField: {} },
+      }).success,
+    ).toBe(true);
     const { hint: _hint, ...promptOnly } = pedigreeNameField();
     expect(
       familyPedigreeStage.safeParse({
@@ -208,10 +214,10 @@ describe('familyPedigreeStage', () => {
       ).toBe(false);
     });
 
-    it('requires the gender identity question while the stage asks about gender identity', () => {
+    it('accepts a stage that asks about gender identity without its question, which the interview words itself', () => {
       expect(
         familyPedigreeStage.safeParse(without('genderIdentityLabel')).success,
-      ).toBe(false);
+      ).toBe(true);
       const nodeConfiguration: Record<string, unknown> = {
         ...base.nodeConfiguration,
       };
@@ -243,14 +249,14 @@ describe('familyPedigreeStage', () => {
       });
     };
 
-    it('is required wherever the family must be complete', () => {
+    it('may be left to the interview wherever the family must be complete', () => {
       expect(
         familyPedigreeStage.safeParse(
           withCompleteness(pedigreeCompletenessText()),
         ).success,
       ).toBe(true);
       expect(familyPedigreeStage.safeParse(withCompleteness({})).success).toBe(
-        false,
+        true,
       );
     });
 

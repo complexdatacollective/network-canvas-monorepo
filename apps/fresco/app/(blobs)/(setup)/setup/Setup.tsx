@@ -20,22 +20,26 @@ const messages = defineMessages({
   createAccount: {
     id: 'fresco.setup.Setup.createAccount',
     defaultMessage: 'Create Account',
-    description: 'Researcher-facing setup / Setup: Create Account',
+    description:
+      "Label of the first step in the first-run setup wizard, where the researcher creates the installation's first account.",
   },
   configureStorage: {
     id: 'fresco.setup.Setup.configureStorage',
     defaultMessage: 'Configure Storage',
-    description: 'Researcher-facing setup / Setup: Configure Storage',
+    description:
+      'Label of the second step in the first-run setup wizard, where the researcher chooses where uploaded files are stored (S3-compatible storage or UploadThing).',
   },
   uploadProtocol: {
     id: 'fresco.setup.Setup.uploadProtocol',
     defaultMessage: 'Upload Protocol',
-    description: 'Researcher-facing setup / Setup: Upload Protocol',
+    description:
+      'Label of the third step in the first-run setup wizard, where the researcher uploads an interview protocol.',
   },
   documentation: {
     id: 'fresco.setup.Setup.documentation',
     defaultMessage: 'Documentation',
-    description: 'Researcher-facing setup / Setup: Documentation',
+    description:
+      'Label of the last step in the first-run setup wizard, which points the researcher to the Fresco documentation. Noun, not a link.',
   },
 });
 

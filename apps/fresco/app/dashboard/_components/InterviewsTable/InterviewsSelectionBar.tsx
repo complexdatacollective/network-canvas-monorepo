@@ -16,31 +16,31 @@ const messages = defineMessages({
     id: 'fresco.InterviewsTable.InterviewsSelectionBar.selected',
     defaultMessage: '{value1, plural, one {# selected} other {# selected}}',
     description:
-      'Researcher-facing InterviewsTable / InterviewsSelectionBar: value selected',
+      'Count of selected rows, shown in the floating bar at the bottom of the Interviews table once rows are selected. value1 is the number of selected interviews.',
   },
   selectAll: {
     id: 'fresco.InterviewsTable.InterviewsSelectionBar.selectAll',
     defaultMessage: 'Select all {value1, number}',
     description:
-      'Researcher-facing InterviewsTable / InterviewsSelectionBar: Select all value',
+      'Text button in the floating selection bar of the Interviews table, shown when only some rows are selected; selects every interview matching the current filters. value1 is the total number of interviews.',
   },
   deleteSelected: {
     id: 'fresco.InterviewsTable.InterviewsSelectionBar.deleteSelected',
     defaultMessage: 'Delete Selected',
     description:
-      'Researcher-facing InterviewsTable / InterviewsSelectionBar: Delete Selected',
+      'Button in the floating selection bar of the Interviews table; starts deleting the selected interviews (trash icon, destructive colour).',
   },
   exportSelected: {
     id: 'fresco.InterviewsTable.InterviewsSelectionBar.exportSelected',
     defaultMessage: 'Export Selected',
     description:
-      'Researcher-facing InterviewsTable / InterviewsSelectionBar: Export Selected',
+      'Button in the floating selection bar of the Interviews table; starts exporting the interview data of the selected interviews (verb, not a noun).',
   },
   deselectAll: {
     id: 'fresco.InterviewsTable.InterviewsSelectionBar.deselectAll',
     defaultMessage: 'Deselect all',
     description:
-      'Researcher-facing InterviewsTable / InterviewsSelectionBar: Deselect all',
+      'Accessible name of the close (X) button in the selection bar of the Interviews table; clears the selection. Read only by screen readers.',
   },
 });
 

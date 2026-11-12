@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  interfaceTextAsShown,
+  withInterfaceText,
+} from '@codaco/interview/supplied-wording';
+import {
   type CurrentProtocol,
   type LocalizedString,
   type Stage,
   validateProtocol,
 } from '@codaco/protocol-validation';
+import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 
 import { buildProtocolWithStage } from '../buildProtocolWithStage';
 
@@ -31,7 +36,8 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     ...stageOverrides,
   } as Stage;
 
-  return {
+  // As the active protocol always is: holding the interface text it uses.
+  return withInterfaceText({
     name: 'Test Protocol',
     schemaVersion: 9,
     localization: { defaultLocale: 'en', locales: ['en'] },
@@ -69,7 +75,7 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
         outcome: 'completed',
       },
     ],
-  };
+  });
 }
 
 describe('buildProtocolWithStage', () => {
@@ -180,5 +186,70 @@ describe('buildProtocolWithStage', () => {
         'FinishSession',
       ]);
     }
+  });
+
+  // A stage of a kind the protocol has none of brings interface text of its
+  // own, which the saved protocol will show; the draft must show it too, or
+  // the stage editor could never validate (or preview) the new stage.
+  it('validates a draft adding the first stage of a kind, with the text that kind shows', async () => {
+    const QUICK_ADD_ID = 'name-generator-quick-add-1';
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the committed all-interfaces fixture is a valid current protocol
+    const fixture = allInterfaces as unknown as CurrentProtocol;
+    const quickAdd = fixture.stages.find(({ id }) => id === QUICK_ADD_ID);
+    if (quickAdd === undefined) throw new Error('No quick-add stage');
+    const protocol = withInterfaceText({
+      ...fixture,
+      stages: fixture.stages.filter(
+        ({ type }) => type !== 'NameGeneratorQuickAdd',
+      ),
+    });
+    expect(interfaceTextAsShown(protocol)).not.toHaveProperty('quickAdd');
+    expect((await validateProtocol(protocol, { draft: true })).success).toBe(
+      true,
+    );
+
+    const { id: _id, ...newStage } = quickAdd;
+    const built = buildProtocolWithStage(protocol, newStage as Stage, null);
+
+    // The saved protocol shows the new kind's text, and holds none of it:
+    // it is Network Canvas's own.
+    expect(interfaceTextAsShown(built)).toHaveProperty('quickAdd');
+    expect(built.interfaceText?.quickAdd).toBeUndefined();
+    const result = await validateProtocol(built, { draft: true });
+    expect(result.error?.issues).toBeUndefined();
+  });
+
+  // Shared wording the stage editor holds with the stage, for entries the
+  // saved protocol does not hold yet, is what the preview has to show: the
+  // save writes it with the stage.
+  it('previews the shared wording held with the stage over Network Canvas’s', async () => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the committed all-interfaces fixture is a valid current protocol
+    const fixture = allInterfaces as unknown as CurrentProtocol;
+    const map = fixture.stages.find(({ id }) => id === 'geospatial-1');
+    if (map?.type !== 'Geospatial') throw new Error('No map stage');
+    expect(fixture.interfaceText?.geospatial).not.toHaveProperty(
+      'searchFailed',
+    );
+    const reworded = { 'en-US': 'No place matched that search' };
+    const searching = {
+      ...map,
+      mapOptions: { ...map.mapOptions, allowSearch: true },
+    };
+
+    const built = buildProtocolWithStage(
+      fixture,
+      searching,
+      map.id,
+      undefined,
+      [{ group: 'geospatial', key: 'searchFailed', value: reworded }],
+    );
+
+    expect(built.interfaceText?.geospatial?.searchFailed).toEqual(reworded);
+    expect(
+      buildProtocolWithStage(fixture, searching, map.id).interfaceText
+        ?.geospatial?.searchFailed,
+    ).not.toEqual(reworded);
+    const result = await validateProtocol(built, { draft: true });
+    expect(result.error?.issues).toBeUndefined();
   });
 });

@@ -30,73 +30,87 @@ const messages = defineMessages({
     id: 'interviewer.vault.vaultChanged',
     defaultMessage:
       'The device lock changed while unlocking. Please try again.',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Error shown in the unlock dialog when the device lock was changed (for example in another browser tab) while unlocking was in progress.',
   },
   pinUnconfigured: {
     id: 'interviewer.vault.pinUnconfigured',
     defaultMessage: 'PIN is not configured on this device',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Error shown when a PIN is used to unlock or verify but the device has no PIN set up.',
   },
   passphraseUnconfigured: {
     id: 'interviewer.vault.passphraseUnconfigured',
     defaultMessage: 'Passphrase is not configured on this device',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Error shown when a passphrase is used to unlock or verify but the device has no passphrase set up.',
   },
   wrongCurrentPin: {
     id: 'interviewer.vault.wrongCurrentPin',
     defaultMessage: 'Current PIN is incorrect',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Error shown in the Change PIN form when the "Current PIN" entered is not the device\'s PIN.',
   },
   wrongCurrentPassphrase: {
     id: 'interviewer.vault.wrongCurrentPassphrase',
     defaultMessage: 'Current passphrase is incorrect',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Error shown in the Change passphrase form when the "Current passphrase" entered is not the device\'s passphrase.',
   },
   wrongPin: {
     id: 'interviewer.vault.wrongPin',
     defaultMessage: 'Incorrect PIN',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Error shown in the unlock or confirm-identity dialog when the PIN entered is wrong or not a valid PIN.',
   },
   wrongPassphrase: {
     id: 'interviewer.vault.wrongPassphrase',
     defaultMessage: 'Incorrect passphrase',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Error shown in the unlock or confirm-identity dialog when the passphrase or recovery passphrase entered is wrong or invalid.',
   },
   biometricUnconfigured: {
     id: 'interviewer.vault.biometricUnconfigured',
     defaultMessage: 'Biometric authentication is not configured on this device',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Error shown when biometric unlock is attempted but the device has no biometric unlock set up.',
   },
   recoveryUnavailable: {
     id: 'interviewer.vault.recoveryUnavailable',
     defaultMessage: 'Recovery is not available for this vault',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Error shown when the recovery passphrase is used but the device lock has no recovery passphrase (only biometric unlock has one).',
   },
   biometricEnrolment: {
     id: 'interviewer.vault.biometricEnrolment',
     defaultMessage: 'Biometric enrolment failed',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Error shown during security setup when biometric unlock could not be set up. "Enrolment" means registering the device\'s biometric credential.',
   },
   biometricAuthentication: {
     id: 'interviewer.vault.biometricAuthentication',
     defaultMessage: 'Biometric authentication failed',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Error shown in the unlock or confirm-identity dialog when biometric authentication fails.',
   },
   pinLength: {
     id: 'interviewer.vault.pinLength',
     defaultMessage: 'PIN must be exactly {count, number} digits',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Validation error for a PIN of the wrong length. count is the required number of digits.',
   },
   passphraseLength: {
     id: 'interviewer.vault.passphraseLength',
     defaultMessage: 'Passphrase must be at least {count, number} characters',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Validation error for a passphrase that is too short. count is the minimum number of characters.',
   },
   passphraseStrength: {
     id: 'interviewer.vault.passphraseStrength',
     defaultMessage:
       'Passphrase must be stronger — combine uppercase, lowercase, numbers, and symbols',
-    description: 'Administration text in Interviewer vault.',
+    description:
+      'Validation error for a new passphrase that is too weak; it should mix uppercase, lowercase, numbers and symbols.',
   },
 });
 

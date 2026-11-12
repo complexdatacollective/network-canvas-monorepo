@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
@@ -37,6 +38,7 @@ const OPTION_NAMES: Record<string, RegExp> = {
   'pt-BR': /^Português \(Brasil\)/,
   'it': /^Italiano/,
   'fr': /^Français/,
+  'ar': /^العربية/,
 };
 
 async function selectLanguage(page: Page, locale: string) {
@@ -73,6 +75,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
     /^Português \(Brasil\)$/,
     /^Italiano$/,
     /^Français$/,
+    /^العربية$/,
   ]);
   await expect(options.first()).toHaveAttribute('aria-selected', 'true');
   await expect(
@@ -105,6 +108,28 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await expect(languageSwitcher(page)).toHaveAccessibleName(
     'Idioma de la interfaz: Automático (Español)',
   );
+});
+
+test('lays Architect out right to left in Arabic, with a protocol name written in Latin script on the same side as the rest', async ({
+  architectPage: page,
+  seed,
+}) => {
+  await seed(emptyProtocol(), { name: 'Research_Name_1' });
+  await page.goto('/');
+  await selectLanguage(page, 'ar');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(
+    page.getByRole('button', { name: 'إنشاء بروتوكول جديد' }),
+  ).toBeVisible();
+  // The name is the researcher's own text. It keeps its own reading direction
+  // and still starts where the Arabic around it starts.
+  const name = page.getByRole('heading', { name: 'Research_Name_1' });
+  await expect(name).toHaveCSS('direction', 'ltr');
+  await expect(name).toHaveCSS('text-align', 'right');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 });
 
 test('authors an Information stage in Spanish and previews it in the protocol’s language without changing research data', async ({
@@ -313,52 +338,54 @@ test('formats printed attribute order and updates linked-list grammar live while
 }) => {
   // Underscore/hyphen/dot distinguish locale collation from codepoint order.
   const names = ['alpha_name', 'alpha.name', 'alpha-name', 'Isabel'];
-  const protocol = CurrentProtocolSchema.parse({
-    ...emptyProtocol(),
-    codebook: {
-      ego: {
-        variables: Object.fromEntries(
-          names.map((name, index) => [
-            `attribute-${index}`,
-            { name, type: 'text', component: 'Text' },
-          ]),
-        ),
-      },
-    },
-    stages: [
-      {
-        id: 'sort',
-        type: 'EgoForm',
-        label: { en: 'Authored_sort' },
-        introductionPanel: {
-          title: { en: 'Authored introduction' },
-          text: { en: 'Authored content' },
-        },
-        form: {
-          fields: names.map((_, index) => ({
-            variable: `attribute-${index}`,
-            prompt: { en: `Authored_prompt_${index}` },
-          })),
+  const protocol = CurrentProtocolSchema.parse(
+    withInterfaceText({
+      ...emptyProtocol(),
+      codebook: {
+        ego: {
+          variables: Object.fromEntries(
+            names.map((name, index) => [
+              `attribute-${index}`,
+              { name, type: 'text', component: 'Text' },
+            ]),
+          ),
         },
       },
-      {
-        id: 'conjunction',
-        type: 'EgoForm',
-        label: { en: 'Authored_conjunction' },
-        introductionPanel: {
-          title: { en: 'Authored introduction' },
-          text: { en: 'Authored content' },
+      stages: [
+        {
+          id: 'sort',
+          type: 'EgoForm',
+          label: { en: 'Authored_sort' },
+          introductionPanel: {
+            title: { en: 'Authored introduction' },
+            text: { en: 'Authored content' },
+          },
+          form: {
+            fields: names.map((_, index) => ({
+              variable: `attribute-${index}`,
+              prompt: { en: `Authored_prompt_${index}` },
+            })),
+          },
         },
-        form: {
-          fields: [0, 3].map((index) => ({
-            variable: `attribute-${index}`,
-            prompt: { en: `Authored_prompt_${index}` },
-          })),
+        {
+          id: 'conjunction',
+          type: 'EgoForm',
+          label: { en: 'Authored_conjunction' },
+          introductionPanel: {
+            title: { en: 'Authored introduction' },
+            text: { en: 'Authored content' },
+          },
+          form: {
+            fields: [0, 3].map((index) => ({
+              variable: `attribute-${index}`,
+              prompt: { en: `Authored_prompt_${index}` },
+            })),
+          },
         },
-      },
-      ...emptyProtocol().stages,
-    ],
-  });
+        ...emptyProtocol().stages,
+      ],
+    }),
+  );
   await seed(protocol);
   await page.goto('/protocol/summary');
   const before = await readProtocolJson(page);

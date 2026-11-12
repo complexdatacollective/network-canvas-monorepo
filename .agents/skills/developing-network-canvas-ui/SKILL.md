@@ -90,6 +90,23 @@ Useful exemplars include `packages/fresco-ui/src/dnd/useAccessibilityAnnouncemen
 
 Tone rules apply to participant-facing surfaces. Accessibility and internationalisation apply to all UI.
 
+### Right-to-left layouts
+
+Arabic is a supported language, so every layout is read in both directions. Write it against the reading direction, not against a side of the screen.
+
+- **Use logical utilities.** `ms-*`/`me-*`, `ps-*`/`pe-*`, `start-*`/`end-*`, `border-s`/`border-e`, `rounded-s`/`rounded-e`, `text-start`/`text-end`, `float-start`. In every app and package shown right to left the `tailwindcss/enforce-logical` lint rule rewrites the physical spellings on save.
+- **Keep a physical side only when a physical side is meant**: an element placed from measured or pointer coordinates, one of a mirrored pair, or a value Base UI reports from the left. Say which in an `oxlint-disable-next-line tailwindcss/enforce-logical -- reason` comment (or the `direction/*` rule's name). The `direction/*` rules live in `tooling/oxlint/plugins/direction.mjs`; a workspace shown right to left extends `tooling/oxlint/direction.json`. `left-1/2` with `-translate-x-1/2` centres in either direction and is allowed as it stands.
+- **Transforms and `background-position` have no logical form.** Flip them with the `rtl:` variant, or with a custom property the `rtl:` variant changes when Motion animates the value (see `NavDrawer`).
+- **Icons that point along the reading order turn round** (`rtl:-scale-x-100` on a "next" chevron, or fresco-ui's `inlineIconClass` for an icon a component was handed). Icons that depict a thing do not. `direction/inline-arrow-turns` reports a lucide arrow or chevron drawn without the turn, or passed on as a component, unless it is handed to a component prop listed in fresco-ui's `navigation/inlineIconProps.json`. A component that draws a handed icon with `inlineIconClass` goes on that list, with a way to draw it in `inlineIconProps.test.tsx`.
+- **Text someone typed takes its own direction and stays on the interface's side**: names of people, protocols, studies, stages and teams, emails, identifiers get `dir="auto"` and `text-match-parent`. `direction/typed-text-matches-parent` reports `dir="auto"` without the class; nothing can report a typed value with no `dir` at all.
+- **Popups open at the start or end of the line**: `side="inline-start"`/`"inline-end"` on Tooltip, Popover and DropdownMenu content (`direction/logical-popup-side`).
+- **Base UI number formatting takes the app's language**: `Progress`, `Meter`, `NumberField` and a `Slider` with `format` get `locale={intl.locale}`, or a server render and the browser disagree (`direction/base-ui-number-locale`).
+- **Arrow keys follow the layout.** Base UI components do this from the direction context. A hand-written key handler reads the element's own direction (`isRightToLeft` in `utils/horizontalOverflow`) or, inside an interview, Base UI's `useDirection()`: the key pointing towards the end of a row moves forward. Where the items are placed on physical sides (the family tree's add buttons), wrap the Base UI component in `<DirectionProvider direction="ltr">` so its keys match where they are drawn.
+- **Pointer geometry is measured from the start edge**, which is the right in a right-to-left language.
+- **Content that is left-to-right in every language stays so**: codes, numbers in boxes, coordinates on a canvas. Set `dir="ltr"` on it.
+- **A panel leaves by the edge it sits against.** A drawer on the end edge takes `swipeDirection` from the direction and flips its entry and exit transforms with `rtl:` (see `ComposerDrawer`).
+- **Check it.** Storybook's Direction toolbar mirrors any story, and the "Pseudo right-to-left" language does the same in the development build of Architect, Interviewer and Studio. A story that pins `globals: { appDirection: 'rtl' }` can assert the behaviour in its `play` function. Every story in every Storybook is also drawn afresh in both directions after its play function and fails unless each box sits as far from the right edge as it sat from the left, and each arrow that points along the line turns (`mirrorCheck` in `tooling/storybook/src/i18n.tsx`). Content whose `dir` is fixed (a code) is left alone; a drawing placed by coordinates carries `data-direction-exempt`; a story that is not a layout in the reading direction takes the `!mirror` tag with a comment saying why.
+
 ## Visual style
 
 - **Use design tokens.** Use semantic Tailwind utilities backed by CSS variables (`bg-primary`, `text-text`, surfaces, input and selection colours, and data-visualisation palettes). Do not add hex or `rgb()` values.

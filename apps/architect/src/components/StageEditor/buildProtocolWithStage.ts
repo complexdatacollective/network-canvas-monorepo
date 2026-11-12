@@ -1,6 +1,14 @@
 import { v1 as uuid } from 'uuid';
 
-import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import {
+  interfaceTextWithUpdates,
+  withInterfaceText,
+} from '@codaco/interview/supplied-wording';
+import {
+  type CurrentProtocol,
+  type InterfaceTextUpdate,
+  type Stage,
+} from '@codaco/protocol-validation';
 import { creationIndex } from '~/ducks/modules/protocol/stages';
 import prune from '~/utils/prune';
 
@@ -17,12 +25,20 @@ import prune from '~/utils/prune';
  * to a genuinely-invalid protocol (missing required `title`) rather than a
  * transient empty value, which keeps preview correctly disabled until a title
  * is entered.
+ *
+ * The result holds the interface text the saved protocol will
+ * (`withInterfaceText`): the researcher's own wording for the entries it
+ * shows. `interfaceText` is the shared wording the stage editor holds with the
+ * stage for entries the open stage brings into use (`pendingSharedWording`),
+ * which a save writes with the stage, so the preview shows the researcher's
+ * wording for them rather than Network Canvas's.
  */
 export function buildProtocolWithStage(
   protocol: CurrentProtocol,
   stage: Stage,
   stageId: string | null,
   insertAtIndex?: number,
+  interfaceText: readonly InterfaceTextUpdate[] = [],
 ): CurrentProtocol {
   const prunedStage = prune(stage);
 
@@ -31,8 +47,17 @@ export function buildProtocolWithStage(
   // Where a save would put it: a new stage never lands after the finish stage.
   const insertAt = creationIndex(protocol.stages, prunedStage, insertAtIndex);
 
-  return {
+  return withInterfaceText({
     ...protocol,
+    ...(interfaceText.length === 0
+      ? {}
+      : {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the protocol's own shared words with entries written over them; the preview validates the protocol before it is used, which refuses words the schema does not accept
+          interfaceText: interfaceTextWithUpdates(
+            protocol.interfaceText,
+            interfaceText,
+          ) as CurrentProtocol['interfaceText'],
+        }),
     stages: stageId
       ? protocol.stages.map((s) => (s.id === stageId ? stageWithId : s))
       : [
@@ -40,5 +65,5 @@ export function buildProtocolWithStage(
           stageWithId,
           ...protocol.stages.slice(insertAt),
         ],
-  };
+  });
 }

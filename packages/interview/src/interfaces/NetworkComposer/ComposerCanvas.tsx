@@ -250,6 +250,10 @@ export default function ComposerCanvas({
   return (
     <div
       ref={canvasRef}
+      // Nodes sit where the participant put them, by stored coordinates, in
+      // either reading direction: the right-to-left mirror check leaves the
+      // canvas out.
+      data-direction-exempt
       className="relative size-full overflow-hidden aria-busy:[&>:not([data-canvas-backdrop])]:invisible"
       role="application"
       onPointerDown={handleContainerPointerDown}

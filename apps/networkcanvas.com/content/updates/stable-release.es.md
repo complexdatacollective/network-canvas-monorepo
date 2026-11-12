@@ -1,6 +1,6 @@
 # Network Canvas 6.0: la primera versión estable
 
-Tras cuatro años de desarrollo y pruebas, Interviewer, Architect y Server se publican como software estable, gratuito y de código abierto para diseñar, realizar y gestionar entrevistas de redes sociales. [Lea el anuncio](https://www.oii.ox.ac.uk/new-software-tool-to-help-researchers-with-complex-social-network-data-collection-projects-could-be-used-to-fight-covid-19/).
+Tras cuatro años de desarrollo y pruebas, Interviewer, Architect y Server se publican como software estable, gratuito y de código abierto para diseñar, realizar y gestionar entrevistas de redes sociales. [Lee el anuncio](https://www.oii.ox.ac.uk/new-software-tool-to-help-researchers-with-complex-social-network-data-collection-projects-could-be-used-to-fight-covid-19/).
 
 <!-- more -->
 
@@ -14,4 +14,4 @@ Architect ofrece a los investigadores una forma visual de diseñar entrevistas d
 
 ### Abierto a todos
 
-El conjunto es gratuito y de código abierto, de modo que cualquiera puede ver cómo funciona, adaptarlo a sus propios estudios y aportar mejoras. [Lea las notas de la versión](https://github.com/complexdatacollective/Interviewer/releases/tag/v6.0.0).
+El conjunto es gratuito y de código abierto, de modo que cualquiera puede ver cómo funciona, adaptarlo a sus propios estudios y aportar mejoras. [Lee las notas de la versión](https://github.com/complexdatacollective/Interviewer/releases/tag/v6.0.0).

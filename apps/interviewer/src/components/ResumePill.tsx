@@ -20,12 +20,14 @@ const messages = defineMessages({
   resumeLastInterview: {
     id: 'interviewer.resumePill.resumeLastInterview',
     defaultMessage: 'Resume last interview',
-    description: 'Visible copy in Interviewer Resume Pill.',
+    description:
+      'Small caption in the pill on the home screen; pressing the pill reopens the interview the researcher last worked on. Resume is a verb.',
   },
   untitled: {
     id: 'interviewer.resumePill.untitled',
     defaultMessage: 'Untitled',
-    description: 'User-facing message in Interviewer Resume Pill.',
+    description:
+      'Fallback shown in the resume pill in place of the case ID when the last interview has none.',
   },
 });
 
@@ -116,7 +118,7 @@ export function ResumePillView({
         variants={contentPanelVariants}
         className="flex h-full shrink-0 items-center gap-4 overflow-hidden"
       >
-        <div className="ml-2 text-left whitespace-nowrap">
+        <div className="ms-2 text-start whitespace-nowrap">
           <div className="font-heading text-text/60 mb-0.5 text-xs font-black tracking-widest uppercase">
             {intl.formatMessage(messages.resumeLastInterview)}
           </div>
@@ -129,7 +131,7 @@ export function ResumePillView({
         </div>
         <div
           aria-hidden
-          className="bg-sea-green text-primary-contrast mr-3.5 inline-flex size-14 shrink-0 items-center justify-center rounded-full"
+          className="bg-sea-green text-primary-contrast me-3.5 inline-flex size-14 shrink-0 items-center justify-center rounded-full"
         >
           <Play size={14} />
         </div>

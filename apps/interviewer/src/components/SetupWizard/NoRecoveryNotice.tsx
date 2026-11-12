@@ -7,25 +7,29 @@ const messages = defineMessages({
   noRecovery: {
     id: 'interviewer.noRecoveryNotice.noRecovery',
     defaultMessage: 'No recovery',
-    description: 'Visible copy in Interviewer No Recovery Notice.',
+    description:
+      'Title of a warning callout in the PIN, passphrase and biometric setup steps, stating that lost credentials cannot be recovered.',
   },
   biometric: {
     id: 'interviewer.noRecoveryNotice.biometric',
     defaultMessage:
       'Biometric unlock is protected by a recovery passphrase you set during setup. Keep that passphrase safe: if you lose both your biometric and the recovery passphrase, data on this device cannot be recovered.',
-    description: 'Administration text in Interviewer NoRecoveryNotice.',
+    description:
+      'Body of the warning callout in the biometric setup step: losing both the biometric and the recovery passphrase means data cannot be recovered.',
   },
   pin: {
     id: 'interviewer.noRecoveryNotice.pin',
     defaultMessage:
       "If you forget your PIN, all data on this device — including imported protocols and recorded interviews — will become permanently inaccessible. There is no way to recover, reset, or bypass app security. The 'Reset all app data' menu option lets you start over with a blank app, but existing data cannot be recovered.",
-    description: 'Administration text in Interviewer NoRecoveryNotice.',
+    description:
+      'Body of the warning callout in the PIN setup step: a forgotten PIN makes all data permanently inaccessible. "Reset all app data" is a menu option name; match its translation.',
   },
   passphrase: {
     id: 'interviewer.noRecoveryNotice.passphrase',
     defaultMessage:
       "If you forget your passphrase, all data on this device — including imported protocols and recorded interviews — will become permanently inaccessible. There is no way to recover, reset, or bypass app security. The 'Reset all app data' menu option lets you start over with a blank app, but existing data cannot be recovered.",
-    description: 'Administration text in Interviewer NoRecoveryNotice.',
+    description:
+      'Body of the warning callout in the passphrase setup step: a forgotten passphrase makes all data permanently inaccessible. "Reset all app data" is a menu option name; match its translation.',
   },
 });
 

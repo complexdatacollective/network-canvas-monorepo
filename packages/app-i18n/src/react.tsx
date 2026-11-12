@@ -19,7 +19,7 @@ import {
 import type { ReactNode } from 'react';
 import type { IntlShape } from 'react-intl';
 
-import { PSEUDO_LOCALE } from './locales.ts';
+import { isPseudoLocale } from './locales.ts';
 import type { AppLocale, CatalogMessages, CatalogSource } from './locales.ts';
 import { createAppIntl, formatMessageError } from './messages.ts';
 import type { AppIntlErrorHandler, MessageDescriptor } from './messages.ts';
@@ -47,6 +47,11 @@ const AppI18nContext = createContext<AppI18nContextValue | null>(null);
 
 /** The formatter an `AppIntlOverlay` puts in place of the one above it. */
 const AppIntlOverlayContext = createContext<IntlShape | null>(null);
+
+/** The direction an `AppDirectionOverride` shows every language beneath it in. */
+const AppDirectionOverrideContext = createContext<
+  AppLocale['direction'] | null
+>(null);
 
 /**
  * `<html lang>`/`<html dir>` have to be written in the layout phase, not after
@@ -76,7 +81,7 @@ const getDefaultIntl = (): IntlShape => {
 
 export type AppI18nProviderProps = Readonly<{
   /**
-   * Active locale tag: one of `locales`, or the pseudo-locale.
+   * Active locale tag: one of `locales`, or a pseudo-locale.
    *
    * A tag the registry does not declare renders as `locales[0]` rather than
    * throwing. A provider wraps the whole application, so a bad tag — a stored
@@ -130,7 +135,18 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
     throw new Error('AppI18nProvider: the locale registry is empty');
   }
   const declared = locales.find((entry) => entry.locale === locale);
-  const active = declared ?? locales[0]!;
+  const shown = declared ?? locales[0]!;
+  // An override changes the direction the language is shown in and nothing
+  // else about it, so everything below — the document, `useAppLocale`,
+  // `useAppDirection` — reads the one entry and cannot disagree.
+  const directionOverride = useContext(AppDirectionOverrideContext);
+  const active = useMemo(
+    () =>
+      directionOverride === null || directionOverride === shown.direction
+        ? shown
+        : { ...shown, direction: directionOverride },
+    [shown, directionOverride],
+  );
   // The catalog was chosen for the locale that was asked for. When that tag
   // is not declared and the registry default stands in for it, keeping the
   // catalog would render one language's words under another's `lang` — so the
@@ -139,15 +155,22 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
 
   const intl = useMemo(
     () =>
-      active.locale === PSEUDO_LOCALE
-        ? createPseudoIntl({ messages: activeMessages, onError, timeZone })
+      isPseudoLocale(active.locale)
+        ? createPseudoIntl({
+            locale: active.locale,
+            messages: activeMessages,
+            onError,
+            timeZone,
+            direction: active.direction,
+          })
         : createAppIntl({
             locale: active.locale,
             messages: activeMessages,
             onError,
             timeZone,
+            direction: active.direction,
           }),
-    [active.locale, activeMessages, onError, timeZone],
+    [active.locale, active.direction, activeMessages, onError, timeZone],
   );
 
   const setLocale = useCallback(
@@ -433,6 +456,42 @@ export function useAppLocale(): Readonly<{
     locales: context.locales,
     setLocale: context.setLocale,
   };
+}
+
+/**
+ * The writing direction of the language on screen. Works with or without a
+ * mounted provider, as `useAppIntl` does: without one the text is the
+ * descriptors' English, which is left to right.
+ */
+export function useAppDirection(): AppLocale['direction'] {
+  const override = useContext(AppDirectionOverrideContext);
+  const context = useContext(AppI18nContext);
+  return override ?? context?.locale.direction ?? 'ltr';
+}
+
+/**
+ * Shows every language beneath it in one writing direction, whatever each
+ * language's own is; `null` leaves them as declared. Every `AppI18nProvider`
+ * beneath it, however deeply nested, then writes that direction to the
+ * document and reports it from `useAppLocale` and `useAppDirection`.
+ *
+ * It exists for tools that have to look at an interface in a direction its
+ * language does not have, such as Storybook's direction control, which reads
+ * English right to left. An app never needs it: an app's direction is its
+ * language's.
+ */
+export function AppDirectionOverride({
+  direction,
+  children,
+}: Readonly<{
+  direction: AppLocale['direction'] | null;
+  children: ReactNode;
+}>) {
+  return (
+    <AppDirectionOverrideContext.Provider value={direction}>
+      {children}
+    </AppDirectionOverrideContext.Provider>
+  );
 }
 
 /**

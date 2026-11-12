@@ -15,13 +15,13 @@ stages behave as before.
 
 - Schema 9 bin stages' `behaviours` object takes an optional
   `requireCompletePlacement`.
-- A bin stage with `requireCompletePlacement: true` needs an
+- A bin stage with `requireCompletePlacement: true` shows an
   `unplacedNodesNotice`: the message the participant sees when they try to
   continue with a node still unplaced. Network Canvas supplies this text in
   English, German, Spanish, French, Italian, Dutch, Brazilian Portuguese and
-  Simplified and Traditional Chinese, and `missingSuppliedStageText` seeds it
-  like the other supplied stage wording. With the setting off, the notice is
-  an inapplicable setting.
+  Simplified and Traditional Chinese, and a stage holds it only where its
+  author reworded it, like the other supplied stage wording. With the setting
+  off, a stage holds no notice.
 
 **Interview runtime (`@codaco/interview`)**
 

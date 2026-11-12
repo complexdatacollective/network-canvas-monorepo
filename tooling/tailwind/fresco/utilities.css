@@ -65,8 +65,9 @@
   --fade-height: max(1.5rem, 8%);
   &::before,
   &::after {
-    @apply pointer-events-none absolute left-0 block transition-[height] duration-100 ease-out content-[''];
-    right: var(--scrollbar-width, 0px);
+    @apply pointer-events-none absolute start-0 block transition-[height] duration-100 ease-out content-[''];
+    /* The scrollbar is on the end edge: the left in a right-to-left language. */
+    inset-inline-end: var(--scrollbar-width, 0px);
   }
   &::before {
     @apply top-0 z-1 bg-linear-to-b from-(--published-bg,var(--background)) to-transparent;
@@ -93,6 +94,22 @@
     @apply right-0 bg-linear-to-l from-(--published-bg,var(--background)) to-transparent;
     width: min(var(--fade-width), var(--scroll-area-overflow-x-end, 0px));
   }
+}
+
+/*
+ * For text that takes its base direction from its own content (`dir="auto"`),
+ * such as a name a researcher wrote: the text still reads in its own
+ * direction, but stays on the side its container's text is on. Without this,
+ * `text-align: start` follows the element's own direction, so a Latin name in
+ * a right-to-left interface sits alone at the far left (and an Arabic name in
+ * a left-to-right one at the far right).
+ *
+ * Chrome accepts only the prefixed keyword and Firefox only the standard one;
+ * Safari accepts both. Each browser drops the declaration it does not know.
+ */
+@utility text-match-parent {
+  text-align: -webkit-match-parent;
+  text-align: match-parent;
 }
 
 /* Replacement for interview centering mixin — used by all interview stage components. */

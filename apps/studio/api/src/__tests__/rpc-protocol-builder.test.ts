@@ -1480,4 +1480,210 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       await call(who, host.rpc('ReleaseLock', { protocolId, sectionId }));
     }
   });
+  describe('shared words saved with a stage', () => {
+    const SETTINGS = sid('settings');
+
+    /** One shared word as the settings hold it, or undefined. */
+    const heldWord = async (group: string, key: string) => {
+      const settings = await call(
+        ADA,
+        host.rpc('GetSection', { protocolId, sectionId: SETTINGS }),
+      );
+      const text: unknown = Redacted.value(settings.document).interfaceText;
+      const groups =
+        typeof text === 'object' && text !== null
+          ? (text as Record<string, Record<string, unknown> | undefined>)
+          : {};
+      return { word: groups[group]?.[key], revision: settings.revision };
+    };
+
+    it('writes the words a submit carries into the settings, in the stage’s revision', async () => {
+      const sectionId = stageSection(reference.stageId);
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+      // A protocol holds only the shared words its author reworded, so one is
+      // reworded first: the word the next submit has to keep.
+      const kept = inEnglish('Go back');
+      const seeded = await call(
+        ADA,
+        host.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId,
+          document: held.document,
+          revision: held.revision,
+          interfaceText: [{ group: 'navigation', key: 'back', value: kept }],
+        }),
+      );
+      expect((await heldWord('navigation', 'back')).word).toEqual(kept);
+      const reworded = inEnglish('No place matched that search');
+      expect(
+        (await heldWord('geospatial', 'searchFailed')).word,
+      ).toBeUndefined();
+
+      const written = await call(
+        ADA,
+        host.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId,
+          document: Redacted.make({
+            ...Redacted.value(held.document),
+            label: inEnglish('Saved with its words'),
+          }),
+          revision: seeded.revision,
+          interfaceText: [
+            { group: 'geospatial', key: 'searchFailed', value: reworded },
+          ],
+        }),
+      );
+      await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+
+      const after = await heldWord('geospatial', 'searchFailed');
+      expect(after.word).toEqual(reworded);
+      expect(after.revision.sequence).toBe(written.revision.sequence);
+      // Every other shared word the protocol held is kept.
+      expect((await heldWord('navigation', 'back')).word).toEqual(kept);
+    });
+
+    it('writes the words a create carries into the settings, in the new stage’s revision', async () => {
+      const reworded = inEnglish('The map could not be shown');
+      expect(
+        (await heldWord('geospatial', 'mapUnavailable')).word,
+      ).toBeUndefined();
+
+      const created = await call(
+        ADA,
+        host.rpc('Create', {
+          protocolId,
+          requestId: randomUUID(),
+          kind: 'stage',
+          document: Redacted.make({
+            type: 'Information',
+            label: inEnglish('Created with its words'),
+            title: inEnglish('Created with its words'),
+            items: [],
+          }),
+          interfaceText: [
+            { group: 'geospatial', key: 'mapUnavailable', value: reworded },
+          ],
+        }),
+      );
+
+      const after = await heldWord('geospatial', 'mapUnavailable');
+      expect(after.word).toEqual(reworded);
+      expect(after.revision.sequence).toBe(created.revision.sequence);
+    });
+
+    it('refuses a submit carrying words while another editor holds the settings', async () => {
+      const stage = await createStage(ADA, 'Saved behind held settings');
+      const settings = await call(
+        GRACE,
+        host.rpc('AcquireLock', { protocolId, sectionId: SETTINGS }),
+      );
+      expect(settings.lock).toBe('held');
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+      );
+      const before = await heldWord('geospatial', 'searchFailed');
+
+      try {
+        const error = await expectRpcFailure(
+          callExit(
+            ADA,
+            host.rpc('Submit', {
+              protocolId,
+              requestId: randomUUID(),
+              sectionId: stage.sectionId,
+              document: Redacted.make({
+                ...Redacted.value(held.document),
+                label: inEnglish('Renamed behind held settings'),
+              }),
+              revision: held.revision,
+              interfaceText: [
+                {
+                  group: 'geospatial',
+                  key: 'searchFailed',
+                  value: inEnglish('Not written behind a held lock'),
+                },
+              ],
+            }),
+          ),
+          'SectionsLocked',
+        );
+        expect(error.blocked.map((entry) => entry.sectionId)).toEqual([
+          SETTINGS,
+        ]);
+        expect(error.blocked[0]?.holder?.userId).toBe(GRACE.principal.userId);
+        const after = await call(
+          ADA,
+          host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
+        );
+        expect(after.revision).toEqual(held.revision);
+        expect((await heldWord('geospatial', 'searchFailed')).word).toEqual(
+          before.word,
+        );
+      } finally {
+        await call(
+          GRACE,
+          host.rpc('ReleaseLock', { protocolId, sectionId: SETTINGS }),
+        );
+        await call(
+          ADA,
+          host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+        );
+      }
+    });
+
+    it('writes neither the stage nor its words when the words cannot be saved', async () => {
+      const sectionId = stageSection(reference.stageId);
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+      const before = await heldWord('geospatial', 'offlineNotice');
+
+      const refused = await expectRpcFailure(
+        callExit(
+          ADA,
+          host.rpc('Submit', {
+            protocolId,
+            requestId: randomUUID(),
+            sectionId,
+            document: Redacted.make({
+              ...Redacted.value(held.document),
+              label: inEnglish('Refused with its words'),
+            }),
+            revision: held.revision,
+            interfaceText: [
+              {
+                group: 'geospatial',
+                key: 'offlineNotice',
+                value: inEnglish(' '),
+              },
+            ],
+          }),
+        ),
+        'InvalidShape',
+      );
+      await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+
+      expect(refused.sectionId).toBe(SETTINGS);
+      const after = await heldWord('geospatial', 'offlineNotice');
+      expect(after.word).toBeUndefined();
+      expect(after.revision).toEqual(before.revision);
+      const stage = await call(
+        ADA,
+        host.rpc('GetSection', { protocolId, sectionId }),
+      );
+      expect(Redacted.value(stage.document).label).not.toEqual(
+        inEnglish('Refused with its words'),
+      );
+    });
+  });
 });

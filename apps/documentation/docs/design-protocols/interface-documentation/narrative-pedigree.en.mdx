@@ -35,7 +35,7 @@ Each condition the participant can choose is a row in **Disease mappings**. **Cr
 
 - **Disease label**: the condition's name, shown in the participant's condition menu. Each condition needs a different name, in every language of the protocol.
 - **Color**: one of the eight node colors. The condition's statuses, and its symbols in the key, are drawn in it.
-- **Node attribute**: the **boolean** attribute that records who is affected. Only attributes recorded by one of the source stage's [nomination prompts](/en/design-protocols/interface-documentation/family-pedigree#nomination-prompts) are offered, and each can be mapped by only one condition. If none is offered, add a nomination prompt to the Family Pedigree that asks who has the condition.
+- **Node attribute**: the **boolean** attribute that records who is affected. Only attributes recorded by one of the source stage's [nomination prompts](/en/design-protocols/interface-documentation/family-pedigree#nomination-prompts-1) are offered, and each can be mapped by only one condition. If none is offered, add a nomination prompt to the Family Pedigree that asks who has the condition.
 - **Inheritance pattern**: how the condition is passed from parent to child. Every inference the interface makes depends on it (see [How statuses are inferred](#how-statuses-are-inferred)).
 
 The eight inheritance patterns are autosomal dominant, autosomal recessive, X-linked dominant, X-linked recessive, Y-linked, mitochondrial, multifactorial and unknown. For **Multifactorial** and **Unknown**, the interface shows only who was recorded as affected and infers no other status.
@@ -48,7 +48,7 @@ The stage needs at least one condition. The order of the rows is the order of th
 
 ### Customize built-in wording
 
-The **Customize built-in wording** section holds the words participants read on the stage. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+The **Customize built-in wording** section holds the words participants read on the stage. Each starts as Network Canvas words it, in every language it has wording for, and you can change and translate it like any other text. Your protocol keeps only the wording you change (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
 
 Under **Specific to this stage** are:
 
@@ -64,7 +64,7 @@ The stage opens on the whole family, drawn as the Family Pedigree draws it and f
 
 Each symbol takes the shape the Family Pedigree's [Symbols choice](/en/design-protocols/interface-documentation/family-pedigree#how-each-persons-symbol-is-drawn) gives it. Mapped to sex assigned at birth, a person recorded female is drawn as a circle, a person recorded male as a square, and everyone else as a diamond.
 
-A toolbar below the family holds, from left to right:
+A toolbar below the family holds, in reading order (from right to left in an interview shown in a right-to-left language):
 
 - the **condition menu**, which lists every condition beside its color, after a first choice that shows none;
 - **Clear focus**, while a person is focused on;

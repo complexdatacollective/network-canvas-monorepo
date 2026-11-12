@@ -14,9 +14,11 @@
   },
   "ignore": [
     "@codaco/architect-classic",
+    "@codaco/community-theme",
     "@codaco/interviewer-classic",
     "@codaco/documentation",
     "networkcanvas.com",
+    "@codaco/protocol-review-worker",
     "@codaco/studio-api",
     "@codaco/studio-client",
     "@codaco/studio-contract",

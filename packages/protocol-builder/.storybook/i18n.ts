@@ -24,7 +24,7 @@ import { protocolBuilderCatalogLoaders } from '../src/locales/catalogs.ts';
  * globals (`appLocale`, `appDirection`), their storage keys and their
  * stand-down under automation are therefore shared, so a reviewer moving
  * between the two Storybooks operates one control, and the direction axis
- * — which no locale here exercises yet — arrives for free.
+ * — which Arabic exercises — arrives for free.
  *
  * Catalogs merge in host order — `common.*`, then `frescoUi.*`, then this
  * package's own — which is the order Architect and Studio use, so a shared
@@ -40,21 +40,22 @@ import { protocolBuilderCatalogLoaders } from '../src/locales/catalogs.ts';
  * reads its catalogs synchronously, so a Storybook — a development tool with
  * nothing to save on download size — awaits them all before it renders.
  */
-export const { globalTypes, initialGlobals, withAppI18n } = storybookI18n({
-  locales: ecosystemLocales,
-  catalogs: Object.fromEntries(
-    await Promise.all(
-      ecosystemLocales.map(
-        async ({ locale }): Promise<[string, CatalogMessages]> => [
-          locale,
-          await loadCatalog(
+export const { globalTypes, initialGlobals, withAppI18n, mirrorAddon } =
+  storybookI18n({
+    locales: ecosystemLocales,
+    catalogs: Object.fromEntries(
+      await Promise.all(
+        ecosystemLocales.map(
+          async ({ locale }): Promise<[string, CatalogMessages]> => [
             locale,
-            commonCatalogLoaders,
-            frescoUiCatalogLoaders,
-            protocolBuilderCatalogLoaders,
-          ),
-        ],
+            await loadCatalog(
+              locale,
+              commonCatalogLoaders,
+              frescoUiCatalogLoaders,
+              protocolBuilderCatalogLoaders,
+            ),
+          ],
+        ),
       ),
     ),
-  ),
-});
+  });

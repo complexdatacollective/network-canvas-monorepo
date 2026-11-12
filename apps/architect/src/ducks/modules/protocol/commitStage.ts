@@ -1,6 +1,6 @@
 import { createAction } from '@reduxjs/toolkit';
 
-import type { Stage } from '@codaco/protocol-validation';
+import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 
 export type CommitStagePayload = {
   /** The stage being edited, or `null` when the editor is creating one. */
@@ -9,6 +9,13 @@ export type CommitStagePayload = {
   stage: Stage;
   /** Insert position, honoured only when `stageId` is `null`. */
   index?: number;
+  /**
+   * The protocol's shared words as they read with the stage saved, when the
+   * stage brings in words the protocol did not hold (see the contract's
+   * `interfaceText` on a submit): written by the same action, so the stage and
+   * its words are one undo step.
+   */
+  interfaceText?: CurrentProtocol['interfaceText'];
 };
 
 /**

@@ -23,72 +23,77 @@ const messages = defineMessages({
   appVersion: {
     id: 'fresco.VersionSection.appVersion',
     defaultMessage: 'App Version',
-    description: 'Researcher-facing VersionSection: App Version',
+    description:
+      'Label of the setting in Settings that shows which version of the Fresco software this installation is running.',
   },
   youAreCurrentlyRunningFresco: {
     id: 'fresco.VersionSection.youAreCurrentlyRunningFresco',
     defaultMessage: 'You are currently running Fresco {value1} ({value2}).',
     description:
-      'Researcher-facing VersionSection: You are currently running Fresco value (value).',
+      'Description under the App Version setting in Settings. value1 is the version number such as 4.1.2; value2 is the short build identifier (a commit hash), or "ci-build". Keep Fresco as the product name.',
   },
   errorFetchingUpdateInformation: {
     id: 'fresco.VersionSection.errorFetchingUpdateInformation',
     defaultMessage: 'Error fetching update information',
     description:
-      'Researcher-facing VersionSection: Error fetching update information',
+      'Title of the red alert under the App Version setting shown when the check for a newer Fresco release failed.',
   },
   anErrorOccurredWhileFetchingTheLatest: {
     id: 'fresco.VersionSection.anErrorOccurredWhileFetchingTheLatest',
     defaultMessage:
       'An error occurred while fetching the latest version information.',
     description:
-      'Researcher-facing VersionSection: An error occurred while fetching the latest version information.',
+      'Body of the red alert under the App Version setting shown when looking up the latest Fresco release failed.',
   },
   youAreUpToDate: {
     id: 'fresco.VersionSection.youAreUpToDate',
     defaultMessage: 'You are up to date',
-    description: 'Researcher-facing VersionSection: You are up to date',
+    description:
+      'Title of the green alert under the App Version setting shown when the installation already runs the newest Fresco release.',
   },
   youAreRunningTheLatestVersionOf: {
     id: 'fresco.VersionSection.youAreRunningTheLatestVersionOf',
     defaultMessage: 'You are running the latest version of Fresco.',
     description:
-      'Researcher-facing VersionSection: You are running the latest version of Fresco.',
+      'Body of the green alert under the App Version setting, below the "You are up to date" title, confirming the newest Fresco release is installed. Keep Fresco as the product name.',
   },
   ofFrescoIsAvailable: {
     id: 'fresco.VersionSection.ofFrescoIsAvailable',
     defaultMessage: '{value1} of Fresco is available!',
     description:
-      'Researcher-facing VersionSection: value of Fresco is available!',
+      'Title of the blue alert under the App Version setting announcing a newer Fresco release. value1 is the new version number, such as 4.2.0. Keep Fresco as the product name.',
   },
   majorUpdate: {
     id: 'fresco.VersionSection.majorUpdate',
     defaultMessage: 'Major update',
-    description: 'Researcher-facing VersionSection: Major update',
+    description:
+      'Title of a red warning box inside the new-version alert under the App Version setting, shown only when the available release is a new major version.',
   },
   thisUpdateIsAMajorVersionBump: {
     id: 'fresco.VersionSection.thisUpdateIsAMajorVersionBump',
     defaultMessage:
       'This update is a major version bump. A new major version may change the interview experience, or require additional configuration before the app can continue to be used. It should NOT be done while collecting data. If you are actively collecting data, please wait until data collection is complete before updating.',
     description:
-      'Researcher-facing VersionSection: This update is a major version bump. A new major version may change the interview experience, or require additional conf',
+      'Body of the Major update warning under the App Version setting. Warns that a new major version may change the interview experience and should not be installed while collecting data.',
   },
   toUpgradeYourFrescoVersionYouWill: {
     id: 'fresco.VersionSection.toUpgradeYourFrescoVersionYouWill',
     defaultMessage:
       'To upgrade your Fresco version, you will need to sync your fork with the latest version of the Fresco repository. For more information, please refer to the <tag1> upgrade documentation. </tag1>',
     description:
-      'Researcher-facing VersionSection: To upgrade your Fresco version, you will need to sync your fork with the latest version of the Fresco repository. For mo',
+      'Instructions in the new-version alert under the App Version setting for upgrading the installation. The tag1 element is a link to the upgrade documentation, opened in a new tab; keep the tags around the link text.',
   },
   viewFullReleaseNotes: {
     id: 'fresco.VersionSection.viewFullReleaseNotes',
     defaultMessage: 'View Full Release Notes',
-    description: 'Researcher-facing VersionSection: View Full Release Notes',
+    description:
+      'Button at the bottom of the new-version alert under the App Version setting that opens the full release notes of the new Fresco release on GitHub in a new tab.',
   },
   checkingForUpdates: {
     id: 'fresco.VersionSection.checkingForUpdates',
     defaultMessage: 'Checking for updates...',
-    description: 'Researcher-facing VersionSection: Checking for updates...',
+    description:
+      'Loading text with a spinner under the App Version setting while the check for a newer Fresco release is in progress.',
   },
 });
 
@@ -218,7 +223,7 @@ export default async function VersionSection() {
             })}
           </AlertTitle>
           {updateType === 'major' && (
-            <Alert variant="destructive" className="my-4 ml-6 w-fit">
+            <Alert variant="destructive" className="my-4 ms-6 w-fit">
               <AlertTitle>
                 {intl.formatMessage(messages.majorUpdate)}
               </AlertTitle>
@@ -235,7 +240,7 @@ export default async function VersionSection() {
           <article className="text-text [&_a]:text-link my-4 max-w-full text-sm [&_h1]:text-sm [&_h1]:font-extrabold [&_h1]:tracking-widest [&_h1]:uppercase [&_h2]:text-sm [&_h2]:font-extrabold [&_h2]:tracking-widest [&_h2]:uppercase [&_h3]:text-sm [&_h3]:font-extrabold [&_h3]:tracking-widest [&_h3]:uppercase [&_h4]:text-sm [&_h4]:font-extrabold [&_h4]:tracking-widest [&_h4]:uppercase [&_h5]:text-sm [&_h5]:font-extrabold [&_h5]:tracking-widest [&_h5]:uppercase [&_h6]:text-sm [&_h6]:font-extrabold [&_h6]:tracking-widest [&_h6]:uppercase">
             <Markdown>{releaseNotes}</Markdown>
           </article>
-          <div className="text-right">
+          <div className="text-end">
             <a href={releaseUrl} target="_blank">
               <Button color="info">
                 {intl.formatMessage(messages.viewFullReleaseNotes)}

@@ -839,14 +839,20 @@ function TeamManagement(props: {
                 return (
                   <TableRow key={member.id}>
                     <TableCell>
-                      {name}
+                      {/* Names and addresses people typed take their own
+                          direction, on the interface side. */}
+                      <span dir="auto" className="text-match-parent">
+                        {name}
+                      </span>
                       {member.id === props.activeMemberId && (
                         <span className="ms-2 text-sm opacity-70">
                           {intl.formatMessage(messages.you)}
                         </span>
                       )}
                     </TableCell>
-                    <TableCell>{member.user.email}</TableCell>
+                    <TableCell dir="auto" className="text-match-parent">
+                      {member.user.email}
+                    </TableCell>
                     <TableCell>
                       {canEditRole ? (
                         <>
@@ -1050,7 +1056,9 @@ function TeamManagement(props: {
             <TableBody>
               {pendingInvitations.map((invitation) => (
                 <TableRow key={invitation.id}>
-                  <TableCell>{invitation.email}</TableCell>
+                  <TableCell dir="auto" className="text-match-parent">
+                    {invitation.email}
+                  </TableCell>
                   <TableCell>{teamRolesLabel(intl, invitation.role)}</TableCell>
                   <TableCell>{intl.formatDate(invitation.expiresAt)}</TableCell>
                   {canManage && (

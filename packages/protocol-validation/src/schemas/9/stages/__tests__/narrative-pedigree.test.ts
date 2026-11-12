@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
+import { familyPedigreeWordingIn } from '../../../../__tests__/suppliedWording.ts';
+import { labelCollisionIssues } from '../../../../localization/labelCollisions.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import { narrativePedigreeWords } from '../../__tests__/canvas-stage-words.ts';
 import { pedigreeNameField } from '../../__tests__/family-pedigree-text.ts';
@@ -10,7 +12,6 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../../schema.ts';
-import { familyPedigreeWordingIn } from '../../stage-wording/family-pedigree.ts';
 import { narrativePedigreeStage } from '../narrative-pedigree.ts';
 
 // Minimal valid FamilyPedigree stage (source). Its person type is its stage
@@ -347,13 +348,12 @@ describe('NarrativePedigree protocol-level cross-references', () => {
       ],
     });
 
+  // A protocol being written may hold two diseases that read the same (a
+  // change of its languages can leave them so); one handed over may not.
   const duplicateLabelIssues = (protocol: unknown) => {
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-    return result.success
-      ? []
-      : result.error.issues.filter((issue) =>
-          issue.message.startsWith('Diseases contain duplicate label'),
-        );
+    if (!result.success) throw result.error;
+    return labelCollisionIssues(result.data);
   };
 
   it('rejects two diseases sharing a label, ignoring case and surrounding space', () => {
@@ -426,7 +426,8 @@ describe('NarrativePedigree protocol-level cross-references', () => {
     );
     expect(issues).toEqual([
       expect.objectContaining({
-        message: 'Diseases contain duplicate label "Cancer" (fr)',
+        message:
+          'Diseases 1 and 2 have labels that read the same: "Cancer" and "Cancer" (fr). Each disease needs a label participants can tell apart.',
         path: ['stages', 1, 'diseases', 1, 'label'],
       }),
     ]);

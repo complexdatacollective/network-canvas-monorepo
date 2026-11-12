@@ -1,0 +1,82 @@
+// Discourse's notices (.alert: the site-wide ones such as "outgoing email has
+// been disabled", and those inside pages), after the shared Alert at its
+// compact density: a panel with the shared radius, its text and close button
+// centred on one line.
+//
+// The shared Alert fills the panel with the alert's colour under white text,
+// which falls short of 4.5:1 for info and success (the known failures in
+// tooling/tailwind/tests/theme-contrast.test.ts). Here the panel is a tint of
+// that colour under the text colour, legible in both modes; links take the
+// text colour too, underlined.
+
+.alert {
+  --nc-alert-color: var(--nc-text);
+
+  display: flex;
+  align-items: center;
+  gap: calc(var(--nc-spacing-base) * 3);
+  padding: calc(var(--nc-spacing-base) * 3) calc(var(--nc-spacing-base) * 4);
+  border: 0;
+  border-radius: var(--nc-radius-base);
+
+  &.alert-info {
+    --nc-alert-color: var(--nc-info);
+  }
+
+  &.alert-success {
+    --nc-alert-color: var(--nc-success);
+  }
+
+  &.alert-warning {
+    --nc-alert-color: var(--nc-warning);
+  }
+
+  &.alert-error {
+    --nc-alert-color: var(--nc-destructive);
+  }
+
+  // The close button, like the shared CloseButton: a round icon button the
+  // height of a small Button, sitting in the alert's flow at the end of the
+  // line rather than pinned to its corner. Its negative margins keep a
+  // one-line alert as tall as its text and padding.
+  > .close {
+    position: static;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--nc-spacing-base) * 10);
+    height: calc(var(--nc-spacing-base) * 10);
+    margin-block: calc(var(--nc-spacing-base) * -2);
+    margin-inline: auto calc(var(--nc-spacing-base) * -2);
+    padding: 0;
+    border-radius: 999px;
+    color: inherit;
+    font-size: var(--nc-text-base);
+
+    .d-icon {
+      color: inherit;
+    }
+
+    &:hover,
+    &:focus-visible {
+      background-color: color-mix(in oklab, currentColor 15%, transparent);
+    }
+  }
+}
+
+// Discourse colours each kind of notice with a two-class selector, so the
+// panel's colours are set at that weight.
+.alert,
+.alert:is(.alert-info, .alert-success, .alert-warning, .alert-error) {
+  background-color: color-mix(
+    in oklab,
+    var(--nc-alert-color) 16%,
+    var(--nc-surface)
+  );
+  color: var(--nc-text);
+
+  a {
+    color: inherit;
+    text-decoration: underline;
+  }
+}

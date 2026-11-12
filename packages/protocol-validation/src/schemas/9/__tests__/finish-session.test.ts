@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withInterfaceText } from '../../../__tests__/suppliedWording.ts';
 import {
   migrateProtocol,
   migrateProtocolWithSessions,
@@ -7,6 +8,7 @@ import {
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
   BUILT_IN_WORDING_MISSING,
+  FALLBACK_LANGUAGE_MISSING,
   FINISH_STAGE_TEXT_MISSING,
 } from '../../../validation/validate-protocol.ts';
 import {
@@ -14,7 +16,6 @@ import {
   createDefaultFinishSessionStage,
   DEFAULT_FINISH_SESSION_TEXT,
   defaultFinishSessionText,
-  hasDefaultFinishSessionText,
 } from '../finish-session-defaults.ts';
 import { findFinishStageTextProblems } from '../finish-stage-text.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
@@ -59,10 +60,11 @@ const information = (id: string) => ({
   items: [{ id: `${id}-text`, type: 'text', content: { en: 'Text' } }],
 });
 
-const protocolWith = (stages: unknown[]) => ({
-  ...createBaseProtocol(),
-  stages,
-});
+const protocolWith = (stages: unknown[]) =>
+  withInterfaceText({
+    ...createBaseProtocol(),
+    stages,
+  });
 
 const issues = (stages: unknown[]) => {
   const result = ProtocolSchemaV9.safeParse(protocolWith(stages));
@@ -210,7 +212,7 @@ describe('timeline structure', () => {
 describe('v8 to v9 migration', () => {
   const schema8 = () => asSchema8Protocol(completeProtocol());
 
-  it('appends one completed finish stage with the supplied English text, under the default language', () => {
+  it('appends one completed finish stage with the supplied English text, under the default language, and none of the wording Network Canvas supplies', () => {
     const migrated = migrateProtocol(schema8(), 9);
     const { defaultLocale } = migrated.localization;
     expect(migrated.stages.at(-1)).toEqual({
@@ -222,7 +224,6 @@ describe('v8 to v9 migration', () => {
       finishedContent: {
         [defaultLocale]: DEFAULT_FINISH_SESSION_TEXT.en.finishedContent,
       },
-      ...englishSettings(defaultLocale),
       outcome: 'completed',
     });
     expect(
@@ -385,8 +386,7 @@ describe('supplied finish text', () => {
       label: { en: DEFAULT_FINISH_SESSION_TEXT.en.label },
       content: { en: DEFAULT_FINISH_SESSION_TEXT.en.content },
       finishedContent: { en: DEFAULT_FINISH_SESSION_TEXT.en.finishedContent },
-      // Network Canvas words the settings in no Japanese.
-      ...englishSettings('en'),
+      // The settings Network Canvas words are not held: the interview shows them.
       outcome: 'completed',
     });
   });
@@ -404,11 +404,6 @@ describe('supplied finish text', () => {
       label: { es: DEFAULT_FINISH_SESSION_TEXT.es.label },
       content: { es: DEFAULT_FINISH_SESSION_TEXT.es.content },
       finishedContent: { es: DEFAULT_FINISH_SESSION_TEXT.es.finishedContent },
-      finishLabel: { es: 'Finalizar' },
-      finishConfirmation: {
-        es: expect.any(String),
-      },
-      finishFailed: { es: expect.any(String) },
       outcome: 'completed',
     });
   });
@@ -420,11 +415,13 @@ describe('supplied finish text', () => {
       localization: { defaultLocale: 'en', locales },
     });
     expect(
-      ProtocolSchemaV9.safeParse({
-        ...createBaseProtocol(),
-        localization: { defaultLocale: 'en', locales },
-        stages: [stage],
-      }).success,
+      ProtocolSchemaV9.safeParse(
+        withInterfaceText({
+          ...createBaseProtocol(),
+          localization: { defaultLocale: 'en', locales },
+          stages: [stage],
+        }),
+      ).success,
     ).toBe(true);
   });
 
@@ -446,8 +443,7 @@ describe('supplied finish text', () => {
   };
 
   describe('adding a language', () => {
-    it('fills in the new language while the default language text is still the supplied text', () => {
-      expect(hasDefaultFinishSessionText(stage, 'en')).toBe(true);
+    it('fills in the new language', () => {
       expect(afterChange(stage, addingFrench)).toEqual({
         ...stage,
         label: { ...stage.label, fr: DEFAULT_FINISH_SESSION_TEXT.fr.label },
@@ -479,7 +475,6 @@ describe('supplied finish text', () => {
         id: 'end',
         localization: mexican,
       });
-      expect(hasDefaultFinishSessionText(unwritten, 'es-MX')).toBe(true);
       expect(
         afterChange(unwritten, {
           before: mexican,
@@ -488,56 +483,55 @@ describe('supplied finish text', () => {
       ).toEqual({ es: DEFAULT_FINISH_SESSION_TEXT.es.content });
     });
 
-    it('leaves the new language untranslated once the researcher has changed any of the text', () => {
-      const edited = { ...stage, content: { en: 'Thanks for taking part.' } };
-      expect(hasDefaultFinishSessionText(edited, 'en')).toBe(false);
-      expect(
-        defaultFinishSessionTextAfterLanguageChange(edited, addingFrench),
-      ).toEqual({});
-    });
-
-    it('still fills in the text when only the stage was renamed, leaving the new name untranslated', () => {
-      const renamed = { ...stage, label: { en: 'End' } };
-      expect(hasDefaultFinishSessionText(renamed, 'en')).toBe(true);
-      expect(afterChange(renamed, addingFrench)).toEqual({
-        ...renamed,
+    it('fills in the new language even where the researcher has changed the text, and renamed the stage, in the default language', () => {
+      const edited = {
+        ...stage,
+        label: { en: 'End' },
+        content: { en: 'Thanks for taking part.' },
+        finishedContent: { en: 'All done.' },
+      };
+      expect(afterChange(edited, addingFrench)).toEqual({
+        ...edited,
+        label: { en: 'End', fr: DEFAULT_FINISH_SESSION_TEXT.fr.label },
         content: {
-          ...stage.content,
+          en: 'Thanks for taking part.',
           fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
         },
         finishedContent: {
-          ...stage.finishedContent,
+          en: 'All done.',
           fr: DEFAULT_FINISH_SESSION_TEXT.fr.finishedContent,
         },
       });
     });
 
-    it('decides an automatic stage by its finished screen alone', () => {
-      // Its closing screen is never shown, so it may be empty, or text the
-      // researcher wrote before switching the mode.
+    it('fills in every text an automatic stage holds, and leaves out a closing text it does not hold', () => {
       const automatic = {
         ...stage,
         mode: 'automatic' as const,
         content: { en: 'Written before the mode changed.' },
       };
-      expect(hasDefaultFinishSessionText(automatic, 'en')).toBe(true);
-      expect(afterChange(automatic, addingFrench)).toEqual({
-        ...automatic,
-        label: { ...stage.label, fr: DEFAULT_FINISH_SESSION_TEXT.fr.label },
-        finishedContent: {
-          ...stage.finishedContent,
-          fr: DEFAULT_FINISH_SESSION_TEXT.fr.finishedContent,
-        },
+      expect(afterChange(automatic, addingFrench).content).toEqual({
+        en: 'Written before the mode changed.',
+        fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
       });
 
-      const emptyClosing = { ...automatic, content: {} };
-      expect(hasDefaultFinishSessionText(emptyClosing, 'en')).toBe(true);
+      const { content: _cleared, ...withoutClosing } = automatic;
+      expect(
+        defaultFinishSessionTextAfterLanguageChange(
+          withoutClosing,
+          addingFrench,
+        ),
+      ).not.toHaveProperty('content');
+    });
 
-      const editedFinished = {
-        ...automatic,
-        finishedContent: { en: 'All done.' },
-      };
-      expect(hasDefaultFinishSessionText(editedFinished, 'en')).toBe(false);
+    it('gives a language the protocol already had nothing, as when the default changes', () => {
+      const both = { defaultLocale: 'en', locales: ['en', 'fr'] };
+      expect(
+        afterChange(stage, {
+          before: both,
+          after: { defaultLocale: 'fr', locales: ['en', 'fr'] },
+        }),
+      ).toEqual(stage);
     });
 
     it('leaves a language with no supplied text untranslated', () => {
@@ -591,18 +585,20 @@ describe('supplied finish text', () => {
 
 describe('closing text missing in the default language', () => {
   const japanese = { defaultLocale: 'ja', locales: ['ja'] };
-  // As Architect creates it: nothing in the codebook yet.
-  const japaneseProtocol = () => ({
-    ...createBaseProtocol(),
-    codebook: { node: {}, edge: {}, ego: {} },
-    localization: japanese,
-    stages: [
-      createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
-    ],
-  });
+  // As Architect creates it: nothing in the codebook yet, and the interface
+  // text it uses, which has no wording in Japanese either.
+  const japaneseProtocol = () =>
+    withInterfaceText({
+      ...createBaseProtocol(),
+      codebook: { node: {}, edge: {}, ego: {} },
+      localization: japanese,
+      stages: [
+        createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+      ],
+    });
 
-  // Network Canvas writes its wording only in a language it has it in, so
-  // the settings are left for the researcher to write too.
+  // Network Canvas has no wording in this language, so the settings are
+  // left for the researcher to write (see the built-in wording problems).
   it('creates the stage with no text, rather than text in another language', () => {
     expect(
       createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
@@ -613,9 +609,6 @@ describe('closing text missing in the default language', () => {
       label: {},
       content: {},
       finishedContent: {},
-      finishLabel: {},
-      finishConfirmation: {},
-      finishFailed: {},
       outcome: 'completed',
     });
   });
@@ -636,7 +629,20 @@ describe('closing text missing in the default language', () => {
       message:
         "Network Canvas has no built-in wording in the protocol's default language (ja), so this text must be written in it, or a language Network Canvas has wording in made the default.",
     });
-    expect(result.error?.issues).toEqual([
+    const found = result.error?.issues ?? [];
+    // The interface text has no Japanese wording either: each entry is
+    // built-in wording to write, like the finish stage's settings.
+    const interfaceTextIssues = found.filter(
+      ({ path }) => path[0] === 'interfaceText',
+    );
+    expect(interfaceTextIssues.length).toBeGreaterThan(0);
+    expect(
+      interfaceTextIssues.every(
+        ({ code, path }) =>
+          code === BUILT_IN_WORDING_MISSING && path.at(-1) === 'ja',
+      ),
+    ).toBe(true);
+    expect(found.filter(({ path }) => path[0] !== 'interfaceText')).toEqual([
       {
         code: FINISH_STAGE_TEXT_MISSING,
         path: ['stages', 0, 'content', 'ja'],
@@ -652,6 +658,12 @@ describe('closing text missing in the default language', () => {
       builtIn('finishLabel'),
       builtIn('finishConfirmation'),
       builtIn('finishFailed'),
+      {
+        code: FALLBACK_LANGUAGE_MISSING,
+        path: ['localization', 'fallbackLocale'],
+        message:
+          "Network Canvas has no wording of its own in the protocol's default language (ja), so the protocol must name a fallback language, or a language Network Canvas has wording in made the default.",
+      },
     ]);
   });
 

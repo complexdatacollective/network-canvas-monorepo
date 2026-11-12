@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
+import { interfaceTextWithUpdates } from '@codaco/interview/supplied-wording';
 import {
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
@@ -8,6 +9,7 @@ import {
   stageSchema,
   type CurrentProtocol,
   type EntityDefinition,
+  type InterfaceTextUpdate,
 } from '@codaco/protocol-validation';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -138,10 +140,44 @@ async function writeEntityDefinition(
   return { status: 'written' };
 }
 
+/** The protocol's shared words, as a stage's save writes them. */
+type StageInterfaceText = NonNullable<CurrentProtocol['interfaceText']>;
+
+/**
+ * The protocol's shared words with the ones a saved stage brings in written
+ * over them, as the settings would hold them, or why the settings could not:
+ * what a stage's submit or create carries as `interfaceText`.
+ */
+export function stageInterfaceText(
+  store: ArchitectStore,
+  updates: readonly InterfaceTextUpdate[],
+):
+  | Readonly<{ status: 'written'; interfaceText: StageInterfaceText }>
+  | Readonly<{ status: 'refused'; issues: SectionIssue[] }> {
+  const parsed = SettingsSectionSchema.shape.interfaceText.safeParse(
+    interfaceTextWithUpdates(
+      getProtocol(store.getState())?.interfaceText,
+      updates,
+    ),
+  );
+  if (!parsed.success) {
+    const refused = refuseParse(parsed.error);
+    return {
+      status: 'refused',
+      issues: refused.issues.map((issue) => ({
+        ...issue,
+        path: ['interfaceText', ...issue.path],
+      })),
+    };
+  }
+  return { status: 'written', interfaceText: parsed.data ?? {} };
+}
+
 function submitStage(
   store: ArchitectStore,
   stageId: string,
   document: SectionDoc,
+  interfaceText: StageInterfaceText | undefined,
 ): SectionWrite {
   const parsed = stageSchema.safeParse(document);
   if (!parsed.success) return refuseParse(parsed.error);
@@ -162,7 +198,13 @@ function submitStage(
       ['type'],
     );
   }
-  store.dispatch(commitStage({ stageId, stage: parsed.data }));
+  store.dispatch(
+    commitStage({
+      stageId,
+      stage: parsed.data,
+      ...(interfaceText === undefined ? {} : { interfaceText }),
+    }),
+  );
   return { status: 'written' };
 }
 
@@ -246,15 +288,19 @@ function submitAssets(
   return { status: 'written' };
 }
 
-/** Dispatches the reducer path that writes one section whole. */
+/**
+ * Dispatches the reducer path that writes one section whole, with the shared
+ * words a stage brings in (`stageInterfaceText`) in the same dispatch.
+ */
 export function submitSection(
   store: ArchitectStore,
   ref: SectionRef,
   document: SectionDoc,
+  interfaceText?: StageInterfaceText,
 ): SectionWrite | Promise<SectionWrite> {
   switch (ref.kind) {
     case 'stage':
-      return submitStage(store, ref.stageId, document);
+      return submitStage(store, ref.stageId, document, interfaceText);
     case 'codebookNode': {
       const parsed = NodeDefinitionSchema.safeParse(document);
       if (!parsed.success) return refuseParse(parsed.error);
@@ -345,6 +391,7 @@ export async function createSection(
   kind: CreatableSectionKind,
   document: SectionDoc,
   position: number | undefined,
+  interfaceText?: StageInterfaceText,
 ): Promise<SectionCreation> {
   if (kind === 'stage') {
     const stageId = uuid();
@@ -357,6 +404,7 @@ export async function createSection(
         stageId: null,
         stage: parsed.data,
         ...(position === undefined ? {} : { index: position }),
+        ...(interfaceText === undefined ? {} : { interfaceText }),
       }),
     );
     return { status: 'created', sectionId: target };

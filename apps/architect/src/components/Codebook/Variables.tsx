@@ -46,33 +46,39 @@ const messages = defineMessages({
   deleteAttribute: {
     id: 'architect.codebook.variables.deleteAttribute',
     defaultMessage: 'Delete attribute',
-    description: 'The title text in components / Codebook / Variables.',
+    description:
+      'Title of the dialog, and label of its destructive confirm button, for deleting a codebook variable (attribute) from a node type, edge type or ego. Delete is a verb.',
   },
   areYouSureYouWantTo: {
     id: 'architect.codebook.variables.areYouSureYouWantTo',
     defaultMessage:
       'Are you sure you want to delete the attribute “{name}”? You can restore it with Undo while this protocol remains open.',
-    description: 'The description text in components / Codebook / Variables.',
+    description:
+      'Body of the confirmation dialog for deleting a codebook variable (attribute). name is the variable name, shown in quotation marks. Notes that Undo can restore it while the protocol stays open.',
   },
   name: {
     id: 'architect.codebook.variables.name',
     defaultMessage: 'Name',
-    description: 'The title text in components / Codebook / Variables.',
+    description:
+      'Column header of the codebook variables table, above the variable names. Clicking it sorts the table.',
   },
   usedIn: {
     id: 'architect.codebook.variables.usedIn',
     defaultMessage: 'Used In',
-    description: 'The title text in components / Codebook / Variables.',
+    description:
+      'Column header of the codebook variables table, above the stages that use each variable. Clicking it sorts the table.',
   },
   actions: {
     id: 'architect.codebook.variables.actions',
     defaultMessage: 'Actions',
-    description: 'Visible text in components / Codebook / Variables.',
+    description:
+      'Accessible name of the last column of the codebook variables table, which holds each row delete button; read only by screen readers, not shown visually.',
   },
   noAttributes: {
     id: 'architect.codebook.variables.noAttributes',
     defaultMessage: 'No attributes.',
-    description: 'The emptyText text in components / Codebook / Variables.',
+    description:
+      'Message shown in place of the rows of the codebook variables table when the node type, edge type or ego has no variables (attributes).',
   },
 });
 

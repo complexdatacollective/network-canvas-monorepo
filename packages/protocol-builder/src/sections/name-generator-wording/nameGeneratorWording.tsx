@@ -35,7 +35,7 @@ export const nameGeneratorWordingMessages = defineMessages({
   minNoticeHint: {
     id: 'protocolBuilder.nameGeneratorWording.minNoticeHint',
     defaultMessage:
-      'Shown when the participant tries to continue before adding as many nodes as this stage asks for.',
+      'Shown when the participant tries to move on from the last prompt before adding the minimum number of nodes this stage sets.',
     description:
       'Hint under the setting holding the minimum not reached message, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for.',
   },
@@ -74,7 +74,7 @@ export const nameGeneratorWordingMessages = defineMessages({
   allAddedHint: {
     id: 'protocolBuilder.nameGeneratorWording.allAddedHint',
     defaultMessage:
-      'Shown in the roster list once everything in it has been added.',
+      'Shown in the roster list once every entry in it has been added, or when the roster is empty.',
     description:
       'Hint under the setting holding the everything added message, in the Customize built-in wording section of a Name Generator stage editor. It tells the researcher where the participant sees this text and what it is for.',
   },
@@ -87,7 +87,7 @@ export const nameGeneratorWordingMessages = defineMessages({
   unnamedLabelHint: {
     id: 'protocolBuilder.nameGeneratorWording.unnamedLabelHint',
     defaultMessage:
-      'Label for a roster entry that has no name. The number tells unnamed entries apart.',
+      'Label for a roster entry that has no name or other details to show. The number tells unnamed entries apart.',
     description:
       'Hint under the setting holding the unnamed label, in the Customize built-in wording section of a Name Generator for Roster Data stage editor. It tells the researcher where the participant sees this text and what it is for.',
   },

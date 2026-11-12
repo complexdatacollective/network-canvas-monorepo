@@ -27,37 +27,44 @@ const utilityMessages = defineMessages({
   returnToStartScreen: {
     id: 'architect.utility.hooks.useProtocolNavGuard.returnToStartScreen',
     defaultMessage: 'Return to Start Screen',
-    description: 'The label text in hooks / useProtocolNavGuard.',
+    description:
+      'Button in the confirmation dialog for leaving the protocol editor; leaves the protocol and returns to the start screen.',
   },
   returnAndDownloadNow: {
     id: 'architect.utility.hooks.useProtocolNavGuard.returnAndDownloadNow',
     defaultMessage: 'Return and download now',
-    description: 'The label text in hooks / useProtocolNavGuard.',
+    description:
+      'Button in the confirmation dialog for leaving the protocol editor; first downloads the protocol file, then returns to the start screen.',
   },
   discardUnsavedChanges: {
     id: 'architect.utility.hooks.useProtocolNavGuard.discardUnsavedChanges',
     defaultMessage: 'Discard unsaved changes?',
-    description: 'The title text in hooks / useProtocolNavGuard.',
+    description:
+      'Title of the warning dialog shown when the researcher leaves the protocol editor (or an open editor within it) while there are unsaved changes.',
   },
   discardChangesAndReturn: {
     id: 'architect.utility.hooks.useProtocolNavGuard.discardChangesAndReturn',
     defaultMessage: 'Discard Changes and Return',
-    description: 'The label text in hooks / useProtocolNavGuard.',
+    description:
+      'Button in the warning dialog for returning to the start screen; throws away the unsaved changes.',
   },
   returnToStartScreenb2364: {
     id: 'architect.utility.hooks.useProtocolNavGuard.returnToStartScreenb2364',
     defaultMessage: 'Return to start screen?',
-    description: 'The title text in hooks / useProtocolNavGuard.',
+    description:
+      'Title of the confirmation dialog shown when the researcher leaves the protocol editor to return to the start screen and nothing is unsaved.',
   },
   discardUnsavedStageChanges: {
     id: 'architect.utility.hooks.useProtocolNavGuard.discardUnsavedStageChanges',
     defaultMessage: 'Discard unsaved stage changes?',
-    description: 'The title text in hooks / useProtocolNavGuard.',
+    description:
+      'Title of the warning dialog shown when the researcher leaves the stage editor while the stage has unsaved changes.',
   },
   discardChangesAndLeave: {
     id: 'architect.utility.hooks.useProtocolNavGuard.discardChangesAndLeave',
     defaultMessage: 'Discard Changes and Leave',
-    description: 'The label text in hooks / useProtocolNavGuard.',
+    description:
+      'Button in the warning dialog for leaving an editor (stage editor, or the previous version of Architect); throws away the unsaved changes.',
   },
 });
 const leaveDescriptions: Record<
@@ -69,28 +76,28 @@ const leaveDescriptions: Record<
     defaultMessage:
       "Your work is saved automatically on this device, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the confirmation dialog shown when the researcher returns to the start screen from the protocol editor with nothing unsaved. Used when the protocol is saved automatically on this device.',
   },
   'open-elsewhere': {
     id: 'architect.constants.hooks.useprotocolnavguard.leavedescriptions.openElsewhere',
     defaultMessage:
       'This protocol is open in another tab, which holds the saved copy. You have been viewing it here in read-only mode, so returning to the start screen will not change your protocol.',
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the confirmation dialog shown when the researcher returns to the start screen from the protocol editor with nothing unsaved. Used when the protocol is open read-only in this tab because another tab holds the saved copy.',
   },
   'reclaim-blocked': {
     id: 'architect.constants.hooks.useprotocolnavguard.leavedescriptions.reclaimBlocked',
     defaultMessage:
       'Nothing has been saved in this tab since the protocol was opened in another one. Returning to the start screen now will leave your protocol exactly as that tab saved it.',
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the confirmation dialog shown when the researcher returns to the start screen from the protocol editor with nothing unsaved. Used when another tab has taken over the protocol since this tab opened it, and this tab cannot save over it.',
   },
   'storage-unavailable': {
     id: 'architect.constants.hooks.useprotocolnavguard.leavedescriptions.storageUnavailable',
     defaultMessage:
       'This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when you return to the start screen.',
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the confirmation dialog shown when the researcher returns to the start screen from the protocol editor with nothing unsaved. Used when the protocol could not be saved on this device and exists only in this tab.',
   },
 });
 const discardDescriptions: Record<
@@ -102,28 +109,28 @@ const discardDescriptions: Record<
     defaultMessage:
       'Changes you have made — including anything in an editor you still have open — have not been saved to the protocol. If you return to the start screen now, those changes will be discarded and the last saved version of the protocol will remain available.',
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher returns to the start screen from the protocol editor with unsaved changes that would be discarded. Used when the protocol is saved automatically on this device.',
   },
   'open-elsewhere': {
     id: 'architect.constants.hooks.useprotocolnavguard.discarddescriptions.openElsewhere',
     defaultMessage:
       'Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you return to the start screen now, those changes will be discarded.',
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher returns to the start screen from the protocol editor with unsaved changes that would be discarded. Used when the protocol is open read-only in this tab because another tab holds the saved copy.',
   },
   'reclaim-blocked': {
     id: 'architect.constants.hooks.useprotocolnavguard.discarddescriptions.reclaimBlocked',
     defaultMessage:
       'Changes you have made — including anything in an editor you still have open — cannot be saved over the version the other tab saved. If you return to the start screen now, those changes will be discarded and that saved version will remain available.',
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher returns to the start screen from the protocol editor with unsaved changes that would be discarded. Used when another tab has taken over the protocol since this tab opened it, and this tab cannot save over it.',
   },
   'storage-unavailable': {
     id: 'architect.constants.hooks.useprotocolnavguard.discarddescriptions.storageUnavailable',
     defaultMessage:
       'This protocol could not be saved on this device, so nothing you have done here has been kept — including anything in an editor you still have open. Returning to the start screen now discards all of it.',
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher returns to the start screen from the protocol editor with unsaved changes that would be discarded. Used when the protocol could not be saved on this device and exists only in this tab.',
   },
 });
 // The same prompt, when leaving takes the researcher out of this app to the
@@ -154,28 +161,28 @@ const legacyLeaveDescriptions: Record<
     defaultMessage:
       'This protocol is saved automatically on this device, so you can come back to it at any time. Architect {version} will open in this tab.',
     description:
-      'Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+      'Body of the confirmation dialog shown when the researcher leaves the protocol editor for the previous version of Architect with nothing unsaved. version is that version number (for example 8). Used when the protocol is saved automatically on this device.',
   },
   'open-elsewhere': {
     id: 'architect.constants.hooks.useprotocolnavguard.legacyleavedescriptions.openElsewhere',
     defaultMessage:
       'This protocol is open in another tab, which holds the saved copy. You have been viewing it here in read-only mode, so leaving for Architect {version} will not change your protocol.',
     description:
-      'Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+      'Body of the confirmation dialog shown when the researcher leaves the protocol editor for the previous version of Architect with nothing unsaved. version is that version number (for example 8). Used when the protocol is open read-only in this tab because another tab holds the saved copy.',
   },
   'reclaim-blocked': {
     id: 'architect.constants.hooks.useprotocolnavguard.legacyleavedescriptions.reclaimBlocked',
     defaultMessage:
       'Nothing has been saved in this tab since the protocol was opened in another one. Leaving for Architect {version} now will leave your protocol exactly as that tab saved it.',
     description:
-      'Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+      'Body of the confirmation dialog shown when the researcher leaves the protocol editor for the previous version of Architect with nothing unsaved. version is that version number (for example 8). Used when another tab has taken over the protocol since this tab opened it, and this tab cannot save over it.',
   },
   'storage-unavailable': {
     id: 'architect.constants.hooks.useprotocolnavguard.legacyleavedescriptions.storageUnavailable',
     defaultMessage:
       'This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when you leave for Architect {version}.',
     description:
-      'Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+      'Body of the confirmation dialog shown when the researcher leaves the protocol editor for the previous version of Architect with nothing unsaved. version is that version number (for example 8). Used when the protocol could not be saved on this device and exists only in this tab.',
   },
 });
 const legacyDiscardDescriptions: Record<
@@ -187,28 +194,28 @@ const legacyDiscardDescriptions: Record<
     defaultMessage:
       'Changes you have made — including anything in an editor you still have open — have not been saved to the protocol. If you leave for Architect {version} now, those changes will be discarded and the last saved version of the protocol will remain available.',
     description:
-      'Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher leaves the protocol editor for the previous version of Architect with unsaved changes that would be discarded. version is that version number (for example 8). Used when the protocol is saved automatically on this device.',
   },
   'open-elsewhere': {
     id: 'architect.constants.hooks.useprotocolnavguard.legacydiscarddescriptions.openElsewhere',
     defaultMessage:
       'Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you leave for Architect {version} now, those changes will be discarded.',
     description:
-      'Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher leaves the protocol editor for the previous version of Architect with unsaved changes that would be discarded. version is that version number (for example 8). Used when the protocol is open read-only in this tab because another tab holds the saved copy.',
   },
   'reclaim-blocked': {
     id: 'architect.constants.hooks.useprotocolnavguard.legacydiscarddescriptions.reclaimBlocked',
     defaultMessage:
       'Changes you have made — including anything in an editor you still have open — cannot be saved over the version the other tab saved. If you leave for Architect {version} now, those changes will be discarded and that saved version will remain available.',
     description:
-      'Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher leaves the protocol editor for the previous version of Architect with unsaved changes that would be discarded. version is that version number (for example 8). Used when another tab has taken over the protocol since this tab opened it, and this tab cannot save over it.',
   },
   'storage-unavailable': {
     id: 'architect.constants.hooks.useprotocolnavguard.legacydiscarddescriptions.storageUnavailable',
     defaultMessage:
       'This protocol could not be saved on this device, so nothing you have done here has been kept — including anything in an editor you still have open. Leaving for Architect {version} now discards all of it.',
     description:
-      'Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher leaves the protocol editor for the previous version of Architect with unsaved changes that would be discarded. version is that version number (for example 8). Used when the protocol could not be saved on this device and exists only in this tab.',
   },
 });
 
@@ -221,28 +228,28 @@ export const stageDiscardDescriptions: Record<
     defaultMessage:
       'Changes made in this stage have not been saved to the protocol. If you leave the stage editor now, those changes will be discarded and the last saved version of the stage will remain.',
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher cancels or leaves the stage editor with unsaved changes to the stage. Used when the protocol is saved automatically on this device.',
   },
   'open-elsewhere': {
     id: 'architect.constants.hooks.useprotocolnavguard.stagediscarddescriptions.openElsewhere',
     defaultMessage:
       'Changes made in this stage cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you leave the stage editor now, those changes will be discarded.',
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher cancels or leaves the stage editor with unsaved changes to the stage. Used when the protocol is open read-only in this tab because another tab holds the saved copy.',
   },
   'reclaim-blocked': {
     id: 'architect.constants.hooks.useprotocolnavguard.stagediscarddescriptions.reclaimBlocked',
     defaultMessage:
       'Changes made in this stage cannot be saved over the version the other tab saved. If you leave the stage editor now, those changes will be discarded, along with any attributes you added or edited while it was open, and that saved version will be loaded here.',
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher cancels or leaves the stage editor with unsaved changes to the stage. Used when another tab has taken over the protocol since this tab opened it, and this tab cannot save over it.',
   },
   'storage-unavailable': {
     id: 'architect.constants.hooks.useprotocolnavguard.stagediscarddescriptions.storageUnavailable',
     defaultMessage:
       'This protocol could not be saved on this device, so nothing in this editor has been kept — including the changes made in this stage. Leaving the stage editor now discards them.',
     description:
-      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher cancels or leaves the stage editor with unsaved changes to the stage. Used when the protocol could not be saved on this device and exists only in this tab.',
   },
 });
 
@@ -425,7 +432,7 @@ const NESTED_DRAFT_DISCARD_DESCRIPTION = defineMessages({
     defaultMessage:
       'You have unsaved changes in an editor that is still open. If you leave now, those changes will be discarded and the rest of your protocol will be left as it is.',
     description:
-      'Researcher-facing status or validation message. Context: hooks/useProtocolNavGuard.ts.',
+      'Body of the warning dialog shown when the researcher navigates away while an editor dialog (for example the attribute editor in the codebook) still has unsaved changes. The rest of the protocol is not affected.',
   },
 }).message;
 

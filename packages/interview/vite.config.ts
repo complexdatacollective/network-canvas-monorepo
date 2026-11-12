@@ -197,7 +197,9 @@ export default defineConfig({
     interfaceImagesNoInlinePlugin(),
     inlineWorkerPlugin(),
     isLibraryBuild && clientDirective.plugin,
-    react(),
+    // Storybook runs the React Compiler as Fresco does (see vitest.config.ts);
+    // the published build stays uncompiled, for each host to compile its way.
+    react({ compiler: !isLibraryBuild }),
     isLibraryBuild &&
       dts({
         entryRoot: 'src',
@@ -237,7 +239,9 @@ export default defineConfig({
       // evaluating any module-level `createContext`. The
       // `protocol-schema-version` and `protocol-payload` entries are their own
       // bundles so a host's Node-loaded code can import just that constant or
-      // the payload converter.
+      // the payload converter. `supplied-wording` is the wording Network
+      // Canvas supplies for a protocol, bound to the interview's catalogues,
+      // for the tools that write and list a protocol's text.
       entry: {
         'index': resolve(__dirname, 'src/index.ts'),
         'contract': resolve(__dirname, 'src/contract/index.ts'),
@@ -250,6 +254,10 @@ export default defineConfig({
           'src/contract/protocolPayload.ts',
         ),
         'analytics-events': resolve(__dirname, 'src/analytics/events.ts'),
+        'supplied-wording': resolve(
+          __dirname,
+          'src/wording/suppliedWording.ts',
+        ),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,

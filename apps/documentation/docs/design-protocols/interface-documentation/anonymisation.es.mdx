@@ -1,0 +1,111 @@
+---
+title: Anonimización
+navOrder: 21
+translatedFrom: ff6380cc419ea6fdb09f0bc57c1890710d7876bb
+---
+
+<InterfaceSummary type="Anonymisation">
+
+<InterfaceMeta type="Utilidad" creates="Una frase de contraseña que cifra los atributos que elijas" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+Esta interfaz permite cifrar los datos de cada participante en su propio dispositivo, de forma que nadie más que la persona participante, ni siquiera el equipo de investigación, pueda acceder a ellos.
+
+Si añades esta interfaz a tu protocolo, podrás seleccionar qué atributos de nodo se cifran. Al llegar a esta etapa, se pide a cada participante que elija una frase de contraseña y que la introduzca una segunda vez para confirmarla. La frase de contraseña es lo que protege sus datos. Todos los atributos que marques como cifrados se cifran durante las entrevistas.
+
+Escribe lo que lee cada participante antes de elegir su frase de contraseña en la sección **Explicación de la tarea** del editor de la etapa. Es un único texto. Para dar un título a la pantalla, empieza el texto con un encabezado, usando **Encabezado 1** en la barra de herramientas.
+
+En la sección **Atributos cifrados** del editor de la etapa, cada tipo de nodo de tu protocolo tiene su propio interruptor. Activa el interruptor de un tipo y marca los atributos de texto de ese tipo que se deban cifrar. Solo se pueden cifrar los atributos de texto, y no se ofrecen los atributos de vínculo. Al desactivar el interruptor de un tipo, todos los atributos de ese tipo dejan de cifrarse a la vez; Architect te pide confirmación antes de desmarcarlos.
+
+### Atributos cifrados en la lógica de salto, los filtros y la ordenación {#encrypted-attributes-in-skip-logic-filters-and-sorting}
+
+La lógica de salto y los filtros se evalúan sin la frase de contraseña de la persona participante, así que no pueden leer las respuestas a un atributo cifrado. Esto significa que una regla no puede comparar esas respuestas, por ejemplo, para comprobar si un nombre es «Alice». Una regla sí puede comprobar si un atributo cifrado tiene alguna respuesta. Cuando creas una regla sobre un atributo cifrado, Architect solo ofrece **existe** y **no existe**.
+
+Architect no te permite cifrar un atributo mientras una regla compare sus respuestas. Primero elimina esa regla, o cámbiala para que solo compruebe si el atributo tiene respuesta.
+
+Hay una excepción. Un panel lateral que muestra personas de un archivo de datos externo sí puede comparar las respuestas de un atributo cifrado, porque los datos de ese archivo no están cifrados.
+
+Si actualizas un protocolo del esquema 8 que cifra atributos, se elimina cualquier regla de lógica de salto o de filtrado que comparara las respuestas a uno de ellos. En el esquema 8, estas reglas solo comparaban el texto cifrado, nunca la respuesta en sí. Las reglas que solo comprueban si un atributo cifrado tiene respuesta siguen funcionando, así que se conservan.
+
+La lógica de salto que se queda sin reglas se elimina, así que su etapa pasa a mostrarse siempre. Si una etapa estaba configurada para mostrarse solo cuando se cumpliera una regla eliminada, puede que nunca hubiera aparecido, así que ahora puede aparecer por primera vez. Un filtro que se queda sin reglas también se elimina, así que deja de limitar lo que muestra su etapa o su panel lateral.
+
+Revisa las etapas que usaban las reglas eliminadas, porque puede que las reglas que quedan se cumplan de otra manera. Si tenían que cumplirse todas las reglas, las que quedan se cumplen al menos con la misma frecuencia que antes. Si bastaba con que se cumpliera una cualquiera, se cumplen como mucho con la misma frecuencia.
+
+Aun así, puedes ordenar una lista por un atributo cifrado, como un nombre. Una vez que la persona participante ha introducido su frase de contraseña, la lista se ordena según sus respuestas. Hasta entonces, o si una respuesta no se puede leer, la lista no tiene en cuenta esa regla de ordenación, de modo que su orden nunca da pistas sobre lo que dicen las respuestas.
+
+### Longitud de la frase de contraseña {#passphrase-length}
+
+De forma predeterminada, cada participante debe elegir una frase de contraseña de al menos 8 caracteres.
+
+Para fijar tus propios límites, usa la sección **Validación de la frase de contraseña** del editor de la etapa. Activa **Longitud mínima del texto** para fijar la frase de contraseña más corta que vas a permitir, y **Longitud máxima del texto** para fijar la más larga. Un mínimo que fijes siempre sustituye al valor predeterminado de 8, aunque el tuyo sea menor. El mínimo no puede ser mayor que el máximo.
+
+Si fijas un máximo menor que 8 y ningún mínimo, el mínimo predeterminado se reduce hasta tu máximo, para que quienes participan sigan pudiendo elegir una frase de contraseña. El editor de la etapa muestra el mínimo que se aplica.
+
+Las reglas de longitud se aplican cuando una persona participante elige por primera vez su frase de contraseña, que es también cuando la confirma introduciéndola una segunda vez. Cuando vuelve a la entrevista más adelante, solo tiene que introducir de nuevo la misma frase de contraseña.
+
+### Redacción de la frase de contraseña {#passphrase-wording}
+
+Las palabras que acompañan a la frase de contraseña forman parte del [texto de entrevista](/es/design-protocols/translating-your-protocol#interview-text) de tu protocolo, no de esta etapa, porque cualquier etapa posterior que muestre una respuesta cifrada también pide la frase de contraseña. Incluyen las etiquetas de los campos de la frase de contraseña y de su confirmación, la explicación de lo que protege la frase de contraseña, el mensaje que se muestra cuando una frase de contraseña no coincide con la elegida antes, el mensaje que se muestra cuando se acepta y los avisos que se muestran en lugar de las respuestas que están bloqueadas o no se pueden mostrar. Network Canvas las aporta en cada idioma para el que tiene redacción. Tu protocolo solo las contiene mientras cifra un atributo o incluye una etapa de anonimización, y puedes cambiar su redacción y traducirlas en la tabla de traducciones.
+
+### Cómo se protegen las respuestas {#how-answers-are-protected}
+
+La protección se realiza en el propio dispositivo de la persona participante, con la [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) (en inglés). Las respuestas se cifran antes de guardarse, así que los datos de la entrevista nunca las contienen de forma legible.
+
+- **Una clave para cada entrevista.** Cuando una persona participante elige una frase de contraseña, la entrevista deriva de ella una única clave de cifrado. La clave se deriva con PBKDF2-SHA256, con 600.000 iteraciones y una sal derivada del propio ID de la entrevista, de modo que la misma frase de contraseña da una clave distinta en cada entrevista. Este proceso es lento a propósito, lo que hace que adivinar una frase de contraseña resulte costoso.
+- **Cifrado robusto para cada respuesta.** Cada respuesta cifrada se cifra con esa clave mediante AES-256-GCM, con un valor aleatorio nuevo para cada respuesta.
+- **Las respuestas van ligadas a su lugar.** Cada respuesta queda vinculada a la persona y a la pregunta a las que pertenece, así que una respuesta cifrada que se copie a otra persona o a otra pregunta no se puede leer.
+- **Las respuestas se rellenan.** Cada respuesta se rellena hasta un tamaño de bloque fijo antes de cifrarse, de modo que la longitud de una respuesta cifrada revela menos sobre lo que dice.
+- **La frase de contraseña se comprueba, no se guarda.** Cuando una persona participante vuelve a introducir su frase de contraseña, la entrevista deriva la clave a partir de ella e intenta descifrar una de las respuestas ya protegidas. Solo la frase de contraseña correcta lo consigue, así que una mal escrita se rechaza. Para hacer esta comprobación no se guarda nada sobre la frase de contraseña ni sobre la clave. Hasta que se protege la primera respuesta, no hay nada con lo que comprobar una frase de contraseña, así que la que se introduce en ese momento pasa a ser la de la entrevista.
+
+La frase de contraseña nunca se guarda. La clave solo se conserva en memoria, en el navegador o la aplicación que ejecuta la entrevista, y nunca se guarda. Esto significa que, si se actualiza la página, se cierra la pestaña o se abre la entrevista desde otro navegador o dispositivo, la persona participante tendrá que volver a introducir su frase de contraseña. Las respuestas cifradas se guardan con el resto de la entrevista, y solo puede leerlas quien conozca la frase de contraseña.
+
+### Si una persona participante olvida su frase de contraseña {#if-a-participant-forgets-their-passphrase}
+
+<TipBox danger>
+
+Nadie puede recuperar una frase de contraseña olvidada: ni tú, ni la persona participante, ni el equipo de Network Canvas. Las respuestas que protege siguen siendo ilegibles.
+
+</TipBox>
+
+Asegúrate de que cada participante lo entiende antes de elegir una frase de contraseña. La sección **Explicación de la tarea** del editor de la etapa es el lugar para explicárselo. Una frase de contraseña más larga es más difícil de adivinar, pero también más difícil de recordar.
+
+### Exportar las respuestas protegidas {#exporting-protected-answers}
+
+Al exportar estos datos, los atributos cifrados no se incluyen de forma legible en el archivo de exportación. Cada respuesta cifrada se sustituye por la cadena `ENCRYPTED`. Un valor que no estaba cifrado cuando se guardó se exporta tal como se guardó.
+
+### Respuestas protegidas por la versión experimental {#answers-protected-by-the-experimental-version}
+
+En los protocolos del esquema 8, la interfaz de anonimización era una función experimental, y protegía las respuestas con un formato anterior. Fresco e Interviewer nunca actualizan un protocolo al esquema 9, así que un protocolo del esquema 8 y sus entrevistas se siguen ejecutando con el esquema 8, y las respuestas protegidas de esta forma se pueden seguir leyendo ahí con la frase de contraseña correcta.
+
+Actualizar un protocolo al esquema 9 en Architect crea un protocolo nuevo. Las entrevistas que recopilaste con el protocolo del esquema 8 siguen asociadas a él, y el protocolo actualizado protege las respuestas nuevas de la forma que se describe en esta página. Consulta [Versión 9 del esquema](/es/get-started/protocol-schema-information#schema-version-9) para saber qué más cambia cuando migras un protocolo.
+
+### Buenas prácticas {#best-practices}
+
+<GoodPractice>
+
+Procura que la frase de contraseña sea robusta y única para impedir el acceso no autorizado a los datos cifrados, pero ten en cuenta que cada participante debe poder recordarla con facilidad.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Usa esta función para favorecer que se revele información sensible, como nombres, de una forma que haga sentir a quienes participan que su privacidad está protegida. Esto puede dar lugar a respuestas más sinceras y completas en las entrevistas.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Cuando uses la interfaz de anonimización, explica con claridad a quienes participan cómo se van a usar sus datos y la importancia de la frase de contraseña para acceder a sus datos cifrados, incluido que una frase de contraseña olvidada no se puede recuperar. Esta transparencia genera confianza y favorece la participación.
+
+</GoodPractice>
+
+### Qué evitar {#try-to-avoid}
+
+<BadPractice>
+
+No uses la interfaz de anonimización para datos que no sean sensibles o que no necesiten cifrado. Esta interfaz está pensada para datos sensibles, en los que la privacidad y la seguridad son primordiales.
+
+</BadPractice>

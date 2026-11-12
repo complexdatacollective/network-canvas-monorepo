@@ -45,6 +45,7 @@ import {
   DEFAULT_RECENTS_LIMIT,
   useEverythingBarRecents,
 } from './everythingBarRecents';
+import { inlineIconClass } from './inlineIcons';
 import {
   DEFAULT_GROUP_BOUND,
   useEverythingBarResults,
@@ -244,6 +245,7 @@ const defaultGroupIcons: Record<
   EverythingBarGroup,
   ComponentType<{ className?: string }>
 > = {
+  // oxlint-disable-next-line direction/inline-arrow-turns -- drawn with inlineIconClass(ItemIcon), which turns it right to left
   'go-to': ArrowRight,
   'commands': Command,
   'documentation': BookOpen,
@@ -502,10 +504,12 @@ export default function EverythingBar({
     const content = (
       <>
         <span className={iconVariants({ tone: entry.item.group })}>
-          <ItemIcon aria-hidden />
+          <ItemIcon aria-hidden className={inlineIconClass(ItemIcon)} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate">
+          {/* A study or team name takes its own direction, on the interface
+              side, like translated labels do. */}
+          <span dir="auto" className="text-match-parent block truncate">
             {segmentLabel(entry.item.label, entry.ranges).map(
               (segment, index) => (
                 <Fragment key={index}>
@@ -524,7 +528,10 @@ export default function EverythingBar({
             )}
           </span>
           {entry.item.context ? (
-            <span className="block truncate text-xs font-normal text-current/60">
+            <span
+              dir="auto"
+              className="text-match-parent block truncate text-xs font-normal text-current/60"
+            >
               {entry.item.context}
             </span>
           ) : null}

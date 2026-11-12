@@ -382,16 +382,16 @@ function useRowEditorSession(
   expand: RowListConfig['expand'],
 ): RowEditorSession | null {
   const [session, setSession] = useState<RowEditorSession | null>(null);
-  const stored = useMemo(
-    () => (item ? stripManagedProperties<RowValues>(item) : undefined),
-    [item],
-  );
-  const layoutId =
-    typeof item?._internalId === 'string' ? item._internalId : undefined;
 
   // The session follows the list's editing state, and is adjusted during the
   // render that sees it change rather than in an effect, so the dialog never
   // draws a frame holding the previous session's row.
+  //
+  // It is compared on the row object the list hands over, never on a value
+  // worked out from it here. A derived value is a new object on every render
+  // unless memoized, and memoizing is only a hint: the React Compiler drops it
+  // when nothing this hook returns reads the value, and a new object every
+  // render would set state every render.
   //
   // `expand` is read when the session is built, not depended on: a section
   // binds its expansion to whatever it reads the row against, and rebuilding
@@ -399,21 +399,22 @@ function useRowEditorSession(
   // the researcher's draft.
   const [seen, setSeen] = useState<
     | Readonly<{
-        stored: RowValues | undefined;
+        item: ArrayFieldEditorProps<RowValues>['item'];
         index: number | null;
         isNewItem: boolean;
-        layoutId: string | undefined;
       }>
     | undefined
   >(undefined);
   if (
     seen === undefined ||
-    seen.stored !== stored ||
+    seen.item !== item ||
     seen.index !== index ||
-    seen.isNewItem !== isNewItem ||
-    seen.layoutId !== layoutId
+    seen.isNewItem !== isNewItem
   ) {
-    setSeen({ stored, index, isNewItem, layoutId });
+    setSeen({ item, index, isNewItem });
+    const stored = item ? stripManagedProperties<RowValues>(item) : undefined;
+    const layoutId =
+      typeof item?._internalId === 'string' ? item._internalId : undefined;
     const row =
       stored === undefined ? undefined : expand ? expand(stored) : stored;
     setSession((previous) => {

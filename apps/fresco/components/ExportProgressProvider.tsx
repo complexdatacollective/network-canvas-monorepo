@@ -27,7 +27,7 @@ const messages = defineMessages({
     id: 'fresco.ExportProgressProvider.exportError',
     defaultMessage: 'The export could not be completed. Please try again.',
     description:
-      'Researcher-facing ExportProgressProvider: The export could not be completed. Please try again.',
+      'Body of the persistent error toast shown when exporting interview data failed for a reason other than cancelling.',
   },
 
   copyYourExportHasDownloadedInterviewSCould: {
@@ -35,52 +35,56 @@ const messages = defineMessages({
     defaultMessage:
       'Your export has downloaded. {value1, plural, one {# interview could not be exported.} other {# interviews could not be exported.}}',
     description:
-      'Researcher-facing ExportProgressProvider: Your export has downloaded. value interview(s) could not be exported.',
+      'Body of the success toast shown after an interview data export file has downloaded but some interviews were left out. value1 is the number of interviews that could not be exported.',
   },
   copyYourExportHasDownloaded: {
     id: 'fresco.ExportProgressProvider.copyYourExportHasDownloaded',
     defaultMessage: 'Your export has downloaded.',
     description:
-      'Researcher-facing ExportProgressProvider: Your export has downloaded.',
+      'Body of the success toast shown after an interview data export file has downloaded and every selected interview was included.',
   },
   exportingInterviews: {
     id: 'fresco.ExportProgressProvider.exportingInterviews',
     defaultMessage: 'Exporting interviews',
     description:
-      'Researcher-facing ExportProgressProvider: Exporting interviews',
+      'Title of the progress toast shown while interview data is being prepared for export; the toast has a progress bar and a cancel button.',
   },
   exportDownloaded: {
     id: 'fresco.ExportProgressProvider.exportDownloaded',
     defaultMessage: 'Export downloaded',
-    description: 'Researcher-facing ExportProgressProvider: Export downloaded',
+    description:
+      'Title of the toast shown when an interview data export file downloaded but the interviews could not be marked as exported afterwards. Export is a noun.',
   },
   yourExportDownloadedButItsStatusCould: {
     id: 'fresco.ExportProgressProvider.yourExportDownloadedButItsStatusCould',
     defaultMessage:
       'Your export downloaded, but its status could not be updated. Refresh to see the latest.',
     description:
-      'Researcher-facing ExportProgressProvider: Your export downloaded, but its status could not be updated. Refresh to see the latest.',
+      'Body of the toast shown when the export file downloaded but the exported status of the interviews could not be saved. Refresh means reload the page.',
   },
   exportComplete: {
     id: 'fresco.ExportProgressProvider.exportComplete',
     defaultMessage: 'Export complete',
-    description: 'Researcher-facing ExportProgressProvider: Export complete',
+    description:
+      'Title of the success toast shown when an interview data export has finished and its file has downloaded. Export is a noun.',
   },
   exportCancelled: {
     id: 'fresco.ExportProgressProvider.exportCancelled',
     defaultMessage: 'Export cancelled',
-    description: 'Researcher-facing ExportProgressProvider: Export cancelled',
+    description:
+      'Title of the toast shown after the researcher cancelled an interview data export that was in progress. Export is a noun.',
   },
   theExportWasCancelled: {
     id: 'fresco.ExportProgressProvider.theExportWasCancelled',
     defaultMessage: 'The export was cancelled.',
     description:
-      'Researcher-facing ExportProgressProvider: The export was cancelled.',
+      'Body of the toast shown after the researcher cancelled an interview data export; no file is downloaded.',
   },
   exportFailed: {
     id: 'fresco.ExportProgressProvider.exportFailed',
     defaultMessage: 'Export failed',
-    description: 'Researcher-facing ExportProgressProvider: Export failed',
+    description:
+      'Title of the persistent error toast shown when an interview data export failed. Export is a noun.',
   },
 });
 

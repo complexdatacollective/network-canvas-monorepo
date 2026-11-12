@@ -36,7 +36,8 @@ const messages = defineMessages({
   issues: {
     id: 'architect.issues.issues',
     defaultMessage: 'Issues ({issueCount, number})',
-    description: 'Visible text in components / Issues.',
+    description:
+      'Label of the toolbar button, and heading of the list it opens, showing how many problems must be fixed in the open stage. issueCount is that number.',
   },
 });
 
@@ -257,7 +258,7 @@ export function useIssuesToolbarControl(
           </ToolbarButton>
         }
       >
-        <div className="flex flex-col overflow-hidden rounded-[inherit]">
+        <div className="flex flex-col">
           <div className="flex items-center gap-4 px-5 py-2.5">
             <TriangleAlert className="size-4 shrink-0" aria-hidden />
             <span className="text-sm font-semibold tracking-wider uppercase">
@@ -305,14 +306,14 @@ export function useIssuesToolbarControl(
                   {field === undefined ||
                   target === null ||
                   target === undefined ? (
-                    <span className="block w-full px-5 py-2.5 before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]">
+                    <span className="block w-full px-5 py-2.5 before:me-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]">
                       {detail}
                     </span>
                   ) : target.anchorId === undefined ? (
                     <button
                       type="button"
                       onClick={(e) => handleClickIssue(e, field)}
-                      className="block w-full px-5 py-2.5 text-left before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
+                      className="block w-full px-5 py-2.5 text-start before:me-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
                     >
                       {detail}
                     </button>
@@ -320,7 +321,7 @@ export function useIssuesToolbarControl(
                     <a
                       href={`#${target.anchorId}`}
                       onClick={(e) => handleClickIssue(e, field)}
-                      className="block w-full px-5 py-2.5 no-underline before:mr-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
+                      className="block w-full px-5 py-2.5 no-underline before:me-2.5 before:[content:counter(issue)_'.'] before:[counter-increment:issue]"
                     >
                       {detail}
                     </a>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
   type FilterOperator,
@@ -275,21 +276,23 @@ const buildRule = async (
  */
 const localization = { defaultLocale: 'en', locales: ['en'] };
 
-const protocolWith = (rule: RuleDraft): unknown => ({
-  name: 'Operand table',
-  schemaVersion: 9,
-  localization,
-  codebook,
-  stages: [
-    {
-      id: 'stage-1',
-      type: 'AlterForm',
-      ...stageFields,
-      filter: { rules: [rule] },
-    },
-    createDefaultFinishSessionStage({ id: 'finish', localization }),
-  ],
-});
+// Holding the interface text it uses, as every protocol an editor writes does.
+const protocolWith = (rule: RuleDraft): unknown =>
+  withInterfaceText({
+    name: 'Operand table',
+    schemaVersion: 9,
+    localization,
+    codebook,
+    stages: [
+      {
+        id: 'stage-1',
+        type: 'AlterForm',
+        ...stageFields,
+        filter: { rules: [rule] },
+      },
+      createDefaultFinishSessionStage({ id: 'finish', localization }),
+    ],
+  });
 
 const validationIssues = async (rule: RuleDraft): Promise<string[]> => {
   const result = await validateProtocol(

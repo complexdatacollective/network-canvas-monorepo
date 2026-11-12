@@ -27,8 +27,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button, type ButtonProps, IconButton } from '../Button';
 import InputField from '../form/fields/InputField';
 import { useComboboxTriggerEscape } from '../hooks/useComboboxTriggerEscape';
-import Surface from '../layout/Surface';
-import { ArrowSvg } from '../Popover';
+import { ArrowSvg, BaseUISharedPopoverContainer } from '../Popover';
 import {
   POPOVER_ARROW_CLASS_NAME,
   POPOVER_ARROW_PADDING,
@@ -360,7 +359,7 @@ export default function LocaleSwitcher({
           {renderTrigger ? globe : null}
           <span
             className={cx(
-              'min-w-0 truncate leading-normal',
+              'text-match-parent min-w-0 truncate leading-normal',
               responsive && RESPONSIVE_HIDDEN,
             )}
             lang={triggerLocale}
@@ -389,18 +388,19 @@ export default function LocaleSwitcher({
             aria-labelledby={headingId}
             initialFocus={searchable ? undefined : listRef}
             render={
-              <Surface
-                floating
+              <BaseUISharedPopoverContainer
                 shadow="lg"
-                noContainer
                 spacing="none"
-                className="flex w-96 max-w-(--available-width) flex-col overflow-visible"
+                animation="none"
+                className="flex w-96 flex-col"
+                arrow={
+                  <Combobox.Arrow className={POPOVER_ARROW_CLASS_NAME}>
+                    <ArrowSvg />
+                  </Combobox.Arrow>
+                }
               />
             }
           >
-            <Combobox.Arrow className={POPOVER_ARROW_CLASS_NAME}>
-              <ArrowSvg />
-            </Combobox.Arrow>
             <div className="flex flex-col gap-2 px-4 pt-3 pb-2">
               <Heading level="label" margin="none" id={headingId}>
                 {intl.formatMessage(messages.heading)}
@@ -486,7 +486,7 @@ export default function LocaleSwitcher({
               className={
                 notice === null
                   ? 'sr-only'
-                  : 'bg-surface-1 text-surface-1-contrast border-outline flex min-h-6 items-center gap-2 rounded-b-[inherit] border-t px-4 py-3 text-xs leading-tight'
+                  : 'bg-surface-1 text-surface-1-contrast border-outline flex min-h-6 items-center gap-2 border-t px-4 py-3 text-xs leading-tight'
               }
             >
               {notice?.state === 'saving' && (

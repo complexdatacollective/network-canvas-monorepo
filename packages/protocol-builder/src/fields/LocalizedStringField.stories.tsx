@@ -1,13 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
+import {
+  FIRST_STRONG_ISOLATE as FSI,
+  POP_DIRECTIONAL_ISOLATE as PDI,
+} from '@codaco/app-i18n/messages';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+import { informationStage } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { LanguageNamingProvider } from '../localization/LanguageNaming.tsx';
 import type { ProtocolLocalization } from '../localization/localizedText.ts';
+import { markdownTextShapeAt } from '../localization/textShape.ts';
 import { chooseEditingLanguage } from '../testing/chooseEditingLanguage.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
@@ -21,6 +27,11 @@ const TITLE_FIELD = 'title';
 const TITLE_LABEL = 'Page heading';
 const BODY_FIELD = 'items[0].content';
 const BODY_LABEL = 'Text';
+const BODY_SHAPE = markdownTextShapeAt(informationStage, [
+  'items',
+  0,
+  'content',
+]);
 
 const SETTINGS = sectionId({ kind: 'settings' });
 
@@ -45,6 +56,7 @@ const page = (
       name={BODY_FIELD}
       nameMode="path"
       component={LocalizedRichTextField}
+      shape={BODY_SHAPE}
       label={BODY_LABEL}
       required={REQUIRED}
     />
@@ -121,6 +133,8 @@ export const SeveralLanguages: Story = {
  * A right-to-left language is edited right to left. Arabic is the default
  * language here and has no translation yet, so the note says participants
  * will see the English instead: the only language the text is written in.
+ * The note is English, so the Arabic language name inside it is isolated and
+ * cannot pull the English words beside it out of order.
  */
 export const RightToLeft: Story = {
   args: {
@@ -133,7 +147,9 @@ export const RightToLeft: Story = {
     const title = await canvas.findByRole('textbox', { name: TITLE_LABEL });
     await expect(title.closest('[dir]')).toHaveAttribute('dir', 'rtl');
     await expect(
-      canvas.getAllByText(/Not translated into العربية yet/).length,
+      canvas.getAllByText(`Not translated into ${FSI}العربية${PDI} yet`, {
+        exact: false,
+      }).length,
     ).toBeGreaterThan(0);
   },
 };

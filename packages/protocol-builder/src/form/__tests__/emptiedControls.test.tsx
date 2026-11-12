@@ -66,6 +66,9 @@ describe('a control the researcher emptied', () => {
     const names = [
       ['conditionText.selectCondition', 'Select condition'],
       ['conditionText.snapshotCondition', 'Snapshot condition'],
+      // The form opens on Network Canvas's wording for what the stage lacks,
+      // so the object holds all three.
+      ['conditionText.snapshotInheritance', 'Snapshot inheritance'],
     ] as const;
     const harness = renderStageEditor({
       stage: {
@@ -74,6 +77,7 @@ describe('a control the researcher emptied', () => {
           conditionText: {
             selectCondition: { 'en-US': 'Pick a condition' },
             snapshotCondition: { 'en-US': 'Snapshot' },
+            snapshotInheritance: { 'en-US': 'Inheritance' },
           },
         },
       },
@@ -104,9 +108,9 @@ describe('a control the researcher emptied', () => {
       );
     }
 
-    // Read off the draft rather than out of a save: a save writes Network
-    // Canvas's own wording back into any of these the stage lacks, so what it
-    // stores says nothing about what the form assembled. A `conditionText`
+    // Read off the draft rather than out of a save: a save leaves out
+    // whatever reads as Network Canvas's own wording, so what it stores says
+    // nothing about what the form assembled. A `conditionText`
     // with no translation map left in it is an object the researcher did not
     // write, holding nothing.
     expect(Object.hasOwn(draft(), 'conditionText')).toBe(false);

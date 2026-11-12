@@ -234,6 +234,7 @@ const Navigation = ({
   // right-to-left interview Back sits on the right and points right.
   const direction = useDirection();
   const isRtl = direction === 'rtl';
+  /* oxlint-disable direction/inline-arrow-turns -- each arrow is chosen by the direction, so neither is turned as well */
   const BackIcon =
     orientation === 'vertical' ? ChevronUp : isRtl ? ChevronRight : ChevronLeft;
   const ForwardIcon =
@@ -242,6 +243,7 @@ const Navigation = ({
       : isRtl
         ? ChevronLeft
         : ChevronRight;
+  /* oxlint-enable direction/inline-arrow-turns */
 
   const shouldReduceMotion = usePrefersReducedMotion();
 

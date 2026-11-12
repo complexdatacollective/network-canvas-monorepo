@@ -60,7 +60,7 @@ export const runtimeMessages = defineMessages({
     id: 'interview.runtime.dropToRemove',
     defaultMessage: 'Drop here to remove',
     description:
-      'Hint shown on the tray when dropping an item removes its position. subject is the name of the kind of item, such as Person, which the protocol may use in its own wording.',
+      'Read by screen readers over a list while dropping a dragged item there removes it: the roster list, or a Sociogram’s empty tray. Only screen readers read it, so it stays in English whatever the interview language. subject is the name of the kind of item, such as Person.',
   },
   nodeList: {
     id: 'interview.runtime.nodeList',
@@ -90,7 +90,7 @@ export const runtimeMessages = defineMessages({
     id: 'interview.runtime.checkingPassphrase',
     defaultMessage: 'Checking your passphrase…',
     description:
-      'Status shown and announced while an entered passphrase is being checked, which can take a few seconds.',
+      'Announced beside a spinner while an entered passphrase is being checked, which can take a few seconds. Only screen readers read it, so it stays in English whatever the interview language.',
   },
   unnamed: {
     id: 'interview.runtime.unnamed',
@@ -129,6 +129,18 @@ export const runtimeMessages = defineMessages({
     description:
       'Label of the secret phrase input used to decrypt interview data.',
   },
+  passphraseButton: {
+    id: 'interview.runtime.passphraseButton',
+    defaultMessage: 'Passphrase',
+    description:
+      'Accessible name of the key button in the navigation bar that opens the passphrase dialog. The button shows only a key, so only screen readers read this, and it stays in English whatever the interview language.',
+  },
+  loadingStatus: {
+    id: 'interview.runtime.loadingStatus',
+    defaultMessage: 'Loading…',
+    description:
+      'Announced while something is loading beside a spinner that shows no words, such as a search filtering its list. Only screen readers read this, so it stays in English whatever the interview language.',
+  },
   passphraseIncorrect: {
     id: 'interview.runtime.passphraseIncorrect',
     defaultMessage:
@@ -142,13 +154,6 @@ export const runtimeMessages = defineMessages({
       'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.',
     description:
       'Shown in place of questions whose answers are protected by the interview passphrase, and as a brief notice when such an answer is asked for, until that passphrase is entered.',
-  },
-  protectedAnswersUnavailable: {
-    id: 'interview.runtime.protectedAnswersUnavailable',
-    defaultMessage:
-      'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.',
-    description:
-      'Shown in place of questions whose answers are protected by a passphrase, and on the passphrase screen, when the information this interview needs to check a passphrase is damaged, so no passphrase can be entered.',
   },
   protectedAnswersNotSaved: {
     id: 'interview.runtime.protectedAnswersNotSaved',
@@ -188,12 +193,6 @@ export const runtimeMessages = defineMessages({
     id: 'interview.runtime.noSearchMatch',
     defaultMessage: 'Nothing matched your search term.',
     description: 'Empty result after searching the interview screen list.',
-  },
-  filter: {
-    id: 'interview.runtime.filter',
-    defaultMessage: 'Filter...',
-    description:
-      'Placeholder for filtering the interview screen navigation list.',
   },
   notifications: {
     id: 'interview.runtime.notifications',

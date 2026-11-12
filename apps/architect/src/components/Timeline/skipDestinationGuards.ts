@@ -9,46 +9,47 @@ const utilityMessages = defineMessages({
     id: 'architect.utility.timeline.skipDestinationGuards.unknownStage',
     defaultMessage: 'Unknown stage ({value1})',
     description:
-      'Researcher-facing explanatory text in components / Timeline / skipDestinationGuards.',
+      "Reference to a stage inside a skip-logic warning when that stage cannot be found in the timeline. value1 is the stage's internal identifier.",
   },
   stage: {
     id: 'architect.utility.timeline.skipDestinationGuards.stage',
     defaultMessage: 'Stage {value1, number} — {value2}',
     description:
-      'Researcher-facing explanatory text in components / Timeline / skipDestinationGuards.',
+      "Reference to a stage inside a skip-logic warning, for example Stage 3 followed by a dash and its title. value1 is the stage's number in the timeline; value2 is its title.",
   },
   cannotDeleteStage: {
     id: 'architect.utility.timeline.skipDestinationGuards.cannotDeleteStage',
     defaultMessage: 'Cannot delete stage',
     description:
-      'The title text in components / Timeline / skipDestinationGuards.',
+      "Title of the warning dialog shown when the researcher tries to delete a stage that other stages' skip logic jumps to.",
   },
   isTheSkipDestinationFor: {
     id: 'architect.utility.timeline.skipDestinationGuards.isTheSkipDestinationFor',
     defaultMessage:
       '{destinationReference} is the skip destination for {dependentReferences}. Choose a different destination on those stages before deleting it.',
     description:
-      'The description text in components / Timeline / skipDestinationGuards.',
+      'Body of the Cannot delete stage dialog. destinationReference is the stage to be deleted; dependentReferences is the list of stages whose skip logic jumps to it, which must be pointed elsewhere first.',
   },
   cannotMoveStage: {
     id: 'architect.utility.timeline.skipDestinationGuards.cannotMoveStage',
     defaultMessage: 'Cannot move stage',
     description:
-      'The title text in components / Timeline / skipDestinationGuards.',
+      'Title of the warning dialog shown when dragging a stage to a new position on the timeline would put it before a stage that skips to it.',
   },
   mustRemainLaterThan: {
     id: 'architect.utility.timeline.skipDestinationGuards.mustRemainLaterThan',
     defaultMessage:
       '{destinationReference} must remain later than {sourceReference}, which routes to it when skipped. Choose a different destination before changing this order.',
     description:
-      'The description text in components / Timeline / skipDestinationGuards.',
+      'Body of the Cannot move stage dialog. destinationReference is the stage that skip logic jumps to; sourceReference is the stage whose skip logic jumps to it, so the destination must stay later.',
   },
 });
 const finalMessages = defineMessages({
   untitledStage: {
     id: 'architect.final.components.Timeline.skipDestinationGuards.untitledStage',
     defaultMessage: 'Untitled stage',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Name used for a stage with no title when it is mentioned in a skip-logic warning.',
   },
 });
 

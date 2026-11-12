@@ -3,6 +3,7 @@ import { type ComponentProps, useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '../../storybook-support/awaitPassiveEffects';
+import { expectInvalidControlToKeepFocusRing } from './focusRingTestHelpers';
 import IconPicker from './IconPicker';
 
 /**
@@ -145,4 +146,36 @@ export const Disabled: Story = {
 
 export const Invalid: Story = {
   args: { 'aria-invalid': true },
+};
+
+/**
+ * An invalid picker keeps its focus ring: its red border says the value is
+ * wrong, not which field the keyboard is in.
+ */
+export const InvalidKeyboardFocusRing: Story = {
+  // This play reads a style that exists only while a control matches
+  // `:focus-visible`, which never matches in Chromatic's unfocused capture
+  // tab. `test:storybook` is where it runs; the invalid state itself is in
+  // `Invalid`'s snapshot.
+  parameters: { chromatic: { disableSnapshot: true } },
+  render: (args) => (
+    <div className="flex w-80 flex-col gap-6">
+      <ExampleIconPicker {...args} aria-label="Valid" />
+      <ExampleIconPicker {...args} aria-label="Invalid" aria-invalid />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await awaitPassiveEffects();
+    const canvas = within(canvasElement);
+    await expectInvalidControlToKeepFocusRing(
+      {
+        control: canvas.getByRole('combobox', { name: 'Valid' }),
+        ringOn: 'control',
+      },
+      {
+        control: canvas.getByRole('combobox', { name: 'Invalid' }),
+        ringOn: 'control',
+      },
+    );
+  },
 };

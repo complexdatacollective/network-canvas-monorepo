@@ -11,7 +11,8 @@ const messages = defineMessages({
   toggleSortBy: {
     id: 'architect.assets.table.toggleSortBy',
     defaultMessage: 'Toggle SortBy',
-    description: 'The title text in components / Assets / Table.',
+    description:
+      'Tooltip on a column header of the data table in a resource preview. Clicking the header cycles the table between ascending, descending and unsorted order by that column.',
   },
 });
 
@@ -82,9 +83,9 @@ const tableClasses = cx(
   '[&_th]:text-sm [&_th]:font-semibold [&_th]:tracking-wider [&_th]:break-keep [&_th]:whitespace-nowrap [&_th]:uppercase',
   '[&_th]:px-5 [&_th]:py-2.5 [&_th]:leading-10',
   '[&_th_svg]:text-action [&_th_svg]:size-4',
-  '[&_th:not(:last-child)]:border-r-[3px] [&_th:not(:last-child)]:border-r-white',
+  '[&_th:not(:last-child)]:border-e-[3px] [&_th:not(:last-child)]:border-e-white',
   '[&_td]:p-5',
-  '[&_td:not(:last-child)]:border-r-[3px] [&_td:not(:last-child)]:border-r-white',
+  '[&_td:not(:last-child)]:border-e-[3px] [&_td:not(:last-child)]:border-e-white',
   '[&_tbody>tr:nth-child(odd)>td]:bg-platinum-dark',
 );
 

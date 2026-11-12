@@ -67,14 +67,14 @@ describe('getLocalizationCoverage()', () => {
     const coverage = getLocalizationCoverage(stateWith(trilingual()));
 
     // The attribute's one answer option, the stage's label and its title,
-    // and the twenty-six words the interview itself shows (its navigation,
+    // and the twenty-two words the interview itself shows (its navigation,
     // buttons and interviewer controls among them), which Network Canvas
     // supplies in all three languages.
-    expect(coverage.total).toBe(29);
+    expect(coverage.total).toBe(25);
     expect(coverage.locales).toEqual([
-      { locale: 'en', isDefault: true, translated: 29, missing: 0 },
-      { locale: 'fr', isDefault: false, translated: 28, missing: 1 },
-      { locale: 'de', isDefault: false, translated: 27, missing: 2 },
+      { locale: 'en', isDefault: true, translated: 25, missing: 0 },
+      { locale: 'fr', isDefault: false, translated: 24, missing: 1 },
+      { locale: 'de', isDefault: false, translated: 23, missing: 2 },
     ]);
   });
 
@@ -112,13 +112,19 @@ describe('getTranslationGroups()', () => {
             path: ['stages', 0, 'label'],
             field: ['label'],
             format: 'plain',
+            lines: 'single',
             value: { en: 'Welcome', fr: 'Bienvenue', de: 'Willkommen' },
+            // The declaration of the field it is in.
+            schema: expect.anything(),
           },
           {
             path: ['stages', 0, 'title'],
             field: ['title'],
             format: 'plain',
+            lines: 'single',
             value: { en: 'Hello', fr: 'Bonjour' },
+            // The declaration of the field it is in.
+            schema: expect.anything(),
           },
         ],
       },
@@ -139,14 +145,17 @@ describe('getTranslationGroups()', () => {
             ],
             field: ['variables', 'closeness', 'options', 0, 'label'],
             format: 'markdown',
+            lines: 'single',
             value: { en: 'Close' },
+            // The declaration of the field it is in.
+            schema: expect.anything(),
           },
         ],
       },
     ]);
   });
 
-  it('marks text participants see as markdown', () => {
+  it('marks text participants see as markdown, and how many lines it holds', () => {
     const protocol = trilingual();
     const withText: CurrentProtocol = {
       ...protocol,
@@ -176,7 +185,10 @@ describe('getTranslationGroups()', () => {
       path: ['stages', 1, 'items', 0, 'content'],
       field: ['items', 0, 'content'],
       format: 'markdown',
+      lines: 'multiple',
       value: { en: 'Name **people**', fr: 'Nommez' },
+      // The declaration of the field it is in.
+      schema: expect.anything(),
     });
   });
 });

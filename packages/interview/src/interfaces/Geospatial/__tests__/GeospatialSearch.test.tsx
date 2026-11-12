@@ -183,7 +183,7 @@ describe('GeospatialSearch', () => {
       expect(flyTo).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps the stage’s own failure wording and the query across a change of language', async () => {
+    it('words a failure in the new language, and keeps the query, across a change of language', async () => {
       mockSuggest.mockRejectedValue(new Error('offline'));
       const user = userEvent.setup();
       const view = render(localizedTree('en'));
@@ -199,9 +199,9 @@ describe('GeospatialSearch', () => {
         ),
       );
 
-      // The stage's words are the protocol's, held here in English only, so a
-      // change of language leaves them in English. The search box's own label
-      // is the protocol's interface text, which it holds in Spanish too.
+      // The protocol holds no wording of its own for a failed search, so the
+      // interview shows Network Canvas's, in each language. The search box's
+      // own label is interface text the protocol holds, in Spanish too.
       view.rerender(localizedTree('es'));
       expect(screen.getByRole('combobox')).toBe(input);
       expect(input).toHaveValue('Sidetrack');
@@ -210,10 +210,10 @@ describe('GeospatialSearch', () => {
       await waitFor(() =>
         expect(
           screen.getByRole('listbox', { name: 'Search suggestions' }),
-        ).toHaveTextContent('Search could not be completed.'),
+        ).toHaveTextContent('No se pudo completar la búsqueda.'),
       );
       expect(status.textContent).toBe(
-        'Search could not be completed. Try again in a moment.',
+        'No se pudo completar la búsqueda. Vuelve a intentarlo en un momento.',
       );
       expect(mockSuggest.mock.lastCall?.[1]?.language).toBe('es');
       expect(flyTo).not.toHaveBeenCalled();

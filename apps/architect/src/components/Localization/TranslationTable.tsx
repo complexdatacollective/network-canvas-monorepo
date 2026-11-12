@@ -1,12 +1,16 @@
 import { CircleHelp, Columns3, Search } from 'lucide-react';
 import {
   type CSSProperties,
+  type FocusEvent,
+  memo,
   type ReactNode,
   useCallback,
+  useDeferredValue,
   useEffect,
   useContext,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -51,7 +55,6 @@ import {
 import {
   type CurrentProtocol,
   type LocaleTag,
-  messageText,
   sortByLanguageName,
 } from '@codaco/protocol-validation';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
@@ -69,8 +72,10 @@ import { cx } from '~/utils/cva';
 import { describePlace, type PlaceDetails, textSteps } from './textPlaces';
 import TranslationCell, { fallbackFor } from './TranslationCell';
 import {
+  clearSaveFindings,
   readTranslationFieldName,
   saveTranslations,
+  settleSavedCells,
 } from './translationDrafts';
 import {
   type MissingFilter,
@@ -79,6 +84,15 @@ import {
   writeMissingFilter,
 } from './translationTableLinks';
 import { useLanguageName } from './useLanguageName';
+import {
+  headingItemKey,
+  isItemDrawn,
+  readWindowKey,
+  rowItemKey,
+  useWindowedRows,
+  type WindowedItem,
+  windowItemProps,
+} from './useWindowedRows';
 
 const messages = defineMessages({
   about: {
@@ -249,7 +263,6 @@ type ShownRow = {
   name: string;
   /** Whether the name is the text's path, for a text Architect cannot name. */
   rawName: boolean;
-  singleLine: boolean;
 };
 
 type ShownGroup = {
@@ -260,6 +273,9 @@ type ShownGroup = {
   href: string | null;
   rows: readonly ShownRow[];
 };
+
+/** A group with the number of the first row in it, counted across groups. */
+type NumberedGroup = ShownGroup & { firstRow: number };
 
 const NAME_SEPARATOR = ' › ';
 
@@ -311,17 +327,6 @@ const rowKey = (path: TranslationRow['path']) => JSON.stringify(path);
 // Set apart from the menu's other options, which a language tag could match.
 const languageOption = (locale: LocaleTag) => `language:${locale}`;
 
-/**
- * Whether a text is edited as one line: one that has no line breaks in any
- * language. Formatted interview text is the exception, since it is edited
- * nowhere else: it always gets the whole editor, links and lists included.
- */
-const isSingleLine = (row: TranslationRow) =>
-  !(row.format === 'markdown' && row.path[0] === 'interfaceText') &&
-  Object.values(row.value).every(
-    (message) => !messageText(message).includes('\n'),
-  );
-
 /** The groups as the table names them, before any filter applies. */
 const describeGroups = (
   intl: ReturnType<typeof useAppIntl>,
@@ -343,7 +348,6 @@ const describeGroups = (
           row,
           name: steps.join(NAME_SEPARATOR),
           rawName: raw,
-          singleLine: isSingleLine(row),
         };
       }),
     };
@@ -414,6 +418,94 @@ const useColumnHeadingWidths = () => {
   );
 };
 
+const columnIdFor = (baseId: string, locale: LocaleTag) =>
+  `${baseId}-language-${locale}`;
+
+type TranslationTableRowProps = {
+  row: ShownRow;
+  groupId: string;
+  /** The row's place among all the table's rows, which arrow keys follow. */
+  currentRow: number;
+  /** Whether some of the table's rows are left undrawn, which keys the row. */
+  windowed: boolean;
+  /** Where the row is among all the table's rows, when some are left undrawn. */
+  ariaRowIndex: number | undefined;
+  locales: readonly LocaleTag[];
+  localization: CurrentProtocol['localization'];
+  baseId: string;
+  /** Whether a search or filter is on, which a row worked on outlasts. */
+  filtering: boolean;
+  onKeep: (key: string) => void;
+  onMove: (rowIndex: number, colIndex: number, delta: number) => boolean;
+  measure: (element: HTMLElement | null) => (() => void) | undefined;
+};
+
+/**
+ * One text and its cell in each language shown. Kept as it is while the rows
+ * around it come and go, and while a search keystroke changes which rows are
+ * shown, so only the rows whose own props change are drawn again.
+ */
+const TranslationTableRow = memo(function TranslationTableRow({
+  row,
+  groupId,
+  currentRow,
+  windowed,
+  ariaRowIndex,
+  locales,
+  localization,
+  baseId,
+  filtering,
+  onKeep,
+  onMove,
+  measure,
+}: TranslationTableRowProps) {
+  const rowId = `${groupId}-row-${currentRow}`;
+  return (
+    <tr
+      ref={measure}
+      aria-rowindex={ariaRowIndex}
+      {...(windowed ? windowItemProps(rowItemKey(row.key)) : undefined)}
+      onFocus={() => {
+        if (filtering) onKeep(row.key);
+      }}
+    >
+      <th
+        id={rowId}
+        scope="row"
+        className="bg-surface border-outline sticky inset-s-0 z-10 border-e border-b px-3 py-2 text-start align-top text-sm font-normal text-current/80"
+      >
+        {row.rawName ? (
+          <span dir="ltr" className="font-monospace break-words">
+            {row.name}
+          </span>
+        ) : (
+          <span className="break-words">{row.name}</span>
+        )}
+      </th>
+      {locales.map((locale, colIndex) => (
+        <TranslationCell
+          key={locale}
+          row={row.row}
+          locale={locale}
+          localization={localization}
+          labelledBy={`${groupId} ${rowId} ${columnIdFor(baseId, locale)}`}
+          rowIndex={currentRow}
+          colIndex={colIndex}
+          onMove={(delta) => onMove(currentRow, colIndex, delta)}
+        />
+      ))}
+    </tr>
+  );
+});
+
+/** The room a stretch of rows not drawn would take, so the table keeps its length. */
+const GapRow = ({ height, columns }: { height: number; columns: number }) => (
+  <tr aria-hidden>
+    {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- blank and hidden from assistive technology; it is room, not a cell */}
+    <td colSpan={columns} className="border-0 p-0" style={{ height }} />
+  </tr>
+);
+
 type TranslationTableProps = {
   /** Leads the toolbar. */
   heading?: ReactNode;
@@ -434,21 +526,35 @@ type TranslationTableProps = {
  * The table is a form: what is typed into its cells is kept in the form, each
  * cell checked as focus leaves it, until Save writes every change into the
  * protocol together. Save refuses while any cell holds text the protocol
- * cannot take, and takes the researcher to the first.
+ * cannot take, or while the protocol it would write fails the checks every
+ * protocol edit is held to, and takes the researcher to the first cell at
+ * fault, shown whatever the search, filter or hidden columns would hide.
+ *
+ * A large table draws only the rows near the screen (`useWindowedRows`); the
+ * rest stand in as blank room. What the cells hold lives in the form, so a row
+ * drawn again shows what it showed, and the row holding focus is drawn
+ * wherever it is scrolled to.
  *
  * Must be drawn inside the `FormStoreProvider` the cells keep their changes in.
  */
-const TranslationTable = ({
+const TranslationTable = (props: TranslationTableProps) => {
+  const protocol = useAppSelector(getProtocol);
+  return protocol ? (
+    <TranslationTableContent {...props} protocol={protocol} />
+  ) : null;
+};
+
+const TranslationTableContent = ({
+  protocol,
   heading,
   actions,
   onSaved,
   onCancel,
-}: TranslationTableProps) => {
+}: TranslationTableProps & { protocol: CurrentProtocol }) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
   const dispatch = useAppDispatch();
   const store = useAppStore();
-  const protocol = useAppSelector(getProtocol);
   const groups = useAppSelector(getTranslationGroups);
   const coverage = useAppSelector(getLocalizationCoverage);
   const baseId = useId();
@@ -518,29 +624,20 @@ const TranslationTable = ({
     setUnfocusedErrors({ errors });
   };
 
-  useLayoutEffect(() => {
-    if (unfocusedErrors === null) return;
-    if (focusedErrors.current === unfocusedErrors) return;
-    focusedErrors.current = unfocusedErrors;
-    focusFirstError(unfocusedErrors.errors, tableRef.current, formScope);
-  }, [unfocusedErrors, formScope]);
-
   const { formProps, formErrors } = useForm({
-    onSubmit: (values) => {
+    onSubmit: async (values) => {
       const refusal = refusedCommit();
       if (refusal) return { success: false, formErrors: [refusal] };
       if (!formStore) return { success: false };
-      const result = saveTranslations({
+      const result = await saveTranslations({
         values,
-        getFieldState: (name) => formStore.getState().getFieldState(name),
+        formStore,
         getState: () => store.getState(),
         dispatch,
-        intl,
+        getWords: () => ({ intl, languageName }),
       });
       if (result.success) {
-        // What the cells hold is now what the protocol has, so closing the
-        // table loses nothing and asks nothing.
-        formStore.getState().rebaseToDocument(values);
+        settleSavedCells(formStore, values, store.getState());
         onSaved();
       }
       return result;
@@ -548,64 +645,210 @@ const TranslationTable = ({
     onSubmitInvalid: revealInvalidCells,
   });
 
-  if (!protocol) return null;
-
   const { localization } = protocol;
-  const locales = sortByLanguageName(
-    localization.locales,
-    languageName,
-    intl.locale,
+  const locales = useMemo(
+    () => sortByLanguageName(localization.locales, languageName, intl.locale),
+    [localization.locales, languageName, intl.locale],
   );
-  const visible = locales.filter((locale) => !hidden.has(locale));
+  const visible = useMemo(
+    () => locales.filter((locale) => !hidden.has(locale)),
+    [locales, hidden],
+  );
   // Kept in the address, so a link can open the table on a language's gaps.
-  const filter = readMissingFilter(searchParams, locales);
-  const described = describeGroups(intl, protocol, groups);
+  const filter = useMemo(
+    () => readMissingFilter(searchParams, locales),
+    [searchParams, locales],
+  );
+  const described = useMemo(
+    () => describeGroups(intl, protocol, groups),
+    [intl, protocol, groups],
+  );
   const total = described.reduce((sum, group) => sum + group.rows.length, 0);
 
-  const needle = query.trim().toLocaleLowerCase(intl.locale);
-  const matches = (group: ShownGroup, row: ShownRow) =>
-    needle === '' ||
-    [
-      group.kind,
-      group.title?.text ?? '',
-      row.name,
-      ...visible.map((locale) => translationText(row.row.value, locale)),
-    ].some((text) => text.toLocaleLowerCase(intl.locale).includes(needle));
-  const passesFilter = (row: ShownRow) => {
-    switch (filter.kind) {
-      case 'all':
-        return true;
-      case 'any':
-        return visible.some((locale) => isMissingIn(row, locale));
-      case 'language':
-        return isMissingIn(row, filter.locale);
-      default: {
-        const unhandled: never = filter;
-        throw new Error('Unhandled missing filter', { cause: unhandled });
-      }
-    }
-  };
+  // The rows follow what is typed a moment behind it, when the browser has
+  // time, so a keystroke is answered by the search box before the table is
+  // filtered again.
+  const deferredQuery = useDeferredValue(query);
+  const needle = deferredQuery.trim().toLocaleLowerCase(intl.locale);
 
-  const shownGroups = described.flatMap((group) => {
-    const rows = group.rows.filter(
-      (row) => kept.has(row.key) || (passesFilter(row) && matches(group, row)),
-    );
-    return rows.length > 0 ? [{ ...group, rows }] : [];
-  });
+  const shownGroups = useMemo(() => {
+    const matches = (group: ShownGroup, row: ShownRow) =>
+      needle === '' ||
+      [
+        group.kind,
+        group.title?.text ?? '',
+        row.name,
+        ...visible.map((locale) => translationText(row.row.value, locale)),
+      ].some((text) => text.toLocaleLowerCase(intl.locale).includes(needle));
+    const passesFilter = (row: ShownRow) => {
+      switch (filter.kind) {
+        case 'all':
+          return true;
+        case 'any':
+          return visible.some((locale) => isMissingIn(row, locale));
+        case 'language':
+          return isMissingIn(row, filter.locale);
+        default: {
+          const unhandled: never = filter;
+          throw new Error('Unhandled missing filter', { cause: unhandled });
+        }
+      }
+    };
+    return described.flatMap((group) => {
+      const rows = group.rows.filter(
+        (row) =>
+          kept.has(row.key) || (passesFilter(row) && matches(group, row)),
+      );
+      return rows.length > 0 ? [{ ...group, rows }] : [];
+    });
+  }, [described, visible, filter, needle, kept, intl.locale]);
   const shown = shownGroups.reduce((sum, group) => sum + group.rows.length, 0);
   const filtering = filter.kind !== 'all' || needle !== '';
 
-  const footnote = shownGroups.some((group) =>
-    group.rows.some((row) =>
-      visible.some(
-        (locale) =>
-          !Object.hasOwn(row.row.value, locale) &&
-          fallbackFor(row.row.value, locale, localization)?.unlessBrowserLists,
+  const footnote = useMemo(
+    () =>
+      shownGroups.some((group) =>
+        group.rows.some((row) =>
+          visible.some(
+            (locale) =>
+              !Object.hasOwn(row.row.value, locale) &&
+              fallbackFor(row.row.value, locale, localization)
+                ?.unlessBrowserLists,
+          ),
+        ),
       ),
-    ),
+    [shownGroups, visible, localization],
   );
 
-  const resetKept = () => setKept(new Set());
+  // Rows are numbered across groups, so arrow keys move between them; each
+  // group's numbering starts where the previous group's ended. Every heading
+  // and row is also an item of the windowed table, in the order it is drawn.
+  const arranged = useMemo(() => {
+    const numbered: NumberedGroup[] = [];
+    const items: WindowedItem[] = [];
+    const headingItems: number[] = [];
+    const itemIndexes = new Map<string, number>();
+    let nextRow = 0;
+    for (const group of shownGroups) {
+      numbered.push({ ...group, firstRow: nextRow });
+      nextRow += group.rows.length;
+      headingItems.push(items.length);
+      itemIndexes.set(headingItemKey(group.key), items.length);
+      items.push({ key: headingItemKey(group.key), heading: true });
+      for (const row of group.rows) {
+        itemIndexes.set(rowItemKey(row.key), items.length);
+        items.push({ key: rowItemKey(row.key), heading: false });
+      }
+    }
+    return { numbered, items, headingItems, itemIndexes };
+  }, [shownGroups]);
+
+  // The row holding focus and the row a refused save is taking focus to are
+  // drawn wherever they are scrolled to, with the rows beside them that Tab
+  // and the arrow keys move on to.
+  const [focusedItem, setFocusedItem] = useState<string | null>(null);
+  const [revealedItem, setRevealedItem] = useState<string | null>(null);
+  const pinned = useMemo(() => {
+    const nearby: number[] = [];
+    for (const key of [focusedItem, revealedItem]) {
+      const index = key === null ? undefined : arranged.itemIndexes.get(key);
+      if (index === undefined) continue;
+      for (let near = index - 2; near <= index + 2; near++) nearby.push(near);
+    }
+    return nearby;
+  }, [focusedItem, revealedItem, arranged.itemIndexes]);
+  const windowing = useWindowedRows({
+    tableRef,
+    items: arranged.items,
+    pinned,
+  });
+  const { windowed, scrollToItem } = windowing;
+
+  // A cell Save refused is given focus once it is on screen. When it is in a
+  // row that is not drawn, the table is scrolled to the row and the row held
+  // until it has taken focus, and only then is focus sent.
+  useLayoutEffect(() => {
+    if (unfocusedErrors === null) return;
+    if (focusedErrors.current === unfocusedErrors) return;
+    // The first cell at fault, in the order the table lists its rows.
+    let first: { key: string; index: number } | undefined;
+    for (const name of Object.keys(unfocusedErrors.errors.fieldErrors)) {
+      const cell = readTranslationFieldName(name);
+      if (cell === undefined) continue;
+      const key = rowItemKey(rowKey(cell.path));
+      const index = arranged.itemIndexes.get(key);
+      if (index !== undefined && (first === undefined || index < first.index)) {
+        first = { key, index };
+      }
+    }
+    if (
+      windowed &&
+      first !== undefined &&
+      revealedItem !== first.key &&
+      !isItemDrawn(tableRef.current, first.key)
+    ) {
+      // oxlint-disable-next-line react-hooks/set-state-in-effect -- the row has to be drawn before focus can be sent to it, which only a render after this one does
+      setRevealedItem(first.key);
+      scrollToItem(first.index);
+      return;
+    }
+    focusedErrors.current = unfocusedErrors;
+    focusFirstError(unfocusedErrors.errors, tableRef.current, formScope);
+    setRevealedItem(null);
+  }, [
+    unfocusedErrors,
+    revealedItem,
+    arranged.itemIndexes,
+    windowed,
+    scrollToItem,
+    formScope,
+  ]);
+
+  // Counted from the column headings, which are row 1.
+  const ariaRowIndex = (item: number) => (windowed ? item + 2 : undefined);
+
+  // Whether focus has reached the table and not left. React's focus events
+  // reach the table from a popup or menu an editor draws elsewhere in the
+  // page, which the table's own elements do not contain.
+  const focusInTable = useRef(false);
+
+  const handleTableFocus = (event: FocusEvent<HTMLTableElement>) => {
+    focusInTable.current = true;
+    if (!windowed) return;
+    // Focus in a popup of a cell's editor is in no row of the table's own,
+    // and leaves the row that had it held.
+    const key = readWindowKey(event.target);
+    if (key) setFocusedItem(key);
+  };
+
+  const handleTableBlur = () => {
+    focusInTable.current = false;
+    if (!windowed) return;
+    // Focus moving from one element to another blurs the first before it
+    // focuses the second, and focus that lands nowhere for a moment, as an
+    // editor replaces the cell that had it, comes back. A window that lost
+    // focus keeps its place.
+    queueMicrotask(() => {
+      if (
+        !focusInTable.current &&
+        document.hasFocus() &&
+        !tableRef.current?.contains(document.activeElement)
+      ) {
+        setFocusedItem(null);
+      }
+    });
+  };
+
+  const resetKept = () =>
+    setKept((current) => (current.size === 0 ? current : new Set()));
+
+  const keepRow = useCallback(
+    (key: string) =>
+      setKept((current) =>
+        current.has(key) ? current : new Set(current).add(key),
+      ),
+    [],
+  );
 
   const chooseFilter = (next: MissingFilter) => {
     // The entry keeps its history state, which records where the table was
@@ -657,9 +900,8 @@ const TranslationTable = ({
     chooseFilter({ kind: 'language', locale });
   };
 
-  const move =
-    (rowIndex: number, colIndex: number) =>
-    (delta: number): boolean => {
+  const move = useCallback(
+    (rowIndex: number, colIndex: number, delta: number): boolean => {
       const target = tableRef.current?.querySelector<HTMLElement>(
         `[data-row="${rowIndex + delta}"][data-col="${colIndex}"]`,
       );
@@ -670,9 +912,11 @@ const TranslationTable = ({
         target.setSelectionRange(end, end);
       }
       return true;
-    };
+    },
+    [],
+  );
 
-  const columnId = (locale: LocaleTag) => `${baseId}-language-${locale}`;
+  const columnId = (locale: LocaleTag) => columnIdFor(baseId, locale);
   const emptyMessage = () => {
     if (total === 0) return intl.formatMessage(messages.noTexts);
     if (needle !== '') return intl.formatMessage(messages.noMatches);
@@ -684,16 +928,116 @@ const TranslationTable = ({
   };
 
   const tableStyle: TableStyle = { '--translation-columns': visible.length };
-  // Rows are numbered across groups, so arrow keys move between them; each
-  // group's numbering starts where the previous group's ended.
-  const numberedGroups: ((typeof shownGroups)[number] & {
-    firstRow: number;
-  })[] = [];
-  let nextRow = 0;
-  for (const group of shownGroups) {
-    numberedGroups.push({ ...group, firstRow: nextRow });
-    nextRow += group.rows.length;
-  }
+  // The groups drawn, and between them, as one blank group, any run of groups
+  // that lie wholly beyond the screen.
+  const columns = visible.length + 1;
+  const groupBodies: ReactNode[] = [];
+  let skippedFrom: number | null = null;
+  const closeSkipped = (to: number) => {
+    const from = skippedFrom;
+    const first = from === null ? undefined : arranged.numbered[from];
+    if (from === null || first === undefined) return;
+    skippedFrom = null;
+    groupBodies.push(
+      <tbody key={`gap-${first.key}`}>
+        <GapRow
+          height={windowing.heightBetween(
+            arranged.headingItems[from] ?? 0,
+            arranged.headingItems[to] ?? arranged.items.length,
+          )}
+          columns={columns}
+        />
+      </tbody>,
+    );
+  };
+  arranged.numbered.forEach((group, groupIndex) => {
+    const groupId = `${baseId}-group-${groupIndex}`;
+    const headingItem = arranged.headingItems[groupIndex] ?? 0;
+    const rowItem = (position: number) => headingItem + 1 + position;
+    const drawnRows = group.rows.map((_, position) =>
+      windowing.isDrawn(rowItem(position)),
+    );
+    // A group's heading is drawn whenever any of its rows is, so every row
+    // drawn has its group's name.
+    if (!windowing.isDrawn(headingItem) && !drawnRows.includes(true)) {
+      skippedFrom ??= groupIndex;
+      return;
+    }
+    closeSkipped(groupIndex);
+    // The rows not drawn between those that are stand in as one blank row.
+    const children: ReactNode[] = [];
+    let gapFrom: number | null = null;
+    const closeGap = (to: number) => {
+      if (gapFrom === null) return;
+      children.push(
+        <GapRow
+          key={`gap-${gapFrom}`}
+          height={windowing.heightBetween(rowItem(gapFrom), rowItem(to))}
+          columns={columns}
+        />,
+      );
+      gapFrom = null;
+    };
+    group.rows.forEach((row, position) => {
+      if (!drawnRows[position]) {
+        gapFrom ??= position;
+        return;
+      }
+      closeGap(position);
+      children.push(
+        <TranslationTableRow
+          key={row.key}
+          row={row}
+          groupId={groupId}
+          currentRow={group.firstRow + position}
+          windowed={windowed}
+          ariaRowIndex={ariaRowIndex(rowItem(position))}
+          locales={visible}
+          localization={localization}
+          baseId={baseId}
+          filtering={filtering}
+          onKeep={keepRow}
+          onMove={move}
+          measure={windowing.measure}
+        />,
+      );
+    });
+    closeGap(group.rows.length);
+    groupBodies.push(
+      // A group's heading sticks against the whole table, so every heading
+      // scrolled past stays stuck under the next one; clipping the group to
+      // its own box hides a taller (wrapped) heading of an earlier group,
+      // which would otherwise show beneath a shorter one.
+      <tbody
+        key={group.key}
+        className="[--translation-table-sticky-top:calc(var(--translation-table-head,0px)+var(--translation-group-head,0px))] [clip-path:inset(0)]"
+      >
+        <tr
+          ref={windowing.measure}
+          aria-rowindex={ariaRowIndex(headingItem)}
+          {...(windowed
+            ? windowItemProps(headingItemKey(group.key))
+            : undefined)}
+        >
+          <th
+            ref={groupHeadingRef}
+            id={groupId}
+            scope="rowgroup"
+            colSpan={columns}
+            className="bg-surface-1 text-surface-1-contrast border-outline sticky top-(--translation-table-head,0px) z-20 border-b p-0 text-start text-sm font-normal"
+          >
+            {/* Stays at the start of the visible width as the table scrolls
+                sideways, so the heading is never cut off. */}
+            <div className="sticky inset-s-0 w-max max-w-[min(calc(100vw-4rem),60rem)] px-3 py-2 wrap-anywhere">
+              <GroupHeading group={group} />
+            </div>
+          </th>
+        </tr>
+        {children}
+      </tbody>,
+    );
+  });
+  closeSkipped(arranged.numbered.length);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -806,7 +1150,12 @@ const TranslationTable = ({
           <Button
             size="sm"
             color="primary"
-            onClick={(event) => void formProps.onSubmit(event)}
+            onClick={(event) => {
+              // Each save is checked afresh: what the last refused one found
+              // stops holding its cells back.
+              if (formStore) clearSaveFindings(formStore);
+              void formProps.onSubmit(event);
+            }}
             disabled={isSubmitting}
           >
             {intl.formatMessage(commonMessages.save)}
@@ -825,10 +1174,18 @@ const TranslationTable = ({
         // overflows, rather than floating over its sticky cells and fading
         // away between scrolls.
         scrollerClassName={cx(
+          // A windowed table keeps what is on the screen where it is itself, as
+          // it learns the height of rows scrolled past; the browser doing the
+          // same would move it twice. A table drawn whole leaves it to the
+          // browser, as nothing else does.
+          windowed && '[overflow-anchor:none]',
           '[&::-webkit-scrollbar-corner]:bg-surface-1 [&::-webkit-scrollbar-track]:bg-surface-1 [&::-webkit-scrollbar]:size-3.5',
           '[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-3 [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-current/40 [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb:hover]:bg-current/60',
         )}
         aria-describedby={helpId}
+        aria-rowcount={windowed ? arranged.items.length + 1 : undefined}
+        onFocus={handleTableFocus}
+        onBlur={handleTableBlur}
         style={tableStyle}
         surfaceProps={{
           className:
@@ -846,7 +1203,7 @@ const TranslationTable = ({
           ))}
         </colgroup>
         <thead ref={headRef}>
-          <tr>
+          <tr aria-rowindex={windowed ? 1 : undefined}>
             <th
               scope="col"
               className="bg-surface-2 text-surface-2-contrast border-outline sticky inset-s-0 top-0 z-40 border-e border-b px-3 py-2.5 text-start text-sm font-semibold"
@@ -926,7 +1283,7 @@ const TranslationTable = ({
           <tbody>
             <tr>
               <td
-                colSpan={visible.length + 1}
+                colSpan={columns}
                 className="px-3 py-10 text-center text-current/70"
               >
                 {emptyMessage()}
@@ -934,72 +1291,7 @@ const TranslationTable = ({
             </tr>
           </tbody>
         )}
-        {numberedGroups.map((group, groupIndex) => {
-          const groupId = `${baseId}-group-${groupIndex}`;
-          return (
-            <tbody
-              key={group.key}
-              className="[--translation-table-sticky-top:calc(var(--translation-table-head,0px)+var(--translation-group-head,0px))]"
-            >
-              <tr>
-                <th
-                  ref={groupHeadingRef}
-                  id={groupId}
-                  scope="rowgroup"
-                  colSpan={visible.length + 1}
-                  className="bg-surface-1 text-surface-1-contrast border-outline sticky top-(--translation-table-head,0px) z-20 border-b p-0 text-start text-sm font-normal"
-                >
-                  {/* Stays at the start of the visible width as the table
-                      scrolls sideways, so the heading is never cut off. */}
-                  <div className="sticky inset-s-0 w-max max-w-[min(calc(100vw-4rem),60rem)] px-3 py-2">
-                    <GroupHeading group={group} />
-                  </div>
-                </th>
-              </tr>
-              {group.rows.map((row, rowPosition) => {
-                const currentRow = group.firstRow + rowPosition;
-                const rowId = `${groupId}-row-${currentRow}`;
-                return (
-                  <tr
-                    key={row.key}
-                    onFocus={() => {
-                      if (filtering && !kept.has(row.key)) {
-                        setKept(new Set(kept).add(row.key));
-                      }
-                    }}
-                  >
-                    <th
-                      id={rowId}
-                      scope="row"
-                      className="bg-surface border-outline sticky inset-s-0 z-10 border-e border-b px-3 py-2 text-start align-top text-sm font-normal text-current/80"
-                    >
-                      {row.rawName ? (
-                        <span dir="ltr" className="font-monospace break-words">
-                          {row.name}
-                        </span>
-                      ) : (
-                        <span className="break-words">{row.name}</span>
-                      )}
-                    </th>
-                    {visible.map((locale, colIndex) => (
-                      <TranslationCell
-                        key={locale}
-                        row={row.row}
-                        singleLine={row.singleLine}
-                        locale={locale}
-                        localization={localization}
-                        labelledBy={`${groupId} ${rowId} ${columnId(locale)}`}
-                        rowIndex={currentRow}
-                        colIndex={colIndex}
-                        onMove={move(currentRow, colIndex)}
-                      />
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          );
-        })}
+        {groupBodies}
       </Table>
       <p id={helpId} className="sr-only">
         {intl.formatMessage(messages.keyboardHelp)}

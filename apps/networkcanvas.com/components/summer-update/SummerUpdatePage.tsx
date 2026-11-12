@@ -848,7 +848,7 @@ export function SummerUpdatePage() {
                                 },
                               )}
                               aria-pressed={selectedCompatibilityRow === index}
-                              className="focusable col-span-4 grid grid-cols-4 items-center gap-4 text-left"
+                              className="focusable col-span-4 grid grid-cols-4 items-center gap-4 text-start"
                               onClick={() => setSelectedCompatibilityRow(index)}
                             >
                               <span
@@ -871,7 +871,7 @@ export function SummerUpdatePage() {
                               <StatusChip status={row.schema8} />
                             </button>
                             {hasClassicAppDefinition ? (
-                              <span className="text-text absolute inset-y-0 left-6 z-10 flex items-center font-bold">
+                              <span className="text-text absolute inset-y-0 inset-s-6 z-10 flex items-center font-bold">
                                 {renderCompatibilityAppName(row.id, row.app)}
                                 {' '}
                                 {row.version ? (

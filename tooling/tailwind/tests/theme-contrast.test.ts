@@ -17,7 +17,7 @@ import Color from 'colorjs.io';
  *  3. The parser cannot pass vacuously: the pairs found must be exactly the
  *     expected set, in every scope.
  *
- * How colours are evaluated: `theme-colors.ts` resolves the cascade for one
+ * How colours are evaluated: `shared/theme-colors.ts` resolves the cascade for one
  * themed element (var() substitution at the declaring element, calc(), relative
  * oklch(), color-mix()) and colorjs.io does the colour maths. Colours outside
  * the sRGB gamut are clipped channel by channel, which is what Chromium paints
@@ -33,7 +33,6 @@ import Color from 'colorjs.io';
  */
 import { describe, expect, test } from 'vitest';
 
-import { RECORDED_RATIOS, type Backdrop } from './recorded-ratios.ts';
 import {
   buildScopes,
   compositeOver,
@@ -43,7 +42,8 @@ import {
   THEME_FILES,
   toDisplayColor,
   type ScopeName,
-} from './theme-colors.ts';
+} from '../shared/theme-colors.ts';
+import { RECORDED_RATIOS, type Backdrop } from './recorded-ratios.ts';
 
 const AA_NORMAL_TEXT = 4.5;
 

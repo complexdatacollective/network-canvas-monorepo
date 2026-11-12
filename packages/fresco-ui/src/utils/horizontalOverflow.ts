@@ -4,7 +4,7 @@ export type HorizontalOverflow = {
   inlineEnd: number;
 };
 
-export function isRightToLeft(element: HTMLElement): boolean {
+export function isRightToLeft(element: Element): boolean {
   return getComputedStyle(element).direction === 'rtl';
 }
 

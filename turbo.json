@@ -95,6 +95,8 @@
         "hooks/**",
         "lib/**",
         "messages/**",
+        "docs/**",
+        "translation/**",
         "env.js",
         "navigation.ts",
         "vitest.config.*",
@@ -529,9 +531,12 @@
       // guide the Studio jobs run; the upgrade-script suite runs
       // apps/studio/scripts; the released-migration guard reads
       // apps/studio/api/migrations; the PWA hosting and legacy-app guards read
-      // each app's _headers, _redirects and older-major pin.
+      // each app's _headers, _redirects and older-major pin; the direction
+      // lint rule reads fresco-ui's list of components that turn icons.
       "inputs": [
         "scripts/**",
+        "tooling/oxlint/**",
+        "packages/fresco-ui/src/navigation/inlineIconProps.json",
         ".github/**",
         ".claude/**",
         ".agents/**",
@@ -570,6 +575,12 @@
         "package.json",
         "packages/**/*.{ts,tsx}",
         "apps/**/*.{ts,tsx}",
+        // The right-to-left fragment guard reads message catalogs and
+        // translated posts.
+        "packages/**/{locales,messages}/*.json",
+        "apps/**/{locales,messages}/*.json",
+        "apps/**/*.md",
+        "apps/**/*.mdx",
         "!**/node_modules/**",
         "!**/dist/**",
         "!**/.*/**"

@@ -32,17 +32,11 @@ export const interfaceMessages = defineMessages({
     description:
       'Question asked when leaving a form with invalid unsaved answers. Continuing resets the form, so its unsaved changes will be lost.',
   },
-  discardChanges: {
-    id: 'interview.interfaces.discardChanges',
-    defaultMessage: 'Discard changes',
-    description:
-      'Confirmation action that leaves an invalid form and discards its unsaved changes.',
-  },
   scrollForQuestions: {
     id: 'interview.interfaces.scrollForQuestions',
     defaultMessage: 'Scroll to see more questions',
     description:
-      'Hint at the bottom of a long personal-information form indicating that more questions are below the visible area.',
+      'Accessible name and announcement of the arrows at the bottom of a long personal-information form, which show that more questions are below the visible area. Only screen readers read it, so it stays in English whatever the interview language.',
   },
   emptyValue: {
     id: 'interview.interfaces.emptyValue',
@@ -120,20 +114,20 @@ export const interfaceMessages = defineMessages({
     id: 'interview.interfaces.quickAddHint',
     defaultMessage: 'Press Enter when you are finished.',
     description:
-      'Line shown under the quick-add name field after it has been open a while, telling the participant how to add what they typed.',
+      'Tooltip that opens over the quick-add name field after about five seconds without typing, until the first name is added, telling the participant how to add what they typed.',
   },
   overtakenEditNotice: {
     id: 'interview.interfaces.overtakenEditNotice',
     defaultMessage:
       'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
     description:
-      'Warning in the network-composer side panel when an undo or redo changed an answer the interviewer was in the middle of editing.',
+      'Explanation in the Discard changes dialog shown as the interviewer leaves a network-composer form whose answer an undo or redo changed while they were editing it.',
   },
   composerGroups: {
     id: 'interview.interfaces.composerGroups',
     defaultMessage: 'Groups',
     description:
-      'Heading over the groups in the network-composer side panel, and the name of the tool that puts nodes in groups.',
+      'Name of the network-composer tool that puts nodes in groups, shown in its tooltip and read as its accessible name.',
   },
   composerAddNode: {
     id: 'interview.interfaces.composerAddNode',
@@ -239,17 +233,29 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of the toolbar group containing undo and redo actions.',
   },
+  composerUndo: {
+    id: 'interview.interfaces.composerUndo',
+    defaultMessage: 'Undo',
+    description:
+      'Accessible name of the network composer toolbar button that reverses the most recent change. The button shows only an icon and no tooltip, so only screen readers read this, and it stays in English whatever the interview language.',
+  },
+  composerRedo: {
+    id: 'interview.interfaces.composerRedo',
+    defaultMessage: 'Redo',
+    description:
+      'Accessible name of the network composer toolbar button that makes again a change that was undone. The button shows only an icon and no tooltip, so only screen readers read this, and it stays in English whatever the interview language.',
+  },
   undo: {
     id: 'interview.interfaces.undo',
     defaultMessage: 'Undo',
     description:
-      'Toolbar action that reverses the most recent change, in the network composer and the family pedigree.',
+      'Name of the family pedigree toolbar button that reverses the most recent change, shown in its tooltip.',
   },
   redo: {
     id: 'interview.interfaces.redo',
     defaultMessage: 'Redo',
     description:
-      'Toolbar action that makes again a change that was undone, in the network composer and the family pedigree.',
+      'Name of the family pedigree toolbar button that makes again a change that was undone, shown in its tooltip.',
   },
   layoutAndDrawing: {
     id: 'interview.interfaces.layoutAndDrawing',
@@ -414,13 +420,25 @@ export const interfaceMessages = defineMessages({
     id: 'interview.interfaces.zoomIn',
     defaultMessage: 'Zoom in',
     description:
-      'Accessible name of the map and family pedigree buttons that increase magnification. Sentence case.',
+      'Name of the family tree toolbar button that increases magnification, on the Family Pedigree and Narrative Pedigree stages, shown in its tooltip. Sentence case.',
   },
   zoomOut: {
     id: 'interview.interfaces.zoomOut',
     defaultMessage: 'Zoom out',
     description:
-      'Accessible name of the map and family pedigree buttons that decrease magnification. Sentence case.',
+      'Name of the family tree toolbar button that decreases magnification, on the Family Pedigree and Narrative Pedigree stages, shown in its tooltip. Sentence case.',
+  },
+  mapZoomIn: {
+    id: 'interview.interfaces.mapZoomIn',
+    defaultMessage: 'Zoom in',
+    description:
+      'Accessible name of the Geospatial map button that increases magnification. The button shows only an icon, so only screen readers read this, and it stays in English whatever the interview language.',
+  },
+  mapZoomOut: {
+    id: 'interview.interfaces.mapZoomOut',
+    defaultMessage: 'Zoom out',
+    description:
+      'Accessible name of the Geospatial map button that decreases magnification. The button shows only an icon, so only screen readers read this, and it stays in English whatever the interview language.',
   },
   recenterMap: {
     id: 'interview.interfaces.recenterMap',
@@ -451,6 +469,12 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Search suggestions',
     description:
       'Accessible name of the list of places returned by geospatial search, including its loading and empty states.',
+  },
+  mapMoveFailed: {
+    id: 'interview.interfaces.mapMoveFailed',
+    defaultMessage: 'Search could not be completed. Try again in a moment.',
+    description:
+      'Screen-reader announcement when the map could not be moved to the search result the participant chose. Only screen readers read it, so it stays in English whatever the interview language.',
   },
   mapMoved: {
     id: 'interview.interfaces.mapMoved',

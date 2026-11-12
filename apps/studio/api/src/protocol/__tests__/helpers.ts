@@ -4,10 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { Cause, Duration, Effect, Exit } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   type CurrentProtocol,
   CurrentProtocolSchema,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 import {
   forceExpire,
@@ -160,8 +160,8 @@ export const FIXTURES = [
  * shows, as every protocol Studio assembles does.
  */
 export function baseProtocol(): CurrentProtocol {
-  return withInterfaceText(
-    CurrentProtocolSchema.parse({
+  return CurrentProtocolSchema.parse(
+    withInterfaceText({
       name: 'Test Protocol',
       schemaVersion: 9,
       localization: { defaultLocale: 'en', locales: ['en'] },

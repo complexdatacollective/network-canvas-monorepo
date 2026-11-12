@@ -82,13 +82,26 @@ export function ProtocolGalleryCard({
             variant="subtitle"
             margin="none"
             render={<p />}
+            dir="auto"
+            className="text-match-parent"
           >
             {protocol.title}
           </Heading>
-          <Paragraph margin="none" intent="meta" emphasis="muted">
+          <Paragraph
+            margin="none"
+            intent="meta"
+            emphasis="muted"
+            dir="auto"
+            className="text-match-parent"
+          >
             {protocol.authors}
           </Paragraph>
-          <Paragraph margin="none" intent="smallText">
+          <Paragraph
+            margin="none"
+            intent="smallText"
+            dir="auto"
+            className="text-match-parent"
+          >
             {protocol.description}
           </Paragraph>
         </div>
@@ -134,7 +147,7 @@ export function ProtocolGalleryCard({
               className="flex shrink-0 items-center gap-1 whitespace-nowrap"
             >
               {t('collection.viewDetails')}
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none" />
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none rtl:-scale-x-100 rtl:group-hover:-translate-x-0.5 rtl:group-focus-visible:-translate-x-0.5" />
             </Eyebrow>
           </div>
         </Surface>

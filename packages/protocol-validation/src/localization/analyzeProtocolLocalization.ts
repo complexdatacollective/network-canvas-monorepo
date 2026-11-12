@@ -1,3 +1,4 @@
+import { wordingPresent } from '../schemas/9/protocol-wording.ts';
 import type { Protocol } from '../schemas/index.ts';
 import { collectLocalizedStrings } from '../utils/collectLocalizedStrings.ts';
 import type { LocaleTag } from './localeTag.ts';
@@ -19,12 +20,23 @@ export type ProtocolLocalizationWarning = Readonly<{
  *
  * `fallbackLocale` comes from the runtime resolver itself, so the coverage an
  * author is shown is exactly what the interview renders.
+ *
+ * The protocol is read with every text it shows written out, with a stand-in
+ * for Network Canvas's wording wherever it has words (`wordingPresent`): only
+ * which languages a text has words in is read here, never the words. A text
+ * Network Canvas words lacks a language only where neither the protocol nor
+ * Network Canvas has wording for it, and it counts whether or not the
+ * protocol holds any wording of its own for it. So a
+ * stored protocol and the same protocol as an editor holds it give the same
+ * answer.
  */
 export function analyzeProtocolLocalization(
   protocol: Protocol<9>,
 ): readonly ProtocolLocalizationWarning[] {
   const { localization } = protocol;
-  return collectLocalizedStrings(protocol).flatMap((hit) => {
+  return collectLocalizedStrings(
+    wordingPresent.withSuppliedWording(protocol),
+  ).flatMap((hit) => {
     const missing = localization.locales.filter(
       (locale) => !Object.hasOwn(hit.value, locale),
     );

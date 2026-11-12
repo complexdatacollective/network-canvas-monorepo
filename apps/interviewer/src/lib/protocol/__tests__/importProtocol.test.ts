@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import { hashProtocol } from '@codaco/protocol-validation';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
@@ -154,6 +155,7 @@ describe('importProtocolFromFile error reporting', () => {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
     };
+    // A protocol holds none of Network Canvas's interface text.
     const bytes = await buildArchive({
       'protocol.json': `{"schemaVersion":${COMPATIBLE_PROTOCOL_SCHEMA_VERSION},"name":"Proto","description":"","localization":{"defaultLocale":"en","locales":["en"]},"stages":[{"id":"finish","type":"FinishSession","mode":"confirmation","label":{"en":"Finish"},"content":{"en":"# Finish\\n\\nThank you."},"finishedContent":{"en":"# Finished\\n\\nThank you."},"finishLabel":{"en":"Finish"},"finishConfirmation":{"en":"Finish?"},"finishFailed":{"en":"Not finished."},"outcome":"completed"}],"codebook":{"node":{"__proto__":${JSON.stringify(nodeType)}},"edge":{},"ego":{}},"assetManifest":{}}`,
     });
@@ -231,29 +233,32 @@ describe('importing a file below this app’s schema', () => {
     expect(saveProtocolMock).toHaveBeenCalledWith(schema8, result.hash, []);
   });
 
+  // A study that ends at once, written in one language.
+  const studyIn = (locale: string) => ({
+    schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    name: 'Current study',
+    description: '',
+    localization: { defaultLocale: locale, locales: [locale] },
+    stages: [
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        mode: 'confirmation',
+        label: { [locale]: 'Finish' },
+        content: { [locale]: '# Finish\n\nThank you.' },
+        finishedContent: { [locale]: '# Finished\n\nThank you.' },
+        finishLabel: { [locale]: 'Finish' },
+        finishConfirmation: { [locale]: 'Finish?' },
+        finishFailed: { [locale]: 'Not finished.' },
+        outcome: 'completed',
+      },
+    ],
+    codebook: { node: {}, edge: {}, ego: {} },
+    assetManifest: {},
+  });
+
   it('imports a file at this app’s schema as it is', async () => {
-    const current = {
-      schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
-      name: 'Current study',
-      description: '',
-      localization: { defaultLocale: 'en', locales: ['en'] },
-      stages: [
-        {
-          id: 'finish',
-          type: 'FinishSession',
-          mode: 'confirmation',
-          label: { en: 'Finish' },
-          content: { en: '# Finish\n\nThank you.' },
-          finishedContent: { en: '# Finished\n\nThank you.' },
-          finishLabel: { en: 'Finish' },
-          finishConfirmation: { en: 'Finish?' },
-          finishFailed: { en: 'Not finished.' },
-          outcome: 'completed',
-        },
-      ],
-      codebook: { node: {}, edge: {}, ego: {} },
-      assetManifest: {},
-    };
+    const current = withInterfaceText(studyIn('en'));
     const bytes = await buildArchive({
       'protocol.json': JSON.stringify(current),
     });
@@ -266,6 +271,39 @@ describe('importing a file below this app’s schema', () => {
       COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     );
     expect(saveProtocolMock).toHaveBeenCalledTimes(1);
+  });
+
+  // The interview shows Network Canvas's wording for the words a protocol
+  // does not hold, so a file without them is whole in a language Network
+  // Canvas has wording in, and nothing is written into it.
+  it('imports a file that holds none of the interview’s own words, as it is', async () => {
+    const result = await importProtocolFromFile(
+      asFile(
+        await buildArchive({ 'protocol.json': JSON.stringify(studyIn('en')) }),
+      ),
+    );
+
+    expect(result).toMatchObject({ success: true });
+    expect(saveProtocolMock).toHaveBeenCalledTimes(1);
+    expect(saveProtocolMock.mock.calls[0]?.[0]).not.toHaveProperty(
+      'interfaceText',
+    );
+  });
+
+  it('refuses such a file in a language Network Canvas has no wording in, naming each text it lacks', async () => {
+    const refused = await importProtocolFromFile(
+      asFile(
+        await buildArchive({ 'protocol.json': JSON.stringify(studyIn('sw')) }),
+      ),
+    );
+
+    expect(refused.success).toBe(false);
+    if (refused.success) return;
+    expect(refused.error).toBe('validation-failed');
+    expect(refused.issues?.map(({ path }) => path)).toContain(
+      'interfaceText.navigation.back.sw',
+    );
+    expect(saveProtocolMock).not.toHaveBeenCalled();
   });
 });
 
@@ -484,5 +522,47 @@ describe('keeping a file below this app’s schema on schema 8', () => {
     if (!result.success) return;
     expect(result.protocol).toEqual(withStage);
     expect(saveProtocolMock).toHaveBeenCalledWith(withStage, result.hash, []);
+  });
+
+  // The upgrade to the current schema refuses a blank prompt rather than
+  // inventing one. Interviewer never makes that upgrade: the file is kept, and
+  // interviewed, at schema 8, which accepted a prompt of only spaces.
+  it('keeps a file with a blank stage prompt on schema 8', async () => {
+    const withBlankPrompt = {
+      ...schema8,
+      codebook: {
+        ...schema8.codebook,
+        node: {
+          person: {
+            ...schema8.codebook.node.person,
+            variables: { name: { name: 'name', type: 'text' } },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 's1',
+          type: 'NameGeneratorQuickAdd',
+          label: 'Friends',
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          prompts: [{ id: 'p1', text: '   ' }],
+        },
+      ],
+    };
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(withBlankPrompt),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result).toMatchObject({ success: true });
+    if (!result.success) return;
+    expect(result.protocol).toEqual(withBlankPrompt);
+    expect(saveProtocolMock).toHaveBeenCalledWith(
+      withBlankPrompt,
+      result.hash,
+      [],
+    );
   });
 });

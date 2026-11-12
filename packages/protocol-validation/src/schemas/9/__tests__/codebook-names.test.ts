@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import { localized } from '../../../utils/test-utils.ts';
 import {
   EdgeDefinitionSchema,
   NodeDefinitionSchema,
 } from '../codebook/definitions.ts';
-import { categoricalOptionValueSchema } from '../variables/variable.ts';
+import {
+  categoricalOptionValueSchema,
+  VariableSchema,
+} from '../variables/variable.ts';
 
 // A name a researcher types — a node or edge type's name, an option's value —
 // becomes part of an export (a file name, a column), so each is held to
@@ -12,6 +16,7 @@ import { categoricalOptionValueSchema } from '../variables/variable.ts';
 // carrying characters an export cannot write.
 const INVALID_NAMES = [
   ['empty', ''],
+  ['only spaces', '   '],
   ['padded', ' Person '],
   ['not NFC', 'Café'],
   ['a control character', 'Per\u0007son'],
@@ -45,6 +50,22 @@ describe.each([
   });
 });
 
+describe('an attribute name', () => {
+  const issuePaths = (variable: unknown) =>
+    VariableSchema.safeParse(variable).error?.issues.map(({ path }) => path) ??
+    [];
+
+  it('accepts a name in any script, with spaces', () => {
+    expect(
+      VariableSchema.safeParse({ name: 'Âge du parent', type: 'text' }).success,
+    ).toBe(true);
+  });
+
+  it.each(INVALID_NAMES)('rejects a name that is %s', (_n, name) => {
+    expect(issuePaths({ name, type: 'text' })).toContainEqual(['name']);
+  });
+});
+
 describe('an option value', () => {
   it('accepts an integer or a name', () => {
     expect(categoricalOptionValueSchema.safeParse(3).success).toBe(true);
@@ -55,5 +76,28 @@ describe('an option value', () => {
 
   it.each(INVALID_NAMES)('rejects a text value that is %s', (_n, value) => {
     expect(categoricalOptionValueSchema.safeParse(value).success).toBe(false);
+  });
+
+  // What an option records cannot be known when its value is blank, so the
+  // attribute is refused at that option rather than given a value.
+  it.each([
+    ['categorical', ''],
+    ['categorical', ' '],
+    ['ordinal', ''],
+    ['ordinal', ' '],
+  ] as const)('rejects a blank value of a %s attribute, %j', (type, value) => {
+    const result = VariableSchema.safeParse({
+      name: 'Closeness',
+      type,
+      options: [
+        { label: localized('Close'), value: 'close' },
+        { label: localized('Distant'), value },
+      ],
+    });
+    expect(result.error?.issues.map(({ path }) => path)).toContainEqual([
+      'options',
+      1,
+      'value',
+    ]);
   });
 });

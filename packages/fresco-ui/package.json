@@ -46,6 +46,7 @@
     "./IdentityMark": "./src/IdentityMark.tsx",
     "./Kbd": "./src/Kbd.tsx",
     "./Label": "./src/Label.tsx",
+    "./LocaleDirectionProvider": "./src/LocaleDirectionProvider.tsx",
     "./LocaleLoadFailureToast": "./src/LocaleLoadFailureToast.tsx",
     "./Modal": "./src/Modal/index.tsx",
     "./Modal/ModalBackdrop": "./src/Modal/ModalBackdrop.tsx",
@@ -191,6 +192,7 @@
     "./navigation/SiteFooter": "./src/navigation/SiteFooter.tsx",
     "./navigation/SiteNavigation": "./src/navigation/SiteNavigation.tsx",
     "./navigation/SiteNavigation.constants": "./src/navigation/SiteNavigation.constants.ts",
+    "./navigation/SiteNavigation.messages": "./src/navigation/SiteNavigation.messages.ts",
     "./navigation/TeamAndStudySwitcher": "./src/navigation/TeamAndStudySwitcher.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
     "./stages/StageBar": "./src/stages/StageBar.tsx",
@@ -335,6 +337,10 @@
       "./Label": {
         "types": "./dist/Label.d.ts",
         "default": "./dist/Label.js"
+      },
+      "./LocaleDirectionProvider": {
+        "types": "./dist/LocaleDirectionProvider.d.ts",
+        "default": "./dist/LocaleDirectionProvider.js"
       },
       "./LocaleLoadFailureToast": {
         "types": "./dist/LocaleLoadFailureToast.d.ts",
@@ -916,6 +922,10 @@
         "types": "./dist/navigation/SiteNavigation.constants.d.ts",
         "default": "./dist/navigation/SiteNavigation.constants.js"
       },
+      "./navigation/SiteNavigation.messages": {
+        "types": "./dist/navigation/SiteNavigation.messages.d.ts",
+        "default": "./dist/navigation/SiteNavigation.messages.js"
+      },
       "./navigation/TeamAndStudySwitcher": {
         "types": "./dist/navigation/TeamAndStudySwitcher.d.ts",
         "default": "./dist/navigation/TeamAndStudySwitcher.js"
@@ -1075,6 +1085,7 @@
     "@vitest/browser-playwright": "catalog:",
     "chromatic": "catalog:",
     "jsdom": "catalog:",
+    "oxc-transform-react": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",
     "tinyglobby": "^0.2.17",

@@ -1,0 +1,101 @@
+---
+title: Filtrado de la red
+navOrder: 11
+translatedFrom: 05a30afc29058810199d8d4358b8240676158417
+---
+
+<Definition>
+  El filtrado de la red permite mostrar solo una parte de los nodos o de los
+  vínculos en una etapa concreta de la entrevista, según sus atributos.
+</Definition>
+
+## Detalles {#details}
+
+El filtrado de la red es una opción de configuración que encontrarás en varias partes de Architect. Permite definir una o varias reglas que determinan qué nodos o vínculos deben mostrarse en una etapa concreta (o en un panel lateral; [consulta más abajo](#network-filtering-in-a-side-panel)). Puedes usarlo para mostrar solo una parte de la red.
+
+Resulta especialmente útil cuando el contenido de la etapa no se aplica a todas las entidades de la red. Piensa, por ejemplo, en un protocolo de entrevista con dos etapas: una etapa [«Generador de nombres»](/es/design-protocols/interface-documentation/name-generator-using-forms) y una etapa [«Clasificación ordinal»](/es/design-protocols/interface-documentation/ordinal-bin). En la primera etapa, por cada álter (cada persona a la que se nombra durante la entrevista), se pregunta a la persona participante si hace deporte con esa persona. La segunda etapa pregunta «¿con qué frecuencia haces deporte con cada una de estas personas?». Si filtras la red de esta segunda etapa para que muestre solo los álteres que tienen el atributo **hace deporte con**, reducirás la carga de respuesta de cada participante y el protocolo de entrevista será más eficiente.
+
+<TipBox>
+
+¡El filtrado de la red no es lo mismo que la [lógica de salto](/es/design-protocols/key-concepts/skip-logic)! Aunque en principio parezcan similares, sirven para objetivos de diseño muy distintos. El filtrado de la red determina qué nodos se muestran _dentro_ de una etapa, mientras que la lógica de salto determina si una etapa se muestra o no. Consulta el artículo sobre la [lógica de salto](/es/design-protocols/key-concepts/skip-logic) para saber más.
+
+</TipBox>
+
+## Configurar el filtrado de la red en una etapa {#configuring-network-filtering-on-a-stage}
+
+Para configurar el filtrado de la red en una etapa, abre la etapa desde la vista de la línea de tiempo y activa el interruptor **Filtrado de red**. A partir de ahí, puedes crear una o varias **reglas** (de tipo álter o vínculo) y establecer el **operador de unión**, indicando si **deben cumplirse todas las reglas** o si **basta con que se cumpla alguna regla**.
+
+![](/assets/img/key-concepts/network-filtering/filtering-panel.png)
+
+<TipBox>
+
+El filtrado de la red solo está disponible en las interfaces de tipo _intérprete de nombres_, es decir, las interfaces que añaden atributos a los nodos o a los vínculos. No está disponible en las interfaces especializadas de tipo _generador de nombres_.
+
+</TipBox>
+
+### Reglas de filtrado {#filtering-rules}
+
+Al igual que las reglas de la [lógica de salto](/es/design-protocols/key-concepts/skip-logic), las reglas de filtrado son de dos tipos y pueden aplicarse tanto a nodos como a vínculos:
+
+- **Reglas de «presencia»**: permiten consultar si existe en la red una entidad de un tipo determinado, con el operador `exists` o `not exists`. Este tipo de regla no suele ser útil en la mayoría de las operaciones de filtrado habituales, pero puede usarse cuando los datos de una lista predefinida (una lista que se importa como archivo de datos) contienen nodos o vínculos de varios tipos.
+- **Reglas de «atributo»**: permiten consultar el valor de una variable en un tipo de entidad determinado. Por ejemplo, puedes consultar el valor de una variable llamada `age` en un tipo de álter llamado «Person» (persona). Puedes evaluar el resultado con uno de varios operadores lógicos, que varían según el tipo de variable. Por ejemplo, las variables numéricas permiten hacer consultas con operadores como «mayor que» y «menor que».
+
+Los operadores disponibles para una regla de atributo dependen del tipo de la variable. Las variables numéricas ofrecen comparaciones como _es mayor que_ y _es menor que_; las variables de texto se pueden comparar con _es exactamente_, _no es_ y, en los protocolos del esquema 8 y posteriores, _contiene_ y _no contiene_, que comprueban si el texto almacenado incluye o no un valor. En las variables ordinales y categóricas, los operadores _incluye_ y _excluye_ admiten **varios** valores seleccionados, de modo que una sola regla puede coincidir con una entidad cuya variable contenga cualquiera de varias opciones.
+
+A diferencia de las reglas de la lógica de salto (que se agregan en un único valor booleano general, `true` o `false`), las reglas de filtrado se aplican a cada nodo y a cada vínculo de la red, y no se agregan. En su lugar, los nodos que permanecen son los que cumplen las condiciones de las reglas.
+
+<TipBox danger>
+
+Es importante recordar que el filtrado mantiene la validez del modelo de red:
+la red resultante no contendrá nodos huérfanos cuando se use una consulta de
+vínculos, ni vínculos parcialmente desconectados, ya que no son
+fenomenológicamente válidos.
+
+</TipBox>
+
+### El operador de unión {#the-join-operator}
+
+Las reglas se encadenan (o se «unen») mediante lógica `AND` u `OR`, que se establece en la sección de configuración del filtro de red con las opciones **Deben cumplirse todas las reglas** y **Basta con que se cumpla alguna regla**, respectivamente. Estos métodos funcionan más o menos como cabría esperar. En el contexto de una operación de filtrado:
+
+- `OR` significa que, si un nodo o un vínculo cumple los criterios de _cualquiera_ de las reglas, se incluirá en la red resultante.
+- `AND` significa que los nodos y vínculos de la red resultante deben cumplir los criterios de _todas_ las reglas.
+
+Por tanto, el operador de unión que elijas puede influir enormemente en cómo se evalúan tus reglas en conjunto. Usa el operador `AND` para encadenar varios valores de propiedad obligatorios solo cuando todos esos valores sean necesarios a la vez **en un mismo nodo**.
+
+### Ejemplo detallado {#extended-example}
+
+Como el filtrado de la red puede resultar confuso cuando se empieza a usar, aquí tienes un ejemplo detallado de esta función que incluye reglas de nodo y de vínculo.
+
+Imagina una entrevista en la que usas la interfaz [«Sociograma»](/es/design-protocols/interface-documentation/sociogram) para generar vínculos sexuales entre álteres y para recoger datos de un atributo booleano sobre el estado serológico respecto al VIH de cada álter. Supongamos que después quieres usar una etapa [«Formulario por álter»](/es/design-protocols/interface-documentation/per-alter-form) (un formulario para cada álter) u otro intérprete de nombres para recoger datos sobre las conductas de consumo de drogas de los álteres, pero solo de cada álter que tenga VIH _y_ que mantenga una relación sexual con otro álter de la red.
+
+Para conseguirlo con el filtrado de la red, puedes aplicar las siguientes reglas de vínculo y de nodo en la etapa «Formulario por álter»:
+
+![](/assets/img/key-concepts/network-filtering/example.png)
+
+Al aplicar estas reglas en esta etapa, solo se mostrarán los nodos VIH+ que mantengan una relación sexual. El filtro excluirá todos los nodos que no tengan una relación sexual, aunque tengan el atributo `HIV_pos = true`.
+
+<TipBox danger>
+
+Si tu consulta de filtrado (el conjunto de todas las reglas definidas en la
+etapa) incluye una regla de vínculo, también filtrarás álteres. Por ejemplo, si
+tu regla filtra por la existencia de un tipo de vínculo, como «sex» (sexual),
+todos los nodos que quedarían aislados como resultado de esta consulta se
+eliminan de la red filtrada.
+
+</TipBox>
+
+## Filtrado de la red en un panel lateral {#network-filtering-in-a-side-panel}
+
+También puedes filtrar el contenido de los [paneles laterales](/es/design-protocols/interface-documentation/name-generator-using-forms#side-panels) de las etapas «Generador de nombres» que los usen. Funciona exactamente igual que el filtrado de la red en la etapa, salvo que los resultados solo se aplican al panel lateral concreto que estás configurando. El filtrado que establezcas se aplicará a todas las [preguntas](/es/design-protocols/key-concepts/prompts) de esa etapa.
+
+Esta función puede ser especialmente útil si quieres filtrar los elementos de una lista predefinida. Por ejemplo, tu lista puede contener un atributo que represente el año de graduación, que podrías usar para filtrar el contenido del panel lateral en una pregunta sobre las personas de una promoción concreta con las que la persona participante coincidió en clase.
+
+![](/assets/img/key-concepts/network-filtering/side-panel.png)
+
+## Conceptos relacionados {#related-concepts}
+
+- [Lógica de salto](/es/design-protocols/key-concepts/skip-logic): omite o muestra etapas completas según una condición
+- [Variables](/es/design-protocols/key-concepts/variables): crea variables para usarlas en las reglas de filtrado
+- [Interfaces](/es/design-protocols/key-concepts/interfaces): descubre qué interfaces admiten el filtrado de la red
+- [Preguntas](/es/design-protocols/key-concepts/prompts): configura preguntas que funcionen con redes filtradas
+- [Recursos](/es/design-protocols/key-concepts/resources): importa datos de listas predefinidas para filtrarlos

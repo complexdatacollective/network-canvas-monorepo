@@ -327,7 +327,7 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     await database.dispose();
   });
 
-  it('lists newest-first with registry titles and a generic unknown-pair row', async () => {
+  it('lists newest-first, marking an unregistered pair as not rendered', async () => {
     const page = await client.call(client.rpc('audit.list', { teamId: TEAM }));
     expect(page.items.map((item) => item.sequence)).toEqual([
       '6',
@@ -343,14 +343,13 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     expect(future).toMatchObject({
       eventType: 'audit.future_event',
       eventVersion: 7,
-      title: 'audit.future_event',
       rendered: false,
       outcome: 'succeeded',
     });
 
     const cancelled = page.items[1];
     expect(cancelled && encodeSummary(cancelled)).toMatchObject({
-      title: 'Invitation cancelled',
+      eventType: 'team.invitation.cancelled',
       rendered: true,
       eventVersion: 2,
       actor: { kind: 'user', id: OWNER.userId, label: 'Audit Owner' },
@@ -361,7 +360,7 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       },
       resource: null,
     });
-    expect(page.items[5]?.title).toBe('Member role changed');
+    expect(page.items[5]?.eventType).toBe('team.member.role_changed');
     expect(page.items[5]?.occurredAt.toISOString()).toBe(T0);
   });
 
@@ -502,7 +501,7 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       }),
     );
     expect(encodeDetail(roleChange)).toMatchObject({
-      title: 'Member role changed',
+      eventType: 'team.member.role_changed',
       rendered: true,
       teamLabel: TEAM,
       details: { previousRoles: ['member'], newRoles: ['admin'] },
@@ -676,16 +675,10 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     const options = await client.call(
       client.rpc('audit.filterOptions', { teamId: TEAM }),
     );
-    expect(options.actions).toContainEqual({
-      eventType: 'team.member.role_changed',
-      title: 'Member role changed',
-    });
-    // An event type this build does not register keeps its machine name, the
-    // same fallback the feed row itself uses.
-    expect(options.actions).toContainEqual({
-      eventType: 'audit.future_event',
-      title: 'audit.future_event',
-    });
+    expect(options.eventTypes).toContain('team.member.role_changed');
+    // An event type this build does not register is offered too: history
+    // holds what a newer server appended.
+    expect(options.eventTypes).toContain('audit.future_event');
     const actors = encodeFilterOptions(options).actors;
     expect(actors).toContainEqual({
       kind: 'user',

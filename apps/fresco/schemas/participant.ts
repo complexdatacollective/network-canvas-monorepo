@@ -10,44 +10,46 @@ const messages = defineMessages({
   validation1: {
     id: 'fresco.validation.participant.validation1',
     defaultMessage: 'Identifier cannot be empty',
-    description: 'Form validation for participant: Identifier cannot be empty',
+    description:
+      'Validation error under the identifier field when adding or editing a participant, and for CSV rows, when the identifier is missing or empty. The identifier is the unique ID that distinguishes a participant.',
   },
   validation2: {
     id: 'fresco.validation.participant.validation2',
     defaultMessage: 'Identifier too long. Maximum of 255 characters.',
     description:
-      'Form validation for participant: Identifier too long. Maximum of 255 characters.',
+      'Validation error under the identifier field when adding or editing a participant, when a required identifier is longer than 255 characters.',
   },
   validation3: {
     id: 'fresco.validation.participant.validation3',
     defaultMessage:
       'Identifier requires one or more non-whitespace characters.',
     description:
-      'Form validation for participant: Identifier requires one or more non-whitespace characters.',
+      'Validation error under the identifier field when adding or editing a participant, when the identifier contains only spaces.',
   },
   validation4: {
     id: 'fresco.validation.participant.validation4',
     defaultMessage: 'Identifier too long. Maximum of 255 characters.',
     description:
-      'Form validation for participant: Identifier too long. Maximum of 255 characters.',
+      'Validation error for an optional participant identifier, as in a row of an imported CSV file whose identifier is longer than 255 characters.',
   },
   validation5: {
     id: 'fresco.validation.participant.validation5',
     defaultMessage: 'Label requires one or more non-whitespace characters.',
     description:
-      'Form validation for participant: Label requires one or more non-whitespace characters.',
+      'Validation error for a participant label when a label is required, as in a row of an imported CSV file that has no identifier, and the label is missing or only spaces. The label is an optional display name.',
   },
   validation6: {
     id: 'fresco.validation.participant.validation6',
     defaultMessage: 'Invalid CSV',
-    description: 'Form validation for participant: Invalid CSV',
+    description:
+      'Error shown in the participant CSV import dialog when the chosen file is not a valid list of participants.',
   },
   validation7: {
     id: 'fresco.validation.participant.validation7',
     defaultMessage:
       'Invalid CSV. Every row must have either a label or an identifier',
     description:
-      'Form validation for participant: Invalid CSV. Every row must have either a label or an identifier',
+      'Error shown in the participant CSV import dialog when at least one row of the file has neither a label nor an identifier.',
   },
 });
 

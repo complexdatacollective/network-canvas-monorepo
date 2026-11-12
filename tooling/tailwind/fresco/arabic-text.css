@@ -1,0 +1,106 @@
+/*
+ * Text marked as Arabic (`lang="ar"`, or a regional form such as `ar-EG`) is
+ * set in Readex Pro. Text in any other language keeps the theme's stacks, so
+ * Persian or Urdu, whose extra letters Readex Pro lacks, is drawn whole in a
+ * system font rather than in two faces.
+ *
+ * Every theme names the Latin face of its stacks (`--heading-face`,
+ * `--body-face`). `:lang()` matches each element of an Arabic subtree, so the
+ * first rule rebuilds both stacks with Readex Pro on every such element, from
+ * the nearest theme's faces. The second rule puts the plain stacks back for
+ * text in another language inside Arabic text, such as the name of Persian
+ * in a language list. Both are in `@layer base`, which wins over the themes'
+ * own declarations (`@layer theme`) on an element that is a theme scope too,
+ * such as `<html lang="ar">`.
+ *
+ * `font-family` is inherited already resolved, so an element whose language
+ * differs from its parent's would keep the stack resolved outside it. The
+ * last two rules resolve it again wherever the language changes into or out
+ * of Arabic: the heading stack inside a heading, the body stack anywhere
+ * else. A font utility on the element itself still wins, and preformatted
+ * text keeps its monospace face.
+ *
+ * The monospace stack (`--font-monospace` in theme.css) starts with the
+ * system's monospace face, and Safari draws Arabic from that face's own
+ * fallbacks, so a face later in the stack is never reached; Chrome does reach
+ * it, but only after every Latin face. Either way Arabic set in monospace,
+ * such as Interviewer's status line, would come out wider than the page's
+ * Arabic and unlike it. Arabic text therefore gets the same stack with Readex
+ * Pro first. Readex Pro claims Arabic code points only, so Latin letters and
+ * digits still come from the monospace faces.
+ */
+@layer base {
+  :lang(ar) {
+    --heading-font: var(--heading-face), 'Readex Pro Variable', sans-serif;
+    --body-font: var(--body-face), 'Readex Pro Variable', sans-serif;
+    --monospace-font:
+      'Readex Pro Variable', ui-monospace, Menlo, Monaco, 'Fira Code', monospace;
+  }
+
+  :lang(ar) :not(:lang(ar)) {
+    --heading-font: var(--heading-face), sans-serif;
+    --body-font: var(--body-face), sans-serif;
+    --monospace-font: initial;
+  }
+
+  [lang]:lang(ar):not(pre, code, kbd, samp),
+  :lang(ar) [lang]:not(:lang(ar), pre, code, kbd, samp) {
+    font-family: var(--body-font);
+  }
+
+  .font-heading [lang]:lang(ar):not(pre, code, kbd, samp),
+  .font-heading:lang(ar) [lang]:not(:lang(ar), pre, code, kbd, samp) {
+    font-family: var(--heading-font);
+  }
+}
+
+/*
+ * Arabic script is joined: a letter takes its shape from its neighbours and
+ * connects to them. Safari puts `letter-spacing` between every two letters,
+ * which pulls the joins apart (Chrome and Firefox leave joined letters
+ * alone), so text in a language written in the Arabic script takes none.
+ * This is about the script, not the typeface, so it names Persian, Urdu and
+ * the other languages a protocol is likely to be written in, as well as
+ * Arabic.
+ *
+ * The type scale and the `tracking-*` utilities declare `letter-spacing` on
+ * the element itself, so inheritance cannot undo them. `!important` in a
+ * layer outranks every normal declaration, whichever layer that is in.
+ */
+@layer base {
+  :is(
+    :lang(ar),
+    :lang(fa),
+    :lang(ur),
+    :lang(ps),
+    :lang(ckb),
+    :lang(sd),
+    :lang(ug)
+  ) {
+    letter-spacing: 0 !important;
+  }
+}
+
+/*
+ * The Arabic script has no italic, and Readex Pro has no italic face. Asked
+ * for italic, a browser slants the upright letters itself, to the right,
+ * against the direction the script is read in. In a text box the slant also
+ * pushes the top of the first letter past the edge of the box, where it is
+ * cut off: an italic placeholder that begins with "أ" loses part of its
+ * hamza. Text in these languages is therefore never slanted by the browser.
+ * A face with a real italic, such as the Latin faces, still uses it, so a
+ * Latin word inside Arabic text stays italic.
+ */
+@layer base {
+  :is(
+    :lang(ar),
+    :lang(fa),
+    :lang(ur),
+    :lang(ps),
+    :lang(ckb),
+    :lang(sd),
+    :lang(ug)
+  ) {
+    font-synthesis-style: none;
+  }
+}

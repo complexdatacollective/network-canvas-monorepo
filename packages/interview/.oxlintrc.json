@@ -1,10 +1,17 @@
 {
-  "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
+  "extends": [
+    "../../.oxlintrc.json",
+    "../../tooling/oxlint/react.json",
+    "../../tooling/oxlint/direction.json"
+  ],
   "jsPlugins": ["eslint-plugin-formatjs", "oxlint-tailwindcss"],
   "settings": {
     "tailwindcss": {
       "entryPoint": "tooling/tailwind/fresco/fresco.css",
-      "variablePatterns": ["[a-z](?:Class|ClassNames?|Classes)$"],
+      "variablePatterns": [
+        "[a-z](?:Class|ClassNames?|Classes)$",
+        "_CLASS(?:ES|_NAMES?)?$"
+      ],
       "attributePatterns": ["^[a-z][A-Za-z]*ClassName$"]
     }
   },
@@ -31,7 +38,15 @@
       }
     ],
     "tailwindcss/no-unnecessary-whitespace": "error",
-    "tailwindcss/enforce-canonical": "error"
+    "tailwindcss/enforce-canonical": "error",
+    // Right-to-left interviews. The same rule, with the same exception, as
+    // `@codaco/fresco-ui`'s configuration, which says why. A family tree and
+    // a canvas are drawn the same way round in every language, so their
+    // physical classes carry a disable comment saying so.
+    "tailwindcss/enforce-logical": [
+      "error",
+      { "direction": "inline", "allowlist": ["(^|:)left-1/2$"] }
+    ]
   },
   "overrides": [
     {

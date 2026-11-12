@@ -320,6 +320,9 @@ const BackgroundLights = ({
     <div
       ref={containerRef}
       aria-hidden
+      // Lights drifting across the background, not a layout: the
+      // right-to-left mirror check leaves them out.
+      data-direction-exempt
       className="absolute inset-0 isolate overflow-hidden"
     >
       {lights.map((light, index) => (

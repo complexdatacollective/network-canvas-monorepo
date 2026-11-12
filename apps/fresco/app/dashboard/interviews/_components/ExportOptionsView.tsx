@@ -15,40 +15,40 @@ const messages = defineMessages({
     id: 'fresco.interviews.ExportOptionsView.exportGraphMLFiles',
     defaultMessage: 'Export GraphML Files',
     description:
-      'Researcher-facing interviews / ExportOptionsView: Export GraphML Files',
+      'Heading and accessible switch name for the GraphML option in the interview data export dialog; turning it on includes GraphML files in the export. GraphML is a file format name.',
   },
   graphMLIsTheMainFileFormatUsed: {
     id: 'fresco.interviews.ExportOptionsView.graphMLIsTheMainFileFormatUsed',
     defaultMessage:
       'GraphML is the main file format used by the Network Canvas software. GraphML files can be used to manually import your data into Server, and can be opened by many other pieces of network analysis software.',
     description:
-      'Researcher-facing interviews / ExportOptionsView: GraphML is the main file format used by the Network Canvas software. GraphML files can be used to manually import your d',
+      'Explanation under the GraphML option in the interview data export dialog. Network Canvas, Server and GraphML are product and format names.',
   },
   exportCSVFiles: {
     id: 'fresco.interviews.ExportOptionsView.exportCSVFiles',
     defaultMessage: 'Export CSV Files',
     description:
-      'Researcher-facing interviews / ExportOptionsView: Export CSV Files',
+      'Heading and accessible switch name for the CSV option in the interview data export dialog; turning it on includes CSV files in the export. CSV is a file format name.',
   },
   cSVIsAWidelyUsedFormatFor: {
     id: 'fresco.interviews.ExportOptionsView.cSVIsAWidelyUsedFormatFor',
     defaultMessage:
       'CSV is a widely used format for storing network data, but this wider compatibility comes at the expense of robustness. If you enable this format, your networks will be exported as an <tag1>attribute list file</tag1> for each node type, an <tag2>edge list file</tag2> for each edge type, and an <tag3>ego attribute file</tag3> that also contains session data.',
     description:
-      'Researcher-facing interviews / ExportOptionsView: CSV is a widely used format for storing network data, but this wider compatibility comes at the expense of robustness. I',
+      'Explanation under the CSV option in the interview data export dialog. The tag1, tag2 and tag3 elements make the three names of the files produced bold.',
   },
   screenLayoutCoordinatesLabel: {
     id: 'fresco.interviews.ExportOptionsView.useScreenLayoutCoordinates',
     defaultMessage: 'Use Screen Layout Coordinates',
     description:
-      'Researcher-facing interviews / ExportOptionsView: Use Screen Layout Coordinates',
+      'Heading and accessible switch name for the option in the interview data export dialog that writes sociogram node positions as screen pixel values rather than normalized values.',
   },
   byDefaultInterviewerExportsSociogramNodeCoordinates: {
     id: 'fresco.interviews.ExportOptionsView.byDefaultInterviewerExportsSociogramNodeCoordinates',
     defaultMessage:
       'By default Interviewer exports sociogram node coordinates as normalized X/Y values (a number between 0 and 1 for each axis, with the origin in the top left). Enabling this option will store coordinates as screen space pixel values, with the same origin.',
     description:
-      'Researcher-facing interviews / ExportOptionsView: By default Interviewer exports sociogram node coordinates as normalized X/Y values (a number between 0 and 1 for each ax',
+      'Explanation under the screen layout coordinates option in the interview data export dialog. Interviewer is the name of the Network Canvas interview app; a sociogram is a stage where nodes are placed on a canvas.',
   },
 });
 

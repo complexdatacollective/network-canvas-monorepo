@@ -1,6 +1,7 @@
 import { type ContextType, createContext, useContext } from 'react';
 
 import type { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type { InterfaceTextUpdate } from '@codaco/protocol-validation';
 import type { Command } from '@codaco/studio-sync/apply';
 
 import type {
@@ -88,6 +89,17 @@ export type StageEditorFormContextValue = Readonly<{
    * this is for.
    */
   liveDraft(): StageFormDraft;
+  /**
+   * The words every stage of this kind shares that a save would write with
+   * the stage, as the form holds them right now: each entry the stage brings
+   * into use that the protocol does not hold yet, with the researcher's
+   * wording for it or Network Canvas's (see `pendingSharedWording`).
+   *
+   * Read rather than subscribed, like `liveDraft`, and for the same reader: a
+   * host previewing the stage the researcher is looking at shows these words
+   * as well, or the preview is not what a save would store.
+   */
+  pendingSharedWording(): readonly InterfaceTextUpdate[];
   /**
    * Issues commands on the form's own behalf, and answers with the draft they
    * produced.

@@ -51,14 +51,15 @@ export function StageSequence({ stages }: { stages: ProtocolStage[] }) {
                   intent="smallText"
                   margin="none"
                   render={<span />}
-                  className="min-w-0"
+                  dir="auto"
+                  className="text-match-parent min-w-0"
                 >
                   {stage.label}
                 </Paragraph>
                 <Eyebrow
                   tone="subtle"
                   render={<span />}
-                  className="@lg:text-right @lg:whitespace-nowrap"
+                  className="@lg:text-end @lg:whitespace-nowrap"
                 >
                   {t(`stageTypes.${stage.type}`)}
                 </Eyebrow>

@@ -65,6 +65,9 @@
         "scripts/agent-hooks/pre-bash.mjs",
         "scripts/agent-hooks/stop-check.mjs",
         "scripts/agent-hooks/pre-push-knip.mjs",
+        // Local oxlint plugins, loaded by oxlint from the `jsPlugins` of the
+        // shared configs in tooling/oxlint, which knip cannot parse.
+        "tooling/oxlint/plugins/*.mjs",
         // Run by the dead-link-cache-refresh workflow, which knip cannot parse.
         "scripts/dead-links/dead-link-refresh-gate.mjs",
         // The guard suite runs from scripts/vitest.config.ts, which knip does
@@ -106,6 +109,14 @@
     },
     "apps/networkcanvas.com": {
       "entry": ["lib/i18n/request.ts", "netlify/edge-functions/locale.ts"]
+    },
+    // The landing page's message descriptors are read by i18n:extract, not
+    // imported: the theme's JavaScript runs inside Discourse. Its modules
+    // are imported by .gjs components, which knip cannot parse, and import
+    // Discourse's own modules, which Discourse supplies at runtime.
+    "apps/community-theme": {
+      "entry": ["src/*.messages.ts", "theme/javascripts/discourse/lib/*.js"],
+      "ignoreDependencies": ["discourse-i18n"]
     },
     "apps/documentation": {
       "ignore": ["lib/i18n/request.ts", "next-sitemap.config.js"]
@@ -194,6 +205,7 @@
       "ignoreDependencies": [
         "@fontsource-variable/inclusive-sans",
         "@fontsource-variable/nunito",
+        "@fontsource-variable/readex-pro",
         "@tailwindcss/cli"
       ]
     },
@@ -210,7 +222,8 @@
       "project": ["shared/**/*.ts"],
       "ignoreDependencies": [
         "@fontsource-variable/inclusive-sans",
-        "@fontsource-variable/nunito"
+        "@fontsource-variable/nunito",
+        "@fontsource-variable/readex-pro"
       ]
     },
     "tooling/vitest": {
@@ -331,6 +344,9 @@
       }
     },
     "workers/development-protocol": {},
-    "workers/posthog-proxy": {}
+    "workers/posthog-proxy": {},
+    "workers/protocol-review": {
+      "ignoreDependencies": ["cloudflare"]
+    }
   }
 }

@@ -745,28 +745,28 @@ function PromotingEditor({
           void submit(document, {
             editId: EDIT,
             resourceIds: [resourceId],
-          }).then(
-            (result) => {
-              if (result.status !== 'written') {
-                setPromoted(result.status);
-                return undefined;
-              }
-              setPromoted(
-                (result.promoted ?? [])
-                  .map(
-                    (resource) =>
-                      `${Redacted.value(resource.name)}: ${resource.status}`,
-                  )
-                  .join(', '),
-              );
-              return undefined;
-            },
-            // A save the host never answered, which is what an editor has to
-            // report rather than leave the researcher's click looking ignored.
-            () => {
+          }).then((result) => {
+            // A save the host never answered, which is what an editor has
+            // to report rather than leave the researcher's click looking
+            // ignored.
+            if (result.status === 'unanswered') {
               setPromoted('lost');
-            },
-          );
+              return undefined;
+            }
+            if (result.status !== 'written') {
+              setPromoted(result.status);
+              return undefined;
+            }
+            setPromoted(
+              (result.promoted ?? [])
+                .map(
+                  (resource) =>
+                    `${Redacted.value(resource.name)}: ${resource.status}`,
+                )
+                .join(', '),
+            );
+            return undefined;
+          });
         }}
       >
         save

@@ -1,0 +1,6 @@
+{
+  "$comment": "Components that draw an icon they are handed with inlineIconClass (inlineIcons.ts), so an arrow passed in that prop turns right to left without the caller turning it. The direction/inline-arrow-turns lint rule reads this list; inlineIconProps.test.tsx renders every entry with an arrow and fails unless it turns.",
+  "components": {
+    "NavItem": ["icon"]
+  }
+}

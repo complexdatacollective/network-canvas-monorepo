@@ -52,6 +52,10 @@ The current-section boost filters on a `section` attribute on each Algolia recor
 
 2. **`section` is facetable** (`filterOnly(section)`). This must be set in **two** places: the crawler's `initialIndexSettings.networkcanvas.attributesForFaceting` _and_ the live index's _Attributes for faceting_ (Configuration → Facets). The crawler's `initialIndexSettings` only applies when the index is first created, so the live index must be configured directly for an existing index.
 
+#### Search in each language
+
+The search box shows only results in the page's language: it filters on the `lang` attribute, which the crawler takes from each page's `<html lang>`, and each page also sets the `docsearch:language` meta tag. The crawler must therefore crawl every published language: its start URLs and sitemap need to include `/es/` as well as `/en/`. Until it has crawled the Spanish pages, search on a Spanish page finds nothing.
+
 Because the slug is the first path segment after the locale, records only carry the correct workflow-section values once the reorganised `/en/<section>/…` routes are deployed and the crawler re-crawls them. `optionalFilters` against a facetable attribute with no matching values simply boosts nothing, so the client code is safe to deploy ahead of a crawl.
 
 ### 3. Table of Contents
@@ -68,7 +72,9 @@ Experience enhanced productivity with our AI Assistant. Trained on the documenta
 
 ### 6. Language Localization
 
-Tailor your experience with language localization support. Currently supporting English and Russian, this feature ensures a global audience can access documentation in their preferred language.
+The site is published in English and Spanish. Every change to the English must update every published language in the same pull request; a test fails CI otherwise. How translations are made, checked and kept in step with the English is described in [`translation/README.md`](./translation/README.md).
+
+Readers change language with the switcher in the footer. Their choice is stored in the `NEXT_LOCALE` cookie that every Network Canvas website shares, so it carries between the website and the documentation, and the locale edge function reads it before the browser's languages.
 
 ### 7. Dark and Light Modes
 
@@ -76,9 +82,9 @@ Choose between dark and light modes to suit your preferences and reduce eye stra
 
 ### 8. Analytics
 
-The documentation site uses `@codaco/analytics` (PostHog via Cloudflare Worker proxy) for pageview and pageleave tracking. Analytics are initialized in `instrumentation-client.ts`, which runs once when client-side JS loads.
+The documentation site records pageviews, page leaves and exceptions with PostHog (`posthog-js`), initialized in `instrumentation-client.ts` when client-side JS loads.
 
-Analytics are **only active on production deployments**. Preview and development builds use a no-op implementation. This is controlled by a `NEXT_PUBLIC_IS_PRODUCTION` env var computed at build time in `next.config.ts` from platform-specific variables (`VERCEL_ENV` for Vercel, `CONTEXT` for Netlify). Analytics can also be manually disabled by setting `NEXT_PUBLIC_DISABLE_ANALYTICS=true`.
+The site is a static export, so the same bundle is served in production, on Netlify deploy previews and locally. Analytics therefore start only when the page was loaded from the live site's hostname (`lib/analytics/isProductionHost.ts`); every other origin records nothing.
 
 ## Get Started
 
@@ -88,24 +94,9 @@ Thank you for choosing Network Canvas!
 
 ---
 
-# Description for vercel.json file
+# Redirects
 
-Here, we have several redirection rules. Each rule is an object with `source`, `destination`, and `permanent` properties.
+The site is hosted on Netlify. Redirects live in `netlify.toml`, and the locale edge function in `netlify/edge-functions/locale.ts` sends readers to their language.
 
-- `source`: This is the path that will be matched in the incoming request.
-- `destination`: This is the path that the request will be redirected to if the `source` matches.
-- `permanent`: If `true`, the redirection will be a 301 (permanent) redirect. If `false`, it will be a 302 (temporary) redirect.
-
-## Line 78-82 in vercel.json
-
-The last rule in this excerpt is a catch-all rule that matches any path that doesn't start with `en`, `_next/static`, `_next/image`, `assets`, `protocols`, `favicons`, `images` or `.*\\.\\w+.*`(This regular expression is used to match any path that contains a file extension - i.g: _icon.svg_)
-
-```JSON
-{
-  "source": "/:path((?!en|_next/static|_next/image|assets|protocols|favicons|images|.*\\.\\w+.*).*)",
-  "destination": "/en/desktop/:path*",
-  "permanent": true
-}
-```
-
-The above rule redirects matching requests to the `/en/desktop/:path*` path.
+- `pnpm validate-redirects` checks `netlify.toml` for rules that can never match and for duplicates.
+- `pnpm test-redirects <deployment-url>` requests each listed address from a deployment and checks where it redirects.

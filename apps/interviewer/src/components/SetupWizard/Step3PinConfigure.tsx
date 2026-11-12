@@ -17,27 +17,30 @@ const messages = defineMessages({
   pINSetupFailed: {
     id: 'interviewer.step3PinConfigure.pINSetupFailed',
     defaultMessage: 'PIN setup failed.',
-    description: 'User-facing message in Interviewer Step3Pin Configure.',
+    description:
+      'Error message shown in the PIN setup step when enrolling the PIN fails and no more specific reason is available.',
   },
   enterPIN: {
     id: 'interviewer.step3PinConfigure.enterPIN',
     defaultMessage: 'Enter PIN',
-    description: 'The label label in Interviewer Step3Pin Configure.',
+    description:
+      'Field label for the eight-digit PIN entry in the PIN setup step.',
   },
   an8DigitNumericPIN: {
     id: 'interviewer.step3PinConfigure.an8DigitNumericPIN',
     defaultMessage: 'An 8-digit numeric PIN.',
-    description: 'The hint label in Interviewer Step3Pin Configure.',
+    description: 'Hint under the PIN field stating the PIN is eight digits.',
   },
   confirmPIN: {
     id: 'interviewer.step3PinConfigure.confirmPIN',
     defaultMessage: 'Confirm PIN',
-    description: 'The label label in Interviewer Step3Pin Configure.',
+    description: 'Field label for re-entering the PIN to confirm it.',
   },
   iUnderstandThereIsNoRecovery: {
     id: 'interviewer.step3PinConfigure.iUnderstandThereIsNoRecovery',
     defaultMessage: 'I understand there is no recovery',
-    description: 'The label label in Interviewer Step3Pin Configure.',
+    description:
+      'Label of a checkbox the researcher must tick to continue, acknowledging a forgotten PIN cannot be recovered.',
   },
 });
 

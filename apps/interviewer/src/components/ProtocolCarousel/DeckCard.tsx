@@ -64,12 +64,14 @@ const messages = defineMessages({
   deleteProtocol: {
     id: 'interviewer.deckCard.deleteProtocol',
     defaultMessage: 'Delete Protocol',
-    description: 'User-facing message in Interviewer Deck Card.',
+    description:
+      'Accessible name of the trash icon button on a protocol card that deletes the installed protocol, read only by screen readers.',
   },
   loadingProtocol: {
     id: 'interviewer.deckCard.loadingProtocol',
     defaultMessage: 'Loading protocol',
-    description: 'User-facing message in Interviewer Deck Card.',
+    description:
+      'Accessible name of the progress bar on a protocol card while it is installing, used when no more specific status text is available.',
   },
   cardName: {
     id: 'interviewer.deckCard.cardName',
@@ -80,7 +82,8 @@ const messages = defineMessages({
   interviewCount: {
     id: 'interviewer.deckCard.interviewCount',
     defaultMessage: '{count, plural, one {# interview} other {# interviews}}',
-    description: 'Administration text in Interviewer DeckCard.',
+    description:
+      'Line on a protocol card, a link to its interviews. count is the number of interviews collected with that protocol on this device.',
   },
 });
 
@@ -672,7 +675,7 @@ export function DeckCard(props: DeckCardProps) {
                   level="h2"
                   title={protocol.name}
                   className={cx(
-                    'w-full text-left font-black wrap-break-word hyphens-auto',
+                    'w-full text-start font-black wrap-break-word hyphens-auto',
                     cardHeadingSizeClass(protocol.name),
                   )}
                   // line-height must be inline: leading-* utilities lose to
@@ -734,7 +737,7 @@ export function DeckCard(props: DeckCardProps) {
                   animate={PRESENCE_ENTER}
                   exit={PRESENCE_EXIT}
                   transition={REGION_TRANSITION}
-                  className="shrink-0 text-left"
+                  className="shrink-0 text-start"
                 >
                   {protocol.description ? (
                     <span

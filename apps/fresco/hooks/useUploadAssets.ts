@@ -209,24 +209,27 @@ const messages = defineMessages({
     id: 'fresco.upload.missingUrl',
     defaultMessage: 'No upload URL was returned for {name}.',
     description:
-      'Researcher-facing upload: No upload URL was returned for name.',
+      "Error raised while uploading a protocol's asset files to storage during protocol import, when the server returned no upload address for one file. name is the file name.",
   },
 
   failed: {
     id: 'fresco.upload.failed',
     defaultMessage: 'Upload failed.',
-    description: 'Researcher-facing upload: Upload failed.',
+    description:
+      "Error raised during protocol import when uploading a protocol's asset file to storage failed because of a network problem or an unexpected failure.",
   },
 
   httpStatus: {
     id: 'fresco.upload.httpStatus',
     defaultMessage: 'Upload failed with status {status}.',
-    description: 'Researcher-facing upload: Upload failed with status status.',
+    description:
+      "Error raised during protocol import when storage rejected the upload of a protocol's asset file. status is the numeric HTTP status code returned by storage.",
   },
 
   prepare: {
     id: 'fresco.upload.prepare',
     defaultMessage: 'Failed to prepare upload.',
-    description: 'Researcher-facing upload: Failed to prepare upload.',
+    description:
+      "Error raised during protocol import when the server could not prepare the upload of a protocol's asset files to storage, before any file was sent.",
   },
 });

@@ -1,0 +1,321 @@
+---
+title: Guía de cumplimiento del RGPD
+date: 22nd July 2026
+navOrder: 1
+translatedFrom: f2e0d59b041585ebf36b46f4025389a6590be27b
+---
+
+<Paragraph variant="lead">
+  Esta guía explica cómo tratan Interviewer y Fresco los datos de
+  participantes, cómo encajan en el marco del Reglamento General de Protección
+  de Datos (RGPD) y qué responsabilidades debe asumir el equipo de
+  investigación al implementarlos.
+</Paragraph>
+
+<TipBox>
+
+Este documento **no** es una certificación de cumplimiento del RGPD. Su objetivo es aclarar qué se necesita para usar el software de forma conforme al reglamento y explicar las responsabilidades de quienes investigan como responsables del tratamiento.
+
+</TipBox>
+
+## Finalidad de esta guía {#purpose-of-this-guide}
+
+Esta guía está pensada para equipos de investigación, comités de ética, departamentos de informática y delegados de protección de datos (DPD) que necesiten entender cómo tratan los datos personales las herramientas de Network Canvas y qué medidas hacen falta para garantizar el cumplimiento del RGPD.
+
+El equipo de desarrollo de Network Canvas no actúa como responsable ni como encargado del tratamiento de los datos de tus entrevistas: ninguno de esos datos llega nunca al equipo de desarrollo ni se almacena en sus sistemas. Los datos analíticos opcionales de Fresco son la excepción que debes tener en cuenta, y se describen en [Telemetría, datos analíticos y comprobación de actualizaciones](#telemetry-analytics-and-update-checks). Quienes investigan conservan el control total de todos los datos de participantes y la responsabilidad sobre ellos, y el cumplimiento del RGPD se consigue mediante una implementación y una configuración adecuadas y mediante las políticas de la institución.
+
+## Interviewer frente a Fresco: diferencias clave {#interviewer-vs-fresco-key-differences}
+
+| Aspecto                           | Interviewer e Interviewer Classic (datos en tu dispositivo)                                                                                                                                                                                                                                                                              | Fresco (web, alojamiento propio)                                                                                                            |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Ubicación de los datos**        | Todos los datos de participantes se almacenan únicamente en tu dispositivo local                                                                                                                                                                                                                                                         | Los datos de las entrevistas se almacenan en una base de datos Postgres, y los recursos del estudio, en un almacenamiento compatible con S3 |
+| **Transmisión de datos**          | No se transmite ningún dato de participantes al exterior a menos que lo exportes manualmente                                                                                                                                                                                                                                             | Los datos permanecen en tu infraestructura; no se transmiten al equipo de desarrollo                                                        |
+| **Cifrado**                       | Interviewer cifra los datos almacenados en el dispositivo cuando se configura un bloqueo de la aplicación, con una clave vinculada a esa autenticación; Interviewer Classic depende por completo de las protecciones del dispositivo. En cualquier caso, activa el cifrado del disco y los controles de acceso en todos los dispositivos | Cifrado en reposo con proveedores como Neon; se exige el cifrado del lado del servidor en S3                                                |
+| **Datos analíticos y telemetría** | Interviewer envía datos analíticos opcionales y anónimos sobre el uso y los errores (activados por defecto; se pueden desactivar; nunca incluyen datos de participantes); Interviewer Classic no envía ninguno                                                                                                                           | Datos analíticos opcionales y anónimos sobre el uso y los errores (se pueden desactivar)                                                    |
+| **Alojamiento conforme al RGPD**  | No procede (almacenamiento en el dispositivo local)                                                                                                                                                                                                                                                                                      | Posible si eliges una región de la UE o un proveedor compatible con S3 y una región de tu elección                                          |
+| **Tu control**                    | Control total de los datos de participantes en tu dispositivo                                                                                                                                                                                                                                                                            | Todos los datos de participantes permanecen bajo tu control en todo momento                                                                 |
+| **Infraestructura**               | Tu dispositivo                                                                                                                                                                                                                                                                                                                           | La infraestructura en la que implementes Fresco (alojamiento, base de datos y almacenamiento)                                               |
+
+**Tus responsabilidades como responsable del tratamiento:**
+
+- Establecer una base jurídica para tratar los datos de participantes
+- Elegir regiones de alojamiento conformes al RGPD (solo Fresco)
+- Aplicar medidas de seguridad de los datos adecuadas
+- Mantener políticas de conservación y eliminación de datos
+- Permitir que quienes participan ejerzan sus derechos (acceso, rectificación y supresión)
+
+## Funciones según el RGPD {#roles-under-gdpr}
+
+### Responsable del tratamiento {#data-controller}
+
+La **institución de investigación o la persona investigadora** que implementa el software es siempre la responsable del tratamiento. Como responsable del tratamiento, decides por qué se recopilan los datos de participantes, qué datos se recopilan, durante cuánto tiempo se almacenan, qué base jurídica del RGPD se aplica, cómo se gestionan el consentimiento y los derechos de las personas interesadas, y dónde se alojan los datos y quién tiene acceso a ellos.
+
+### Equipo de desarrollo de Fresco e Interviewer {#fresco-and-interviewer-developers}
+
+El equipo de desarrollo de Network Canvas proporciona el software de código abierto, pero no recibe ni aloja datos de participantes, no supervisa el uso que hace de él cada equipo de investigación y no ofrece ningún servicio de tratamiento de datos. **Por tanto, el equipo de desarrollo no actúa como encargado del tratamiento según el RGPD.** Todo el tratamiento de datos se realiza íntegramente en una infraestructura que controla el equipo de investigación.
+
+## Interviewer (datos almacenados en tu dispositivo) {#interviewer-data-stored-on-your-device}
+
+<TipBox>
+
+Este apartado trata tanto **Interviewer Classic**, que funciona completamente sin conexión, como **Interviewer**, que también es una aplicación controlada por el equipo de investigación y que almacena los datos de las entrevistas en el dispositivo. Cuando las dos generaciones difieren, el texto lo indica. Ten en cuenta que, en Interviewer, algunas interfaces introducidas en el esquema 8 (en particular, la [interfaz geoespacial](/es/design-protocols/interface-documentation/geospatial), que carga mapas del servicio externo Mapbox) necesitan conexión a internet durante la entrevista. Si usas este tipo de interfaces, incluye esas conexiones con terceros en tu evaluación del RGPD.
+
+</TipBox>
+
+Interviewer está diseñado para ejecutarse en dispositivos bajo el control del equipo de investigación, y almacena los datos de las entrevistas en el propio dispositivo (Interviewer Classic funciona completamente sin conexión; consulta la nota anterior).
+
+### Almacenamiento de datos {#data-storage}
+
+Todos los datos de las entrevistas se almacenan en tu dispositivo. Los datos residen en el espacio aislado de la aplicación, en el sistema de archivos local, y solo se exportan cuando los exportas manualmente. No se produce ninguna subida ni transmisión automática de los datos de las entrevistas.
+
+A efectos del RGPD, esto significa que tienes el control total de los datos de participantes. La ubicación de los datos depende de la ubicación física de tu dispositivo, y ningún tercero tiene acceso a los datos a través del software.
+
+### Comunicaciones de red {#network-communication}
+
+Las dos generaciones apenas se comunican por red, y ninguna transmite nunca datos de participantes. **Interviewer Classic** consulta la API de GitHub para comprobar si hay versiones nuevas (solo envía el número de la versión actual) y, aparte de esta comprobación de actualizaciones, no establece ninguna conexión externa y trata todos los datos completamente sin conexión. **Interviewer** recibe las actualizaciones de la aplicación a través del navegador y, cuando los datos analíticos están activados, envía información anónima sobre el uso y los errores (consulta más abajo); algunas interfaces, como la geoespacial, se comunican con servicios de terceros durante la entrevista (consulta la nota anterior).
+
+### Telemetría y servicios de terceros {#telemetry-and-third-party-services}
+
+**Interviewer Classic** no incluye ningún tipo de análisis de uso ni de informe de errores, ni scripts, servicios o encargados del tratamiento externos. **Interviewer** envía datos analíticos opcionales y anónimos sobre el uso y los errores (el uso de las funciones, los eventos de importación y exportación y los detalles de los fallos) a un proyecto de análisis de PostHog que gestiona el equipo de desarrollo. Están activados por defecto y se pueden desactivar en cualquier momento en **Configuración → Privacidad**; al desactivarlos, este envío se detiene por completo. Los datos analíticos nunca incluyen datos de participantes: nunca se recopilan los datos de red, las respuestas, los ID de casos, el contenido de los protocolos ni los archivos de recursos. Si mantienes activados los datos analíticos, ten en cuenta en tu evaluación que PostHog actúa como encargado del tratamiento de esta telemetría anónima, que no incluye datos de participantes. Aparte de los datos analíticos, Interviewer no incluye scripts externos, fuentes tipográficas externas, mecanismos de seguimiento ni encargados del tratamiento externos, y ningún dato de participantes sale nunca del dispositivo.
+
+### Otros datos almacenados {#other-stored-data}
+
+Las preferencias de configuración de la aplicación se almacenan en el dispositivo. Estas preferencias no contienen datos de participantes y no se pueden usar para identificar a quienes participan.
+
+### Cifrado y seguridad del dispositivo {#encryption-and-device-security}
+
+En este punto las dos generaciones difieren. **Interviewer** cifra los datos que almacena en el dispositivo (protocolos, entrevistas y ajustes) siempre que se configura un bloqueo de la aplicación: la clave de cifrado se deriva del método de autenticación (biometría, PIN o frase de contraseña) que desbloquea la aplicación, y nunca sale del dispositivo. Si decides no configurar un bloqueo, este cifrado de la aplicación no está activo, y las protecciones del dispositivo son tu única salvaguarda para los datos almacenados. Como los datos están vinculados a tu credencial, un PIN o una frase de contraseña olvidados no se pueden recuperar (al configurar la biometría se crea también una frase de contraseña de recuperación), y al revocar el bloqueo del dispositivo se borran todos los datos locales, así que exporta las entrevistas con regularidad. **Interviewer Classic** no cifra internamente los datos que almacena.
+
+En ambas generaciones, eres responsable de activar el cifrado del dispositivo (como FileVault en macOS, BitLocker en Windows o el cifrado del dispositivo en las plataformas móviles), aplicar políticas de acceso seguro a los dispositivos mediante contraseñas o autenticación biométrica, establecer procedimientos seguros de exportación y almacenamiento de los datos exportados y mantener la seguridad física de los dispositivos.
+
+Usar Interviewer de forma conforme al RGPD exige proteger el dispositivo en el que se almacenan los datos, regular quién puede acceder a él, gestionar de forma segura los archivos exportados, mantener políticas de conservación y eliminación de datos y evitar que los dispositivos se pierdan o los roben. El software en sí no envía ni comparte datos de participantes, pero debes aplicar medidas técnicas y organizativas adecuadas para protegerlos.
+
+## Fresco (aplicación web de alojamiento propio) {#fresco-self-hosted-web-application}
+
+Fresco es una plataforma web que implementa íntegramente el equipo de investigación. El software no envía datos de participantes a ningún tercero fuera de tu propia infraestructura.
+
+### Implementación y alojamiento {#deployment-and-hosting}
+
+Fresco se puede implementar en Vercel, en Netlify, en una infraestructura Docker gestionada por el equipo de investigación o en cualquier plataforma que admita aplicaciones Next.js. En todos los casos, todos los datos de participantes permanecen bajo tu control, y el equipo de desarrollo de Network Canvas no puede acceder a ningún dato. El proveedor de alojamiento que elijas debe cumplir los requisitos del RGPD, y te corresponde elegir las opciones de ubicación de los datos adecuadas.
+
+### Almacenamiento en Postgres (datos de las entrevistas) {#postgres-storage-interview-data}
+
+Fresco almacena las respuestas de las entrevistas y la configuración del estudio en una base de datos **Postgres**.
+
+#### Implementación predeterminada: Neon {#default-deployment-neon}
+
+El proveedor de alojamiento recomendado, Neon, ofrece cifrado en reposo de todos los datos, cifrado en tránsito mediante conexiones TLS, copias de seguridad automáticas con recuperación a un momento determinado y control de acceso basado en roles. Para el cumplimiento del RGPD, Neon ofrece regiones de alojamiento en la UE, garantías sobre la ubicación de los datos, cumplimiento de la normativa de protección de datos de la UE y contratos de encargo del tratamiento.
+
+Al configurar tu base de datos de Neon, elige una región de la UE al crearla, configura las restricciones de acceso adecuadas y aplica políticas de conservación acordes con los requisitos de tu estudio.
+
+#### Postgres en alojamiento propio {#self-hosted-postgres}
+
+En las implementaciones con Docker, debes configurar el cifrado del disco del volumen de la base de datos, TLS en todas las conexiones a la base de datos y el cifrado en reposo si tu institución lo exige. El control de acceso debe incluir mecanismos de autenticación seguros, restricciones de red mediante reglas de cortafuegos y actualizaciones de seguridad periódicas. También debes establecer procedimientos automatizados de copia de seguridad, un almacenamiento seguro de las copias y procedimientos de recuperación probados.
+
+### Almacenamiento compatible con S3 (solo recursos del estudio) {#s3-compatible-storage-study-assets-only}
+
+<TipBox danger>
+
+Fresco **no** almacena datos binarios recopilados de participantes durante las entrevistas. Sin embargo, sí almacena **recursos que aporta el equipo de investigación** y que pueden contener datos personales.
+
+</TipBox>
+
+Fresco almacena en S3 los vídeos e imágenes de introducción del estudio, los logotipos y elementos de marca de los protocolos, los materiales explicativos y los archivos de listas predefinidas que se importan como datos (CSV/JSON), y estos archivos de listas pueden contener información personal identificable de participantes, según el diseño de tu estudio.
+
+#### Almacenamiento de recursos {#asset-storage}
+
+Fresco almacena los recursos del estudio en un almacenamiento de objetos compatible con S3. Puedes usar **UploadThing** (un servicio alojado basado en S3, el más fácil de configurar) o conectar Fresco a cualquier servicio compatible con S3, como AWS S3, MinIO en alojamiento propio, Cloudflare R2 o Backblaze B2. Consulta [Implementación avanzada](/es/collect-data/fresco/advanced) para ver cómo configurarlo.
+
+La ubicación de los datos depende del servicio que elijas. El plan gratuito de UploadThing usa por defecto almacenamiento S3 en Estados Unidos, mientras que sus planes de pago permiten elegir una región de S3, y hay regiones de la UE disponibles. Con otros proveedores compatibles con S3, eliges directamente la región (y, por tanto, la ubicación de los datos), y con MinIO en alojamiento propio los recursos se quedan íntegramente en tu propia infraestructura.
+
+Todos los recursos de S3 se cifran automáticamente en reposo, y Fresco exige el cifrado del lado del servidor mediante SSE-S3 o SSE-KMS. El acceso se controla mediante URL firmadas, y los archivos no son de acceso público.
+
+Si los datos de tu lista contienen información personal identificable, asegúrate de que el servicio de almacenamiento que elijas los guarde en una región de la UE (u otra región acorde con el RGPD) o en una infraestructura que controles, confirma que las políticas de tu institución permiten ese tipo de almacenamiento, documéntalo en tu evaluación de impacto relativa a la protección de datos e incluye al proveedor de almacenamiento en tus registros de tratamiento.
+
+### Telemetría, datos analíticos y comprobación de actualizaciones {#telemetry-analytics-and-update-checks}
+
+Fresco incluye datos analíticos opcionales sobre el uso y los errores. Los eventos propios de Fresco no contienen datos de participantes, con una excepción que se describe más abajo. Estos datos analíticos recogen información sobre el uso de las funciones, los tipos de error y métricas de rendimiento, junto con un evento de visita y otro de salida cada vez que se abre o se abandona una página. Estos dos eventos los registra la propia biblioteca de PostHog, no Fresco, e incluyen la dirección de la página, la página de procedencia y la información del navegador y del dispositivo que la biblioteca añade a cada evento. Se envían a un proyecto de análisis de PostHog que gestiona el equipo de desarrollo, a través de un servidor intermedio que también gestiona ese equipo. No incluyen identificadores de entrevista: estos identificadores se eliminan de las direcciones de las páginas antes del envío, y dentro de la entrevista los identificadores de la sesión, de los nodos y de los vínculos se sustituyen por seudónimos aleatorios generados para esa sesión; la relación entre un seudónimo y el identificador real solo existe en la memoria del navegador y nunca se almacena de forma persistente ni se transmite. La captura automática, la grabación de sesiones y la captura de mapas de calor de PostHog están desactivadas en todo Fresco, así que no se recopila ni el texto de una página ni grabaciones de ella; Fresco solo envía sus propios eventos de uso, sus informes de errores, los eventos de visita y salida de página mencionados y dos eventos que la biblioteca registra cuando se activan los datos analíticos en un navegador: `$opt_in` y, cuando asocia el ID de instalación de la instancia a los eventos de ese navegador, `$identify`. Esas direcciones de página son la excepción que debes mencionar en tu evaluación: cuando una persona del equipo de investigación busca en la tabla de participantes, de entrevistas o del registro de actividad del panel de administración, el término de búsqueda pasa a formar parte de la dirección (`pt_q`, `iv_q`, `af_q`), y, a diferencia de lo que ocurre con los enlaces de participantes, no se elimina de la dirección, de modo que una búsqueda de la etiqueta o el identificador de una persona participante puede llegar al proyecto de análisis. Conviene tener en cuenta el registro de actividad junto con las otras dos tablas, porque sus entradas nombran a participantes en los eventos de inicio y finalización de entrevistas. Puedes desactivar los datos analíticos con el ajuste **Deshabilitar análisis de uso** del apartado **Privacidad** de la página de configuración de Fresco, asignando el valor `true` a la variable de entorno `DISABLE_ANALYTICS` (que además bloquea ese ajuste) o bloqueándolos en la red o en el cortafuegos. Si mantienes activados los datos analíticos, ten en cuenta en tu evaluación que PostHog actúa como encargado del tratamiento de esta telemetría, incluidos esos términos de búsqueda del panel.
+
+La comprobación de actualizaciones solo se realiza al abrir la pantalla de configuración. Esta comprobación consulta la API de GitHub para obtener información sobre las versiones, y no se transmite ninguna información identificable.
+
+### Registros y seguimiento {#logging-and-tracking}
+
+Fresco no registra las direcciones IP de participantes ni metadatos de las solicitudes que permitan identificar a quienes participan, no incluye píxeles de seguimiento ni scripts publicitarios y no comparte datos con plataformas publicitarias. Mientras los datos analíticos están activados, la biblioteca de análisis opcional descrita anteriormente se ejecuta en todas las páginas, incluida la entrevista de participantes, y envía la telemetría que se describe allí. Un protocolo que usa la [interfaz geoespacial](/es/design-protocols/interface-documentation/geospatial) también carga Mapbox GL en el navegador de la persona participante para esa etapa: descarga teselas de mapa de Mapbox, envía a la API de búsqueda de Mapbox todo lo que la persona participante escribe en el cuadro de búsqueda de la interfaz, y Mapbox GL envía su propia telemetría de uso. Esto forma parte del funcionamiento de la etapa y Fresco no puede desactivarlo, así que un estudio que use la interfaz geoespacial debería hacer constar a Mapbox como encargado del tratamiento y tener en cuenta el texto de búsqueda de quienes participan. Los protocolos sin una etapa geoespacial no hacen ninguna solicitud a Mapbox. Fresco no ejecuta ningún otro script de terceros.
+
+Las cookies de sesión solo se usan para autenticar al equipo de investigación en el panel. No se usan para hacer un seguimiento de quienes participan, y están cifradas y son de tipo HTTP-only por seguridad. Fresco también guarda en una cookie el idioma elegido para la aplicación, y mientras los datos analíticos están activados, la biblioteca de análisis conserva un identificador anónimo en el almacenamiento del navegador.
+
+### Sensibilidad de los datos {#data-sensitivity}
+
+Aunque Fresco no almacena fotos ni archivos de participantes subidos durante las entrevistas, **es muy probable que los propios datos de las entrevistas constituyan datos personales según el RGPD**. Esto incluye las respuestas de cada participante a las preguntas de la encuesta, los datos de red que muestran las relaciones entre personas, información potencialmente sensible sobre quienes participan y sus redes personales, y metadatos como la hora de inicio y fin de la entrevista y los identificadores de la sesión de entrevista.
+
+Estos datos deben tratarse como datos personales y pueden incluir categorías especiales de datos personales, según tu estudio. Su tratamiento requiere una base jurídica adecuada y deben protegerse con medidas técnicas y organizativas.
+
+## Responsabilidades del equipo de investigación (responsable del tratamiento) {#responsibilities-of-researchers-data-controllers}
+
+Para usar Fresco o Interviewer de forma conforme al RGPD, debes cumplir estas responsabilidades:
+
+### 1. Establecer una base jurídica para la recopilación de datos {#1-establish-a-lawful-basis-for-data-collection}
+
+Según el artículo 6 del RGPD, necesitas una base jurídica para tratar datos personales. Las bases jurídicas habituales en investigación son el consentimiento (explícito, informado y libremente otorgado por quienes participan), el interés público (investigación realizada en interés público) y el interés legítimo (fines de investigación con las garantías adecuadas).
+
+Para las categorías especiales de datos del artículo 9 del RGPD, necesitas el consentimiento explícito para tratar datos sensibles, o bien el tratamiento debe ser necesario para fines de investigación y contar con las garantías adecuadas.
+
+Conviene que documentes en qué base jurídica te apoyas, cómo obtuviste el consentimiento (si procede) y qué garantías se aplican a los datos sensibles.
+
+### 2. Garantizar un alojamiento conforme {#2-ensure-compliant-hosting}
+
+En las implementaciones de Fresco, elige proveedores de alojamiento que ofrezcan un alojamiento conforme al RGPD, comprueba que proporcionan contratos de encargo del tratamiento y asegúrate de que ofrecen alojamiento en la UE o en la región que corresponda.
+
+En el caso de Postgres (tanto si usas Neon como si lo alojas tú), elige una región de la UE para la ubicación de los datos, configura el cifrado en reposo y en tránsito, aplica controles de acceso seguros y limita el acceso únicamente al personal autorizado. En el caso del almacenamiento de recursos compatible con S3, elige una región de la UE con el proveedor que prefieras (con UploadThing, esto requiere un plan de pago; con MinIO en alojamiento propio, los recursos se quedan en tu infraestructura), comprueba la región en el panel de control del proveedor y documenta esta elección en tus registros de cumplimiento.
+
+Aplica un control de acceso basado en roles, usa una autenticación robusta (multifactor siempre que sea posible), revisa periódicamente quién tiene acceso a los datos y retira el acceso en cuanto deje de ser necesario.
+
+### 3. Mantener la seguridad de los dispositivos (Interviewer) {#3-maintain-device-security-interviewer}
+
+Guarda los dispositivos de forma segura cuando no se usen, controla el acceso a ellos y establece procedimientos para los dispositivos perdidos o robados. Activa el cifrado completo del disco, usa contraseñas seguras o autenticación biométrica, mantén al día el sistema operativo y los parches de seguridad, e instala software antimalware. Al exportar datos, asegúrate de transferirlos de forma segura, cífralos en tránsito y en reposo, y elimínalos de forma segura de los dispositivos cuando ya no los necesites.
+
+### 4. Aplicar políticas de gobernanza de datos {#4-implement-data-governance-policies}
+
+Recopila solo los datos necesarios para tu investigación, evita recopilar información personal excesiva y revisa periódicamente qué datos recopilas. Define durante cuánto tiempo se almacenarán los datos, documenta los plazos de conservación en tu información sobre protección de datos y aplica la eliminación automática siempre que sea posible. Establece procedimientos para eliminar los datos de forma segura, elimínalos cuando venzan los plazos de conservación y atiende con prontitud las solicitudes de supresión de quienes participan.
+
+Plantéate seudonimizar los datos siempre que sea posible, usa ID de casos en lugar de nombres durante la recopilación de datos y separa la información identificativa directa de los datos de investigación.
+
+### 5. Permitir que quienes participan ejerzan sus derechos {#5-enable-participant-rights}
+
+Según el RGPD, quienes participan tienen derechos que debes facilitar. Pueden solicitar copias de sus datos (derecho de acceso), y debes proporcionarles los datos en un formato accesible y responder en el plazo de un mes. Pueden solicitar que se corrijan sus datos (derecho de rectificación), y debes actualizar los datos cuando se detecten errores.
+
+Quienes participan pueden solicitar que se eliminen sus datos (derecho de supresión o «derecho al olvido»). Debes atender estas solicitudes salvo que existan motivos legítimos para denegarlas, y debes documentar cualquier denegación con una justificación clara. Quienes participan también tienen derecho a la portabilidad de los datos, lo que significa que debes proporcionarles sus datos en un formato de lectura mecánica cuando lo soliciten y permitir su transmisión a otro responsable del tratamiento si así lo piden.
+
+Fresco e Interviewer no automatizan estos procesos, pero tampoco impiden ponerlos en práctica. Debes establecer procedimientos para atender estos derechos.
+
+### 6. Realizar evaluaciones de impacto relativas a la protección de datos {#6-conduct-data-protection-impact-assessments}
+
+Las evaluaciones de impacto relativas a la protección de datos son obligatorias en caso de tratamiento a gran escala de categorías especiales de datos, de observación sistemática de quienes participan o de tratamientos que puedan suponer un alto riesgo para quienes participan. Debes evaluar la naturaleza, el alcance, el contexto y los fines del tratamiento; la necesidad y la proporcionalidad del tratamiento; los riesgos para los derechos y libertades de quienes participan; y las medidas para hacer frente a esos riesgos.
+
+### 7. Llevar un registro de las actividades de tratamiento {#7-maintain-records-of-processing-activities}
+
+Documenta los fines del tratamiento, las categorías de personas interesadas y de datos personales, las categorías de destinatarios, las transferencias de datos (si las hay), los plazos de conservación y las medidas de seguridad aplicadas.
+
+### 8. Ofrecer información clara sobre privacidad {#8-provide-clear-privacy-information}
+
+La información sobre protección de datos que facilites a quienes participan debe incluir la identidad del responsable del tratamiento (tú o tu institución), los fines de la recopilación de datos, la base jurídica del tratamiento, durante cuánto tiempo se almacenarán los datos, los derechos de quienes participan y cómo ejercerlos, los datos de contacto para consultas sobre protección de datos y cómo presentar una reclamación ante la autoridad de control.
+
+## Buenas prácticas de seguridad {#security-best-practices}
+
+### Para Interviewer {#for-interviewer}
+
+Activa el cifrado completo del disco en todos los dispositivos y usa contraseñas seguras de al menos 12 caracteres que combinen mayúsculas y minúsculas, números y símbolos. Activa el bloqueo automático de la pantalla tras un periodo de inactividad, instala sin demora las actualizaciones de seguridad, usa software antimalware y restringe el acceso físico a los dispositivos.
+
+Exporta los datos solo cuando sea necesario, transfiere los archivos exportados mediante conexiones cifradas, almacena los datos exportados en unidades o servidores cifrados, elimina de los dispositivos los archivos exportados después de transferirlos y mantén registros de auditoría de las exportaciones de datos.
+
+Forma al personal sobre los requisitos de protección de datos, limita el acceso a los dispositivos únicamente al personal autorizado, usa cuentas de usuario independientes en lugar de compartir cuentas y aplica la separación de funciones cuando corresponda.
+
+### Para Fresco {#for-fresco}
+
+Usa HTTPS en todas las conexiones (se aplica automáticamente), mantén actualizadas la plataforma y sus dependencias, vigila las vulnerabilidades de seguridad y, si es posible, instala un sistema de detección de intrusiones.
+
+Usa contraseñas seguras y únicas para las cuentas de administración, plantéate añadir capas de autenticación adicionales, revisa periódicamente los registros de acceso y, si es posible, limita el acceso al panel a rangos de IP autorizados.
+
+Permite el acceso a la base de datos únicamente desde la aplicación, usa credenciales seguras para la base de datos, activa su cifrado, programa copias de seguridad automáticas periódicas y prueba los procedimientos de restauración de las copias.
+
+Si es posible, implementa Fresco detrás de un cortafuegos institucional, usa una VPN para acceder a distancia al panel de administración, vigila si hay patrones de acceso inusuales y aplica una limitación de solicitudes para evitar abusos.
+
+## Procedimientos ante violaciones de la seguridad de los datos personales {#data-breach-procedures}
+
+Establece un plan de respuesta ante violaciones de la seguridad de los datos personales, determina quién es responsable de la respuesta y documenta los procedimientos antes de que se produzca una violación.
+
+Si se produce una violación de la seguridad de los datos personales, contenla de inmediato y evalúa su gravedad y su alcance. Notifícala a tu DPD (si lo hay), notifícala a la autoridad de control en un plazo de 72 horas si existe un riesgo alto, comunícala a las personas participantes afectadas si existe un riesgo alto para sus derechos y documenta todas las medidas adoptadas.
+
+Previene las violaciones mediante auditorías de seguridad periódicas, pruebas de penetración en las implementaciones de Fresco, formación del personal en prácticas de seguridad y simulacros de respuesta a incidentes.
+
+## Transferencias internacionales de datos {#international-data-transfers}
+
+Dentro de la UE, no hacen falta medidas adicionales, ya que los datos permanecen en el ámbito de aplicación del RGPD. Para las transferencias a países fuera de la UE, asegúrate de que existe un nivel de protección adecuado, usa cláusulas contractuales tipo si es necesario, documenta los mecanismos de transferencia y realiza una evaluación de impacto de la transferencia.
+
+En las implementaciones de Network Canvas, elige regiones de la UE para todos los servicios (como Neon y tu proveedor de almacenamiento de recursos), evita transferir datos fuera de la UE salvo que sea necesario y, si las transferencias son imprescindibles, aplica las garantías adecuadas.
+
+## Demostrar el cumplimiento {#demonstrating-compliance}
+
+Conserva documentación como la información sobre protección de datos facilitada a quienes participan, los formularios de consentimiento (si procede), las evaluaciones de impacto relativas a la protección de datos, los registros de las actividades de tratamiento, los contratos de encargo del tratamiento con los proveedores de servicios, las políticas y procedimientos de seguridad, los registros de formación del personal y los procedimientos de respuesta a incidentes.
+
+Realiza revisiones anuales de las actividades de tratamiento, auditorías de seguridad periódicas, actualizaciones de la formación del personal y revisiones del cumplimiento de los proveedores de servicios.
+
+## Trabajar con comités de ética y departamentos de informática {#working-with-ethics-committees-and-it-departments}
+
+### Para los comités de ética {#for-ethics-committees}
+
+Al preparar las solicitudes de evaluación ética, explica qué base jurídica usarás para tratar los datos personales, dónde se almacenarán los datos de participantes, qué medidas de seguridad se aplican, cómo se atenderán los derechos de quienes participan, cuál será el plazo de conservación de los datos y cómo se destruirán los datos de forma segura.
+
+En cuanto a la información específica de Network Canvas, indica que Interviewer almacena los datos localmente en dispositivos cifrados, que Fresco almacena los datos en Postgres y S3 en regiones de la UE, que no se transmite ningún dato al equipo de desarrollo del software y que mantienes en todo momento el control total de los datos.
+
+### Para los departamentos de informática {#for-it-departments}
+
+En el caso de Interviewer e Interviewer Classic, los requisitos de infraestructura incluyen los dispositivos bajo el control del equipo de investigación en los que se realizan las entrevistas, con el disco cifrado, instalaciones seguras para guardar los dispositivos, una red segura para exportar y transferir los datos y actualizaciones de seguridad periódicas.
+
+En el caso de Fresco, necesitas un alojamiento para Next.js (Vercel, Netlify o Docker), una base de datos Postgres (recomendamos Neon con una región de la UE), una cuenta de UploadThing (un plan de pago con una región de S3 en la UE) y HTTPS activado (que es automático en las plataformas de alojamiento).
+
+Todos los datos permanecen bajo el control del equipo de investigación, sin encargados del tratamiento externos más allá de la infraestructura de alojamiento. Se aplican las prácticas de seguridad habituales de las aplicaciones web, y es necesario instalar periódicamente las actualizaciones de seguridad.
+
+## Casos concretos {#specific-scenarios}
+
+### Recopilar datos personales sensibles {#collecting-sensitive-personal-data}
+
+El artículo 9 del RGPD define las categorías especiales de datos personales, entre las que se encuentran el origen étnico o racial, las opiniones políticas, las convicciones religiosas o filosóficas, la afiliación sindical, los datos genéticos, los datos biométricos, los datos relativos a la salud y los datos relativos a la vida sexual o la orientación sexual.
+
+El tratamiento de datos de estas categorías exige el consentimiento explícito u otra base jurídica del artículo 9, unas medidas de seguridad de mayor nivel, una minimización de datos más estricta, una información sobre protección de datos más completa y una evaluación de impacto relativa a la protección de datos más rigurosa.
+
+Si usas Network Canvas con datos sensibles, implementa Fresco únicamente en una región de la UE, activa las funciones de seguridad al máximo, aplica controles de acceso adicionales, plantéate añadir capas de cifrado adicionales y documenta minuciosamente todas las garantías.
+
+### Estudios longitudinales {#longitudinal-studies}
+
+Los estudios longitudinales plantean retos como la necesidad de volver a identificar a quienes participan para el seguimiento, plazos de conservación de datos más largos y la necesidad de recabar el consentimiento en varios momentos.
+
+Afronta estos retos usando identificadores seudonimizados siempre que sea posible, guardando la clave de vinculación por separado de los datos de investigación, actualizando la información sobre protección de datos en cada oleada, renovando el consentimiento si cambia el tratamiento y aplicando procedimientos seguros para identificar a quienes participan.
+
+### Estudios multicéntricos {#multi-site-studies}
+
+Los estudios multicéntricos plantean retos como las transferencias de datos entre centros, la existencia de varios responsables del tratamiento y la necesidad de coordinar el cumplimiento.
+
+Afróntalos definiendo con claridad las funciones de cada responsable del tratamiento, firmando acuerdos de intercambio de datos, aplicando medidas de seguridad coherentes en todos los centros, coordinando la información sobre protección de datos y planteándote un acuerdo de corresponsabilidad del tratamiento.
+
+## Conclusión {#conclusion}
+
+Fresco e Interviewer están diseñados para dar a quienes investigan el control total de los datos de participantes, lo que permite realizar investigaciones conformes al RGPD cuando se implementan y configuran adecuadamente.
+
+El equipo de desarrollo del software no interviene en el tratamiento de los datos: todos los datos permanecen bajo tu control. El cumplimiento del RGPD es responsabilidad tuya como responsable del tratamiento; el software lo hace posible, pero no lo garantiza. Una configuración adecuada es fundamental: elige regiones de la UE, activa el cifrado y aplica medidas de seguridad. La documentación es crucial: lleva un registro de todas las medidas de cumplimiento. Es necesario revisarlo todo periódicamente, ya que el cumplimiento es un proceso continuo, no algo que se consigue una sola vez.
+
+El cumplimiento del RGPD se consigue con decisiones de alojamiento adecuadas (regiones de la UE, proveedores que cumplan el RGPD), prácticas de seguridad sólidas (cifrado, control de acceso, supervisión), políticas institucionales claras (conservación, eliminación, derechos de quienes participan), una documentación adecuada (información sobre protección de datos, evaluaciones de impacto, registros de tratamiento) y revisiones y actualizaciones periódicas (auditorías de seguridad, revisiones de las políticas).
+
+El software ofrece la base para una investigación conforme al RGPD. Tus decisiones de implementación, tus prácticas de seguridad y las políticas de tu institución determinan si esa base se traduce en un cumplimiento real.
+
+## Recursos adicionales {#additional-resources}
+
+**Información sobre el RGPD:**
+
+- [Texto oficial del RGPD de la UE](https://gdpr-info.eu/) (en inglés)
+- [Orientación y recursos de la ICO sobre el RGPD del Reino Unido](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/) (Reino Unido, en inglés)
+
+**Protección de datos en la investigación:**
+
+- [Resumen de UKRI sobre el RGPD y la investigación](https://www.ukri.org/wp-content/uploads/2020/10/UKRI-020920-GDPR-FAQs.pdf) (en inglés)
+- [Ética y protección de datos, de la Comisión Europea](https://ec.europa.eu/info/funding-tenders/opportunities/docs/2021-2027/horizon/guidance/ethics-and-data-protection_he_en.pdf) (en inglés)
+
+**Documentación de los proveedores de servicios:**
+
+- [Seguridad de Neon](https://neon.com/docs/security/security-overview) (en inglés)
+- [Documentación de UploadThing](https://docs.uploadthing.com/) (en inglés)
+- [Seguridad de Vercel](https://vercel.com/security) (en inglés)
+- [Seguridad de Netlify](https://www.netlify.com/security/) (en inglés)
+
+**Recursos de Network Canvas:**
+
+- [Guía de implementación](/es/collect-data/fresco/guide): implementa Fresco en una infraestructura conforme
+- [Implementación avanzada](/es/collect-data/fresco/advanced): opciones de alojamiento propio para tener el máximo control
+- [Usar Fresco](/es/collect-data/fresco/using-fresco): características y funciones de la plataforma
+- [Preguntas frecuentes](/es/collect-data/fresco/faq): preguntas habituales, incluido un resumen sobre el RGPD
+
+## Obtener ayuda {#getting-help}
+
+Si tienes preguntas sobre el cumplimiento del RGPD con Network Canvas, empieza por leer esta guía con atención, ya que en ella se responde a la mayoría de las preguntas. Consulta a tu DPD para obtener orientación específica de tu institución, ponte en contacto con tu comité de ética para que te asesore sobre el cumplimiento en tu estudio concreto, recurre a tu departamento de informática para que te ayude con los aspectos técnicos y acude a nuestra [comunidad](https://community.networkcanvas.com/) para recibir el apoyo de otras personas usuarias.
+
+**El equipo de Network Canvas no puede ofrecer asesoramiento jurídico sobre el cumplimiento del RGPD.** Solo podemos explicar cómo funciona el software y qué datos trata. Las decisiones sobre el cumplimiento debes tomarlas tú, en consulta con tu asesoría jurídica y de cumplimiento normativo.

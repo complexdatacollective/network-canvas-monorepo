@@ -4,8 +4,7 @@ import { useSelector } from 'react-redux';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import { suppliedWordingIn } from '@codaco/interview/supplied-wording';
 import {
   collectLocalizedStrings,
   type LanguageChange,
@@ -19,6 +18,7 @@ import {
   changeProtocolLocale,
   removeProtocolLocale,
   setProtocolDefaultLocale,
+  setProtocolFallbackLocale,
 } from '~/ducks/modules/activeProtocol';
 import {
   getLocaleRemovalImpact,
@@ -31,11 +31,7 @@ import {
 import { getProtocol } from '~/selectors/protocol';
 
 import { getLanguageChoices } from './languageChoices';
-import {
-  chosenLanguages,
-  LanguagePicker,
-  languageOptionText,
-} from './LanguagePicker';
+import { chosenLanguages, LanguagePicker } from './LanguagePicker';
 import { useBaseLanguageOffer } from './useBaseLanguageOffer';
 import { useLanguageName } from './useLanguageName';
 
@@ -70,9 +66,9 @@ const messages = defineMessages({
   changeDescription: {
     id: 'architect.localization.languageActions.changeDescription',
     defaultMessage:
-      'Use this when the wording recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Every {language} translation is recorded as the language you choose instead. Nothing is translated or deleted.',
+      'Use this when the wording recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Everything recorded as {language} is recorded as the language you choose instead. Wording you wrote or changed moves as it is, without being translated or deleted. Built-in wording you haven’t changed becomes Network Canvas’s version of it in the language you choose. Any built-in wording that Network Canvas doesn’t have in that language is removed, and you’ll need to write it.',
     description:
-      'Explanation in the dialog that records the translations of one protocol language as another language. language is the name of the language being changed.',
+      'Explanation in the dialog that records the translations of one protocol language as another language. language is the name of the language being changed. Built-in wording is the text Network Canvas supplies, such as button labels and the closing screen. Text the researcher wrote, or built-in wording they reworded, keeps its words and moves to the chosen language. Built-in wording they have not changed is replaced, item by item, with Network Canvas’s wording in the chosen language; an item Network Canvas has no wording for in that language is removed, and the researcher must write it.',
   },
   languageLabel: {
     id: 'architect.localization.languageActions.languageLabel',
@@ -131,6 +127,12 @@ export type OpenStageDraft = Readonly<{
   /** The stage's texts as the editor holds them, at the stage's own paths. */
   texts: readonly LocalizedStringHit[];
   /**
+   * The stage as the editor holds it, and where the protocol holds it or will
+   * once it is saved. Network Canvas's wording for the stage's texts is that
+   * of this stage: the protocol may hold no stage there yet.
+   */
+  stage?: Readonly<{ index: number; stage: unknown }>;
+  /**
    * Applies a change the protocol has just taken to the open stage: `rewrite`
    * moves or removes its translations, and `change` is the change to the
    * protocol's languages, which the wording Network Canvas supplies follows.
@@ -163,6 +165,7 @@ export const useLanguageActions = (
   const offerBaseLanguage = useBaseLanguageOffer();
   const declared = protocol?.localization.locales;
   const draftTexts = draft?.texts ?? NO_TEXTS;
+  const draftStage = draft?.stage;
   const rewriteDraft = draft?.rewrite;
 
   const protocolTexts = useMemo(
@@ -174,11 +177,23 @@ export const useLanguageActions = (
     [draftTexts, protocolTexts],
   );
 
+  // Network Canvas's own wording for a place: a text it words is not left
+  // empty by removing the only language the researcher reworded it in. Read
+  // from the protocol with the open stage in its place, as the stage's texts
+  // are: a stage being created is not in the protocol yet.
+  const suppliedWording = useMemo(() => {
+    if (!protocol) return undefined;
+    if (draftStage === undefined) return suppliedWordingIn(protocol);
+    const stages: unknown[] = [...protocol.stages];
+    stages[draftStage.index] = draftStage.stage;
+    return suppliedWordingIn({ ...protocol, stages });
+  }, [draftStage, protocol]);
+
   /** What removing `locale` would delete, unsaved stage text included. */
   const removalImpact = useCallback(
     (locale: LocaleTag): LocaleRemovalImpact =>
-      getLocaleRemovalImpact(texts, locale),
-    [texts],
+      getLocaleRemovalImpact(texts, locale, suppliedWording),
+    [suppliedWording, texts],
   );
 
   const declaredNow = useCallback(
@@ -238,6 +253,7 @@ export const useLanguageActions = (
         <LanguagePicker
           label={intl.formatMessage(messages.languagesLabel)}
           choices={availableChoices(declared)}
+          unavailable={declared}
           initialValue={[]}
         />
       ),
@@ -272,6 +288,17 @@ export const useLanguageActions = (
   );
 
   /**
+   * Names the protocol's fallback language. No text changes, so an open
+   * stage has nothing to follow.
+   */
+  const setFallbackLanguage = useCallback(
+    (locale: LocaleTag) => {
+      dispatch(setProtocolFallbackLocale({ locale }));
+    },
+    [dispatch],
+  );
+
+  /**
    * Records the text of `from` as another language: every translation, the
    * declaration and the default move together to the language chosen.
    */
@@ -288,22 +315,20 @@ export const useLanguageActions = (
         submitLabel: intl.formatMessage(messages.changeSubmit),
         finalFocus: focusAfter(returnFocus),
         children: (
-          <Field<typeof NativeSelectField>
-            name="language"
+          <LanguagePicker
+            single
             label={intl.formatMessage(messages.languageLabel)}
-            component={NativeSelectField}
+            choices={availableChoices(declared)}
+            unavailable={declared}
+            initialValue={[]}
             placeholder={intl.formatMessage(messages.chooseALanguage)}
-            options={availableChoices(declared).map((choice) => ({
-              value: choice.locale,
-              label: languageOptionText(intl, choice),
-            }))}
-            required={intl.formatMessage(messages.chooseOne)}
+            requiredMessage={intl.formatMessage(messages.chooseOne)}
           />
         ),
       });
       if (!values) return;
-      const tag = values.language;
-      if (typeof tag !== 'string') return;
+      const [tag] = chosenLanguages(values);
+      if (tag === undefined) return;
       const before = localizationNow();
       dispatch(changeProtocolLocale({ from, to: tag }));
       // The language as the protocol now declares it, which is the tag after
@@ -372,5 +397,6 @@ export const useLanguageActions = (
     removeLanguage,
     removalImpact,
     setDefaultLanguage,
+    setFallbackLanguage,
   };
 };

@@ -66,7 +66,7 @@ export default function PassphrasePrompter({
                 render={
                   <motion.button
                     type="button"
-                    aria-label={intl.formatMessage(messages.passphrase)}
+                    aria-label={intl.formatMessage(messages.passphraseButton)}
                     aria-describedby={descriptionId}
                     key="lock"
                     layout

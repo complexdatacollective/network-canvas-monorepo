@@ -8,6 +8,7 @@ import { VersionedProtocolSchema } from '../../index.ts';
 import {
   getLocalizedStringDescriptor,
   LocaleTagSchema,
+  localizedMessage,
   localizedString,
   ProtocolLocalizationSchema,
 } from '../localized-string.ts';
@@ -156,13 +157,23 @@ describe('ProtocolLocalizationSchema', () => {
 });
 
 describe('localizedString', () => {
-  const required = localizedString(z.string().min(1), 'plain');
-  const optionalContent = localizedString(z.string(), 'markdown');
+  const required = localizedString(z.string().min(1), {
+    format: 'plain',
+    lines: 'single',
+  });
+  const optionalContent = localizedString(z.string(), {
+    format: 'markdown',
+    lines: 'multiple',
+  });
 
-  it('tags the schema with its rendering format', () => {
-    expect(getLocalizedStringDescriptor(required)).toEqual({ format: 'plain' });
+  it('tags the schema with its declared shape', () => {
+    expect(getLocalizedStringDescriptor(required)).toEqual({
+      format: 'plain',
+      lines: 'single',
+    });
     expect(getLocalizedStringDescriptor(optionalContent)).toEqual({
       format: 'markdown',
+      lines: 'multiple',
     });
     expect(getLocalizedStringDescriptor(z.string())).toBeUndefined();
   });
@@ -255,6 +266,49 @@ describe('localizedString', () => {
   });
 });
 
+describe('line breaks', () => {
+  const oneLine = {
+    'plain text': localizedString(z.string(), {
+      format: 'plain',
+      lines: 'single',
+    }),
+    'markdown text': localizedString(z.string(), {
+      format: 'markdown',
+      lines: 'single',
+    }),
+    'a message': localizedMessage(z.string(), { arguments: {} }),
+  };
+  const severalLines = localizedString(z.string(), {
+    format: 'markdown',
+    lines: 'multiple',
+  });
+  const breaks = {
+    'a line feed': 'First\nsecond',
+    'a carriage return': 'First\rsecond',
+    'a line separator': 'First\u2028second',
+    'a paragraph separator': 'First\u2029second',
+    'a trailing line feed': 'First second\n',
+  };
+
+  for (const [field, schema] of Object.entries(oneLine)) {
+    it.each(Object.entries(breaks))(
+      `refuses %s in ${field} declared one line, in any language`,
+      (_name, text) => {
+        expect(issuesOf(schema, { en: 'First second', fr: text })).toEqual([
+          { message: 'Text cannot contain a line break.', path: ['fr'] },
+        ]);
+      },
+    );
+  }
+
+  it.each(Object.entries(breaks))(
+    'accepts %s in text declared several lines',
+    (_name, text) => {
+      expect(issuesOf(severalLines, { en: text, fr: text })).toEqual([]);
+    },
+  );
+});
+
 describe('Information stage title', () => {
   const stage = (title: unknown) => ({
     id: 'welcome',
@@ -279,6 +333,26 @@ describe('Information stage title', () => {
         stage({ en: 'Information', fr: 'Informations' }),
       ).success,
     ).toBe(true);
+  });
+
+  it('refuses a title holding a line break, while its content may hold several lines', () => {
+    expect(
+      issuesOf(informationStageSchema, {
+        ...stage({ en: 'Information', fr: 'Informa-\ntions' }),
+        items: [
+          {
+            id: 'item',
+            type: 'text',
+            content: {
+              en: '## Welcome\n\nHello',
+              fr: '## Bienvenue\n\nBonjour',
+            },
+          },
+        ],
+      }),
+    ).toEqual([
+      { message: 'Text cannot contain a line break.', path: ['title', 'fr'] },
+    ]);
   });
 });
 
@@ -316,7 +390,9 @@ describe('schema version boundary', () => {
   it('accepts localized copy through the versioned schema', () => {
     expect(
       VersionedProtocolSchema.safeParse(
-        schema9Protocol(localized('Welcome'), localized('Hello')),
+        withFinishStage(
+          schema9Protocol(localized('Welcome'), localized('Hello')),
+        ),
       ).success,
     ).toBe(true);
   });

@@ -37,6 +37,7 @@ import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import useSavesInOrder from '../../hooks/useSavesInOrder';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
 import type { AttributePatch } from '../../store/entityAttributePatch';
@@ -140,7 +141,7 @@ export default function GeospatialInterface({
   const useStub = isE2E && isMapboxStubBrowser();
   const mapUnavailable = intl.formatMessage(interfaceMessages.mapUnavailable);
   const { text: outsideAreasLabel } = useLocalizedString(
-    stage.outsideAreasLabel,
+    useStageWording(stage).text('outsideAreasLabel'),
   );
 
   const [navState, setNavState] = useState<{
@@ -530,7 +531,7 @@ export default function GeospatialInterface({
         {mapOptions.allowSearch && (
           <Suspense fallback={null}>
             {useStub ? (
-              <GeospatialStubSearch className="absolute top-4 left-4 z-20" />
+              <GeospatialStubSearch className="absolute inset-s-4 top-4 z-20" />
             ) : (
               <GeospatialSearch
                 accessToken={accessToken}
@@ -544,7 +545,7 @@ export default function GeospatialInterface({
                     node_id: node[entityPrimaryKeyProperty],
                   });
                 }}
-                className="absolute top-4 left-4 z-20"
+                className="absolute inset-s-4 top-4 z-20"
               />
             )}
           </Suspense>
@@ -555,7 +556,7 @@ export default function GeospatialInterface({
           noContainer
           spacing="none"
           shadow="none"
-          className="bg-surface/80 absolute right-4 bottom-4 z-5 flex flex-col gap-2 rounded-xl p-2 shadow-2xl backdrop-blur-md"
+          className="bg-surface/80 absolute inset-e-4 bottom-4 z-5 flex flex-col gap-2 rounded-xl p-2 shadow-2xl backdrop-blur-md"
           data-testid="map-toolbar"
           variants={{
             initial: {
@@ -572,7 +573,7 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onZoomIn}
             icon={<ZoomIn />}
-            aria-label={intl.formatMessage(interfaceMessages.zoomIn)}
+            aria-label={intl.formatMessage(interfaceMessages.mapZoomIn)}
             color="dynamic"
             data-testid="map-zoom-in"
           />
@@ -580,7 +581,7 @@ export default function GeospatialInterface({
             size="lg"
             onClick={onZoomOut}
             icon={<ZoomOut />}
-            aria-label={intl.formatMessage(interfaceMessages.zoomOut)}
+            aria-label={intl.formatMessage(interfaceMessages.mapZoomOut)}
             color="dynamic"
             data-testid="map-zoom-out"
           />

@@ -3,7 +3,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
 import { BackgroundLights } from '@codaco/art';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -15,12 +15,13 @@ const messages = defineMessages({
     id: 'interviewer.appErrorBoundary.theAppHitAnUnexpectedErrorYour',
     defaultMessage:
       'The app hit an unexpected error. Your collected data is saved on this device and is not affected. Try reloading to continue.',
-    description: 'The description label in Interviewer App Error Boundary.',
+    description:
+      'Body of the full-screen error dialog shown when the app crashes; reassures that collected data is safe on the device and asks to reload. Anyone holding the device may see it, including a participant.',
   },
   reload: {
     id: 'interviewer.appErrorBoundary.reload',
     defaultMessage: 'Reload',
-    description: 'Visible copy in Interviewer App Error Boundary.',
+    description: 'Button in the app crash dialog; reloads the page.',
   },
 });
 
@@ -72,14 +73,16 @@ export function AppErrorBoundary({ children }: { children: ReactNode }) {
 
 function ErrorFallback() {
   const intl = useAppIntl();
+  const direction = useAppDirection();
   // The crashed tree (including the ambient blob layer in App.tsx) is
   // unmounted by React, so re-create the backdrop here and present the
   // fallback as a dialog over it. Reload is the only way forward.
   return (
-    // The dialog's portal must share the fallback's language. In particular,
-    // locale startup can fail after bootstrap set a non-English document lang;
-    // provider-optional English recovery must not inherit that stale language.
-    <ThemedRegion theme="interview" lang={intl.locale} dir="ltr">
+    // The dialog's portal must share the fallback's language and the way it
+    // is written. In particular, locale startup can fail after bootstrap set a
+    // non-English document lang; provider-optional English recovery must not
+    // inherit that stale language, or a right-to-left direction left with it.
+    <ThemedRegion theme="interview" lang={intl.locale} dir={direction}>
       <motion.div
         className="fixed inset-0 -z-10"
         initial={{ opacity: 0 }}

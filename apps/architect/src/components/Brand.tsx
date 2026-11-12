@@ -7,7 +7,8 @@ const messages = defineMessages({
   returnToStartScreen: {
     id: 'architect.brand.returnToStartScreen',
     defaultMessage: 'Return to start screen',
-    description: 'The aria-label text in components / Brand.',
+    description:
+      'Accessible name of the Architect logo button in the app header; read only by screen readers. Activating it closes the current protocol and returns to the start screen.',
   },
 });
 
@@ -18,7 +19,7 @@ type BrandProps = {
 };
 
 const PILL_CHROME =
-  'py-2 pl-2 tablet-portrait:pl-3 pr-4 tablet-portrait:pr-8 rounded-full bg-surface-1 text-surface-1-contrast shadow-sm';
+  'py-2 ps-2 tablet-portrait:ps-3 pe-4 tablet-portrait:pe-8 rounded-full bg-surface-1 text-surface-1-contrast shadow-sm';
 const ROW = 'flex items-center gap-3 tablet-portrait:gap-4 shrink-0';
 const INTERACTIVE =
   'cursor-pointer border-none hover:opacity-90 transition-opacity';

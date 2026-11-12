@@ -11,10 +11,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
-import {
-  getLocaleMetadata,
-  withInterfaceText,
-} from '@codaco/protocol-validation';
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -24,6 +21,7 @@ import ActionButton from '../components/ActionButton';
 import type { InterviewPayload, SyncHandler } from '../contract/types';
 import Shell from '../Shell';
 import { updateStageMetadata } from '../store/modules/session';
+import { withInterfaceText } from '../wording/suppliedWording';
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
@@ -195,7 +193,7 @@ function liveStore() {
 }
 
 // The probe's built-in text, as the protocol's interface text words it.
-const builtIn = { es: 'Continuar', en: 'Continue' };
+const builtIn = { es: 'Continuar', en: 'Continue', ar: 'متابعة' };
 
 const expectBuiltIn = (text: string, region: HTMLElement = document.body) =>
   expect(within(region).getByTestId('built-in-text')).toHaveTextContent(text);
@@ -292,9 +290,9 @@ describe('Shell interview languages', () => {
     expect(region).toHaveAttribute('dir', 'rtl');
     expect(document.getElementById('stage')).not.toHaveAttribute('lang');
     expect(document.getElementById('stage')).not.toHaveAttribute('dir');
-    // The protocol holds no Arabic interface text, so its default language
-    // shows.
-    expectBuiltIn(builtIn.en, region);
+    // The protocol holds no Arabic interface text, so Network Canvas's own
+    // Arabic wording shows.
+    expectBuiltIn(builtIn.ar, region);
   });
 
   it.each([

@@ -1054,9 +1054,11 @@ const INTERFACE_TEXT_RULES: readonly Rule[] = [
 const locate = (protocol: CurrentProtocol, path: Path): Located | undefined => {
   const [root, scope, ...inScope] = path;
   if (root === 'interfaceText') {
-    if (!protocol.interfaceText) return undefined;
+    // Named by its group and entry alone: a protocol holds interface text
+    // only where its author changed Network Canvas's wording, and a text it
+    // holds nothing for is still one it shows.
     return {
-      place: protocol.interfaceText,
+      place: protocol.interfaceText ?? {},
       rules: INTERFACE_TEXT_RULES,
       rest: path.slice(1),
     };

@@ -270,7 +270,11 @@ describe('SiteNavigation', () => {
     const softwareViewport = softwarePopup.querySelector(':scope > div');
     if (!softwareViewport) throw new Error('Expected the software viewport.');
 
-    expect(softwareGrid).toHaveClass('grid', 'grid-cols-3');
+    expect(softwareGrid).toHaveClass(
+      'grid',
+      'grid-cols-[repeat(auto-fill,23rem)]',
+      'max-w-[min(70rem,calc(100vw-4.5rem))]',
+    );
     expect(softwarePopup).toHaveClass(
       'h-(--popup-height)',
       'w-(--popup-width)',
@@ -438,5 +442,103 @@ describe('SiteNavigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Software' }));
 
     expect(screen.getByRole('link', { name: 'Architect' })).toBeInTheDocument();
+  });
+});
+
+describe('SiteNavigation inside a host', () => {
+  it('lists its links for a host menu without a header of its own', () => {
+    render(
+      <SiteNavigation
+        activeItemId="community"
+        layout="menu"
+        locale="en-US"
+        site="external"
+      />,
+    );
+
+    const navigation = screen.getByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    expect(
+      within(navigation).getByRole('link', { name: 'Community' }),
+    ).toHaveAttribute('aria-current', 'page');
+    expect(
+      within(navigation).getByRole('link', { name: 'Open Architect' }),
+    ).toBeInTheDocument();
+    // The host's page and menu already carry these.
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Skip to main content' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Network Canvas home' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows its logo and links beside a host’s own controls', () => {
+    const onFitChange = vi.fn();
+    render(
+      <SiteNavigation
+        activeItemId="community"
+        layout="embedded"
+        locale="en-US"
+        onFitChange={onFitChange}
+        site="external"
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Network Canvas home' }),
+    ).toHaveAttribute('href', 'https://networkcanvas.com/');
+    expect(screen.getByRole('link', { name: 'Community' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('button', { name: 'Software' })).toBeVisible();
+    expect(
+      screen.queryByRole('link', { name: 'Skip to main content' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Get Started' }),
+    ).not.toBeInTheDocument();
+    expect(onFitChange).toHaveBeenCalledWith('full');
+  });
+
+  it('opens the host’s menu from the host’s own entry', () => {
+    const onToggle = vi.fn();
+    const { rerender } = render(
+      <SiteNavigation
+        activeItemId="community"
+        hostMenu={{ open: false, onToggle }}
+        layout="embedded"
+        locale="en-US"
+        site="external"
+      />,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Community' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveAttribute('part', 'host-menu-trigger');
+    // The entry is the menu's trigger, not a second link to the host.
+    expect(
+      screen.queryByRole('link', { name: 'Community' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(trigger);
+    expect(onToggle).toHaveBeenCalledWith(trigger);
+
+    rerender(
+      <SiteNavigation
+        activeItemId="community"
+        hostMenu={{ open: true, onToggle }}
+        layout="embedded"
+        locale="en-US"
+        site="external"
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Community' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
   });
 });

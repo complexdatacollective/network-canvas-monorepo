@@ -187,7 +187,7 @@ export default function ToolPalette({
       aria-label={intl.formatMessage(interfaceMessages.composerTools)}
       orientation="vertical"
       size="lg"
-      className="absolute top-1/2 left-4 z-10 -translate-y-1/2"
+      className="absolute inset-s-4 top-1/2 z-10 -translate-y-1/2"
     >
       <ToolbarGroup
         aria-label={intl.formatMessage(interfaceMessages.editingTools)}
@@ -308,14 +308,14 @@ export default function ToolPalette({
         aria-label={intl.formatMessage(interfaceMessages.historyTools)}
       >
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.undo)}
+          aria-label={intl.formatMessage(interfaceMessages.composerUndo)}
           tooltip={false}
           icon={<UndoIcon />}
           disabled={!canUndo}
           onClick={() => void undoStore.getState().undo()}
         />
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.redo)}
+          aria-label={intl.formatMessage(interfaceMessages.composerRedo)}
           tooltip={false}
           icon={<RedoIcon />}
           disabled={!canRedo}

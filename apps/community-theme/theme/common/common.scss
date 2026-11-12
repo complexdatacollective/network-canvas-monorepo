@@ -1,0 +1,15 @@
+// Network Canvas theme for the community forum. The design tokens
+// (color_definitions.scss), the palettes and the fonts are generated from
+// @codaco/tailwind-config by scripts/build.ts; the partials here map them
+// onto Discourse.
+@import 'fonts';
+@import 'variables';
+@import 'base';
+@import 'layout';
+@import 'header';
+@import 'buttons';
+@import 'alerts';
+@import 'lists';
+@import 'posts';
+@import 'illustrations';
+@import 'landing';

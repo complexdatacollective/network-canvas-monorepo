@@ -9,6 +9,7 @@ import type {
   SiteFooterSocialLink,
 } from '@codaco/fresco-ui/navigation/SiteFooter';
 
+import DocumentationLocaleSwitcher from './DocumentationLocaleSwitcher';
 import Link from './Link';
 import LogoComponent from './SharedNav/LogoComponent';
 
@@ -69,11 +70,14 @@ export default function DocumentationFooter() {
       copyright={t('copyright', { year: buildYear })}
       socialLinks={footerSocialLinks}
       extraContent={
-        <span className="text-text/70 text-base">
-          {t.rich('netlify', {
-            link: renderNetlifyLink,
-          })}
-        </span>
+        <>
+          <span className="text-text/70 text-base">
+            {t.rich('netlify', {
+              link: renderNetlifyLink,
+            })}
+          </span>
+          <DocumentationLocaleSwitcher />
+        </>
       }
       className="mt-10"
     />

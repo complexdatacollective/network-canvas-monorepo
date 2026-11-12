@@ -1,0 +1,731 @@
+---
+title: Usar Interviewer
+navOrder: 2
+wip: false
+toc: true
+date: 7th October 2026
+translatedFrom: 152e30fb7afb2978f9460948e6492d80a6d6fed9
+---
+
+<SummaryCard duration="30 minutos">
+<SummarySection>
+
+Este tutorial te presenta Interviewer mediante un recorrido por un ejemplo
+basado en nuestro protocolo de ejemplo. Exploraremos la experiencia de
+entrevista que ve cada participante y comentaremos algunas de las funciones de
+la aplicación pensadas para el equipo de investigación. El protocolo de ejemplo
+que vamos a usar muestra todas las funciones principales de recopilación de
+datos de la herramienta, y esperamos que te anime a imaginar los muchos tipos
+de estudio que se pueden crear con Network Canvas.
+
+</SummarySection>
+<PrerequisitesSection>
+
+Para sacar el máximo partido a este tutorial, antes deberías:
+
+- Haber leído y entendido el [resumen del proyecto](/es/get-started/project-information/project-overview).
+- Para seguirlo en tu propio ordenador o dispositivo, abrir [Interviewer](/es/collect-data/interviewer) en tu navegador web, o [descargar e instalar Interviewer Classic](https://networkcanvas.com/es/get-started).
+
+Ten en cuenta que hay un tutorial aparte que explica cómo crear un protocolo, titulado [Primeros pasos con Architect](/es/design-protocols/getting-started). Te recomendamos que sigas con este tutorial antes de aprender los conceptos más avanzados de la creación de protocolos, pero puedes leer estos artículos en el orden que prefieras.
+
+</PrerequisitesSection>
+</SummaryCard>
+
+## Presentación de Interviewer {#introducing-interviewer}
+
+Network Canvas Interviewer es una herramienta para realizar entrevistas, diseñada para que resulte sencilla e intuitiva para quienes participan en la investigación y para integrarse con el resto de herramientas de Network Canvas. Es la piedra angular del proyecto Network Canvas.
+
+Interviewer funciona tanto en tabletas con pantalla táctil como en ordenadores de escritorio, ya sea con pantalla táctil o con teclado y ratón. Sus interfaces están optimizadas para las necesidades concretas de las entrevistas de redes, y son muy flexibles y personalizables. Interviewer usa los archivos de protocolo de Network Canvas para configurarse y mostrar las pantallas y etapas que has diseñado para tu estudio.
+
+Una vez que has recopilado datos con Interviewer, puedes exportar archivos de datos de red a tu dispositivo u ordenador.
+
+Interviewer está disponible en dos versiones, y ambas siguen recibiendo mantenimiento. Elige a continuación la que usas: las capturas de pantalla y las notas específicas de cada versión que aparecen a lo largo de este tutorial se adaptarán a tu elección.
+
+<AppSwitch axis="interviewer">
+  <AppOption label="Interviewer"></AppOption>
+  <AppOption label="Interviewer Classic"></AppOption>
+</AppSwitch>
+
+<AppOnly axis="interviewer" app="classic">
+
+**Interviewer Classic** es la aplicación consolidada para ordenadores de escritorio y tabletas. Ejecuta protocolos del esquema 7 y funciona completamente sin conexión.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+**Interviewer** funciona en tu navegador web, sin necesidad de instalar nada, y se puede instalar como aplicación web progresiva (PWA) en un dispositivo que controles. Está desarrollado sobre la misma plataforma web que Fresco 4.0. Admite los **esquemas 8 y 9** (de modo que puede ejecutar los protocolos creados en [Architect](/es/design-protocols/getting-started)) y es compatible con tus protocolos actuales, además de ofrecer una experiencia de entrevista, una exportación de datos y una seguridad en el dispositivo mejoradas. Como algunas interfaces del esquema 8 (como la [interfaz geoespacial](/es/design-protocols/interface-documentation/geospatial)) necesitan conexión a internet, no siempre es posible recopilar datos completamente sin conexión. Es la versión **recomendada para estudios nuevos**.
+
+</AppOnly>
+
+La siguiente presentación del software describe algunas de sus funciones y conceptos clave. Para seguirla, abre Interviewer en tu propio ordenador o dispositivo.
+
+<AppOnly axis="interviewer" app="current">
+
+## Seguridad y bloqueo {#security-and-locking}
+
+Interviewer guarda todo lo que almacena (protocolos, entrevistas y ajustes) en el dispositivo, sin sincronización en la nube ni ningún componente de servidor. Cuando configuras un bloqueo de la aplicación (un PIN, una frase de contraseña o biometría), esos datos del dispositivo se **cifran en reposo** con una clave derivada de tu credencial, y la misma autenticación que desbloquea la aplicación libera la clave con la que se descifran.
+
+### Configurar la seguridad {#setting-up-security}
+
+La primera vez que abres Interviewer, te recibe una pantalla de bienvenida y un breve asistente de configuración te guía antes de llegar al panel de administración. Casi todo lo que configura se puede cambiar más adelante en **Configuración** (la excepción es tu método de seguridad; consulta más abajo).
+
+![La pantalla de bienvenida de Interviewer](/assets/img/interviewer-guide/welcome.png)
+
+La pantalla de bienvenida, y cada paso del asistente de configuración, incluye un selector **Idioma de la aplicación**, para que puedas cambiar el idioma de la aplicación antes de seguir adelante (consulta más abajo [Idioma de la aplicación](#interface-language)).
+
+El asistente empieza con un breve resumen de lo que va a tratar: proteger tus datos y establecer tus preferencias de la aplicación.
+
+![La introducción del asistente de configuración](/assets/img/interviewer-guide/setup-intro.png)
+
+A continuación, explica los dos niveles que protegen los datos de tu investigación, el **almacenamiento seguro de datos** y la **autorización de la aplicación**, que son funciones que debes usar _además_ de las protecciones del propio dispositivo, como el cifrado del almacenamiento y una contraseña segura del dispositivo.
+
+![El paso «Protección de tus datos» del asistente de configuración](/assets/img/interviewer-guide/securing-data.png)
+
+Después, eliges cómo vas a desbloquear la aplicación. Según tu dispositivo, las opciones son:
+
+- **Autenticación biométrica**: Touch ID, Face ID o el equivalente de tu dispositivo (solo se ofrece cuando el dispositivo tiene un sensor).
+- **PIN**: un código de ocho dígitos.
+- **Frase de contraseña**: una frase de al menos doce caracteres.
+- **Sin seguridad**: sin protección propia de la aplicación (tus datos siguen dependiendo de las protecciones propias del dispositivo).
+
+![Elegir un método de autenticación](/assets/img/interviewer-guide/auth-method.png)
+
+<TipBox danger={true}>
+
+Un **PIN o una frase de contraseña** olvidados no se pueden recuperar: los datos que protegen quedan inaccesibles para siempre en ese dispositivo. Al configurar la **autenticación biométrica** también se registra una **frase de contraseña de recuperación** obligatoria, así que, si solo pierdes el autenticador, puedes recurrir a ella; si pierdes ambos, la pérdida es igual de permanente. Sustituir tu PIN por otro nuevo, o tu frase de contraseña por otra nueva (después de demostrar que conoces la actual), conserva el acceso a tus datos, pero cambiar a otro método de desbloqueo (por ejemplo, de un PIN a una frase de contraseña, o pasar a la autenticación biométrica o dejar de usarla) exige **desactivar el bloqueo del dispositivo**, lo que borra **todos los protocolos, todas las sesiones de entrevista y todas las credenciales guardadas en este dispositivo**. Sea cual sea el método que uses, **exporta tus entrevistas con regularidad**, para que perder un dispositivo (o volver a protegerlo) nunca suponga perder tus datos.
+
+</TipBox>
+
+Por último, el asistente te pregunta si quieres compartir datos de uso anónimos para ayudar a mejorar la aplicación. Ningún dato de participantes ni dato personal (datos de red, respuestas de la entrevista, ID de casos o contenido de los protocolos) sale nunca del dispositivo, y puedes cambiar esta elección en cualquier momento en **Configuración → Privacidad**.
+
+![El paso de preferencias de datos analíticos del asistente de configuración](/assets/img/interviewer-guide/analytics.png)
+
+### Bloquear y desbloquear {#locking-and-unlocking}
+
+Cuando la aplicación está bloqueada, solo ves la pantalla de bloqueo: nunca nombres de protocolos, número de sesiones de entrevista ni ningún otro detalle sobre lo que hay almacenado.
+
+<Screenshot axis="interviewer" name="lock-screen" alt="La pantalla de bloqueo de Interviewer"></Screenshot>
+
+Interviewer se bloquea automáticamente tras un periodo de inactividad (configurable en **Configuración**, desde un minuto hasta una hora), así como cuando se cierra la aplicación. También puedes bloquearla al momento con el botón **Bloquear aplicación** (el icono del candado) de la barra superior del panel de administración.
+
+Para mayor protección, puedes exigir una nueva autenticación en determinados momentos: al **entrar** en una entrevista (activado por defecto), al **salir** al panel de administración y al **exportar** datos. Cada una de estas opciones se activa o desactiva por separado en **Configuración**.
+
+### Configuración {#settings}
+
+En **Configuración** puedes gestionar las preferencias de la aplicación, controlar qué contienen tus exportaciones y comprobar el estado de la propia aplicación. Se abre desde el icono del engranaje del panel de administración. Está organizada en siete apartados: **Acerca de**, **Idioma**, **Entrevista**, **Exportación de datos**, **Privacidad**, **Seguridad** y **Datos sintéticos**.
+
+![La pantalla de configuración de Interviewer](/assets/img/interviewer-guide/settings.png)
+
+**Acerca de** muestra información básica sobre la aplicación y este dispositivo: la versión de la aplicación, cuánto almacenamiento estás usando (en forma de barra de uso; en ordenadores de escritorio también muestra el espacio libre en disco) y tu ID de instalación, un identificador único de cada dispositivo. La versión y el ID de instalación son los datos que debes indicar cuando te pongas en contacto con nosotros para pedir ayuda. Este apartado también te permite volver a mostrar en la pantalla de inicio la tarjeta del protocolo de ejemplo, que se instala con un clic, si la habías ocultado.
+
+**Idioma** contiene el selector **Idioma de la aplicación**, que establece el idioma de las pantallas de Interviewer en este dispositivo. Elige un idioma, o **Automático** para seguir las preferencias de idioma de tu navegador; esa opción también indica el idioma que se aplica en ese momento, por ejemplo _Automático (español)_. Consulta más abajo [Idioma de la aplicación](#interface-language).
+
+**Entrevista** tiene un único interruptor, **Permitir la navegación entre etapas**, activado por defecto. Mientras está activado, al tocar la barra de progreso durante una entrevista se abre un menú de etapas desde el que puedes saltar directamente a cualquier etapa. Cuando está desactivado, la barra de progreso deja de abrir ese menú; las flechas arriba y abajo siguen retrocediendo o avanzando una pantalla cada vez, lo que, en una etapa con varias preguntas, significa una pregunta y no una etapa entera. Saltar entre etapas resulta útil al realizar un estudio piloto de un protocolo, pero normalmente se desactiva en las entrevistas reales.
+
+**Exportación de datos** controla qué contiene cada exportación, de modo que lo configuras una sola vez aquí en lugar de elegirlo cada vez que exportas:
+
+- **Exportar GraphML** y **Exportar CSV** eligen qué formatos de archivo se incluyen en el archivo de exportación. Ambos están activados por defecto, y puedes incluir o excluir cada uno por separado.
+- **Exportar las posiciones de los nodos como coordenadas de pantalla en píxeles** está desactivado por defecto, así que las posiciones del sociograma se exportan como coordenadas normalizadas. Actívalo para exportar en su lugar coordenadas en píxeles, calculadas según la **Anchura de la pantalla** y la **Altura de la pantalla** que establezcas (por defecto, 1920 × 1080 píxeles); es útil cuando quieres que las posiciones coincidan con un tamaño de pantalla concreto.
+
+**Privacidad** tiene un único interruptor, **Activar estadísticas de uso**. Cuando está activado (la opción predeterminada), la aplicación envía una pequeña cantidad de información anónima sobre el uso y los errores (qué etapas de entrevista y qué funciones se usan, cuándo se importan protocolos o se exportan datos, y detalles de cualquier cierre inesperado) para ayudarnos a mejorar la aplicación. Ningún dato de participantes sale nunca del dispositivo: nunca se recopilan datos de red, respuestas, ID de casos, contenido de los protocolos ni archivos de recursos, y los datos analíticos no contienen nada que te identifique. Puedes cambiarlo en cualquier momento.
+
+**Seguridad** aparece siempre. En un dispositivo que se usa sin bloqueo, ofrece **Activar la seguridad de la aplicación**, que inicia el asistente **Empezar** para que puedas configurar un bloqueo del dispositivo. Añadir ese primer bloqueo conserva todo lo que ya hay en el dispositivo: los protocolos y las sesiones de entrevista que contiene se vuelven a cifrar con una clave derivada de tu nueva credencial, sin borrarse. Por eso, un dispositivo que ha estado recopilando datos sin bloqueo se puede proteger en cualquier momento. Una vez establecido un método de seguridad, este apartado muestra tu método actual y cuándo se estableció y, en el caso de un PIN o una frase de contraseña, te permite sustituirlo mediante **Cambiar PIN** o **Cambiar frase de contraseña** sin perder datos. Para cambiar a otro método de desbloqueo, tienes que restablecer el dispositivo y volver a hacer la configuración. También contiene el periodo de inactividad tras el que la aplicación se bloquea automáticamente y las opciones para volver a autenticarse que se describen más arriba en [Bloquear y desbloquear](#locking-and-unlocking). Por último, ofrece la opción **Desactivar bloqueo del dispositivo / Restablecer dispositivo**: como los datos guardados están vinculados a tu método de seguridad, usarla **borra del dispositivo todos los protocolos y todas las sesiones** y te devuelve al asistente de configuración inicial.
+
+**Datos sintéticos** genera sesiones de entrevista ficticias para que puedas ensayar y validar tu proceso de exportación antes de recopilar datos reales. Elige un **Protocolo**, establece el **Número de sesiones** que quieres crear (de 1 a 1000; 10 por defecto) y, si quieres, ajusta **Simular el abandono de participantes** (activado por defecto; deja algunas sesiones incompletas para que se parezcan a los datos reales) y **Respetar la lógica de salto y los filtros** (desactivado por defecto). Las sesiones generadas aparecen en tu vista **Datos** y se exportan exactamente igual que las reales; **Eliminar todo** borra todas las sesiones sintéticas de una vez. Para saber cómo encajan los datos sintéticos en un ensayo completo de tu estudio, consulta [Realizar un estudio piloto](/es/get-started/planning-a-study/piloting-your-study).
+
+### Idioma de la aplicación {#interface-language}
+
+Las pantallas de Interviewer (sus menús, botones y mensajes) están disponibles en inglés, inglés británico, español, alemán, francés, italiano, neerlandés, portugués de Brasil, chino simplificado y chino tradicional. Cada idioma aparece con su nombre en ese mismo idioma: **English**, **English (UK)**, **Español**, **Deutsch**, **Français**, **Italiano**, **Nederlands**, **Português (Brasil)**, **简体中文** y **繁體中文**. La opción **Automático**, la predeterminada, sigue las preferencias de idioma configuradas en tu navegador.
+
+Puedes cambiar el idioma desde cualquiera de estos lugares:
+
+- El **botón del globo terráqueo** de la barra superior del panel de administración, que abre una lista con todos los idiomas. La entrada **Automático** indica el idioma que tu navegador está aplicando en ese momento, y al elegir cualquier entrada se aplica al instante.
+- El selector **Idioma de la aplicación** de la pantalla de bienvenida y de cada paso del asistente de configuración.
+- **Configuración → Idioma**.
+
+La elección se guarda en el navegador de cada dispositivo, así que cada dispositivo de entrevista conserva su propio idioma. Si el navegador bloquea el almacenamiento del dispositivo, el idioma que has elegido se sigue aplicando durante la sesión actual, pero no se recuerda: la lista del botón del globo terráqueo indica que no se ha podido guardar y muestra un botón **Volver a intentarlo**, y **Configuración → Idioma** indica que no se ha podido guardar la preferencia. Todos los idiomas siguen disponibles sin conexión en la aplicación instalada.
+
+<TipBox>
+
+El idioma de la aplicación nunca cambia tu protocolo, tus entrevistas ni tus datos. Todo lo que se escribe en Architect (preguntas, etiquetas de los formularios, opciones de respuesta y pantallas «Información») aparece tal como lo escribió quien investiga, y los datos recopilados y los valores exportados no cambian.
+
+</TipBox>
+
+### El idioma en las entrevistas {#language-in-interviews}
+
+Un protocolo se puede escribir en más de un idioma (consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol)). Una entrevista no usa el **Idioma de la aplicación**. Al abrirse, usa, de entre los idiomas preferidos del dispositivo o del navegador, el primero en el que esté escrito el protocolo (cuenta también una variante regional cercana) o, si no hay ninguno, el idioma predeterminado del protocolo. Un texto que no está traducido a ese idioma se muestra en la mejor traducción disponible: en otro de los idiomas preferidos del dispositivo o del navegador que la tenga; si no, en el idioma predeterminado o, en su defecto, en cualquier idioma del protocolo que la tenga. Consulta [El idioma predeterminado y qué traducción ve cada participante](/es/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see).
+
+Todo lo que muestra una entrevista, incluidos sus botones y mensajes, como «Volver», «Continuar» y los mensajes de validación, se muestra en el idioma de la entrevista: con la redacción del protocolo allí donde la haya cambiado quien lo diseñó y, en todo lo demás, con la de Network Canvas (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)). El ajuste **Idioma de la aplicación** de Interviewer no lo cambia.
+
+La única forma de que una persona participante cambie el idioma durante una entrevista es una etapa [«Selector de idioma»](/es/design-protocols/interface-documentation/language-chooser) en el protocolo. Su elección se mantiene hasta que se cierra la pestaña del navegador, así que se vuelve a usar si se recarga la página o se reanuda la entrevista en la misma pestaña. No se guarda con la entrevista ni se incluye en los datos exportados: en una entrevista que se reanuda en una pestaña nueva, el idioma vuelve a determinarse a partir de los idiomas del dispositivo o del navegador.
+
+</AppOnly>
+
+## La pantalla de inicio {#the-start-screen}
+
+Después de abrir Interviewer, lo primero que verás es la «pantalla de inicio». Es una zona «entre bastidores» de Interviewer, pensada para la persona que realiza el estudio (no para la persona participante). Te permite configurar el software, iniciar una entrevista nueva, reanudar una entrevista existente y gestionar tus datos.
+
+<Screenshot axis="interviewer" name="start-screen" alt="La pantalla de inicio de Interviewer"></Screenshot>
+
+<AppOnly axis="interviewer" app="classic">
+
+La pantalla de inicio se divide en secciones que agrupan tareas relacionadas, como «iniciar una entrevista» o «exportar y gestionar los datos de las entrevistas». No todas las secciones están visibles siempre. La pantalla de inicio muestra de forma inteligente solo las opciones que se pueden usar en cada momento. Por ejemplo, la sección de exportación de datos solo aparece cuando ya has realizado una o más entrevistas.
+
+Cuando abres Interviewer por primera vez, verás tres secciones predeterminadas.
+
+La **sección de bienvenida**, que contiene enlaces para instalar el protocolo de ejemplo, visitar el sitio web de documentación o ver nuestro vídeo de presentación.
+
+![La sección de bienvenida](/assets/img/sample-protocol/welcome-section.png)
+
+La sección de bienvenida también contiene un botón (el icono del engranaje) que abre la pantalla principal de ajustes del dispositivo. Te animamos a abrir la pantalla de ajustes y explorar las distintas opciones.
+
+<TipBox>
+
+La sección de bienvenida se puede ocultar cuando ya no la necesites, con el
+interruptor de la esquina superior derecha.
+
+</TipBox>
+
+La **sección de protocolos**, que te permite importar rápidamente un [archivo de protocolo de Network Canvas](/es/design-protocols/key-concepts/the-protocol-file) desde una URL o eligiendo un archivo. Cuando hayas instalado uno o más archivos de protocolo, esta sección también te permitirá gestionar los protocolos instalados.
+
+![La sección de protocolos](/assets/img/sample-protocol/protocols-section.png)
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Interviewer la presenta como un panel de administración. Puedes cambiar entre dos vistas, **Protocolos** y **Datos**, con el selector de la parte superior de la pantalla, junto al que hay una fila de botones:
+
+- **Protocolos**: tus protocolos instalados, presentados como una pila de tarjetas que puedes ir pasando, junto a una tarjeta para importar un protocolo nuevo.
+- **Datos**: todas las sesiones recopiladas, listas para reanudarlas, revisarlas o exportarlas (se explican más abajo, en [Reanudar, exportar y gestionar sesiones de entrevista](#resuming-exporting-and-managing-interview-sessions)).
+- **Idioma de la interfaz** (el icono del globo terráqueo): cambia el idioma de las pantallas de Interviewer (consulta más arriba [Idioma de la aplicación](#interface-language)).
+- **Bloquear aplicación** (el icono del candado): bloquea Interviewer al momento. Solo aparece cuando has configurado un bloqueo de la aplicación.
+- **Configuración** (el icono del engranaje): preferencias y diagnóstico de la aplicación, agrupados en Acerca de, Idioma, Entrevista, Exportación de datos, Privacidad, Seguridad y Datos sintéticos (consulta más arriba [Configuración](#settings)).
+
+</AppOnly>
+
+## Instalar y gestionar protocolos {#installing-and-managing-protocols}
+
+Para poder usar Interviewer para recopilar datos, antes hay que configurarlo con uno o más protocolos de entrevista de Network Canvas.
+
+<AppOnly axis="interviewer" app="classic">
+
+Hay dos formas de importar un protocolo en los dispositivos que ejecutan Interviewer. La que elijas dependerá de las necesidades de tu estudio.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Los protocolos se importan en Interviewer desde un archivo `.netcanvas` del dispositivo. Cada protocolo se valida al importarlo. Un protocolo del esquema 8 se mantiene como esquema 8, y sus entrevistas se ejecutan en la entrevista del esquema 8 integrada en Interviewer. Un protocolo del esquema 7 procedente de las aplicaciones Classic se migra automáticamente al esquema 8. Interviewer nunca actualiza un protocolo al esquema 9: para usar las funciones del esquema 9, actualízalo en Architect e importa la copia actualizada (consulta [Migrar un protocolo](/es/get-started/protocol-schema-information#migrating-a-protocol)).
+
+![El cuadro de diálogo «Importar un protocolo» de Interviewer](/assets/img/interviewer-guide/import-protocol.png)
+
+<TipBox>
+
+Interviewer rechaza un archivo `.netcanvas` al que le falte alguno de sus archivos de recursos, y el mensaje indica qué recurso falta. Si el contenido de un archivo está dañado, se indica que está dañado. Para reparar un protocolo al que le faltan recursos, ábrelo en Architect (que puede abrirlo aunque falten archivos), vuelve a añadir los archivos desde **Recursos** y descarga una copia nueva del protocolo. Consulta [Recursos](/es/design-protocols/key-concepts/resources).
+
+</TipBox>
+
+</AppOnly>
+
+### Importar un archivo directamente {#importing-a-file-directly}
+
+Esta opción ofrece una forma sencilla de importar un archivo de protocolo que ya está guardado en tu dispositivo.
+
+<AppOnly axis="interviewer" app="classic">
+
+Se puede acceder a ella desde el menú «File» (si ejecutas Interviewer en un sistema operativo de escritorio) o desde la sección de protocolos de la pantalla de inicio.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Haz clic en la tarjeta **Importar un protocolo**, al final del carrusel de protocolos de la pantalla de inicio, para abrir un selector de archivos, o arrastra un archivo `.netcanvas` sobre ella.
+
+</AppOnly>
+
+<TipBox>
+
+Recomendamos este método para estudios pequeños y para situaciones en las que el
+dispositivo que ejecuta Interviewer es también el que se usa para crear protocolos en Architect.
+
+</TipBox>
+
+<AppOnly axis="interviewer" app="classic">
+
+### Importar desde una URL {#importing-from-a-url}
+
+Esta opción te permite descargar un archivo de protocolo directamente desde cualquier URL a la que se pueda acceder desde el dispositivo que ejecuta Interviewer. Puede ser útil cuando tienes un sitio web del estudio o conexión a internet, y necesitas instalar rápidamente un protocolo en un dispositivo. Se puede acceder a ella desde la sección de protocolos de la pantalla de inicio.
+
+<TipBox>
+
+Recomendamos este método para dispositivos que usan un sitio web del proyecto o un servicio de
+almacenamiento en la nube para distribuir archivos de protocolo a varios dispositivos.
+
+</TipBox>
+
+</AppOnly>
+
+### Importar el protocolo de ejemplo {#import-the-sample-protocol}
+
+Para este tutorial, vamos a usar el protocolo de ejemplo integrado.
+
+<AppOnly axis="interviewer" app="classic">
+
+Para seguirlo en tu propio dispositivo, **haz clic en el botón «Install sample protocol» (instalar el protocolo de ejemplo) de la sección de bienvenida de la aplicación** para instalar el protocolo que vamos a usar. También puedes <DownloadLink href="/protocols/Sample Protocol v4.netcanvas">hacer clic aquí</DownloadLink> para descargar el archivo e importarlo después en Interviewer con el método de importación desde archivo descrito más arriba.
+
+Una vez importado un protocolo, aparece una nueva sección en la pantalla de inicio: la **sección de nueva entrevista**. Dentro de esta sección hay una tarjeta de protocolo, que representa el protocolo que has importado.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+El protocolo de ejemplo viene integrado en Interviewer: selecciónalo en la pila de tarjetas de protocolos de la vista **Protocolos** para seguir el tutorial. También puedes <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">hacer clic aquí</DownloadLink> para descargar el archivo e importarlo con la tarjeta **Importar un protocolo**, al final de la pila.
+
+Una vez instalado, un protocolo aparece en la pila de tarjetas de protocolos como una tarjeta que representa el protocolo que has importado.
+
+</AppOnly>
+
+<KeyConcept title="Anatomía de una tarjeta de protocolo">
+
+La tarjeta de protocolo es un elemento visual que representa un protocolo de entrevista de Network Canvas. Se usa en todo Architect e Interviewer, siempre que se usa un protocolo.
+
+<Screenshot axis="interviewer" name="protocol-card" alt="Una tarjeta de protocolo"></Screenshot>
+
+A menudo se puede hacer clic en la tarjeta de protocolo, tocarla o arrastrarla para realizar una acción relacionada con el protocolo. La tarjeta tiene tres elementos visuales principales:
+
+- El nombre del protocolo, que se define a partir del nombre original del propio archivo de protocolo
+- La descripción del protocolo, que puede contener cualquier información descriptiva que quieras y que se establece en Architect
+- Los metadatos del protocolo, que resumen cuándo se instaló y se modificó el protocolo, junto con el número de entrevistas recopiladas con él
+
+<AppOnly axis="interviewer" app="current">
+
+Encima del nombre del protocolo, la tarjeta muestra la versión del esquema para la que se creó el protocolo, como **Esquema 9**. Un protocolo creado para una versión anterior del esquema muestra **Esquema 8 · una versión anterior**. Sus entrevistas se ejecutan en la entrevista del esquema 8 integrada en Interviewer, y puedes usarlo igual que cualquier otro protocolo.
+
+</AppOnly>
+
+También contiene un botón **Iniciar nueva entrevista**, un indicador **Requiere internet** (que aparece cuando el protocolo usa interfaces que necesitan internet, como la interfaz geoespacial) y un icono de papelera para eliminar el protocolo del dispositivo.
+
+<AppOnly axis="interviewer" app="classic">
+
+En Interviewer Classic, los metadatos de la tarjeta muestran la [versión del esquema](/es/get-started/protocol-schema-information) del protocolo en lugar del número de entrevistas, y las entrevistas se inician y los protocolos se gestionan desde la pantalla de inicio, no con botones de la propia tarjeta.
+
+</AppOnly>
+
+</KeyConcept>
+
+### Eliminar o gestionar los protocolos instalados {#removing-or-managing-installed-protocols}
+
+<AppOnly axis="interviewer" app="classic">
+
+Para ayudarte a gestionar los protocolos instalados en Interviewer, hay una capa superpuesta específica. Se puede abrir desde la sección de protocolos, que ahora mostrará un botón «Manage Installed Protocols» (gestionar los protocolos instalados).
+
+![La sección de protocolos con el botón `manage installed protocols`](/assets/img/sample-protocol/manage-installed-protocols.png)
+
+Desde esta capa puedes ordenar tus protocolos instalados y filtrarlos por nombre. Para eliminar un archivo de protocolo de tu dispositivo, arrastra su tarjeta a la papelera que aparece en la parte inferior de la pantalla.
+
+![Eliminar un protocolo arrastrándolo a la papelera](/assets/img/sample-protocol/delete-protocol.png)
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Cada protocolo instalado en el dispositivo tiene una tarjeta en la pila de la vista **Protocolos**, que muestra su versión del esquema, cuándo se importó y el número de entrevistas recopiladas con él. Para quitar un protocolo, usa el icono de la papelera de su tarjeta. Antes de eliminar un protocolo se te pide que lo confirmes, ya que no se puede deshacer, y todas las entrevistas registradas con ese protocolo se eliminan junto con él.
+
+![Confirmar la eliminación de un protocolo en Interviewer](/assets/img/interviewer-guide/delete-protocol.png)
+
+</AppOnly>
+
+## Iniciar una entrevista nueva {#starting-a-new-interview}
+
+<AppOnly axis="interviewer" app="classic">
+
+Por defecto, la sección para iniciar una entrevista nueva muestra el último protocolo que instalaste (o con el que iniciaste una entrevista). Puedes tocarlo o hacer clic en él para empezar una entrevista al momento.
+
+<Screenshot axis="interviewer" name="start-new-section" alt="Iniciar una entrevista nueva"></Screenshot>
+
+Si tienes más de un protocolo instalado en Interviewer, aparecerá una pila de tarjetas a la derecha de la sección para iniciar una entrevista nueva. Para acceder a todos los protocolos disponibles, toca esta pila de tarjetas o haz clic en ella. Se abrirá una capa superpuesta con la lista de protocolos guardados en la aplicación. Desplázate por la lista de tarjetas de protocolo, fíltrala u ordénala para encontrar el protocolo que quieres usar en tu entrevista, y tócalo o haz clic en él para empezar. A partir de entonces, este protocolo aparecerá en la sección para iniciar una entrevista nueva, para que accedas a él más rápido.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Para empezar una entrevista, busca el protocolo en la pila de tarjetas de la vista **Protocolos** y haz clic en **Iniciar nueva entrevista** en su tarjeta (como se muestra más arriba, en la anatomía de la tarjeta). La pila se abre en la tarjeta que has usado más recientemente, para que accedas a ella rápidamente; si tienes varios protocolos instalados, ve pasando las tarjetas hasta encontrar el que quieras.
+
+</AppOnly>
+
+### Introducir un ID del caso {#entering-a-case-id}
+
+Al iniciar una entrevista nueva, aparece inmediatamente un cuadro de diálogo que te pide que introduzcas un «ID del caso». Es un mecanismo sencillo pensado para ayudarte a llevar el control de las sesiones de entrevista e identificarlas de una forma que tenga sentido para ti y para tu estudio. El ID del caso aparecerá en Interviewer en todos los lugares donde veas sesiones de entrevista, y también se incluirá en todos los datos exportados.
+
+<Screenshot axis="interviewer" name="case-id" alt="El formulario del ID del caso"></Screenshot>
+
+Un ID del caso puede contener cualquier combinación de números y letras (incluidos espacios) de hasta 30 caracteres. No es obligatorio que un ID del caso sea único, porque no sería posible garantizarlo entre varios dispositivos. Aun así, te recomendamos encarecidamente que uses un sistema coherente para nombrar los casos que te permita identificarlos de forma única.
+
+Por ejemplo, podrías usar:
+
+- `INTERVIEWER_INITIALS PARTICIPANT_ID DATE` (p. ej., `JRM 12345 December 5th`)
+- `STUDY_ID-PARTICIPANT_NAME-VISIT_NUMBER` (p. ej., `NetCanvas-Joshua-4`)
+- ...o simplemente `PARTICIPANT_NAME` (p. ej., `James Montgomery Williams`)
+
+<AppOnly axis="interviewer" app="classic">
+
+<TipBox>
+
+El ID del caso de una entrevista se puede cambiar desde la propia entrevista.
+Solo tienes que hacer clic en el icono del menú y después en el botón «Edit»
+(editar) de la tarjeta blanca de resumen de la sesión que aparece a la derecha.
+
+</TipBox>
+
+</AppOnly>
+
+## Recorrido por la entrevista de ejemplo {#sample-interview-walkthrough}
+
+El resto de este tutorial consiste en un recorrido por el protocolo de entrevista de ejemplo, para mostrar la experiencia de Interviewer desde el punto de vista de cada participante.
+
+Si lo estás siguiendo en tu propio dispositivo, asegúrate de haber instalado el protocolo de ejemplo, haber iniciado una entrevista nueva y haber introducido un ID del caso, y de estar viendo la primera pantalla.
+
+### Las pantallas de Interviewer {#interviewer-user-interface}
+
+Las pantallas principales de la entrevista en Interviewer están diseñadas para que resulten sencillas, discretas e intuitivas para quienes participan. Esto tiene dos consecuencias que debes tener en cuenta desde el principio:
+
+1. Muchas de las funciones a las que puede querer acceder _el equipo de investigación_ están algo menos a la vista de lo que quizá sea habitual para ti. Prevé dedicar tiempo a aprender y a formar a las personas entrevistadoras para que sepan manejar las distintas funciones del software.
+2. Se dedica muy poco espacio a elementos de la pantalla que expliquen cómo completar una tarea. Esto se debe a que suponemos que quien investiga estará presente en la entrevista y, por tanto, podrá guiar a la persona participante a lo largo del proceso.
+
+#### Elementos de navegación clave {#key-navigation-elements}
+
+En cuanto a los elementos de la pantalla que siempre están visibles durante la entrevista, hay varios que conviene destacar.
+
+<Screenshot axis="interviewer" name="interviewer-ui" alt="Los elementos de navegación de la entrevista que siempre están visibles"></Screenshot>
+
+<AppOnly axis="interviewer" app="classic">
+
+El **botón del menú**, en la parte superior de la pantalla, abre el menú principal de la aplicación, que te permite:
+
+- Salir de la entrevista
+- Ver un resumen de la sesión, con el número de nodos y vínculos y la duración hasta el momento
+- Abrir el menú de ajustes del dispositivo
+- Abrir el menú de etapas (consulta más abajo)
+
+![El menú principal de la aplicación](/assets/img/sample-protocol/primary-menu.png)
+
+La barra vertical grande es la **línea de tiempo** de la entrevista, un indicador visual del avance a lo largo de la entrevista. A medida que la persona participante avanza, la barra se va llenando y, al final, se vuelve verde cuando la entrevista termina. Al tocar la línea de tiempo se muestra el «menú de etapas», que permite a quien investiga ver rápidamente en qué punto exacto de la entrevista se encuentra, así como ir a otro punto. El menú de etapas también se puede abrir desde el menú principal de la aplicación.
+
+![El menú de etapas](/assets/img/sample-protocol/stages-menu.png)
+
+Para avanzar y retroceder por la entrevista se usan los botones **siguiente** (flecha hacia abajo) y **anterior** (flecha hacia arriba), visibles en la parte superior e inferior de la línea de tiempo, que tanto la persona participante como quien investiga pueden usar para avanzar en la entrevista.
+
+<TipBox>
+
+Es especialmente importante explicar a la persona participante el botón **siguiente**,
+en la parte inferior izquierda de la pantalla, si quieres que maneje el
+dispositivo, lo que puede ayudar a que se implique más.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Interviewer mantiene los controles de la entrevista deliberadamente al mínimo. La navegación se adapta al dispositivo (una barra lateral en pantallas más anchas, en horizontal, y una barra en la parte inferior en pantallas altas, en vertical) y solo contiene unos pocos controles:
+
+- Un control de **ajustes** (el icono del engranaje) que abre un pequeño menú con:
+  - **Tamaño del texto**, que permite a la persona participante ampliar o reducir toda la entrevista; es útil en tabletas.
+  - **Salir de la entrevista**, que abandona la entrevista y vuelve al panel de administración tras una confirmación.
+- Una flecha **arriba** para ir a la etapa o pregunta anterior.
+- Una flecha **abajo** para avanzar a la siguiente etapa o pregunta.
+
+Entre las flechas arriba y abajo, una **barra de progreso** se va llenando a medida que la persona participante avanza por la entrevista. Mientras **Permitir la navegación entre etapas** está activado en **Configuración → Entrevista** (la opción predeterminada), la barra de progreso también es un botón (que los lectores de pantalla anuncian como **Ir a otra pantalla**) que abre un menú de etapas para saltar directamente a cualquier etapa. El progreso se guarda continuamente, así que puedes salir de una entrevista y reanudarla más tarde desde la vista **Datos** sin perder datos.
+
+El menú de ajustes solo contiene estas opciones pensadas para la persona participante; todos los demás ajustes de la aplicación están en el apartado **Configuración** del panel de administración, al que se llega después de salir de la entrevista.
+
+![El menú de ajustes de la entrevista, con «Tamaño del texto» y «Salir de la entrevista»](/assets/img/interviewer-guide/interview-settings.png)
+
+<TipBox danger={true}>
+
+Si entregas el dispositivo a la persona participante durante una entrevista, activa antes en **Configuración** la opción **Exigir desbloqueo al salir de una entrevista**. De lo contrario, si la persona participante elige **Salir de la entrevista** en el menú de ajustes, llegará al panel de administración, donde podría ver los datos de otras personas participantes.
+
+</TipBox>
+
+</AppOnly>
+
+## Etapas e interfaces {#stages-and-interfaces}
+
+En un protocolo de entrevista de Network Canvas, cada entrevista se compone de una serie de pantallas llamadas «etapas», en cada una de las cuales se completa una tarea concreta. Tu entrevista puede tener tantas etapas como necesites y, como verás en otros tutoriales, hay muchas formas de estructurarla combinando distintas pantallas y concentrando las tareas al principio o al final.
+
+Cada etapa es una _instancia_ de una pantalla especializada basada en una tarea, llamada [«interfaz»](/es/design-protocols/key-concepts/interfaces). Una interfaz es la «categoría» general de la tarea, y una etapa es la versión de esa tarea configurada específicamente en tu entrevista. Cada interfaz está diseñada para una tarea de recopilación de datos concreta, como generar nombres, recopilar datos ordinales o mostrar un formulario. Cada interfaz tiene su propia documentación (consulta la sección «Documentación de las interfaces», a la izquierda), que explica sus funciones y ofrece orientación sobre cuándo y dónde usarla.
+
+## La interfaz «Información» {#the-information-interface}
+
+Las primeras pantallas del protocolo de entrevista de ejemplo usan todas la interfaz [«Información»](/es/design-protocols/interface-documentation/information), y la primera de todas es la etapa de bienvenida.
+
+<Screenshot axis="interviewer" name="welcome-info" alt="La etapa de bienvenida"></Screenshot>
+
+Puedes usar la interfaz «Información» para crear etapas que comuniquen información a la persona participante, como una descripción del estudio o instrucciones para completar una tarea en una pantalla posterior. También puede contener contenido multimedia, como audio, imágenes o vídeo. Este protocolo de ejemplo usa numerosas etapas «Información» para aclarar las tareas principales que se realizan en Interviewer, pero este artículo no las describe para no ser repetitivo.
+
+## Recopilación de datos del ego {#ego-data-collection}
+
+Después de hacer clic en **siguiente** para pasar por dos etapas «Información» más, llegarás a la primera etapa de recopilación de datos del protocolo de ejemplo.
+
+Aunque Interviewer está optimizado para recopilar datos sobre los miembros de la red desde una perspectiva egocéntrica, también permite al equipo de investigación recoger datos sobre la persona participante (el ego, es decir, la persona entrevistada) mediante la interfaz [«Formulario del ego»](/es/design-protocols/interface-documentation/ego-form). Esta interfaz permite a quien investiga mostrar a la persona participante cualquier [formulario](/es/design-protocols/key-concepts/forms), cuyas respuestas se guardan en una sección del modelo de datos de la entrevista dedicada a los datos del ego.
+
+El primer caso de uso de la recopilación de datos del ego que se muestra es un ejemplo de formulario de consentimiento de la persona participante.
+
+<Screenshot axis="interviewer" name="consent-form" alt="Un formulario de consentimiento de la persona participante creado con la interfaz «Formulario del ego»"></Screenshot>
+
+Muestra un único campo de formulario, que representa un atributo booleano correspondiente al estado del consentimiento de la persona participante. Una vez respondida la pregunta, el atributo se incluye en el modelo de datos de la red y se exporta junto con los datos de la entrevista. Puedes usarlo para dirigir el flujo de la entrevista mediante la [lógica de salto](/es/design-protocols/key-concepts/skip-logic).
+
+La siguiente etapa «Formulario del ego» muestra un ejemplo más completo de esta interfaz. En esta etapa concreta, el formulario pide diversos datos individuales mediante numerosos tipos de controles de entrada.
+
+<Screenshot axis="interviewer" name="ego-form" alt="Un formulario de recopilación de datos del ego más completo, con diversos controles de entrada"></Screenshot>
+
+El formulario incluye [validación](/es/design-protocols/key-concepts/field-validation), que exige que introduzcas el nombre y el apellido antes de pasar a la siguiente pantalla.
+
+## Generadores de nombres {#name-generators}
+
+Después de pasar por otra pantalla «Información», llegas a la primera etapa de generación de nombres de la entrevista de ejemplo. La generación de nombres es una tarea fundamental en cualquier entrevista de redes, y el software de Network Canvas ofrece comportamientos configurables y personalizables que se adaptan a distintos diseños de investigación. En esta sección se comentan brevemente uno por uno, en el contexto del protocolo de ejemplo.
+
+### Adición rápida {#quick-add}
+
+La primera etapa de generación de nombres usa la interfaz [«Generador de nombres (adición rápida)»](/es/design-protocols/interface-documentation/name-generator-using-quick-add). Está diseñada para que la carga de respuesta sea mínima y solo exige que la persona participante indique un nombre o una etiqueta para crear un nodo.
+
+Para añadir nodos, haz clic en el botón **añadir** de la esquina inferior derecha, que muestra el campo de la etiqueta. Escribe un nombre y pulsa Intro (o haz clic en el icono del nodo), y verás que aparece un nodo en la lista principal de nodos. Cuando termines, vuelve a hacer clic en el botón o haz clic fuera del campo para cerrarlo.
+
+<Screenshot axis="interviewer" name="quick-add" alt="Un generador de nombres con adición rápida"></Screenshot>
+
+Esta etapa está configurada con una sola [pregunta](/es/design-protocols/key-concepts/prompts):
+
+> Within the past 6 months, who have you felt close to, or discussed important personal matters with?
+
+Las preguntas las define quien investiga, y enmarcan la tarea de recopilación de datos. Muchas interfaces admiten varias preguntas en una misma etapa. Si una etapa está configurada con varias preguntas, los botones «siguiente» y «anterior» pasarán de una a otra automáticamente.
+
+### Paneles laterales {#side-panels}
+
+Si avanzas por una etapa «Información» hasta la siguiente etapa de generación de nombres, aparecerá un panel lateral que contiene todos los nodos nombrados en la primera etapa. Podemos arrastrar y soltar nodos desde este panel lateral a la zona de la lista de nodos, o crear nodos nuevos haciendo clic en el botón de añadir de la esquina inferior derecha, como hicimos antes.
+
+<Screenshot axis="interviewer" name="side-panel" alt="Un generador de nombres con un panel lateral"></Screenshot>
+
+La función del panel lateral está disponible en nuestras dos interfaces de tipo generador de nombres que no se basan en una lista (una lista predefinida que se importa como archivo de datos). Está pensada para dos situaciones concretas:
+
+1. Permitir que quienes participan nombren _de nuevo_, en respuesta a preguntas posteriores, a álteres que ya han mencionado (cada álter es una persona a la que se nombra durante la entrevista). Por ejemplo, si una primera pregunta es «¿Con quién tienes una relación cercana?» y una segunda pregunta es «¿Quiénes son tus familiares?», puede que la persona participante quiera nombrar también como familiares a álteres cercanos que ya ha mencionado. Esto resulta especialmente útil combinado con la función de [asignar atributos adicionales](/es/design-protocols/key-concepts/additional-variables), ya que permite combinar la generación de nombres y la interpretación de nombres en un solo paso.
+
+2. Como espacio para mostrar pequeñas cantidades de datos de una lista, sin perder la posibilidad de que la persona participante añada miembros de la red que no figuran en la lista.
+
+Puedes mostrar hasta dos paneles laterales en un generador de nombres, cada uno con un contenido distinto.
+
+### Formularios {#forms}
+
+Si avanzas por otra pantalla «Información», llegarás al siguiente generador de nombres, que empieza con esta pregunta:
+
+> Within the **past 12 months**, which **clinics or healthcare providers** have you visited?
+
+Aunque esta etapa también es un generador de nombres, usa una [interfaz distinta](/es/design-protocols/interface-documentation/name-generator-using-forms) que hace que se comporte de otra manera. Esta vez, al hacer clic en el botón de añadir de la esquina inferior derecha, verás que se abre un cuadro de diálogo. Network Canvas se puede configurar para recopilar información más detallada sobre los nodos en el momento de nombrarlos, mediante el concepto de «[formularios](/es/design-protocols/key-concepts/forms)». En este ejemplo, al hacer clic en el botón «añadir» se muestra un formulario con tres campos (nombre, fecha de la visita y resumen del tratamiento).
+
+<Screenshot axis="interviewer" name="using-forms" alt="Un generador de nombres que usa formularios para recopilar datos adicionales"></Screenshot>
+
+Los formularios que diseñas pueden recopilar los atributos que quieras. Esta es una de las principales formas en que quien investiga puede modificar la carga de respuesta inmediata que supone nombrar álteres. Recopilar muchos atributos en el momento de crear el nodo permite que tu entrevista tenga menos etapas en total, pero también puede predisponer a la persona participante a nombrar menos álteres.
+
+Prueba a añadir álteres en esta etapa y verás que estos nodos tienen un color distinto de los que creamos antes. Esto se debe a que las entrevistas de Network Canvas pueden recopilar datos sobre tantos tipos de nodo como quiera quien investiga.
+
+<Screenshot axis="interviewer" name="blue-nodes" alt="Cada tipo de nodo recibe automáticamente un estilo visual distinto para que quienes participan siempre puedan diferenciarlos"></Screenshot>
+
+En este caso, nuestro generador de nombres creará nodos de tipo «clinic» (clínica), que se muestran en azul, a diferencia de los nodos rojos de tipo «person» (persona) que vimos antes. Es un elemento de la flexibilidad ontológica que se comenta en nuestro [resumen del proyecto](/es/get-started/project-information/project-overview#ontological-flexibility), y permite diseños de investigación potentes que modelan las redes de formas sofisticadas.
+
+### Usar datos de una lista {#using-roster-data}
+
+Sigue avanzando por el protocolo de ejemplo hasta que llegues a una etapa de generación de nombres con esta pregunta:
+
+> Please indicate any members of your class that you spend time with **other than when studying**. Drag a card from the side panel to add it to the network, and press the **down arrow** when you are finished.
+
+Esta etapa también se comporta de forma distinta a los generadores de nombres anteriores, porque se basa en otra interfaz. Permite que la persona participante nombre álteres a partir de una lista predefinida. En este caso, los nodos de tipo «classmate» (personas de la clase) se añaden seleccionando la «tarjeta» correspondiente en la lista desplazable. Se pueden añadir varios álteres a la vez. Ten en cuenta que puedes filtrar y ordenar la lista, lo que ayuda a encontrar a un miembro concreto de la lista. Las propiedades por las que se puede ordenar, así como la información que se muestra en las tarjetas, se pueden personalizar por completo en Architect.
+
+<Screenshot axis="interviewer" name="small-roster" alt="Una etapa «Generador de nombres a partir de una lista» que muestra una lista pequeña"></Screenshot>
+
+Una vez que se ha nombrado a un miembro de la lista seleccionando su tarjeta, Interviewer crea un nodo en el modelo de la red con los datos de la lista. Así, los archivos de datos solo contienen los nodos que ha nombrado la persona participante. Esta etapa es un ejemplo de la interfaz [«Generador de nombres a partir de una lista»](/es/design-protocols/interface-documentation/name-generator-roster).
+
+Si vuelves a hacer clic en siguiente, llegarás a una segunda etapa de generación de nombres basada en una lista, que esta vez usa la misma interfaz con una lista enorme. Aquí preguntamos por las universidades que se han visitado o en las que se ha estudiado. Nuestro archivo de datos CSV de la lista contiene unos 9300 nodos.
+
+<Screenshot axis="interviewer" name="large-roster" alt="Una etapa «Generador de nombres a partir de una lista» que muestra una lista grande"></Screenshot>
+
+Como esta lista es tan grande, la interfaz no la muestra completa. En su lugar, ofrece un cuadro de búsqueda y niveles personalizables de coincidencia aproximada, para ayudar a la persona participante a encontrar rápidamente los nodos que quiere nombrar. Es un ejemplo de cómo la interfaz «Generador de nombres a partir de una lista» adapta su presentación al tamaño de la lista.
+
+## Interfaces de formulario de uso general {#general-purpose-form-interfaces}
+
+Para las situaciones en las que se necesita una recopilación de datos de uso general, las interfaces basadas en formularios muestran un formulario para cada álter o para cada vínculo.
+
+Al hacer clic en siguiente desde la etapa de la lista de universidades, llegarás directamente a una etapa que usa la interfaz [«Formulario por álter»](/es/design-protocols/interface-documentation/per-alter-form) (un formulario para cada álter) para hacer preguntas de seguimiento de tipo intérprete de nombres sobre todos los álteres nombrados en la pantalla anterior.
+
+<Screenshot axis="interviewer" name="per-alter-form" alt="La interfaz «Formulario por álter»"></Screenshot>
+
+Como todos los [formularios](/es/design-protocols/key-concepts/forms) que usa Interviewer, el «Formulario por álter» te permite recoger distintos tipos de datos en una serie de campos que usan diversos controles de entrada. Todos los datos de estos formularios se guardan directamente en el álter como atributos. La etapa «Formulario por álter» recorre todos los álteres de un tipo determinado de la red de la entrevista y muestra el formulario para cada uno.
+
+También hay una versión de esta interfaz para _vínculos_ («Formulario de vínculos por álter», un formulario para cada vínculo entre dos álteres), que es idéntica salvo porque trata los vínculos entre álteres en lugar de los propios álteres. Puedes usarla para hacer preguntas de interpretación de vínculos sobre la calidad de una relación concreta.
+
+## La interfaz «Sociograma» {#the-sociogram-interface}
+
+Después de pasar por una etapa «Información», llegarás a un ejemplo de la [interfaz «Sociograma»](/es/design-protocols/interface-documentation/sociogram).
+
+Network Canvas se ha inspirado mucho en la larga tradición de uso de métodos visuales en la investigación de redes sociales, que a menudo recurre al sociograma como forma de presentar la red de una manera intuitiva para quienes participan.
+
+<Screenshot axis="interviewer" name="sociogram-positioning" alt="La interfaz «Sociograma»"></Screenshot>
+
+La interfaz «Sociograma» de Interviewer puede realizar tres tareas principales:
+
+1. **Colocar los nodos en el espacio**: permite que la persona participante arrastre los nodos por la pantalla (de forma táctil o con el ratón) y los coloque según algún criterio. El protocolo de ejemplo muestra el uso de distintos tipos de fondo: la primera etapa muestra círculos concéntricos y la segunda usa una imagen de la «brújula política».
+2. **Crear vínculos o conexiones entre nodos**: al tocar un nodo y después otro, se puede crear una conexión visual que representa un vínculo. El sociograma puede crear y mostrar varios tipos de vínculo.
+3. **Señalar los nodos que tienen un atributo**: cuando no está en el modo de creación de vínculos, el sociograma se puede configurar para que, al tocar un nodo, se active o desactive el valor de una variable booleana. Esta potente función te permite aprovechar las dimensiones espaciales y estructurales de la red definidas por la persona participante para reducir la carga de respuesta que supone encontrar y señalar a los miembros de la red.
+
+Como en otras interfaces, quien investiga personaliza todos los aspectos de estos tres comportamientos en Architect al crear la etapa.
+
+## Realizar un censo de díadas {#conducting-a-dyad-census}
+
+Algunas investigaciones han preferido enfoques más sistemáticos para evaluar la presencia de vínculos entre álteres en las redes egocéntricas. Justo después de la etapa del sociograma de creación de vínculos del protocolo de ejemplo hay una muestra de la interfaz [«Censo de díadas»](/es/design-protocols/interface-documentation/dyad-census), diseñada para estos métodos.
+
+<Screenshot axis="interviewer" name="dyad-census" alt="Un ejemplo de la interfaz «Censo de díadas»"></Screenshot>
+
+En esta etapa, todos los álteres nombrados anteriormente se presentan bajo una pregunta definida por quien investiga, con una sencilla pantalla de «sí» o «no». Al hacer clic en el botón «sí», se crea un vínculo entre los álteres. Al hacer clic en el botón «no», no se crea ningún vínculo. Aparecerán todos los pares posibles de la red para un tipo de nodo determinado. Ten en cuenta que, al dar una respuesta, se pasa inmediatamente al siguiente par, lo que agiliza mucho el proceso.
+
+## Datos ordinales y categóricos {#ordinal-and-categorical-data}
+
+Además de las interfaces de formulario de uso general, Interviewer contiene diversas interfaces específicas de tipo intérprete de nombres, diseñadas para mejorar la experiencia de recoger un solo tipo de variable para cada álter.
+
+Si sigues avanzando por el protocolo de ejemplo hasta la etapa «contact frequency» (frecuencia de contacto), encontrarás un ejemplo de la interfaz [«Clasificación ordinal»](/es/design-protocols/interface-documentation/ordinal-bin), que, como su nombre indica, trata específicamente con variables ordinales.
+
+<Screenshot axis="interviewer" name="ordinal-bin" alt="La etapa de frecuencia de contacto, que usa la interfaz «Clasificación ordinal»"></Screenshot>
+
+La interfaz «Clasificación ordinal» te permite arrastrar nodos a un contenedor (cada una de las zonas a las que se arrastran los nodos para clasificarlos) que representa un valor de una variable ordinal, lo que asigna ese valor al álter. Aquí preguntamos:
+
+> When was the last time that you communicated with each of the people you named?
+
+Esto reduce mucho la carga de respuesta de las preguntas «de tipo matriz», en las que se hace la misma pregunta sobre cada álter que se ha nombrado. El carácter visual de la pantalla también permite que la persona participante reflexione sobre sus respuestas anteriores y, posiblemente, mejore su calidad. Si la persona participante decide que ha colocado un nodo en el contenedor equivocado, puede moverlo al contenedor adecuado con muy poco esfuerzo.
+
+De nuevo, quien investiga puede configurar los elementos clave de la interfaz, como el tipo de álter, la variable ordinal (y sus categorías), la combinación de colores de los contenedores y el texto de las preguntas.
+
+La etapa siguiente usa la interfaz [«Clasificación por categorías»](/es/design-protocols/interface-documentation/categorical-bin), que sigue un patrón parecido, pero para datos no ordenados.
+
+<Screenshot axis="interviewer" name="cat-bin" alt="Un ejemplo de etapa «Clasificación por categorías»"></Screenshot>
+
+Te permite arrastrar nodos a círculos de colores, cada uno de los cuales representa un valor de una variable categórica. Cuando se coloca un nodo dentro de un círculo, se asigna ese valor de la variable al álter. Para ver qué nodos se han colocado en cada círculo, selecciona el círculo. Esto te permite mover nodos de un círculo a otro, lo que puede ser necesario para corregir un error.
+
+## Gestionar el flujo de la entrevista con la lógica de salto y el filtrado de la red {#managing-interview-flow-with-skip-logic-and-network-filtering}
+
+Una de las formas más sencillas de reducir la carga de respuesta de una entrevista es no mostrar a la persona participante preguntas que no son aplicables (o que son redundantes) según sus respuestas anteriores. En el software de encuestas convencional, se pueden omitir secciones de una entrevista en función de las respuestas. Interviewer amplía este concepto y permite a quien investiga construir consultas potentes basadas en la propia estructura de la red de la entrevista, que después se pueden usar para determinar el flujo de la entrevista y qué miembros de la red de la entrevista se muestran en una etapa. Puedes aplicar estas consultas tanto a la [lógica de salto](/es/design-protocols/key-concepts/skip-logic) como al filtrado de la red de cada etapa.
+
+Después de la etapa «Clasificación por categorías» anterior, hay otra etapa «Clasificación por categorías». Sin embargo, se han definido reglas de lógica de salto que establecen que la etapa solo se muestre si la persona participante ha nombrado álteres de tipo «Person» con quienes habla sobre investigación de redes sociales. Recuerda el generador de nombres con **adición rápida** del principio de la entrevista, que pedía a quienes participan que enumeraran a las personas con las que han hablado sobre investigación de redes sociales: los nodos nombrados en esa etapa recibieron un atributo que se ha usado para crear esta consulta de lógica de salto. Si no se generó ningún álter en esa pantalla, se omitirá la siguiente etapa «Clasificación por categorías».
+
+Del mismo modo, el filtrado de la red se configura con una regla que excluye de esta etapa a todos los álteres salvo aquellos con quienes la persona participante ha hablado sobre investigación de redes sociales. Así se acota la tarea y no hace falta añadir una categoría «no aplicable».
+
+<TipBox>
+
+Para obtener más información sobre el filtrado de la red, consulta la [guía de filtrado de la red](/es/design-protocols/key-concepts/network-filtering).
+
+</TipBox>
+
+Puede que quieras ir y volver entre el generador de nombres con adición rápida y esta etapa para ver en acción la lógica de salto y el filtrado de la red.
+
+<AppOnly axis="interviewer" app="classic">
+
+<TipBox>
+
+Recuerda que, en cualquier momento de la entrevista, puedes ver un menú con todas
+las etapas del protocolo tocando la línea de tiempo. Al tocar una etapa, irás
+a ella.
+
+</TipBox>
+
+</AppOnly>
+
+## La interfaz «Narrativa» {#the-narrative-interface}
+
+La última etapa del protocolo de ejemplo muestra una interfaz diseñada para la investigación cualitativa de redes personales. La interfaz [«Narrativa»](/es/design-protocols/interface-documentation/narrative) no recopila datos adicionales, sino que asigna los datos recopilados en otras partes de la entrevista a aspectos de la representación visual de la red. Su objetivo es devolver a la persona participante una representación de aspectos de su red, para facilitar que se analicen los datos de forma narrativa en el contexto de la entrevista.
+
+<Screenshot axis="interviewer" name="narrative" alt="La interfaz «Narrativa»"></Screenshot>
+
+El menú de vistas predefinidas (configuraciones de visualización de la red que defines en una etapa «Narrativa») de la esquina inferior derecha permite a quien investiga o a la persona participante cambiar entre distintos estilos visuales predefinidos. En este ejemplo, puedes ver los dos tipos de vínculo creados antes («know», conocerse, y «conflict», conflicto) y los atributos booleanos asignados durante la tarea de activación de variables en la interfaz «Sociograma». También puedes ver las agrupaciones por categorías recopiladas en la interfaz «Clasificación por categorías». Cada elemento de la vista predefinida se puede mostrar u ocultar tocando el atributo o el vínculo en el menú.
+
+La interfaz «Narrativa» también admite anotaciones de formato libre con el ratón, con un dedo o con un lápiz óptico. La anotación desaparece a los cinco segundos, salvo que hagas clic en el icono de congelar, a la izquierda del menú de vistas predefinidas. Con el botón de congelar activado, todas las anotaciones se mantienen hasta que desactivas la función de congelar o usas el botón para restablecer las anotaciones. Aunque el software todavía no guarda estas anotaciones, si quieres puedes usar software adicional de grabación de pantalla y de audio para conservar un registro de las interacciones en esta interfaz.
+
+## La pantalla de finalización {#the-finish-screen}
+
+<AppOnly axis="interviewer" app="classic">
+
+Interviewer añade automáticamente una pantalla de finalización a cada protocolo de entrevista. Esta pantalla muestra un único botón que sale de la entrevista. Al hacer clic en este botón, también se establece o se actualiza la propiedad «finished at» (finalizada el) de la sesión de entrevista. Esta propiedad se exporta junto con los datos de la entrevista y se puede usar para calcular la duración de la entrevista.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Todos los protocolos terminan con una etapa [«Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen). Normalmente muestra el texto de cierre que escribió quien diseñó el protocolo y un botón **Finalizar**. En su lugar, quien diseña el protocolo puede hacer que la entrevista finalice en cuanto llega a la etapa «Pantalla de finalización», sin texto de cierre ni botón. Al finalizar la entrevista, se establece o se actualiza la propiedad «finished at» (finalizada el) de la sesión de entrevista. Esta propiedad se exporta junto con los datos de la entrevista y se puede usar para calcular la duración de la entrevista. Interviewer también guarda con la sesión qué etapa «Pantalla de finalización» terminó la entrevista y el resultado que eligió para ella quien diseñó el protocolo. El resultado se incluye en los datos exportados (consulta [Cómo terminó la entrevista](/es/analyze-data/data-export#how-the-interview-ended)).
+
+</AppOnly>
+
+<Screenshot axis="interviewer" name="finish" alt="La pantalla de finalización"></Screenshot>
+
+<AppOnly axis="interviewer" app="current">
+
+Cuando la etapa «Pantalla de finalización» tiene un botón **Finalizar**, Interviewer te pide que confirmes antes de finalizar, ya que las respuestas no se pueden cambiar una vez que la entrevista se marca como completada. Hasta entonces, puedes volver atrás y cambiar las respuestas.
+
+![Confirmar que quieres finalizar la entrevista](/assets/img/interviewer-guide/finish-confirm.png)
+
+Una vez finalizada la entrevista, se muestra el texto de entrevista finalizada de la etapa «Pantalla de finalización», escrito por quien diseñó el protocolo. No hay navegación ni forma de volver atrás. La única acción es **Salir**, que te devuelve al panel de administración. Si abres una entrevista finalizada desde el panel de administración, se vuelve a mostrar el texto de entrevista finalizada.
+
+![La pantalla de entrevista completada](/assets/img/interviewer-guide/interview-complete.png)
+
+</AppOnly>
+
+Por ahora, haz clic en «Finalizar» para finalizar la entrevista.
+
+## Reanudar, exportar y gestionar sesiones de entrevista {#resuming-exporting-and-managing-interview-sessions}
+
+<AppOnly axis="interviewer" app="classic">
+
+Ahora que has completado una entrevista, aparecerán en la pantalla de inicio nuevas secciones y opciones para gestionar y reanudar sesiones de entrevista.
+
+<Screenshot axis="interviewer" name="resume-section" alt="La sección para reanudar"></Screenshot>
+
+La **sección para reanudar** (arriba) aparece justo debajo de la sección para iniciar una entrevista nueva, y funciona de la misma manera. Al hacer clic en la tarjeta de una sesión de entrevista, la entrevista se reanuda inmediatamente en el punto en el que la dejaste. Cuando hay varias sesiones en el dispositivo que ejecuta Interviewer, aparece un icono de pila de tarjetas que, al hacer clic en él, te permite elegir qué sesión de entrevista quieres reanudar.
+
+La gestión y la exportación de los datos de las entrevistas se realizan en una sección específica para **exportar y gestionar los datos de las entrevistas** (abajo). Para eliminar una sesión de entrevista del dispositivo, selecciónala y haz clic en el botón «Delete Selected» (eliminar las seleccionadas).
+
+<Screenshot axis="interviewer" name="export-section" alt="La sección para exportar y gestionar los datos"></Screenshot>
+
+El proceso de exportación de datos consiste en seleccionar una o más sesiones en esta sección y hacer clic en «Export Selected To File» (exportar las seleccionadas a un archivo). Los ajustes de los datos exportados se encuentran en los ajustes del dispositivo, en la sección de bienvenida.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Todas las sesiones que recopilas, ya estén en curso, finalizadas o ya exportadas, aparecen en la tabla **Entrevistas** de la vista **Datos**. Cada fila muestra el ID del caso, el protocolo usado, cuándo empezó la entrevista y su estado.
+
+<Screenshot axis="interviewer" name="resume-section" alt="La lista de entrevistas"></Screenshot>
+
+Selecciona una sesión para reanudar una entrevista en curso o revisar una finalizada. Cuando revisas una entrevista finalizada, sus etapas se muestran en modo de solo lectura. La etapa «Pantalla de finalización» no forma parte de la revisión y no aparece en el menú de etapas. También puedes seleccionar varias sesiones a la vez para **exportarlas** o **eliminarlas** en bloque. El proceso de exportación de datos se explica más abajo; los formatos de exportación se configuran en **Configuración**, no se eligen en el momento de exportar.
+
+</AppOnly>
+
+## El proceso de exportación {#the-export-process}
+
+<AppOnly axis="interviewer" app="classic">
+
+Después de hacer clic en «Export Selected To File», se te pedirá que elijas un tipo de archivo para la exportación (CSV, GraphML o ambos) y que configures las opciones de exportación. Se generan archivos para cada sesión y todos se empaquetan en un único archivo `.zip`, que se guarda en la ubicación que elijas. Ten en cuenta que el antiguo ajuste **Merge Sessions** (combinar sesiones), disponible hasta la versión 6.5, se eliminó en la versión 6.6: las exportaciones siempre se generan por sesión. Los ajustes de los datos exportados también se encuentran en los ajustes del dispositivo, en la sección de bienvenida.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Interviewer empaqueta las sesiones que seleccionas en un único archivo `.zip`, muestra el progreso a medida que avanza y marca cada sesión como exportada cuando termina. No se elige nada en el momento de exportar: los formatos de archivo que se incluyen (CSV, GraphML o ambos) y las opciones de coordenadas de pantalla se configuran de antemano en **Configuración → Exportación de datos** (consulta más arriba [Configuración](#settings)).
+
+</AppOnly>
+
+Para saber qué contienen los archivos CSV y GraphML exportados (los archivos de cada entidad y sus columnas, los identificadores que se usan para relacionarlos y qué hace cada opción de exportación), consulta la [guía de exportación de datos](/es/analyze-data/data-export).
+
+## Próximos pasos {#next-steps}
+
+Ahora que has conocido el desarrollo general de una entrevista en Network Canvas Interviewer desde el punto de vista de la persona participante, puedes:
+
+- Aprender a crear tu propio protocolo en [Primeros pasos con Architect](/es/design-protocols/getting-started)
+- Exportar los datos de tus entrevistas con la [guía de exportación de datos](/es/analyze-data/data-export)
+- Explorar los [Flujos de trabajo de protocolos y datos](/es/collect-data/protocol-and-data-workflows) completos para realizar investigaciones
+- Planificar cómo se moverán los protocolos y los datos hacia y desde tus dispositivos con [Flujos de trabajo de Interviewer con y sin conexión](/es/collect-data/interviewer-online-and-offline-workflows)

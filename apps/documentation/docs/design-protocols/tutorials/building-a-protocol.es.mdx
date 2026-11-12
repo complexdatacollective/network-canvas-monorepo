@@ -1,0 +1,832 @@
+---
+navOrder: 1
+title: Crear un protocolo
+toc: true
+translatedFrom: 102c233ac36703e7e203ef75c3418fc8ef503fec
+---
+
+<SummaryCard duration="2 horas">
+<SummarySection>
+
+Este tutorial te guiará en el proceso de crear un
+protocolo de Network Canvas con Architect. Vamos a reconstruir el protocolo
+de ejemplo que se puede instalar en Interviewer y en Fresco, y que se comentó
+con detalle en el tutorial [Usar Interviewer](/es/collect-data/interviewer/using-interviewer).
+
+<AppOnly app="current">
+
+Si quieres descargar y abrir el protocolo terminado, puedes hacerlo <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">desde
+aquí</DownloadLink>.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Si quieres descargar y abrir el protocolo terminado, puedes hacerlo <DownloadLink href="/protocols/Sample Protocol v4.netcanvas">desde
+aquí</DownloadLink>.
+
+</AppOnly>
+
+</SummarySection>
+<PrerequisitesSection>
+
+Este tutorial da por hecho que conoces los conceptos generales del software Network Canvas, que has leído el [resumen del proyecto](/es/get-started/project-information/project-overview) y que has leído el tutorial [Usar Interviewer](/es/collect-data/interviewer/using-interviewer).
+
+Te recomendamos seguir los pasos en tu propio ordenador. Antes de empezar, lee [Primeros pasos](/es/design-protocols/getting-started) para preparar la herramienta y crear un protocolo.
+
+</PrerequisitesSection>
+</SummaryCard>
+
+Este artículo recorre los pasos para crear un protocolo, desde añadir la primera etapa hasta terminarlo. Estos pasos son prácticamente los mismos en Architect y en Architect Classic. Elige a continuación la versión que usas para ver las capturas de pantalla correspondientes y algunas notas propias de cada versión.
+
+<AppSwitch>
+  <AppOption label="Architect" icon="globe"></AppOption>
+  <AppOption label="Architect Classic" icon="desktop"></AppOption>
+</AppSwitch>
+
+## Añadir una etapa {#adding-a-stage}
+
+Empezarás configurando una interfaz «Información».
+
+Haz clic en el botón **Añadir nueva etapa**. Aparece una pantalla con un menú de todas las interfaces disponibles en la aplicación. Las interfaces se agrupan por tipo; en el ejemplo de abajo se muestran todos los generadores de nombres disponibles.
+
+<Screenshot axis="architect" name="add-a-stage"></Screenshot>
+
+Cada interfaz está diseñada para una tarea concreta dentro de una entrevista de red. Por ahora, desplázate hacia abajo y selecciona la interfaz **Información** en la sección **Utilidades**. También puedes encontrar la interfaz «Información» buscándola o seleccionando el filtro **Mostrar datos**.
+
+<Screenshot axis="architect" name="information-interface"></Screenshot>
+
+Al seleccionar una interfaz se abre el editor de etapas, que es donde se configura la interfaz.
+
+### Establecer el nombre de la etapa {#setting-the-stage-name}
+
+Todas las etapas tienen un nombre, que aparece junto al icono de la etapa en la línea de tiempo y te ayuda a distinguir rápidamente entre etapas del mismo tipo. Introduce «Welcome» (bienvenida) en **Nombre de la etapa**. Cuando crees tus propios protocolos, usa un sistema coherente para dar nombre a tus etapas.
+
+### Encabezado de página {#page-heading}
+
+El encabezado de página te permite personalizar un título grande que aparece en la parte superior de tu interfaz «Información». Introduce «Welcome to the Sample Protocol» (te damos la bienvenida al protocolo de ejemplo) como encabezado. A continuación, añade la información que quieres que se muestre en la pantalla.
+
+### Elementos {#items}
+
+El panel de elementos te permite añadir varios tipos de contenido multimedia a la pantalla. Puedes añadir imágenes, vídeo, audio o texto. Cada recurso aparece en bloques verticales según el orden en que los añades. También puedes reordenar los bloques de contenido arrastrándolos.
+
+Para añadir un recurso a esta pantalla, haz clic en el botón **Añadir nuevo elemento** de la parte inferior del panel. Se abre una nueva pantalla en la que puedes elegir entre los tipos de contenido disponibles. El texto se puede añadir directamente en markdown. Los archivos de imagen, audio y vídeo se añaden seleccionando el tipo y buscando el archivo, ya sea en una ubicación de tu dispositivo o en la [biblioteca de recursos](/es/design-protocols/key-concepts/resources).
+
+<Screenshot axis="architect" name="edit-item"></Screenshot>
+
+Este tutorial no explica la configuración de cada una de las etapas «Información» del protocolo de ejemplo. Puedes usar etapas «Información» tantas veces como necesites a lo largo de tu protocolo para describir una tarea que viene a continuación, preparar a la persona participante para una serie de preguntas o presentarle un recurso para que lo tenga en cuenta.
+
+<AppOnly app="current">
+
+Cuando hayas añadido todos los recursos de esta etapa, haz clic en **Finalizar edición**. Así se guarda la etapa y vuelves a la vista de la línea de tiempo, donde ya aparece la etapa que acabas de configurar.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Cuando hayas añadido todos los recursos de esta etapa, haz clic en el botón **Save and Return** (guardar y volver), abajo a la derecha. Así se guarda la etapa y vuelves a la vista de la línea de tiempo, donde ya aparece la etapa que acabas de configurar.
+
+</AppOnly>
+
+<Screenshot axis="architect" name="completed-stage"></Screenshot>
+
+## Crear generadores de nombres {#creating-name-generators}
+
+Ahora crearás tres etapas de generación de nombres distintas, que aparecen como etapas 4, 6 y 8 en el protocolo de ejemplo. La primera usa un generador de nombres con adición rápida; la siguiente, uno con un panel lateral; y, por último, un generador de nombres que usa formularios.
+
+## Generador de nombres con adición rápida {#name-generator-using-quick-add}
+
+Primero, en la vista de la línea de tiempo, haz clic en el botón **Añadir nueva etapa**. En el menú de interfaces, selecciona la interfaz **Generador de nombres (adición rápida)**. Cuando se abra la nueva etapa, dale un nombre como hiciste con la etapa anterior.
+
+### Crear un nuevo tipo de nodo {#creating-a-new-node-type}
+
+Antes de continuar, tienes que indicar a Architect qué tipo de nodo creará esta interfaz. Como es tu primer generador de nombres, todavía no tienes ningún tipo de nodo definido. <AppOnly app="current">Haz clic en **Crear nuevo tipo de nodo**, debajo del selector de tipo de nodo, para empezar a crear uno.</AppOnly><AppOnly app="classic">Haz clic en el botón **Create New Node Type** (crear un nuevo tipo de nodo) para empezar a crear uno.</AppOnly>
+
+<KeyConcept title="Concepto clave: los «tipos» de nodos y de vínculos">
+
+Parte de la flexibilidad ontológica del conjunto de herramientas de Network Canvas es la posibilidad
+de modelar un número ilimitado de tipos de nodos y de vínculos. Estos tipos son categorías
+de nivel superior que distinguen unos nodos y vínculos de otros. Algunos tipos de nodo
+habituales podrían ser «persona», «lugar» u «organización», pero estas categorías
+las decides por completo tú.
+
+</KeyConcept>
+
+<AppOnly app="current">
+
+Tu generador de nombres preguntará por personas, así que llama al tipo de nodo «Person» (persona). Cada nuevo tipo de nodo empieza con el siguiente color de la paleta de Architect, de modo que los tipos que creas uno tras otro se distinguen automáticamente. Puedes elegir otro color si quieres, pero para este tutorial conserva el que ha elegido Architect.
+
+Por último, revisa el icono de este tipo de nodo. Los nuevos tipos de nodo empiezan con el icono «añadir una persona» de Network Canvas, que encaja con este tipo de nodo, así que puedes dejarlo. Para elegir otro, abre el selector de iconos: es una lista con búsqueda de los iconos de Network Canvas seguidos del conjunto de iconos Lucide, así que escribe unas pocas letras de un nombre (por ejemplo, «building») y elige entre los iconos que se muestran. Este icono aparece en la entrevista allí donde la persona participante tiene la posibilidad de crear un nuevo nodo de este tipo.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Tu generador de nombres preguntará por personas, así que llama al tipo de nodo «Person» (persona). Puedes seleccionar un color para distinguir este tipo de nodo de los demás, aunque en este caso deja seleccionado el color coral predeterminado.
+
+Por último, selecciona el icono de persona para este tipo de nodo. Este icono aparece en Interviewer allí donde la persona participante tiene la posibilidad de crear un nuevo nodo de este tipo.
+
+</AppOnly>
+
+<Screenshot axis="architect" name="node-type"></Screenshot>
+
+<AppOnly app="current">
+
+En Architect también puedes elegir una **forma** para el tipo de nodo, que se usa junto con el color y el icono para representar el nodo en todas las interfaces.
+
+![El selector Forma de Architect, que ofrece Círculo, Cuadrado y Rombo.](/assets/img/architect-guide/node-type-shape.png)
+
+Para variar la forma de los nodos dentro de un mismo tipo, consulta [Asignar la forma a partir de una variable del nodo](/es/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape).
+
+Haz clic en **Guardar entidad** para crear el tipo de nodo y volver a la pantalla de edición del generador de nombres.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Haz clic en **Save and Return** (guardar y volver) para crear el tipo de nodo y volver a la pantalla de edición del generador de nombres.
+
+</AppOnly>
+
+### Crear una variable de adición rápida {#creating-a-quick-add-variable}
+
+<AppOnly app="current">
+
+A continuación, crea un atributo de adición rápida que guardará los datos introducidos para cada álter (cada persona a la que se nombra durante la entrevista) que nombre la persona participante. Salvo que tengas un buen motivo para no hacerlo, este atributo debería llamarse «name». Interviewer usará este atributo como etiqueta de cada nodo creado en esta etapa.
+
+Para crearlo, haz clic en **Seleccionar atributo**, debajo de **Selecciona un atributo**. Se abre una ventana con un cuadro de búsqueda, **Busca o crea un atributo**, encima de una lista de los atributos que ya tiene este tipo de nodo. Escribe el nombre de tu atributo (por ejemplo, «name»). Como todavía no hay ninguna coincidencia, la primera fila ofrece **Crear un atributo nuevo llamado «name».** Elígela y el nuevo atributo se crea y se selecciona como atributo de adición rápida.
+
+Lo que la persona participante escribe en el cuadro de adición rápida es lo único que aporta sobre cada nodo, así que un atributo creado aquí es **obligatorio** desde el principio. Si quieres que quienes participan puedan dejar el cuadro vacío, desactiva **Respuesta obligatoria** en la sección **Validación**, debajo del selector.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+A continuación, crea una variable de adición rápida que guardará los datos introducidos para cada álter (cada persona a la que se nombra durante la entrevista) que nombre la persona participante. Salvo que tengas un buen motivo para no hacerlo, esta variable debería llamarse «name». Interviewer usará esta variable como etiqueta de cada nodo creado en esta etapa. Para crear una nueva variable, selecciona el menú desplegable y haz clic en **create new** (crear nueva); después, escribe el nombre de tu variable (por ejemplo, «name»). Haz clic en el botón **Create** (crear) y verás el nombre de la nueva variable seleccionado como variable de adición rápida.
+
+</AppOnly>
+
+### Crear preguntas {#creating-prompts}
+
+A continuación, escribe algunas preguntas que inviten a la persona participante a añadir álteres durante la entrevista.
+
+La mayoría de las etapas usan el concepto de «preguntas» para que puedas definir lo que se pregunta a la persona participante durante la entrevista. Puedes explicarle la tarea de la forma que tenga sentido para tu estudio.
+
+Puedes tener varias preguntas en una misma etapa o una sola pregunta por etapa. Plantéate agrupar las preguntas por temas y crear una etapa para cada tema. Por ejemplo, una etapa «Name Generator (family)» (generador de nombres: familia) podría contener preguntas sobre álteres de la familia, y una etapa «Name Generator (colleagues)» (generador de nombres: colegas) podría contener preguntas sobre álteres del ámbito profesional.
+
+<KeyConcept title="Concepto clave: las preguntas">
+
+Las preguntas pueden incluir formato, como texto en negrita o en cursiva, para crear
+énfasis y ritmo. Para dar este formato, usa la sintaxis de markdown.
+
+</KeyConcept>
+
+Haz clic en <AppOnly app="current">**Crear nueva pregunta**</AppOnly><AppOnly app="classic">el botón **Create New** (crear nueva)</AppOnly> de la sección de preguntas para abrir el formulario de edición de la nueva pregunta.
+
+<Screenshot axis="architect" name="edit-prompt"></Screenshot>
+
+Tu primera pregunta pedirá a la persona participante que nombre a las personas con las que se ha sentido cercana o con las que ha hablado de asuntos importantes. Introduce el texto «Within the past 6 months, who have you felt close to, or discussed important personal matters with?» (en los últimos 6 meses, ¿con quién has tenido una relación cercana o has hablado de asuntos personales importantes?) y haz clic en <AppOnly app="current">**Añadir**</AppOnly><AppOnly app="classic">**Save and Close** (guardar y cerrar)</AppOnly>.
+
+Haz clic en <AppOnly app="current">**Finalizar edición**</AppOnly><AppOnly app="classic">**Save and Return** (guardar y volver)</AppOnly> en el editor de etapas para volver a la vista de la línea de tiempo, donde aparece tu nueva etapa.
+
+## Adición rápida con un panel lateral {#quick-add-with-a-side-panel}
+
+A continuación, configura otra interfaz «Generador de nombres (adición rápida)», pero esta vez con un panel lateral.
+
+Primero, escribe un nombre para la etapa, selecciona el tipo de nodo «Person» (que creaste antes), asigna «name» como variable de adición rápida y crea una nueva pregunta. La pregunta de esta etapa será «Within the **past 6 months,** who have you discussed **social networks research** with?» (en los **últimos 6 meses,** ¿con quién has hablado de **investigación de redes sociales**?).
+
+Ahora, añade el panel lateral. Haz clic en **Añadir nuevo panel** y dale al panel el título «People you have previously mentioned.» (personas que ya has mencionado). Este título aparecerá en la parte superior del panel lateral y dará contexto a los nodos que se muestran a la persona participante.
+
+A continuación, elige una fuente de datos para este panel lateral. Tienes dos opciones: usar la red construida durante la entrevista o importar un archivo de datos externo (por ejemplo, una lista predefinida) que se cargará en el panel lateral. En este ejemplo, elige usar la red de la entrevista en curso.
+
+<Screenshot axis="architect" name="side-panel"></Screenshot>
+
+Si quieres, en este punto puedes previsualizar la interfaz para comprobar que las preguntas y el formulario se ven y funcionan como esperabas. Cuando te parezca bien, haz clic en continuar para añadir tu etapa.
+
+<AppOnly app="current">
+
+<TipBox>
+
+Architect guarda tu trabajo automáticamente a medida que avanzas: no hay botón Guardar. Consulta [Guardar y hacer copias de seguridad](/es/design-protocols/saving-and-backing-up) para saber cómo se almacenan tus protocolos y cómo hacer copias de seguridad.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+<TipBox>
+
+En cualquier momento de este tutorial, puedes hacer clic en el botón **Save Changes** (guardar cambios) de la barra inferior cuando estés en la vista de la línea de tiempo, o seleccionar **File → Save** (Archivo → Guardar) en el menú.
+
+</TipBox>
+
+</AppOnly>
+
+## Generador de nombres con formularios {#name-generator-using-forms}
+
+Ahora crearás una nueva etapa de generación de nombres que usa un formulario para recoger datos sobre los álteres nombrados. Como antes, añade una nueva etapa (seleccionando «Generador de nombres (con formularios)» en el menú de interfaces) y dale un nombre. A continuación, crea en esta etapa un nuevo tipo de nodo «Clinic» (clínica), ya que vas a hacer una pregunta sobre clínicas en lugar de sobre personas. Cuando hayas creado el tipo de nodo «Clinic», pasa a editar el formulario.
+
+### Formulario {#form}
+
+En esta sección defines los campos que se mostrarán en el formulario cuando la persona participante cree un nodo en este generador de nombres.
+
+Los campos recogen datos sobre los álteres o sobre el ego (la persona entrevistada), y es en ellos donde se definen las variables concretas.
+
+Primero, crea un título para el formulario que oriente a la persona participante sobre la información que quieres recoger. Introduce el título «Add a Clinic or Health Care Provider.» (añade una clínica o un proveedor de servicios de salud).
+
+<AppOnly app="current">
+
+A continuación, define los campos del formulario. Haz clic en **Crear nuevo campo de formulario**, en la sección **Campos del formulario**. Se abre un cuadro de diálogo con los ajustes del campo a la izquierda, donde eliges un atributo para el campo, escribes la pregunta, eliges un control de entrada y estableces la validación que quieras incluir. A la derecha hay una vista previa en directo de la pregunta tal como la verá la persona participante, que se actualiza a medida que trabajas. En una pantalla estrecha, la vista previa aparece debajo de los ajustes.
+
+En el primer campo, quieres saber el nombre de la clínica que nombra la persona participante. En **Selección de atributo**, haz clic en **Seleccionar atributo** y elige «name» en la lista o, si el tipo de nodo «Clinic» todavía no tiene un atributo «name», escribe «name» y elige **Crear un atributo nuevo llamado «name».** Después, en **Configuración del campo**, introduce el **Texto de la pregunta**. En este ejemplo, usa la pregunta «What is the name of this clinic?» (¿cómo se llama esta clínica?).
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+A continuación, define los campos del formulario. Al hacer clic en **Create New** (crear nuevo) en el panel de campos, se abre una nueva pantalla que te pide definir una variable para el campo, el texto de la pregunta y un control de entrada, y seleccionar la validación que quieras incluir.
+
+En el primer campo, quieres saber el nombre de la clínica que nombra la persona participante, así que usa la variable «name» que creaste antes: haz clic en **Select Variable** (seleccionar variable) y selecciónala en la lista. A continuación, introduce el texto de la etiqueta de este campo. En este ejemplo, usa la pregunta «What is the name of this clinic?» (¿cómo se llama esta clínica?).
+
+</AppOnly>
+
+<Screenshot axis="architect" name="form-fields"></Screenshot>
+
+<AppOnly app="current">
+
+En Architect, cada campo de formulario puede incluir una **indicación** opcional: una nota breve, con formato markdown, que se muestra debajo de la pregunta para orientar a la persona participante sobre cómo responder.
+
+</AppOnly>
+
+<AppOnly app="current">
+
+<TipBox>
+
+En muchas pantallas de Architect puedes crear un atributo nuevo o seleccionar uno existente. Todas usan la misma ventana de atributos: haz clic en **Seleccionar atributo** y escribe en el cuadro de búsqueda. Donde puedes crear un atributo, el cuadro de búsqueda dice **Busca o crea un atributo**, y al escribir un nombre que todavía no existe aparece **Crear un atributo nuevo llamado «…».** como primera fila. Donde solo puedes elegir un atributo existente, el cuadro dice **Busca un atributo**.
+
+Si no, elige un atributo existente de la lista. Puedes usar las teclas de flecha e Intro en lugar del ratón.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+<TipBox>
+
+En muchas pantallas de Architect puedes crear una variable nueva o seleccionar una existente. Cuando es así, el texto que hay junto al campo suele indicarlo.
+
+Cuando quieras crear una variable nueva, haz clic en «Select Variable» (seleccionar variable), escribe el nombre de la nueva variable y selecciona «Create new variable» (crear nueva variable) o pulsa Intro.
+
+Si no, haz clic en una variable existente de la lista.
+
+</TipBox>
+
+</AppOnly>
+
+Por último, elige el control de entrada que se mostrará para recoger esta variable.
+
+<KeyConcept title="Concepto clave: los controles de entrada">
+
+Architect e Interviewer ofrecen muchos tipos distintos de control de entrada (Entrada de texto, Entrada numérica, Grupo de casillas, Interruptor, Grupo de opciones, Grupo de botones conmutables, Selector de fecha, Escala Likert y Escala analógica visual).
+
+El control de entrada más adecuado para una variable depende de la naturaleza concreta de la variable, no solo de su tipo de datos. Por ejemplo, al recoger una variable ordinal que representa una escala Likert, quizá prefieras una Escala analógica visual o un Grupo de opciones. Para obtener más información, consulta la [guía de controles de entrada](/es/design-protocols/key-concepts/input-controls).
+
+</KeyConcept>
+
+Como preguntas por el nombre de la clínica (una variable de texto sencilla), una Entrada de texto es la opción más adecuada.
+
+<AppOnly app="current">
+
+![El selector Control de entrada y la vista previa en directo de Architect.](/assets/img/architect-guide/input-control.png)
+
+</AppOnly>
+
+Por último, define los requisitos de validación de este campo. Indica que este campo de texto es obligatorio. Las opciones de validación disponibles varían según el tipo de variable. Si añades una validación de campo obligatorio, la persona participante tendrá que rellenar este campo antes de poder continuar. Para obtener más información, consulta la [guía de validación de campos](/es/design-protocols/key-concepts/field-validation).
+
+<Screenshot axis="architect" name="validation"></Screenshot>
+
+<AppOnly app="current">
+
+Architect también ofrece la opción **Mostrar indicaciones de validación**. Cuando está activada, muestra automáticamente a quienes participan una indicación derivada de las reglas de validación del campo, para que entiendan qué se les pide al responder.
+
+Para probar el campo, responde la pregunta en la vista previa y haz clic en **Comprobar respuesta**. La vista previa aplica las reglas que el atributo ya tiene en el libro de códigos y te muestra lo que se le diría a la persona participante. Responder en la vista previa no cambia tu protocolo. Mientras un campo está creando un atributo nuevo, como en este caso, las reglas que estableces junto con él todavía no están en el libro de códigos, así que **Comprobar respuesta** acepta cualquier cosa hasta que haces clic en **Añadir**; vuelve a abrir el campo después para probarlas.
+
+</AppOnly>
+
+Haz clic en <AppOnly app="current">**Añadir**</AppOnly><AppOnly app="classic">**Save and Close** (guardar y cerrar)</AppOnly> para crear tu primer campo de formulario.
+
+Ahora, siguiendo el proceso que acabas de aprender, crea los otros dos campos de este formulario.
+
+Crea los campos siguientes con los controles de entrada, las preguntas y las opciones adecuados:
+
+- Una variable `last_visit`, con el control de entrada Selector de fecha, la pregunta «When was your visit?» (¿cuándo fue tu visita?) y un inicio de rango adecuado
+- Una variable `visit_purpose`, con el control de entrada Área de texto y la pregunta «In your own words, what was the purpose of your visit?» (con tus propias palabras, ¿cuál fue el motivo de tu visita?)
+
+Después de completar el formulario, configura la pregunta de la etapa. Haz clic en <AppOnly app="current">**Crear nueva pregunta**</AppOnly><AppOnly app="classic">**Create New** (crear nueva)</AppOnly> en la sección de preguntas e introduce el texto «Within **the past 12 months,** which **clinics** or **healthcare providers** have you visited?» (en **los últimos 12 meses,** ¿a qué **clínicas** o **proveedores de servicios de salud** has acudido?).
+
+<Screenshot axis="architect" name="fields-inputs-prompts"></Screenshot>
+
+## Generador de nombres a partir de una lista {#name-generator-for-roster-data}
+
+A continuación, desarrollaremos un generador de nombres que usa una lista predefinida incorporada como archivo de datos externo.
+
+Como hicimos en los generadores de nombres anteriores, primero seleccionaremos la interfaz que queremos configurar («Generador de nombres a partir de una lista»), le daremos un nombre a la etapa y crearemos un nuevo tipo de nodo «Classmate» (persona de la clase).
+
+A continuación, seleccionaremos la fuente de datos externa que se incorporará al protocolo y con la que se cargarán los nodos de la lista. En este ejemplo hemos usado una lista ficticia de una clase. Para usar la misma lista que el protocolo de ejemplo, <DownloadLink href="/assets/class-roster.csv">haz clic aquí</DownloadLink> para descargar nuestro archivo CSV. También puedes usar cualquier otra lista que tengas a mano.
+
+Igual que añadiste recursos a la interfaz «Información» más arriba, también buscarás tu fuente de datos externa en la biblioteca de recursos del protocolo, si la guardaste allí, o en otra ubicación de tu dispositivo.
+
+Después definiremos qué propiedades de visualización se usan para identificar los nodos de la lista tal como los ve la persona participante. Primero seleccionamos la variable definida en el archivo de datos externo, en este caso «first_name». A continuación, definimos cómo queremos que esa variable aparezca en la lista ante la persona participante; en este ejemplo, introducimos «First Name» (nombre). Repetimos el mismo proceso con la variable last_name.
+
+<Screenshot axis="architect" name="adding-roster"></Screenshot>
+
+Si queremos, podemos incluir controles de ordenación. Los controles de ordenación son especialmente útiles cuando una lista es lo bastante grande como para que cueste encontrar algo a primera vista. En este ejemplo, decidimos aplicar un orden inicial que usa la variable «first_name» para ordenar las tarjetas de la lista de forma ascendente.
+
+De forma predeterminada, las tarjetas de la lista usarán el atributo «name» de tu archivo de datos externo como título principal de la tarjeta.
+
+<Screenshot axis="architect" name="roster-sort"></Screenshot>
+
+A continuación, configuraremos cómo puede buscar la persona participante en el archivo de la lista. Esta interfaz permite que quienes participan busquen en la base de datos por atributos concretos para localizar a los álteres que quieren seleccionar.
+
+Las opciones de búsqueda que aparecen dependen de las variables definidas en tu archivo de datos. Aquí podemos seleccionar «name», «first_name», «last_name» y «first_language», y decidimos incluir las cuatro.
+
+También podemos acotar las opciones que se muestran a la persona participante cuando busca en la etapa, seleccionando «Exacta» o «Precisión alta». En este caso, seleccionamos «Precisión alta».
+
+<Screenshot axis="architect" name="roster-search"></Screenshot>
+
+<TipBox>
+
+Consulta nuestra documentación de interfaces para ver instrucciones más detalladas, incluidos
+consejos útiles sobre qué hacer y qué no hacer al trabajar con [datos de
+listas](/es/design-protocols/interface-documentation/name-generator-roster).
+
+</TipBox>
+
+Por último, añadimos una pregunta para la etapa, siguiendo el mismo proceso que en las etapas anteriores. Introducimos la pregunta, que incluye instrucciones sobre cómo nombrar un nodo de la lista: «Please select any members of your degree class that you spend time with **other than when studying**. Tap a card to select, and press the **down arrow** when you are finished.» (selecciona a las personas de tu promoción con las que pasas tiempo **aparte de cuando estudias**. Toca una tarjeta para seleccionarla y pulsa la **flecha hacia abajo** cuando termines).
+
+### Repetir el proceso con una lista de universidades {#repeating-the-process-for-a-university-roster}
+
+En el protocolo de ejemplo, a esta etapa le sigue una segunda etapa «Generador de nombres a partir de una lista», esta vez con una lista de universidades. Repite el proceso que acabas de seguir: crea una nueva etapa «Generador de nombres a partir de una lista», dale un nombre y crea un nuevo tipo de nodo «University» (universidad). Como fuente de datos externa, usamos una lista de universidades de todo el mundo; para usar el mismo archivo, <DownloadLink href="/assets/world-universities.csv">haz clic aquí</DownloadLink> para descargar el archivo CSV. Contiene las variables «name», «country» y «website», que puedes usar para configurar las opciones de visualización y de búsqueda igual que hiciste antes. Por último, añade la pregunta «Which universities have you either **visited** or **studied at**?» (¿qué universidades has **visitado** o en cuáles has **estudiado**?).
+
+En una etapa posterior recogeremos datos sobre cada una de estas universidades usando el tipo de nodo «University».
+
+## Crear un formulario del ego {#creating-an-ego-form}
+
+La siguiente etapa de este protocolo de ejemplo usa la interfaz «Formulario del ego». Creamos el formulario del ego y le damos un nombre a la etapa como hicimos con las interfaces anteriores.
+
+### Panel de introducción {#introduction-panel}
+
+El panel de introducción es una función de la interfaz «Formulario del ego» que te permite presentar el formulario a la persona participante. Puedes usarlo para explicar qué datos pides y por qué. En nuestro caso, explicamos para qué está pensada la interfaz «Formulario del ego».
+
+<Screenshot axis="architect" name="ego-form"></Screenshot>
+
+Ahora, vamos a crear una serie de campos para nuestro formulario del ego, igual que hicimos al configurar el generador de nombres con formularios. Si no recuerdas cómo lo hicimos, repasa los pasos anteriores.
+
+A continuación, crearemos los campos siguientes, con sus variables, preguntas, controles de entrada y validaciones (si las hay):
+
+- first_name, «What is your first name?» (¿cuál es tu nombre?), Área de texto, validación de campo obligatorio
+- last_name, «What is your last name?» (¿cuáles son tus apellidos?), Área de texto, validación de campo obligatorio
+- dob, «What is your date of birth?» (¿cuál es tu fecha de nacimiento?), Selector de fecha con fin de rango 2002/January/1
+- languages_spoken, «Which of the following languages do you speak fluently?» (¿cuáles de los siguientes idiomas hablas con fluidez?), Grupo de botones conmutables con las opciones English, Mandarin Chinese, Hindi, Spanish, French, Arabic, Bengali y Russian
+- existing_software, «Overall, how satisfied are you with existing social network analysis software?» (en general, ¿cuál es tu grado de satisfacción con el software de análisis de redes sociales existente?), Grupo de opciones con las opciones Very Satisfied, Somewhat Satisfied, Neither Satisfied nor Dissatisfied, Somewhat Dissatisfied y Very Dissatisfied
+- research_support, «How satisfied are you with the level of support you receive?» (¿cuál es tu grado de satisfacción con el nivel de apoyo que recibes?), Escala Likert con Very Satisfied, Somewhat Satisfied, Neither Satisfied nor Dissatisfied, Somewhat Dissatisfied y Very Dissatisfied
+- operation_pain, «Thinking back to your last medical procedure, how much pain do you feel you experienced?» (pensando en tu última intervención médica, ¿cuánto dolor crees que sentiste?), Escala analógica visual con No Pain y Unbearable Pain como etiquetas del mínimo y el máximo
+- prefered_contact_method, «How would you prefer to be contacted about your next interview?» (¿cómo prefieres que nos pongamos en contacto contigo para tu próxima entrevista?), Grupo de casillas con las opciones Email, Post, SMS y Phone Call
+- other_info, «Is there any other information you would like to provide at this time?» (¿hay alguna otra información que quieras aportar en este momento?), Área de texto
+
+<Screenshot axis="architect" name="ego-form-fields"></Screenshot>
+
+Para mostrar la variedad de controles de entrada disponibles, este ejemplo incluye muchos más campos de los que normalmente se recomendarían en un formulario de una entrevista. Para obtener más información, consulta la [guía de controles de entrada](/es/design-protocols/key-concepts/input-controls).
+
+Haz clic en <AppOnly app="current">**Finalizar edición**</AppOnly><AppOnly app="classic">**Save and Return** (guardar y volver)</AppOnly> para volver a la vista de la línea de tiempo y desarrollar la siguiente etapa.
+
+## Crear una etapa «Formulario por álter» {#creating-a-per-alter-form}
+
+A continuación, repite ese proceso, pero esta vez crea un formulario que recogerá datos de los álteres en la interfaz «Formulario por álter» (un formulario para cada álter). Crea una nueva etapa con la interfaz «Formulario por álter» y dale un nombre. Después, selecciona el tipo de nodo «University».
+
+<AppOnly app="current">
+
+Para explicar la tarea a la persona participante, añade una etapa [«Información»](/es/design-protocols/interface-documentation/information) justo antes de la etapa «Formulario por álter». Por ejemplo, en la etapa «Información» puedes indicarle que en las siguientes pantallas verá un formulario para cada universidad que haya nombrado.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Después, desplázate hacia abajo para configurar el panel de información.
+
+<Screenshot axis="architect" name="per-alter-form"></Screenshot>
+
+</AppOnly>
+
+Añade solo dos campos a este formulario. Estos son los datos que necesitas, siguiendo el mismo proceso que antes:
+
+- Una variable llamada `visit_or_study`, con la pregunta «Did you visit this university, or study there?» (¿visitaste esta universidad o estudiaste en ella?), el control de entrada Grupo de opciones con las opciones «Visited» (la visité) y «Studied» (estudié allí), y validación de campo obligatorio
+- Una variable llamada `overall_review`, con la pregunta «Overall, how would you describe your experience at this university?» (en general, ¿cómo describirías tu experiencia en esta universidad?) y el control de entrada Escala Likert con las opciones «Excellent», «Above Average», «Average», «Below Average» y «Poor» (excelente, por encima de la media, en la media, por debajo de la media y mala)
+
+<AppOnly app="current">
+
+### Nombrar la universidad en la pregunta {#naming-the-university-in-the-question}
+
+Las dos preguntas se refieren a «this university» (esta universidad). La persona participante ve un formulario para cada universidad que ha seleccionado, así que la pregunta puede nombrar, en su lugar, la universidad a la que se refiere el formulario. Architect lo hace insertando la etiqueta del nodo en el texto de la pregunta, una técnica conocida como texto dinámico (piped text).
+
+Vuelve a abrir el campo `visit_or_study`. Sustituye el texto de la pregunta por «Did you visit » y, a continuación, haz clic en el botón de la jeringa de la barra de herramientas de **Texto de la pregunta**, o escribe `{`. Un menú muestra los valores que puede mostrar esta pregunta. Elige **Etiqueta del nodo**, la primera opción de **Atributos contextuales**, y completa la pregunta con « or study there?». El valor aparece en la pregunta como una píldora **Etiqueta del nodo**, y la vista previa interactiva muestra la pregunta con la misma píldora. La pregunta `overall_review` puede nombrar la universidad de la misma forma.
+
+![El editor Texto de la pregunta con el texto «Did you visit [Node label] or study there?», junto a la vista previa interactiva del campo.](/assets/img/piped-text/value-in-question.png)
+
+Durante la entrevista, la píldora se sustituye por el texto que muestra cada nodo de universidad, que en esta lista es el nombre de la universidad: «Did you visit Universidad Francisco Marroquín or study there?». El protocolo de ejemplo descargable nombra la universidad de esta forma en las dos preguntas.
+
+<KeyConcept title="Concepto clave: el texto dinámico">
+
+El texto dinámico inserta información ya registrada en la entrevista en el
+texto que lee la persona participante: la etiqueta de un nodo, un atributo del nodo o del vínculo
+al que se refiere una pregunta, un atributo de la persona participante o la fecha de hoy. La etiqueta de un
+nodo nunca falta, así que se puede insertar por sí sola. Cualquier atributo puede
+faltar cuando se muestra la pregunta, así que Architect pide dos versiones del
+texto que lo rodea: una para cuando se conoce el valor y otra para cuando no.
+Para ver la explicación completa, consulta [Texto dinámico](/es/design-protocols/piped-text).
+
+</KeyConcept>
+
+</AppOnly>
+
+Cuando termines, guarda y vuelve a la pantalla de vista general de tu protocolo.
+
+## Crear sociogramas {#creating-sociograms}
+
+Para la siguiente etapa, usa la interfaz «Sociograma». El sociograma es una interfaz diseñada para que quienes participan interactúen con los álteres generados en las etapas de generación de nombres de tres formas principales:
+
+1. Disposición: la persona participante coloca los nodos en el espacio
+2. Creación de vínculos: la persona participante puede crear vínculos entre álteres
+3. Alternancia de variables: la persona participante puede señalar los álteres que tienen un determinado atributo booleano
+
+Crea la etapa, dale un nombre y selecciona el tipo de nodo «Person».
+
+### Posición de los nodos {#node-positioning}
+
+A continuación, tenemos que elegir una imagen de fondo para el sociograma. Podemos elegir entre usar un fondo predeterminado de círculos concéntricos o añadir nuestro propio archivo de imagen desde la biblioteca de recursos o desde otra ubicación de nuestro dispositivo. En este primer ejemplo, elegiremos la opción predeterminada e indicaremos que queremos 3 círculos de tamaño modificado para que el centro sea proporcionalmente más grande.
+
+Interviewer ofrece dos modos para colocar los nodos en el sociograma: «Manual» y «Automático».
+
+- El **modo automático** coloca los nodos cuando se muestra la etapa por primera vez, simulando fuerzas físicas como la atracción y la repulsión. Esta simulación se puede pausar y reanudar durante la entrevista. Mientras está en pausa, la posición de los nodos se puede ajustar a mano.
+- El **modo manual** coloca primero todos los nodos en una «reserva» en la parte inferior de la pantalla, desde la que la persona participante puede arrastrar los nodos a la posición que quiera.
+
+En este ejemplo, elegiremos el modo manual.
+
+<Screenshot axis="architect" name="sociogram-background"></Screenshot>
+
+Añadiremos una pregunta para la etapa con el texto «Please position the people you have named amongst the concentric circles. Place people who know each other together, and put people you are closer to towards the center of the circles.» (coloca a las personas que has nombrado entre los círculos concéntricos. Pon juntas a las personas que se conocen entre sí y sitúa más cerca del centro de los círculos a las personas con las que tienes más relación).
+
+Verás que, al crear una pregunta en el sociograma, tienes la opción de definir una variable de disposición.
+
+La variable de disposición se usará para guardar las coordenadas X/Y de los nodos cuando la persona participante los coloca en la pantalla. Si tienes varias preguntas en tu sociograma, quizá quieras usar la misma variable de disposición en todas (con lo que los nodos se mantienen en la posición en la que los colocó inicialmente la persona participante) o crear una nueva variable de disposición para cada pregunta (lo que obligaría a la persona participante a volver a colocar los nodos cada vez). En este ejemplo, crearemos una variable «sociogram_layout» para esta etapa.
+
+<Screenshot axis="architect" name="sociogram-layout"></Screenshot>
+
+Terminamos haciendo clic en <AppOnly app="current">**Añadir**</AppOnly><AppOnly app="classic">«Save and Close» (guardar y cerrar)</AppOnly> para cerrar el editor de preguntas y, después, en <AppOnly app="current">**Finalizar edición**</AppOnly><AppOnly app="classic">«Save and Return» (guardar y volver)</AppOnly> para guardar la etapa.
+
+## Imágenes de fondo {#background-images}
+
+Ahora configuraremos otro sociograma, pero esta vez incorporaremos una imagen como fondo. Sigue todos los pasos anteriores, pero ahora elige una imagen como tipo de fondo en lugar de usar los círculos concéntricos. Si tienes un archivo de imagen guardado en tu biblioteca de recursos, puedes buscarlo allí; si no, puedes añadir un archivo de imagen guardado en otro lugar de tu dispositivo. En este caso, hemos diseñado una imagen dividida en cuadrantes en la que pediremos a la persona participante que arrastre sus álteres según el contexto de la relación.
+
+<TipBox danger>
+
+Piensa con cuidado en cómo influirán las decisiones que tomes sobre el
+fondo en la forma en que quienes participan colocan sus nodos.
+
+Si el fondo define cuadrantes, ejes u otras regiones, consulta [Fondos SVG
+adaptables](/es/design-protocols/responsive-svg-backgrounds).
+La guía explica cómo hacer que las regiones se adapten a pantallas en vertical y en horizontal,
+y cómo deducir la región de un nodo a partir de las coordenadas normalizadas que se guardan
+en su variable de disposición.
+
+</TipBox>
+
+Como antes, introduciremos una pregunta y no asignaremos ninguna tarea a la etapa. El texto de la pregunta es «Please position the people you have named in the boxes according to which group you feel they most belong to.» (coloca a las personas que has nombrado en los recuadros según el grupo al que creas que pertenece más cada una). Guardamos la etapa y pasamos a la siguiente.
+
+## Creación de vínculos {#edge-creation}
+
+Crearemos otra etapa «Sociograma» para probar la creación de vínculos. En esta etapa usaremos el tipo de nodo «Person» y el fondo de círculos concéntricos con 3 círculos y el centro proporcionalmente más grande.
+
+Creamos nuestra primera pregunta, «Please connect any two people who might spend time together without you being there» (conecta a dos personas cualesquiera que puedan pasar tiempo juntas sin que tú estés presente), y usamos la variable sociogram_layout que ya creamos.
+
+Ahora activaremos la creación de vínculos en una pregunta del sociograma: en la sección «Visualización y creación de vínculos», activamos el interruptor «Comportamiento de interacción» y seleccionamos la opción «Creación de vínculos».
+
+El sociograma es el lugar principal de la entrevista en el que se crean vínculos. Una pregunta del sociograma solo puede crear un tipo de vínculo a la vez, pero ten en cuenta que puede mostrar varios.
+
+Cuando se seleccionan varios tipos de vínculo para mostrarlos, crear un vínculo nuevo que cubriría uno existente funciona de forma sencilla: el vínculo existente se sustituye visualmente por el del nuevo tipo. Los dos vínculos se siguen guardando en la red de la entrevista. Si se elimina este nuevo vínculo, la visualización vuelve a mostrar el tipo de vínculo que se veía antes (en una pregunta solo se puede crear o eliminar un tipo de vínculo).
+
+Puedes plantearte usar esta función para construir una red de forma progresiva, de modo que la persona participante use el «andamiaje» visual de los vínculos existentes para identificar rápidamente dónde crear otros nuevos.
+
+En el siguiente cuadro, crearemos un tipo de vínculo nuevo o seleccionaremos uno existente. Como todavía no hemos creado ningún tipo de vínculo, crearemos un tipo nuevo llamado «know» (se conocen) que se corresponde con la pregunta.
+
+Hacemos clic en <AppOnly app="current">**Añadir**</AppOnly><AppOnly app="classic">«Save and Close» (guardar y cerrar)</AppOnly> para volver al editor del sociograma.
+
+<Screenshot axis="architect" name="edge-creation"></Screenshot>
+
+A continuación, añadimos otra pregunta, «Please connect any two people who have conflict, or who don't get on well with each other» (conecta a dos personas cualesquiera que tengan algún conflicto o que no se lleven bien entre sí), y usamos la misma variable sociogram_layout.
+
+También elegimos la creación de vínculos como tarea de la etapa, pero creamos un nuevo tipo de vínculo «conflict» (conflicto), ya que ahora vamos a recoger vínculos conflictivos entre álteres.
+
+## Desarrollar la etapa «Censo de díadas» {#implementing-the-dyad-census}
+
+A estas alturas ya deberías tener una idea del proceso de configuración de una etapa en Architect. Seguiremos añadiendo a nuestra entrevista una etapa «Censo de díadas», que se basa en muchos de los conceptos que ya hemos visto.
+
+En la vista general de la línea de tiempo, haz clic en el botón «Añadir nueva etapa» y selecciona la interfaz «Censo de díadas». De nuevo, damos un nombre a la etapa y esta vez seleccionamos el tipo de nodo «Classmate».
+
+A continuación, aplicaremos lógica de salto para que la etapa solo se muestre a quienes nombren al menos a dos personas de la clase en la etapa de la lista de la clase que configuramos antes. Para ello, activamos el interruptor de la lógica de salto de la etapa, seleccionamos «Omitir esta etapa si» y, después, definimos una regla de álter haciendo clic en el botón «Añadir regla de álter» para definir la condición.
+
+Definimos la regla seleccionando el tipo de nodo de álter «Classmate», después el tipo de regla «Presencia» y, por último, «no existe».
+
+<Screenshot axis="architect" name="dyad-skip"></Screenshot>
+
+<AppOnly app="current">
+
+Como con la etapa «Formulario por álter», puedes explicar la tarea con una etapa [«Información»](/es/design-protocols/interface-documentation/information) situada justo antes de la etapa «Censo de díadas». Dale la misma lógica de salto, para que la explicación se omita siempre que se omita la etapa «Censo de díadas».
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Como en otras interfaces de tipo intérprete de nombres, también configuraremos el panel de introducción.
+
+</AppOnly>
+
+A continuación, definimos una pregunta. Para esta etapa, introducimos la pregunta «To the best of your knowledge, do these two people spend time together outside of class?» (que tú sepas, ¿estas dos personas pasan tiempo juntas fuera de clase?).
+Antes creamos dos tipos de vínculo en el sociograma, que aparecen disponibles para usarlos en esta pregunta. Seleccionaremos el tipo de vínculo «know», ya que preguntamos a la persona participante si dos personas de la clase se conocen entre sí.
+
+<Screenshot axis="architect" name="dyad-prompt"></Screenshot>
+
+<AppOnly app="current">
+
+Como en la etapa «Formulario por álter», el texto dinámico puede hacer que esta pregunta nombre a las dos personas de la clase a las que se refiere. Escribe «To the best of your knowledge, do », abre el menú de la jeringa y elige **Primer nodo: etiqueta**. Escribe « and », elige **Segundo nodo: etiqueta** y termina con « spend time together outside of class?». Para cada pareja, la persona participante lee entonces una pregunta como «To the best of your knowledge, do Corbett and Rebecka spend time together outside of class?», con los nombres que muestran los dos nodos.
+
+![El texto de la pregunta de la etapa «Censo de díadas»: «To the best of your knowledge, do [First node: label] and [Second node: label] spend time together outside of class?» (que tú sepas, ¿[First node: label] y [Second node: label] comparten tiempo fuera de clase?)](/assets/img/piped-text/pair-prompt.png)
+
+</AppOnly>
+
+## Sociograma: alternar un atributo {#sociogram-toggling-an-attribute}
+
+En nuestra última etapa «Sociograma» de este protocolo, aplicaremos la alternancia de atributos, es decir, la acción que permite a la persona participante cambiar una variable booleana a «true» (verdadero) o «false» (falso) tocando un nodo.
+
+Una vez más, creamos la etapa, le damos un nombre, seleccionamos el tipo de nodo «Person» y usamos el fondo de círculos concéntricos con 3 círculos y el centro proporcionalmente más grande.
+
+A continuación, creamos una nueva pregunta con el texto «Please select anyone who you have asked for advice within the previous 6 months» (selecciona a las personas a las que hayas pedido consejo en los últimos 6 meses). Reutiliza la variable de disposición («sociogram_layout») que creamos antes.
+
+No queremos activar la creación de vínculos en esta pregunta, porque desactivaría la función de alternar atributos (los dos modos son mutuamente excluyentes). Sin embargo, sí podemos mostrar vínculos para ayudar a la persona participante a localizar los nodos.
+
+Para ello, selecciona «Know» y «Conflict» en «Mostrar vínculos de los siguientes tipos».
+
+<Screenshot axis="architect" name="variable-toggling"></Screenshot>
+
+Para configurar la pregunta del sociograma de modo que permita alternar atributos hay que seguir tres pasos: (1) activar
+«Comportamiento de interacción», (2) seleccionar «Alternar atributo» y (3) crear (o seleccionar) una variable booleana que se asignará en el cuadro que aparece debajo.
+
+En el caso de esta pregunta, con las técnicas que ya hemos visto, crea una variable llamada «provides_advice» y pulsa <AppOnly app="current">**Añadir**</AppOnly><AppOnly app="classic">«Save and Close» (guardar y cerrar)</AppOnly>.
+
+Ahora seguiremos exactamente los mismos pasos con la segunda pregunta, cuyo texto es «Please select anyone who has supported you financially within the previous 6 months.» (selecciona a las personas que te hayan apoyado económicamente en los últimos 6 meses). Esta vez, crearemos una variable booleana «provides_material_support».
+
+Ya hemos terminado de configurar esta etapa del sociograma.
+
+<AppOnly app="current">
+
+<TipBox>
+
+Las interfaces que no crean nodos, como las de tipo «Sociograma», «Clasificación ordinal» y «Clasificación por categorías», necesitan una red existente para mostrar algo. En Architect no tienes que crearla a mano: la vista previa empieza con **Iniciar la vista previa con datos de ejemplo** activado, así que se genera automáticamente una red de ejemplo con nodos y vínculos, y la etapa que previsualizas ya tiene datos con los que trabajar. La etapa previsualizada se deja intencionadamente sin completar del todo, para que puedas probar su interacción (colocar nodos, clasificarlos en contenedores —las zonas a las que se arrastran los nodos para clasificarlos—, crear vínculos, alternar atributos). Consulta [Modo de vista previa](/es/design-protocols/preview-mode) para obtener más información sobre los ajustes de la vista previa.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+<TipBox danger>
+
+Al previsualizar una etapa que usa un tipo de interfaz que no crea nodos, puede que notes que no hay nodos disponibles para probar el funcionamiento de la etapa.
+
+Para resolverlo, el modo de vista previa te permite crear nodos desde cualquier etapa anterior de tu entrevista que pueda hacerlo (principalmente generadores de nombres o interfaces de listas).
+
+Basta con ir, desde el modo de vista previa, a una etapa que cree nodos, crear algunos nodos adecuados para tu etapa del sociograma y, después, ir a la etapa del sociograma: tus nodos aparecerán y podrás probar la creación de vínculos, la alternancia de atributos y la colocación de nodos.
+
+</TipBox>
+
+</AppOnly>
+
+## Crear una etapa «Clasificación ordinal» {#creating-an-ordinal-bin}
+
+Ahora quieres crear una interfaz «Clasificación ordinal» para preguntar de forma rápida y eficiente a la persona participante con qué frecuencia tiene contacto con cada álter. En la vista general de la línea de tiempo, añade una nueva etapa con la interfaz «Clasificación ordinal».
+
+<KeyConcept title="Concepto clave: «contenedores» y «reservas»">
+
+Por convención, el software Network Canvas usa dos términos para las zonas entre las que se arrastran los nodos en las interfaces «Clasificación ordinal», «Clasificación por categorías» y «Sociograma».
+
+Las reservas son el lugar donde están los nodos al principio, antes de colocarlos o arrastrarlos. Los contenedores son las zonas _hacia_ las que se arrastran los nodos, o en las que se colocan. Es ahí donde terminan los nodos.
+
+Tanto en los contenedores como en las reservas se puede definir el orden de los nodos que contienen. Puedes usarlo para, por ejemplo, hacer que la reserva muestre primero los nodos con un determinado atributo, como la cercanía. Esto puede ayudar en tareas como colocar nodos en un sociograma.
+
+</KeyConcept>
+
+Como con las interfaces anteriores, empieza por dar un nombre a la etapa («Contact Frequency», frecuencia de contacto) y seleccionar nuestro tipo de nodo («Person»).
+
+La mayor parte de la configuración de esta interfaz se hace dentro de la pregunta. Crea una nueva pregunta e introduce el texto «When was the last time that you communicated with each of the people you named?» (¿cuándo fue la última vez que te comunicaste con cada una de las personas que has nombrado?).
+
+A continuación, tenemos que crear una variable ordinal. Es básicamente el mismo proceso que seguimos al configurar la variable de idioma en nuestro formulario del ego. Cada vez que creamos una variable ordinal o categórica en Architect, introducimos una etiqueta y un valor. El valor es lo que se guardará en nuestro conjunto de datos. Se admiten valores tanto de texto como numéricos. Completa las etiquetas y los valores como en la captura de pantalla de abajo.
+
+Crea una variable llamada «communication_freq» con las siguientes opciones posibles:
+
+<table>
+  <tr>
+    <td>
+      <strong>Etiqueta</strong>
+    </td>
+    <td>
+      <strong>Valor</strong>
+    </td>
+  </tr>
+  <tr>
+    <td>Last 24 hours</td>
+    <td>5</td>
+  </tr>
+  <tr>
+    <td>Last week</td>
+    <td>4</td>
+  </tr>
+  <tr>
+    <td>Last six months</td>
+    <td>3</td>
+  </tr>
+  <tr>
+    <td>Last two years</td>
+    <td>2</td>
+  </tr>
+  <tr>
+    <td>Over two years ago</td>
+    <td>-1</td>
+  </tr>
+</table>
+
+En el caso de nuestra pregunta, usaremos las opciones de orden predeterminadas para los nodos de los contenedores y de la reserva. Haz clic en <AppOnly app="current">**Añadir**</AppOnly><AppOnly app="classic">«Save and Close» (guardar y cerrar)</AppOnly> para terminar de editar esta pregunta y, después, en <AppOnly app="current">**Finalizar edición**</AppOnly><AppOnly app="classic">«Save and Return» (guardar y volver)</AppOnly> para volver a la vista de la línea de tiempo.
+
+## Crear una etapa «Clasificación por categorías» {#creating-a-categorical-bin}
+
+Ahora ya deberías poder crear una interfaz «Clasificación por categorías» con todo lo que has aprendido hasta aquí. Añade una nueva etapa con la interfaz «Clasificación por categorías», con las siguientes características:
+
+- Con el nombre «Categorical Group Membership» (pertenencia a grupos por categorías) y aplicada al tipo de nodo «People».
+- Con una variable categórica llamada «group» con las siguientes opciones:
+  - Family Member
+  - Friends
+  - Work Colleague
+  - School
+- Con el texto de la pregunta «Which of these options best describes how you know this person?» (¿cuál de estas opciones describe mejor cómo conoces a esta persona?)
+- Con la opción «Pregunta de seguimiento para “Otro”» activada, con la etiqueta de contenedor «other», la pregunta «Which context best describes how you know this person?» (¿qué contexto describe mejor cómo conoces a esta persona?) y la variable «group_other»
+
+<Screenshot axis="architect" name="catbin-variables"></Screenshot>
+Como antes, haremos clic en <AppOnly app="current">**Añadir**</AppOnly><AppOnly app="classic">«Save and Close» (guardar y cerrar)</AppOnly> y en <AppOnly app="current">**Finalizar edición**</AppOnly><AppOnly app="classic">«Save and Return» (guardar y volver)</AppOnly> para completar y guardar
+nuestros cambios en la etapa.
+
+## Lógica de salto y filtrado de la red en la etapa «Clasificación por categorías» {#skip-logic--network-filtering-on-the-categorical-bin}
+
+A continuación, desarrollaremos otra interfaz «Clasificación por categorías». Esta vez, crearemos la etapa como antes, le daremos el nombre «Relationship Type» (tipo de relación) y seleccionaremos el tipo de nodo «Person».
+
+Ahora configuraremos tanto el filtrado de la red de la etapa como su lógica de salto. Primero, activa «Filtro» y pulsa el botón «Añadir regla de álter». Después, configuraremos la regla de la siguiente forma: tipo de nodo «Person», tipo de regla «Atributo», variable consultada «discuss_network_research», operador «exactamente» y valor del atributo «True».
+
+<Screenshot axis="architect" name="filter-skip"></Screenshot>
+
+Para activar la lógica de salto, activamos el interruptor «Lógica de salto». Después, seleccionamos «Mostrar esta etapa si» y hacemos clic en el botón «Añadir regla de álter». Primero, configuramos la regla de lógica de salto de la siguiente forma: tipo de nodo «Person», tipo de regla «Presencia» y operador «existe». A continuación, configuramos una segunda regla de lógica de salto así: tipo de nodo «Person», tipo de regla «Atributo», variable consultada «discuss_network_research», operador «es exactamente» y valor del atributo «True».
+
+<Screenshot axis="architect" name="skip"></Screenshot>
+
+Una vez configurada, asegúrate de que el ajuste «debe cumplir» está en «todas las reglas», como se ve arriba.
+
+Como último paso en esta etapa, crearemos una pregunta con el texto «You indicated that you've discussed social networks research with these people. Which category best describes your relationship with each person?» (has indicado que has hablado de investigación de redes sociales con estas personas. ¿Qué categoría describe mejor tu relación con cada una?). Asignaremos una variable categórica «social_networks_research_relationship» con las siguientes etiquetas: Work Colleague, Classmate, Co-author, Supervisor. Escribe los valores correspondientes: «Work_Colleague», «Classmate», «Co-author» y «Supervisor».
+
+<Screenshot axis="architect" name="catbin-prompt"></Screenshot>
+
+También añadiremos a esta pregunta la opción «Pregunta de seguimiento para “Otro”». Activa el interruptor de la sección, escribe «Other» como etiqueta del contenedor, escribe «What is your relationship with this person?» (¿qué relación tienes con esta persona?) como pregunta del cuadro de diálogo y crea una nueva variable para recoger este atributo: «social_network_research_relationship_other».
+
+<Screenshot axis="architect" name="followup"></Screenshot>
+
+Ya hemos terminado de configurar esta etapa. <AppOnly app="current">Pulsa **Añadir** en el editor de preguntas y **Finalizar edición** en el editor de la interfaz «Clasificación por categorías».</AppOnly><AppOnly app="classic">Pulsa «Save and Close» (guardar y cerrar), abajo a la derecha del editor de preguntas, y «Save and Return» (guardar y volver) en el editor de la interfaz «Clasificación por categorías».</AppOnly>
+
+## Crear la interfaz «Narrativa» {#creating-the-narrative-interface}
+
+La última etapa configurada en este protocolo de ejemplo es la interfaz «Narrativa». Como ya has aprendido, crearemos una nueva etapa (interfaz «Narrativa»), le daremos un nombre («Narrative Interface») y seleccionaremos un tipo de nodo («Person»). Después, elegiremos el fondo de círculos concéntricos, pero esta vez optaremos por usar un solo círculo.
+
+<Screenshot axis="architect" name="narrative"></Screenshot>
+
+### Configurar las vistas predefinidas {#configuring-presets}
+
+Las vistas predefinidas (configuraciones de visualización de la red que defines en una etapa «Narrativa») te permiten destacar visualmente elementos concretos de la red de la persona participante, como los nodos agrupados por una característica de un atributo o las relaciones entre álteres (vínculos). Una vez configuradas en esta pantalla, las vistas predefinidas aparecen como un menú en el que cada opción se puede activar o desactivar.
+
+Ahora vamos a configurar las vistas predefinidas de nuestro protocolo de entrevista de ejemplo. Ve a la sección del editor de la etapa «Narrativa» titulada «Vistas predefinidas» y pulsa el botón «Crear nueva vista predefinida». Daremos a la vista predefinida la etiqueta «Sample Preset» (vista predefinida de ejemplo). Esta etiqueta aparecerá en la parte superior del menú que ve la persona participante en esta etapa.
+
+A continuación, en la sección «Atributo de disposición», seleccionaremos una variable para colocar los nodos de esta vista predefinida. Podemos crear una nueva variable de disposición para esta pantalla o usar una existente. En este caso, usaremos la variable «sociogram_layout» que creamos antes.
+
+Si hemos recogido datos de una variable categórica y la persona participante ha asignado ese atributo a al menos dos nodos, podemos visualizar esta agrupación en la interfaz «Narrativa». La sección «Atributo de agrupación» mostrará todas las variables categóricas disponibles en nuestro protocolo. En este ejemplo, elegimos la variable «group».
+
+<Screenshot axis="architect" name="edit-preset"></Screenshot>
+<Screenshot axis="architect" name="edit-preset2"></Screenshot>
+
+En «Mostrar vínculos», veremos todos los tipos de vínculo definidos en nuestro protocolo. Marcaremos la casilla junto a los vínculos que queremos mostrar («know» y «conflict»).
+
+El último paso en el editor de vistas predefinidas es seleccionar las variables booleanas que queremos resaltar en la red de la persona participante. Todas las variables booleanas disponibles aparecerán en la sección «Atributos para resaltar», y podemos elegir cuáles queremos incluir en la vista predefinida. Marcaremos las casillas junto a «provides_advice» y «provides_material_support». Para guardar nuestro trabajo, hacemos clic en <AppOnly app="current">**Añadir**.</AppOnly><AppOnly app="classic">«Save and Close» (guardar y cerrar).</AppOnly>
+
+De vuelta en la pantalla de edición de nuestra interfaz «Narrativa», vemos la vista predefinida de ejemplo que acabamos de crear. Bajaremos a la sección «Comportamientos de la narrativa» y activaremos tanto «Dibujo libre» como «Permitir cambiar la posición». (Este último ya debería estar activado de forma predeterminada).
+
+<Screenshot axis="architect" name="narrative-behaviors"></Screenshot>
+
+El dibujo libre es una función de esta interfaz que permite a la persona participante hacer anotaciones en la pantalla con el ratón. Puede dibujar líneas, símbolos o palabras que le ayuden a describir aspectos de su red.
+
+Cambiar la posición en la interfaz «Narrativa» permite a la persona participante arrastrar sus álteres a nuevas posiciones sin que se pierdan los vínculos que se muestran.
+
+<AppOnly app="current">Haz clic en **Finalizar edición**</AppOnly><AppOnly app="classic">Haz clic en «Save and Return» (guardar y volver)</AppOnly> y ya podemos ver la etapa «Narrativa» configurada en nuestra línea de tiempo.
+
+## Ofrecer el protocolo en más de un idioma {#offering-the-protocol-in-more-than-one-language}
+
+<AppOnly app="current">
+
+El protocolo de ejemplo está escrito en inglés estadounidense. En esta sección lo pondrás a disposición en español, traducirás la etapa «Welcome» y añadirás una etapa en la que cada participante elige su idioma. Los mismos pasos sirven para cualquier idioma. [Traducir tu protocolo](/es/design-protocols/translating-your-protocol) describe cada herramienta en detalle y trata las consideraciones metodológicas que deberían guiar la traducción de un protocolo para un estudio real.
+
+### Añadir un idioma {#adding-a-language}
+
+Abre la página **Idiomas** desde la barra de navegación de la parte superior del editor. Muestra el inglés estadounidense como único idioma del protocolo, marcado como **Predeterminado**. Haz clic en **Añadir idiomas**, escribe «español» en la lista **Idiomas**, elige **español (es)** y haz clic en **Añadir idiomas** para confirmar.
+
+El español aparece ahora junto al inglés estadounidense, con un distintivo **Traducciones faltantes** y un recuento de los textos que ya están traducidos a él. El recuento no es cero, porque Network Canvas aporta el texto en español de las palabras que proporciona él mismo, como los botones Volver y Continuar y el texto de la pantalla de finalización. El texto que has escrito tú todavía hay que traducirlo. Hasta que se traduzca, quienes usan el español ven en su lugar el texto en inglés estadounidense.
+
+![La página Idiomas después de añadir el español. El español tiene un distintivo Traducciones faltantes.](/assets/img/architect/localization/languages-page.png)
+
+### Traducir la etapa «Welcome» {#translating-the-welcome-stage}
+
+Vuelve a la lista de etapas, donde ahora una nota indica que parte del contenido aún no está traducido al español, y abre la etapa **Welcome**. Como el protocolo tiene dos idiomas, cada campo de texto del editor de etapas tiene un menú de idioma. Elige **español** en el menú que hay junto a **Encabezado de página**. Todos los campos del editor cambian a la vez al español. El campo del encabezado está vacío, y una nota debajo explica que quienes usen el español verán el texto en inglés estadounidense.
+
+![El Encabezado de página de la etapa «Welcome» con el español elegido para editar, antes de traducirlo.](/assets/img/architect/localization/editor-missing-translation.png)
+
+Introduce «Bienvenida» como nombre de la etapa y «Te damos la bienvenida al protocolo de ejemplo» como encabezado de página y, a continuación, haz clic en **Finalizar edición**.
+
+Traducir etapa por etapa es adecuado para protocolos cortos. Para un protocolo más largo, o cuando la traducción la hace una persona distinta de quien ha creado el protocolo, la tabla de traducciones es más eficiente. Vuelve a la página **Idiomas** y haz clic en **Abrir tabla de traducciones**. La tabla muestra cada texto del protocolo junto a su traducción a cada idioma, y los textos que acabas de traducir aparecen en la columna del español. Los textos sin traducir muestran, en un tono más claro, el texto en inglés estadounidense que verán quienes participan en su lugar.
+
+![La tabla de traducciones, con el nombre y el encabezado de la etapa «Welcome» traducidos al español.](/assets/img/architect/localization/translation-table.png)
+
+Un protocolo con traducciones pendientes se puede guardar, previsualizar y usar sobre el terreno, pero conviene traducir todos los textos, y revisar la traducción, antes de que empiece la recopilación de datos.
+
+### Permitir que quienes participan elijan su idioma {#letting-participants-choose-their-language}
+
+De forma predeterminada, una entrevista se abre en el idioma que mejor se ajusta a la configuración del navegador o del dispositivo de la persona participante. La lista de etapas lo indica con el mensaje **Los participantes no pueden elegir un idioma**. Para que quienes participan puedan elegir por sí mismos, selecciona **Añadir etapa aquí** encima de la primera etapa y elige la interfaz **Selector de idioma** en la sección **Utilidades**.
+
+El encabezado del selector de idioma, «Choose a language» (elige un idioma), es un texto que aporta Network Canvas, y ya está traducido al español. Su editor también muestra los idiomas del protocolo, que se pueden gestionar allí igual que en la página **Idiomas**. Haz clic en **Finalizar edición**, y el selector de idioma pasa a ser la primera etapa del protocolo.
+
+### Comprobar la traducción {#checking-the-translation}
+
+Con la etapa «Selector de idioma» abierta, haz clic en **Vista previa**. La vista previa se abre en una pestaña nueva, con un menú **Idioma de la vista previa** encima. Elige **español** en el menú, o elige **español** en la propia etapa, y el encabezado cambia a «Elige un idioma». Pasa a la etapa «Welcome» para ver el encabezado que has traducido.
+
+![La etapa «Selector de idioma» en la vista previa, mostrada en español.](/assets/img/architect/localization/preview-language.png)
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Los protocolos creados en Architect Classic se escriben en un solo idioma. Para ofrecer un protocolo en más de un idioma, actualízalo en Architect, que admite la localización del esquema 9. Consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol).
+
+</AppOnly>
+
+## Terminar tu protocolo {#finishing-off-your-protocol}
+
+<AppOnly app="current">
+
+Architect guarda tu protocolo automáticamente. Cuando quieras usarlo, haz clic en **Descargar** en la pantalla de vista general del protocolo para exportarlo como archivo `.netcanvas`. El nombre del archivo identifica de forma única el protocolo en las aplicaciones que lo ejecutan.
+
+Los protocolos creados en Architect usan la versión más reciente del esquema de protocolo (actualmente, el esquema 9), así que se ejecutan en **Fresco** y en la nueva aplicación **Interviewer**; no se pueden ejecutar en Interviewer Classic.
+
+#### Fresco {#fresco}
+
+- Para publicar el protocolo en Fresco, sube el archivo `.netcanvas` descargado; consulta nuestro tutorial [Usar Fresco](/es/collect-data/fresco/using-fresco#uploading-protocols).
+
+#### Interviewer {#interviewer}
+
+- Importa el archivo `.netcanvas` descargado directamente desde tu ordenador, o alójalo en un servidor web e impórtalo desde una URL.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Asegúrate de guardar tu archivo. El nombre del archivo del protocolo lo identificará de forma única en la aplicación Network Canvas Interviewer y en [Fresco](/es/collect-data/fresco/using-fresco#uploading-protocols).
+
+Los protocolos creados en Architect Classic usan el esquema 7, así que se ejecutan en **Interviewer Classic**. **Fresco** e **Interviewer** también los ejecutan: migran automáticamente un protocolo del esquema 7 al esquema 8 cuando lo subes o lo importas. Para usar las funciones del esquema 9, actualiza primero el protocolo en Architect.
+
+Hay muchas formas de pasar de crear el protocolo en Architect a publicarlo o distribuirlo.
+
+#### Interviewer {#interviewer-1}
+
+- En la aplicación Interviewer, importa el archivo del protocolo directamente desde una ubicación de tu ordenador.
+- Aloja el archivo del protocolo en un servidor web y, después, en la aplicación Interviewer, importa el archivo del protocolo desde una URL.
+
+#### Fresco {#fresco-1}
+
+- Para publicar el protocolo en Fresco, consulta nuestro tutorial [Usar Fresco](/es/collect-data/fresco/using-fresco#uploading-protocols).
+
+</AppOnly>
+
+Para ver cómo otros estudios combinan estas interfaces en protocolos completos, explora la [Galería de protocolos](/es/design-protocols/protocol-gallery).
+
+En el siguiente tutorial, [Flujos de trabajo de protocolos y datos](/es/collect-data/protocol-and-data-workflows), te mostraremos cómo realizar una investigación con las aplicaciones de entrevista de Network Canvas.

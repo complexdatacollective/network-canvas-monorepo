@@ -121,6 +121,9 @@ export default function PersonNode({
 
   return (
     <div
+      // Part of the family drawing, which is the same way round in every
+      // language: the right-to-left mirror check leaves it out.
+      data-direction-exempt
       className="relative flex size-full items-center justify-center"
       data-testid="pedigree-person"
       data-person-id={person.id}
@@ -136,6 +139,7 @@ export default function PersonNode({
             aria-hidden
             className={cx(
               'border-text pointer-events-none absolute -inset-y-2 w-3 border-solid',
+              // oxlint-disable-next-line tailwindcss/enforce-logical -- a pair of brackets, one on each side of the symbol
               side === 'left' ? '-left-4' : '-right-4',
             )}
             style={{
@@ -195,6 +199,7 @@ export default function PersonNode({
         <span
           aria-hidden
           data-missing-details-badge
+          // oxlint-disable-next-line tailwindcss/enforce-logical -- a family tree is drawn the same way in every language, and so is what marks its symbols
           className="bg-warning text-warning-contrast elevation-low absolute top-0 right-0 flex size-8 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
         >
           <TriangleAlert className="size-5" aria-hidden />

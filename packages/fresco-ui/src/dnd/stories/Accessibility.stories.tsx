@@ -615,7 +615,7 @@ export const ScreenReaderAnnouncements: Story = {
                   borderRadius: '4px',
                   cursor: 'pointer',
                   fontSize: '14px',
-                  marginLeft: '8px',
+                  marginInlineStart: '8px',
                 }}
               >
                 Test Announcement

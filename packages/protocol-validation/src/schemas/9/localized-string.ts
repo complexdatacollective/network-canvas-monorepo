@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { holdsLineBreak } from '@codaco/shared-consts';
+
 import { isBlankMessage } from '../../localization/blankText.ts';
 import { findDynamicMessageSyntaxProblem } from '../../localization/dynamicValueMessages.ts';
 import {
@@ -16,6 +18,8 @@ import {
 } from '../../localization/messageArguments.ts';
 import { findMessageSyntaxProblem } from '../../localization/messageSyntax.ts';
 import type { DynamicValueSite } from './dynamic-values.ts';
+import { findFallbackLanguageProblem } from './fallback-language.ts';
+import { SUPPLIED_LANGUAGES } from './supplied-text.ts';
 
 const LOCALIZED_STRING = 'localizedString' as const;
 
@@ -25,8 +29,32 @@ const LOCALIZED_STRING = 'localizedString' as const;
  */
 export type LocalizedStringFormat = 'plain' | 'markdown';
 
+/**
+ * How much text a localized field holds: one line, or several. A one-line
+ * field is one paragraph, so markdown in it formats words (bold, italics)
+ * and never blocks (headings, lists, rules).
+ */
+export type LocalizedTextLines = 'single' | 'multiple';
+
+/**
+ * What a localized field may hold, declared once with the field: plain or
+ * markdown, and one line or several. Every surface that edits the field
+ * offers exactly this, whichever it is (see protocol-builder's
+ * `textFieldPropsFor`).
+ *
+ * A one-line field refuses a translation holding a line break; the
+ * migration from schema 8 joins the lines of such text, and every editor
+ * turns a typed or pasted break into a space (see shared-consts'
+ * `line-breaks.ts`, the one definition of a line break they all use).
+ */
+export type LocalizedTextShape = Readonly<{
+  format: LocalizedStringFormat;
+  lines: LocalizedTextLines;
+}>;
+
 type LocalizedStringDescriptor = Readonly<{
   format: LocalizedStringFormat;
+  lines: LocalizedTextLines;
   /**
    * The arguments a localized message's translations may use (see
    * `localizedMessage`); absent for text made only of literal text.
@@ -52,6 +80,21 @@ type LocalizedStringDescriptor = Readonly<{
  * value is an ICU MessageFormat message made only of literal text.
  */
 export type LocalizedString = Readonly<Record<LocaleTag, string>>;
+
+/**
+ * The translations a protocol holds in `value`: the object itself when it is
+ * a plain object whose every value is text, otherwise none.
+ */
+export const heldTranslations = (value: unknown): LocalizedString => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    return {};
+  const entries = Object.entries(value);
+  return entries.every(
+    (entry): entry is [string, string] => typeof entry[1] === 'string',
+  )
+    ? Object.fromEntries(entries)
+    : {};
+};
 
 /**
  * Describes why a value is not a canonical BCP 47 tag, suggesting the
@@ -83,6 +126,11 @@ export const ProtocolLocalizationSchema = z
     locales: z
       .array(LocaleTagSchema)
       .min(1, { message: 'A protocol must declare at least one language.' }),
+    // Named only where the default language is one Network Canvas has no
+    // wording in (see `needsFallbackLanguage`). A protocol being written may
+    // lack the one it needs, so its absence is a release check and not a rule
+    // here (`findMissingFallbackLanguage`).
+    fallbackLocale: LocaleTagSchema.optional(),
   })
   .superRefine((localization, ctx) => {
     const seen = new Set<LocaleTag>();
@@ -103,6 +151,18 @@ export const ProtocolLocalizationSchema = z
         code: 'custom',
         message: `The default language "${localization.defaultLocale}" must be one of the protocol's languages.`,
         path: ['defaultLocale'],
+      });
+    }
+
+    const fallbackProblem = findFallbackLanguageProblem(localization);
+    if (fallbackProblem !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          fallbackProblem === 'not-needed'
+            ? `Network Canvas has its own wording in the default language "${localization.defaultLocale}", so the protocol cannot name a fallback language.`
+            : `The fallback language "${localization.fallbackLocale}" must be a language Network Canvas has its own wording in (${SUPPLIED_LANGUAGES.join(', ')}).`,
+        path: ['fallbackLocale'],
       });
     }
   });
@@ -144,12 +204,20 @@ export const nonBlankText = () =>
  */
 const localizedTranslations = (
   content: z.ZodString,
+  lines: LocalizedTextLines,
   findProblem: (message: string) => string | undefined,
 ) =>
   z
     .record(
       z.string(),
       content.superRefine((message, ctx) => {
+        // A field declared one line holds no line break in any language.
+        if (lines === 'single' && holdsLineBreak(message)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Text cannot contain a line break.',
+          });
+        }
         const problem = findProblem(message);
         if (problem) ctx.addIssue({ code: 'custom', message: problem });
       }),
@@ -167,7 +235,7 @@ const localizedTranslations = (
 
 export const localizedString = (
   content: z.ZodString,
-  format: LocalizedStringFormat,
+  { format, lines }: LocalizedTextShape,
   {
     mayBeEmpty = false,
     dynamicValues,
@@ -195,12 +263,14 @@ export const localizedString = (
 ) =>
   localizedTranslations(
     content,
+    lines,
     dynamicValues === undefined
       ? findMessageSyntaxProblem
       : findDynamicMessageSyntaxProblem,
   ).meta({
     [LOCALIZED_STRING]: {
       format,
+      lines,
       ...(dynamicValues === undefined ? {} : { dynamicValues }),
       ...(mayBeEmpty ? { mayBeEmpty: true } : {}),
     },
@@ -229,8 +299,9 @@ const describeMissingPlacement = (
  * and `plural` by number (see `findMessageArgumentProblem`). Each language
  * chooses its own versions, so a language that needs no distinction writes
  * one phrase. A translation must show each argument where the declaration
- * requires it (see `findMissingPlacement`). Always plain: the interview shows
- * values as text, which markdown could otherwise read as formatting.
+ * requires it (see `findMissingPlacement`). Always plain and one line: the
+ * interview shows values as text, which markdown could otherwise read as
+ * formatting.
  */
 export const localizedMessage = (
   content: z.ZodString,
@@ -243,7 +314,7 @@ export const localizedMessage = (
   if (plurals.length > 1) {
     throw new Error('A localized message can declare at most one plural.');
   }
-  return localizedTranslations(content, (message) =>
+  return localizedTranslations(content, 'single', (message) =>
     findMessageArgumentProblem(message, declaration),
   )
     .superRefine((value, ctx) => {
@@ -262,7 +333,11 @@ export const localizedMessage = (
       }
     })
     .meta({
-      [LOCALIZED_STRING]: { format: 'plain', arguments: declaration },
+      [LOCALIZED_STRING]: {
+        format: 'plain',
+        lines: 'single',
+        arguments: declaration,
+      },
     });
 };
 
@@ -273,6 +348,8 @@ const isLocalizedStringDescriptor = (
   value !== null &&
   'format' in value &&
   (value.format === 'plain' || value.format === 'markdown') &&
+  'lines' in value &&
+  (value.lines === 'single' || value.lines === 'multiple') &&
   (!('arguments' in value) ||
     (typeof value.arguments === 'object' && value.arguments !== null)) &&
   (!('dynamicValues' in value) ||

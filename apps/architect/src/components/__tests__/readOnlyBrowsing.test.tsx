@@ -49,9 +49,9 @@ const ALLOWED: readonly AllowedControl[] = [
   { role: 'button', name: /^return to start screen$/i },
   { role: 'button', name: /^open menu$/i },
   { role: 'combobox', name: /^interface language:/i },
-  { role: 'button', name: /^download$/i },
-  // Sends the saved copy, as Download does; it writes nothing here.
-  { role: 'button', name: /^send to interviewer$/i },
+  // Its Download and Send to Interviewer items read the saved copy; neither
+  // writes anything here.
+  { role: 'button', name: /^export$/i },
   { role: 'button', name: /^print$/i },
   { role: 'button', name: /^return to stages$/i },
   {
@@ -62,11 +62,13 @@ const ALLOWED: readonly AllowedControl[] = [
   // Stages: opening a stage opens its editor, which is read-only too.
   { role: 'button', name: /^view stage \d+:/i },
   { role: 'button', name: /^how to get a mapbox token$/i },
-  // Codebook: search, filter and sort, and a look at a network resource.
+  // Codebook: search, filter and sort, and a look at or a copy of a network
+  // resource.
   { role: 'searchbox', name: /^search the codebook/i },
   { role: 'checkbox', name: /^show unused only$/i },
   { role: 'button', name: /^(name|used in)$/i },
   { role: 'button', name: /^preview$/i },
+  { role: 'button', name: /^download$/i },
   // Resources: filter by type, preview, download.
   {
     role: 'button',

@@ -1,6 +1,6 @@
 {
   "name": "@codaco/documentation",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,10 +16,12 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "validate-redirects": "tsx ./scripts/validate-redirects.ts",
-    "test-redirects": "tsx ./scripts/test-redirects.ts"
+    "test-redirects": "tsx ./scripts/test-redirects.ts",
+    "translations:stamp": "tsx ./scripts/stampTranslations.ts"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/art": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/interface-images": "workspace:^",
@@ -29,6 +31,8 @@
     "@codaco/tailwind-config": "workspace:^",
     "@docsearch/css": "^5.1.2",
     "@docsearch/react": "^5.1.2",
+    "@fontsource-variable/inclusive-sans": "catalog:",
+    "@fontsource-variable/nunito": "catalog:",
     "@next/bundle-analyzer": "catalog:",
     "@next/third-parties": "catalog:",
     "@posthog/nextjs-config": "catalog:",

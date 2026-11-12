@@ -24,7 +24,11 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import { escapeMarkdownText, type Stage } from '@codaco/protocol-validation';
+import {
+  escapeMarkdownText,
+  type Stage,
+  ComposerFormFieldSchema,
+} from '@codaco/protocol-validation';
 
 import {
   useCodebookSectionDocument,
@@ -94,6 +98,7 @@ import {
   useLocalizedText,
   useProtocolLocalization,
 } from '../../localization/ProtocolLocalization.tsx';
+import { markdownTextShapeAt } from '../../localization/textShape.ts';
 import { FormOfItsOwnContext } from '../../localization/useDynamicValueSite.ts';
 import {
   type CodebookSubject,
@@ -123,6 +128,10 @@ import {
   NEW_VARIABLE_VALIDATION,
   useInventingAttribute,
 } from './inventedAttribute.ts';
+
+const LABEL_SHAPE = markdownTextShapeAt(ComposerFormFieldSchema, ['label']);
+
+const HINT_SHAPE = markdownTextShapeAt(ComposerFormFieldSchema, ['hint']);
 
 const VARIABLE_FIELD = 'variable';
 const COMPONENT_FIELD = 'component';
@@ -1290,9 +1299,9 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       <Field<typeof LocalizedRichTextField>
         name={LABEL_FIELD}
         component={LocalizedRichTextField}
+        shape={LABEL_SHAPE}
         dynamicValues="formField"
         fieldPath={LABEL_PATH}
-        singleLine
         label={intl.formatMessage(messages.questionLabel)}
         hint={intl.formatMessage(messages.questionHint)}
         placeholder={intl.formatMessage(messages.questionPlaceholder)}
@@ -1302,9 +1311,9 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       <Field<typeof LocalizedRichTextField>
         name={HINT_FIELD}
         component={LocalizedRichTextField}
+        shape={HINT_SHAPE}
         dynamicValues="formField"
         fieldPath={HINT_PATH}
-        singleLine
         label={intl.formatMessage(messages.helpLabel)}
         hint={intl.formatMessage(messages.helpHint)}
         placeholder={intl.formatMessage(messages.helpPlaceholder)}

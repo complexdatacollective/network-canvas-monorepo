@@ -71,7 +71,6 @@ const FORM_EDITORS: FormEditorCase[] = [
     sections: [
       'Task introduction',
       'Form configuration',
-      'Customize built-in wording',
       'Skip logic',
       'Interviewer guidance',
     ],

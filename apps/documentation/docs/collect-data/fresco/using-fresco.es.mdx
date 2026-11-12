@@ -1,0 +1,393 @@
+---
+title: Usar Fresco
+date: 7th October 2026
+navOrder: 2
+translatedFrom: d7569224c77d1baab3fd4c3b72135dd40f45f668
+---
+
+Esta guía te explica paso a paso el flujo de trabajo básico para realizar tu estudio con Fresco.
+
+Fresco está pensado para usarse junto con Architect, con el que se diseñan los protocolos de entrevista. Si aún no lo has hecho, [diseña tu protocolo en Architect](/es/design-protocols/getting-started) antes de continuar.
+
+## Flujo de trabajo básico {#basic-workflow}
+
+Usar Fresco te resultará familiar si has usado las aplicaciones de escritorio, con la importante ventaja de que ahora puedes gestionar los protocolos, las personas participantes y los datos desde un panel de administración web.
+
+El flujo de trabajo básico para usar Fresco es el siguiente:
+
+1. **Implementar Fresco**: implementa tu propia instancia de Fresco (encontrarás más información en la [guía de implementación](/es/collect-data/fresco/guide)).
+2. **Subir protocolos**: sube a Fresco uno o varios protocolos de Network Canvas creados en Architect.
+3. **Añadir participantes**: añade participantes a tu estudio, de uno en uno o de forma masiva. También puedes usar la función de reclutamiento anónimo para que quienes participan se inscriban en el estudio por su cuenta.
+4. **Realizar las entrevistas**: comparte con quienes participan la URL única de cada participante o la URL de reclutamiento anónimo, para que completen la entrevista en su propio dispositivo.
+5. **Hacer el seguimiento**: sigue el progreso de tu estudio desde el panel.
+6. **Exportar los datos**: exporta los datos desde la página de entrevistas cuando termines la recopilación de datos.
+
+A continuación se describe cada uno de estos pasos con más detalle.
+
+## Implementación {#deployment}
+
+Fresco está pensado para implementarse en tus propios servidores e infraestructura. Así tienes el control total de los datos que se recopilan en tu estudio y puedes cumplir la normativa de protección de datos que corresponda o los requisitos del comité de ética (IRB).
+
+A muchas de las personas que investigan les bastará con seguir nuestra [guía de implementación básica](/es/collect-data/fresco/guide) para implementar Fresco en el plan gratuito de Netlify. Sin embargo, si tienes requisitos concretos de seguridad de los datos, privacidad o cumplimiento normativo, es posible que tengas que implementar Fresco en tu propio servidor o en servicios especializados.
+
+Si no puedes implementar Fresco por tu cuenta, es posible que tu universidad pueda alojar para ti una versión de Fresco que cumpla la normativa. Ponte en contacto con tu departamento de informática o con tu oficina de apoyo a la investigación para obtener más información, e indícales que consulten nuestra [guía de implementación avanzada](/es/collect-data/fresco/advanced), donde se explican los requisitos para alojar Fresco.
+
+## Subir protocolos {#uploading-protocols}
+
+Cuando hayas implementado Fresco y tengas acceso a tu panel, puedes empezar por subir uno o varios protocolos para tu estudio.
+
+<TipBox>
+
+Si todavía no has diseñado tu protocolo en Architect, hazlo antes de continuar. Puedes encontrar una guía para diseñar un protocolo en Architect [aquí](/es/design-protocols/getting-started).
+
+</TipBox>
+
+En Fresco puedes subir tantos protocolos como quieras (dentro de los límites de recursos de tu alojamiento). Así puedes tener varios protocolos para distintos estudios, o varias versiones del mismo protocolo para distintos grupos de participantes.
+
+Cada archivo de protocolo `.netcanvas` puede ocupar hasta **256 MB**. Este límite se aplica con todos los proveedores de almacenamiento, así que rige sea cual sea la configuración del alojamiento de Fresco. Si tu protocolo supera este límite, normalmente se debe a recursos incluidos de gran tamaño (como imágenes de alta resolución o vídeos); plantéate comprimirlos o reducirlos en Architect antes de subir el protocolo.
+
+No obstante, recomendamos **no** alojar estudios distintos en la misma instancia de Fresco, ya que puede dar lugar a confusiones y a posibles filtraciones de datos. Si realizas varios estudios, te sugerimos que implementes una instancia de Fresco independiente para cada uno.
+
+### Para subir un protocolo {#to-upload-a-protocol}
+
+1. Ve a la página de protocolos del panel.
+2. Haz clic en el botón **Subir protocolo**.
+3. Selecciona el archivo `.netcanvas` que exportaste desde Architect.
+4. Haz clic en **Subir**.
+
+![La página de protocolos del panel.](/assets/img/fresco-images/protocols-page.png)
+
+A continuación, Fresco validará y subirá tu protocolo. Si contiene recursos (imágenes, audio, vídeo o archivos de red), Fresco los subirá al proveedor de almacenamiento que hayas configurado y los vinculará a tu protocolo.
+
+<TipBox>
+
+Fresco rechaza un archivo de protocolo al que le falte alguno de sus recursos, porque, si un recurso no llegara a cargarse nunca, el fallo lo vería una persona participante en mitad de la entrevista. El mensaje indica el recurso que falta con el nombre que tiene en Architect. Un archivo de protocolo cuyo contenido está dañado se notifica como dañado. Para corregir un protocolo al que le falta un recurso, ábrelo en Architect, vuelve a añadir el archivo que falta desde **Recursos** y descarga de nuevo el protocolo antes de subirlo. Consulta [Recursos](/es/design-protocols/key-concepts/resources) para ver cómo gestiona Architect los archivos de recursos.
+
+</TipBox>
+
+Cuando termine el proceso, verás tu protocolo en la lista de la página de protocolos. Puedes hacer clic en el protocolo para ver sus detalles y la URL única que compartirás con quienes participan para realizar las entrevistas.
+
+### Protocolos creados para versiones anteriores del esquema {#protocols-made-for-earlier-schema-versions}
+
+Fresco acepta protocolos creados para [versiones anteriores del esquema](/es/get-started/protocol-schema-information), además de protocolos del esquema 9, y nunca los actualiza. Un protocolo del esquema 8 se almacena tal como está, y sus entrevistas se ejecutan con el motor de entrevistas del esquema 8 que integra Fresco, de modo que cada participante ve exactamente lo que el protocolo se diseñó para mostrar. Un protocolo del esquema 7 creado en Architect Classic se migra automáticamente al esquema 8 al subirlo, y después se ejecuta como esquema 8. Estos protocolos llevan el distintivo **Esquema 8** en la página de protocolos. Para usar las funciones del esquema 9 en uno de ellos, actualízalo en [Architect](/es/design-protocols/getting-started) y sube la copia actualizada, que Fresco trata como un protocolo distinto.
+
+## Generar datos de prueba sintéticos {#generating-synthetic-test-data}
+
+Antes de reclutar participantes reales, quizá quieras añadir entrevistas ficticias a tu estudio para comprobar que un protocolo se comporta como esperas, previsualizar cómo aparecen las respuestas en la página de entrevistas y probar de principio a fin tu flujo de trabajo de exportación. Desde la página de configuración, Fresco puede generar **datos de entrevistas sintéticas** para cualquier protocolo que hayas subido.
+
+![El apartado Datos de entrevistas sintéticas de la página de configuración.](/assets/img/fresco-images/synthetic-interview-data.png)
+
+Para generar entrevistas sintéticas:
+
+1. Ve a la página de configuración del panel.
+2. En el apartado **Datos de entrevistas sintéticas**, selecciona un protocolo en la lista desplegable.
+3. Elige cuántas entrevistas quieres crear (entre 1 y 1000).
+4. Si quieres, configura las opciones de generación que se describen a continuación.
+5. Haz clic en **Generar**.
+
+Puedes ajustar cómo se generan las entrevistas sintéticas con dos opciones:
+
+- **Simular el abandono de participantes**: si está activada, cada participante que se genera tiene una probabilidad creciente de abandonar la entrevista en cada etapa, lo que produce una combinación realista de entrevistas completas e incompletas, en lugar de solo entrevistas terminadas.
+- **Aplicar la lógica de saltos y los filtros**: si está activada, la generación evalúa la lógica de salto y los filtros de la red de las etapas de tu protocolo. Las etapas se omiten, o los nodos se excluyen con el filtro, según el estado de la red en ese momento, de modo que los datos resultantes reflejan los recorridos que seguirían realmente quienes participan.
+
+Todas las entrevistas y participantes que se crean de esta forma se marcan como datos sintéticos en la base de datos. Esta marca es lo que permite a Fresco eliminarlos de forma masiva sin tocar tus datos reales. Ten en cuenta que estos datos sintéticos (entrevistas y participantes) **no** llevan ningún distintivo visual en las tablas de entrevistas ni de participantes, así que aparecen junto a los datos reales en esas listas.
+
+Para eliminar los datos sintéticos, usa el botón **Eliminar todo** del mismo apartado. El apartado muestra cuántas entrevistas sintéticas y participantes de prueba hay en ese momento, y elimina todos esos datos a la vez. Esto solo afecta a los datos marcados como sintéticos; tus entrevistas y participantes reales no se modifican.
+
+## Participantes {#participants}
+
+Para realizar tu estudio, tendrás que decidir una estrategia de reclutamiento y definir quién puede participar. Fresco admite dos enfoques:
+
+1. Añadir a personas participantes conocidas, de una en una o de forma masiva.
+2. Permitir que quienes participan se inscriban por su cuenta de forma anónima.
+
+Estos enfoques no son excluyentes y se pueden combinar. Por ejemplo, podrías tener una primera «oleada» de personas participantes conocidas que añades a Fresco a mano y, después, pedir a esas personas que compartan la URL de reclutamiento anónimo con cualquier otra persona que crean que podría estar interesada en participar.
+
+El enfoque que elijas dependerá de las particularidades de tu estudio y de los recursos de que dispongas para el reclutamiento.
+
+Sea cual sea el enfoque, Fresco define a cada participante mediante su identificador de participante y una etiqueta opcional. En el caso de personas participantes conocidas, puedes proporcionar tú el identificador de participante (lo que resulta útil para vincular las respuestas con fuentes de datos externas) o dejar que Fresco genere uno al azar. Si activas el reclutamiento anónimo, Fresco asigna un identificador aleatorio a cada participante cuando empieza una entrevista.
+
+Las _etiquetas_ de participante son un atributo opcional que puedes usar para dar a cada participante una etiqueta legible por humanos. Este campo no se muestra a quienes participan y puede almacenar un nombre o una etiqueta interna del proyecto para cada participante.
+
+<TipBox danger>
+
+Fresco usa los identificadores de participante para incorporar a cada participante al estudio. **Los identificadores de participante aparecen en las URL de participante y quienes participan pueden verlos.** Por eso, no uses nunca como identificadores información confidencial ni patrones predecibles (como números consecutivos del tipo 001, 002, 003, o cadenas fáciles de adivinar).
+
+Los identificadores de participante deben ser únicos dentro del estudio. Si intentas añadir a alguien con un identificador que ya está en uso, recibirás un mensaje de error.
+
+</TipBox>
+
+### Añadir participantes a mano {#adding-participants-manually}
+
+El método más sencillo para añadir a una o varias «personas participantes conocidas» es hacerlo a mano desde el panel. Este enfoque es útil cuando hay pocas personas participantes.
+
+Para añadir a una persona participante a mano:
+
+1. Ve a la página de participantes del panel.
+   ![La página de participantes del panel.](/assets/img/fresco-images/participants-page.png)
+2. Haz clic en el botón **Añadir participante**.
+   ![Añadir participante individual](/assets/img/fresco-images/participants-add-single.png)
+3. Introduce un identificador de participante o haz clic en el botón **Generar** para que se genere uno al azar.
+4. Si quieres, introduce una etiqueta de participante.
+5. Haz clic en **Enviar**.
+
+La persona participante aparecerá de inmediato en la lista de participantes.
+
+### Añadir participantes de forma masiva mediante la importación de un CSV {#adding-participants-in-bulk-via-csv-import}
+
+Añadir participantes de forma masiva es útil cuando tienes que añadir muchas personas participantes al estudio. Para ello, sube un archivo CSV que contenga los datos de participantes.
+
+<TipBox>
+
+Tu archivo CSV puede contener las siguientes columnas:
+
+- identifier: debe ser una cadena única y **no debería** ser fácil de adivinar. Se usa para generar la URL de incorporación, lo que permite la integración con otras herramientas de encuestas.
+- label: puede ser cualquier texto o número. Se usa para dar a cada participante una etiqueta legible por humanos.
+
+Para cada participante **debe indicarse** una columna identifier **o** una columna label.
+
+Los encabezados de las columnas identifier y label deben estar en minúsculas.
+
+Puedes descargar <DownloadLink href="/assets/participants-template.csv">aquí</DownloadLink> una plantilla de archivo CSV que te ayudará a dar el formato correcto a tus datos.
+
+</TipBox>
+
+Cuando hayas creado tu archivo CSV, puedes subirlo a Fresco de la siguiente manera:
+
+1. Ve a la página de participantes del panel.
+2. Haz clic en el botón **Importar participantes**.
+   ![El cuadro de diálogo de importación de CSV](/assets/img/fresco-images/csv-import.png)
+3. Sube tu archivo CSV.
+4. Haz clic en **Enviar**.
+
+Las personas participantes aparecerán de inmediato en la lista de participantes.
+
+### Reclutamiento anónimo {#anonymous-recruitment}
+
+El modo de reclutamiento anónimo permite que quienes participan se inscriban en el estudio por su cuenta mediante una URL única. Puedes generar esta URL para cada protocolo y compartirla con quienes participan. Cuando una persona visita la URL, Fresco le asigna un identificador de participante aleatorio y le permite completar una entrevista. Este método es útil cuando no tienes una lista de personas participantes conocidas o cuando quieres que quienes participan puedan compartir el estudio con otras personas.
+
+#### Activar el reclutamiento anónimo {#enabling-anonymous-recruitment}
+
+1. Ve a la página de configuración del panel.
+2. Activa el interruptor **Reclutamiento anónimo**.
+
+![La página de configuración del panel.](/assets/img/fresco-images/settings-page.png)
+
+Una vez activado, se mostrará un mensaje de advertencia en la página principal del panel para recordarte que el reclutamiento anónimo está activo.
+
+## Realizar las entrevistas {#conducting-interviews}
+
+Cuando hayas subido tu protocolo y, si quieres, hayas añadido participantes al estudio, puedes empezar a realizar las entrevistas.
+
+En Fresco, quienes participan realizan las entrevistas en sus propios dispositivos. Cada participante puede empezar una entrevista siguiendo una URL que le proporcionas.
+
+<KeyConcept title="URL de participante">
+
+En Fresco puedes compartir dos tipos de URL con quienes participan: **URL únicas de participante** y **URL de participación anónima**.
+
+- Las **URL únicas de participante** son únicas para cada combinación de participante y protocolo (de modo que «James» y el «Estudio A» tendrían una URL distinta de la de «James» y el «Estudio B»). Puedes compartir estas URL con quienes participan para que completen una entrevista. Cada vez que se visitan, estas URL crean una entrevista nueva con el protocolo indicado y llevan de inmediato a la persona participante a esa entrevista. Fresco vincula esta entrevista y todos los datos de las respuestas con su identificador de participante.
+
+- Las **URL de participación anónima** no son únicas para cada participante, pero _sí_ están vinculadas al protocolo. Puedes compartir la misma URL con varias personas participantes para que completen una entrevista sin tener que añadirlas al estudio a mano. Cuando alguien visita el enlace, Fresco crea una persona participante anónima con un identificador generado al azar e inicia la entrevista con normalidad.
+
+</KeyConcept>
+
+### URL únicas de participante {#unique-participant-urls}
+
+Las URL únicas de participante son URL únicas que puedes generar para cada participante y protocolo, y compartir con la persona participante para que complete una entrevista. Estas URL llevan a la persona participante directamente a la entrevista del protocolo indicado y vinculan sus respuestas con su identificador de participante.
+
+Para compartir las URL únicas de participante con quienes participan, puedes copiar cada URL por separado o exportar un archivo CSV que contenga las URL de tus participantes.
+
+#### Copiar a mano una URL única de participante {#manually-copying-a-unique-participant-url}
+
+1. Ve a la página de participantes del panel.
+2. Haz clic en el botón **Copiar URL única** de la persona participante para la que quieres generar una URL.
+3. En la lista desplegable, selecciona el protocolo con el que quieres realizar la entrevista.
+4. La URL se copiará en el portapapeles. Ya puedes compartirla con la persona participante.
+
+#### Exportar un CSV con las URL únicas de participante {#exporting-a-csv-of-unique-participant-urls}
+
+1. Ve a la página de participantes del panel.
+2. Haz clic en el botón **Exportar participantes** para exportar a todas las personas participantes de la lista (si has escrito algo en el cuadro de filtro, solo a las que coincidan con él), o marca las casillas de las personas participantes que quieras y haz clic en **Exportar selección**.
+3. El navegador descargará un archivo llamado `participants.csv`.
+
+El archivo CSV contendrá una fila por participante, con columnas para el ID interno, el identificador y la etiqueta de cada participante, seguidas de una columna `interview_url_<protocol name>` (donde `<protocol name>` es el nombre del protocolo) por cada protocolo instalado, con la URL única de esa persona participante para ese protocolo. Puedes usar este archivo para hacer llegar las URL a quienes participan por correo electrónico, SMS u otros medios.
+
+### URL de participación anónima {#anonymous-participant-urls}
+
+Si activas el reclutamiento anónimo, quienes participan pueden inscribirse en el estudio por su cuenta mediante una URL de participación anónima. Esta URL no es única para cada participante. Puedes compartir la misma URL con _varias_ personas participantes para que completen una entrevista sin tener que añadirlas al estudio a mano.
+
+#### Para generar una URL de participación anónima: {#to-generate-an-anonymous-participant-url}
+
+1. Ve a la página de protocolos del panel.
+2. En la columna **URL de participación anónima**, que aparece una vez activado el reclutamiento anónimo, haz clic en el botón del protocolo para el que quieres reclutar participantes.
+3. La URL se copiará en el portapapeles y tendrá el siguiente formato:
+
+```bash
+https://yourstudy.com/onboard/{protocolUniqueID}
+```
+
+Ya puedes compartir esta URL con quienes participan para que se inscriban en el estudio por su cuenta.
+
+### Limitar las entrevistas {#limit-interviews}
+
+Quizá quieras limitar el número de entrevistas que cada participante puede completar con un protocolo determinado. Por eso, Fresco incluye esta opción, que puedes activar en la página de configuración.
+
+Si activas esta opción, cada participante solo podrá enviar una entrevista completada por protocolo (aunque puede tener varias entrevistas incompletas). Una vez que una persona participante ha completado una entrevista, si intenta empezar una entrevista nueva o reanudar cualquier otra entrevista en curso, verá en su lugar la pantalla de entrevista finalizada de la entrevista terminada, con el texto de entrevista finalizada de la etapa [«Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen) en la que terminó. Esto se aplica tanto a las URL únicas de participante como a las URL de participación anónima.
+
+Para activar esta función:
+
+1. Ve a la página de configuración del panel.
+2. Activa el interruptor **Limitar entrevistas**.
+
+<TipBox danger>
+
+Al diseñar esta función hemos dado prioridad a la privacidad y la seguridad, lo que significa que no hacemos un seguimiento sofisticado de quienes participan. En su lugar, usamos el identificador de participante (si está disponible) y una cookie para determinar cuándo una persona participante ha enviado una entrevista. La cookie contiene el ID de la entrevista terminada, y los scripts que se ejecutan en la página no pueden leerla. Si la cookie de una persona participante indica una entrevista terminada del mismo protocolo, se la devuelve a la pantalla de entrevista finalizada de esa entrevista.
+
+Esto significa que, si activas el reclutamiento anónimo y una persona participante borra sus cookies, podrá enviar otra entrevista.
+
+Si necesitas un seguimiento más sólido, plantéate usar URL únicas de participante en lugar de URL de participación anónima.
+
+</TipBox>
+
+### Bloquear las entrevistas completadas {#freeze-completed-interviews}
+
+Por defecto, Fresco bloquea las entrevistas completadas: una vez que una persona participante termina una entrevista, los datos enviados ya no se pueden modificar. Si una persona participante vuelve a la URL de una entrevista que ya ha terminado, ve su pantalla de entrevista finalizada, es decir, el texto de entrevista finalizada de la etapa «Pantalla de finalización» en la que terminó. Desde ahí no se puede navegar por la entrevista ni hay ningún botón, así que quienes participan cierran la ventana. Cualquier cambio que, aun así, llegue a enviarse se rechaza sin aviso, lo que protege los datos de tus entrevistas finalizadas de cambios accidentales o intencionados después del envío.
+
+Si prefieres que una entrevista que se vuelve a abrir siga sincronizando con tus datos los cambios posteriores, puedes desactivar esta opción.
+
+Para desactivar esta función:
+
+1. Ve a la página de configuración del panel.
+2. Desactiva el interruptor **Bloquear entrevistas completadas**.
+
+<TipBox>
+
+Esta opción es distinta de [Limitar entrevistas](#limit-interviews). Limitar las entrevistas impide que una persona participante empiece una entrevista _nueva_ cuando ya ha completado una, mientras que bloquear las entrevistas completadas impide que se guarden los cambios en una entrevista que _ya_ ha terminado. Según las necesidades de tu estudio, puedes activar una de las dos, ambas o ninguna.
+
+</TipBox>
+
+### Deshabilitar el aviso de pantalla pequeña {#disable-small-screen-warning}
+
+Las entrevistas de Network Canvas están diseñadas para completarse en un dispositivo con una pantalla razonablemente grande, como un portátil, un ordenador de sobremesa o una tableta. Cuando una persona participante abre una entrevista en una pantalla pequeña (por ejemplo, un teléfono móvil en vertical), Fresco muestra un aviso de que la pantalla puede ser demasiado pequeña para que la entrevista se desarrolle bien.
+
+Si no quieres que quienes participan vean este aviso, puedes deshabilitarlo.
+
+Para deshabilitar el aviso:
+
+1. Ve a la página de configuración del panel.
+2. Activa el interruptor **Deshabilitar el aviso de pantalla pequeña**.
+
+## Hacer el seguimiento {#monitoring-progress}
+
+Cuando hayas enviado las URL a quienes participan y empiecen a completar entrevistas, podrás seguir el progreso de esas entrevistas desde la página de entrevistas del panel y desde el registro de actividad de la página principal del panel.
+
+La **página de entrevistas** ofrece una vista general de todas las entrevistas del estudio. Cada fila corresponde a una entrevista, con columnas para el **Identificador del participante**, el **Nombre del protocolo**, la fecha de **Inicio**, la fecha de **Actualización**, el **Progreso**, la **Red** (el número de nodos y vínculos recogidos hasta el momento) y el **Estado de exportación**. Desde esta página también puedes exportar los datos de las entrevistas.
+
+El **Progreso** es la etapa a la que ha llegado la persona participante respecto del total de etapas del protocolo. La etapa [«Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen) de tu protocolo también cuenta en el total, así que una persona participante solo llega al 100 % cuando ha terminado la entrevista.
+
+### Buscar y filtrar entrevistas {#finding-and-filtering-interviews}
+
+En los estudios más grandes, la tabla de entrevistas permite buscar, ordenar y filtrar para encontrar las entrevistas que te interesan. Es importante saber que todo esto se hace **en el servidor, sobre el conjunto de datos completo**, y no solo sobre las filas visibles en pantalla. Por eso, el recuento de la tabla, la ordenación y el filtrado reflejan siempre todas las entrevistas que coinciden, aunque los resultados ocupen muchas páginas.
+
+![Filtrar y ordenar la tabla de entrevistas.](/assets/img/fresco-images/interviews-filtering.png)
+
+- **Buscar por identificador de participante.** El cuadro **Filtrar por identificador...** de la parte superior de la tabla busca, sin distinguir mayúsculas de minúsculas, el texto introducido dentro de los identificadores de participante.
+- **Ordenar por columna.** Abre el menú del encabezado de cualquier columna que se pueda ordenar para elegir **Ordenar de forma ascendente**, **Ordenar de forma descendente** o **Quitar ordenación**.
+- **Filtrar por columna.** La mayoría de los encabezados de columna también ofrecen la opción **Filtrar**, que abre una ventana emergente con las acciones **Aplicar** y **Borrar**. Los filtros disponibles son:
+  - **Nombre del protocolo**: una lista de selección múltiple con los protocolos que has subido.
+  - **Inicio** y **Actualización**: un intervalo de fechas con opciones rápidas (**Hoy**, **Últimos 7 días**, **Últimos 30 días**, **Últimos 90 días**) y selectores de fecha _desde_ y _hasta_.
+  - **Progreso**: un intervalo del 0 al 100 % con las opciones rápidas **Sin iniciar**, **En curso** y **Completado**.
+  - **Red**: un generador de condiciones. Eliges un tipo de nodo o de vínculo, un operador (**es igual a (=)**, **es mayor que (>)**, **es menor que (<)**, **es mayor o igual que (≥)** o **es menor o igual que (≤)**) y un número. Puedes combinar varias condiciones, y una entrevista debe cumplir _todas_ ellas para aparecer en los resultados.
+  - **Estado de exportación**: **Exportado** o **Sin exportar**.
+- **Borrar todos los filtros.** El control **Borrar filtros** restablece la búsqueda y todos los filtros activos a la vez.
+
+Como el filtrado y el recuento se hacen sobre todo el conjunto de datos, las herramientas de selección y exportación también actúan según los filtros que estén activos en ese momento. Cuando tienes una fila seleccionada, aparece la opción **Seleccionar los _N_**, que selecciona todas las entrevistas que coinciden con los filtros actuales (no solo las de la página actual). Del mismo modo, las opciones de **Exportar datos de entrevistas** que se describen en [Exportar los datos](#exporting-data) (exportar todas las entrevistas, todas las entrevistas completadas o todas las entrevistas sin exportar) se aplican a las entrevistas que coinciden con los filtros activos.
+
+### El registro de actividad del panel {#the-dashboard-activity-feed}
+
+El **registro de actividad del panel** ofrece un historial de auditoría de la actividad en Fresco. Es una única tabla con columnas para la **Hora**, el **Tipo** y los **Detalles** de cada evento, paginada para que puedas retroceder página a página por el historial de tu estudio.
+
+La mayoría de las entradas indican quién realizó la acción (por ejemplo, _«alice» instaló el protocolo «X»_), con el nombre de usuario incluido en el texto del mensaje. (Los eventos que desencadenan quienes participan, como el inicio o la finalización de una entrevista, indican en su lugar a la persona participante). El registro es un único registro global que se muestra a todas las personas con cuenta de administración; no está dividido por cuentas, así que siempre muestra la actividad de todas las personas que tienen acceso a la instancia.
+
+El registro abarca una gran variedad de tipos de eventos, muchos más que el progreso de las entrevistas. Además de los protocolos instalados, las personas participantes añadidas y eliminadas, las entrevistas iniciadas y completadas y las exportaciones de datos, recoge la actividad de autenticación y de las cuentas (como los inicios de sesión, los cambios en la verificación en dos pasos, el registro de llaves de acceso, la gestión de tokens de API y la creación o eliminación de cuentas), los cambios en la configuración y la generación y eliminación de datos sintéticos.
+
+Puedes buscar y filtrar el registro:
+
+- El cuadro **Filtrar por detalles de la actividad...** busca en el texto de los detalles de cada entrada.
+- El filtro **Tipo** te permite limitar el registro a uno o varios tipos de eventos.
+- El control **Borrar filtros** restablece la búsqueda y el filtro de tipo.
+
+![El registro de actividad del panel.](/assets/img/fresco-images/activity-feed.png)
+
+#### Exportar el registro de actividad {#exporting-the-activity-feed}
+
+Puedes descargar el registro de actividad completo como archivo CSV para conservarlo:
+
+1. En el panel, localiza el registro de actividad.
+2. Haz clic en el botón **Exportar CSV**.
+3. Tu navegador descargará un archivo llamado `activity-feed.csv`, con las columnas `timestamp`, `type` y `details`.
+
+La exportación siempre contiene el registro completo, sean cuales sean la búsqueda o los filtros aplicados en ese momento al registro en pantalla.
+
+### Generar un CSV con las URL incompletas {#generate-a-csv-of-incomplete-urls}
+
+Puedes generar de forma masiva un archivo CSV con las URL de las entrevistas incompletas de varias personas participantes, por protocolo. Puede ser útil para enviar recordatorios a quienes aún no han completado su entrevista.
+
+1. Ve a la página de entrevistas del panel.
+2. Haz clic en el botón **Exportar URL de entrevistas incompletas**.
+3. En la lista desplegable, selecciona el protocolo para el que quieres generar las URL.
+4. Haz clic en el botón **Exportar**.
+
+## Exportar los datos {#exporting-data}
+
+Cuando quienes participan hayan completado las entrevistas, puedes exportar los datos desde la página de entrevistas para analizarlos con el software externo que prefieras. Desde esta página también puedes ver el estado de exportación de cada entrevista.
+
+### Para exportar las entrevistas seleccionadas: {#to-export-selected-interviews}
+
+1. Ve a la página de entrevistas del panel.
+2. Marca las casillas de las entrevistas que quieras exportar.
+3. Haz clic en el botón **Exportar selección**, en la parte inferior de la tabla.
+4. Confirma los [tipos de archivo y las opciones de exportación](/es/analyze-data/data-export) que quieres usar.
+5. Haz clic en **Iniciar exportación**.
+
+### Para exportar todas las entrevistas: {#to-export-all-interviews}
+
+1. Ve a la página de entrevistas del panel.
+2. Haz clic en el botón **Exportar datos de entrevistas**.
+3. En la lista desplegable, selecciona **Exportar todas las entrevistas**.
+4. Confirma los [tipos de archivo y las opciones de exportación](/es/analyze-data/data-export) que quieres usar.
+5. Haz clic en **Iniciar exportación**.
+
+### Para exportar todas las entrevistas _sin exportar_: {#to-export-all-unexported-interviews}
+
+1. Ve a la página de entrevistas del panel.
+2. Haz clic en el botón **Exportar datos de entrevistas**.
+3. En la lista desplegable, selecciona **Exportar todas las entrevistas sin exportar**.
+4. Confirma los [tipos de archivo y las opciones de exportación](/es/analyze-data/data-export) que quieres usar.
+5. Haz clic en **Iniciar exportación**.
+
+### Tipos de archivo y opciones de exportación {#file-types-and-export-options}
+
+Antes de que empiece una exportación, Fresco te pide que elijas los tipos de archivo (CSV, GraphML o ambos) y las opciones de exportación que quieras usar. Para saber qué contienen los archivos exportados (los archivos de cada entidad y sus columnas, los identificadores que se usan para relacionarlos y qué hace cada opción de exportación), consulta la [guía de exportación de datos](/es/analyze-data/data-export).
+
+Si prefieres obtener los datos de las entrevistas de forma automática en lugar de descargar archivos a mano desde el panel, Fresco también ofrece una [API de Fresco](/es/analyze-data/fresco-api) de solo lectura.
+
+## Cambiar el idioma de la aplicación {#changing-the-interface-language}
+
+Las pantallas de Fresco para el equipo de investigación están disponibles en **English** (inglés), **English (UK)** (inglés británico), **Español**, **Deutsch** (alemán), **Français** (francés), **Italiano**, **Nederlands** (neerlandés), **Português (Brasil)** (portugués de Brasil), **简体中文** (chino simplificado) y **繁體中文** (chino tradicional). También puedes elegir **Automático**, que sigue las preferencias de idioma configuradas en tu navegador y usa el inglés cuando ninguna de ellas está disponible. La opción Automático aparece junto con el idioma que está aplicando en ese momento, por ejemplo, **Automático (English)**.
+
+Para cambiar el idioma, haz clic en el botón del globo terráqueo de la barra superior del panel y elige un idioma de la lista. En pantallas pequeñas, abre el menú de navegación y usa la opción de idioma que encontrarás allí. El mismo botón del globo terráqueo aparece en la cabecera de las pantallas de inicio de sesión y de configuración inicial, para que puedas elegir un idioma antes de iniciar sesión.
+
+El nuevo idioma se aplica de inmediato. Mientras tienes la sesión iniciada, tu elección se guarda en tu cuenta, así que te acompaña cuando inicias sesión en otro dispositivo. Un idioma elegido en la pantalla de inicio de sesión solo se recuerda en ese navegador: no se copia a tu cuenta al iniciar sesión y, una vez que has iniciado sesión, lo sustituye el idioma guardado en tu cuenta. Un idioma elegido durante la configuración inicial es la excepción, porque se traslada a la cuenta que crea el asistente de configuración. Si Fresco no puede guardar tu elección, el idioma se sigue usando durante el resto de tu visita, y la lista de idiomas ofrece volver a intentar guardarlo.
+
+Cambiar el idioma de la aplicación traduce las pantallas propias de Fresco, incluidos los mensajes, los cuadros de diálogo y la validación. No traduce nada de lo que está escrito en tu protocolo, como las preguntas, los nombres de las etapas y las opciones de respuesta, ni cambia los datos de las entrevistas recopilados. Tampoco cambia el idioma de las entrevistas.
+
+### El idioma en las entrevistas {#language-in-interviews}
+
+El idioma de una entrevista depende del navegador de la persona participante, no del panel de Fresco. Al abrirse, una entrevista usa el primero de los idiomas preferidos del navegador que esté disponible en tu protocolo (cuenta también una variante regional cercana, así que, con un navegador configurado en español de México, se usa el español de tu protocolo) o, si no hay ninguno, el idioma predeterminado de tu protocolo. Un texto que no está traducido a ese idioma se muestra en la mejor traducción disponible: en otro de los idiomas preferidos del navegador que la tenga; si no, en el idioma predeterminado; en su defecto, en cualquier idioma de tu protocolo que la tenga. Consulta [El idioma predeterminado y qué traducción ve cada participante](/es/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see). En el idioma de la entrevista no influyen ni el idioma elegido en el panel o en la pantalla de inicio de sesión, ni el idioma de quien haya iniciado sesión en el panel.
+
+Todo lo que muestra una entrevista, incluidos sus botones y mensajes, como «Volver», «Continuar» y los mensajes de validación, se muestra en el idioma de la entrevista: con la redacción de tu protocolo donde la hayas cambiado y, en todo lo demás, con la de Network Canvas (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)). El idioma del panel no lo cambia.
+
+La única forma de que una persona participante cambie el idioma durante una entrevista es una etapa [«Selector de idioma»](/es/design-protocols/interface-documentation/language-chooser) en tu protocolo. Su elección se mantiene hasta que se cierra la pestaña del navegador, así que se vuelve a usar si la persona participante recarga la página. No se guarda con la entrevista ni se incluye en los datos exportados: una entrevista que se reanuda en otra pestaña o en otro dispositivo vuelve a empezar con los idiomas de ese navegador. No cambia la preferencia de idioma de ninguna cuenta del equipo de investigación ni las respuestas ya dadas.
+
+Para escribir un protocolo en más de un idioma, consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol).

@@ -296,7 +296,7 @@ beforeEach(() => {
       }),
     'audit.list': () => Effect.succeed({ items: [], nextCursor: null }),
     'audit.filterOptions': () =>
-      Effect.succeed({ actions: [], actors: [], truncated: false }),
+      Effect.succeed({ eventTypes: [], actors: [], truncated: false }),
   });
 });
 
@@ -435,6 +435,12 @@ describe('header team switcher', () => {
         name: 'Team Alpha research team',
       }),
     ).toBeInTheDocument();
+    // A name someone typed takes its own direction, so a Latin team name in
+    // a right-to-left interface is cut at its end, not its beginning.
+    expect(screen.getByText('Alpha research team')).toHaveAttribute(
+      'dir',
+      'auto',
+    );
   });
 
   it('navigates to the chosen team, and the reconciler follows the URL', async () => {
@@ -444,9 +450,14 @@ describe('header team switcher', () => {
         name: 'Team Alpha research team',
       }),
     );
-    pressOption(
-      await screen.findByRole('option', { name: /^Beta research team/ }),
+    const beta = await screen.findByRole('option', {
+      name: /^Beta research team/,
+    });
+    expect(within(beta).getByText('Beta research team')).toHaveAttribute(
+      'dir',
+      'auto',
     );
+    pressOption(beta);
 
     // §6.5: the switch is a navigation to the team's landing destination, and
     // §6.6's reconciler is what writes the setting — after that destination

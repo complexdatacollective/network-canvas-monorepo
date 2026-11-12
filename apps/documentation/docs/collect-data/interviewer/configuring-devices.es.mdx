@@ -1,0 +1,125 @@
+---
+title: Configurar los dispositivos antes de empezar a recopilar datos
+navOrder: 4
+wip: false
+toc: true
+translatedFrom: e578146eab20b5ee9368ff6f45c127fd3a608aaa
+---
+
+Dedica tiempo a optimizar la experiencia de entrevista antes de empezar a recopilar datos. Configurar tus dispositivos (y el propio Interviewer) para adaptarlos a tu hardware, a la población de tu investigación y a las necesidades de cada participante te ayuda a crear el entorno de entrevista ideal.
+
+Además de estas adaptaciones, también debes completar algunos pasos fundamentales para garantizar que la recopilación de datos sea segura y estable. En este artículo se describen estos pasos en orden.
+
+## Requisitos previos {#prerequisites}
+
+Antes de configurar tus dispositivos, asegúrate de que:
+
+- Has abierto [Interviewer](/es/collect-data/interviewer) en tu navegador web, o has [descargado e instalado Interviewer Classic](https://networkcanvas.com/es/get-started), en los dispositivos que vas a usar (tabletas, ordenadores o ambos)
+- Tienes acceso a la configuración de tus dispositivos Android, iOS, macOS, Windows o Linux
+- Tienes un protocolo listo para importar, o tienes previsto crear uno para probar tu configuración
+
+Los pasos de más abajo que afectan al dispositivo valen sea cual sea la versión de Interviewer que uses. Para la configuración de la propia aplicación, elige tu versión a continuación: las indicaciones específicas de cada versión se actualizan en consecuencia.
+
+<AppSwitch axis="interviewer">
+  <AppOption label="Interviewer"></AppOption>
+  <AppOption label="Interviewer Classic"></AppOption>
+</AppSwitch>
+
+## Desactivar las actualizaciones automáticas {#disable-automatic-updates}
+
+Las tabletas de Google y de Apple actualizan el software automáticamente de forma predeterminada. Esto podría provocar que una nueva versión de Interviewer impida ejecutar tu protocolo, o que una actualización cambie el funcionamiento de la aplicación en plena recopilación de datos, lo que daría lugar a incoherencias. Por eso, **te recomendamos que desactives por completo las actualizaciones de aplicaciones en estos dispositivos y que te encargues de este proceso a mano**.
+
+<details>
+
+<summary>
+
+#### Instrucciones para desactivar las actualizaciones automáticas de aplicaciones en dispositivos Android {#instructions-for-disabling-app-auto-updates-on-android-devices}
+
+</summary>
+
+1. Abre la aplicación Google Play Store.
+2. En la parte superior izquierda de la pantalla, toca el icono del menú.
+3. Toca **Ajustes**.
+4. Toca **Actualizar aplicaciones automáticamente**.
+5. Toca **No actualizar aplicaciones automáticamente**.
+6. Toca **Hecho**.
+
+</details>
+
+<details>
+
+<summary>
+
+#### Instrucciones para desactivar las actualizaciones automáticas en dispositivos iOS {#instructions-for-disabling-auto-updates-on-ios-devices}
+
+</summary>
+
+1. Toca la aplicación **Ajustes** en la pantalla principal.
+2. Toca **General** > **Actualización de software** > **Actualizaciones automáticas**.
+3. Desactiva las actualizaciones automáticas con el interruptor.
+
+</details>
+
+<TipBox>
+
+Si ejecutas Interviewer en macOS, Windows o Linux, no es necesario que completes este paso.
+
+</TipBox>
+
+## Activar las funciones de cifrado del dispositivo {#turn-on-device-level-encryption-features}
+
+Cualquier protección que ofrezca el propio Interviewer es una capa que debes usar _además_ de las protecciones del dispositivo, no en su lugar. Dedica tiempo a asegurarte de que sigues las buenas prácticas generales de seguridad: activa el cifrado del disco de tu dispositivo y usa una autenticación de usuario robusta, el bloqueo automático de la pantalla y otras medidas de seguridad física para proteger tu dispositivo. Para ver una lista más completa de medidas, consulta nuestras [buenas prácticas de seguridad](/es/get-started/planning-a-study/irb-best-practices#security-best-practices).
+
+## Configurar Interviewer {#configuring-interviewer}
+
+<AppOnly axis="interviewer" app="current">
+
+Interviewer se configura en dos lugares: un breve **asistente de configuración** que se ejecuta la primera vez que abres la aplicación en un dispositivo, y el apartado **Configuración** del panel de administración (el icono del engranaje).
+
+El asistente de configuración te guía para proteger tus datos. Eliges cómo vas a desbloquear la aplicación: con biometría, un PIN o una frase de contraseña, o sin ninguna seguridad en la propia aplicación. Cuando estableces una credencial, los datos almacenados en el dispositivo se cifran en reposo con una clave derivada de ella. Completa esta configuración en cada dispositivo de entrevista **antes** de que empiece la recopilación de datos. Una vez establecido un bloqueo, no puedes cambiar más adelante tu método de seguridad (salvo cambiar el PIN) sin desactivar el bloqueo del dispositivo, lo que borra del dispositivo todos los protocolos y todas las sesiones de entrevista. La excepción es pasar de _no tener_ seguridad a tener un bloqueo, un cambio que siempre puede hacerse sin riesgo: **Configuración → Seguridad → Activar la seguridad de la aplicación** vuelve a cifrar lo que ya está almacenado en lugar de borrarlo, así que un dispositivo que ya contiene entrevistas se puede proteger igualmente. El asistente también te pregunta si quieres compartir datos de uso anónimos, una elección que puedes cambiar en cualquier momento.
+
+Todo lo demás se gestiona desde **Configuración**, que está organizada en siete apartados: **Acerca de**, **Idioma**, **Entrevista**, **Exportación de datos**, **Privacidad**, **Seguridad** y **Datos sintéticos**. Antes de empezar a recopilar datos, te recomendamos que:
+
+- Establezcas el **Idioma de la aplicación** en **Idioma** en cada dispositivo de entrevista, o lo dejes en **Automático** para que siga el idioma del navegador del dispositivo. La elección se guarda en cada dispositivo y solo cambia las pantallas del propio Interviewer: el texto de tu protocolo aparece exactamente como lo escribiste.
+- Decidas en **Entrevista** si quieres **Permitir la navegación entre etapas**. Está activado por defecto, lo que permite a cualquiera tocar la barra de progreso para saltar a cualquier etapa; resulta útil durante el estudio piloto, pero normalmente se desactiva en las entrevistas reales.
+- Configures los formatos de archivo y las opciones de exportación en **Exportación de datos**. Se establecen una sola vez aquí y se aplican a todas las exportaciones, en lugar de elegirse cada vez que exportas.
+- Revises el tiempo de bloqueo automático y las opciones para volver a autenticarse en **Seguridad**. Si quienes participan van a manejar el dispositivo durante las entrevistas, activa **Exigir desbloqueo al salir de una entrevista**, para que una persona participante que salga de una entrevista no pueda llegar al panel.
+- Uses **Datos sintéticos** para generar sesiones de entrevista ficticias y ensayar todo tu flujo de trabajo de exportación antes de recopilar datos reales. Para saber cómo encaja esto en un ensayo más amplio de tu estudio, consulta [Realizar un estudio piloto](/es/get-started/planning-a-study/piloting-your-study).
+
+El apartado [Seguridad y bloqueo](/es/collect-data/interviewer/using-interviewer#security-and-locking) del tutorial Usar Interviewer recorre en detalle el asistente de configuración y cada apartado de Configuración. Para saber dónde se guardan tus datos, qué los protege y qué puede destruirlos, consulta [Almacenamiento y seguridad de los datos](/es/collect-data/interviewer/data-storage).
+
+<TipBox danger={true}>
+
+Si tu protocolo usa interfaces que dependen de internet (como la [interfaz geoespacial](/es/design-protocols/interface-documentation/geospatial)), asegúrate de que el dispositivo de entrevista tendrá una conexión a internet fiable sobre el terreno: esas interfaces no pueden funcionar sin conexión. Los protocolos que necesitan conexión muestran el indicador **Requiere internet** en su tarjeta de protocolo.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="classic">
+
+El menú de configuración de Interviewer Classic ofrece varias opciones importantes que te ayudan a adaptar la experiencia de entrevista a tu dispositivo y a las necesidades de cada participante.
+
+### Tamaño del texto {#text-size}
+
+Lo que más a menudo tendrás que ajustar es el **tamaño del texto** general de las pantallas de Interviewer. Dos opciones de la pestaña **visual properties** (propiedades visuales) del menú de configuración controlan este ajuste.
+
+![Menú de configuración](/assets/uploads/screen-shot-2022-06-30-at-11.58.52-am.png 'La pestaña «visual properties» del menú de configuración de Interviewer Classic')
+
+Para escalar todo el texto _y los elementos de la aplicación_, aumenta o reduce el valor del desplegable **interface scale** (escala de la aplicación). De forma predeterminada, Interviewer Classic aumenta automáticamente el tamaño del texto y el espaciado a medida que aumenta el tamaño de la ventana. Para desactivar este comportamiento y establecer un tamaño de ventana fijo, desactiva **use dynamic scaling** (usar escalado dinámico).
+
+<TipBox>
+
+Recuerda que puedes (y debes) ajustar estas opciones durante la entrevista cuando sea necesario.
+
+</TipBox>
+
+### Formularios a pantalla completa {#fullscreen-forms}
+
+Si usas un dispositivo sin teclado físico, te recomendamos activar la opción **use fullscreen forms** (usar formularios a pantalla completa). Esto activa una versión a pantalla completa, especialmente adaptada, de los formularios de las etapas «Generador de nombres», que permite a la persona participante ver lo que escribe mientras se muestra el teclado en pantalla. Consulta las imágenes siguientes para ver cómo queda en la práctica.
+
+![Un formulario con «use fullscreen forms» desactivado](/assets/uploads/screen-shot-2022-06-30-at-11.43.40-am.png 'Un formulario con «use fullscreen forms» desactivado')
+
+![Un formulario con «use fullscreen forms» activado](/assets/uploads/screen-shot-2022-06-30-at-11.43.58-am.png 'Un formulario con «use fullscreen forms» activado')
+
+</AppOnly>

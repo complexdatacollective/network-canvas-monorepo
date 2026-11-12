@@ -14,13 +14,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.panels.panels',
     defaultMessage: 'Panels',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Panels.',
+      'Section heading in the printable protocol summary, above the list of side panels shown on a name generator stage.',
   },
   existingNetwork: {
     id: 'architect.protocolSummary.stage.panels.existingNetwork',
     defaultMessage: 'Existing network',
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / Panels.',
+      "Value in the data source row of a panel in the printable protocol summary, meaning the panel lists nodes already in the participant's network rather than an uploaded file.",
   },
 });
 
@@ -36,7 +36,7 @@ const Panels = ({ panels = null }: PanelsProps) => {
     <SectionFrame title={intl.formatMessage(messages.panels)}>
       <ol className="m-0 ps-10">
         {panels.map((panel) => (
-          <li className="my-5 pl-5" key={panel.id}>
+          <li className="my-5 ps-5" key={panel.id}>
             <MiniTable
               rotated
               rows={[

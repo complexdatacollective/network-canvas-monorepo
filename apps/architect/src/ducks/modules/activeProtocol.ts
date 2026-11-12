@@ -7,10 +7,10 @@ import {
 } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
 
+import { withoutSuppliedWording } from '@codaco/interview/supplied-wording';
 import {
   type CurrentProtocol,
   type LocalizedString,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 import type { AppDispatch, RootState } from '~/ducks/store';
 import {
@@ -26,12 +26,14 @@ import { timelineActions } from '../middleware/timeline';
 import { getProtocolOwnedHere } from './app';
 import assetManifest from './protocol/assetManifest';
 import codebook from './protocol/codebook';
+import { commitStage } from './protocol/commitStage';
 import {
   addLocales,
   changeLocale,
   type LocaleOperationResult,
   removeLocale,
   setDefaultLocale,
+  setFallbackLocale,
   setLocalizedStrings,
   setTranslation,
 } from './protocol/localeOperations';
@@ -103,6 +105,13 @@ const activeProtocolSlice = createSlice({
       applyLocaleOperation(state, (protocol) =>
         setDefaultLocale(protocol, action.payload.locale),
       ),
+    setProtocolFallbackLocale: (
+      state,
+      action: PayloadAction<{ locale: string }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        setFallbackLocale(protocol, action.payload.locale),
+      ),
     changeProtocolLocale: (
       state,
       action: PayloadAction<{ from: string; to: string }>,
@@ -149,6 +158,14 @@ const activeProtocolSlice = createSlice({
   extraReducers: (builder) => {
     builder.addDefaultCase((state, action: UnknownAction) => {
       if (!state) return state;
+
+      // A saved stage's shared words, in the stage's own step.
+      if (
+        commitStage.match(action) &&
+        action.payload.interfaceText !== undefined
+      ) {
+        state.interfaceText = action.payload.interfaceText;
+      }
 
       // Apply sub-reducers to specific parts of the state.
       // Mutate the draft only when the sub-reducer produces a new reference.
@@ -206,6 +223,7 @@ export const {
   addProtocolLocales,
   removeProtocolLocale,
   setProtocolDefaultLocale,
+  setProtocolFallbackLocale,
   changeProtocolLocale,
   setProtocolTranslation,
   setProtocolLocalizedStrings,
@@ -222,17 +240,19 @@ export const actionCreators = {
 };
 
 /**
- * The slice's reducer, with the protocol holding the interview's shared words
- * it shows after every change (see `withInterfaceText`): a protocol that comes
- * to encrypt an attribute or show a form gains that text, and one that no
- * longer does loses it.
+ * The slice's reducer, with the protocol stored as every tool stores one after
+ * every change (see `withoutSuppliedWording`): of the wording Network Canvas
+ * supplies, it holds only what the researcher changed. So whatever wrote a
+ * text (a stage editor, the translation table, an import), a translation that
+ * reads exactly as Network Canvas words it is not kept, nor is the
+ * researcher's wording for a shared word the protocol no longer shows.
  */
 const activeProtocolReducer = (
   state: ActiveProtocolState | undefined,
   action: UnknownAction,
 ): ActiveProtocolState => {
   const next = activeProtocolSlice.reducer(state, action);
-  return next === null || next === state ? next : withInterfaceText(next);
+  return next === null || next === state ? next : withoutSuppliedWording(next);
 };
 
 export default activeProtocolReducer;

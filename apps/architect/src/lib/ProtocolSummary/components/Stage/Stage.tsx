@@ -64,13 +64,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.stage.networkFiltering',
     defaultMessage: 'Network Filtering',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Stage.',
+      'Section heading in the printable protocol summary, above the rules that decide which nodes of the network a stage shows.',
   },
   skipLogic: {
     id: 'architect.protocolSummary.stage.stage.skipLogic',
     defaultMessage: 'Skip Logic',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Stage.',
+      'Section heading in the printable protocol summary, above the rules that decide when a stage is skipped during an interview.',
   },
 });
 
@@ -282,7 +282,9 @@ const StageContent = ({
             className="before:bg-cyber-grape flex items-center text-2xl font-bold before:me-5 before:flex before:size-19 before:flex-none before:items-center before:justify-center before:rounded-full before:[font-family:var(--heading-font)] before:text-white before:content-[attr(data-number)]"
             data-number={intl.formatNumber(stageNumber)}
           >
-            <Heading level="h1">
+            {/* A stage name may be one long word; it breaks rather than
+                widening the page. */}
+            <Heading level="h1" className="min-w-0 wrap-anywhere">
               <DefaultLanguageText value={label} />
             </Heading>
           </div>
@@ -300,7 +302,9 @@ const StageContent = ({
                   ? [
                       [
                         intl.formatMessage(summaryMessages.name),
-                        <SummaryText key="name" value={label} />,
+                        <div key="name" className="wrap-anywhere">
+                          <SummaryText value={label} />
+                        </div>,
                       ],
                     ]
                   : []),

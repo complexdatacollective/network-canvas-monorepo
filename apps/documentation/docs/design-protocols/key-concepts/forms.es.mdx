@@ -1,0 +1,79 @@
+---
+title: Formularios
+navOrder: 6
+translatedFrom: 73be169f2fd60439281ded4cd56a5d46174f4cf1
+---
+
+<Definition>
+  Los formularios te permiten asignar variables al ego (la persona
+  entrevistada), a los nodos o a los vínculos de una forma conocida y fácil de
+  usar.
+</Definition>
+
+## Detalles {#details}
+
+Los formularios son una de las principales formas de asignar valores a tus [variables](/es/design-protocols/key-concepts/variables) en Interviewer. Funcionan asociando cada **variable** con un **[control de entrada](/es/design-protocols/key-concepts/input-controls)**, una **pregunta** y unas **[opciones de validación](/es/design-protocols/key-concepts/field-validation)** para formar un **campo**. Cada formulario puede tener tantos campos como quieras, en el orden que quieras.
+
+![](/assets/img/key-concepts/forms/preview.png)
+
+Al diseñar tu protocolo con Architect, encontrarás varios lugares en los que puedes crear un formulario, sobre todo al crear etapas que usan [interfaces](/es/design-protocols/key-concepts/interfaces) como «Generador de nombres», «Formulario por álter» (un formulario para cada álter, es decir, para cada persona a la que se nombra durante la entrevista) y «Formulario del ego».
+
+## Crear un formulario {#constructing-a-form}
+
+Los formularios constan de uno o varios campos, que se pueden reordenar para que aparezcan en cualquier orden. El orden en el que aparecen en Architect es el mismo en el que se mostrarán en Interviewer. Para empezar a crear un formulario, busca la sección del formulario en la interfaz que estás configurando.
+
+![](/assets/img/key-concepts/forms/form.png)
+
+<AppOnly app="current">
+
+Escribe el **Título del formulario** y, después, crea un campo para cada uno de los atributos que quieras recoger en este formulario haciendo clic en **Crear nuevo campo de formulario**.
+
+El cuadro de diálogo del campo se divide en dos partes. A la izquierda están los ajustes del campo. A la derecha hay una **Vista previa interactiva** que muestra la pregunta tal como la verá la persona participante, con el aspecto visual propio de la entrevista. La vista previa refleja lo que escribes y eliges, y puedes responderla: **Comprobar respuesta** aplica a tu respuesta las reglas de validación del atributo, para que veas qué mensaje recibiría una persona participante. Son las reglas que el atributo ya tiene en el libro de códigos. Si el campo crea un atributo nuevo, las reglas que establezcas junto a él solo empiezan a aplicarse cuando guardas el campo, así que hasta entonces **Comprobar respuesta** acepta cualquier respuesta. Responder en la vista previa no cambia nada de tu protocolo. En una pantalla estrecha, las dos partes se apilan en una sola columna.
+
+Los ajustes aparecen en este orden:
+
+1. **Selección de atributo**: elige un atributo existente, o crea uno nuevo, en la ventana de atributos.
+2. **Configuración del campo**: el **Texto de la pregunta** (la [pregunta](/es/design-protocols/key-concepts/prompts) que se muestra a la persona participante, que admite formato markdown), un **Texto de ayuda** opcional, el interruptor **Mostrar indicaciones de validación** y, por último, el **Control de entrada**. En un atributo nuevo, el control de entrada que elijas determina el tipo del atributo.
+3. Debajo aparecen las opciones de respuesta del propio atributo, en los tipos de atributo que las tienen, y su sección **Validación**. Si estás creando el atributo en este campo, puedes establecer aquí sus reglas de validación antes de guardar el campo, y se crean junto con él.
+
+El texto de ayuda es una orientación con formato markdown que se muestra debajo de la pregunta para ayudar a quienes participan a entender cómo responder (por ejemplo, «Selecciona todas las opciones que correspondan…»). Déjalo en blanco si no hace falta ninguna orientación adicional.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Escribe el encabezado del formulario y, después, crea un campo para cada una de las variables que quieras recoger en este formulario haciendo clic en el botón **create new** (crear nuevo).
+
+Al crear un campo nuevo, primero creas una variable nueva o seleccionas una existente en el selector de variables. A continuación, escribes la [pregunta](/es/design-protocols/key-concepts/prompts) que se mostrará junto al control de entrada. La pregunta admite formato markdown.
+
+También puedes añadir al campo una indicación (**hint**) opcional. La indicación es una orientación con formato markdown que se muestra debajo de la pregunta para ayudar a quienes participan a entender cómo responder (por ejemplo, «Selecciona todas las opciones que correspondan…»). Déjala en blanco si no hace falta ninguna orientación adicional.
+
+Después, debes decidir qué [control de entrada](/es/design-protocols/key-concepts/input-controls) usar. En las variables nuevas, esto determina el tipo de variable.
+
+</AppOnly>
+
+<TipBox danger>
+
+Una vez establecido el tipo de una variable (al elegir su tipo de entrada la primera vez que se usa), ya no se puede cambiar. Sí puedes ajustar más adelante el control de entrada concreto de tu formulario, siempre que ese control de entrada sea compatible con el tipo de variable.
+
+</TipBox>
+
+Después de establecer el control de entrada, configura las opciones propias de la variable y las [opciones de validación](/es/design-protocols/key-concepts/field-validation) que necesites. La validación ayuda a garantizar la calidad de los datos, ya que aplica reglas como campos obligatorios, restricciones de formato y rangos de valores. También puedes activar **Mostrar indicaciones de validación** en el campo, que muestra automáticamente indicaciones derivadas de sus reglas de validación y ayuda a quienes participan a entender qué se les pide sin que tengas que escribirlo a mano.
+
+![](/assets/img/key-concepts/forms/field.png)
+
+## Consideraciones {#considerations}
+
+Al diseñar formularios, ten en cuenta lo siguiente:
+
+- Aunque puede resultar tentador crear formularios largos y elaborados, como es habitual en otros programas de encuestas más tradicionales, ten en cuenta el esfuerzo que exigen los formularios demasiado extensos a quienes participan y cómo afectan a la calidad de los datos. Por ejemplo, aunque puedes recoger datos categóricos en un formulario, quizá prefieras usar la interfaz «Clasificación por categorías». Network Canvas Interviewer no pretende sustituir los métodos de encuesta existentes.
+- Usar los formularios de forma estratégica te permite recoger datos de atributos de manera sistemática. Sin embargo, pierdes las cualidades interactivas (por ejemplo, arrastrar y soltar) de otras interfaces, que pueden mejorar la experiencia de la entrevista para quienes participan y, potencialmente, dar lugar a datos de mayor calidad.
+- Si usas la misma variable en varios lugares de tu entrevista (por ejemplo, en formularios diferentes), cualquier cambio que hagas en el control de entrada o en las opciones de validación se aplicará a _todos_ los usos de la variable.
+
+## Conceptos relacionados {#related-concepts}
+
+- [Controles de entrada](/es/design-protocols/key-concepts/input-controls): elige los controles de entrada adecuados para tus variables
+- [Validación de campos](/es/design-protocols/key-concepts/field-validation): garantiza la calidad de los datos con reglas de validación
+- [Variables](/es/design-protocols/key-concepts/variables): conoce los tipos de variable y su configuración
+- [Interfaces](/es/design-protocols/key-concepts/interfaces): conoce todas las interfaces disponibles, incluidas las basadas en formularios
+- [Preguntas](/es/design-protocols/key-concepts/prompts): configura las preguntas dirigidas a quienes participan

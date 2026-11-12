@@ -24,6 +24,8 @@ import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessib
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
@@ -31,6 +33,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { ProtocolBuilderRpcs } from '@codaco/protocol-builder-core/contract';
 import StageNameField from '@codaco/protocol-builder/fields/StageNameField';
+import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import { useStageName } from '@codaco/protocol-builder/naming/useStageName';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type {
@@ -140,17 +143,31 @@ type EditorTarget =
   | { status: 'noDraft' }
   | { status: 'found'; address: DraftAddress };
 
+/** Every code the protocol schema's validator can put on an issue. */
+type SchemaIssueCode = NonNullable<
+  Awaited<ReturnType<typeof CurrentProtocolSchema.safeParseAsync>>['error']
+>['issues'][number]['code'];
+
+/** One thing wrong with the draft, as the Validation card needs to say it. */
+type DraftValidationIssue =
+  | Readonly<{
+      kind: 'schema';
+      path: readonly (string | number)[];
+      /** The validator's code, kept a plain string: the copy below is read by it. */
+      code: string;
+      /** The validator's own words, shown only where they were written for a researcher. */
+      message: string;
+      /** The draft holds nothing at this path, so the fault is that it is missing. */
+      absent: boolean;
+    }>
+  /** The sections could not be put together into one document to check. */
+  | Readonly<{ kind: 'unassembled'; path: readonly [] }>;
+
 type DraftValidation =
   | Readonly<{ status: 'pending'; issues: readonly [] }>
   | Readonly<{ status: 'unreadable'; issues: readonly [] }>
   | Readonly<{ status: 'valid'; issues: readonly [] }>
-  | Readonly<{
-      status: 'invalid';
-      issues: readonly Readonly<{
-        path: readonly (string | number)[];
-        message: string;
-      }>[];
-    }>;
+  | Readonly<{ status: 'invalid'; issues: readonly DraftValidationIssue[] }>;
 
 const messages = defineMessages({
   openingEditor: {
@@ -335,7 +352,7 @@ const messages = defineMessages({
     id: 'studio.editor.unknownScreenType',
     defaultMessage: 'Unknown screen',
     description:
-      'Supporting line of an outline entry whose screen carries no recognisable type.',
+      'Supporting line of an outline entry whose screen carries no type, or one this version of Studio does not recognise.',
   },
   screenMoved: {
     id: 'studio.editor.screenMoved',
@@ -398,6 +415,78 @@ const messages = defineMessages({
     defaultMessage: 'The protocol document could not be assembled.',
     description:
       'Validation problem shown when the draft could not be turned into a protocol document to check.',
+  },
+  problemMissing: {
+    id: 'studio.editor.problemMissing',
+    defaultMessage: 'Something required is missing.',
+    description:
+      'Validation problem: the protocol needs a value that is not there. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidType: {
+    id: 'studio.editor.problemInvalidType',
+    defaultMessage: 'A value is the wrong kind.',
+    description:
+      'Validation problem: a value is of the wrong kind, for example text where a number belongs. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidValue: {
+    id: 'studio.editor.problemInvalidValue',
+    defaultMessage: 'A value is not one of the choices allowed here.',
+    description:
+      'Validation problem: a value is not one of a fixed set of choices. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidFormat: {
+    id: 'studio.editor.problemInvalidFormat',
+    defaultMessage: 'A value is not written the way it needs to be.',
+    description:
+      'Validation problem: text of the right kind in the wrong shape, such as a date, an identifier or a pattern. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidUnion: {
+    id: 'studio.editor.problemInvalidUnion',
+    defaultMessage: 'A value fits none of the forms allowed here.',
+    description:
+      'Validation problem: a value matches none of the several shapes allowed in that place. The screen or section it is in is named on the line below.',
+  },
+  problemTooBig: {
+    id: 'studio.editor.problemTooBig',
+    defaultMessage: 'A value is more than is allowed here.',
+    description:
+      'Validation problem: too many items, too much text, or a number above the limit. The screen or section it is in is named on the line below.',
+  },
+  problemTooSmall: {
+    id: 'studio.editor.problemTooSmall',
+    defaultMessage: 'A value is less than is needed here.',
+    description:
+      'Validation problem: too few items, too little text, or a number below the limit. The screen or section it is in is named on the line below.',
+  },
+  problemNotMultipleOf: {
+    id: 'studio.editor.problemNotMultipleOf',
+    defaultMessage: 'A number is not one of the steps allowed here.',
+    description:
+      'Validation problem: a number has to be a multiple of some step and is not. The screen or section it is in is named on the line below.',
+  },
+  problemUnrecognizedKeys: {
+    id: 'studio.editor.problemUnrecognizedKeys',
+    defaultMessage: 'There are settings here that do not belong.',
+    description:
+      'Validation problem: the protocol holds settings that this place does not have, usually from an older or newer protocol. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidKey: {
+    id: 'studio.editor.problemInvalidKey',
+    defaultMessage: 'An entry here is named in a way that is not allowed.',
+    description:
+      'Validation problem: one entry of a keyed collection has a name that is refused. The screen or section it is in is named on the line below.',
+  },
+  problemInvalidElement: {
+    id: 'studio.editor.problemInvalidElement',
+    defaultMessage: 'An entry here is not allowed.',
+    description:
+      'Validation problem: one entry of a collection is not something allowed there. The screen or section it is in is named on the line below.',
+  },
+  problemUnrecognised: {
+    id: 'studio.editor.problemUnrecognised',
+    defaultMessage: 'Something here is not valid.',
+    description:
+      'Validation problem of a kind this version of Studio has no words for. The screen or section it is in is named on the line below.',
   },
   saveScreen: {
     id: 'studio.editor.saveScreen',
@@ -1000,7 +1089,10 @@ function EditorWorkspace({
           */}
         <div className="min-w-0">
           <Heading
-            className="truncate"
+            // The protocol name the researcher typed takes its own direction,
+            // on the interface side, and is cut at its end.
+            dir="auto"
+            className="text-match-parent truncate"
             level="h1"
             margin="none"
             {...routeFocusTargetProps}
@@ -1150,9 +1242,8 @@ function EditorWorkspace({
                           stageId={stage.id}
                           name={stageLabel(intl, stage, index)}
                           typeLabel={
-                            stage.type === ''
-                              ? intl.formatMessage(messages.unknownScreenType)
-                              : stage.type
+                            interfaceDisplayName(stage.type, intl) ??
+                            intl.formatMessage(messages.unknownScreenType)
                           }
                           index={index}
                           stageCount={stages.length}
@@ -1372,7 +1463,6 @@ const UNREADABLE_VALIDATION: DraftValidation = {
 };
 
 function useDraftValidation(reading: ProtocolReading): DraftValidation {
-  const intl = useAppIntl();
   // The outcome of checking one reading, kept with the reading it is for. A
   // reading that has changed since has no outcome yet, so what is shown is
   // derived from the pair rather than reset by the effect that checks.
@@ -1389,36 +1479,32 @@ function useDraftValidation(reading: ProtocolReading): DraftValidation {
     };
     void (async () => {
       try {
-        const result = await CurrentProtocolSchema.safeParseAsync(
-          assembleProtocolSections(sections),
-        );
+        const protocol = assembleProtocolSections(sections);
+        const result = await CurrentProtocolSchema.safeParseAsync(protocol);
         settle(
           result.success
             ? { status: 'valid', issues: [] }
             : {
                 status: 'invalid',
-                issues: result.error.issues.map(toDraftValidationIssue),
+                issues: result.error.issues.map((issue) =>
+                  toDraftValidationIssue(issue, protocol),
+                ),
               },
         );
-      } catch (error) {
+      } catch {
+        // Why the sections do not fit together is about the document's
+        // structure, which nothing in the editor lets a researcher change; the
+        // card says that it happened, in their language.
         settle({
           status: 'invalid',
-          issues: [
-            {
-              path: [],
-              message:
-                error instanceof Error
-                  ? error.message
-                  : intl.formatMessage(messages.assemblyFailed),
-            },
-          ],
+          issues: [{ kind: 'unassembled', path: [] }],
         });
       }
     })();
     return () => {
       active = false;
     };
-  }, [intl, reading]);
+  }, [reading]);
 
   // "Could not be read" and "not yet" are different things to leave on
   // screen: the first is an answer, and reporting it as the second is a
@@ -1431,14 +1517,72 @@ function useDraftValidation(reading: ProtocolReading): DraftValidation {
 }
 
 function toDraftValidationIssue(
-  issue: Readonly<{ path: readonly PropertyKey[]; message: string }>,
-): Readonly<{ path: readonly (string | number)[]; message: string }> {
+  issue: Readonly<{
+    path: readonly PropertyKey[];
+    code: string;
+    message: string;
+  }>,
+  protocol: Record<string, unknown>,
+): DraftValidationIssue {
+  const path = issue.path.map((segment) =>
+    typeof segment === 'symbol' ? String(segment) : segment,
+  );
   return {
-    path: issue.path.map((segment) =>
-      typeof segment === 'symbol' ? String(segment) : segment,
-    ),
+    kind: 'schema',
+    path,
+    code: issue.code,
     message: issue.message,
+    absent: path.length > 0 && isUnanswered(getValue(protocol, path)),
   };
+}
+
+/**
+ * What the Validation card says about each kind of refusal, one entry per
+ * code. The validator's own words describe a shape — "expected string,
+ * received undefined" — and are in English whatever the reader's language;
+ * none of that is a sentence a researcher can act on. Where the problem is
+ * goes on the line below, and choosing it opens that place.
+ *
+ * `custom` is the code every cross-reference rule in the protocol schema
+ * raises, and those messages are already written about this protocol, naming
+ * the thing that is wrong, so they are kept whole.
+ */
+const PROBLEM_SENTENCES: Readonly<
+  Record<SchemaIssueCode, MessageDescriptor | 'theValidatorsOwn'>
+> = {
+  invalid_type: messages.problemInvalidType,
+  invalid_value: messages.problemInvalidValue,
+  invalid_format: messages.problemInvalidFormat,
+  invalid_union: messages.problemInvalidUnion,
+  too_big: messages.problemTooBig,
+  too_small: messages.problemTooSmall,
+  not_multiple_of: messages.problemNotMultipleOf,
+  unrecognized_keys: messages.problemUnrecognizedKeys,
+  invalid_key: messages.problemInvalidKey,
+  invalid_element: messages.problemInvalidElement,
+  custom: 'theValidatorsOwn',
+};
+
+// Read by a code the type system cannot vouch for, so an unknown one finds
+// nothing rather than reading an entry that is not there.
+const SENTENCE_BY_CODE: ReadonlyMap<
+  string,
+  MessageDescriptor | 'theValidatorsOwn'
+> = new Map(Object.entries(PROBLEM_SENTENCES));
+
+/**
+ * The sentence for one problem. A message written about this protocol
+ * outranks the fact that its value is missing: the cross-reference rules that
+ * report at an absent key do so by construction, and that is what they explain.
+ */
+function problemSentence(intl: IntlShape, issue: DraftValidationIssue): string {
+  if (issue.kind === 'unassembled') {
+    return intl.formatMessage(messages.assemblyFailed);
+  }
+  const sentence = SENTENCE_BY_CODE.get(issue.code);
+  if (sentence === 'theValidatorsOwn') return issue.message;
+  if (issue.absent) return intl.formatMessage(messages.problemMissing);
+  return intl.formatMessage(sentence ?? messages.problemUnrecognised);
 }
 
 /**
@@ -1497,7 +1641,7 @@ function ProtocolProblems(props: {
                   className="focusable w-full rounded px-2 py-1 text-start"
                   onClick={() => props.onSelectProblem(target)}
                 >
-                  <span className="block">{issue.message}</span>
+                  <span className="block">{problemSentence(intl, issue)}</span>
                   {location !== undefined && (
                     <span className="block text-xs opacity-70">{location}</span>
                   )}

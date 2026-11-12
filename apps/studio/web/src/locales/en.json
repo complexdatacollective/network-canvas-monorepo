@@ -171,6 +171,54 @@
     "defaultMessage": "The outline could not be refreshed. Reload this editor before moving another screen.",
     "description": "Shown when re-reading the protocol after an unconfirmed screen reorder also failed."
   },
+  "studio.editor.problemInvalidElement": {
+    "defaultMessage": "An entry here is not allowed.",
+    "description": "Validation problem: one entry of a collection is not something allowed there. The screen or section it is in is named on the line below."
+  },
+  "studio.editor.problemInvalidFormat": {
+    "defaultMessage": "A value is not written the way it needs to be.",
+    "description": "Validation problem: text of the right kind in the wrong shape, such as a date, an identifier or a pattern. The screen or section it is in is named on the line below."
+  },
+  "studio.editor.problemInvalidKey": {
+    "defaultMessage": "An entry here is named in a way that is not allowed.",
+    "description": "Validation problem: one entry of a keyed collection has a name that is refused. The screen or section it is in is named on the line below."
+  },
+  "studio.editor.problemInvalidType": {
+    "defaultMessage": "A value is the wrong kind.",
+    "description": "Validation problem: a value is of the wrong kind, for example text where a number belongs. The screen or section it is in is named on the line below."
+  },
+  "studio.editor.problemInvalidUnion": {
+    "defaultMessage": "A value fits none of the forms allowed here.",
+    "description": "Validation problem: a value matches none of the several shapes allowed in that place. The screen or section it is in is named on the line below."
+  },
+  "studio.editor.problemInvalidValue": {
+    "defaultMessage": "A value is not one of the choices allowed here.",
+    "description": "Validation problem: a value is not one of a fixed set of choices. The screen or section it is in is named on the line below."
+  },
+  "studio.editor.problemMissing": {
+    "defaultMessage": "Something required is missing.",
+    "description": "Validation problem: the protocol needs a value that is not there. The screen or section it is in is named on the line below."
+  },
+  "studio.editor.problemNotMultipleOf": {
+    "defaultMessage": "A number is not one of the steps allowed here.",
+    "description": "Validation problem: a number has to be a multiple of some step and is not. The screen or section it is in is named on the line below."
+  },
+  "studio.editor.problemTooBig": {
+    "defaultMessage": "A value is more than is allowed here.",
+    "description": "Validation problem: too many items, too much text, or a number above the limit. The screen or section it is in is named on the line below."
+  },
+  "studio.editor.problemTooSmall": {
+    "defaultMessage": "A value is less than is needed here.",
+    "description": "Validation problem: too few items, too little text, or a number below the limit. The screen or section it is in is named on the line below."
+  },
+  "studio.editor.problemUnrecognised": {
+    "defaultMessage": "Something here is not valid.",
+    "description": "Validation problem of a kind this version of Studio has no words for. The screen or section it is in is named on the line below."
+  },
+  "studio.editor.problemUnrecognizedKeys": {
+    "defaultMessage": "There are settings here that do not belong.",
+    "description": "Validation problem: the protocol holds settings that this place does not have, usually from an older or newer protocol. The screen or section it is in is named on the line below."
+  },
   "studio.editor.protocolNotChecked": {
     "defaultMessage": "Protocol not checked",
     "description": "Button reporting that the protocol could not be checked, because part of it could not be read."
@@ -253,7 +301,7 @@
   },
   "studio.editor.unknownScreenType": {
     "defaultMessage": "Unknown screen",
-    "description": "Supporting line of an outline entry whose screen carries no recognisable type."
+    "description": "Supporting line of an outline entry whose screen carries no type, or one this version of Studio does not recognise."
   },
   "studio.editor.validationCountAnnouncement": {
     "defaultMessage": "{count, plural, =0 {No validation problems.} one {# validation problem.} other {# validation problems.}}",
@@ -818,6 +866,38 @@
   "studio.placeholder.unbuilt": {
     "defaultMessage": "This screen has not been built yet. It is specified in {issue}.",
     "description": "Shown on every not-yet-built screen; {issue} is a GitHub issue reference like #1253."
+  },
+  "studio.resourceFailure.emptyFile": {
+    "defaultMessage": "That file is empty. Choose a file with something in it.",
+    "description": "Shown in the protocol editor when a researcher imports a file with nothing in it."
+  },
+  "studio.resourceFailure.importEmpty": {
+    "defaultMessage": "That import holds no file. Import the file again.",
+    "description": "Shown in the protocol editor when a file a researcher imported has nothing stored for it, so it cannot be added to the protocol."
+  },
+  "studio.resourceFailure.importGone": {
+    "defaultMessage": "That import is no longer waiting to be added. Import the file again.",
+    "description": "Shown in the protocol editor when a researcher uses a file they imported earlier that has since been discarded, before it was added to the protocol."
+  },
+  "studio.resourceFailure.noCopy": {
+    "defaultMessage": "Studio has no copy of this file. Import it again to use it here.",
+    "description": "Shown in the protocol editor in place of a file (an image, audio, video or roster) the protocol names but whose contents Studio does not have."
+  },
+  "studio.resourceFailure.noStorage": {
+    "defaultMessage": "This Studio has no file storage set up, so files cannot be added or opened. Ask whoever runs it to set up storage.",
+    "description": "Shown in the protocol editor when the Studio installation has no storage configured for protocol files (images, audio, video, rosters). \"Whoever runs it\" is the person or team that installed this Studio."
+  },
+  "studio.resourceFailure.notInProtocol": {
+    "defaultMessage": "That file is not part of this protocol.",
+    "description": "Shown in the protocol editor when it asks for a file (an image, audio, video or roster) the protocol does not hold."
+  },
+  "studio.resourceFailure.notSaved": {
+    "defaultMessage": "The file could not be saved. Try again in a moment.",
+    "description": "Shown in the protocol editor when a file a researcher added could not be kept, for a reason that may pass."
+  },
+  "studio.resourceFailure.rosterCharacter": {
+    "defaultMessage": "The roster holds a character that an export cannot carry.",
+    "description": "Shown in the protocol editor when an imported roster (a file listing people for an interview) contains a character that exported data cannot represent. The editor usually names the character and where it is instead; this is what it says when it cannot."
   },
   "studio.screens.accountIndexDescription": {
     "defaultMessage": "The researcher's own name, email address and everything else Studio holds about them as a person rather than as a member of a team.",
@@ -1594,6 +1674,86 @@
   "studio.teamActivity.entityWithType": {
     "defaultMessage": "{name} ({type})",
     "description": "A subject or resource with its wire-level type; {name} is its label and {type} the type's machine name."
+  },
+  "studio.teamActivity.event.auditReadDenied": {
+    "defaultMessage": "Activity log access denied",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused access to the team activity log."
+  },
+  "studio.teamActivity.event.deniedAttemptsRateLimited": {
+    "defaultMessage": "Denied attempts rate limited",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: one person was refused the same action so many times that Studio stopped recording each attempt and recorded how many there were instead."
+  },
+  "studio.teamActivity.event.interviewCompleted": {
+    "defaultMessage": "Interview completed",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a participant finished an interview."
+  },
+  "studio.teamActivity.event.interviewStarted": {
+    "defaultMessage": "Interview started",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a participant started an interview."
+  },
+  "studio.teamActivity.event.invitationAcceptanceDenied": {
+    "defaultMessage": "Invitation acceptance denied",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused when trying to accept an invitation."
+  },
+  "studio.teamActivity.event.invitationAcceptanceFailed": {
+    "defaultMessage": "Invitation acceptance failed",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: accepting an invitation was attempted and did not complete."
+  },
+  "studio.teamActivity.event.invitationAccepted": {
+    "defaultMessage": "Invitation accepted",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: an invited person accepted and joined the team."
+  },
+  "studio.teamActivity.event.invitationCancellationDenied": {
+    "defaultMessage": "Invitation cancellation denied",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused permission to cancel an invitation."
+  },
+  "studio.teamActivity.event.invitationCancellationFailed": {
+    "defaultMessage": "Invitation cancellation failed",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: cancelling an invitation was attempted and did not complete."
+  },
+  "studio.teamActivity.event.invitationCancelled": {
+    "defaultMessage": "Invitation cancelled",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: an invitation to join the team was cancelled."
+  },
+  "studio.teamActivity.event.invitationCreated": {
+    "defaultMessage": "Invitation created",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was invited to join the team."
+  },
+  "studio.teamActivity.event.invitationCreationDenied": {
+    "defaultMessage": "Invitation creation denied",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused permission to invite a person to the team."
+  },
+  "studio.teamActivity.event.memberRoleChangeDenied": {
+    "defaultMessage": "Member role change denied",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused permission to change a team member’s role."
+  },
+  "studio.teamActivity.event.memberRoleChangeFailed": {
+    "defaultMessage": "Member role change failed",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a change to a team member’s role was attempted and did not complete."
+  },
+  "studio.teamActivity.event.memberRoleChanged": {
+    "defaultMessage": "Member role changed",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a team member’s role was changed."
+  },
+  "studio.teamActivity.event.protocolCreated": {
+    "defaultMessage": "Protocol created",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a protocol (an interview design) was created."
+  },
+  "studio.teamActivity.event.protocolDraftCommitted": {
+    "defaultMessage": "Protocol draft committed",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a change to the draft of a protocol (an interview design) was saved."
+  },
+  "studio.teamActivity.event.studyCreated": {
+    "defaultMessage": "Study created",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a study was created."
+  },
+  "studio.teamActivity.event.studyCreationDenied": {
+    "defaultMessage": "Study creation denied",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: someone was refused permission to create a study."
+  },
+  "studio.teamActivity.event.teamCreated": {
+    "defaultMessage": "Team created",
+    "description": "Name of one kind of action in the team activity log, shown as the link text of its row, the title of its detail dialog and an option of the action filter: a team was created."
   },
   "studio.teamActivity.eventLoadFailed": {
     "defaultMessage": "The event could not be loaded.",

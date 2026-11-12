@@ -37,49 +37,57 @@ const messages = defineMessages({
   biometricAuthenticationIsAlreadyInProgress: {
     id: 'interviewer.authenticationDialog.biometricAuthenticationIsAlreadyInProgress',
     defaultMessage: 'Biometric authentication is already in progress.',
-    description: 'User-facing message in Interviewer Authentication Dialog.',
+    description:
+      'Error shown in the unlock dialog when the researcher starts biometric authentication while a previous attempt is still waiting for the device prompt.',
   },
   recoverWithPassphrase: {
     id: 'interviewer.authenticationDialog.recoverWithPassphrase',
     defaultMessage: 'Recover with passphrase',
-    description: 'Visible copy in Interviewer Authentication Dialog.',
+    description:
+      'Button, and title of the dialog it opens, offered when biometric unlock is used. It lets the researcher unlock with the recovery passphrase instead of biometrics.',
   },
   recoverByResetting: {
     id: 'interviewer.authenticationDialog.recoverByResetting',
     defaultMessage: 'Recover by resetting',
-    description: 'Visible copy in Interviewer Authentication Dialog.',
+    description:
+      'Destructive button in the unlock dialog that opens a confirmation to delete all app data. Offered when the PIN or passphrase cannot be used. "Resetting" is the action.',
   },
   unlock: {
     id: 'interviewer.authenticationDialog.unlock',
     defaultMessage: 'Unlock',
-    description: 'Visible copy in Interviewer Authentication Dialog.',
+    description:
+      'Submit button in the unlock dialog. "Unlock" is an action that opens the locked app after the PIN or passphrase has been entered.',
   },
   unlockWithBiometrics: {
     id: 'interviewer.authenticationDialog.unlockWithBiometrics',
     defaultMessage: 'Unlock with biometrics',
-    description: 'The submitLabel label in Interviewer Authentication Dialog.',
+    description:
+      'Button in the unlock dialog that starts biometric authentication (fingerprint, face or device screen lock) to open the locked app.',
   },
   unlocking: {
     id: 'interviewer.authenticationDialog.unlocking',
     defaultMessage: 'Unlocking…',
     description:
-      'The submittingText label in Interviewer Authentication Dialog.',
+      'Label of the unlock button while the entered PIN or passphrase is being checked.',
   },
   incorrectPassphrase: {
     id: 'interviewer.authenticationDialog.incorrectPassphrase',
     defaultMessage: 'Incorrect passphrase.',
-    description: 'User-facing message in Interviewer Authentication Dialog.',
+    description:
+      'Error shown in the unlock dialog when the passphrase entered does not match and no more specific reason is available.',
   },
   recovery: {
     id: 'interviewer.authenticationDialog.recovery',
     defaultMessage: 'Enter your recovery passphrase.',
-    description: 'Administration text in Interviewer AuthenticationDialog.',
+    description:
+      'Instruction shown in the recovery dialog, asking the researcher to enter the recovery passphrase set when biometric unlock was enabled.',
   },
   limitedRecovery: {
     id: 'interviewer.authenticationDialog.limitedRecovery',
     defaultMessage:
       "Biometric authentication isn't available in this installed app. Enter your recovery passphrase instead.",
-    description: 'Administration text in Interviewer AuthenticationDialog.',
+    description:
+      'Instruction shown in the recovery dialog when biometric unlock cannot work in this installed app window; it asks for the recovery passphrase instead.',
   },
 });
 

@@ -23,6 +23,7 @@
     "./protocol-schema-version": "./src/protocolSchemaVersion.ts",
     "./protocol-payload": "./src/contract/protocolPayload.ts",
     "./analytics-events": "./src/analytics/events.ts",
+    "./supplied-wording": "./src/wording/suppliedWording.ts",
     "./styles.css": "./src/styles.css"
   },
   "publishConfig": {
@@ -47,12 +48,17 @@
         "types": "./dist/analytics-events.d.ts",
         "default": "./dist/analytics-events.js"
       },
+      "./supplied-wording": {
+        "types": "./dist/supplied-wording.d.ts",
+        "default": "./dist/supplied-wording.js"
+      },
       "./styles.css": "./dist/styles.css"
     },
     "access": "public"
   },
   "scripts": {
     "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs",
     "build": "vite build",
     "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p e2e/tsconfig.json --noEmit",
     "test": "vitest run --project=units",
@@ -99,6 +105,7 @@
     "@codaco/interface-images": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocols": "workspace:^",
+    "@codaco/storybook-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
     "@microsoft/api-extractor": "catalog:",
@@ -126,6 +133,7 @@
     "chromatic": "catalog:",
     "effect": "catalog:",
     "jsdom": "catalog:",
+    "oxc-transform-react": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",
     "superjson": "^2.2.6",

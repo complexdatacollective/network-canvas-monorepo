@@ -1,19 +1,25 @@
-import { Database, Globe, KeyRound } from 'lucide-react';
+import { Check, Database, Globe, KeyRound, Minus } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
-import { Badge } from '@codaco/fresco-ui/Badge';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
 import manifest, {
   type InterfaceType,
 } from '@codaco/interface-images/manifest';
-import type { InterfaceCompatibility } from '~/lib/interfaceCompatibility';
+import Link from '~/components/Link';
+import type {
+  AppCompatibility,
+  AppRole,
+  InterfaceCompatibility,
+} from '~/lib/interfaceCompatibility';
 
 const isInterfaceType = (type: string): type is InterfaceType =>
   Object.hasOwn(manifest, type);
 
-// "NameGeneratorRoster" -> "Name Generator Roster" for alt text.
-const humanizeType = (type: string) => type.replace(/([a-z])([A-Z])/g, '$1 $2');
-
+// InterfaceMeta renders its facts and its availability as two grid items, so
+// on a wide container the facts sit beside the screenshot and the
+// availability spans the full width beneath both.
 export const InterfaceSummary = ({
   type,
   children,
@@ -23,70 +29,133 @@ export const InterfaceSummary = ({
   type: string;
   children: ReactNode;
 }) => {
+  const t = useTranslations('InterfaceSummary');
+  const tName = useTranslations('InterfaceNames');
   if (!isInterfaceType(type)) {
     throw new Error(
       `<InterfaceSummary> received unknown interface type "${type}"`,
     );
   }
+  const name = tName.has(type) ? tName(type) : type;
   return (
-    <div className="phone-landscape:flex-row phone-landscape:items-center mb-4 flex flex-col gap-6">
-      <div className="my-6 min-w-0 flex-1">
+    <div className="@container my-8">
+      <div className="grid gap-6 @2xl:grid-cols-[minmax(0,3fr)_minmax(12rem,2fr)] @2xl:gap-x-8">
         <InterfacePicture
           type={type}
           ratio="16:9"
           artDirection={[{ media: '(max-width: 40rem)', ratio: '1:1' }]}
-          sizes="(min-width: 40rem) 32rem, 100vw"
-          alt={`${humanizeType(type)} interface`}
+          sizes="(min-width: 40rem) 40rem, 100vw"
+          alt={t('screenshotAlt', { name })}
           className="w-full rounded"
         />
+        {children}
       </div>
-      {children}
     </div>
   );
 };
 
-const SpecField = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) => (
+const Fact = ({ label, children }: { label: string; children: ReactNode }) => (
   <div>
-    <dt className="text-xs font-semibold tracking-wide text-current/70 uppercase">
-      {label}
-    </dt>
-    <dd className="mt-1 text-base">{children}</dd>
+    <dt className="text-sm font-semibold text-current/65">{label}</dt>
+    <dd className="mt-0.5">{children}</dd>
   </div>
 );
 
+// Requirements are written in the page's own language, so each kind lists its
+// keywords in every documentation language.
+const REQUIREMENT_KEYWORDS = [
+  { icon: Globe, keywords: ['internet', 'connection', 'conexión'] },
+  {
+    icon: KeyRound,
+    keywords: ['account', 'api key', 'token', 'cuenta', 'clave de api'],
+  },
+  { icon: Database, keywords: ['roster', 'data', 'lista', 'datos'] },
+] as const;
+
 const iconForRequirement = (requirement: string) => {
   const normalized = requirement.toLowerCase();
-  if (normalized.includes('internet') || normalized.includes('connection')) {
-    return <Globe className="h-4 w-4" />;
-  }
-  if (
-    normalized.includes('account') ||
-    normalized.includes('api key') ||
-    normalized.includes('token')
-  ) {
-    return <KeyRound className="h-4 w-4" />;
-  }
-  if (normalized.includes('roster') || normalized.includes('data')) {
-    return <Database className="h-4 w-4" />;
-  }
-  return null;
+  const match = REQUIREMENT_KEYWORDS.find(({ keywords }) =>
+    keywords.some((keyword) => normalized.includes(keyword)),
+  );
+  return match ? (
+    <match.icon className="size-4 shrink-0 text-current/65" aria-hidden />
+  ) : null;
 };
 
-const RequiresPill = ({ requirement }: { requirement: string }) => (
-  <Badge
-    size="lg"
-    icon={iconForRequirement(requirement)}
-    className="gap-1.5 rounded-lg py-1"
-  >
-    {requirement}
-  </Badge>
+// The success hue darkened toward `--text` so it meets contrast as an icon in
+// both themes (matches the compatibility table).
+const AVAILABLE_INK =
+  'text-[color-mix(in_oklab,var(--success)_60%,var(--text))]';
+
+const AppAvailability = ({ app }: { app: AppCompatibility }) => {
+  const t = useTranslations('InterfaceSummary');
+  if (app.supported) {
+    return (
+      <li className="inline-flex items-center gap-1.5 font-semibold">
+        <Check
+          className={cx(AVAILABLE_INK, 'size-4 shrink-0 stroke-3')}
+          aria-hidden
+        />
+        {app.label}
+      </li>
+    );
+  }
+  return (
+    <li className="inline-flex items-center gap-1.5 text-current/60">
+      <Minus className="size-4 shrink-0" aria-hidden />
+      <span aria-hidden>{app.label}</span>
+      <span className="sr-only">{t('notAvailable', { app: app.label })}</span>
+    </li>
+  );
+};
+
+const schemaInformationLink = (locale: string) => (children: ReactNode) => (
+  <Link href={`/${locale}/get-started/protocol-schema-information`}>
+    {children}
+  </Link>
 );
+
+const ROLES: { role: AppRole; label: 'configureIn' | 'runIn' }[] = [
+  { role: 'configure', label: 'configureIn' },
+  { role: 'run', label: 'runIn' },
+];
+
+const Availability = ({
+  compatibility,
+}: {
+  compatibility: InterfaceCompatibility;
+}) => {
+  const t = useTranslations('InterfaceSummary');
+  const locale = useLocale();
+  return (
+    <div className="border-outline bg-input rounded border px-5 py-4 @2xl:col-span-2">
+      <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-6 gap-y-3">
+        {ROLES.map(({ role, label }) => (
+          <div key={role} className="contents">
+            <dt className="text-sm font-semibold text-current/65">
+              {t(label)}
+            </dt>
+            <dd>
+              <ul className="flex flex-wrap gap-x-5 gap-y-1">
+                {compatibility.apps
+                  .filter((app) => app.role === role)
+                  .map((app) => (
+                    <AppAvailability key={app.id} app={app} />
+                  ))}
+              </ul>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="border-outline mt-4 border-t pt-3 text-sm text-current/75">
+        {t.rich('schemaRequirement', {
+          version: compatibility.introducedIn,
+          link: schemaInformationLink(locale),
+        })}
+      </p>
+    </div>
+  );
+};
 
 export const InterfaceMeta = ({
   type,
@@ -99,56 +168,42 @@ export const InterfaceMeta = ({
   creates: string;
   usesprompts: string;
   /** Comma-separated external prerequisites (e.g. "Internet, Mapbox account").
-   * Each entry renders as a pill with a matching icon. */
+   * Each entry is listed with a matching icon. */
   requires?: string;
   compatibility?: InterfaceCompatibility | null;
 }) => {
-  const usesPromptsLabel = usesprompts === 'true' ? 'Yes' : 'No';
-  const supportedApps = compatibility?.apps.filter((app) => app.supported);
+  const t = useTranslations('InterfaceSummary');
+  const usesPromptsLabel = usesprompts === 'true' ? t('yes') : t('no');
   const requirements = requires
     ?.split(',')
     .map((requirement) => requirement.trim())
     .filter(Boolean);
 
   return (
-    <dl className="phone-landscape:w-64 phone-landscape:pl-6 flex shrink-0 flex-col gap-5">
-      <SpecField label="Type">{type}</SpecField>
-      <SpecField label="Creates">{creates}</SpecField>
-      <div className="grid grid-cols-2 gap-5">
-        <SpecField label="Uses Prompts">{usesPromptsLabel}</SpecField>
-        {compatibility && (
-          <SpecField label="Schema">
-            <Badge size="lg" className="rounded-lg py-1">
-              v{compatibility.introducedIn}+
-            </Badge>
-          </SpecField>
+    <>
+      <dl className="grid content-start gap-x-8 gap-y-4 @md:grid-cols-2 @2xl:grid-cols-1">
+        <Fact label={t('type')}>
+          <span className="text-lg font-bold">{type}</span>
+        </Fact>
+        <Fact label={t('creates')}>{creates}</Fact>
+        <Fact label={t('usesPrompts')}>{usesPromptsLabel}</Fact>
+        {requirements && requirements.length > 0 && (
+          <Fact label={t('requires')}>
+            <ul className="flex flex-col gap-1">
+              {requirements.map((requirement) => (
+                <li
+                  key={requirement}
+                  className="inline-flex items-center gap-2"
+                >
+                  {iconForRequirement(requirement)}
+                  {requirement}
+                </li>
+              ))}
+            </ul>
+          </Fact>
         )}
-      </div>
-      {supportedApps && supportedApps.length > 0 && (
-        <SpecField label="Available In">
-          <span className="flex flex-wrap gap-1.5">
-            {supportedApps.map((app) => (
-              <Badge
-                key={app.id}
-                size="lg"
-                title={`${app.role === 'configure' ? 'Configure' : 'Run'} in ${app.label}`}
-                className="rounded-lg py-1"
-              >
-                {app.label}
-              </Badge>
-            ))}
-          </span>
-        </SpecField>
-      )}
-      {requirements && requirements.length > 0 && (
-        <SpecField label="Requires">
-          <span className="flex flex-wrap gap-1.5">
-            {requirements.map((requirement) => (
-              <RequiresPill key={requirement} requirement={requirement} />
-            ))}
-          </span>
-        </SpecField>
-      )}
-    </dl>
+      </dl>
+      {compatibility && <Availability compatibility={compatibility} />}
+    </>
   );
 };

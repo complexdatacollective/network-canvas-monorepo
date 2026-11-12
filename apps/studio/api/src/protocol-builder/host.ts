@@ -13,11 +13,13 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { Effect, Redacted } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import { interfaceTextWithUpdates } from '@codaco/interview/supplied-wording';
 import type {
   Presence,
   ResourceDescriptor,
   Revision,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import { type InterfaceTextUpdate } from '@codaco/protocol-validation';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { Forbidden } from '@codaco/studio-contract/schema/errors';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -154,7 +156,12 @@ export type SubmitOutcome =
   | { status: 'replayed'; receipt: WriteReceipt }
   | { status: 'notLockHolder'; holder?: Presence }
   | { status: 'blocked'; blocked: SectionHolder[] }
-  | { status: 'invalidShape'; issues: SectionIssue[] }
+  | {
+      status: 'invalidShape';
+      /** The section refused, when it is not the one submitted. */
+      sectionId?: ProtocolSectionId;
+      issues: SectionIssue[];
+    }
   | StagingGone;
 
 export type CreatableSectionKind =
@@ -197,6 +204,8 @@ export type WriteIntent = {
   assetEntries?: Readonly<Record<string, unknown>>;
   promoted?: ResourceDescriptor[];
   staged?: { editId: string; resourceIds: readonly string[] };
+  /** The shared words a stage brings in, written into the settings with it. */
+  interfaceText?: readonly InterfaceTextUpdate[];
 };
 
 /**
@@ -218,6 +227,35 @@ const consumePromotion = (
         },
         staged.resourceIds,
       );
+
+/**
+ * The settings at the draft head after `updates` to their shared words (see
+ * `interfaceTextWithUpdates`): what a stage's write carries as
+ * `interfaceText`. A draft always has its
+ * settings, so one with none is a broken draft rather than a refusal.
+ */
+const settingsWith = (
+  session: ProtocolBuilderSession,
+  updates: readonly InterfaceTextUpdate[],
+) =>
+  Effect.flatMap(headSection(session, SETTINGS), (settings) => {
+    if (settings === undefined) {
+      return Effect.die(
+        new Error(`draft ${session.draftId} has no settings section`),
+      );
+    }
+    const { interfaceText: held, ...document } = Redacted.value(
+      settings.document,
+    );
+    // Only the researcher's own wording is held, so settings left with none
+    // hold no interface text at all.
+    const interfaceText = interfaceTextWithUpdates(held, updates);
+    return Effect.succeed<SectionDoc>(
+      Object.keys(interfaceText).length === 0
+        ? document
+        : { ...document, interfaceText },
+    );
+  });
 
 export type RefactorOutcome =
   | {
@@ -261,6 +299,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 const ASSETS = makeSectionId({ kind: 'assets' });
+const SETTINGS = makeSectionId({ kind: 'settings' });
 const STAGE_ORDER = makeSectionId({ kind: 'stageOrder' });
 
 /**
@@ -991,6 +1030,34 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
           ...write.assetEntries,
         });
       }
+      if (write.interfaceText !== undefined) {
+        // Taken on the same terms as the manifest: an editor holding the
+        // settings would submit them whole next, without these words.
+        const blocked = yield* blockedBy(
+          session,
+          [SETTINGS],
+          new Set([sectionId]),
+        );
+        if (blocked.length > 0) {
+          return unchanged<Published<SubmitOutcome | undefined>>({
+            outcome: { status: 'blocked', blocked },
+            events: [],
+          });
+        }
+        const settings = yield* settingsWith(session, write.interfaceText);
+        const refused = shapeIssues(SETTINGS, settings);
+        if (refused.length > 0) {
+          return unchanged<Published<SubmitOutcome | undefined>>({
+            outcome: {
+              status: 'invalidShape',
+              sectionId: SETTINGS,
+              issues: refused,
+            },
+            events: [],
+          });
+        }
+        writes.set(SETTINGS, settings);
+      }
       const consumed = yield* consumePromotion(session, write.staged);
       if (consumed.status === 'gone') {
         return unchanged<Published<SubmitOutcome | undefined>>({
@@ -1097,6 +1164,7 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
       const touched = [
         ...(input.kind === 'stage' ? [STAGE_ORDER] : []),
         ...(input.assetEntries === undefined ? [] : [ASSETS]),
+        ...(input.interfaceText === undefined ? [] : [SETTINGS]),
       ];
       if (touched.length > 0) {
         const blocked = yield* blockedBy(
@@ -1168,6 +1236,21 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
           ...Redacted.value(assets.document),
           ...input.assetEntries,
         });
+      }
+      if (input.interfaceText !== undefined) {
+        const settings = yield* settingsWith(session, input.interfaceText);
+        const refused = shapeIssues(SETTINGS, settings);
+        if (refused.length > 0) {
+          return unchanged<Published<CreateOutcome>>({
+            outcome: {
+              status: 'invalidShape',
+              sectionId: SETTINGS,
+              issues: refused,
+            },
+            events: [],
+          });
+        }
+        writes.set(SETTINGS, settings);
       }
       const consumed = yield* consumePromotion(session, input.staged);
       if (consumed.status === 'gone') {

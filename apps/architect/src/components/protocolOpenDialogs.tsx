@@ -36,18 +36,21 @@ const additionalMessages = defineMessages({
   resourcesMissingTitle: {
     id: 'architect.additional.protocolOpenDialogs.resourcesMissingTitle',
     defaultMessage: 'Some resources are missing',
-    description: 'The title text in components / protocolOpenDialogs.',
+    description:
+      'Title of the warning dialog shown after a protocol opens but some of the resource files (images, video, audio, network data) it refers to were not included in the protocol file.',
   },
   resourcesMissingDescription: {
     id: 'architect.additional.protocolOpenDialogs.resourcesMissingDescription',
     defaultMessage:
       'This protocol refers to files that were not included in it: {assetList}. Everything else opened normally. Add the files again in Resources — until you do, the protocol cannot be downloaded.',
-    description: 'The description text in components / protocolOpenDialogs.',
+    description:
+      'Body of the warning dialog shown when a protocol opened without some resource files it refers to. assetList is the list of missing file names. Resources is the name of the page where files are added again; the protocol cannot be downloaded until they are.',
   },
   upgradeToContinue: {
     id: 'architect.additional.protocolOpenDialogs.upgradeToContinue',
     defaultMessage: 'Upgrade to continue',
-    description: 'The title text in components / protocolOpenDialogs.',
+    description:
+      'Title of the dialog shown when the researcher opens a protocol made for an older schema and the only option is to upgrade a copy of it to the current schema.',
   },
   olderSchemaKeepOrUpgrade: {
     id: 'architect.protocolOpenDialogs.olderSchemaKeepOrUpgrade',
@@ -73,7 +76,7 @@ const additionalMessages = defineMessages({
   upgradeMakesACopy: {
     id: 'architect.protocolOpenDialogs.upgradeMakesACopy',
     defaultMessage:
-      'Upgrading creates an upgraded copy of your protocol and opens it. Your original protocol will not be changed.',
+      'Upgrading creates a separate copy of your protocol and opens it. Your original protocol will not be changed.',
     description:
       'Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy at the current schema and opens it, and that the original protocol stays as it was.',
   },
@@ -99,59 +102,69 @@ const additionalMessages = defineMessages({
   protocolNotCompatibleWithCurrentVersion: {
     id: 'architect.additional.protocolOpenDialogs.protocolNotCompatibleWithCurrentVersion',
     defaultMessage: 'Protocol not compatible with current version',
-    description: 'The title text in components / protocolOpenDialogs.',
+    description:
+      'Title of the error dialog shown when the protocol being opened was made for a newer schema than this version of Architect supports.',
   },
   thisProtocolIsNotCompatibleWith: {
     id: 'architect.additional.protocolOpenDialogs.thisProtocolIsNotCompatibleWith',
     defaultMessage:
       'This protocol is not compatible with the current version of Architect.',
-    description: 'Visible text in components / protocolOpenDialogs.',
+    description:
+      'First paragraph of the error dialog shown when the protocol being opened needs a newer version of Architect than this one.',
   },
   inOrderToOpenItYou: {
     id: 'architect.additional.protocolOpenDialogs.inOrderToOpenItYou',
     defaultMessage:
       'In order to open it, you will need to install a version of Architect that supports schema version {value1}.',
-    description: 'Visible text in components / protocolOpenDialogs.',
+    description:
+      'Second paragraph of the error dialog for a protocol made for a newer schema. value1 is the schema version number of the protocol; it is the version of the protocol file format, not of the app.',
   },
   pleaseSeeOurDocumentationOnProtocol: {
     id: 'architect.additional.protocolOpenDialogs.pleaseSeeOurDocumentationOnProtocol',
     defaultMessage:
       'Please see our <ExternalLink> documentation on protocol schemas </ExternalLink> to locate an appropriate version, and for further information on this topic.',
-    description: 'Visible text in components / protocolOpenDialogs.',
+    description:
+      'Last paragraph of the error dialog for a protocol made for a newer schema. The <ExternalLink> tag wraps the words that link to the documentation on protocol schemas.',
   },
   oK: {
     id: 'architect.additional.protocolOpenDialogs.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / protocolOpenDialogs.',
+    description:
+      'Button that dismisses an error or warning dialog shown when opening a protocol.',
   },
   protocolValidationFailed: {
     id: 'architect.additional.protocolOpenDialogs.protocolValidationFailed',
     defaultMessage: 'Protocol Validation Failed',
-    description: 'The title text in components / protocolOpenDialogs.',
+    description:
+      'Title of the error dialog shown when a protocol file could not be opened because it failed validation against the protocol schema.',
   },
   theProtocolCouldNotBeOpened: {
     id: 'architect.additional.protocolOpenDialogs.theProtocolCouldNotBeOpened',
     defaultMessage:
       'The protocol could not be opened due to validation errors:',
-    description: 'Visible text in components / protocolOpenDialogs.',
+    description:
+      'Introductory sentence in the validation error dialog, shown above the technical details of the validation errors found in the protocol file.',
   },
   protocolValidationErrors: {
     id: 'architect.additional.protocolOpenDialogs.protocolValidationErrors',
     defaultMessage: 'Protocol validation errors',
-    description: 'The aria-label text in components / protocolOpenDialogs.',
+    description:
+      'Accessible name of the list of protocol validation errors; read only by screen readers.',
   },
   ifTheProblemPersistsReachOut: {
     id: 'architect.additional.protocolOpenDialogs.ifTheProblemPersistsReachOut',
     defaultMessage:
       'If the problem persists, reach out on our <ExternalLink> community website. </ExternalLink>',
-    description: 'Visible text in components / protocolOpenDialogs.',
+    description:
+      'Small print at the bottom of an error dialog shown when opening a protocol fails. The <ExternalLink> tag wraps the words that link to the Network Canvas community website.',
   },
 });
 const messages = defineMessages({
   technicalDetails: {
     id: 'architect.protocolOpenDialogs.technicalDetails',
     defaultMessage: 'Technical details (English)',
-    description: 'Visible text in components / protocolOpenDialogs.',
+    description:
+      'Label of the collapsed section, in an error dialog about opening a protocol, that holds the underlying error text. The text inside is always English, which the label says.',
   },
 });
 
@@ -269,7 +282,7 @@ export const showProtocolOpenResultDialog = async ({
                   message: additionalMessages.upgradeChangesList,
                 })}
               </Paragraph>
-              <div className="bg-surface-2 max-h-72 overflow-y-auto rounded-sm px-4 py-2 [&_li]:mb-2 [&_li]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5">
+              <div className="bg-surface-2 max-h-72 overflow-y-auto rounded-sm px-4 py-2 [&_li]:mb-2 [&_li]:leading-relaxed [&_ul]:list-disc [&_ul]:ps-5">
                 {result.migrationNotes.map(({ version, notes }) => (
                   <div key={version}>
                     <Heading level="h4">
@@ -370,17 +383,28 @@ export const showProtocolOpenResultDialog = async ({
       type: 'acknowledge',
       intent: 'destructive',
       finalFocus,
-      title: createElement(AppMessage, {
-        message: additionalMessages.protocolValidationFailed,
-      }),
+      title: result.localizedTitle ? (
+        <AppMessage {...result.localizedTitle} />
+      ) : (
+        createElement(AppMessage, {
+          message: additionalMessages.protocolValidationFailed,
+        })
+      ),
       children: (
         <>
           <Paragraph>
-            {createElement(AppMessage, {
-              message: additionalMessages.theProtocolCouldNotBeOpened,
-            })}
+            {result.localizedMessage ? (
+              <AppMessage {...result.localizedMessage} />
+            ) : (
+              createElement(AppMessage, {
+                message: additionalMessages.theProtocolCouldNotBeOpened,
+              })
+            )}
           </Paragraph>
-          <ProtocolFailureDetails detail={result.message} />
+          <ProtocolFailureDetails
+            detail={result.message}
+            open={result.showDetails}
+          />
           <Paragraph intent="smallText">
             {createElement(AppMessage, {
               message: additionalMessages.ifTheProblemPersistsReachOut,
@@ -455,15 +479,27 @@ export const showProtocolOpenResultDialog = async ({
  * whoever reads the bug report, not for the person who just wanted to open
  * their protocol — the dialog above it says everything they need in order to
  * decide what to do next.
+ *
+ * `open` starts it expanded, for details the researcher acts on: the problems
+ * an upgrade refused, which the dialog asks them to correct.
  */
-export const ProtocolFailureDetails = ({ detail }: { detail?: string }) => {
+export const ProtocolFailureDetails = ({
+  detail,
+  open = false,
+}: {
+  detail?: string;
+  open?: boolean;
+}) => {
   const intl = useAppIntl();
   if (!detail) {
     return null;
   }
 
   return (
-    <Accordion className="mt-4">
+    <Accordion
+      className="mt-4"
+      defaultValue={open ? ['technical-details'] : undefined}
+    >
       <AccordionItem value="technical-details">
         <AccordionHeader>
           <AccordionTrigger>

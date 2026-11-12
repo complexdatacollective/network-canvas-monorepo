@@ -45,8 +45,10 @@ build-time compilation.
 
 An app declares the subset it actually supports; adding a locale to the
 ecosystem does not require another app to advertise it. `defineAppLocales`
-adds the diagnostic pseudo-locale only when explicitly enabled. Do not persist
-that diagnostic choice as a production preference.
+adds no diagnostic pseudo-locale: a development build appends
+`pseudoAppLocales` to its own registry. There are two, `en-XA` (accented and
+expanded) and `ar-XB` (right to left). Do not persist either choice as a
+production preference; `isPseudoLocale` is the test for one.
 
 Use `AppMessage` from `@codaco/app-i18n/react` for queued dialogs or toasts:
 
@@ -75,6 +77,12 @@ When a whole message contains a separately owned translated label, pass
 also accept this explicit wrapper. Ordinary strings are always literal data,
 even if they happen to resemble an encoded error. This keeps shared rule names
 and unnamed-attribute labels reactive without duplicating their translations.
+
+A server that refuses with these messages but renders nothing takes
+`@codaco/app-i18n/message-errors` instead: `defineMessages`, `createMessageError`
+and `formatMessageError` with no react-intl or React at run time. Extraction finds
+its `defineMessages` calls by name, so the app whose client formats them collects
+the server module into its own catalog.
 
 ## Loading catalogs
 
@@ -320,6 +328,21 @@ message and locale entries in validation/utilities/exporters have an optional
 React dependency. Hosts choosing localized presentation install the peer and
 add the package's catalog loaders (listed under
 [Loading catalogs](#loading-catalogs)) to their catalog source.
+
+## Terminology glossaries
+
+`glossary/<tag>.md` records, for each language, how Network Canvas concepts
+(protocol, stage, node, edge, codebook, …) and interface names are translated.
+Every surface that carries translated text uses it: these catalogs, the apps'
+and packages' catalogs, networkcanvas.com, the documentation and protocol
+text. A translator works from it, and a reviewer checks translations against
+it, so that a concept has one name wherever a reader meets it.
+
+A glossary entry is translation work like any other: a new or changed entry
+goes through the reverse-translation check in the `verifying-translations`
+skill, with the reviewer shown every existing use of the term in the catalogs.
+When an entry changes, the catalog strings that use the old term change with
+it.
 
 ## Translation provenance
 

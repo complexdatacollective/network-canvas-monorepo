@@ -30,22 +30,26 @@ const messages = defineMessages({
   startNewInterview: {
     id: 'interviewer.deckSlotCard.startNewInterview',
     defaultMessage: 'Start new interview',
-    description: 'Visible copy in Interviewer Deck Slot Card.',
+    description:
+      'Button at the bottom of the selected protocol card on the home screen; opens the form to begin a new interview with that protocol.',
   },
   dismissTheSampleProtocol: {
     id: 'interviewer.deckSlotCard.dismissTheSampleProtocol',
     defaultMessage: 'Dismiss the sample protocol',
-    description: 'User-facing message in Interviewer Deck Slot Card.',
+    description:
+      'Accessible name of the delete icon button on the sample protocol card; removes the sample card from the deck. Read only by screen readers.',
   },
   installSampleProtocol: {
     id: 'interviewer.deckSlotCard.installSampleProtocol',
     defaultMessage: 'Install sample protocol',
-    description: 'Visible copy in Interviewer Deck Slot Card.',
+    description:
+      'Button on the sample protocol card that installs the built-in sample protocol on this device. Verb phrase.',
   },
   installDevelopmentProtocol: {
     id: 'interviewer.deckSlotCard.installDevelopmentProtocol',
     defaultMessage: 'Install development protocol',
-    description: 'Visible copy in Interviewer Deck Slot Card.',
+    description:
+      'Button on the development protocol card that installs the bundled development protocol. Shown only in development builds, never to participants.',
   },
   extracting: {
     id: 'interviewer.deckSlotCard.extracting',

@@ -35,31 +35,36 @@ const messages = defineMessages({
   signingIn: {
     id: 'fresco.SignInForm.signingIn',
     defaultMessage: 'Signing in...',
-    description: 'Researcher-facing SignInForm: Signing in...',
+    description:
+      'Text on the submit button of the username and password sign-in form while the sign-in request is being processed.',
   },
 
   verifying: {
     id: 'fresco.SignInForm.verifying',
     defaultMessage: 'Verifying...',
-    description: 'Researcher-facing SignInForm: Verifying...',
+    description:
+      'Text on the submit button while the two-factor code or recovery code entered during sign-in is being checked.',
   },
 
   requiredCode: {
     id: 'fresco.SignInForm.requiredCode',
     defaultMessage: 'Code is required',
-    description: 'Researcher-facing SignInForm: Code is required',
+    description:
+      'Validation error under the 6-digit authenticator code field of the two-factor sign-in step when it is left empty.',
   },
 
   requiredRecovery: {
     id: 'fresco.SignInForm.requiredRecovery',
     defaultMessage: 'Recovery code is required',
-    description: 'Researcher-facing SignInForm: Recovery code is required',
+    description:
+      'Validation error under the recovery code field, in the recovery code sign-in form or the two-factor step, when it is left empty.',
   },
 
   requiredUsername: {
     id: 'fresco.SignInForm.requiredUsername',
     defaultMessage: 'Username is required',
-    description: 'Researcher-facing SignInForm: Username is required',
+    description:
+      'Validation error under the username field of the recovery code sign-in form when it is left empty.',
   },
 
   copyTooManyAttemptsTryAgainInSeconds: {
@@ -67,132 +72,151 @@ const messages = defineMessages({
     defaultMessage:
       'Too many attempts. Try again in {value1, plural, one {# second} other {# seconds}}.',
     description:
-      'Researcher-facing SignInForm: Too many attempts. Try again in value seconds.',
+      'Error shown above the sign-in form when too many failed attempts have temporarily locked sign-in. value1 is the number of seconds to wait.',
   },
   copyCodeIsRequired: {
     id: 'fresco.SignInForm.copyCodeIsRequired',
     defaultMessage: 'Code is required',
-    description: 'Researcher-facing SignInForm: Code is required',
+    description:
+      'Error shown on the code field of the two-factor sign-in step when the form is submitted without a code, by either the authenticator app or recovery code variant.',
   },
   copyVerificationFailed: {
     id: 'fresco.SignInForm.copyVerificationFailed',
     defaultMessage: 'Verification failed',
-    description: 'Researcher-facing SignInForm: Verification failed',
+    description:
+      'Generic error shown on the two-factor sign-in step when checking the code fails and the server gave no more specific reason.',
   },
   copyFailedToStartPasskeyAuthentication: {
     id: 'fresco.SignInForm.copyFailedToStartPasskeyAuthentication',
     defaultMessage: 'Failed to start passkey authentication',
     description:
-      'Researcher-facing SignInForm: Failed to start passkey authentication',
+      'Error shown under the passkey sign-in button when the server could not prepare the passkey sign-in request.',
   },
   copyPasskeyAuthenticationFailed: {
     id: 'fresco.SignInForm.copyPasskeyAuthenticationFailed',
     defaultMessage: 'Passkey authentication failed',
-    description: 'Researcher-facing SignInForm: Passkey authentication failed',
+    description:
+      'Fallback error shown under the passkey sign-in button when signing in with a passkey fails for a reason that has no more specific message.',
   },
   copyUsernameAndRecoveryCodeAreRequired: {
     id: 'fresco.SignInForm.copyUsernameAndRecoveryCodeAreRequired',
     defaultMessage: 'Username and recovery code are required',
     description:
-      'Researcher-facing SignInForm: Username and recovery code are required',
+      'Error shown above the recovery code sign-in form when it is submitted without a username or without a recovery code.',
   },
   copyUseAuthenticatorAppInstead: {
     id: 'fresco.SignInForm.copyUseAuthenticatorAppInstead',
     defaultMessage: 'Use authenticator app instead',
-    description: 'Researcher-facing SignInForm: Use authenticator app instead',
+    description:
+      'Link-style button on the two-factor sign-in step, shown while asking for a recovery code; switches back to entering the 6-digit code from the authenticator app.',
   },
   copyUseARecoveryCodeInstead: {
     id: 'fresco.SignInForm.copyUseARecoveryCodeInstead',
     defaultMessage: 'Use a recovery code instead',
-    description: 'Researcher-facing SignInForm: Use a recovery code instead',
+    description:
+      'Link-style button on the two-factor sign-in step, shown while asking for an authenticator app code; switches to entering a recovery code instead.',
   },
   copyTryAgainInS: {
     id: 'fresco.SignInForm.copyTryAgainInS',
     defaultMessage:
       'Try again in {value1, plural, one {# second} other {# seconds}}',
-    description: 'Researcher-facing SignInForm: Try again in values',
+    description:
+      'Text on the disabled submit button of the sign-in form while sign-in is temporarily locked after too many failed attempts. value1 is the number of seconds left.',
   },
   copySignIn: {
     id: 'fresco.SignInForm.copySignIn',
     defaultMessage: 'Sign in',
-    description: 'Researcher-facing SignInForm: Sign in',
+    description:
+      'Text on the submit button of the username and password sign-in form.',
   },
   copyWaitingForPasskey: {
     id: 'fresco.SignInForm.copyWaitingForPasskey',
     defaultMessage: 'Waiting for passkey...',
-    description: 'Researcher-facing SignInForm: Waiting for passkey...',
+    description:
+      'Text on the passkey sign-in button while the browser is waiting for the researcher to approve the sign-in with their passkey.',
   },
   copySignInWithAPasskey: {
     id: 'fresco.SignInForm.copySignInWithAPasskey',
     defaultMessage: 'Sign in with a passkey',
-    description: 'Researcher-facing SignInForm: Sign in with a passkey',
+    description:
+      'Button below the sign-in form that signs the researcher in with a passkey (biometrics or device security) instead of a password.',
   },
   username: {
     id: 'fresco.SignInForm.username',
     defaultMessage: 'Username',
-    description: 'Researcher-facing SignInForm: Username',
+    description:
+      'Label of the username field in the sign-in form and the recovery code sign-in form.',
   },
   enterYourUsername: {
     id: 'fresco.SignInForm.enterYourUsername',
     defaultMessage: 'Enter your username',
-    description: 'Researcher-facing SignInForm: Enter your username',
+    description:
+      'Placeholder inside the username field, and the hint under it, in the sign-in form and the recovery code sign-in form.',
   },
   recoveryCode: {
     id: 'fresco.SignInForm.recoveryCode',
     defaultMessage: 'Recovery code',
-    description: 'Researcher-facing SignInForm: Recovery code',
+    description:
+      'Label of the field where the researcher types one of the recovery codes saved when they set up two-factor authentication, in the recovery code sign-in form.',
   },
   example0123456789abcdef0123: {
     id: 'fresco.SignInForm.0123456789abcdef0123',
     defaultMessage: '0123456789abcdef0123',
-    description: 'Researcher-facing SignInForm: 0123456789abcdef0123',
+    description:
+      'Example recovery code shown as the placeholder in the recovery code field: 20 hexadecimal characters. Not translatable text; keep as is.',
   },
   backToSignIn: {
     id: 'fresco.SignInForm.backToSignIn',
     defaultMessage: 'Back to sign in',
-    description: 'Researcher-facing SignInForm: Back to sign in',
+    description:
+      'Text button with a back arrow, in the recovery code form and the two-factor step, that returns to the username and password sign-in form.',
   },
   signIn: {
     id: 'fresco.SignInForm.signIn',
     defaultMessage: 'Sign in',
-    description: 'Researcher-facing SignInForm: Sign in',
+    description:
+      'Text on the submit button of the recovery code sign-in form, which signs in with a username and recovery code.',
   },
   enterOneOfYourRecoveryCodes: {
     id: 'fresco.SignInForm.enterOneOfYourRecoveryCodes',
     defaultMessage: 'Enter one of your recovery codes',
     description:
-      'Researcher-facing SignInForm: Enter one of your recovery codes',
+      'Label of the recovery code field on the two-factor sign-in step, shown when the researcher chose to use a recovery code instead of the authenticator app.',
   },
   enterYour6DigitCodeFromYour: {
     id: 'fresco.SignInForm.enterYour6DigitCodeFromYour',
     defaultMessage: 'Enter your 6-digit code from your authenticator app',
     description:
-      'Researcher-facing SignInForm: Enter your 6-digit code from your authenticator app',
+      "Label of the six-box code field on the two-factor sign-in step, asking for the current code shown by the researcher's authenticator app.",
   },
   verify: {
     id: 'fresco.SignInForm.verify',
     defaultMessage: 'Verify',
-    description: 'Researcher-facing SignInForm: Verify',
+    description:
+      'Text on the submit button of the two-factor sign-in step; checks the code entered and completes sign-in.',
   },
   password: {
     id: 'fresco.SignInForm.password',
     defaultMessage: 'Password',
-    description: 'Researcher-facing SignInForm: Password',
+    description: 'Label of the password field in the sign-in form.',
   },
   enterYourPassword: {
     id: 'fresco.SignInForm.enterYourPassword',
     defaultMessage: 'Enter your password',
-    description: 'Researcher-facing SignInForm: Enter your password',
+    description:
+      'Placeholder inside the password field, and the hint under it, in the sign-in form.',
   },
   or: {
     id: 'fresco.SignInForm.or',
     defaultMessage: 'or',
-    description: 'Researcher-facing SignInForm: or',
+    description:
+      'Short word on a dividing line between the password sign-in form and the passkey sign-in button, meaning the researcher can use either one.',
   },
   troubleSigningIn: {
     id: 'fresco.SignInForm.troubleSigningIn',
     defaultMessage: 'Trouble signing in?',
-    description: 'Researcher-facing SignInForm: Trouble signing in?',
+    description:
+      'Link-style button at the bottom of the sign-in form that opens the recovery code sign-in form, for researchers who cannot use their password.',
   },
 });
 
@@ -417,7 +441,7 @@ export const SignInForm = () => {
             variant="text"
             type="button"
             onClick={handleBackToSignIn}
-            icon={<ArrowLeft />}
+            icon={<ArrowLeft className="rtl:rotate-180" />}
           >
             {intl.formatMessage(messages.backToSignIn)}
           </Button>
@@ -476,7 +500,7 @@ export const SignInForm = () => {
           <Button
             variant="text"
             onClick={handleBackToSignIn}
-            icon={<ArrowLeft />}
+            icon={<ArrowLeft className="rtl:rotate-180" />}
           >
             {intl.formatMessage(messages.backToSignIn)}
           </Button>

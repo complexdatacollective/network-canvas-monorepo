@@ -1,0 +1,202 @@
+---
+title: Controles de entrada
+navOrder: 7
+translatedFrom: 6fd5fafb979ef1f0a0d24f70c6b8a73c134ed762
+---
+
+<Definition>
+  Los controles de entrada determinan cómo introducen quienes participan los
+  datos de las variables en las entrevistas de Network Canvas. Cada control de
+  entrada ofrece un elemento de pantalla distinto, optimizado para un tipo
+  concreto de recogida de datos.
+</Definition>
+
+## Descripción general {#overview}
+
+Al crear [formularios](/es/design-protocols/key-concepts/forms) en Architect, debes seleccionar un control de entrada para cada campo. El control de entrada que elijas determina tanto lo que verá en pantalla cada participante como el tipo de datos que se recogerán.
+
+Los controles de entrada están pensados para que introducir los datos resulte intuitivo y para reducir la carga de quienes participan, al tiempo que garantizan la calidad de los datos. Elegir el control de entrada adecuado para tu variable es una parte importante del diseño del protocolo.
+
+## Cómo funcionan los controles de entrada {#how-input-controls-work}
+
+Cada control de entrada está asociado a un tipo de variable concreto. Cuando creas una variable nueva y seleccionas un control de entrada para ella, el tipo de variable se establece automáticamente según el control que elijas.
+
+<TipBox danger>
+
+Una vez que el tipo de una variable se ha establecido al elegir su control de entrada, no se puede cambiar más adelante. Aun así, puedes ajustar el control de entrada concreto en distintos formularios, siempre que el nuevo control de entrada sea compatible con el tipo de variable.
+
+</TipBox>
+
+Por ejemplo, si creas una variable con un control Entrada de texto (que crea una variable de texto, o de tipo cadena), más adelante puedes usar un control Área de texto para la misma variable, ya que ambos trabajan con datos de texto. Sin embargo, no puedes cambiarlo a una Entrada numérica, porque eso exigiría un tipo de variable distinto.
+
+## Controles de entrada disponibles {#available-input-controls}
+
+### Controles de texto {#text-based-controls}
+
+Los controles de texto recogen datos de tipo cadena (texto) de quienes participan.
+
+#### Entrada de texto {#text-input}
+
+Entrada de texto crea variables de texto (cadena) y es la mejor opción para recoger respuestas de texto breves, de una sola línea, como nombres, etiquetas o respuestas cortas. Puedes configurar un límite de caracteres (longitud máxima), un texto de marcador de posición y la validación de campo obligatorio. Usa este control para recoger el nombre de cada álter (cada persona a la que se nombra durante la entrevista), identificadores o códigos cortos y respuestas de una sola palabra. Se muestra como un campo de texto de una sola línea, con un texto de marcador de posición opcional.
+
+#### Área de texto {#text-area}
+
+Área de texto crea variables de texto (cadena) y es la mejor opción para recoger respuestas de texto más largas, de varias líneas, como descripciones, relatos o respuestas detalladas. Puedes configurar un límite de caracteres (longitud máxima), el número de filas visibles, un texto de marcador de posición y la validación de campo obligatorio. Usa este control para preguntas como «Describe tu relación con esta persona» o «¿Cuál fue el motivo de tu visita?» y para recoger relatos o explicaciones detallados. Se muestra como un cuadro de texto de varias líneas que se amplía para dar cabida a respuestas más largas.
+
+### Controles numéricos {#numerical-controls}
+
+#### Entrada numérica {#number-input}
+
+Entrada numérica crea variables numéricas y es la mejor opción para recoger datos numéricos que quienes participan van a escribir, como edades, cantidades o puntuaciones. Puedes configurar un valor mínimo, un valor máximo y la validación de campo obligatorio. Usa este control para la edad de cada álter, el número de interacciones, los recuentos de frecuencia y las valoraciones numéricas. Se muestra como un campo numérico con controles para aumentar y disminuir el valor.
+
+### Controles categóricos {#categorical-controls}
+
+Los controles categóricos permiten a quienes participan seleccionar entre opciones de respuesta predefinidas.
+
+#### Grupo de opciones {#radio-button-group}
+
+Grupo de opciones crea variables categóricas (ordinales o nominales) y es la mejor opción para seleccionar una sola opción de una lista de opciones mutuamente excluyentes, normalmente de 2 a 7. Puedes configurar una lista de opciones de respuesta (etiquetas y valores), la validación de campo obligatorio y el orden de las opciones. Usa este control para seleccionar el género, para preguntas de sí o no, para valoraciones de satisfacción (Muy satisfactorio, Satisfactorio, Neutral, Insatisfactorio, Muy insatisfactorio) y para el tipo de relación. Se muestra como una lista vertical de botones de opción con etiquetas, en la que solo se puede seleccionar uno a la vez.
+
+Este control funciona mejor con 2 a 7 opciones; para listas más largas, plantéate usar otros controles. Las opciones están siempre visibles, lo que facilita compararlas y hace que el control resulte claro para opciones mutuamente excluyentes.
+
+#### Grupo de casillas {#checkbox-group}
+
+Grupo de casillas crea variables booleanas o categóricas y es la mejor opción para seleccionar varias opciones de una lista, en la que cada participante puede elegir ninguna, una o muchas opciones. Puedes configurar una lista de opciones de respuesta, un número mínimo de selecciones (validación) y un número máximo de selecciones (validación). Usa este control para preguntas como «¿Qué idiomas hablas?» (se permiten varias selecciones), «Selecciona todas las conductas de riesgo que correspondan» o «¿Cuáles de estos servicios has usado?». Se muestra como una lista vertical de casillas de verificación con etiquetas, en la que se pueden seleccionar varias a la vez.
+
+Usa este control cuando sean válidas varias selecciones. Unas etiquetas claras ayudan a quienes participan a entender que pueden seleccionar varios elementos. Si hace falta, plantéate añadir validación para garantizar que se seleccione al menos una opción.
+
+#### Interruptor {#toggle}
+
+Interruptor crea variables booleanas (verdadero/falso) y es la mejor opción para elecciones binarias de sí o no o para activar o desactivar una sola característica. Puedes configurar el texto de la etiqueta, el estado predeterminado (activado o desactivado) y la validación de campo obligatorio. Usa este control para preguntas como «¿Has visto a esta persona en el último mes?» (Sí/No), para casillas de consentimiento y para indicar la presencia o ausencia de atributos. Se muestra como un interruptor visual o un botón conmutable que puede estar activado o desactivado.
+
+Este control resulta muy claro para las elecciones binarias, ofrece una respuesta visual que deja claro el estado y funciona bien en pantallas táctiles.
+
+#### Grupo de botones conmutables {#toggle-button-group}
+
+Grupo de botones conmutables crea variables categóricas (ordinales o nominales) y es la mejor opción para seleccionar una sola opción de un conjunto pequeño, normalmente de 2 a 5, con énfasis visual. Puedes configurar una lista de opciones de respuesta (etiquetas y valores), la validación de campo obligatorio y el estilo y la distribución de los botones. Usa este control para la fuerza de la relación (Cercana / Algo cercana / Nada cercana), las categorías de frecuencia (A diario / Semanalmente / Mensualmente / Rara vez) y las escalas de acuerdo. Se muestra como una fila o una cuadrícula de botones en la que, al seleccionar uno, se deseleccionan los demás, y la opción seleccionada queda resaltada visualmente.
+
+Este control destaca más visualmente que los botones de opción y funciona bien en pantallas táctiles. Úsalo para 2 a 5 opciones, para no sobrecargar la pantalla, y aprovecha la clara respuesta visual que da al seleccionar.
+
+### Controles de fecha y hora {#date-and-time-controls}
+
+#### Selector de fecha {#date-picker}
+
+Selector de fecha crea variables de fecha y es la mejor opción para recoger fechas concretas, como fechas de nacimiento, fechas de acontecimientos o intervalos de tiempo. Puedes configurar el inicio del intervalo de fechas (la fecha más temprana que se puede seleccionar), el fin del intervalo de fechas (la fecha más tardía que se puede seleccionar), una fecha predeterminada y la validación de campo obligatorio. Usa este control para la fecha de nacimiento, para preguntas como «¿Cuándo viste a esta persona por última vez?» o «¿Cuándo ocurrió este acontecimiento?» y para las fechas de visita. Se muestra como un calendario interactivo que permite a cada participante seleccionar una fecha concreta.
+
+Establece intervalos de fechas adecuados para evitar respuestas poco realistas. Valora si necesitas precisión (fecha exacta) o una aproximación (mes y año). El calendario resulta intuitivo para la mayoría de las personas.
+
+### Controles de escala {#scale-controls}
+
+Los controles de escala son elementos especializados para recoger valoraciones o mediciones.
+
+#### Escala Likert {#likert-scale}
+
+Escala Likert crea variables ordinales y es la mejor opción para recoger valoraciones de acuerdo, satisfacción o frecuencia mediante una escala de tipo Likert estándar. Puedes configurar el número de puntos (normalmente 3, 5 o 7), las etiquetas de cada punto y la validación de campo obligatorio. Usa este control para preguntas como «¿Hasta qué punto te resulta satisfactorio este servicio?» (Muy satisfactorio → Muy insatisfactorio), «¿Con qué frecuencia ves a esta persona?» (Siempre → Nunca) y para escalas de acuerdo (Totalmente de acuerdo → Totalmente en desacuerdo). Se muestra como una escala horizontal con puntos etiquetados que quienes participan pueden seleccionar.
+
+Es un formato estándar que la mayoría de las personas participantes reconocen. Las escalas de cinco puntos son las más habituales. Etiquetar con claridad los extremos y el punto medio mejora la calidad de los datos. Valora si conviene incluir un punto medio neutral.
+
+#### Escala analógica visual (EAV) {#visual-analog-scale-vas}
+
+Escala analógica visual crea variables numéricas y es la mejor opción para recoger valoraciones subjetivas o mediciones a lo largo de una escala continua, a menudo de intensidad o magnitud. Puedes configurar un valor mínimo, un valor máximo, la etiqueta del mínimo (extremo izquierdo), la etiqueta del máximo (extremo derecho) y la validación de campo obligatorio. Usa este control para la intensidad del dolor («Sin dolor» → «Dolor insoportable»), la cercanía emocional («Nada cercana» → «Extremadamente cercana») y la intensidad de un sentimiento o una preferencia. Se muestra como un control deslizante continuo con extremos etiquetados, que quienes participan pueden arrastrar a cualquier posición.
+
+Este control ofrece datos más detallados que las escalas Likert y es adecuado para medir experiencias subjetivas. Asegúrate de que las etiquetas de los extremos contrasten con claridad. Ten en cuenta que su carácter continuo puede exigir un mayor esfuerzo cognitivo a algunas personas participantes.
+
+## Elegir el control de entrada adecuado {#choosing-the-right-input-control}
+
+Seleccionar el control de entrada adecuado es crucial para la calidad de los datos y para la experiencia de quienes participan.
+
+Piensa en qué tipo de datos necesitas recoger. Usa Entrada de texto o Área de texto para el texto, Entrada numérica para los números, Selector de fecha para las fechas, Grupo de opciones, Interruptor, Grupo de casillas o Grupo de botones conmutables para las categorías, y Escala Likert o Escala analógica visual para las escalas.
+
+Piensa en cuántas opciones puede seleccionar cada participante. Usa Grupo de opciones, Interruptor o Grupo de botones conmutables para una sola selección. Usa Grupo de casillas para varias selecciones. Usa Entrada de texto, Área de texto o Entrada numérica para respuestas de formato libre. Usa Escala analógica visual para escalas continuas y Escala Likert para escalas discretas.
+
+Ten en cuenta cuántas opciones presentas. Para 2 opciones, usa Interruptor, Grupo de botones conmutables o Grupo de opciones. Para 3 a 7 opciones, usa Grupo de opciones o Grupo de botones conmutables. Para 8 opciones o más, plantéate si deberían ser varias preguntas. Si tienes muchas opciones, quizá debas replantearte tu enfoque.
+
+Piensa en qué les resultará más fácil de entender y de usar a quienes participan. Usa Interruptor para preguntas sencillas de sí o no, Escala Likert para escalas de valoración conocidas, Escala analógica visual para la intensidad subjetiva, Grupo de opciones o Grupo de botones conmutables para categorías claras y Grupo de casillas cuando se necesiten varias selecciones.
+
+Ten en cuenta qué dispositivos usarán quienes participan. Grupo de botones conmutables y Escala analógica visual funcionan bien en dispositivos táctiles. Todos los controles funcionan bien en ordenadores. En pantallas pequeñas, evita los controles que ocupan mucho espacio.
+
+## Compatibilidad de los controles de entrada {#input-control-compatibility}
+
+Algunos controles de entrada se pueden usar indistintamente para la misma variable y otros no:
+
+### Controles compatibles (mismo tipo de variable) {#compatible-controls-same-variable-type}
+
+**Variables de texto:**
+
+- Entrada de texto ↔ Área de texto
+
+**Variables categóricas:**
+
+- Grupo de opciones ↔ Grupo de botones conmutables
+
+**Variables booleanas:**
+
+- Interruptor ↔ Casilla (individual)
+
+### Controles incompatibles (tipos de variable distintos) {#incompatible-controls-different-variable-types}
+
+- Entrada de texto ✗ Entrada numérica
+- Grupo de opciones ✗ Entrada numérica
+- Escala Likert ✗ Escala analógica visual (estructuras de datos distintas)
+
+## Buenas prácticas {#best-practices}
+
+Hazlo sencillo: usa el control más sencillo que cubra tus necesidades. No uses una Escala analógica visual cuando bastaría con un simple Interruptor, y asegúrate de que quienes participan entiendan de inmediato cómo interactuar con cada control.
+
+Sé coherente: usa controles similares para tipos de preguntas similares en todo tu protocolo. Si usas escalas Likert para la satisfacción, sigue usándolas en lugar de pasar a escalas analógicas visuales. La coherencia reduce la carga cognitiva.
+
+Usa etiquetas claras: etiqueta siempre las opciones de forma clara e inequívoca. En las escalas, etiqueta ambos extremos y plantéate etiquetar el punto medio. Usa un lenguaje adecuado a la población de tu estudio.
+
+Ten en cuenta la carga de respuesta. Los formularios más largos, con muchos controles complejos, aumentan la carga. Equilibra el nivel de detalle que necesitas con el cansancio de quienes participan, y plantéate usar controles más sencillos en las últimas etapas, cuando ese cansancio puede ser mayor.
+
+Piensa en el análisis de los datos. Ten en cuenta cómo vas a analizar los datos al elegir los controles. Los datos continuos (Escala analógica visual) y los datos categóricos (Escala Likert) requieren análisis distintos, y las casillas de selección múltiple crean estructuras de datos complejas.
+
+Valida de forma adecuada: usa la validación para garantizar la calidad de los datos, pero no valides en exceso, porque demasiados campos obligatorios pueden frustrar a quienes participan. Consulta [Validación de campos](/es/design-protocols/key-concepts/field-validation) para ver los detalles.
+
+Prueba tus elecciones: usa el [modo de vista previa](/es/design-protocols/preview-mode) de Architect para comprobar cómo se ven y cómo funcionan los controles. Pide opiniones a colegas o a participantes piloto, y ve introduciendo mejoras según la experiencia de uso.
+
+## Patrones y ejemplos habituales {#common-patterns-and-examples}
+
+### Datos demográficos básicos {#basic-demographics}
+
+```
+Name: Text Input (required)
+Age: Number Input (required, range: 18-120)
+Gender: Radio Button Group or Toggle Button Group
+```
+
+### Calidad de la relación {#relationship-quality}
+
+```
+Closeness: Likert Scale (5-point: Not Close → Very Close)
+or
+Closeness: Visual Analog Scale (0-100: Not Close → Very Close)
+```
+
+### Frecuencia de conductas {#behavioral-frequency}
+
+```
+Contact Frequency: Radio Button Group
+Options: Daily, Weekly, Monthly, Rarely, Never
+```
+
+### Características múltiples {#multiple-characteristics}
+
+```
+Languages Spoken: Checkbox Group
+Options: English, Spanish, Mandarin, French, [others]
+```
+
+## Conceptos relacionados {#related-concepts}
+
+- [Formularios](/es/design-protocols/key-concepts/forms): aprende a crear formularios con controles de entrada
+- [Validación de campos](/es/design-protocols/key-concepts/field-validation): añade reglas de validación para garantizar la calidad de los datos
+- [Variables](/es/design-protocols/key-concepts/variables): conoce los tipos de variable y su relación con los controles de entrada
+
+## Próximos pasos {#next-steps}
+
+Ahora que conoces los controles de entrada, puedes:
+
+1. Practicar la creación de formularios con distintos controles de entrada en Architect
+2. Aprender sobre la [validación de campos](/es/design-protocols/key-concepts/field-validation) para garantizar la calidad de los datos
+3. Repasar el [tutorial «Crear un protocolo»](/es/design-protocols/tutorials/building-a-protocol) para ver los controles de entrada en contexto

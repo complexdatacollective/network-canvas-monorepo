@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 
 import Paragraph from '../../typography/Paragraph';
 import RichSelectGroupField, {
@@ -600,5 +600,28 @@ export const DisabledOptions: Story = {
         />
       </div>
     );
+  },
+};
+
+/**
+ * A group runs from the right in a right-to-left language, and the arrow keys
+ * follow it: left moves on to the next option, right moves back. That holds
+ * however the options are laid out, as it does for a native radio group.
+ */
+export const RightToLeftArrowKeys: Story = {
+  ...Horizontal,
+  globals: { appDirection: 'rtl' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(document.documentElement.dir).toBe('rtl');
+
+    const first = canvas.getByRole('option', { name: /Option A/ });
+    const second = canvas.getByRole('option', { name: /Option B/ });
+
+    first.focus();
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect(second).toHaveFocus();
+    await userEvent.keyboard('{ArrowRight}');
+    await expect(first).toHaveFocus();
   },
 };

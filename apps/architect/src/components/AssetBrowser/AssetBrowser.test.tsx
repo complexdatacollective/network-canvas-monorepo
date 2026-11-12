@@ -9,6 +9,7 @@ import {
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { importAssetAsync } from '~/ducks/modules/protocol/assetManifest';
@@ -45,40 +46,46 @@ const makeStore = () => {
   });
   store.dispatch(
     setActiveProtocol(
-      CurrentProtocolSchema.parse({
-        name: 'Resources test',
-        schemaVersion: 9,
-        localization: { defaultLocale: 'en', locales: ['en'] },
-        // Schema 9 requires the finish stage that ends the interview.
-        stages: [
-          {
-            id: 'finish',
-            type: 'FinishSession',
-            label: { en: 'Finish' },
-            mode: 'confirmation',
-            content: { en: '# All done\n\nThank you.' },
-            finishedContent: { en: 'This interview is finished.' },
-            finishLabel: { en: 'Finish' },
-            finishConfirmation: { en: 'Finish this interview?' },
-            finishFailed: { en: 'The interview could not be finished.' },
-            outcome: 'completed',
+      CurrentProtocolSchema.parse(
+        withInterfaceText({
+          name: 'Resources test',
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
+          // Schema 9 requires the finish stage that ends the interview.
+          stages: [
+            {
+              id: 'finish',
+              type: 'FinishSession',
+              label: { en: 'Finish' },
+              mode: 'confirmation',
+              content: { en: '# All done\n\nThank you.' },
+              finishedContent: { en: 'This interview is finished.' },
+              finishLabel: { en: 'Finish' },
+              finishConfirmation: { en: 'Finish this interview?' },
+              finishFailed: { en: 'The interview could not be finished.' },
+              outcome: 'completed',
+            },
+          ],
+          codebook: {},
+          assetManifest: {
+            [MISSING]: {
+              type: 'network',
+              name: 'participants.csv',
+              source: 'participants.csv',
+            },
+            present_audio: {
+              type: 'audio',
+              name: 'chime.mp3',
+              source: 'chime.mp3',
+            },
+            mapbox_key: {
+              type: 'apikey',
+              name: 'Mapbox key',
+              value: 'pk.test',
+            },
           },
-        ],
-        codebook: {},
-        assetManifest: {
-          [MISSING]: {
-            type: 'network',
-            name: 'participants.csv',
-            source: 'participants.csv',
-          },
-          present_audio: {
-            type: 'audio',
-            name: 'chime.mp3',
-            source: 'chime.mp3',
-          },
-          mapbox_key: { type: 'apikey', name: 'Mapbox key', value: 'pk.test' },
-        },
-      }),
+        }),
+      ),
     ),
   );
   return store;

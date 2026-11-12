@@ -47,11 +47,16 @@ import {
 
 import type { ArchitectStore } from './architectStore.ts';
 import { ProtocolRevisions, type LoggedEvent } from './protocolRevisions.ts';
-import { ASSETS_SECTION, STAGE_ORDER_SECTION } from './protocolSections.ts';
+import {
+  ASSETS_SECTION,
+  SETTINGS_SECTION,
+  STAGE_ORDER_SECTION,
+} from './protocolSections.ts';
 import { ResourceBridge } from './resourceBridge.ts';
 import {
   createSection,
   deleteStageSection,
+  stageInterfaceText,
   submitSection,
 } from './sectionWrites.ts';
 import { WriteLedger } from './writeLedger.ts';
@@ -183,12 +188,30 @@ export const ArchitectHandlers = (
                 issues,
               });
             }
-            const held =
-              promotion === undefined
-                ? []
-                : heldSections(revisions, [ASSETS_SECTION], input.sectionId);
+            // The settings are taken on the terms the manifest is: an editor
+            // holding them would submit them whole next, without these words.
+            const held = heldSections(
+              revisions,
+              [
+                ...(promotion === undefined ? [] : [ASSETS_SECTION]),
+                ...(input.interfaceText === undefined
+                  ? []
+                  : [SETTINGS_SECTION]),
+              ],
+              input.sectionId,
+            );
             if (held.length > 0) {
               return yield* new SectionsLocked({ blocked: held });
+            }
+            const words =
+              input.interfaceText === undefined
+                ? undefined
+                : stageInterfaceText(store, input.interfaceText);
+            if (words?.status === 'refused') {
+              return yield* new InvalidShape({
+                sectionId: SETTINGS_SECTION,
+                issues: words.issues,
+              });
             }
             // Settled before anything is written, so the protocol never points
             // at bytes that are not there.
@@ -214,7 +237,10 @@ export const ArchitectHandlers = (
               if (planned === undefined) return;
               resources.completePromotion(planned.data.ids);
             };
-            if (contentHash(document) === before.revision.contentHash) {
+            if (
+              words === undefined &&
+              contentHash(document) === before.revision.contentHash
+            ) {
               complete(before.revision);
               return {
                 revision: before.revision,
@@ -223,7 +249,12 @@ export const ArchitectHandlers = (
             }
             const { result } = yield* Effect.promise(() =>
               revisions.write(() =>
-                submitSection(store, parseSectionId(input.sectionId), document),
+                submitSection(
+                  store,
+                  parseSectionId(input.sectionId),
+                  document,
+                  words?.interfaceText,
+                ),
               ),
             );
             if (result.status === 'refused') {
@@ -271,9 +302,20 @@ export const ArchitectHandlers = (
             const held = heldSections(revisions, [
               ...(input.kind === 'stage' ? [STAGE_ORDER_SECTION] : []),
               ...(promotion === undefined ? [] : [ASSETS_SECTION]),
+              ...(input.interfaceText === undefined ? [] : [SETTINGS_SECTION]),
             ]);
             if (held.length > 0) {
               return yield* new SectionsLocked({ blocked: held });
+            }
+            const words =
+              input.interfaceText === undefined
+                ? undefined
+                : stageInterfaceText(store, input.interfaceText);
+            if (words?.status === 'refused') {
+              return yield* new InvalidShape({
+                sectionId: SETTINGS_SECTION,
+                issues: words.issues,
+              });
             }
             const planned =
               promotion === undefined
@@ -292,6 +334,7 @@ export const ArchitectHandlers = (
                   input.kind,
                   Redacted.value(input.document),
                   input.position,
+                  words?.interfaceText,
                 ),
               ),
             );

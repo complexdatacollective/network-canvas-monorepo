@@ -9,15 +9,20 @@
   "type": "module",
   "exports": {
     "./accessible-name-audit": "./src/accessible-name-audit.ts",
-    "./announcements": "./src/announcements.ts"
+    "./announcements": "./src/announcements.ts",
+    "./direction-audit": "./src/direction-audit.ts"
   },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --build --noEmit"
   },
+  "dependencies": {
+    "@codaco/app-i18n": "workspace:^"
+  },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
     "@playwright/test": "catalog:",
+    "jsdom": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

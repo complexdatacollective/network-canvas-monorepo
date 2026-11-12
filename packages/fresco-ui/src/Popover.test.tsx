@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -42,5 +42,38 @@ describe('Popover', () => {
     expect(
       await screen.findByRole('dialog', { name: 'Anchored bottom' }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Prose and forms get the roomy padding; a popup that holds a list of
+   * options asks for the padding menus and comboboxes use.
+   */
+  it('pads the popup for prose unless a smaller spacing is asked for', async () => {
+    render(
+      <>
+        <Popover>
+          <PopoverTrigger>Open help</PopoverTrigger>
+          <PopoverContent aria-label="Help">Some prose.</PopoverContent>
+        </Popover>
+        <Popover>
+          <PopoverTrigger>Open list</PopoverTrigger>
+          <PopoverContent aria-label="List" spacing="xs">
+            A list of options.
+          </PopoverContent>
+        </Popover>
+      </>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Open help' }));
+    const help = await screen.findByRole('dialog', { name: 'Help' });
+    // The padding is on the surface inside the dialog, which holds the content.
+    const helpSurface = within(help).getByText('Some prose.');
+    expect(helpSurface).toHaveClass('px-8', 'py-6');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Open list' }));
+    const list = await screen.findByRole('dialog', { name: 'List' });
+    const listSurface = within(list).getByText('A list of options.');
+    expect(listSurface).toHaveClass('px-4', 'py-3');
+    expect(listSurface).not.toHaveClass('px-8', 'py-6');
   });
 });

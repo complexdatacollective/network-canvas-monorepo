@@ -156,7 +156,16 @@
     'Oxygen',
     sans-serif
   );
-  --font-monospace: ui-monospace, Menlo, Monaco, 'Fira Code', monospace;
+  /* arabic-text.css sets --monospace-font for Arabic text. A utility inlines
+     this value, so only a variable inside it can change per element. */
+  --font-monospace: var(
+    --monospace-font,
+    ui-monospace,
+    Menlo,
+    Monaco,
+    'Fira Code',
+    monospace
+  );
 
   /*****************************************************************************
   *                               CONTAINER WIDTHS
@@ -536,6 +545,8 @@
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-indeterminate-progress-bar: indeterminate-progress-bar 1s infinite
     linear;
+  --animate-indeterminate-progress-bar-vertical: indeterminate-progress-bar-vertical
+    1s infinite linear;
   --animate-background-gradient: background-gradient 5s infinite ease-in-out;
   --animate-linking: linking 1s ease-in-out infinite;
   --animate-pulse-glow: animate-pulse-glow 2s infinite;
@@ -612,6 +623,11 @@
       height: 0;
     }
   }
+  /* A segment that grows out of the bar's start edge and then travels off its
+     end. The animated element fills the track and scales from its start edge
+     (its `transform-origin`), so the travel is one full track length. That
+     length is a custom property because transforms have no logical axis: the
+     element sets it to -100% where the bar runs from the right. */
   @keyframes indeterminate-progress-bar {
     0% {
       transform: translateX(0) scaleX(0);
@@ -620,7 +636,19 @@
       transform: translateX(0) scaleX(0.4);
     }
     100% {
-      transform: translateX(100%) scaleX(0.5);
+      transform: translateX(var(--indeterminate-progress-travel, 100%))
+        scaleX(0.5);
+    }
+  }
+  @keyframes indeterminate-progress-bar-vertical {
+    0% {
+      transform: translateY(0) scaleY(0);
+    }
+    40% {
+      transform: translateY(0) scaleY(0.4);
+    }
+    100% {
+      transform: translateY(100%) scaleY(0.5);
     }
   }
   @keyframes background-gradient {
@@ -699,6 +727,18 @@
 
   hr {
     @apply my-6 rounded border-[1.2px] border-current/10;
+  }
+
+  /* Code is written left to right whatever direction the interface reads in.
+   * Isolating it keeps a punctuation mark at its edge with the code: without
+   * this, the dot of ".netcanvas" inside an Arabic sentence is drawn after the
+   * word, as "netcanvas.". Left-to-right text renders exactly as before. */
+  code,
+  kbd,
+  samp,
+  pre {
+    direction: ltr;
+    unicode-bidi: isolate;
   }
 
   kbd {

@@ -76,52 +76,59 @@ const configMessages = defineMessages({
     id: 'architect.home.home.config.docs',
     defaultMessage: 'Docs',
     description:
-      'Presentation label or description in components/Home/Home.tsx. Identifiers are not translated.',
+      'Link in the top navigation bar of the start screen that opens the Network Canvas documentation website in a new tab.',
   },
   community: {
     id: 'architect.home.home.config.community',
     defaultMessage: 'Community',
     description:
-      'Presentation label or description in components/Home/Home.tsx. Identifiers are not translated.',
+      'Link in the top navigation bar of the start screen that opens the Network Canvas community forum in a new tab.',
   },
 });
 const messages = defineMessages({
   protocolImportError: {
     id: 'architect.home.home.protocolImportError',
     defaultMessage: 'Protocol Import Error',
-    description: 'The title text in components / Home / Home.',
+    description:
+      'Title of the error dialog shown when opening a bundled template or sample protocol from the start screen fails.',
   },
   nameYourProtocol: {
     id: 'architect.home.home.nameYourProtocol',
     defaultMessage: 'Name your protocol',
-    description: 'The title text in components / Home / Home.',
+    description:
+      'Title of the dialog on the start screen that asks the researcher to name the new protocol made from a chosen template or sample protocol.',
   },
   welcomeToArchitect: {
     id: 'architect.home.home.welcomeToArchitect',
     defaultMessage: 'Welcome to <span>Architect</span>',
-    description: 'Visible text in components / Home / Home.',
+    description:
+      'Main heading of the start screen. span wraps the product name Architect, which is shown in an accent colour and is not translated.',
   },
   architectIsTheProtocolDesignerFor: {
     id: 'architect.home.home.architectIsTheProtocolDesignerFor',
     defaultMessage:
       'Architect is the protocol designer for Network Canvas. Compose name generators, capture ordinal and categorical data, map connections, and explore narratives.',
-    description: 'Visible text in components / Home / Home.',
+    description:
+      'Introductory paragraph under the main heading of the start screen, describing what Architect is for.',
   },
   createANewProtocol: {
     id: 'architect.home.home.createANewProtocol',
     defaultMessage: 'Create a new protocol',
-    description: 'Visible text in components / Home / Home.',
+    description:
+      'Button on the start screen that opens the dialog for creating a new, empty protocol.',
   },
   openExistingProtocol: {
     id: 'architect.home.home.openExistingProtocol',
     defaultMessage: 'Open existing protocol',
-    description: 'Visible text in components / Home / Home.',
+    description:
+      "Button on the start screen that opens the computer's file picker to choose a protocol file (.netcanvas) to open.",
   },
   orDropANetcanvasFileAnywhere: {
     id: 'architect.home.home.orDropANetcanvasFileAnywhere',
     defaultMessage:
       'Or drop a <code>.netcanvas</code> file anywhere on this page',
-    description: 'Visible text in components / Home / Home.',
+    description:
+      'Hint under the start-screen buttons: a protocol file can also be dragged onto the page to open it. code wraps the file extension .netcanvas, which is not translated.',
   },
 });
 
@@ -426,7 +433,7 @@ const Home = () => {
               />
             </div>
 
-            <div className="short:gap-3 laptop:gap-8 @container-size flex h-full min-w-0 flex-1 flex-col items-start justify-start gap-6 text-left">
+            <div className="short:gap-3 laptop:gap-8 @container-size flex h-full min-w-0 flex-1 flex-col items-start justify-start gap-6 text-start">
               <div className="flex w-full flex-col items-start gap-8">
                 <div className="flex w-full flex-col items-start gap-4">
                   <Heading

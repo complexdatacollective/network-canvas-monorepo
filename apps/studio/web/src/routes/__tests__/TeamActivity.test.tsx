@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Effect, Redacted } from 'effect';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Me } from '@codaco/studio-contract/schema/account';
 import type { AuditEventSummary } from '@codaco/studio-contract/schema/audit';
@@ -11,6 +11,7 @@ import { Forbidden } from '@codaco/studio-contract/schema/errors';
 import { AuditEventId, TeamId } from '@codaco/studio-contract/schema/ids';
 import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
+import { studioCatalogSource } from '../../locales/catalogs.ts';
 import { createAppRouter } from '../../router.tsx';
 import {
   installRpcHarness,
@@ -40,7 +41,6 @@ const invitationCreated: AuditEventSummary = {
     label: Redacted.make('invitee@example.com'),
   },
   resource: null,
-  title: 'Invitation created',
   rendered: true,
 };
 
@@ -63,7 +63,6 @@ const roleDenied: AuditEventSummary = {
     label: Redacted.make('Member One'),
   },
   resource: null,
-  title: 'Member role change denied',
   rendered: true,
 };
 
@@ -78,7 +77,6 @@ const futureEvent: AuditEventSummary = {
   actor: { kind: 'system', id: null, label: Redacted.make('Studio') },
   subject: null,
   resource: null,
-  title: 'audit.future_event',
   rendered: false,
 };
 
@@ -89,6 +87,7 @@ const fixtures = {
   listAudit: vi.fn<Answer<'audit.list'>>(),
   getAudit: vi.fn<Answer<'audit.get'>>(),
   auditFilterOptions: vi.fn<Answer<'audit.filterOptions'>>(),
+  meLocale: null as string | null,
 };
 
 const ME: Me = {
@@ -115,6 +114,25 @@ const STATUS: InstanceStatus = {
   telemetry: false,
   logLevel: 'Info',
 };
+
+/**
+ * The names of two kinds of action, as a British catalogue entry would carry
+ * them. English and British English spell these names alike, so the shipped
+ * catalogue has no entry to show the difference with: these stand in for one,
+ * to prove the screen reads each name from the reader's catalogue by its id
+ * rather than from anything the server sends.
+ */
+const CATALOGUED_NAMES = {
+  'studio.teamActivity.event.invitationCreated': 'Catalogued: invitation made',
+  'studio.teamActivity.event.protocolCreated': 'Catalogued: protocol made',
+};
+
+vi.mock('../../locales/en-GB.json', async (importOriginal) => {
+  const original = await importOriginal<{
+    default: Record<string, string>;
+  }>();
+  return { default: { ...original.default, ...CATALOGUED_NAMES } };
+});
 
 vi.mock('../../lib/auth.ts', () => ({
   authClient: {
@@ -183,8 +201,15 @@ const listPages: Answer<'audit.list'> = (input) =>
       : { items: [fixtures.futureEvent], nextCursor: null },
   );
 
+// The British catalogue loads on demand; fetching it up front keeps a render
+// in en-GB synchronous, as `main.tsx` does before the first paint.
+beforeAll(async () => {
+  await studioCatalogSource.load('en-GB');
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
+  fixtures.meLocale = null;
   // One test pins a timezone to reach a daylight-saving boundary; undoing it
   // here rather than in that test means a failed assertion cannot leave the
   // rest of the file running in New York.
@@ -202,13 +227,10 @@ beforeEach(() => {
   // history, not the rows on screen.
   fixtures.auditFilterOptions.mockReturnValue(
     Effect.succeed({
-      actions: [
-        { eventType: 'team.invitation.created', title: 'Invitation created' },
-        {
-          eventType: 'team.member.role_change_denied',
-          title: 'Member role change denied',
-        },
-        { eventType: 'protocol.created', title: 'Protocol created' },
+      eventTypes: [
+        'team.invitation.created',
+        'team.member.role_change_denied',
+        'protocol.created',
       ],
       actors: [
         {
@@ -232,7 +254,7 @@ beforeEach(() => {
     }),
   );
   installRpcHarness({
-    'me': () => Effect.succeed(ME),
+    'me': () => Effect.succeed({ ...ME, locale: fixtures.meLocale }),
     'status': () => Effect.succeed(STATUS),
     'audit.list': (payload) => fixtures.listAudit(payload),
     'audit.get': (payload) => fixtures.getAudit(payload),
@@ -276,13 +298,46 @@ describe('Team activity screen', () => {
     expect(screen.getByText('Unrecognized event')).toBeInTheDocument();
     // Scoped to the row: the same text is now also an actor filter option,
     // because the options come from the team's history rather than the feed.
+    // Who an event names is data, so its cell takes its own direction.
     expect(
       screen.getByRole('cell', { name: 'Studio (System)' }),
-    ).toBeInTheDocument();
+    ).toHaveAttribute('dir', 'auto');
+    expect(
+      screen.getByText('invitee@example.com').closest('td'),
+    ).toHaveAttribute('dir', 'auto');
     expect(
       screen.getByText(/beginning of the recorded activity/),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+  });
+
+  it('names each kind of action in the reader’s language', async () => {
+    fixtures.meLocale = 'en-GB';
+    renderActivity();
+
+    // The row's link, the action filter's option and the detail dialog's
+    // title all read the name from the catalogue.
+    expect(
+      await screen.findByRole('cell', {
+        name: 'Catalogued: invitation made',
+      }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(optionLabels(screen.getByLabelText('Action'))).toEqual(
+        expect.arrayContaining([
+          'Catalogued: invitation made',
+          'Catalogued: protocol made',
+        ]),
+      );
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Catalogued: invitation made' }),
+    );
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Catalogued: invitation made',
+      }),
+    ).toBeInTheDocument();
   });
 
   it('applies filters server-side and resets pagination', async () => {
@@ -482,7 +537,7 @@ describe('Team activity screen', () => {
     expect(screen.queryByText(/missing from them/)).toBeNull();
 
     fixtures.auditFilterOptions.mockReturnValue(
-      Effect.succeed({ actions: [], actors: [], truncated: true }),
+      Effect.succeed({ eventTypes: [], actors: [], truncated: true }),
     );
     renderActivity();
     expect(
@@ -535,7 +590,7 @@ describe('Team activity screen', () => {
       await screen.findByText(/only available to team owners and admins/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Back to this team\u2019s studies' }),
+      screen.getByRole('link', { name: 'Back to this team’s studies' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Apply filters')).toBeNull();
   });

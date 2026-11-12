@@ -1,5 +1,13 @@
 import { createNextState } from '@reduxjs/toolkit';
+import { isEqual } from 'es-toolkit';
 
+import {
+  stageWithoutSuppliedText,
+  stageWithSuppliedText,
+  suppliedWordingIn,
+  withoutSuppliedWording,
+  withSuppliedWording,
+} from '@codaco/interview/supplied-wording';
 import {
   canonicalizeLocale,
   collectLocalizedStrings,
@@ -7,6 +15,7 @@ import {
   findInterfaceOwnedOptionBindings,
   isBlankMessage,
   isBlankText,
+  isFallbackLanguageChoice,
   isFinishSessionStage,
   isSuppliedOptionLabelSet,
   isUndeterminedLocale,
@@ -14,10 +23,10 @@ import {
   type LocalizedString,
   type LocalizedStringHit,
   defaultFinishSessionTextAfterLanguageChange,
-  interfaceTextAfterLanguageChange,
   type LanguageChange,
+  needsFallbackLanguage,
   suppliedOptionLabelsAfterLanguageChange,
-  suppliedStageTextAfterLanguageChange,
+  withFallbackLanguage,
 } from '@codaco/protocol-validation';
 import { withTranslation } from '~/utils/localizedText';
 
@@ -33,7 +42,12 @@ export type LocaleOperationFailure =
   /** The path is not where the protocol holds a participant-facing text. */
   | 'not-localized-string'
   /** A translation participants would see as nothing. */
-  | 'blank-text';
+  | 'blank-text'
+  /**
+   * Not a fallback language this protocol may name: its default language
+   * needs none, or the language is not one Network Canvas has wording in.
+   */
+  | 'not-fallback-choice';
 
 export type LocaleOperationResult =
   | { ok: true; protocol: CurrentProtocol }
@@ -136,62 +150,67 @@ const resolveNewLocale = (
 };
 
 /**
- * Writes into `target` each stage setting Network Canvas words, as it reads
- * for `stage` after `change` (see `suppliedStageTextAfterLanguageChange`).
- */
-const writeSuppliedStageText = (
-  stage: Readonly<{ type: string }>,
-  target: object,
-  change: LanguageChange,
-) => {
-  for (const { path, value } of suppliedStageTextAfterLanguageChange(
-    stage,
-    change,
-  )) {
-    setAtPath(target, path, value);
-  }
-};
-
-/**
- * A stage, shaped as the protocol holds it, after a change to the protocol's
- * languages: `rewrite` moves or removes its translations, and the settings
- * Network Canvas words then follow `change`, as they do in the protocol (see
- * `withLanguageChange`). It is how the change reaches a stage open in an
- * editor, whose unsaved fields the protocol does not hold.
+ * A stage open in an editor after a change to the protocol's languages. The
+ * editor holds Network Canvas's wording for the settings the stage does not
+ * word itself (`stageWithSuppliedText`), which is no text of the stage's: so
+ * `rewrite` moves or removes only the stage's own translations, and Network
+ * Canvas's wording is then filled in for the languages the protocol has
+ * after the change. It is how the change reaches the stage's unsaved fields,
+ * which the protocol does not hold.
  */
 export const stageAfterLanguageChange = <
-  Stage extends Readonly<{ type: string }>,
+  Stage extends Readonly<{ type: string }> & Readonly<Record<string, unknown>>,
 >(
   stage: Stage,
   rewrite: LocalizedStringRewrite,
   change: LanguageChange,
 ): Stage => {
-  const document = { stages: [stage] };
-  const [rewritten = stage] = rewriteLocalizedStrings(document, rewrite).stages;
-  return createNextState(rewritten, (draft) => {
-    writeSuppliedStageText(stage, draft, change);
-  });
+  const own = stageWithoutSuppliedText(stage);
+  const [rewritten = own] = rewriteLocalizedStrings(
+    { stages: [own] },
+    rewrite,
+  ).stages;
+  return stageWithSuppliedText(rewritten, change.after);
 };
 
 /**
  * The protocol after a change to its languages. `rewritten` is the protocol
- * with every translation already moved or removed as the change says; each
- * text Network Canvas supplies that the researcher has not changed in the
- * default language — the labels of the answers a Family Pedigree asks for, a
- * finish stage's closing text, and stage settings such as a roster's panel
- * title, and the interview's shared words — then becomes what Network Canvas
- * writes for the protocol's languages as they now are.
+ * with every translation already moved or removed as the change says. Then,
+ * in each text Network Canvas copies into a protocol — the labels of the
+ * answers a Family Pedigree asks for, and a finish stage's text and name — a
+ * language the protocol did not have gains Network Canvas's wording wherever
+ * it has no translation, even where the researcher has reworded the text in
+ * another language, and Network Canvas's wording for a corrected language
+ * becomes its wording for the language as corrected (see
+ * `suppliedTextAfterLanguageChange`). No translation is overwritten.
+ *
+ * The wording Network Canvas supplies for stage settings, such as a roster's
+ * panel title, and for the interview's shared words is not copied into a
+ * protocol, so nothing is written for it: the interview shows it in each
+ * language the protocol has no wording of its own in. The result is stored as
+ * every protocol is (`withoutSuppliedWording`), so a text of that wording
+ * whose only translation the change removed is no longer held, rather than
+ * held with no translation.
+ *
+ * The protocol's fallback language follows its default language: it is kept
+ * while the default language is one Network Canvas has no wording in, and
+ * goes when one it has wording in becomes the default
+ * (`withFallbackLanguage`). None is chosen for the researcher, so a protocol
+ * that comes to need one has none until they choose it.
  */
 const withLanguageChange = (
   original: CurrentProtocol,
   rewritten: CurrentProtocol,
   change: LanguageChange,
 ): CurrentProtocol => {
-  return createNextState(rewritten, (draft) => {
-    draft.localization = {
-      defaultLocale: change.after.defaultLocale,
-      locales: [...change.after.locales],
-    };
+  const changed = createNextState(rewritten, (draft) => {
+    draft.localization = withFallbackLanguage(
+      {
+        defaultLocale: change.after.defaultLocale,
+        locales: [...change.after.locales],
+      },
+      original.localization.fallbackLocale,
+    );
     for (const binding of findInterfaceOwnedOptionBindings(original)) {
       const set = binding.optionSet;
       if (!isSuppliedOptionLabelSet(set)) continue;
@@ -208,12 +227,11 @@ const withLanguageChange = (
       const target = variableIn(draft as CurrentProtocol);
       if (variable?.type !== 'categorical' || target?.type !== 'categorical')
         continue;
-      const options = suppliedOptionLabelsAfterLanguageChange(
+      target.options = suppliedOptionLabelsAfterLanguageChange(
         set,
         variable.options,
         change,
       );
-      if (options !== undefined) target.options = options;
     }
     original.stages.forEach((stage, index) => {
       const target = draft.stages[index];
@@ -224,27 +242,20 @@ const withLanguageChange = (
           defaultFinishSessionTextAfterLanguageChange(stage, change),
         );
       }
-      writeSuppliedStageText(stage, target, change);
     });
-    if (original.interfaceText !== undefined) {
-      for (const { group, key, value } of interfaceTextAfterLanguageChange(
-        original.interfaceText,
-        change,
-      )) {
-        setAtPath(draft.interfaceText, [group, key], value);
-      }
-    }
   });
+  return withoutSuppliedWording(changed);
 };
 
 /**
  * Declares new languages. Nothing is translated except text Network Canvas
- * supplies that the researcher has not changed in the default language (see
- * `withLanguageChange`): a finish stage's closing text, the labels of the
- * answers a Family Pedigree asks for, and stage settings such as a roster's
- * panel title. Each gets its supplied text in every new language it is
- * supplied in. Everything else shows as a missing translation until it is
- * written.
+ * copies into a protocol (see `withLanguageChange`): a finish stage's text
+ * and name, and the labels of the answers a Family Pedigree asks for. Each
+ * gets its supplied text in every new language it is supplied in, whether or
+ * not the researcher has reworded it in the languages the protocol already
+ * has. Stage settings and shared words that Network Canvas words read in its
+ * wording for the new language without anything being written. Everything
+ * else shows as a missing translation until it is written.
  */
 export const addLocales = (
   protocol: CurrentProtocol,
@@ -281,10 +292,21 @@ export type LocaleRemovalImpact = {
  * and an unsaved one in an open stage editor — and each place counts once:
  * translated if any reading has the language, stranded if any reading has
  * nothing else.
+ *
+ * `supplied` gives Network Canvas's own wording for a place, where it words
+ * it (`suppliedWordingIn`). Such a text is never left with nothing while
+ * Network Canvas has wording for it in a language that stays, even where the
+ * researcher's own wording for it is only in the language being removed, so
+ * that place is not stranded. Only Network Canvas's wording counts: what the
+ * saved protocol holds at a place says nothing about an unsaved reading of
+ * it.
  */
 export const getLocaleRemovalImpact = (
   texts: readonly LocalizedStringHit[],
   locale: LocaleTag,
+  supplied: (
+    path: LocalizedStringHit['path'],
+  ) => LocalizedString | undefined = () => undefined,
 ): LocaleRemovalImpact => {
   const translated = new Set<string>();
   const stranded = new Map<string, LocalizedStringHit>();
@@ -294,7 +316,8 @@ export const getLocaleRemovalImpact = (
     translated.add(place);
     if (
       !stranded.has(place) &&
-      Object.keys(hit.value).every((key) => key === locale)
+      Object.keys(hit.value).every((key) => key === locale) &&
+      Object.keys(supplied(hit.path) ?? {}).every((key) => key === locale)
     ) {
       stranded.set(place, hit);
     }
@@ -306,8 +329,8 @@ export const getLocaleRemovalImpact = (
 };
 
 /**
- * Deletes a language and every translation written in it. Text Network Canvas
- * supplies follows as for any change of languages (see `withLanguageChange`).
+ * Deletes a language and every translation written in it. No other text
+ * changes: no language is added, so none gains Network Canvas's wording.
  */
 export const removeLocale = (
   protocol: CurrentProtocol,
@@ -320,6 +343,7 @@ export const removeLocale = (
   const impact = getLocaleRemovalImpact(
     collectLocalizedStrings(protocol),
     locale,
+    suppliedWordingIn(protocol),
   );
   if (impact.strandedStrings.length > 0) return fail('would-empty');
   const before = protocol.localization;
@@ -340,8 +364,8 @@ export const removeLocale = (
 };
 
 /**
- * Makes another declared language the default. Text Network Canvas supplies
- * and the researcher has not changed follows (see `withLanguageChange`).
+ * Makes another declared language the default. No text changes: no language
+ * is added, so none gains Network Canvas's wording.
  */
 export const setDefaultLocale = (
   protocol: CurrentProtocol,
@@ -358,6 +382,62 @@ export const setDefaultLocale = (
   };
 };
 
+/**
+ * Names the protocol's fallback language: the language the interview shows
+ * its own text in when it has that text in none of the languages a
+ * participant would otherwise be shown. Only a protocol whose default
+ * language Network Canvas has no wording in names one, and only a language
+ * Network Canvas has wording in can be it (`needsFallbackLanguage`). No text
+ * changes.
+ */
+export const setFallbackLocale = (
+  protocol: CurrentProtocol,
+  locale: LocaleTag,
+): LocaleOperationResult => {
+  if (
+    !needsFallbackLanguage(protocol.localization.defaultLocale) ||
+    !isFallbackLanguageChoice(locale)
+  ) {
+    return fail('not-fallback-choice');
+  }
+  return {
+    ok: true,
+    protocol: {
+      ...protocol,
+      localization: withFallbackLanguage(protocol.localization, locale),
+    },
+  };
+};
+
+/**
+ * `edited`, a change made to `protocol` with the wording it shows written
+ * out, as the protocol stores it (`withoutSuppliedWording`). Each stage the
+ * change left as the protocol holds it is the protocol's own object, and so
+ * are its shared words, so one edited text is one changed place in the
+ * protocol's history and not a copy of every stage.
+ */
+const storedAfterEdit = (
+  protocol: CurrentProtocol,
+  edited: CurrentProtocol,
+): CurrentProtocol => {
+  const stored = withoutSuppliedWording(edited);
+  const stages = stored.stages.map((stage, index) => {
+    const held = protocol.stages[index];
+    return held !== undefined && isEqual(stage, held) ? held : stage;
+  });
+  const { interfaceText: _stored, ...rest } = stored;
+  const interfaceText = isEqual(stored.interfaceText, protocol.interfaceText)
+    ? protocol.interfaceText
+    : stored.interfaceText;
+  return {
+    ...rest,
+    stages: stages.every((stage, index) => stage === protocol.stages[index])
+      ? protocol.stages
+      : stages,
+    ...(interfaceText === undefined ? {} : { interfaceText }),
+  };
+};
+
 const isSamePath = (
   a: readonly (string | number)[],
   b: readonly (string | number)[],
@@ -366,7 +446,12 @@ const isSamePath = (
 /**
  * Writes one translation of one participant-facing text, stored exactly as the
  * stage editors store it. `path` must be where `collectLocalizedStrings` finds
- * that text, so nothing else in the protocol can be written through it.
+ * that text in the protocol with the wording it shows written out
+ * (`withSuppliedWording`), so a text Network Canvas words can be written
+ * whether or not the protocol holds any wording for it yet, and nothing else
+ * in the protocol can be written through it. The protocol is stored holding
+ * only the researcher's own wording (`withoutSuppliedWording`), so a
+ * translation written exactly as Network Canvas words it is not kept.
  */
 export const setTranslation = (
   protocol: CurrentProtocol,
@@ -376,55 +461,48 @@ export const setTranslation = (
 ): LocaleOperationResult => {
   if (!isDeclared(protocol, locale)) return fail('not-declared');
   if (isBlankText(text)) return fail('blank-text');
-  const hit = collectLocalizedStrings(protocol).find((candidate) =>
+  const shown = withSuppliedWording(protocol);
+  const hit = collectLocalizedStrings(shown).find((candidate) =>
     isSamePath(candidate.path, path),
   );
   if (!hit) return fail('not-localized-string');
   return {
     ok: true,
-    protocol: createNextState(protocol, (draft) => {
-      setAtPath(draft, hit.path, withTranslation(hit.value, locale, text));
-    }),
+    protocol: storedAfterEdit(
+      protocol,
+      createNextState(shown, (draft) => {
+        setAtPath(draft, hit.path, withTranslation(hit.value, locale, text));
+      }),
+    ),
   };
 };
 
-/**
- * Replaces every translation of one participant-facing text at once. `value`
- * holds stored messages, as the localized fields write them, and `path` must
- * be where `collectLocalizedStrings` finds that text. Every translation must
- * say something, as the schema requires: a language with nothing to show is
- * left out of `value`, never stored blank.
- */
-const setLocalizedString = (
+/** Why one text cannot be set to `value`, or undefined when it can. */
+const localizedStringRefusal = (
   protocol: CurrentProtocol,
-  path: readonly (string | number)[],
   value: LocalizedString,
-): LocaleOperationResult => {
+): LocaleOperationFailure | undefined => {
   const translations = Object.entries(value);
   if (translations.some(([locale]) => !isDeclared(protocol, locale))) {
-    return fail('not-declared');
+    return 'not-declared';
   }
   if (
     translations.length === 0 ||
     translations.some(([, message]) => isBlankMessage(message))
   ) {
-    return fail('blank-text');
+    return 'blank-text';
   }
-  const hit = collectLocalizedStrings(protocol).find((candidate) =>
-    isSamePath(candidate.path, path),
-  );
-  if (!hit) return fail('not-localized-string');
-  return {
-    ok: true,
-    protocol: createNextState(protocol, (draft) => {
-      setAtPath(draft, hit.path, value);
-    }),
-  };
+  return undefined;
 };
 
 /**
- * Several texts set as `setLocalizedString` sets one, together: every one is
- * set, or, when one cannot be, none is.
+ * Replaces every translation of several participant-facing texts at once:
+ * every one is set, or, when one cannot be, none is. Each `value` holds
+ * stored messages, as the localized fields write them, and each `path` must
+ * be where `collectLocalizedStrings` finds that text in the protocol with the
+ * wording it shows written out (see `setTranslation`). Every translation must
+ * say something, as the schema requires: a language with nothing to show is
+ * left out of `value`, never stored blank.
  */
 export const setLocalizedStrings = (
   protocol: CurrentProtocol,
@@ -433,24 +511,46 @@ export const setLocalizedStrings = (
     value: LocalizedString;
   }>[],
 ): LocaleOperationResult => {
-  let next = protocol;
+  // Setting a text never adds or removes one, so the texts are found once.
+  const shown = withSuppliedWording(protocol);
+  const texts = new Map(
+    collectLocalizedStrings(shown).map((hit) => [
+      JSON.stringify(hit.path),
+      hit,
+    ]),
+  );
+  const writes: { path: (string | number)[]; value: LocalizedString }[] = [];
   for (const { path, value } of updates) {
-    const result = setLocalizedString(next, path, value);
-    if (!result.ok) return result;
-    next = result.protocol;
+    const refusal = localizedStringRefusal(protocol, value);
+    if (refusal !== undefined) return fail(refusal);
+    const hit = texts.get(JSON.stringify(path));
+    if (!hit) return fail('not-localized-string');
+    writes.push({ path: hit.path, value });
   }
-  return { ok: true, protocol: next };
+  return {
+    ok: true,
+    protocol: storedAfterEdit(
+      protocol,
+      createNextState(shown, (draft) => {
+        for (const { path, value } of writes) setAtPath(draft, path, value);
+      }),
+    ),
+  };
 };
 
 /**
  * Says that the text recorded as `from` is really written in `tag`: the
  * declaration entry and every translation move to the new tag together, and
  * the default follows when it is `from`. Nothing the researcher wrote is
- * translated or deleted; text Network Canvas supplies and the researcher has
- * not changed becomes its text for the corrected language (see
- * `withLanguageChange`), so an English protocol corrected to German reads the
- * German supplied text. A language the protocol already has is never merged
- * into, so a tag it declares is refused.
+ * translated or deleted. In the text Network Canvas copies into a protocol, a
+ * translation that is its wording for `from` becomes its wording for the
+ * corrected language, or is removed where it has none there, and a supplied
+ * text with no translation in `from` gains the corrected language's wording
+ * (see `withLanguageChange`). The wording it supplies without copying reads
+ * in the corrected language as soon as the protocol declares it. So an
+ * English protocol corrected to German reads the German supplied text. A
+ * language the protocol already has is never merged into, so a tag it
+ * declares is refused.
  */
 export const changeLocale = (
   protocol: CurrentProtocol,

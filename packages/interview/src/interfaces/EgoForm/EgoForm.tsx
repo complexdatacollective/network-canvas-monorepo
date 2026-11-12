@@ -42,6 +42,7 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { interfaceTextMessages } from '../../i18n/interfaceTextMessages';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { LocalizedText } from '../../localization/LocalizedText';
 import { getEgoAttributes } from '../../selectors/session';
@@ -144,7 +145,9 @@ const EgoFormInner = (props: EgoFormProps) => {
           intent: 'destructive',
           actions: {
             primary: {
-              label: <AppMessage message={interfaceMessages.discardChanges} />,
+              label: (
+                <AppMessage message={interfaceTextMessages['buttons.yes']} />
+              ),
               value: true,
             },
             cancel: {

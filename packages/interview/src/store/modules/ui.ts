@@ -77,7 +77,6 @@ const uiSlice = createSlice({
   },
   selectors: {
     formIsReady: (state) => state.FORM_IS_READY,
-    getEncryptionKeyId: (state) => state.encryptionKeyId,
     showPassphrasePrompter: (state) => state.showPassphrasePrompter,
     getLocalePreference: (state) => state.localePreference,
   },
@@ -96,9 +95,5 @@ export const {
 } = uiSlice.actions;
 
 // Export the selectors
-export const {
-  formIsReady,
-  getEncryptionKeyId,
-  showPassphrasePrompter,
-  getLocalePreference,
-} = uiSlice.selectors;
+export const { formIsReady, showPassphrasePrompter, getLocalePreference } =
+  uiSlice.selectors;

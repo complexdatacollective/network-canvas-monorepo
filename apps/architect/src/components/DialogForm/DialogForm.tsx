@@ -21,7 +21,8 @@ const messages = defineMessages({
   resizeFormAndPreviewPanes: {
     id: 'architect.dialogForm.dialogForm.resizeFormAndPreviewPanes',
     defaultMessage: 'Resize form and preview panes',
-    description: 'The aria-label text in components / DialogForm / DialogForm.',
+    description:
+      'Accessible name of the draggable divider between the form and the preview beside it in an editor dialog; read only by screen readers. Dragging it changes how much width each side gets.',
   },
 });
 
@@ -204,11 +205,11 @@ const DialogFormBody = ({
           <FormWithoutProvider
             id={domFormId}
             onSubmit={handleSubmit}
-            className="min-w-0 @min-[60rem]:pr-4"
+            className="min-w-0 @min-[60rem]:pe-4"
           >
             {children}
           </FormWithoutProvider>
-          <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+          <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:ps-4">
             {aside}
           </aside>
         </ResizableFlexPanel>
