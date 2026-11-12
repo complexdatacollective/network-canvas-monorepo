@@ -1,0 +1,207 @@
+---
+title: Genealogía narrativa
+navOrder: 11
+translatedFrom: 6620169cfb7caae3938267a8bd61c0114aa3c035
+---
+
+<InterfaceSummary type="NarrativePedigree">
+
+<InterfaceMeta type="Visualización de datos" creates="Nada. Dibuja la familia creada en una etapa «Genealogía familiar» anterior" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+La interfaz «Genealogía narrativa» es complementaria de la interfaz [«Genealogía familiar»](/es/design-protocols/interface-documentation/family-pedigree). Dibuja la familia que una persona participante ha creado en una etapa «Genealogía familiar» anterior y muestra cómo se pueden heredar una o varias afecciones registradas en esa familia. La persona participante elige una afección, y el símbolo de cada persona muestra su estado respecto a ella con la notación genealógica estándar (Bennett et al., 2008, 2022). Después, la persona participante puede centrar el foco en cualquier persona para ver a través de qué familiares podría haberle llegado la afección.
+
+La interfaz es de solo lectura. Nunca añade, cambia ni elimina personas, relaciones ni atributos, y no registra nada en los datos de la entrevista. Cada estado que muestra se calcula de nuevo a partir de la familia tal como la registró la etapa de origen.
+
+La interfaz resulta más útil en la investigación formal basada en genealogías y en el asesoramiento genético, donde se conoce el patrón de herencia de la afección y la familia registra el parentesco biológico. En la investigación sobre las familias tal como las definen quienes participan, donde los lazos biológicos pueden estar incompletos o haberse omitido deliberadamente, sus inferencias se basan en la estructura biológica que cada participante haya decidido registrar, y deben interpretarse teniéndolo en cuenta.
+
+## Configurar la etapa {#configuring-the-stage}
+
+El editor de la etapa en Architect tiene cuatro secciones propias, seguidas de las secciones **Lógica de salto** y **Guía para la persona entrevistadora** que tienen todas las etapas.
+
+### Origen de la genealogía {#pedigree-source}
+
+En **Etapa de origen**, elige la etapa «Genealogía familiar» cuya familia dibuja esta etapa. Solo se ofrecen las etapas «Genealogía familiar» que van antes de esta, y Architect te lo explica cuando no hay ninguna. Si más adelante la etapa elegida se elimina, se coloca después de esta o se cambia a otra interfaz, Architect lo indica, y esta etapa no se puede guardar hasta que se elija otro origen.
+
+Cada afección corresponde a un atributo del tipo de persona de la etapa de origen, así que elegir otro origen elimina todas las afecciones, previa confirmación. Mientras una etapa «Genealogía narrativa» lee una etapa «Genealogía familiar», no se puede cambiar el tipo de persona de esa etapa «Genealogía familiar». Para cambiarlo, primero haz que la etapa «Genealogía narrativa» lea otro origen, o elimínala.
+
+La etapa dibuja a la persona participante y a todas las personas conectadas con ella a través de las relaciones de la etapa de origen: parejas (actuales o no), progenitores de cualquier tipo, descendencia y, a su vez, los familiares de todas estas personas. Una persona del mismo tipo de persona que no esté conectada con la persona participante a través de esas relaciones queda fuera, aunque la haya añadido otra etapa o la haya conectado con la persona participante mediante otro tipo de conexión.
+
+### Asignaciones de enfermedades {#disease-mappings}
+
+Cada afección que puede elegir la persona participante es una fila de **Asignaciones de enfermedades**. **Crear nueva enfermedad** abre un cuadro de diálogo con cuatro campos, todos obligatorios:
+
+- **Etiqueta de enfermedad**: el nombre de la afección, que se muestra en el menú de afecciones de la persona participante. Cada afección necesita un nombre distinto, en todos los idiomas del protocolo.
+- **Color**: uno de los ocho colores de nodo. Los estados de la afección, y sus símbolos en la leyenda, se dibujan en ese color.
+- **Atributo de nodo**: el atributo **booleano** que registra quién está afectado. Solo se ofrecen los atributos que registra alguna de las [preguntas de nominación](/es/design-protocols/interface-documentation/family-pedigree#nomination-prompts) de la etapa de origen, y cada uno solo puede corresponder a una afección. Si no se ofrece ninguno, añade a la etapa «Genealogía familiar» una pregunta de nominación que pregunte quién tiene la afección.
+- **Patrón de herencia**: cómo se transmite la afección de progenitores a descendientes. Todas las inferencias que hace la interfaz dependen de él (consulta [Cómo se infieren los estados](#how-statuses-are-inferred)).
+
+Los ocho patrones de herencia son autosómico dominante, autosómico recesivo, dominante ligado al cromosoma X, recesivo ligado al cromosoma X, ligado al cromosoma Y, mitocondrial, multifactorial y desconocido. Con **Multifactorial** y **Desconocido**, la interfaz solo muestra quién se registró como persona afectada y no infiere ningún otro estado.
+
+La etapa necesita al menos una afección. El orden de las filas es el orden del menú de afecciones de la persona participante.
+
+### Estados de riesgo {#at-risk-statuses}
+
+**Mostrar estados posibles (de riesgo)** está desactivado de forma predeterminada. Mientras está desactivado, la genealogía solo muestra los estados que se han registrado o que se deducen con certeza de la estructura de la familia. Cuando está activado, la genealogía también muestra los dos estados que solo son posibles, _puede desarrollar_ y _puede portar_, y la leyenda los incluye. Consulta [Estados posibles](#possible-statuses) antes de activarlo.
+
+### Personalizar la redacción predeterminada {#customize-built-in-wording}
+
+La sección **Personalizar la redacción predeterminada** contiene las palabras que leen quienes participan en la etapa. Network Canvas aporta una redacción inicial para cada una, en todos los idiomas para los que la tiene, y puedes cambiarla y traducirla como cualquier otro texto (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+En **Textos exclusivos de esta etapa** están:
+
+- el texto del menú de afecciones mientras no se ha elegido ninguna afección, que también es la opción del menú para no mostrar ninguna («Selecciona una afección»);
+- la etiqueta del botón **Guardar imagen**;
+- los títulos de las capturas guardadas, uno para la captura de una afección y otro para la captura centrada en una persona. Muestran la etiqueta de la etapa y el nombre de la afección, y el segundo también el nombre de la persona, en el lugar donde están sus marcadores.
+
+En **Textos comunes a todas las etapas de este tipo** está la redacción que muestran por igual todas las etapas «Genealogía narrativa»: el encabezado de la leyenda, el significado de cada símbolo de la leyenda («Tiene esta afección», «Desarrollará esta afección», «Es portador/a de esta afección», «Puede desarrollar esta afección», «Puede ser portador/a de esta afección» y «No se sabe») y la información emergente del botón **Quitar el foco**. En lugar de eso, cada significado puede nombrar la afección que se muestra, insertada como un marcador con el botón de texto dinámico (piped text) del campo. Los dos estados posibles solo aparecen ahí mientras alguna etapa «Genealogía narrativa» tiene activado **Mostrar estados posibles (de riesgo)**. Junto a ellos están las descripciones de los botones de zoom y el nombre y la descripción del botón **Mostrar toda la familia**, que muestran por igual todas las etapas «Genealogía narrativa» y «Genealogía familiar». Un cambio en cualquiera de estos textos se aplica a todas esas etapas, y se guarda en cuanto sales del campo.
+
+## Qué ve la persona participante {#what-the-participant-sees}
+
+La etapa se abre con toda la familia, dibujada como la dibuja la etapa «Genealogía familiar» y ajustada a la pantalla. Cada persona tiene la misma etiqueta que tenía en la etapa «Genealogía familiar». La persona participante aparece como «Tú», y las demás personas, con su nombre. Un familiar al que la persona participante no ha puesto nombre aparece con su parentesco con la persona participante, en las palabras que usó la etapa «Genealogía familiar» («Madre» o «Progenitor de óvulo», por ejemplo). Si tu estudio cifra el atributo del nombre, se pide a la persona participante su frase de contraseña, y los familiares aparecen con su parentesco hasta que la introduce. Una persona registrada como adoptada se dibuja entre corchetes.
+
+Cada símbolo tiene la forma que le da la opción [Símbolos](/es/design-protocols/interface-documentation/family-pedigree#how-each-persons-symbol-is-drawn) de la etapa «Genealogía familiar». Si los símbolos siguen el sexo asignado al nacer, una persona registrada como de sexo femenino se dibuja como un círculo, una persona registrada como de sexo masculino, como un cuadrado, y cualquier otra persona, como un rombo.
+
+Una barra de herramientas situada debajo de la familia contiene, en orden de lectura (de derecha a izquierda en una entrevista que se muestra en un idioma que se escribe de derecha a izquierda):
+
+- el **menú de afecciones**, que enumera cada afección junto a su color, después de una primera opción que no muestra ninguna;
+- **Quitar el foco**, mientras el foco está en una persona;
+- **Alejar**, **Acercar** y un botón que muestra toda la familia;
+- **Guardar imagen**.
+
+La persona participante también puede arrastrar el lienzo para desplazarlo, y acercar o alejar la vista con la rueda del ratón, pellizcando la pantalla o con las teclas + y −.
+
+Hasta que se elige una afección, cada persona se dibuja con un símbolo simple del color del tipo de persona, con su etiqueta dentro. Al elegir una afección, cada símbolo se vuelve a dibujar con la notación estándar, en el color de la afección y con la etiqueta debajo, y se abre junto a la familia una leyenda que explica cada símbolo. La persona participante puede ensanchar o estrechar la leyenda arrastrando su borde. Solo se muestra una afección cada vez. Al elegir **Selecciona una afección** en el menú, se vuelve al dibujo simple y se cierra la leyenda.
+
+![La etapa «Genealogía narrativa» con la fibrosis quística, una afección autosómica recesiva. Sam, el hermano de la persona participante, está afectado, los dos progenitores portan la afección, la persona participante puede desarrollarla, y los abuelos y abuelas y los tíos y tías de la persona participante pueden portarla. La leyenda, junto a la familia, explica cada símbolo.](/assets/img/interface-documentation/narrative-pedigree/condition.png 'Una afección elegida, con la leyenda junto a la familia')
+
+### Los símbolos {#the-symbols}
+
+| Estado                                | Símbolo                                                       | Cuándo se muestra                                                                                 |
+| ------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Tiene esta afección                   | Relleno sólido                                                | Se ha registrado que la persona está afectada.                                                    |
+| Desarrollará esta afección            | Una línea vertical que atraviesa el símbolo                   | La persona tiene que tener la afección, dada la estructura de la familia y el patrón de herencia. |
+| Es portador/a de esta afección        | Líneas horizontales que rellenan el símbolo                   | La persona tiene que portar la afección sin desarrollarla.                                        |
+| Puede desarrollar esta afección       | La línea vertical, interrumpida por un signo de interrogación | La persona puede haber heredado la afección (solo cuando se muestran los estados posibles).       |
+| Puede ser portador/a de esta afección | Las líneas horizontales, con un signo de interrogación        | La persona puede portar la afección (solo cuando se muestran los estados posibles).               |
+| No se sabe                            | Un símbolo vacío                                              | Nada en la familia registrada permite establecer un estado.                                       |
+
+La leyenda dibuja cada uno de sus símbolos como un círculo; en la genealogía, cada persona conserva su propia forma. Cuando más de una regla asigna un estado a una persona, se muestra el estado de mayor certeza: un estado registrado antes que uno inferido, y un estado inferido con certeza antes que uno posible. Entre los dos estados posibles, _puede desarrollar_ se muestra antes que _puede portar_.
+
+<KeyConcept title="Un símbolo relleno siempre significa que la persona está afectada">
+
+Solo una persona registrada como afectada se dibuja con relleno sólido. El relleno nunca se usa para alguien de quien solo se infiere que tiene la afección, o que posiblemente la tiene, por sólida que sea la inferencia. Esto sigue la nomenclatura genealógica estándar, que reserva el sombreado para las personas clínicamente afectadas y no codifica ninguna probabilidad en un símbolo (Bennett et al., 2008). Por ejemplo, una persona cuyos dos progenitores portan una afección recesiva se dibuja como _puede desarrollar_ (una posibilidad entre cuatro), no con un símbolo relleno.
+
+</KeyConcept>
+
+### Centrar el foco en una persona {#focusing-on-one-person}
+
+Una vez elegida una afección, al seleccionar a una persona el foco se centra en ella. Una flecha sobre su símbolo la señala, y la genealogía resalta a los familiares a través de quienes podría haberle llegado la afección y las líneas de descendencia por las que se transmitió. Todas las personas y todas las líneas que no están en ese recorrido se atenúan. El foco se quita con **Quitar el foco**, con la tecla Escape o haciendo clic en una zona vacía del lienzo. Al cambiar a otra afección, el foco se mantiene, y al volver a **Selecciona una afección**, se quita.
+
+El recorrido sigue el patrón de herencia de la afección:
+
+- **Autosómico** (dominante o recesivo), **multifactorial** y **desconocido**: a través de cualquiera de los dos progenitores.
+- **Ligado al cromosoma X**: el cromosoma X de una persona de sexo masculino procede de su madre, así que su recorrido solo pasa por ella. En una afección recesiva ligada al cromosoma X, una persona de sexo femenino que la porta y cuyo padre está afectado la ha recibido de él, así que su recorrido solo pasa por su padre, salvo que ella misma o su madre estén afectadas.
+- **Ligado al cromosoma Y**: de padre a hijo.
+- **Mitocondrial**: a través del progenitor que aportó el óvulo.
+
+El recorrido solo pasa por familiares que tienen un estado respecto a la afección y, cuando ninguno de los progenitores de la persona en la que se centra el foco tiene un estado, solo se resalta a esa persona. El recorrido se traza a partir de todos los estados que infiere la interfaz, incluidos los estados posibles mientras están ocultos, así que, con **Mostrar estados posibles (de riesgo)** desactivado, un familiar que aparece como _No se sabe_ puede seguir estando en el recorrido.
+
+![La misma familia con el foco centrado en la persona participante, señalada con una flecha. Los progenitores y los abuelos y abuelas a través de quienes podría haber llegado la afección a la persona participante, y las líneas que los unen, están resaltados, y el resto de la familia está atenuado.](/assets/img/interface-documentation/narrative-pedigree/focus.png 'El foco centrado en la persona participante')
+
+### Teclado y lectores de pantalla {#keyboard-and-screen-readers}
+
+La familia es una sola parada en el orden de tabulación. Las teclas de flecha permiten moverse entre las personas según su posición en el árbol, y Intro o la barra espaciadora centran el foco en la persona que tiene el foco del teclado. No se puede centrar el foco en ninguna persona hasta que se elige una afección, pero se puede seguir llegando a ellas con las teclas de flecha.
+
+Los lectores de pantalla leen el estado de cada persona respecto a la afección elegida junto con su nombre, y anuncian cada cambio de afección o de foco. Los símbolos en sí no se leen en voz alta, así que nunca se anuncia el estado de una persona si no está dibujado.
+
+### Guardar una captura {#saving-a-snapshot}
+
+**Guardar imagen** guarda una imagen PNG de toda la familia sobre fondo blanco, a su tamaño natural, sea cual sea la parte que se ve en la pantalla. La imagen reproduce la genealogía tal como se ve con la afección y el foco elegidos, e incluye la leyenda si se ha elegido una afección. Lleva como título la etiqueta de la etapa y, una vez que se ha elegido una afección, también la afección y la persona en la que se centra el foco, con los títulos de captura de [Personalizar la redacción predeterminada](#customize-built-in-wording). El archivo se guarda en el dispositivo de la persona participante y no forma parte de los datos de la entrevista.
+
+## Cómo se infieren los estados {#how-statuses-are-inferred}
+
+La interfaz determina el estado de cada persona a partir de tres cosas: quién se registró como persona afectada, la estructura biológica de la familia y el sexo asignado al nacer de cada persona. La inferencia es prudente. Un estado solo se muestra cuando la familia registrada lo respalda, y una persona aparece como _No se sabe_ siempre que la familia no permite precisar más.
+
+<KeyConcept title="«No se sabe» no significa que no haya riesgo">
+
+_No se sabe_ suele significar que la familia registrada contiene demasiado poca información para precisar más, por ejemplo porque nunca se registró a uno de los progenitores de la persona o porque hay dudas sobre quiénes son los progenitores de alguien de su fratría. No es una afirmación de que la persona esté libre de la afección.
+
+</KeyConcept>
+
+El modelo no da probabilidades, y no representa la penetrancia variable (salvo en los casos descritos más abajo), las fenocopias, el mosaicismo ni las variantes de significado incierto. Sus estados indican en qué parte de la familia hay que fijarse, y no sustituyen a una evaluación clínica.
+
+### Qué relaciones transmiten una afección {#which-relationships-pass-a-condition-on}
+
+Solo los progenitores biológicos y las personas donantes transmiten una afección. Los progenitores adoptivos y sociales, los padrastros y madrastras, las personas gestantes por subrogación y las parejas nunca la transmiten, así que nunca se infiere ningún estado a través de esas relaciones.
+
+### Sexo asignado al nacer {#sex-assigned-at-birth}
+
+La herencia ligada a los cromosomas X e Y depende del sexo asignado al nacer, y la identidad de género no interviene en ella. Una persona registrada como de sexo femenino o masculino se trata según lo registrado. Una persona registrada como intersexual siempre se considera de sexo incierto, porque no se puede suponer que tenga un cromosoma X ni que tenga dos. Una persona cuyo sexo no se conoce, que ha preferido no decirlo o a la que no se le ha preguntado se clasifica según el gameto (el óvulo o el espermatozoide) que aportó para concebir a una persona de su descendencia de primer grado, cuando la [regla de los gametos](/es/design-protocols/interface-documentation/family-pedigree#which-parent-gave-the-egg-or-the-sperm) de la etapa «Genealogía familiar» lo determina a partir del otro progenitor genético de la persona concebida; en caso contrario, se considera de sexo incierto. La herencia ligada a los cromosomas X e Y a través de una persona de sexo incierto se deja sin resolver en lugar de suponerla. La herencia mitocondrial sigue al óvulo y no al sexo, así que pasa por cualquier persona que, según la regla de los gametos, aportó un óvulo, incluida una persona registrada como intersexual.
+
+### Inferencias según cada patrón {#inferences-under-each-pattern}
+
+En la lista siguiente, «de sexo femenino» y «de sexo masculino» se refieren al sexo asignado al nacer, tal como se ha descrito más arriba.
+
+- **Autosómico dominante.** La descendencia de una persona afectada _puede desarrollar_ la afección. Una persona no afectada que está entre dos personas afectadas, una en su ascendencia y otra en su descendencia, _porta_ la afección cuando a la persona descendiente solo puede haberle llegado a través de ella; se trata de una persona portadora no penetrante de una afección dominante. Los progenitores de una persona afectada que no tiene a nadie afectado en su ascendencia nunca se marcan con el estado _porta_, porque la afección puede haber surgido de novo.
+- **Autosómico recesivo.** Los dos progenitores genéticos de una persona afectada, y toda la descendencia de primer grado de una persona afectada, _portan_ la afección. Una persona cuyos dos progenitores genéticos están afectados _la desarrollará_. Una persona cuyos dos progenitores genéticos la portan _puede desarrollarla_; una persona con un solo progenitor portador registrado _puede portarla_. Los progenitores y los hermanos y hermanas de los progenitores portadores de una persona afectada _pueden portarla_.
+- **Recesivo ligado al cromosoma X.** Todas las hijas de una persona de sexo masculino afectada _portan_ la afección, y sus hijos varones no heredan nada de esa persona. Una persona de sexo femenino con dos hijos varones afectados, o con un hijo varón afectado y un hermano afectado que tiene la misma madre que ella, _la porta_. En los demás casos, la madre de una persona de sexo masculino afectada _puede portarla_, al igual que la abuela materna y las tías maternas de esa persona, y los tíos maternos de esa misma persona _pueden desarrollarla_. A partir de cada persona de sexo femenino que porta o puede portar la afección, las hijas _pueden portarla_ y los hijos varones _pueden desarrollarla_. No se marca a quienes tienen parentesco solo a través de una persona de sexo masculino no afectada, como alguien de la fratría de la madre que solo comparte con ella el padre.
+- **Dominante ligado al cromosoma X.** Todas las hijas de una persona de sexo masculino afectada _desarrollarán_ la afección, y sus hijos varones no heredan nada de esa persona. Toda la descendencia de primer grado de una persona de sexo femenino afectada _puede desarrollarla_, y la inferencia continúa hacia abajo, con las mismas reglas, a través de cada una de esas personas.
+- **Ligado al cromosoma Y.** Todas las personas de sexo masculino de la línea masculina ininterrumpida de una persona de sexo masculino afectada, incluidos su padre, sus hijos, sus hermanos, sus tíos paternos y los hijos de estos, _desarrollarán_ la afección. Nada pasa a una persona de sexo femenino ni a través de ella.
+- **Mitocondrial.** La afección sigue al óvulo. Toda la descendencia de primer grado de una persona de sexo femenino afectada _puede desarrollarla_, y la afección sigue transmitiéndose hacia abajo solo a través de las hijas. La línea materna de la persona afectada (su madre, la madre de esta, y así sucesivamente) y el resto de la descendencia de primer grado de quienes forman esa línea también _pueden desarrollarla_. Cuando la concepción se produjo con un óvulo donado, la línea sigue a la persona donante y no a la persona que llevó el embarazo. Como la expresión de las afecciones mitocondriales es variable, los familiares inferidos nunca se marcan como personas que desarrollarán la afección con certeza.
+- **Multifactorial** y **desconocido.** Solo se marca a las personas registradas como afectadas.
+
+La etapa «Genealogía familiar» admite, por persona, como máximo un progenitor genético cuyo sexo asignado al nacer conste como femenino, así que no se puede representar la donación mitocondrial, en la que un óvulo aporta el núcleo y otro las mitocondrias.
+
+### Estados posibles {#possible-statuses}
+
+Los dos estados posibles, _puede desarrollar_ y _puede portar_, se infieren, no se observan. Son una señal visual fuerte que se puede interpretar como un hecho establecido. La nomenclatura genealógica estándar evita deliberadamente codificar probabilidades en los símbolos, y la interfaz dibuja estos estados con el símbolo del estado inferido con certeza que les corresponde, añadiéndole un signo de interrogación, y nunca con relleno. Están pensados para un **uso bajo dirección clínica**, en el que una persona profesional los interpreta en su contexto.
+
+<TipBox danger>
+
+Todo lo que la etapa «Genealogía narrativa» marca como posible se infiere a partir de lo que la propia persona participante cuenta de su familia, y no es un diagnóstico. Activa los estados posibles solo cuando haya personal clínico que interprete los resultados, y nunca los presentes a una persona participante como un diagnóstico.
+
+</TipBox>
+
+## Buenas prácticas {#best-practices}
+
+<GoodPractice>
+
+Coloca la etapa «Genealogía narrativa» después de la etapa «Genealogía familiar» que le proporciona los datos, y registra quién está afectado con una pregunta de nominación de la etapa «Genealogía familiar» para cada afección. Define con cuidado el patrón de herencia de cada afección, porque todas las inferencias dependen de él.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Usa el ajuste de [completitud](/es/design-protocols/interface-documentation/family-pedigree#completeness) de la etapa «Genealogía familiar» para exigir que se registren los familiares que necesitan tus afecciones. Cuando faltan progenitores o hermanos y hermanas, algunos estados quedan como _No se sabe_ aunque una familia más completa permitiría establecerlos.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Pon a las afecciones nombres que quienes participan reconozcan. El nombre es lo único que ve la persona participante de la definición de la afección.
+
+</GoodPractice>
+
+## Qué evitar {#try-to-avoid}
+
+<BadPractice>
+
+No actives los estados posibles cuando quienes participan vayan a verlos sin la presencia de personal clínico. Los símbolos inferidos «puede desarrollar» y «puede portar» se pueden confundir con un diagnóstico.
+
+</BadPractice>
+
+<BadPractice>
+
+No elijas un patrón de herencia para una afección cuya herencia no está establecida. Elige **Desconocido** o **Multifactorial** en su lugar, para que solo se muestren los estados registrados.
+
+</BadPractice>
+
+## Referencias {#references}
+
+Bennett, R. L., French, K. S., Resta, R. G., & Doyle, D. L. (2008). Standardized human pedigree nomenclature: Update and assessment of the recommendations of the National Society of Genetic Counselors. _Journal of Genetic Counseling, 17_(5), 424–433. https://doi.org/10.1007/s10897-008-9169-9
+
+Bennett, R. L., French, K. S., Resta, R. G., & Austin, J. (2022). Practice resource-focused revision: Standardized pedigree nomenclature update centered on sex and gender inclusivity. _Journal of Genetic Counseling, 31_(6), 1238–1248. https://doi.org/10.1002/jgc4.1621

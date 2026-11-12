@@ -1,7 +1,8 @@
 {
   "type": "folder",
   "localeLabels": {
-    "en": "Interface documentation"
+    "en": "Interface documentation",
+    "es": "Documentación de interfaces"
   },
   "isExpanded": false,
   "navOrder": 12,

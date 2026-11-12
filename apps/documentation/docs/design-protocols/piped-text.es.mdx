@@ -1,0 +1,226 @@
+---
+title: Texto dinámico
+navOrder: 6
+toc: true
+translatedFrom: 580440311d354f257251b7e4d7b4a7e76490b84d
+---
+
+<Definition>
+  El texto dinámico (piped text) es un texto cuyo valor cambia dinámicamente
+  según los datos o el contexto de la entrevista. Al diseñar la entrevista, te
+  permite incluir un marcador de posición que se sustituye por el valor
+  dinámico real cuando la persona participante ve el texto.
+</Definition>
+
+## Finalidad {#purpose}
+
+Los instrumentos de encuesta asistida por ordenador llevan mucho tiempo adaptando la redacción de las preguntas a quien responde, insertando respuestas anteriores en preguntas posteriores, una técnica que suele llamarse _piping_ o _text fill_ (inserción de texto). Los instrumentos de redes la necesitan especialmente. Un intérprete de nombres plantea las mismas preguntas sobre cada álter (cada persona a la que se nombra durante la entrevista), uno tras otro, y una etapa «Censo de díadas» plantea la misma pregunta sobre cada par de álteres. Sin texto dinámico, estas preguntas tienen que referirse al álter de forma indirecta («esta persona», «estas dos personas») y confiar en que la persona participante relacione la pregunta con el nodo que aparece en la pantalla.
+
+Nombrar el nodo en la pregunta elimina ese paso inferencial. «¿Has visitado la Universidad Northwestern o has estudiado allí?» identifica su referente sin ambigüedad, mientras que «¿Has visitado esta universidad o has estudiado allí?» solo lo hace junto con la organización visual de la pantalla. La diferencia es mayor cuando los nodos se parecen entre sí, cuando la persona participante ha nombrado a muchos álteres y cuando la entrevista la administra una persona entrevistadora que lee la pregunta en voz alta.
+
+El texto dinámico también permite que una pregunta posterior se apoye en una anterior. Una pregunta puede recordar la fecha que la persona participante dio para un acontecimiento vital, dirigirse a ella por el nombre que proporcionó o formularse de otra manera según cómo respondió a una pregunta anterior.
+
+Network Canvas completa el texto dinámico con datos ya registrados en la entrevista. Insertar un valor en una pregunta no almacena ese valor una segunda vez ni lo envía a ningún otro lugar.
+
+<TipBox>
+
+El texto dinámico requiere la [versión 9 del esquema de protocolo](/es/get-started/protocol-schema-information#schema-version-9). Los protocolos que lo usan se crean en Architect y se ejecutan en Fresco 5.0 o posterior, o en Interviewer 9.0 o posterior.
+
+</TipBox>
+
+## Consideraciones metodológicas {#methodological-considerations}
+
+El texto dinámico cambia el estímulo que recibe cada participante. Dos participantes que responden a la «misma» pregunta de un intérprete de nombres leen palabras distintas, porque cada pregunta nombra a un álter distinto. En la mayoría de los instrumentos de redes, este es el efecto buscado: el constructo que se mide es la relación de la persona participante con un álter concreto, y nombrar a ese álter hace que la pregunta sea más precisa. Aun así, conviene tomar tres precauciones.
+
+- **Describe la plantilla, no la redacción resultante.** Al describir un instrumento en una publicación o en una solicitud al comité de ética, presenta la pregunta tal como está escrita en el protocolo, con el elemento dinámico señalado, e indica qué atributo lo proporcionó.
+- **Especifica la redacción que se usa cuando falta información.** Cualquier atributo puede faltar cuando se muestra una pregunta (consulta [Cuando falta información](#when-information-is-missing)). La redacción alternativa forma parte del instrumento y debe revisarse con el mismo cuidado que la redacción principal.
+- **Haz el estudio piloto con datos realistas.** Los nombres largos, los nombres que también son palabras comunes y las respuestas inesperadas pueden dar lugar a preguntas que se leen mal. Las entrevistas cognitivas y las sesiones piloto (consulta [Realizar un estudio piloto](/es/get-started/planning-a-study/piloting-your-study)) deben incluir toda la gama de valores que es probable que proporcionen quienes participan.
+
+Usar texto dinámico también es una decisión de diseño sobre la revelación de información. Una pregunta que repite la respuesta de una persona participante vuelve a mostrar esa respuesta en la pantalla, lo que puede importar cuando las entrevistas se realizan en espacios compartidos o públicos. Los [atributos cifrados](/es/design-protocols/key-concepts/variables#encrypted-variables) nunca se ofrecen para insertarlos como texto dinámico.
+
+## Qué se puede insertar {#what-can-be-piped}
+
+Cada dato que se inserta en un texto es un _valor dinámico_. Un valor dinámico es uno de los siguientes:
+
+- **La fecha de hoy.** Es el único dato sobre la propia entrevista que puede mostrar un texto. Es la fecha en la que la persona participante lee el texto.
+- **Un atributo de la persona participante**, como un nombre o una respuesta de una etapa «Formulario del ego».
+- **La etiqueta de un nodo al que se refiere el texto**, en las etapas y los formularios que preguntan por un nodo o por dos nodos a la vez. Es el texto que la entrevista muestra en el nodo, de modo que una pregunta de una etapa «Censo de díadas» puede decir «¿Hay amistad entre Jim y Alice?» con los mismos nombres que la persona participante ve en los dos nodos. Consulta [Etiquetas de los nodos](#node-labels).
+- **Un atributo del nodo o del vínculo al que se refiere el texto**, en esas mismas etapas y formularios. Por ejemplo, una pregunta de una etapa «Formulario por álter» (un formulario para cada álter) puede nombrar la universidad que la persona participante indicó para ese nodo en una etapa anterior.
+
+Se pueden insertar los siguientes tipos de atributo: texto, número, escalar, fecha, booleano (sí o no), ordinal y categórico. Los atributos cifrados nunca se ofrecen, ni tampoco los atributos de disposición o de ubicación.
+
+Los valores disponibles para un texto dependen de dónde aparece ese texto. Consulta [Dónde se puede usar el texto dinámico](#where-piped-text-can-be-used).
+
+## Insertar texto dinámico en Architect {#inserting-piped-text-in-architect}
+
+Todos los campos de texto que admiten texto dinámico tienen en su barra de herramientas un botón con forma de jeringa, con la etiqueta **Insertar texto dinámico a partir de los metadatos de la entrevista o de un atributo de red**. Para insertar un valor:
+
+1. Coloca el cursor en el punto del texto donde debe aparecer el valor.
+2. Haz clic en el botón de la jeringa o escribe `{`.
+3. Un menú muestra los valores que puede mostrar este texto. Escribe para filtrar la lista.
+4. Elige un valor haciendo clic en él, o pulsa Intro para elegir el valor resaltado.
+
+![El menú de texto dinámico abierto en la pregunta de un campo de una etapa «Formulario por álter». La opción «Etiqueta del nodo» aparece en primer lugar bajo «Atributos contextuales».](/assets/img/piped-text/insert-menu.png 'Insertar un valor dinámico en la pregunta de un campo de formulario')
+
+El menú agrupa los valores bajo tres encabezados, en este orden:
+
+- **Atributos contextuales**: la etiqueta y los atributos de la entidad con la que se muestra el texto, es decir, el nodo o vínculo sobre el que pregunta un formulario, o el nodo al que se refiere una pregunta de la etapa. La etiqueta de un nodo aparece en primer lugar, como **Etiqueta del nodo**. Cuando el texto se refiere a dos nodos, como un par en una etapa «Censo de díadas» o «Censo de fuerza de vínculos» o los dos extremos de un vínculo, cada valor nombra el nodo al que pertenece, como **Primer nodo: etiqueta**, **Primer nodo: nickname** y **Segundo nodo: etiqueta** (consulta [Dónde se puede usar el texto dinámico](#where-piped-text-can-be-used)).
+- **Atributos del ego**: los atributos de la persona participante.
+- **Atributos de la entrevista**: la fecha de hoy.
+
+Debajo de cada valor, el menú indica qué tipo de atributo es.
+
+Para escribir una llave literal, pulsa Esc después de escribir `{`. El menú se cierra y la llave permanece en el texto.
+
+En el editor, un valor dinámico aparece como una píldora que empieza con el icono de la jeringa y lleva el nombre de su atributo, como **nickname**. Cuando el texto se refiere a dos nodos, la píldora también nombra el nodo, como **Primer nodo: nickname**. La etiqueta de un nodo aparece como **Etiqueta del nodo**, o como **Primer nodo: etiqueta** y **Segundo nodo: etiqueta**, y la fecha de hoy aparece como **Fecha de hoy**. Las mismas píldoras aparecen en la [tabla de traducciones](/es/design-protocols/translating-your-protocol#the-translation-table) y en la pestaña **Resumen** del protocolo. La vista previa interactiva que hay junto a un campo de formulario muestra la píldora en lugar del valor.
+
+![Una pregunta de una etapa «Formulario por álter» que dice «¿Has visitado [Etiqueta del nodo] o has estudiado allí?», con la misma pregunta en la vista previa interactiva.](/assets/img/piped-text/value-in-question.png 'La etiqueta de un nodo insertada en una pregunta de una etapa «Formulario por álter»')
+
+![Una pregunta de una etapa «Censo de díadas» que dice «Hasta donde sabes, ¿[Primer nodo: etiqueta] pasa tiempo con [Segundo nodo: etiqueta] fuera de clase?»](/assets/img/piped-text/pair-prompt.png 'Los dos nodos de un par nombrados en una pregunta de una etapa «Censo de díadas»')
+
+Architect registra qué valores usa el texto de cada etapa. Un atributo que se inserta en cualquier texto cuenta como en uso en el [libro de códigos](/es/design-protocols/key-concepts/codebook) y no se puede eliminar hasta que se quite de ese texto.
+
+## Cuando falta información {#when-information-is-missing}
+
+Cualquier atributo puede faltar cuando la persona participante llega a un texto que lo inserta. Puede que la persona participante haya preferido no responder, que la [lógica de salto](/es/design-protocols/key-concepts/skip-logic) haya omitido la etapa que lo recoge o que una lista predefinida (una lista que se importa como archivo de datos) no lo incluya. Volver a una etapa anterior para cambiar una respuesta, o eliminar un nodo, también puede dejar un atributo sin valor, aunque el protocolo normalmente lo recoja antes.
+
+Para que ninguna persona participante se encuentre nunca con una frase incompleta, cada valor que puede faltar se inserta junto con dos versiones del texto que lo rodea:
+
+- **Si se conoce**, que muestra el valor y que la persona participante ve cuando el valor existe.
+- **Si no se conoce**, que la persona participante ve en su lugar cuando falta el valor.
+
+Architect añade ambas versiones al insertar el valor, y después cada versión se redacta según su caso. Una versión se puede dejar vacía para que en ese caso no se muestre nada. En el editor, una versión vacía aparece como **No muestra nada**.
+
+![El encabezado de una etapa «Información» que dice «¡Gracias», seguido de una versión Si se conoce que contiene una coma y el valor first_name, una versión Si no se conoce que dice No muestra nada, y un signo de exclamación.](/assets/img/piped-text/missing-value-versions.png 'Versiones Si se conoce y Si no se conoce del encabezado de una página')
+
+En el ejemplo anterior, el encabezado de una etapa «Información» da las gracias a la persona participante llamándola por su nombre:
+
+| Versión         | Texto escrito                  | Lo que ve la persona participante |
+| --------------- | ------------------------------ | --------------------------------- |
+| Si se conoce    | «, » seguido de **first_name** | ¡Gracias, Sam!                    |
+| Si no se conoce | (vacía)                        | ¡Gracias!                         |
+
+«¡Gracias» va antes de las versiones y «!» va después, así que ambos casos comparten esa redacción.
+
+En el editor, un valor con versiones se muestra como su píldora hasta que se selecciona. Al hacer clic en la píldora, o al llegar a ella con las teclas de flecha y pulsar Intro o la barra espaciadora, se abren sus versiones; al pulsar Esc, o al sacar el foco del texto, las versiones se vuelven a plegar en la píldora. Un valor recién insertado aparece abierto, para que sus versiones se puedan escribir de inmediato. En otros lugares, como la lista de campos de formulario, la vista previa del campo y la pestaña **Resumen** del protocolo, el valor solo se muestra como su píldora.
+
+El cero y el «no» son respuestas, no valores que faltan: un número igual a 0, o una respuesta de sí o no que sea «no», muestra la versión **Si se conoce**. Un texto vacío o que solo contiene espacios, y una respuesta categórica sin ninguna opción seleccionada, cuentan como valores que faltan.
+
+La fecha de hoy y la etiqueta de un nodo nunca faltan, así que se insertan sin versiones. La única excepción es la pregunta de una etapa «Clasificación ordinal» o «Clasificación por categorías» configurada como **Tocar para colocar**: cuando se han colocado todos los nodos, ya no se está colocando ninguno, así que su etiqueta también necesita una versión **Si no se conoce**.
+
+## Etiquetas de los nodos {#node-labels}
+
+La etiqueta de un nodo no es un único atributo. La entrevista la obtiene para cada nodo a partir de los propios datos de ese nodo: un atributo llamado «name»; si no lo hay, uno cuyo nombre contenga «name»; si tampoco, en los datos importados, una columna cuyo nombre contenga «name» aunque el libro de códigos no la incluya; y, si no, el primer atributo de texto que tenga un valor. Un nodo que no tenga ninguno de ellos se muestra como «Sin nombre», con la redacción propia de la entrevista. La etiqueta insertada sigue las mismas reglas, de modo que siempre coincide con el texto que se muestra en el nodo, incluso cuando dos nodos del mismo tipo toman sus etiquetas de atributos distintos. Cuando la etiqueta procede de un atributo cifrado, el texto la muestra exactamente igual que el nodo. Consulta [Etiquetado de nodos](/es/design-protocols/key-concepts/node-labelling) para saber más sobre cómo se eligen las etiquetas.
+
+Una etapa «Genealogía familiar» etiqueta sus nodos a su manera, y las preguntas y los textos de ayuda de su formulario muestran la etiqueta que muestra el árbol genealógico: el nombre que introdujo la persona participante, «Tú» para la persona participante o, en el caso de un familiar sin nombre, el término que la etapa asigna según el parentesco, como «Madre» o «Hermana 2», con la redacción y el planteamiento de la etapa. A medida que la persona participante cambia en el panel lateral el nombre, la identidad de género o el sexo asignado al nacer de un familiar, la etiqueta cambia igual que lo hará el árbol genealógico cuando se guarden los cambios. En el caso de un familiar sin nombre, es la etiqueta que la etapa guarda como nombre del familiar cuando la persona participante sale de la etapa.
+
+La etiqueta es la forma habitual de identificar un nodo en una pregunta, como en «¿Hay amistad entre Jim y Alice?». Es preferible usar un atributo concreto cuando el texto necesita esa respuesta en particular, como un apodo, aunque la etiqueta muestre otra cosa.
+
+## Redacción distinta para cada respuesta {#different-wording-for-each-answer}
+
+Un atributo categórico, ordinal o booleano aparece dos veces en el menú. La segunda entrada está marcada como **Redacción distinta para cada respuesta**. Al elegirla, el texto tiene una versión para cada respuesta, en lugar de mostrar la propia respuesta. Así, una pregunta puede adaptar su planteamiento a una respuesta anterior.
+
+Las versiones son:
+
+- **Si no se conoce**, que se usa cuando no hay respuesta.
+- Una versión para cada una de las opciones de respuesta del atributo, que lleva el nombre de la etiqueta de la opción. Un atributo booleano sin etiquetas propias tiene **Sí** y **No**.
+- **Cualquier otra respuesta**, que se usa para una respuesta que no tiene versión propia.
+
+Por ejemplo, una pregunta de una etapa «Formulario por álter» podría depender de un atributo «Vive contigo»:
+
+| Versión                  | Texto escrito                                          |
+| ------------------------ | ------------------------------------------------------ |
+| Si no se conoce          | ¿Con qué frecuencia ves a esta persona en casa?        |
+| Sí                       | ¿Cómo os repartís las tareas del hogar?                |
+| No                       | ¿Con qué frecuencia visitas a esta persona en su casa? |
+| Cualquier otra respuesta | (vacía, porque sí y no cubren todos los casos)         |
+
+Una respuesta categórica puede incluir varias opciones. En ese caso, el texto usa la versión de la primera de esas opciones que tenga una, o **Cualquier otra respuesta** si ninguna la tiene. Las opciones mantienen el orden que tenían cuando se insertó el valor, así que reordenarlas más adelante en el libro de códigos no cambia qué versión se usa.
+
+## Redacción que concuerda con un número {#wording-that-agrees-with-a-number}
+
+Un atributo de número o escalar también aparece dos veces en el menú. La segunda entrada está marcada como **Redacción que se ajusta al número**. Está pensada para textos cuyas palabras cambian según el número, como «1 child» y «3 children» en inglés.
+
+Esta entrada inserta las versiones **Si se conoce** y **Si no se conoce**, igual que con cualquier valor. Dentro de **Si se conoce** hay una versión para cada forma de número gramatical que distingue el idioma, y el nombre de cada una incluye ejemplos de los números que la usan. El inglés tiene dos:
+
+| Versión                        | Texto escrito         | Lo que ve la persona participante |
+| ------------------------------ | --------------------- | --------------------------------- |
+| Cuando el número es 1          | el número, «child»    | 1 child                           |
+| Cuando el número es 0, 2, 3, … | el número, «children» | 3 children                        |
+
+Cada una de estas versiones empieza con el número, seguido de las palabras que lo acompañan.
+
+Otros idiomas distinguen una cantidad distinta de formas: el chino tiene una, y el polaco y el ruso tienen más de dos. Cuando el texto está escrito en otro idioma, Architect ofrece las versiones de ese idioma.
+
+## Cómo ven el texto dinámico quienes participan {#how-participants-see-piped-text}
+
+La entrevista presenta cada valor en el idioma de la persona participante:
+
+- Una fecha se escribe como se escriben las fechas en el idioma de la persona participante. Una respuesta de fecha registrada solo como mes o como año muestra solo el mes o el año.
+- Un número se escribe como se escriben los números en el idioma de la persona participante.
+- Una respuesta a una pregunta categórica, ordinal o booleana se muestra con la etiqueta de la opción, en el idioma de la persona participante. Una etiqueta sin traducción a ese idioma se muestra igual que se muestra siempre el [texto sin traducir](/es/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see). Una respuesta con varias opciones se muestra como una lista, como «gatos, perros y peces». Una respuesta de sí o no solo se puede mostrar así cuando sus dos respuestas tienen etiquetas; de lo contrario, usa **Redacción distinta para cada respuesta**.
+- Un valor de texto se muestra exactamente como se introdujo.
+
+Cada valor se resalta con un tono del color principal de la entrevista, lo que distingue la información insertada de la redacción fija de la pregunta. Los lectores de pantalla leen el valor como parte de la frase.
+
+![La vista previa de la entrevista con una etapa «Formulario por álter» para un nodo de universidad. La pregunta dice «¿Has visitado la Universidad Francisco Marroquín o has estudiado allí?», con el nombre de la universidad resaltado en color.](/assets/img/piped-text/interview-preview.png 'La etiqueta del nodo insertada, tal como la ve la persona participante')
+
+El [modo de vista previa](/es/design-protocols/preview-mode) es la forma más directa de comprobar el texto dinámico antes del trabajo de campo. Con **Iniciar la vista previa con datos de ejemplo** activado, la vista previa completa cada valor con datos generados, como en la imagen anterior.
+
+## Dónde se puede usar el texto dinámico {#where-piped-text-can-be-used}
+
+La fecha de hoy se puede mostrar en todos los textos que admiten valores dinámicos. Los atributos disponibles dependen de dónde aparece el texto:
+
+| Dónde aparece el texto                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Atributos del ego | Atributos contextuales                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Texto de la etapa: el título y el texto de una etapa «Información», la explicación de una etapa de anonimización, el texto de cierre y el texto de finalización de una etapa «Pantalla de finalización», el título y el texto de introducción de una etapa «Formulario del ego», el título del formulario de una etapa «Generador de nombres», los títulos de los paneles de un generador de nombres, el título del panel de una lista y el nombre que da una etapa «Genealogía familiar» a la persona participante | Sí                | Ninguno                                                                                                                                                                                        |
+| Las preguntas de las etapas «Generador de nombres», «Generador de nombres (adición rápida)», «Generador de nombres a partir de una lista», «Sociograma» y «Genealogía familiar», las preguntas de una etapa «Clasificación ordinal» o «Clasificación por categorías» configurada como **Arrastrar y soltar**, y la etiqueta del contenedor «Otro» de una etapa «Clasificación por categorías» (los contenedores son las zonas a las que se arrastran los nodos para clasificarlos)                                  | Sí                | Ninguno, porque estas etapas muestran muchos nodos a la vez                                                                                                                                    |
+| Las preguntas de una etapa geoespacial                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Sí                | La etiqueta y todos los atributos del nodo que se está colocando                                                                                                                               |
+| Las preguntas de una etapa «Clasificación ordinal» o «Clasificación por categorías» configurada como **Tocar para colocar**                                                                                                                                                                                                                                                                                                                                                                                         | Sí                | La etiqueta y todos los atributos del nodo que se está colocando. Cuando se han colocado todos los nodos, muestran su versión **Si no se conoce**                                              |
+| Las preguntas de las etapas «Censo de díadas» y «Censo de fuerza de vínculos», y la etiqueta de la opción de una etapa «Censo de fuerza de vínculos» que indica que no hay vínculo                                                                                                                                                                                                                                                                                                                                  | Sí                | Las etiquetas de los dos nodos sobre los que trata la pregunta, como **Primer nodo: etiqueta** y **Segundo nodo: etiqueta**, y todos los atributos de cada uno, como **Primer nodo: nickname** |
+| Las preguntas de una etapa «Censo de díadas de uno a muchos»                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Sí                | La etiqueta y todos los atributos del nodo con el que la persona participante vincula a los demás                                                                                              |
+| Las preguntas y los textos de ayuda de una etapa «Formulario del ego»                                                                                                                                                                                                                                                                                                                                                                                                                                               | Sí                | Ninguno                                                                                                                                                                                        |
+| Las preguntas y los textos de ayuda de los formularios sobre un nodo: los formularios de las etapas «Formulario por álter», «Generador de nombres» y «Genealogía familiar», y los campos para nodos de una etapa «Compositor de redes», incluidas la etiqueta de cada campo y las etiquetas de cada extremo de su control deslizante. La pregunta que hace una etapa «Clasificación por categorías» sobre un nodo colocado en su contenedor «Otro» cuenta como una de ellas.                                        | Sí                | La etiqueta y todos los atributos del nodo sobre el que pregunta el formulario                                                                                                                 |
+| Las preguntas y los textos de ayuda de una etapa «Formulario de vínculos por álter» (un formulario para cada vínculo entre dos álteres)                                                                                                                                                                                                                                                                                                                                                                             | Sí                | Todos los atributos del vínculo sobre el que pregunta el formulario y las etiquetas de los dos nodos que une                                                                                   |
+| Los campos para vínculos de una etapa «Compositor de redes»                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Sí                | Las etiquetas de los dos nodos que une el vínculo                                                                                                                                              |
+
+Cuando están disponibles los atributos de un formulario, un campo puede mostrar cualquier atributo del nodo o vínculo sobre el que pregunta el formulario, incluidos los atributos recogidos en etapas anteriores y el atributo que recoge el propio campo. Cuando el atributo todavía no tiene valor, el campo muestra la versión **Si no se conoce** del valor. La etiqueta de un nodo en un formulario sigue las respuestas a medida que la persona participante las escribe, igual que el nodo.
+
+En un formulario de vínculos, las etiquetas de los dos nodos que une el vínculo se ofrecen como **Primer nodo: etiqueta** y **Segundo nodo: etiqueta**. Sus demás atributos no se ofrecen, porque los nodos de cada extremo de un vínculo pueden ser de cualquier tipo.
+
+Algunos textos nunca admiten valores dinámicos:
+
+- los nombres de las etapas
+- las descripciones de las imágenes, porque sustituyen a una imagen
+- el texto del libro de códigos, como las etiquetas de las opciones de respuesta
+- la [redacción que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies), salvo el nombre que da una etapa «Genealogía familiar» a la persona participante. Parte de esta redacción puede mostrar valores que completa la entrevista, como el nombre del tipo de nodo de la etapa o un número, pero no atributos
+
+En un protocolo actualizado desde el esquema 8, las llaves que ya había en el texto siguen siendo caracteres normales. Nunca se convierten en valores dinámicos.
+
+## Traducir textos que muestran valores {#translating-text-that-shows-values}
+
+Cuando un protocolo se ofrece en más de un idioma (consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol)), cada idioma tiene sus propias versiones del texto. Mostrar un valor es opcional en todos los idiomas, así que una traducción puede mostrar más valores, menos o valores distintos que el texto del idioma predeterminado, o ninguno. Nada en el protocolo compara el texto de un idioma con el de otro. Por ejemplo, si la versión **Si se conoce** en inglés muestra la píldora **nickname**, la versión **Si se conoce** de una traducción puede omitirla.
+
+Cada traducción se comprueba por separado, con las mismas reglas que el texto del idioma predeterminado: cada valor que muestra debe ser uno que la etapa use y que se pueda mostrar donde aparece el texto, un valor que puede faltar necesita una versión para cuando falte, y el texto no puede estar vacío en todas las versiones.
+
+En la tabla de traducciones, una celda muestra como píldoras los valores y cada conjunto de versiones. Cuando editas una celda, seleccionar una píldora abre sus versiones, igual que en el editor de etapas, y el botón de la jeringa ofrece los valores que la etapa ya usa. Un valor que la etapa todavía no usa debe añadirse primero en el editor de etapas.
+
+Los valores en sí no se traducen. Las fechas y los números siguen el idioma de la persona participante, y las respuestas se muestran con las etiquetas de sus opciones en ese idioma.
+
+## Problemas que indica Architect {#problems-architect-reports}
+
+La validación del protocolo comprueba todos los textos que contienen valores dinámicos. Cada uno de los siguientes problemas es un error, y el protocolo no es válido hasta que se corrige:
+
+- **Un valor no se puede mostrar aquí.** El texto muestra un valor que no está disponible donde aparece el texto (consulta [Dónde se puede usar el texto dinámico](#where-piped-text-can-be-used)). Puede ocurrir cuando el atributo ya no existe o ha pasado a ser cifrado.
+- **Un valor puede faltar, así que el texto necesita una versión para cuando falte.** El texto muestra un atributo fuera de una versión **Si se conoce**. Cualquier atributo puede faltar, así que el texto necesita una versión **Si no se conoce** para él (consulta [Cuando falta información](#when-information-is-missing)).
+- **Una versión corresponde a una respuesta que el atributo no tiene.** Ocurre cuando se elimina o se cambia una de las opciones de respuesta de un atributo después de haber dado al texto una versión para cada una de sus respuestas. Elimina del texto de la etapa todos los conjuntos de versiones de ese atributo y vuelve a insertarlos para que coincidan con las opciones de respuesta del atributo.
+- **Un atributo de sí o no necesita etiquetas para sus dos respuestas.** El texto muestra la propia respuesta, pero el atributo no tiene etiquetas para el sí y el no. Añade ambas etiquetas al atributo o usa **Redacción distinta para cada respuesta**.
+- **El texto no puede estar vacío en todas las versiones.** Al menos una versión debe mostrar algo de texto o un valor.
+
+## Conceptos relacionados {#related-concepts}
+
+- [Preguntas](/es/design-protocols/key-concepts/prompts): las preguntas que pueden contener texto dinámico
+- [Formularios](/es/design-protocols/key-concepts/forms): campos de formulario cuyas preguntas y textos de ayuda pueden hacer referencia a respuestas anteriores
+- [Etiquetado de nodos](/es/design-protocols/key-concepts/node-labelling): cómo elige la entrevista el texto que se muestra en un nodo
+- [Variables](/es/design-protocols/key-concepts/variables): los tipos de atributo que se pueden insertar como texto dinámico
+- [Traducir tu protocolo](/es/design-protocols/translating-your-protocol): escribir un protocolo en más de un idioma

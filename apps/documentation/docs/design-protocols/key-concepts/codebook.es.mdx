@@ -1,0 +1,107 @@
+---
+title: Libro de códigos
+navOrder: 5
+translatedFrom: ec2d8b4a2cb23a99620808c47e1e373faf217200
+---
+
+<Definition>
+  El libro de códigos es una vista centralizada de Architect que muestra todos
+  los tipos de entidad y todos los atributos definidos en tu protocolo, y te ayuda a
+  mantener la coherencia y a planificar el análisis de los datos.
+</Definition>
+
+## Detalles {#details}
+
+El libro de códigos del protocolo ofrece una visión general de todas las entidades y todos los atributos definidos en tu protocolo. Esta vista centralizada te ayuda a garantizar la coherencia entre las etapas y facilita la planificación del análisis de los datos antes de poner en marcha tu entrevista.
+
+Architect construye el libro de códigos automáticamente a medida que creas atributos en tu protocolo. La forma de abrirlo depende de la versión de Architect que uses:
+
+- En **Architect Classic**, haz clic en el botón **Manage codebook** (gestionar el libro de códigos) de la parte superior de un archivo de protocolo.
+- En **Architect**, abre la página **Libro de códigos** desde la barra de navegación de la parte superior del editor.
+
+![Al hacer clic en el botón Manage codebook de Architect Classic se abre la vista del libro de códigos](/assets/img/key-concepts/codebook/manage-codebook.png)
+
+![En Architect, el libro de códigos es una página propia que se abre desde el enlace Libro de códigos de la barra de navegación superior](/assets/img/architect/codebook-web.png)
+
+## Tipos de entidad {#entity-types}
+
+El libro de códigos organiza las entidades por tipo de entidad, es decir, el ego (la persona entrevistada), los nodos y los vínculos, y organiza los atributos por entidad. Puedes editar los tipos de nodo y de vínculo desde el libro de códigos con el botón **Editar entidad**. Cada tipo de nodo y de vínculo indica las etapas en las que se usa, y puedes ir a cualquiera de esas etapas haciendo clic en el nombre de la etapa, en el apartado «Se utiliza en».
+
+![Una vista del libro de códigos en Architect](/assets/img/key-concepts/codebook/codebook.png)
+
+En las dos versiones de Architect puedes personalizar el nombre y el color de un tipo de entidad. En los tipos de nodo, Architect va más allá y también te permite establecer la forma y el icono que representan al nodo en todas las interfaces.
+
+En Architect, cada nuevo tipo de nodo o de vínculo empieza con el siguiente color de la paleta, de modo que cada tipo que añades se distingue del anterior. El icono de un tipo de nodo se elige en una lista con búsqueda de los iconos de Network Canvas seguidos del conjunto de iconos Lucide: escribe unas pocas letras del nombre de un icono (por ejemplo, «user plus») y elígelo entre los iconos que se muestran.
+
+### Forma predeterminada de los nodos {#default-node-shape}
+
+![Edición de un tipo de nodo en Architect, donde puedes establecer su forma y su icono, además de su nombre y su color](/assets/img/architect/edit-node-type-web.png)
+
+Cada tipo de nodo tiene una forma predeterminada: círculo, cuadrado o rombo. Si no se ha configurado ninguna asignación, todos los nodos de ese tipo usan la forma predeterminada.
+
+### Asignar la forma según un atributo de nodo {#mapping-a-node-variable-to-shape}
+
+En Architect también puedes hacer que la forma de un tipo de nodo sea **dinámica**, para que los nodos de un mismo tipo cambien de forma según el valor de un atributo. En su versión en inglés, Architect llama **variable** a la definición que figura en el libro de códigos y **attribute** (atributo) al valor almacenado en un nodo concreto; la versión en español llama **atributo** también a la definición, y lo que se guarda en cada nodo es el valor de ese atributo.
+
+Para configurar una asignación:
+
+1. Edita el tipo de nodo y elige su forma predeterminada.
+2. Activa **Asignar formas según un atributo**.
+3. Selecciona uno de los atributos del tipo de nodo.
+4. Asigna formas a los valores que deben sustituir a la forma predeterminada.
+
+La forma de un tipo de nodo solo se puede asignar a partir de un atributo cada vez. Según el atributo que elijas, la asignación funciona de una de estas dos maneras:
+
+- En los atributos **categóricos**, **ordinales** o **booleanos**, asignas una forma a cada valor discreto. Los valores que dejes sin asignar usan la forma predeterminada.
+- En los atributos **numéricos** o **escalares**, defines hasta dos **umbrales** numéricos. Los valores inferiores al primer umbral usan la forma predeterminada, y cada umbral establece la forma que se usa para los valores iguales o superiores al suyo.
+
+Las formas disponibles son las mismas que para la forma predeterminada: círculo, cuadrado y rombo. Cada una, incluida la predeterminada, se elige haciendo clic en su muestra, que se dibuja con el color del propio tipo de nodo. Architect señala los valores que siguen sin asignar y que usarán la forma predeterminada, y no guarda una asignación para un atributo numérico o escalar hasta que hayas añadido al menos un umbral.
+
+#### Ejemplo booleano: personas y lugares {#boolean-example-people-and-places}
+
+Imagina un tipo de nodo que contiene tanto personas como lugares, que se distinguen mediante un atributo booleano llamado `is_person`. Para mostrar las personas como círculos y los lugares como cuadrados:
+
+1. Elige **Cuadrado** como forma predeterminada.
+2. Activa **Asignar formas según un atributo** y selecciona `is_person`.
+3. Asigna **Círculo** a **Verdadero**.
+4. Deja **Falso** sin asignar para que use el cuadrado predeterminado.
+
+| Valor de `is_person` | Forma resultante             |
+| -------------------- | ---------------------------- |
+| `true`               | Círculo                      |
+| `false`              | Cuadrado (la predeterminada) |
+| Sin registrar        | Cuadrado (la predeterminada) |
+
+<TipBox>
+
+La forma predeterminada también se usa cuando el atributo seleccionado no se ha registrado. Si un valor desconocido debe verse de forma distinta a un lugar, elige Rombo como forma predeterminada y, después, asigna expresamente Círculo a Verdadero y Cuadrado a Falso.
+
+</TipBox>
+
+![La asignación de formas de is_person asigna Círculo a Verdadero y deja Falso sin asignar para que use la forma predeterminada](/assets/img/architect/node-shape-variable-mapping.jpg)
+
+## Atributos {#variables}
+
+Cada atributo muestra su nombre, su tipo, su [control de entrada](/es/design-protocols/key-concepts/input-controls) y dónde se usa. Igual que con los tipos de entidad, puedes ir a cualquiera de las etapas en las que se usa un atributo haciendo clic en el nombre de esa etapa, en el apartado «Se utiliza en».
+
+![Tanto los tipos de entidad como los atributos indican en qué etapas se usan.](/assets/img/key-concepts/codebook/used-in.png)
+
+En Architect, los cambios que haces en el libro de códigos desde el editor de una etapa (como crear un atributo, cambiarle el nombre o modificar sus opciones de respuesta o sus reglas de validación) se guardan en el libro de códigos de inmediato. Cancelar los cambios en la etapa no los deshace, porque un atributo pertenece a todas las etapas que lo usan.
+
+Si un atributo está definido pero deja de usarse, aparece en el libro de códigos marcado como **sin usar**. Solo se pueden eliminar del libro de códigos los atributos que no se usan. Los tipos de entidad tampoco se pueden eliminar a menos que no se usen en el protocolo.
+
+![En la vista del libro de códigos se pueden eliminar los atributos marcados como «sin usar» y los tipos de entidad que no se usan.](/assets/img/key-concepts/codebook/unused-variables.png)
+
+## Recursos de red {#network-assets}
+
+Los libros de códigos también contienen un resumen de los recursos de red cuando se han incluido [datos de red externos](/es/design-protocols/key-concepts/resources/#network) en un protocolo. La fila de encabezado de los datos de red se usa como nombres de las variables, y el libro de códigos enumera estos nombres de variable como resumen de cada recurso de red externo.
+
+![Un resumen de las variables de un archivo de red externo.](/assets/img/key-concepts/codebook/network-data.png)
+
+## Conceptos relacionados {#related-concepts}
+
+- [Variables](/es/design-protocols/key-concepts/variables): conoce los tipos de variable y su configuración
+- [Controles de entrada](/es/design-protocols/key-concepts/input-controls): elige los controles adecuados para tus variables
+- [Recursos](/es/design-protocols/key-concepts/resources): importa archivos de datos externos, incluidas las listas predefinidas con datos de red
+- [Formularios](/es/design-protocols/key-concepts/forms): crea formularios con los atributos de tu libro de códigos
+- [Interfaces](/es/design-protocols/key-concepts/interfaces): conoce las interfaces que usan atributos del libro de códigos
