@@ -1,10 +1,12 @@
 import {
   type ReviewEvent,
   ReviewEventSchema,
+  type ReviewProvider,
   type ReviewRequest,
 } from '../contract.ts';
 import {
   admit,
+  availability,
   type HourlyWindow,
   type LimiterStore,
   settle,
@@ -36,10 +38,14 @@ export const ADDRESS = '203.0.113.7';
 /** The limiter's state in memory, standing in for the Durable Object's SQL. */
 export const createMemoryStore = (): LimiterStore & {
   windows: Map<string, HourlyWindow>;
-  spend: Map<string, number>;
+  /** Each provider's spending, by day. */
+  spend: Record<ReviewProvider, Map<string, number>>;
 } => {
   const windows = new Map<string, HourlyWindow>();
-  const spend = new Map<string, number>();
+  const spend = {
+    anthropic: new Map<string, number>(),
+    openai: new Map<string, number>(),
+  };
   return {
     windows,
     spend,
@@ -55,17 +61,19 @@ export const createMemoryStore = (): LimiterStore & {
         if (window.windowEnd <= now) windows.delete(key);
       }
     },
-    getCommitted: (day) => spend.get(day) ?? 0,
-    setCommitted: (day, micros) => {
-      spend.set(day, micros);
+    getCommitted: (provider, day) => spend[provider].get(day) ?? 0,
+    setCommitted: (provider, day, micros) => {
+      spend[provider].set(day, micros);
     },
-    getCommittedSince: (day) =>
-      [...spend].reduce(
+    getCommittedSince: (provider, day) =>
+      [...spend[provider]].reduce(
         (total, [key, micros]) => (key >= day ? total + micros : total),
         0,
       ),
     deleteDaysBefore: (day) => {
-      for (const key of spend.keys()) if (key < day) spend.delete(key);
+      for (const days of Object.values(spend)) {
+        for (const key of days.keys()) if (key < day) days.delete(key);
+      }
     },
   };
 };
@@ -76,6 +84,7 @@ export const validRequest = (
   installationId: INSTALLATION_ID,
   locale: 'en',
   share: false,
+  provider: 'anthropic',
   studyContext: {
     researchQuestions: ['How does support from close friends shape wellbeing?'],
     population: 'First-year undergraduate students',
@@ -210,8 +219,17 @@ export type Harness = {
 
 export const START = Date.parse('2026-11-11T10:00:00.000Z');
 
+/** Fails a test that reaches a provider it did not script. */
+const unscripted: ReviewModel = async () => {
+  throw new Error('This test scripted no model for this provider.');
+};
+
+/**
+ * `model` answers for Anthropic, which `validRequest` asks for, unless it
+ * names one for each provider.
+ */
 export const createHarness = (
-  model: ReviewModel,
+  model: ReviewModel | Record<ReviewProvider, ReviewModel>,
   overrides: Partial<ReviewDependencies> = {},
 ): Harness => {
   const store = createMemoryStore();
@@ -225,10 +243,14 @@ export const createHarness = (
   const deps: ReviewDependencies = {
     devOrigin: undefined,
     limiter: {
+      availability: async (request) => availability(store, request),
       admit: async (request) => admit(store, request),
       settle: async (request) => settle(store, request),
     },
-    model,
+    models:
+      typeof model === 'function'
+        ? { anthropic: model, openai: unscripted }
+        : model,
     sharedReviews: {
       put: async (key, value, { expirationTtl }) => {
         shared.push({ key, value, expirationTtl });

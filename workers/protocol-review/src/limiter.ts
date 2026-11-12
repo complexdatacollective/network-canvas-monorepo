@@ -1,4 +1,10 @@
-import { REVIEW_LIMITS, type ReviewQuota } from './contract.ts';
+import {
+  type ProviderAvailability,
+  REVIEW_LIMITS,
+  REVIEW_PROVIDERS,
+  type ReviewProvider,
+  type ReviewQuota,
+} from './contract.ts';
 import { DAILY_CEILING_MICROS, MONTHLY_CEILING_MICROS } from './pricing.ts';
 
 /**
@@ -28,12 +34,12 @@ export type LimiterStore = {
   deleteWindow(key: string): void;
   /** Forgets every window that ended at or before `now`. */
   deleteExpiredWindows(now: number): void;
-  /** Micro-dollars spent or reserved on `day` (`YYYY-MM-DD`, UTC). */
-  getCommitted(day: string): number;
-  setCommitted(day: string, micros: number): void;
-  /** Micro-dollars spent or reserved on `day` and every day after it. */
-  getCommittedSince(day: string): number;
-  /** Forgets the spending of every day before `day`. */
+  /** Micro-dollars spent or reserved with `provider` on `day` (`YYYY-MM-DD`, UTC). */
+  getCommitted(provider: ReviewProvider, day: string): number;
+  setCommitted(provider: ReviewProvider, day: string, micros: number): void;
+  /** Micro-dollars spent or reserved with `provider` on `day` and every day after it. */
+  getCommittedSince(provider: ReviewProvider, day: string): number;
+  /** Forgets every provider's spending of every day before `day`. */
   deleteDaysBefore(day: string): void;
 };
 
@@ -42,6 +48,7 @@ type WindowReference = { key: string; windowStart: number };
 
 /** What `settle` needs to undo or complete an admission. */
 type Admission = {
+  provider: ReviewProvider;
   day: string;
   reservationMicros: number;
   windows: WindowReference[];
@@ -50,6 +57,8 @@ type Admission = {
 export type AdmitRequest = {
   installationKey: string;
   addressKey: string;
+  /** Whose budget the review is charged to. */
+  provider: ReviewProvider;
   reservationMicros: number;
   now: number;
 };
@@ -97,9 +106,73 @@ const liveWindow = (
   return window && window.windowEnd > now ? window : null;
 };
 
+/**
+ * Which of `provider`'s budgets has no room for `reservationMicros` at `now`,
+ * and when it starts again; null when both have room. The month before the
+ * day: when both are spent, the month is the one that decides when a review
+ * can next run.
+ */
+const spentBudget = (
+  store: LimiterStore,
+  provider: ReviewProvider,
+  reservationMicros: number,
+  now: number,
+): { error: 'daily_limit' | 'monthly_limit'; retryAt: string } | null => {
+  if (
+    store.getCommittedSince(provider, utcMonthStart(now)) + reservationMicros >
+    MONTHLY_CEILING_MICROS
+  ) {
+    return { error: 'monthly_limit', retryAt: toIso(nextUtcMonth(now)) };
+  }
+  if (
+    store.getCommitted(provider, utcDay(now)) + reservationMicros >
+    DAILY_CEILING_MICROS
+  ) {
+    return { error: 'daily_limit', retryAt: toIso(nextUtcMidnight(now)) };
+  }
+  return null;
+};
+
+export type AvailabilityRequest = {
+  /** The least a review by each provider reserves: one of an empty protocol. */
+  smallestReservationMicros: Record<ReviewProvider, number>;
+  now: number;
+};
+
+/**
+ * Whether each provider's budget has room for the smallest review. Changes
+ * nothing.
+ */
+export const availability = (
+  store: LimiterStore,
+  { smallestReservationMicros, now }: AvailabilityRequest,
+): ProviderAvailability[] =>
+  REVIEW_PROVIDERS.map((provider) => {
+    const spent = spentBudget(
+      store,
+      provider,
+      smallestReservationMicros[provider],
+      now,
+    );
+    return spent === null
+      ? { provider, available: true, reason: null, retryAt: null }
+      : {
+          provider,
+          available: false,
+          reason: spent.error,
+          retryAt: spent.retryAt,
+        };
+  });
+
 export const admit = (
   store: LimiterStore,
-  { installationKey, addressKey, reservationMicros, now }: AdmitRequest,
+  {
+    installationKey,
+    addressKey,
+    provider,
+    reservationMicros,
+    now,
+  }: AdmitRequest,
 ): AdmitResult => {
   store.deleteExpiredWindows(now);
   // The month's total is the sum of its days, so every day of this month is
@@ -129,28 +202,11 @@ export const admit = (
     return { ok: false, error: 'hourly_limit', retryAt: toIso(retryAt) };
   }
 
-  // The month before the day: when both are spent, the month is the one
-  // that decides when a review can next run.
-  if (
-    store.getCommittedSince(monthStart) + reservationMicros >
-    MONTHLY_CEILING_MICROS
-  ) {
-    return {
-      ok: false,
-      error: 'monthly_limit',
-      retryAt: toIso(nextUtcMonth(now)),
-    };
-  }
+  const spent = spentBudget(store, provider, reservationMicros, now);
+  if (spent !== null) return { ok: false, ...spent };
 
   const day = utcDay(now);
-  const committed = store.getCommitted(day);
-  if (committed + reservationMicros > DAILY_CEILING_MICROS) {
-    return {
-      ok: false,
-      error: 'daily_limit',
-      retryAt: toIso(nextUtcMidnight(now)),
-    };
-  }
+  const committed = store.getCommitted(provider, day);
 
   const counted = current.map(({ key, window }) => {
     const next: HourlyWindow = window
@@ -159,7 +215,7 @@ export const admit = (
     store.putWindow(next);
     return next;
   });
-  store.setCommitted(day, committed + reservationMicros);
+  store.setCommitted(provider, day, committed + reservationMicros);
 
   const installation = counted[0];
   if (!installation) throw new Error('The installation window is missing.');
@@ -167,6 +223,7 @@ export const admit = (
   return {
     ok: true,
     admission: {
+      provider,
       day,
       reservationMicros,
       windows: counted.map(({ key, windowStart }) => ({ key, windowStart })),
@@ -186,8 +243,9 @@ export const settle = (
   store: LimiterStore,
   { admission, actualMicros, refundHourly }: SettleRequest,
 ): void => {
-  const committed = store.getCommitted(admission.day);
+  const committed = store.getCommitted(admission.provider, admission.day);
   store.setCommitted(
+    admission.provider,
     admission.day,
     Math.max(0, committed - admission.reservationMicros + actualMicros),
   );

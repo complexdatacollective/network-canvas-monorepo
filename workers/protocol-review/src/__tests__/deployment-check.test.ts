@@ -30,6 +30,7 @@ describe('the deployment check', () => {
     );
     expect(problems).toEqual([
       'A preflight from https://example.com answered 204, not a refusal.',
+      'Asking which providers are available answered 204, not 200.',
     ]);
   });
 
@@ -38,11 +39,42 @@ describe('the deployment check', () => {
     const problems = await deploymentProblems(
       async () => new Response(null, { status: 403 }),
     );
-    expect(problems).toEqual(
-      ALLOWED_ORIGINS.map(
+    expect(problems).toEqual([
+      ...ALLOWED_ORIGINS.map(
         (origin) => `A preflight from ${origin} answered 403, not 204.`,
       ),
+      'Asking which providers are available answered 403, not 200.',
+    ]);
+  });
+
+  it('reports a deployed version that cannot say which providers are available', async () => {
+    // An earlier version of the Worker: the route does not exist.
+    const older = await deploymentProblems(async (url, init) =>
+      init.method === 'GET'
+        ? new Response(null, { status: 404 })
+        : service()(url, init),
     );
+    expect(older).toEqual([
+      'Asking which providers are available answered 404, not 200.',
+    ]);
+
+    const partial = await deploymentProblems(async (url, init) =>
+      init.method === 'GET'
+        ? Response.json({
+            providers: [
+              {
+                provider: 'anthropic',
+                available: true,
+                reason: null,
+                retryAt: null,
+              },
+            ],
+          })
+        : service()(url, init),
+    );
+    expect(partial).toEqual([
+      'The providers listed were not anthropic, openai.',
+    ]);
   });
 
   it('reports a service that allows an origin other than the one asking', async () => {

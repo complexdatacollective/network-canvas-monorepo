@@ -3,18 +3,28 @@ import {
   HEARTBEAT_INTERVAL_MS,
   MODEL_TIMEOUT_MS,
   PROGRESS_INTERVAL_MS,
+  PROVIDER_MODELS,
 } from './constants.ts';
 import {
+  type ProviderAvailability,
+  PROVIDERS_PATH,
+  type ProviderStatus,
   REVIEW_LIMITS,
   REVIEW_PATH,
   type ReviewErrorCode,
   type ReviewEvent,
+  type ReviewProvider,
   type ReviewRequest,
   ReviewRequestSchema,
 } from './contract.ts';
 import { allowedOrigin, corsHeaders, preflightHeaders } from './cors.ts';
 import { normaliseFindings, REVIEW_OUTPUT_SCHEMA } from './findings.ts';
-import type { AdmitRequest, AdmitResult, SettleRequest } from './limiter.ts';
+import type {
+  AdmitRequest,
+  AdmitResult,
+  AvailabilityRequest,
+  SettleRequest,
+} from './limiter.ts';
 import {
   BILLING_UNKNOWN,
   type FailedCallBilling,
@@ -31,6 +41,9 @@ import { buildReviewMessage, REVIEW_SYSTEM_PROMPT } from './prompt/build.ts';
  */
 
 type ReviewLimiter = {
+  availability: (
+    request: AvailabilityRequest,
+  ) => Promise<ProviderAvailability[]>;
   admit: (request: AdmitRequest) => Promise<AdmitResult>;
   settle: (request: SettleRequest) => Promise<void>;
 };
@@ -47,7 +60,8 @@ export type ReviewDependencies = {
   /** The one extra origin allowed in local development; unset in production. */
   devOrigin: string | undefined;
   limiter: ReviewLimiter;
-  model: ReviewModel;
+  /** Each provider's model call; the request says which one runs. */
+  models: Record<ReviewProvider, ReviewModel>;
   sharedReviews: SharedReviewStore;
   notify: FailureNotifier;
   log: FailureLog;
@@ -87,13 +101,20 @@ const CLIENT_CLOSED_REQUEST = 499;
  * the call could have cost.
  */
 const mayHaveBilled = (
+  provider: ReviewProvider,
   billing: FailedCallBilling,
   reservedMicros: number,
 ): number => {
   if (billing.kind === 'rejected') return 0;
-  if (billing.kind === 'reported') return costMicros(billing.usage);
+  if (billing.kind === 'reported') return costMicros(provider, billing.usage);
   return reservedMicros;
 };
+
+/** Everything every review sends besides its own request. */
+const FIXED_TEXTS = [
+  REVIEW_SYSTEM_PROMPT,
+  JSON.stringify(REVIEW_OUTPUT_SCHEMA),
+] as const;
 
 const SERVICE_UNAVAILABLE: ReviewEvent = {
   type: 'error',
@@ -110,7 +131,8 @@ export const handleRequest = async (
   }
   const cors = corsHeaders(origin);
 
-  if (new URL(request.url).pathname !== REVIEW_PATH) {
+  const { pathname } = new URL(request.url);
+  if (pathname !== REVIEW_PATH && pathname !== PROVIDERS_PATH) {
     return new Response(null, { status: 404, headers: cors });
   }
   if (request.method === 'OPTIONS') {
@@ -118,6 +140,15 @@ export const handleRequest = async (
       status: 204,
       headers: preflightHeaders(origin),
     });
+  }
+  if (pathname === PROVIDERS_PATH) {
+    if (request.method !== 'GET') {
+      return new Response(null, {
+        status: 405,
+        headers: { ...cors, Allow: 'GET, OPTIONS' },
+      });
+    }
+    return providerStatus(cors, deps);
   }
   if (request.method !== 'POST') {
     return new Response(null, {
@@ -146,6 +177,38 @@ export const handleRequest = async (
   return review(request, parsed.data, cors, deps);
 };
 
+/**
+ * Which providers have room in their budgets for a review. It reads the
+ * limiter and nothing else, so asking costs nothing and counts against no
+ * limit.
+ */
+const providerStatus = async (
+  cors: Record<string, string>,
+  deps: ReviewDependencies,
+): Promise<Response> => {
+  let providers: ProviderAvailability[];
+  try {
+    providers = await deps.limiter.availability({
+      smallestReservationMicros: {
+        anthropic: reservationMicros('anthropic', FIXED_TEXTS),
+        openai: reservationMicros('openai', FIXED_TEXTS),
+      },
+      now: deps.now(),
+    });
+  } catch {
+    return errorResponse(503, 'service_unavailable', null, cors);
+  }
+  const status: ProviderStatus = { providers };
+  return new Response(JSON.stringify(status), {
+    status: 200,
+    headers: {
+      ...cors,
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+    },
+  });
+};
+
 const review = async (
   request: Request,
   reviewRequest: ReviewRequest,
@@ -153,6 +216,7 @@ const review = async (
   deps: ReviewDependencies,
 ): Promise<Response> => {
   const receivedAt = deps.now();
+  const { provider } = reviewRequest;
   const system = REVIEW_SYSTEM_PROMPT;
   const user = buildReviewMessage(reviewRequest);
 
@@ -168,18 +232,15 @@ const review = async (
   const admitted = await deps.limiter.admit({
     installationKey,
     addressKey,
-    // Everything the request carries: the instructions, the review request
-    // and the schema the answer must follow.
-    reservationMicros: reservationMicros([
-      system,
-      user,
-      JSON.stringify(REVIEW_OUTPUT_SCHEMA),
-    ]),
+    provider,
+    // Everything the request carries: the instructions, the schema the
+    // answer must follow, and the review request.
+    reservationMicros: reservationMicros(provider, [...FIXED_TEXTS, user]),
     now: receivedAt,
   });
   if (!admitted.ok) {
-    // The researcher's own limit is theirs to wait out (429); a spent budget
-    // is the service's condition (503).
+    // The researcher's own limit is theirs to wait out (429); a provider's
+    // spent budget is the service's condition (503).
     return errorResponse(
       admitted.error === 'hourly_limit' ? 429 : 503,
       admitted.error,
@@ -203,7 +264,7 @@ const review = async (
         refundHourly: false,
       });
     } catch {
-      deps.log({ reason: 'settle_failed', status: 0 });
+      deps.log({ reason: 'settle_failed', status: 0, provider });
     }
     return new Response(null, { status: CLIENT_CLOSED_REQUEST, headers: cors });
   }
@@ -240,7 +301,7 @@ const review = async (
   const { promise: started, resolve: markStarted } =
     Promise.withResolvers<void>();
 
-  const run = deps.model({
+  const run = deps.models[provider]({
     system,
     user,
     signal: abort.signal,
@@ -255,7 +316,7 @@ const review = async (
     try {
       await deps.limiter.settle({ admission, actualMicros, refundHourly });
     } catch {
-      deps.log({ reason: 'settle_failed', status: 0 });
+      deps.log({ reason: 'settle_failed', status: 0, provider });
     }
   };
 
@@ -265,8 +326,8 @@ const review = async (
     actualMicros: number,
   ): Promise<ReviewEvent> => {
     await settle(actualMicros, true);
-    deps.log({ reason, status });
-    deps.waitUntil(deps.notify({ reason, status }));
+    deps.log({ reason, status, provider });
+    deps.waitUntil(deps.notify({ reason, status, provider }));
     return SERVICE_UNAVAILABLE;
   };
 
@@ -274,7 +335,7 @@ const review = async (
   const conclude = async (): Promise<ReviewEvent | null> => {
     try {
       const output = await run;
-      const cost = costMicros(output.usage);
+      const cost = costMicros(provider, output.usage);
       if (output.stopReason === 'refusal') return fail('refusal', 200, cost);
       if (output.stopReason === 'max_tokens') {
         return fail('truncated', 200, cost);
@@ -298,7 +359,11 @@ const review = async (
         error instanceof ModelCallError
           ? error
           : new ModelCallError('unknown', 0, BILLING_UNKNOWN);
-      const cost = mayHaveBilled(failure.billing, admission.reservationMicros);
+      const cost = mayHaveBilled(
+        provider,
+        failure.billing,
+        admission.reservationMicros,
+      );
       if (failure.reason === 'cancelled' && !timedOut) {
         // The client went away. The review still counts against the hourly
         // limit; the budget keeps what the call may have cost.
@@ -412,6 +477,8 @@ const share = async (
       `review:${reviewId}`,
       JSON.stringify({
         receivedAt: new Date(receivedAt).toISOString(),
+        provider: request.provider,
+        model: PROVIDER_MODELS[request.provider].model,
         locale: request.locale,
         studyContext: request.studyContext,
         protocol: request.protocol,
@@ -423,6 +490,6 @@ const share = async (
       },
     );
   } catch {
-    deps.log({ reason: 'share_failed', status: 0 });
+    deps.log({ reason: 'share_failed', status: 0, provider: request.provider });
   }
 };

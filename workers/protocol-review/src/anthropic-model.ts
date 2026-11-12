@@ -8,8 +8,8 @@ import Anthropic, {
 import {
   MAX_OUTPUT_TOKENS,
   MODEL_TIMEOUT_MS,
+  PROVIDER_MODELS,
   REVIEW_EFFORT,
-  REVIEW_MODEL,
 } from './constants.ts';
 import { REVIEW_OUTPUT_SCHEMA } from './findings.ts';
 import {
@@ -19,6 +19,7 @@ import {
   type ModelFailureReason,
   REJECTED,
   type ReviewModel,
+  reasonByStatus,
   reported,
 } from './model.ts';
 import type { TokenUsage } from './pricing.ts';
@@ -42,19 +43,6 @@ const REASON_BY_ERROR_TYPE: Partial<
   invalid_request_error: 'bad_request',
   timeout_error: 'timeout',
   api_error: 'provider_error',
-};
-
-const reasonByStatus = (status: number): ModelFailureReason => {
-  if (status === 401) return 'authentication';
-  if (status === 402) return 'billing';
-  if (status === 403) return 'permission';
-  if (status === 404) return 'not_found';
-  if (status === 413) return 'request_too_large';
-  if (status === 429) return 'rate_limited';
-  if (status === 529) return 'overloaded';
-  if (status === 400) return 'bad_request';
-  if (status >= 500) return 'provider_error';
-  return 'unknown';
 };
 
 /** The fixed reason and HTTP status of a failed call to the provider. */
@@ -113,7 +101,7 @@ export const createAnthropicModel = (
     ...(options.fetch ? { fetch: options.fetch } : {}),
     // No retries. A retried call reports only the usage of the attempt that
     // succeeded, so an earlier attempt that failed after the provider began
-    // work would be billed and never counted against the day's budget. The
+    // work would be billed and never counted against the budget. The
     // researcher is told the service is unavailable and can try again.
     maxRetries: 0,
     timeout: MODEL_TIMEOUT_MS,
@@ -126,7 +114,7 @@ export const createAnthropicModel = (
     try {
       const stream = client.messages.stream(
         {
-          model: REVIEW_MODEL,
+          model: PROVIDER_MODELS.anthropic.model,
           max_tokens: MAX_OUTPUT_TOKENS,
           thinking: { type: 'adaptive' },
           output_config: {
