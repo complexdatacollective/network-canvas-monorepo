@@ -1504,6 +1504,21 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         host.rpc('AcquireLock', { protocolId, sectionId }),
       );
       if (held.lock !== 'held') throw new Error('the section was taken');
+      // A protocol holds only the shared words its author reworded, so one is
+      // reworded first: the word the next submit has to keep.
+      const kept = inEnglish('Go back');
+      const seeded = await call(
+        ADA,
+        host.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId,
+          document: held.document,
+          revision: held.revision,
+          interfaceText: [{ group: 'navigation', key: 'back', value: kept }],
+        }),
+      );
+      expect((await heldWord('navigation', 'back')).word).toEqual(kept);
       const reworded = inEnglish('No place matched that search');
       expect(
         (await heldWord('geospatial', 'searchFailed')).word,
@@ -1519,7 +1534,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             ...Redacted.value(held.document),
             label: inEnglish('Saved with its words'),
           }),
-          revision: held.revision,
+          revision: seeded.revision,
           interfaceText: [
             { group: 'geospatial', key: 'searchFailed', value: reworded },
           ],
@@ -1531,7 +1546,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       expect(after.word).toEqual(reworded);
       expect(after.revision.sequence).toBe(written.revision.sequence);
       // Every other shared word the protocol held is kept.
-      expect((await heldWord('navigation', 'back')).word).toBeDefined();
+      expect((await heldWord('navigation', 'back')).word).toEqual(kept);
     });
 
     it('writes the words a create carries into the settings, in the new stage’s revision', async () => {
