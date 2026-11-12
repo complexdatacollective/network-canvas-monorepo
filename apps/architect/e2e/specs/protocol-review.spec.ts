@@ -50,18 +50,11 @@ const problemRow = (popover: Locator, title: string) =>
 const rowButton = (popover: Locator, title: string) =>
   problemRow(popover, title).getByRole('button', { name: new RegExp(title) });
 
-/**
- * The review panel while it shows one problem: named by the problem's title,
- * exactly. The toast that confirms a fix is a dialog too, and its name ends
- * with the same title.
- */
+/** The review panel while it shows one problem: named by the problem's title, exactly. */
 const problemView = (page: Page, title: string) =>
   page.getByRole('dialog', { name: title, exact: true });
 
-/**
- * Fix for me, by its exact name: a fix whose text can be adjusted first also
- * offers "Fix for me, then edit it".
- */
+/** Fix for me, by its exact name. */
 const fixForMe = (view: Locator) =>
   view.getByRole('button', { name: 'Fix for me', exact: true });
 
@@ -778,7 +771,7 @@ test.describe('results', () => {
     await expect(problemView(page, title)).toHaveCount(0);
   });
 
-  test('Fix for me rewrites the prompt, moves on, marks it Fixed for you, and the row’s Undo restores the old text', async ({
+  test('Fix for me rewrites the prompt, Next problem moves on, the row is marked Fixed for you, and the row’s Undo restores the old text', async ({
     architectPage: page,
     context,
     seed,
@@ -802,6 +795,7 @@ test.describe('results', () => {
     ).toBeVisible();
 
     await fixForMe(view).click();
+    await view.getByRole('button', { name: 'Next problem' }).click();
     // On to the next problem, in the same panel.
     const nextView = problemView(page, next);
     await expect(nextView).toBeVisible();
@@ -836,7 +830,9 @@ test.describe('results', () => {
   }) => {
     const { popover } = await reviewedProtocol(page, seed, context);
     const title = 'The first prompt is vague';
-    await fixForMe(await openProblem(page, popover, title)).click();
+    const first = await openProblem(page, popover, title);
+    await fixForMe(first).click();
+    await first.getByRole('button', { name: 'Next problem' }).click();
     const second = problemView(
       page,
       'The second prompt has no limit on how many to name',
@@ -865,6 +861,7 @@ test.describe('results', () => {
     await expect(reviewButton(page)).toHaveAccessibleName(countName(4));
 
     await fixForMe(view).click();
+    await view.getByRole('button', { name: 'Next problem' }).click();
     await expect(second).toBeVisible();
     await backToList(
       page,
@@ -901,6 +898,7 @@ test.describe('results', () => {
       fr: 'Nommez plus',
     });
 
+    await view.getByRole('button', { name: 'Next problem' }).click();
     const nextTitle = 'The closing stage repeats the welcome';
     await backToList(page, problemView(page, nextTitle), nextTitle);
     await problemRow(popover, title)
@@ -960,6 +958,9 @@ test.describe('results', () => {
       await view.getByRole('button', { name: button }).click();
     };
     await decide('The first prompt is vague', 'Fix for me', 1);
+    await problemView(page, 'The first prompt is vague')
+      .getByRole('button', { name: 'Next problem' })
+      .click();
     await decide(
       'The second prompt has no limit on how many to name',
       'I will fix this',
@@ -1028,6 +1029,7 @@ test.describe('results', () => {
       page,
       (protocol) => promptText(protocol, 'p1')?.en === NEW_P1_TEXT,
     );
+    await view.getByRole('button', { name: 'Next problem' }).click();
     const next = problemView(
       page,
       'The second prompt has no limit on how many to name',
@@ -1060,6 +1062,7 @@ test.describe('results', () => {
     const { service, popover } = await reviewedProtocol(page, seed, context);
     const view = await openProblem(page, popover, 'The first prompt is vague');
     await fixForMe(view).click();
+    await view.getByRole('button', { name: 'Next problem' }).click();
     const second = 'The second prompt has no limit on how many to name';
     await backToList(page, problemView(page, second), second);
 
@@ -1399,6 +1402,7 @@ test.describe('persistence', () => {
       page,
       (protocol) => promptText(protocol, 'p1')?.en === NEW_P1_TEXT,
     );
+    await view.getByRole('button', { name: 'Next problem' }).click();
     const next = 'The second prompt has no limit on how many to name';
     await backToList(page, problemView(page, next), next);
     await expect(reviewButton(page)).toHaveAccessibleName(countName(3));

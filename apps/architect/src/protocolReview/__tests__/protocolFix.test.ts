@@ -8,7 +8,6 @@ import {
 import {
   applyFixEdits,
   describeFixTextEdits,
-  fixEditableInPlace,
   resolveFindingLocation,
 } from '../describeFix';
 import { applyOperations } from '../fixEngine';
@@ -168,22 +167,30 @@ describe('applyFixEdits', () => {
   });
 });
 
-describe('fixEditableInPlace', () => {
-  it('holds for a fix that only sets texts and numbers, and not for one that removes', () => {
-    const protocol = makeProtocol();
-    expect(
-      fixEditableInPlace(protocol, [
-        op('set', '/stages/names/prompts/p1/text', { en: 'Name everyone' }),
-        op('set', '/stages/names/behaviours/maxNodes', 20),
-      ]),
-    ).toBe(true);
-    expect(
-      fixEditableInPlace(protocol, [op('remove', '/stages/welcome')]),
-    ).toBe(false);
-  });
-});
-
 describe('describeFixTextEdits', () => {
+  it('names a number setting and what it belongs to, and leaves other numbers out', () => {
+    const protocol = makeProtocol();
+    const edits = describeFixTextEdits(protocol, [
+      op(
+        'set',
+        '/codebook/node/person/variables/freq/validation/maxSelected',
+        1,
+      ),
+      op('set', '/stages/names/behaviours/maxNodes', 20),
+      op('set', '/stages/names/behaviours/someCount', 3),
+    ]);
+    expect(
+      edits.map((edit) =>
+        edit.kind === 'number'
+          ? [edit.setting, edit.owner, edit.now, edit.after]
+          : null,
+      ),
+    ).toEqual([
+      ['maxSelected', 'freq', null, '1'],
+      ['maxNodes', expect.any(String), null, '20'],
+    ]);
+  });
+
   it('gives the text now and after, its language, and the translations it leaves alone', () => {
     const protocol = makeProtocol();
     const { operations } = recordFix(protocol, [

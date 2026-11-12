@@ -32,7 +32,6 @@ import {
   describeFixTextEdits,
   type FindingLocation,
   type FixEdits,
-  fixEditableInPlace,
   type FixTextEdit,
   resolveFindingLocation,
 } from '~/protocolReview/describeFix';
@@ -501,7 +500,6 @@ export type ReviewFindingView = {
   fixChanges: string[];
   /** Each text the fix rewrites, now and after. */
   textEdits: FixTextEdit[];
-  editableInPlace: boolean;
   decision: FindingDecision;
   /** `fixed` only while the researcher chose Fix for me AND the fix holds. */
   status: FindingDisplayStatus;
@@ -600,10 +598,6 @@ export const getProtocolReviewFindings = createSelector(
         fixSummary: current(finding.fix.summary),
         fixChanges: finding.fix.changes.map(current),
         textEdits: describeFixTextEdits(
-          protocolAsReviewed(protocol),
-          stored.operations,
-        ),
-        editableInPlace: fixEditableInPlace(
           protocolAsReviewed(protocol),
           stored.operations,
         ),

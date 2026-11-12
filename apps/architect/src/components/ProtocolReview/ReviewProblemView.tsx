@@ -1,8 +1,8 @@
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { useLocation } from 'wouter';
 
 import {
+  type IntlShape,
   defineMessages,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
@@ -15,9 +15,9 @@ import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import Pips from '@codaco/fresco-ui/Pips';
 import { PopoverTitle } from '@codaco/fresco-ui/Popover';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { getValidationLabel } from '@codaco/protocol-builder/codebook/variableValidation';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 import Markdown from '~/components/Markdown';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
@@ -52,6 +52,36 @@ const messages = defineMessages({
     defaultMessage: 'Suggested fix',
     description:
       'Heading of the part of a problem that describes how the automated protocol review suggests fixing it.',
+  },
+  notSet: {
+    id: 'architect.protocolReview.problem.notSet',
+    defaultMessage: 'Not set',
+    description:
+      'Shown in the Now box for a number setting, such as a limit on answers, that the protocol does not have yet.',
+  },
+  numberSetting: {
+    id: 'architect.protocolReview.problem.numberSetting',
+    defaultMessage: '{setting} · {name}',
+    description:
+      'Names a number a fix changes, above its Now and After the fix boxes. {setting} is the setting, such as "Maximum selected"; {name} is the attribute or stage it belongs to. The dot is a separator.',
+  },
+  minNodes: {
+    id: 'architect.protocolReview.problem.minNodes',
+    defaultMessage: 'Minimum nodes on stage',
+    description:
+      'Names the number setting for the fewest nodes a participant must add on a stage, above a fix that changes it.',
+  },
+  maxNodes: {
+    id: 'architect.protocolReview.problem.maxNodes',
+    defaultMessage: 'Maximum nodes on stage',
+    description:
+      'Names the number setting for the most nodes a participant may add on a stage, above a fix that changes it.',
+  },
+  concentricCircles: {
+    id: 'architect.protocolReview.problem.concentricCircles',
+    defaultMessage: 'Number of concentric circles',
+    description:
+      'Names the number setting for how many circles a sociogram background shows, above a fix that changes it.',
   },
   now: {
     id: 'architect.protocolReview.problem.now',
@@ -167,12 +197,6 @@ const messages = defineMessages({
       'Your changes would leave the protocol invalid. Change them, or use the suggestion.',
     description:
       'Notice when Fix for me is pressed with text or numbers the researcher changed, and the result would not be a valid protocol.',
-  },
-  fixAndEdit: {
-    id: 'architect.protocolReview.problem.fixAndEdit',
-    defaultMessage: 'Fix for me, then edit it yourself',
-    description:
-      'Button under a suggested fix too large to change in the review. It makes the fix, then opens the place in the protocol where the problem is so the researcher can adjust it.',
   },
   fixForMe: {
     id: 'architect.protocolReview.problem.fixForMe',
@@ -325,6 +349,35 @@ const AfterFixBox = ({
   );
 };
 
+const settingName = (intl: IntlShape, setting: string): string => {
+  if (setting === 'minNodes') return intl.formatMessage(messages.minNodes);
+  if (setting === 'maxNodes') return intl.formatMessage(messages.maxNodes);
+  if (setting === 'concentricCircles') {
+    return intl.formatMessage(messages.concentricCircles);
+  }
+  return getValidationLabel(setting, intl);
+};
+
+const editContext = (
+  intl: IntlShape,
+  edit: FixTextEdit,
+  languageName: (locale: string) => string,
+  severalLanguages: boolean,
+): string | null => {
+  if (edit.kind === 'number') {
+    const setting = settingName(intl, edit.setting);
+    return edit.owner === null
+      ? setting
+      : intl.formatMessage(messages.numberSetting, {
+          setting,
+          name: edit.owner,
+        });
+  }
+  return edit.locale !== null && severalLanguages
+    ? languageName(edit.locale)
+    : null;
+};
+
 const editIsValid = (edit: FixTextEdit, value: string) =>
   edit.kind === 'text' ||
   (value.trim() !== '' && Number.isFinite(Number(value)));
@@ -378,8 +431,6 @@ const ReviewProblemView = ({
   const dispatch = useAppDispatch();
   const store = useAppStore();
   const languageName = useLanguageName();
-  const { add: addToast, close: closeToast } = useToast();
-  const [, navigate] = useLocation();
   const anotherUndecided = useAppSelector(
     (state) =>
       nextUndecided(getProtocolReviewFindings(state), index, current.id) !==
@@ -415,7 +466,7 @@ const ReviewProblemView = ({
     onBack();
   };
 
-  const decide = async (decision: FindingDecision, openAfter?: string) => {
+  const decide = async (decision: FindingDecision) => {
     if (busy) return;
     setBusy(true);
     setRefusal(null);
@@ -429,45 +480,12 @@ const ReviewProblemView = ({
       return;
     }
     if (decision === 'fix') {
-      const fixed = current;
-      const place = formatLocationLink(intl, fixed.location);
-      const toastId = addToast({
-        variant: 'success',
-        title: intl.formatMessage(messages.fixApplied, { title: fixed.title }),
-        description: (
-          <span className="flex flex-col items-start gap-1">
-            <span>{fixed.fixSummary}</span>
-            {place && (
-              <Button
-                size="sm"
-                variant="link"
-                onClick={() => {
-                  closeToast(toastId);
-                  onClose();
-                  navigate(place.href);
-                }}
-              >
-                {place.label}
-              </Button>
-            )}
-          </span>
-        ),
-        cancelLabel: intl.formatMessage(messages.undo),
-        onCancel: async () => {
-          closeToast(toastId);
-          const undone = await dispatch(undoFix(fixed.id));
-          if (undone.ok) {
-            announce(
-              intl.formatMessage(messages.fixUndone, { title: fixed.title }),
-            );
-          }
-        },
-      });
-      if (openAfter) {
-        onClose();
-        navigate(openAfter);
-        return;
-      }
+      setEdits({});
+      announce(
+        intl.formatMessage(messages.fixApplied, { title: current.title }),
+      );
+      titleRef.current?.focus({ preventScroll: true });
+      return;
     }
     if (decision === 'undecided') return;
     moveOn();
@@ -529,6 +547,14 @@ const ReviewProblemView = ({
   const location = formatLocation(intl, current.location);
   const link = formatLocationLink(intl, current.location);
   const fixPrimary = current.canFix || availability === 'checking';
+  const severalLanguages =
+    new Set(current.textEdits.map((edit) => edit.locale)).size > 1;
+  const editContexts: Record<string, string | null> = Object.fromEntries(
+    current.textEdits.map((edit) => [
+      edit.path,
+      editContext(intl, edit, languageName, severalLanguages),
+    ]),
+  );
   const canChooseFix = undecidedOrMine || status === 'dismissed';
   const canEditFix = canChooseFix && availability === 'available';
 
@@ -591,6 +617,14 @@ const ReviewProblemView = ({
               <Alert variant="info" density="compact" className="my-0">
                 <AlertDescription>
                   {intl.formatMessage(stateNotice)}
+                  {status === 'fixed' && link && (
+                    <>
+                      {' '}
+                      <ProtocolPlaceLink href={link.href} onFollow={onClose}>
+                        {link.label}
+                      </ProtocolPlaceLink>
+                    </>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
@@ -629,32 +663,32 @@ const ReviewProblemView = ({
                 <div key={edit.path} className="flex flex-col gap-2">
                   {/* A fix that rewrites one text in several languages shows
                       each, so each pair says which language it is. */}
-                  {edit.locale !== null &&
-                    new Set(current.textEdits.map((other) => other.locale))
-                      .size > 1 && (
-                      <span
-                        id={`${current.id}${edit.path}-language`}
-                        className="text-sm font-bold"
-                      >
-                        {languageName(edit.locale)}
-                      </span>
-                    )}
+                  {editContexts[edit.path] && (
+                    <span
+                      id={`${current.id}${edit.path}-context`}
+                      className="text-sm font-bold"
+                    >
+                      {editContexts[edit.path]}
+                    </span>
+                  )}
                   <div className="grid gap-3 @min-[36rem]:grid-cols-2">
-                    {edit.now !== null && (
+                    {(edit.now !== null || edit.kind === 'number') && (
                       <div className="bg-surface border-outline flex flex-col gap-1 rounded border p-3">
                         <span className="text-sm font-bold">
                           {intl.formatMessage(messages.now)}
                         </span>
-                        <FixText text={edit.now} markdown={edit.markdown} />
+                        {edit.now === null ? (
+                          <span>{intl.formatMessage(messages.notSet)}</span>
+                        ) : (
+                          <FixText text={edit.now} markdown={edit.markdown} />
+                        )}
                       </div>
                     )}
                     <AfterFixBox
                       edit={edit}
                       languageId={
-                        edit.locale !== null &&
-                        new Set(current.textEdits.map((other) => other.locale))
-                          .size > 1
-                          ? `${current.id}${edit.path}-language`
+                        editContexts[edit.path]
+                          ? `${current.id}${edit.path}-context`
                           : undefined
                       }
                       label={intl.formatMessage(messages.afterFix)}
@@ -689,17 +723,6 @@ const ReviewProblemView = ({
                   )}
                 </div>
               ))}
-              {canEditFix && !current.editableInPlace && link && (
-                <GuardedButton
-                  size="sm"
-                  variant="link"
-                  className="self-start"
-                  unavailable={busy}
-                  onClick={() => void decide('fix', link.href)}
-                >
-                  {intl.formatMessage(messages.fixAndEdit)}
-                </GuardedButton>
-              )}
             </section>
             {availability === 'checking' && (
               <span id={checkingId} className="sr-only">

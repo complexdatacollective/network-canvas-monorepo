@@ -1,3 +1,4 @@
+import { isValidationWithNumberValue } from '@codaco/protocol-builder/codebook/variableValidation';
 import type { Finding } from '@codaco/protocol-review-worker/contract';
 import {
   collectLocalizedStrings,
@@ -24,7 +25,7 @@ import { isLocalizedValue } from './protocolFix';
  */
 
 /** One text a fix rewrites: the text now and the text after the fix. */
-export type FixTextEdit = {
+type FixEditCommon = {
   path: string;
   /** The plain text there now; null when there is none. */
   now: string | null;
@@ -38,8 +39,45 @@ export type FixTextEdit = {
    */
   otherTranslations: string[];
   markdown: boolean;
-  kind: 'text' | 'number';
   editable: boolean;
+};
+
+/**
+ * A text, or a number setting: `setting` is its key, such as `maxSelected`,
+ * and `owner` the attribute or stage it belongs to.
+ */
+export type FixTextEdit = FixEditCommon &
+  (
+    | { kind: 'text' }
+    | { kind: 'number'; setting: string; owner: string | null }
+  );
+
+const STAGE_NUMBER_SETTINGS = new Set([
+  'minNodes',
+  'maxNodes',
+  'concentricCircles',
+]);
+
+const numberSettingOwner = (
+  protocol: CurrentProtocol,
+  segments: readonly string[],
+): string | null => {
+  const variables = segments.indexOf('variables');
+  if (variables !== -1 && variables + 1 < segments.length) {
+    const variable = readPath(protocol, segments.slice(0, variables + 2));
+    return variable.found &&
+      isJsonObject(variable.value) &&
+      typeof variable.value.name === 'string'
+      ? variable.value.name
+      : null;
+  }
+  if (segments[0] === 'stages') {
+    const stage = protocol.stages.find(({ id }) => id === segments[1]);
+    return stage
+      ? localizedText(stage.label, protocol.localization) || null
+      : null;
+  }
+  return null;
 };
 
 export type FixEdits = Readonly<Record<string, string>>;
@@ -127,6 +165,11 @@ const describeSet = (
   }
 
   if (typeof after === 'number') {
+    const setting = segments.at(-1) ?? '';
+    const known = segments.includes('validation')
+      ? isValidationWithNumberValue(setting)
+      : STAGE_NUMBER_SETTINGS.has(setting);
+    if (!known) return [];
     return [
       {
         path: operation.path,
@@ -139,6 +182,8 @@ const describeSet = (
         otherTranslations: [],
         markdown: false,
         kind: 'number',
+        setting,
+        owner: numberSettingOwner(protocol, segments),
         editable: true,
       },
     ];
@@ -188,21 +233,6 @@ const describeSetSafely = (
     return [];
   }
 };
-
-/**
- * Whether every change a fix makes is a text or number the researcher can
- * adjust in the review before the fix is made.
- */
-export const fixEditableInPlace = (
-  protocol: CurrentProtocol,
-  operations: readonly StoredOperation[],
-): boolean =>
-  operations.length > 0 &&
-  operations.every((operation) => {
-    if (operation.op !== 'set') return false;
-    const edits = describeSetSafely(protocol, operation);
-    return edits.length > 0 && edits.every((edit) => edit.editable);
-  });
 
 const editedValue = (edit: FixTextEdit, input: string): unknown => {
   if (edit.kind === 'text') return escapeMessageText(input);

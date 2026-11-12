@@ -782,7 +782,7 @@ describe('notices, while there is no review', () => {
 });
 
 describe('one problem at a time, in the panel', () => {
-  it('Fix for me changes the protocol and moves on; the app’s Undo returns the problem', async () => {
+  it('Fix for me changes the protocol and stays on the problem to say so; the app’s Undo returns it', async () => {
     await reviewed(store);
     renderToolbar(store);
     const panel = await openPanel();
@@ -813,6 +813,22 @@ describe('one problem at a time, in the panel', () => {
       within(dialog).getByRole('button', { name: 'Fix for me' }),
     );
 
+    expect(
+      await within(dialog).findByText(
+        /This was fixed for you\. Undo takes the change back out of your protocol\./,
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole('heading', { name: 'The prompt is vague' }),
+    ).toHaveFocus();
+    expect(
+      within(dialog).getAllByRole('link', { name: /Open stage/ }).length,
+    ).toBeGreaterThan(0);
+    expect(within(dialog).getByRole('button', { name: 'Undo' })).toBeVisible();
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Next problem' }),
+    );
+
     const second = await problemView('The welcome title is unclear');
     expect(
       within(second).getByRole('heading', {
@@ -833,6 +849,30 @@ describe('one problem at a time, in the panel', () => {
     });
     expect(promptText(store)).toEqual({ en: 'Name people', fr: 'Nommez' });
     expect(findingOf(store, 'prompt').status).toBe('undecided');
+  });
+
+  it('offers no link to a stage the fix removed', async () => {
+    const remove = makeFinding('remove', [op('remove', '/stages/welcome')], {
+      stageId: 'welcome',
+      title: 'The welcome stage repeats the consent form',
+    });
+    await reviewed(store, { ...RESULT, findings: [remove] });
+    renderToolbar(store);
+    const dialog = await openProblemFromList(
+      'The welcome stage repeats the consent form',
+    );
+    expect(
+      within(dialog).getAllByRole('link', { name: /stage/i }).length,
+    ).toBeGreaterThan(0);
+
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Fix for me' }),
+    );
+
+    expect(
+      await within(dialog).findByText(/This was fixed for you\./),
+    ).toBeVisible();
+    expect(within(dialog).queryByRole('link', { name: /stage/i })).toBeNull();
   });
 
   it('makes the fix with the text the researcher changed it to', async () => {
@@ -886,63 +926,6 @@ describe('one problem at a time, in the panel', () => {
     );
   });
 
-  it('offers a fix too large to change here as a fix that then opens its stage', async () => {
-    const remove = makeFinding('remove', [op('remove', '/stages/welcome')], {
-      stageId: 'names',
-      title: 'The welcome stage repeats the consent form',
-    });
-    await reviewed(store, { ...RESULT, findings: [remove] });
-    renderToolbar(store);
-    const dialog = await openProblemFromList(
-      'The welcome stage repeats the consent form',
-    );
-    expect(within(dialog).queryByRole('button', { name: 'Edit' })).toBeNull();
-
-    await userEvent.click(
-      within(dialog).getByRole('button', {
-        name: 'Fix for me, then edit it yourself',
-      }),
-    );
-
-    await waitFor(() =>
-      expect(screen.getByTestId('location')).toHaveTextContent(
-        '/protocol/stage/names',
-      ),
-    );
-    expect(
-      store.getState().activeProtocol.present?.stages.map((stage) => stage.id),
-    ).not.toContain('welcome');
-    expect(findingOf(store, 'remove').status).toBe('fixed');
-  });
-
-  it('confirms a fix made for the researcher in a toast that can undo it', async () => {
-    await reviewed(store);
-    renderToolbar(store);
-    const panel = await openPanel();
-    await userEvent.click(
-      within(panel).getByRole('button', { name: 'Go through 4 problems' }),
-    );
-    const dialog = await problemView('The prompt is vague');
-    await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Fix for me' }),
-    );
-    await problemView('The welcome title is unclear');
-
-    expect(
-      await screen.findByText('Fixed for you: The prompt is vague'),
-    ).toBeInTheDocument();
-    expect(promptText(store)).toEqual({
-      en: 'Name everyone you know',
-      fr: 'Nommez',
-    });
-    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
-
-    await waitFor(() =>
-      expect(promptText(store)).toEqual({ en: 'Name people', fr: 'Nommez' }),
-    );
-    expect(findingOf(store, 'prompt').status).toBe('undecided');
-  });
-
   it('returns to the list after the last decision, with every choice shown there', async () => {
     await reviewed(store);
     renderToolbar(store);
@@ -954,6 +937,9 @@ describe('one problem at a time, in the panel', () => {
     let dialog = await problemView('The prompt is vague');
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Fix for me' }),
+    );
+    await userEvent.click(
+      await within(dialog).findByRole('button', { name: 'Next problem' }),
     );
     dialog = await problemView('The welcome title is unclear');
     await userEvent.click(

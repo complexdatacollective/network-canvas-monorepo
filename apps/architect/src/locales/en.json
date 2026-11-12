@@ -2999,6 +2999,10 @@
     "defaultMessage": "Checking whether this fix can be made for you…",
     "description": "Read by screen readers with the Fix for me button while Architect works out whether the fix leaves a valid protocol."
   },
+  "architect.protocolReview.problem.concentricCircles": {
+    "defaultMessage": "Number of concentric circles",
+    "description": "Names the number setting for how many circles a sociogram background shows, above a fix that changes it."
+  },
   "architect.protocolReview.problem.decideLater": {
     "defaultMessage": "Decide later",
     "description": "Button on a problem the researcher said they will fix themselves that returns it to the problems still to decide."
@@ -3018,10 +3022,6 @@
   "architect.protocolReview.problem.editedInvalid": {
     "defaultMessage": "Your changes would leave the protocol invalid. Change them, or use the suggestion.",
     "description": "Notice when Fix for me is pressed with text or numbers the researcher changed, and the result would not be a valid protocol."
-  },
-  "architect.protocolReview.problem.fixAndEdit": {
-    "defaultMessage": "Fix for me, then edit it yourself",
-    "description": "Button under a suggested fix too large to change in the review. It makes the fix, then opens the place in the protocol where the problem is so the researcher can adjust it."
   },
   "architect.protocolReview.problem.fixApplied": {
     "defaultMessage": "Fixed for you: {title}",
@@ -3043,6 +3043,14 @@
     "defaultMessage": "This was fixed for you. Undo takes the change back out of your protocol.",
     "description": "Notice on a problem the researcher already chose Fix for me for, while that change is still in the protocol. \"Undo\" is the name of a button."
   },
+  "architect.protocolReview.problem.maxNodes": {
+    "defaultMessage": "Maximum nodes on stage",
+    "description": "Names the number setting for the most nodes a participant may add on a stage, above a fix that changes it."
+  },
+  "architect.protocolReview.problem.minNodes": {
+    "defaultMessage": "Minimum nodes on stage",
+    "description": "Names the number setting for the fewest nodes a participant must add on a stage, above a fix that changes it."
+  },
   "architect.protocolReview.problem.mine": {
     "defaultMessage": "I will fix this",
     "description": "Button that keeps a problem on the researcher’s list, for them to fix themselves, and moves to the next problem."
@@ -3063,6 +3071,10 @@
     "defaultMessage": "This protocol is open for editing in another tab, so it cannot be changed here. Make the change in that tab.",
     "description": "Notice when Fix for me was refused because another browser tab holds this protocol for editing."
   },
+  "architect.protocolReview.problem.notSet": {
+    "defaultMessage": "Not set",
+    "description": "Shown in the Now box for a number setting, such as a limit on answers, that the protocol does not have yet."
+  },
   "architect.protocolReview.problem.notUpdated": {
     "defaultMessage": "That choice could not be saved, because the review changed in the meantime. Go back and open the problem again.",
     "description": "Notice when a choice about a problem could not be recorded because the review it belongs to was replaced or the problem was already fixed. \"Back\" is the name of the button that returns to the list of problems."
@@ -3070,6 +3082,10 @@
   "architect.protocolReview.problem.now": {
     "defaultMessage": "Now",
     "description": "Label over a piece of text as it is in the protocol now, shown beside the same text as the suggested fix would change it."
+  },
+  "architect.protocolReview.problem.numberSetting": {
+    "defaultMessage": "{setting} · {name}",
+    "description": "Names a number a fix changes, above its Now and After the fix boxes. {setting} is the setting, such as \"Maximum selected\"; {name} is the attribute or stage it belongs to. The dot is a separator."
   },
   "architect.protocolReview.problem.otherTranslations": {
     "defaultMessage": "This protocol also has this text in {languages}. Fix for me does not change {count, plural, one {that version} other {those versions}}, so check {count, plural, one {it} other {them}} after the fix.",
