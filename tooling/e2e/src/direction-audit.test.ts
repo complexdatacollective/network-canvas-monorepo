@@ -309,7 +309,10 @@ describe('snapshotLayout', () => {
           contain: 'none',
           willChange: 'auto',
           direction,
-          ...JSON.parse(element.getAttribute('data-style') ?? '{}'),
+          ...(JSON.parse(element.getAttribute('data-style') ?? '{}') as Record<
+            string,
+            string
+          >),
         }) as CSSStyleDeclaration,
     );
     return snapshotLayout();
