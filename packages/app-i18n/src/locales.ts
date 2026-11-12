@@ -64,6 +64,8 @@ export function defineAppLocales<const T extends readonly AppLocale[]>(
  * (common.*, frescoUi.*, interview.*) must be complete for each entry; app
  * registries must be subsets. Extend this list in the same PR that adds a
  * locale to any app — the catalog guards fail until shared catalogs exist.
+ * A language may be listed before any app offers it (Arabic was): the shared
+ * catalogs come first, and each app then adds its own.
  */
 export const ecosystemLocales = defineAppLocales([
   { locale: 'en', label: 'English', direction: 'ltr' },
@@ -76,6 +78,7 @@ export const ecosystemLocales = defineAppLocales([
   { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
   { locale: 'it', label: 'Italiano', direction: 'ltr' },
   { locale: 'fr', label: 'Français', direction: 'ltr' },
+  { locale: 'ar', label: 'العربية', direction: 'rtl' },
 ]);
 
 /**

@@ -10,4 +10,5 @@ export const networkExporterCatalogLoaders: CatalogLoaders = {
   'pt-BR': () => import('./pt-BR.json'),
   'it': () => import('./it.json'),
   'fr': () => import('./fr.json'),
+  'ar': () => import('./ar.json'),
 };
