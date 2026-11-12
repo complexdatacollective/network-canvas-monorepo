@@ -22,11 +22,15 @@ asks an AI model to look for problems in your protocol and suggest fixes.
   leaves it valid.
 - The review and your choices are kept in your browser, beside the protocol.
   They are not part of the protocol file.
+- You choose who writes each review, Anthropic or OpenAI, and the review says
+  which model wrote it. The same protocol can be reviewed by both.
 - A review needs an internet connection. It sends the protocol and your study
-  details to a Network Canvas service, which passes them to Anthropic's Claude
-  model. Images, video, audio and other resources are never sent. Nothing is
+  details to a Network Canvas service, which passes them to the provider you
+  chose. Images, video, audio and other resources are never sent. Nothing is
   kept by the service unless you choose to share your reviews with the Network
   Canvas team, in which case each one is kept for 90 days.
 - The service is free and limited: 5 reviews an hour for each browser, and a
-  daily and a monthly budget shared by everyone who uses it. Architect tells
-  you when a limit is reached and when you can review again.
+  daily and a monthly budget for each provider, shared by everyone who uses
+  it. A provider whose budget is spent is greyed out until it starts again,
+  and the other can still write your review. Architect tells you when a limit
+  is reached and when you can review again.
