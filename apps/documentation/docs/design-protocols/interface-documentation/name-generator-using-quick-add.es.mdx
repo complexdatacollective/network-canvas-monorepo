@@ -1,0 +1,104 @@
+---
+title: Generador de nombres (adición rápida)
+navOrder: 3
+translatedFrom: 403c7e66fa6592e14cf1ef2c61dc354ca6e83f54
+---
+
+<InterfaceSummary type="NameGeneratorQuickAdd">
+
+<InterfaceMeta type="Generador de nombres" creates="Nodos de un único tipo" usesprompts="true">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+Los generadores de nombres son uno de los componentes fundamentales de una entrevista de redes. Permiten a la persona participante crear álteres (cada persona a la que se nombra durante la entrevista) y describir así una de las dos entidades principales de las redes de tu estudio.
+
+Network Canvas incluye varias [interfaces](../key-concepts/interfaces) de generador de nombres que puedes añadir a tu estudio, y todas se pueden configurar en Architect.
+
+![Interfaces de generador de nombres disponibles en Architect](/assets/img/interface-documentation/name-generators/add-screen.png)
+
+Cada una de estas interfaces está pensada para una forma concreta de obtener álteres, con sus propias ventajas e inconvenientes. Aunque tienen algunas opciones de configuración [comunes a todas las demás interfaces de Network Canvas](./shared), este artículo se centra en las opciones propias de la interfaz principal de generador de nombres y de una variante suya que usa un modo de «adición rápida».
+
+<TipBox>
+
+¿Usas datos de una lista predefinida (una lista que se importa como archivo de datos) en tu estudio? Consulta nuestra documentación sobre la interfaz [«Generador
+de nombres a partir de una lista»](./name-generator-roster).
+
+</TipBox>
+
+## Elementos comunes de las interfaces {#shared-interface-elements}
+
+Las interfaces «Generador de nombres (con formularios)» y «Generador de nombres (adición rápida)» comparten algunos elementos visuales.
+
+![](/assets/img/interface-documentation/name-generators/preview.png)
+
+Son el área de la **pregunta**, donde se explica la tarea a la persona participante (consulta [Preguntas](/es/design-protocols/key-concepts/prompts)); un área de **lista de nodos**, donde se muestran los álteres que se han obtenido; un **botón de acción principal**, que inicia el proceso de obtención de nodos, y, de forma opcional, uno o varios [paneles laterales](#side-panels).
+
+Además, puedes elegir cómo se crean exactamente los álteres: con un formulario completo o con un método sencillo de «adición rápida».
+
+### Paneles laterales {#side-panels}
+
+Los dos generadores de nombres pueden usar paneles laterales. Los paneles laterales son una función muy útil que permite usar datos de red, ya sea de la entrevista en curso o de un archivo de datos de red subido a la biblioteca de recursos de Architect, como apoyo para las tareas de generación de nombres.
+
+Por ejemplo, cuando varias preguntas de un generador de nombres pueden solaparse en la red social de una persona participante, puede ser útil mostrar en una pantalla posterior los nodos nombrados anteriormente, para que la persona participante pueda volver a incluirlos fácilmente.
+
+![Configurar un panel lateral](/assets/img/interface-documentation/name-generators/side-panel.png)
+
+También se puede crear un panel lateral a partir de un archivo de datos de red (por ejemplo, una lista predefinida) para que la persona participante pueda seleccionar y nombrar álteres de una lista ya establecida. Es importante tener en cuenta que en los paneles laterales posteriores del generador de nombres aparecerá exactamente la misma lista, salvo que se creen una o varias reglas para filtrar los datos que se muestran en el panel (consulta [Filtrado de la red](../key-concepts/network-filtering)).
+
+Durante la entrevista, los paneles laterales se pueden desplegar o contraer haciendo clic en su encabezado.
+
+## Usar la «adición rápida» {#using-quick-add}
+
+Con la interfaz «Generador de nombres (adición rápida)», el botón de acción principal abre un formulario de un solo campo que la persona participante tiene que completar para crear un álter. Esta interfaz usa una única «variable de adición rápida» para guardar el valor del formulario, lo que permite a la persona participante crear álteres rápidamente.
+
+<AppOnly app="current">
+
+Que la persona participante tenga que escribir algo en el cuadro de adición rápida depende de las reglas de validación del atributo de adición rápida. Un atributo que creas desde el selector de adición rápida es obligatorio desde el principio, porque lo que escribe la persona participante es lo único que aporta sobre cada álter. Para permitir una respuesta vacía, desactiva **Respuesta obligatoria** en la sección **Validación** que hay debajo del selector. La misma sección permite añadir otras reglas que deben cumplir las respuestas del atributo. Estas reglas pertenecen al atributo en el libro de códigos, así que los cambios que hagas en ellas se guardan de inmediato y se aplican en cualquier lugar en el que una persona participante escriba el valor del atributo: en este cuadro, en un campo de formulario y en los demás selectores de atributos de texto que se enumeran en la [guía de validación de campos](/es/design-protocols/key-concepts/field-validation). Las interfaces que guardan el atributo a partir de lo que hace la persona participante, y no de lo que escribe (un contenedor, es decir, cada una de las zonas a las que se arrastran los nodos para clasificarlos; los valores de atributo fijos que asigna una pregunta; el resaltado de un sociograma; una valoración de la fuerza del vínculo), registran su valor sin aplicar las reglas.
+
+</AppOnly>
+
+![Un generador de nombres con adición rápida](/assets/img/interface-documentation/name-generators/ng-quick.png)
+
+A los álteres que se nombran en esta interfaz se les pueden añadir una o varias [variables adicionales](../key-concepts/additional-variables). Recoger variables adicionales puede ser útil para saber dónde se obtuvo un nodo o para reflejar un elemento de interpretación de nombres de la pregunta (por ejemplo, añadir una variable llamada «close_friend» en una pregunta sobre la cercanía).
+
+<AppOnly app="current">
+
+### Personalizar la redacción predeterminada {#customize-built-in-wording}
+
+La sección **Personalizar la redacción predeterminada** del editor de la etapa contiene las palabras que leen quienes participan en esta etapa. Network Canvas aporta una redacción inicial para cada una, en todos los idiomas para los que la tiene, y puedes cambiarla y traducirla como cualquier otro texto (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Un mensaje solo está en la sección mientras está configurada la parte de la etapa a la que pertenece.
+
+Cada mensaje puede mostrar el nombre del tipo de nodo de la etapa, tal como lo nombra el libro de códigos, y los avisos de límite también pueden mostrar su número. Cualquiera de los dos se inserta como una píldora con el botón de texto dinámico (piped text) del campo.
+
+- **Mínimo no alcanzado** se muestra cuando quienes participan intentan continuar antes de haber añadido el número mínimo de nodos que pide la etapa. Solo aparece cuando la etapa tiene un mínimo.
+- **Máximo alcanzado** se muestra cuando quienes participan han añadido el número máximo de nodos que permite la etapa. Solo aparece cuando la etapa tiene un máximo.
+- **Texto provisional de adición rápida** se muestra en el campo del nombre hasta que la persona participante empieza a escribir. Como el tipo de nodo de la etapa determina qué hay que escribir, y no todos los tipos de nodo tienen un nombre, es propio de cada etapa.
+
+La instrucción que hay junto al campo del nombre y que indica a quienes participan cómo terminar de añadir un nodo es la misma en todas las etapas «Generador de nombres (adición rápida)». Está en **Textos comunes a todas las etapas de este tipo**, en la misma sección, junto a los mensajes anteriores, que están en **Textos exclusivos de esta etapa**. Un cambio en ella se aplica a todas esas etapas, y se guarda en cuanto sales del campo.
+
+El mensaje que se muestra cuando no se ha podido cargar el archivo de datos de red de un panel lateral es [texto de entrevista](/es/design-protocols/translating-your-protocol#interview-text), en **Mensajes**.
+
+</AppOnly>
+
+### Buenas prácticas {#best-practices}
+
+<GoodPractice>
+
+Usa esta interfaz cuando quieras obtener nodos rápidamente sin la carga de recoger al mismo tiempo otros datos de atributos.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Usa una variable llamada name como «variable de adición rápida», salvo que tengas un buen motivo para usar otra. Ten en cuenta que Network Canvas etiquetará los nodos con esta variable a lo largo de toda la entrevista.
+
+</GoodPractice>
+
+### Qué evitar {#try-to-avoid}
+
+<BadPractice>
+
+Evita añadir a esta interfaz variables de atributos adicionales que se podrían recoger con más precisión en otro lugar.
+
+</BadPractice>

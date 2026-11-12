@@ -1,0 +1,109 @@
+---
+title: Guardar y hacer copias de seguridad
+toc: false
+navOrder: 4
+translatedFrom: 804581420aa5c69289dfd0b8b68561e5d2735ba1
+---
+
+Architect y Architect Classic guardan tus protocolos de formas distintas. Entender cómo lo hacen, y qué implica a la hora de hacer copias de seguridad y de trasladar tu trabajo, te ayudará a no perder un protocolo en el que has invertido tiempo.
+
+<AppSwitch>
+<AppOption label="Architect" icon="globe">
+
+## Cómo guarda Architect tu trabajo {#how-architect-saves-your-work}
+
+Architect guarda automáticamente. Mientras editas, tus cambios se escriben continuamente en una **biblioteca** almacenada dentro de tu navegador web. No hay botón **Guardar** ni ningún archivo que controlar mientras trabajas: el protocolo que ves en la pantalla de inicio siempre está al día con tus últimos cambios.
+
+Esto es distinto de Architect Classic, donde tu protocolo es un archivo `.netcanvas` en tu ordenador que guardas expresamente.
+
+## Cada navegador y cada dispositivo tiene su propia biblioteca {#your-library-is-per-browser-and-per-device}
+
+Como la biblioteca está en el almacenamiento local de tu navegador, está vinculada a **este navegador, en este dispositivo**. Tus protocolos nunca se suben a un servidor.
+
+Eso significa que un protocolo que creas en un navegador no aparecerá si:
+
+- abres Architect en un **navegador distinto** (por ejemplo, si pasas de Chrome a Firefox),
+- lo abres en **otro ordenador u otro dispositivo**, o
+- lo abres en una ventana **privada** o de **incógnito**.
+
+Para trabajar en un protocolo en otro lugar, o simplemente para tener una copia segura, descárgalo como archivo `.netcanvas`, como se describe más abajo.
+
+## Abrir un protocolo en más de una pestaña {#opening-a-protocol-in-more-than-one-tab}
+
+Solo una pestaña del navegador puede editar un protocolo a la vez, para que ninguna pestaña sobrescriba nunca los cambios de otra.
+
+Si abres un protocolo que ya está abierto en otra pestaña, se abre en modo de **solo lectura**, y un aviso en la parte superior de la pantalla te lo indica. Aun así, puedes revisar todo el protocolo: pasar de una página a otra entre **Etapas**, **Libro de códigos**, **Recursos** y **Resumen**, abrir cada etapa, buscar en el libro de códigos, previsualizar los recursos e imprimir el Resumen. Todo lo que modificaría el protocolo está desactivado. **Descargar** sigue funcionando y te da todo lo que la otra pestaña ha guardado hasta ese momento.
+
+Para editar en esta pestaña, cierra la otra pestaña o vuelve a la pantalla de inicio en esa pestaña. Esta pestaña pasa a ser editable al momento, en la página que estabas viendo. Si estabas editando algo cuando la otra pestaña abrió el protocolo, el aviso te explica qué opciones tienes.
+
+## Hacer copias de seguridad y trasladar protocolos {#backing-up-and-moving-protocols}
+
+En cualquier momento, usa **Descargar** en la pantalla de vista general del protocolo para exportarlo como archivo `.netcanvas`. Este archivo es una copia completa y autónoma de tu protocolo, que incluye los datos de listas (listas predefinidas que se importan como archivos de datos), las imágenes y los archivos multimedia que use.
+
+Como el archivo tiene que estar completo, Architect no descarga un protocolo si alguno de sus recursos falta o no se puede leer. En su lugar, muestra un mensaje con el nombre de los archivos afectados; vuelve a añadirlos en la página **Recursos** y después descarga el protocolo. Consulta [Recursos que faltan](/es/design-protocols/key-concepts/resources#missing-resources).
+
+Un archivo `.netcanvas` descargado te permite:
+
+- **Tener una copia de seguridad** fuera del navegador, por si se borran los datos de tu navegador.
+- **Trasladar tu trabajo** a otro navegador, a otro ordenador o a otra persona con la que colaboras: vuelve a abrirlo desde la pantalla de inicio. Al descargar un protocolo del esquema 8 obtienes un archivo del esquema 8.
+- **Publicar o distribuir tu protocolo** en [Fresco](/es/collect-data/fresco/using-fresco#uploading-protocols) o en [Interviewer](/es/collect-data/interviewer) para realizar entrevistas
+
+<KeyConcept title="Descarga tus protocolos con regularidad">
+
+Como Architect guarda tus protocolos en el navegador y no como archivos que controlas tú, descargar un archivo `.netcanvas` es la única forma de garantizar que tienes una copia que no vas a perder. Acostúmbrate a descargarlo después de cualquier trabajo importante, y siempre antes de borrar los datos del navegador o de cambiar de dispositivo.
+
+</KeyConcept>
+
+## Qué elimina tus protocolos {#what-removes-your-protocols}
+
+Puedes quitar protocolos de la biblioteca de **Recientes** a mano de dos formas:
+
+- **Eliminar un solo protocolo** con el menú de tres puntos de su fila.
+- **Borrar todos los protocolos** para eliminar de forma permanente y de una sola vez todos los protocolos de la biblioteca de este navegador. Los protocolos del esquema 8 que sigues editando en la versión anterior de Architect se guardan en una biblioteca aparte, así que no se eliminan, y su menú no tiene la opción de eliminarlos.
+
+Cualquier cosa que borre el almacenamiento de tu navegador también eliminará los protocolos guardados en Architect. Por ejemplo:
+
+- **Borrar los datos de navegación** del sitio (el historial, las cookies y los datos de sitios).
+- Cerrar una ventana **privada** o de **incógnito**, lo que descarta todo lo que se ha creado en esa sesión.
+
+Estas acciones no se pueden deshacer, y un protocolo eliminado solo se puede recuperar a partir de un archivo `.netcanvas` que hayas descargado antes.
+
+## Límites de almacenamiento {#storage-limits}
+
+Los navegadores limitan la cantidad de datos que puede almacenar un sitio, y Architect comparte ese espacio con el resto de los datos del sitio. Los protocolos muy grandes, sobre todo los que tienen muchos archivos multimedia o archivos multimedia de gran tamaño, consumen una parte mayor de ese espacio.
+
+Además, los navegadores tratan este tipo de datos locales como **no garantizados**: cuando el almacenamiento está muy lleno, o después de mucho tiempo sin visitar el sitio, un navegador puede eliminarlos para liberar espacio. No es habitual en un uso normal, pero es otro motivo para descargar una copia `.netcanvas` de cualquier protocolo que no te puedas permitir perder.
+
+## Deshacer y rehacer {#undo-and-redo}
+
+Mientras editas un protocolo, Architect conserva un historial de tus cambios. Usa **Deshacer** y **Rehacer** en la barra de herramientas del editor para retroceder y avanzar por las ediciones recientes, lo que resulta útil para recuperarte de un cambio que no querías hacer.
+
+Deshacer y rehacer se aplican a los cambios que se han guardado en el protocolo: guardar una etapa, editar el libro de códigos o los recursos, y eliminar una etapa, un tipo, un atributo o un recurso. No deshacen ni rehacen lo que escribes en un editor que todavía tienes abierto: para descartar los cambios sin guardar de una etapa, cancela la edición en el editor de etapas. Cuando deshaces o rehaces un cambio, Architect te lleva a la pantalla que lo muestra (como **Etapas**, **Libro de códigos** o **Recursos**) para que veas el resultado.
+
+El historial se conserva mientras el protocolo sigue abierto, y es independiente de las copias de seguridad que creas al descargar un archivo `.netcanvas`.
+
+</AppOption>
+<AppOption label="Architect Classic" icon="desktop">
+
+## Cómo guarda Architect Classic tu trabajo {#how-architect-classic-saves-your-work}
+
+En Architect Classic, tu protocolo es un [archivo `.netcanvas`](/es/design-protocols/key-concepts/the-protocol-file) en tu ordenador que guardas y gestionas tú. A diferencia de Architect, no hay una biblioteca dentro del navegador: tú eliges dónde se guarda el archivo, y Architect te pide que guardes los cambios mientras trabajas.
+
+Como es un archivo normal, puedes moverlo, cambiarle el nombre y copiarlo como cualquier otro. El archivo `.netcanvas` es autónomo. Los [recursos](/es/design-protocols/key-concepts/resources) que añadas, como datos de listas, imágenes o vídeo, van incrustados en él.
+
+## Encontrar tus protocolos {#finding-your-protocols}
+
+Cuando abres Architect Classic, la sección **Reanudar edición** de la pantalla de inicio enumera los protocolos con los que has trabajado recientemente. Cada entrada muestra el nombre del protocolo, su ubicación completa en tu ordenador, la fecha de su última modificación y la [versión del esquema](/es/get-started/protocol-schema-information) con la que se creó, para que te resulte fácil volver a abrirlo.
+
+![La sección Reanudar edición de la pantalla de inicio de Architect Classic, con los protocolos recientes, sus rutas de archivo, sus fechas de última modificación y sus versiones del esquema.](/assets/img/architect-classic-guide/resume-editing.png)
+
+## Mantener tu trabajo a salvo {#keeping-your-work-safe}
+
+Unas cuantas prácticas mantienen tu trabajo a salvo:
+
+- **Haz copias de seguridad con regularidad.** Guarda copias de tu archivo `.netcanvas` en otro lugar que no sea el ordenador en el que trabajas, como un servicio de almacenamiento en la nube o un dispositivo de almacenamiento externo.
+- **Crea una versión nueva después de distribuir.** Una vez que hayas distribuido un protocolo, guarda una copia con otro nombre antes de hacer más cambios, para que cada versión distribuida se conserve intacta. Consulta [El archivo de protocolo](/es/design-protocols/key-concepts/the-protocol-file) para saber por qué es importante.
+- **Sigue un flujo de trabajo.** El tutorial [Flujos de trabajo de Interviewer con y sin conexión](/es/collect-data/interviewer-online-and-offline-workflows) explica cómo distribuir los protocolos y cómo organizar tus archivos y hacer copias de seguridad de ellos, tanto en estudios con conexión como sin conexión.
+
+</AppOption>
+</AppSwitch>
