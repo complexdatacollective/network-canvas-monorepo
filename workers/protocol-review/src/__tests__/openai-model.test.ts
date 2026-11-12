@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { MAX_OUTPUT_TOKENS } from '../constants.ts';
 import { REVIEW_OUTPUT_SCHEMA } from '../findings.ts';
-import {
-  ModelCallError,
-  type ModelRunOutput,
-  type ReviewModel,
-} from '../model.ts';
+import { ModelCallError, type ModelRunOutput } from '../model.ts';
 import { createOpenAIModel } from '../openai-model.ts';
 
 /**
@@ -105,11 +101,9 @@ const rejecting = (status: number, code: string) => {
   return { fetcher, attempts: () => attempts };
 };
 
-const call = async (
-  fetcher: typeof fetch,
-  model: ReviewModel = createOpenAIModel('test-key', { fetch: fetcher }),
-) => {
+const call = async (fetcher: typeof fetch, apiKey = 'test-key') => {
   const seen = { started: 0, thinking: '', text: '' };
+  const model = createOpenAIModel(apiKey, { fetch: fetcher });
   const run = model({
     system: 'The instructions.',
     user: 'The protocol.',
@@ -290,25 +284,32 @@ describe('when the provider will not summarise the reasoning', () => {
       delta('{"findings":[]}'),
       completed(),
     ]);
-    const { seen, output } = await call(fetcher);
+    const { seen, output } = await call(fetcher, 'unverified-key-1');
 
     expect(summaryAsked).toEqual([true, false]);
     expect(seen).toEqual({ started: 1, thinking: '', text: '{"findings":[]}' });
     expect(output?.stopReason).toBe('end_turn');
   });
 
-  it('does not ask again in later reviews', async () => {
+  it('does not ask again for the same key, even from a model built afresh as the Worker builds one per request', async () => {
     const { fetcher, summaryAsked } = refusingSummaries([created, completed()]);
-    const model = createOpenAIModel('test-key', { fetch: fetcher });
-    await call(fetcher, model);
-    await call(fetcher, model);
+    await call(fetcher, 'unverified-key-2');
+    await call(fetcher, 'unverified-key-2');
 
     expect(summaryAsked).toEqual([true, false, false]);
   });
 
+  it('still asks for a key it has not been refused for', async () => {
+    const { fetcher, summaryAsked } = refusingSummaries([created, completed()]);
+    await call(fetcher, 'unverified-key-3');
+    await call(fetcher, 'unverified-key-4');
+
+    expect(summaryAsked).toEqual([true, false, true, false]);
+  });
+
   it('fails, unbilled, when the request is refused as invalid without the summary too', async () => {
     const { fetcher, attempts } = rejecting(400, 'invalid_request_error');
-    const { seen, error } = await call(fetcher);
+    const { seen, error } = await call(fetcher, 'unverified-key-5');
 
     expect(failureOf(error)).toMatchObject({
       status: 400,

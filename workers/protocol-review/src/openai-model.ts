@@ -40,7 +40,7 @@ import type { TokenUsage } from './pricing.ts';
  * for only so that the review can be seen to move. OpenAI gives summaries to
  * verified organisations only, and refuses the whole request otherwise, so a
  * request refused as invalid is sent once more without one (see
- * `createOpenAIModel`).
+ * `summariesRefused`).
  */
 
 /** The fixed reason and HTTP status of a failed call to the provider. */
@@ -150,6 +150,16 @@ class ResponseFailure extends Error {
   }
 }
 
+/**
+ * The API keys whose requests for a summary of the reasoning the provider has
+ * refused. Kept for the life of the Worker instance rather than of one model:
+ * the Worker builds a model for every request, and only the first review
+ * after the instance starts should pay for the refusal with a second request.
+ * Held by key because the refusal is about the organisation the key belongs
+ * to.
+ */
+const summariesRefused = new Set<string>();
+
 export const createOpenAIModel = (
   apiKey: string,
   options: { fetch?: typeof fetch } = {},
@@ -163,11 +173,6 @@ export const createOpenAIModel = (
     maxRetries: 0,
     timeout: MODEL_TIMEOUT_MS,
   });
-
-  // Whether to ask for a summary of the reasoning. Stops being asked for once
-  // the provider has refused a request that asked for one, so that only the
-  // first review in this instance pays for the refusal with a second request.
-  let askForSummary = true;
 
   return async ({ system, user, signal, onStart, onThinking, onText }) => {
     const open = (summary: boolean) =>
@@ -211,6 +216,7 @@ export const createOpenAIModel = (
 
     try {
       let stream: Awaited<ReturnType<typeof open>>;
+      const askForSummary = !summariesRefused.has(apiKey);
       try {
         stream = await open(askForSummary);
       } catch (error) {
@@ -218,7 +224,7 @@ export const createOpenAIModel = (
         // outright, which costs nothing, and the likeliest cause is the
         // summary. Anything else wrong with the request is refused again.
         if (!askForSummary || !isInvalidRequest(error)) throw error;
-        askForSummary = false;
+        summariesRefused.add(apiKey);
         stream = await open(false);
       }
 
