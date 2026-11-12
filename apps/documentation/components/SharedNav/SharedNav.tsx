@@ -3,21 +3,15 @@
 import { useLocale } from 'next-intl';
 
 import SiteNavigation from '@codaco/fresco-ui/navigation/SiteNavigation';
-import type {
-  SiteNavigationLinkRenderProps,
-  SiteNavigationLocale,
-} from '@codaco/fresco-ui/navigation/SiteNavigation';
-import { type Locale, toLocale } from '~/lib/i18n/locales';
+import type { SiteNavigationLinkRenderProps } from '@codaco/fresco-ui/navigation/SiteNavigation';
+import { siteLocaleByDocumentationLocale } from '~/lib/i18n/appLocales';
+import { toLocale } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
 import { resolveNetworkCanvasUrl } from '~/lib/siteUrls';
 import { Link } from '~/navigation';
 
 import MobileNavBar from '../MobileNavBar';
 import ThemeSwitcher from '../ThemeSwitcher';
-
-const siteLocaleByDocumentationLocale = {
-  en: 'en-US',
-} satisfies Record<Locale, SiteNavigationLocale>;
 
 function renderNavigationLink({
   children,

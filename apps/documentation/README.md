@@ -52,6 +52,10 @@ The current-section boost filters on a `section` attribute on each Algolia recor
 
 2. **`section` is facetable** (`filterOnly(section)`). This must be set in **two** places: the crawler's `initialIndexSettings.networkcanvas.attributesForFaceting` _and_ the live index's _Attributes for faceting_ (Configuration → Facets). The crawler's `initialIndexSettings` only applies when the index is first created, so the live index must be configured directly for an existing index.
 
+#### Search in each language
+
+The search box shows only results in the page's language: it filters on the `lang` attribute, which the crawler takes from each page's `<html lang>`, and each page also sets the `docsearch:language` meta tag. The crawler must therefore crawl every published language: its start URLs and sitemap need to include `/es/` as well as `/en/`. Until it has crawled the Spanish pages, search on a Spanish page finds nothing.
+
 Because the slug is the first path segment after the locale, records only carry the correct workflow-section values once the reorganised `/en/<section>/…` routes are deployed and the crawler re-crawls them. `optionalFilters` against a facetable attribute with no matching values simply boosts nothing, so the client code is safe to deploy ahead of a crawl.
 
 ### 3. Table of Contents
@@ -68,7 +72,9 @@ Experience enhanced productivity with our AI Assistant. Trained on the documenta
 
 ### 6. Language Localization
 
-The site is built to serve each page in several languages; today it is published in English only. How translations are made, checked and kept in step with the English is described in [`translation/README.md`](./translation/README.md).
+The site is published in English and Spanish. Every change to the English must update every published language in the same pull request; a test fails CI otherwise. How translations are made, checked and kept in step with the English is described in [`translation/README.md`](./translation/README.md).
+
+Readers change language with the switcher in the footer. Their choice is stored in the `NEXT_LOCALE` cookie that every Network Canvas website shares, so it carries between the website and the documentation, and the locale edge function reads it before the browser's languages.
 
 ### 7. Dark and Light Modes
 

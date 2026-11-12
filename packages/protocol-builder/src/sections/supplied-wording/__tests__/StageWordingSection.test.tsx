@@ -144,7 +144,7 @@ describe('a stage whose only built-in wording is shared', () => {
     expect(heldHint(harness)).toEqual({ [FIXTURE_LANGUAGE]: SUPPLIED_HINT });
   });
 
-  it('puts Network Canvas’s wording back when switched off, once the researcher agrees', async () => {
+  it('puts Network Canvas’s wording back when switched off, once the researcher agrees, holding none of it', async () => {
     const harness = mountComposer();
     const section = await screen.findByRole('switch', {
       name: 'Customize built-in wording',
@@ -170,9 +170,8 @@ describe('a stage whose only built-in wording is shared', () => {
       }),
     );
 
-    await waitFor(() =>
-      expect(heldHint(harness)).toEqual({ [FIXTURE_LANGUAGE]: SUPPLIED_HINT }),
-    );
+    // Network Canvas's wording is shown, not held, so the protocol holds none.
+    await waitFor(() => expect(heldHint(harness)).toBeUndefined());
     expect(section).toHaveAttribute('aria-checked', 'false');
   });
 
@@ -202,7 +201,7 @@ describe('a stage whose only built-in wording is shared', () => {
     await waitFor(() =>
       expect(section).toHaveAttribute('aria-checked', 'false'),
     );
-    expect(heldHint(harness)).toEqual({ [FIXTURE_LANGUAGE]: SUPPLIED_HINT });
+    expect(heldHint(harness)).toBeUndefined();
   });
 
   it('keeps a shared word put back while the change before it is still being written', async () => {
@@ -229,7 +228,7 @@ describe('a stage whose only built-in wording is shared', () => {
 
     // Both writes land: the change, then the words put back after it.
     await waitFor(() => expect(applied()).toBe(before + 2));
-    expect(heldHint(harness)).toEqual({ [FIXTURE_LANGUAGE]: SUPPLIED_HINT });
+    expect(heldHint(harness)).toBeUndefined();
     expect(hint).toHaveValue(SUPPLIED_HINT);
   });
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 import SegmentedSwitcher, {
@@ -62,6 +63,7 @@ const LANGUAGE_NAMES: Record<Language, string> = {
 };
 
 const CoordinateClassificationExample = () => {
+  const t = useTranslations('CodeExample');
   const [language, setLanguage] = useState<Language>('r');
   const code = EXAMPLES[language];
   const languageName = LANGUAGE_NAMES[language];
@@ -69,7 +71,7 @@ const CoordinateClassificationExample = () => {
   return (
     <div className="my-5">
       <SegmentedSwitcher
-        aria-label="Select example code language"
+        aria-label={t('languageSwitcher')}
         options={LANGUAGE_OPTIONS}
         value={language}
         onValueChange={setLanguage}
@@ -77,7 +79,7 @@ const CoordinateClassificationExample = () => {
       />
       <section
         className="[&>div]:mb-0"
-        aria-label={`${languageName} coordinate classification example`}
+        aria-label={t('sectionLabel', { language: languageName })}
       >
         <Pre raw={code}>
           {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- rehype-highlight language-tagging convention */}
@@ -85,7 +87,7 @@ const CoordinateClassificationExample = () => {
         </Pre>
       </section>
       <span className="sr-only" aria-live="polite">
-        Showing the {languageName} example.
+        {t('showing', { language: languageName })}
       </span>
     </div>
   );

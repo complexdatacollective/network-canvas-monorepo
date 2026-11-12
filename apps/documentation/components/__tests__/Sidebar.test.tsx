@@ -9,9 +9,14 @@ vi.mock('next/navigation', () => ({
   usePathname: mockUsePathname,
 }));
 
-vi.mock('next-intl', () => ({
-  useLocale: () => 'en',
-}));
+vi.mock('next-intl', async () => {
+  const { default: en } = await import('~/messages/en.json');
+  return {
+    useLocale: () => 'en',
+    useTranslations: (namespace: keyof typeof en) => (key: string) =>
+      String((en[namespace] as Record<string, unknown>)[key]),
+  };
+});
 
 // The search box is an Algolia client; it only needs to be present so the
 // assertions can tell "sidebar could not be built" from "nothing rendered".

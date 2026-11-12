@@ -22,7 +22,7 @@ const messages = defineMessages({
     id: 'fresco.settings.UpdateInstallationId.copyInstallationIDCannotBeEmpty',
     defaultMessage: 'Installation ID cannot be empty',
     description:
-      'Researcher-facing settings / UpdateInstallationId: Installation ID cannot be empty',
+      'Validation error under the installation ID field in Settings when the researcher clears the field and tries to save an empty value.',
   },
 });
 

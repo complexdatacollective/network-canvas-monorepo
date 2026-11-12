@@ -1,7 +1,8 @@
 {
   "type": "folder",
   "localeLabels": {
-    "en": "Key concepts"
+    "en": "Key concepts",
+    "es": "Conceptos clave"
   },
   "isExpanded": false,
   "navOrder": 11,

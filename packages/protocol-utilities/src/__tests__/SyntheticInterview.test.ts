@@ -12,6 +12,7 @@ import {
   escapeMessageText,
   type LocalizedString,
   messageText,
+  stageWordingShown,
 } from '@codaco/protocol-validation';
 import {
   NcNetworkSchema,
@@ -989,12 +990,6 @@ describe('SyntheticInterview', () => {
       expect(config.prompt).toEqual({ 'en-US': expect.any(String) });
       expect(config.nodeConfiguration).toEqual({
         nameAttribute: stage.name,
-        nameField: {
-          prompt: { 'en-US': 'Name (optional)' },
-          hint: {
-            'en-US': expect.stringContaining('first name') as unknown as string,
-          },
-        },
         genderIdentity: {
           attribute: stage.genderIdentity,
           terms: [...PEDIGREE_DEFAULT_GENDER_IDENTITIES],
@@ -1009,6 +1004,16 @@ describe('SyntheticInterview', () => {
         currentPartnerAttribute: stage.currentPartner,
       });
       expect(config).not.toHaveProperty('form');
+      // The name question's words are Network Canvas's, which the interview
+      // shows for a stage that holds none.
+      expect(
+        stageWordingShown(
+          config as { type: string },
+          protocol.localization,
+        ).find(
+          ({ path }) => path.join('.') === 'nodeConfiguration.nameField.prompt',
+        )?.value,
+      ).toEqual({ 'en-US': 'Name (optional)' });
     });
 
     it('seeds the gender identity variable with the six default options and gives the other owned variables exactly the interface options', () => {
@@ -1079,7 +1084,7 @@ describe('SyntheticInterview', () => {
       expect(result.success).toBe(true);
     });
 
-    it("keeps a stage's own wording and supplies the rest", async () => {
+    it("keeps a stage's own wording and leaves the rest to Network Canvas", async () => {
       const si = new SyntheticInterview();
       si.addStage('FamilyPedigree', {
         nameField: { prompt: 'What do you call them?' },
@@ -1103,8 +1108,8 @@ describe('SyntheticInterview', () => {
           recommendedNote: unknown;
         };
       };
-      // A name question without a hint keeps none: the hint is the
-      // researcher's to remove.
+      // The hint is Network Canvas's, which the interview shows for a stage
+      // that holds none.
       expect(config.nodeConfiguration.nameField).toEqual({
         prompt: { 'en-US': 'What do you call them?' },
       });
@@ -1113,15 +1118,10 @@ describe('SyntheticInterview', () => {
         'en-US':
           '{isYou, select, true {Your brothers and sisters} other {{name}’s brothers and sisters}}',
       });
-      expect(config.completeness.itemText.siblings!.noneButton).toEqual({
-        'en-US': expect.any(String) as unknown as string,
+      // The rest of the checklist's words are Network Canvas's, so not held.
+      expect(config.completeness.itemText).toEqual({
+        siblings: { listItem: expect.any(Object) as unknown },
       });
-      expect(Object.keys(config.completeness.itemText).toSorted()).toEqual([
-        'children',
-        'details',
-        'parents',
-        'siblings',
-      ]);
       expect(config.completeness.recommendedNote).toEqual({
         'en-US': 'Next again skips these.',
       });
@@ -1142,12 +1142,6 @@ describe('SyntheticInterview', () => {
       };
       expect(config.nodeConfiguration).toEqual({
         nameAttribute: stage.name,
-        nameField: {
-          prompt: { 'en-US': 'Name (optional)' },
-          hint: {
-            'en-US': expect.stringContaining('first name') as unknown as string,
-          },
-        },
         sexAssignedAtBirthAttribute: stage.sexAssignedAtBirth,
         egoAttribute: stage.ego,
       });
@@ -3200,7 +3194,7 @@ describe('LanguageChooser stage', () => {
 });
 
 describe('FinishSession stage', () => {
-  it('ends a protocol built without one at a finish stage with the supplied text', () => {
+  it('ends a protocol built without one at a finish stage with the supplied closing text', () => {
     const synth = new SyntheticInterview();
     synth.setLocalization({ defaultLocale: 'en', locales: ['en', 'es'] });
     synth.addInformationStage({ title: 'Welcome' });
@@ -3220,15 +3214,8 @@ describe('FinishSession stage', () => {
         en: '# Interview Finished\n\nThank you for participating!',
         es: '# Entrevista finalizada\n\n¡Gracias por participar!',
       },
-      finishLabel: { en: 'Finish', es: 'Finalizar' },
-      finishConfirmation: {
-        en: 'Are you sure you want to finish the interview?',
-        es: '¿Seguro que quieres finalizar la entrevista?',
-      },
-      finishFailed: {
-        en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
-        es: 'No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.',
-      },
+      // It holds none of the wording Network Canvas supplies for the stage
+      // (`finishLabel` and the like), which the interview shows.
       outcome: 'completed',
     });
   });
@@ -3247,6 +3234,8 @@ describe('FinishSession stage', () => {
       finishedContent: {
         ja: '# Interview Finished\n\nThank you for participating!',
       },
+      // Network Canvas has no wording in Japanese, so the fixture writes it.
+      finishLabel: { ja: 'Finish' },
     });
   });
 
@@ -3333,15 +3322,16 @@ describe('SyntheticInterview stage wording', () => {
       nodeConfiguration: {
         nameField: {
           hint: { 'en-US': escapeMessageText('Their first name {now}') },
-          prompt: { 'en-US': expect.any(String) },
         },
       },
     });
+    // The prompt is Network Canvas's, which the interview shows.
+    expect(stages[0]).not.toHaveProperty('nodeConfiguration.nameField.prompt');
   });
 });
 
 describe('SyntheticInterview interface text', () => {
-  it('holds a shared text worded the researcher’s way, and the rest as supplied', () => {
+  it('holds a shared text worded the researcher’s way, and not the rest', () => {
     const synth = new SyntheticInterview();
     synth
       .addStage('Sociogram', {
@@ -3352,9 +3342,8 @@ describe('SyntheticInterview interface text', () => {
     synth.setInterfaceText('buttons', 'pauseLayout', 'Hold still {now}');
 
     const protocol = synth.getProtocol();
-    expect(protocol.interfaceText?.buttons).toMatchObject({
+    expect(protocol.interfaceText?.buttons).toEqual({
       pauseLayout: { 'en-US': escapeMessageText('Hold still {now}') },
-      resumeLayout: { 'en-US': 'Resume automatic layout' },
     });
   });
 
@@ -3364,8 +3353,6 @@ describe('SyntheticInterview interface text', () => {
     synth.addStage('Sociogram', { initialNodes: { count: 2 } }).addPrompt();
     synth.setInterfaceText('buttons', 'pauseLayout', 'Hold still');
 
-    expect(synth.getProtocol().interfaceText?.buttons).not.toHaveProperty(
-      'pauseLayout',
-    );
+    expect(synth.getProtocol().interfaceText).toBeUndefined();
   });
 });

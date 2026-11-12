@@ -1,0 +1,5 @@
+---
+'@codaco/documentation': patch
+---
+
+The Design Protocols pages now match the apps. Skip logic uses Architect's own labels (the Skip logic toggle, Rule Matching, Action), and its extended example no longer claims an inverse rule that would skip the stage for anyone who named a non-relative. The variables page shows the real CSV export columns, with a categorical variable as one column per option. Field validation explains that a Date Picker's earliest and latest dates are attribute settings, quotes the current validation messages, and no longer says a start date prevents future birth dates. The CEGRM tutorial counts the template's 16 stages and names its "People you added earlier" panel, the roster tutorial no longer suggests deleting people who share a name, and the Geospatial, Anonymisation, Narrative, Additional variables and Codebook pages use the apps' current labels and terms. Broken links to piped text, the Family Pedigree's nomination prompts and the Interviewer and Fresco pages are fixed, along with several typos.

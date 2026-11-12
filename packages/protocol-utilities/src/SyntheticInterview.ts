@@ -18,7 +18,10 @@ import {
   type Experiments,
   type LocalizedString,
   messageText,
-  missingSuppliedStageText,
+  interfaceTextShownBy,
+  interfaceTextWithUpdates,
+  stageWithoutSuppliedText,
+  stageWordingShown,
   suppliedInterfaceText,
   suppliedStageText,
   type Stage,
@@ -1863,11 +1866,13 @@ export class SyntheticInterview {
       stages.push(this.defaultFinishStage());
     }
 
-    // With the interview's shared words a protocol shows, as Architect writes
-    // them, and written by the fixture's author in a default language Network
-    // Canvas has none in.
-    return this.withDefaultLanguageInterfaceText(
-      withInterfaceText({
+    // It holds none of the interview's shared words in a language Network
+    // Canvas has wording in, as a protocol Architect writes does not. In a
+    // default language Network Canvas has none in, the fixture's author
+    // writes them. Stored as every tool stores a protocol: a shared text
+    // nothing in the protocol shows is left out (`withInterfaceText`).
+    return withInterfaceText(
+      this.withDefaultLanguageInterfaceText({
         id: `protocol-${this.seed}`,
         schemaVersion: CURRENT_SCHEMA_VERSION,
         localization: {
@@ -2707,11 +2712,11 @@ export class SyntheticInterview {
 
   /**
    * `value` with Network Canvas's English wording written under the default
-   * language when it holds nothing there. Network Canvas writes its wording
-   * only in a language it has it in exactly, and a protocol cannot leave its
-   * editor without it in its default language; a fixture's author writes it
-   * there, as a researcher must, so the fixture stays valid (and reads as it
-   * always has) whatever languages it declares, `en-US` above all.
+   * language when it has nothing there. Network Canvas has wording only in
+   * the languages it supplies, and a protocol cannot leave its editor
+   * without wording in its default language; a fixture's author writes it
+   * there, as a researcher must, so the fixture stays valid whatever
+   * languages it declares.
    */
   private writtenInDefaultLanguage(
     value: LocalizedString,
@@ -2724,32 +2729,27 @@ export class SyntheticInterview {
   }
 
   private withDefaultLanguageInterfaceText<
-    Protocol extends { interfaceText?: Record<string, unknown> },
+    Protocol extends Readonly<{
+      localization: Readonly<{ defaultLocale: string; locales: string[] }>;
+      codebook?: unknown;
+      stages?: readonly unknown[];
+      interfaceText?: Record<string, unknown>;
+    }>,
   >(protocol: Protocol): Protocol {
-    const { interfaceText } = protocol;
-    if (interfaceText === undefined) return protocol;
     const english = { defaultLocale: 'en', locales: ['en'] };
+    const updates = interfaceTextShownBy(protocol).flatMap(
+      ({ group, key, value }) => {
+        const written = this.writtenInDefaultLanguage(
+          value,
+          suppliedInterfaceText(group, key, english)?.en,
+        );
+        return written === value ? [] : [{ group, key, value: written }];
+      },
+    );
+    if (updates.length === 0) return protocol;
     return {
       ...protocol,
-      interfaceText: Object.fromEntries(
-        Object.entries(interfaceText).map(([group, entries]) => [
-          group,
-          isObject(entries)
-            ? Object.fromEntries(
-                Object.entries(entries).map(([key, value]) => [
-                  key,
-                  isObject(value)
-                    ? this.writtenInDefaultLanguage(
-                        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- interface text entries are language-to-text maps, as withInterfaceText wrote them
-                        value as LocalizedString,
-                        suppliedInterfaceText(group, key, english)?.en,
-                      )
-                    : value,
-                ]),
-              )
-            : entries,
-        ]),
-      ),
+      interfaceText: interfaceTextWithUpdates(protocol.interfaceText, updates),
     };
   }
 
@@ -2786,31 +2786,33 @@ export class SyntheticInterview {
   }
 
   /**
-   * `config` with the stage's own wording it lacks, as Architect writes it
-   * into a new stage and a new completeness requirement: what Network Canvas
-   * supplies in the protocol's languages.
+   * `config` holding the wording a stage must hold for its settings Network
+   * Canvas words: none in a language Network Canvas has wording in, as a
+   * stage Architect saves holds none, and Network Canvas's English under a
+   * default language it has no wording in, for each setting the stage shows,
+   * as a researcher writing in that language must write it.
    */
   private withSuppliedText(
     config: Record<string, unknown>,
     type: string,
   ): Record<string, unknown> {
     const english = new Map(
-      missingSuppliedStageText(
-        { ...config, type },
-        { defaultLocale: 'en', locales: ['en'] },
-      ).map(({ path, value }) => [path.join('.'), value.en]),
+      suppliedStageText(type, { defaultLocale: 'en', locales: ['en'] }).map(
+        ({ path, value }) => [path.join('.'), value.en],
+      ),
     );
-    for (const { path, value } of missingSuppliedStageText(
+    for (const { path, value, shown } of stageWordingShown(
       { ...config, type },
       this.localization,
     )) {
-      setAtPath(
-        config,
-        path,
-        this.writtenInDefaultLanguage(value, english.get(path.join('.'))),
+      if (!shown) continue;
+      const written = this.writtenInDefaultLanguage(
+        value,
+        english.get(path.join('.')),
       );
+      if (written !== value) setAtPath(config, path, written);
     }
-    return config;
+    return stageWithoutSuppliedText({ ...config, type });
   }
 
   private buildStageConfig(stage: StageEntry): unknown {
@@ -3076,8 +3078,7 @@ export class SyntheticInterview {
       }
     }
 
-    // The researcher's own wording, before Network Canvas's fills what is
-    // left. A dotted name (`conditionText.selectCondition`) is a setting inside a group,
+    // The researcher's own wording. A dotted name (`conditionText.selectCondition`) is a setting inside a group,
     // and a name the stage keeps in its `wording` group (as the Family
     // Pedigree keeps `wording.panelTitle`) may leave the group out.
     const supplied = new Set(

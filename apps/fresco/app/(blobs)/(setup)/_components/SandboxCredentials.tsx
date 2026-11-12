@@ -8,40 +8,45 @@ const messages = defineMessages({
   sandboxCredentials: {
     id: 'fresco.SandboxCredentials.sandboxCredentials',
     defaultMessage: 'Sandbox Credentials',
-    description: 'Researcher-facing SandboxCredentials: Sandbox Credentials',
+    description:
+      'Title of an information box on the sign-in page of the public demo (sandbox) installation, giving the shared demo account details.',
   },
   username: {
     id: 'fresco.SandboxCredentials.username',
     defaultMessage: 'Username:',
-    description: 'Researcher-facing SandboxCredentials: Username:',
+    description:
+      'Label before the demo account username in the sandbox information box; the value follows it.',
   },
   admin: {
     id: 'fresco.SandboxCredentials.admin',
     defaultMessage: 'admin',
-    description: 'Researcher-facing SandboxCredentials: admin',
+    description:
+      'The literal demo account username shown in the sandbox information box. It is typed into the sign-in form, so it should normally not be translated.',
   },
   password: {
     id: 'fresco.SandboxCredentials.password',
     defaultMessage: 'Password:',
-    description: 'Researcher-facing SandboxCredentials: Password:',
+    description:
+      'Label before the demo account password in the sandbox information box; the value follows it.',
   },
   administrator1: {
     id: 'fresco.SandboxCredentials.administrator1',
     defaultMessage: 'Administrator1!',
-    description: 'Researcher-facing SandboxCredentials: Administrator1!',
+    description:
+      'The literal demo account password shown in the sandbox information box. It is typed into the sign-in form, so it must not be translated.',
   },
   theSandboxIsASharedExampleEnvironment: {
     id: 'fresco.SandboxCredentials.theSandboxIsASharedExampleEnvironment',
     defaultMessage:
       'The sandbox is a shared example environment not intended for real interviews.',
     description:
-      'Researcher-facing SandboxCredentials: The sandbox is a shared example environment not intended for real interviews.',
+      'Warning sentence in the sandbox information box, followed directly by another sentence in bold. Says the demo installation is shared and must not be used for real interviews.',
   },
   allUploadedDataIsPublic: {
     id: 'fresco.SandboxCredentials.allUploadedDataIsPublic',
     defaultMessage: 'All uploaded data is public.',
     description:
-      'Researcher-facing SandboxCredentials: All uploaded data is public.',
+      'Bold warning sentence in the sandbox information box, shown right after the previous sentence: anything uploaded to the demo installation can be seen by everyone.',
   },
 });
 

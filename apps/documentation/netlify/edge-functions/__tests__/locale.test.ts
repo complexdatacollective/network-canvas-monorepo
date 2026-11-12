@@ -64,14 +64,32 @@ describe('documentation locale edge function', () => {
   it.each([
     ['an English browser', 'en-US,en;q=0.9'],
     ['a British English browser', 'en-GB'],
-    ['a Spanish browser that also reads English', 'es-ES,es;q=0.9,en;q=0.8'],
     ['a browser in a language the documentation lacks', 'de-DE,de;q=0.9'],
     ['a browser that sends no languages', undefined],
     ['a malformed header', ';;;,q=2'],
-  ])('sends %s to English, the only documentation language', (_, header) => {
+  ])('sends %s to English', (_, header) => {
     const headers: Record<string, string> =
       header === undefined ? {} : { 'accept-language': header };
     expect(detectLocale(request(headers))).toBe('en');
+  });
+
+  it.each([
+    ['a Spanish browser that also reads English', 'es-ES,es;q=0.9,en;q=0.8'],
+    ['a Mexican Spanish browser', 'es-MX'],
+    ['a German browser that also reads Spanish', 'de-DE,es;q=0.5'],
+  ])('sends %s to Spanish', (_, header) => {
+    expect(detectLocale(request({ 'accept-language': header }))).toBe('es');
+  });
+
+  it('prefers the language chosen on a website to the browser languages', () => {
+    expect(
+      detectLocale(
+        request({
+          'cookie': `${siteLocalePreferenceCookie.name}=es`,
+          'accept-language': 'en-US',
+        }),
+      ),
+    ).toBe('es');
   });
 
   it('reads the language chosen on any Network Canvas website', () => {

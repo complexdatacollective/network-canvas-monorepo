@@ -1285,7 +1285,7 @@
   "protocolBuilder.pedigree.kindLabel": "Relationship kind",
   "protocolBuilder.pedigree.nameCreateLabel": "Create a new name attribute",
   "protocolBuilder.pedigree.nameHint": "Each person’s name, typed by the participant in the side panel. A name may be left blank: when the participant leaves this stage, anyone unnamed is given a label from their relationship to the participant, such as “Maternal aunt” or “Sister (partner of Tom)”. The participant is not asked their own name and is shown as “You”. The attribute’s validation rules apply to names the participant types.",
-  "protocolBuilder.pedigree.nameHintTextHint": "Shown under the name box, for example to say that a nickname will do. Leave it empty to show nothing.",
+  "protocolBuilder.pedigree.nameHintTextHint": "Shown under the name box, for example to say that a nickname will do. It starts with wording Network Canvas supplies, which you can change.",
   "protocolBuilder.pedigree.nameHintTextLabel": "Name question guidance",
   "protocolBuilder.pedigree.nameLabel": "Name",
   "protocolBuilder.pedigree.namePromptHint": "Shown above the box where participants type a family member’s name. It starts with wording Network Canvas supplies, which you can change.",

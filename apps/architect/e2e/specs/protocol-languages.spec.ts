@@ -317,17 +317,14 @@ test('adds a language, keeps the default language from being removed, translates
         fr: DEFAULT_FINISH_SESSION_TEXT.fr[key],
       });
     }
-    for (const [key, fr] of Object.entries(FINISHING_WORDS_FR)) {
-      expect(addedFinish[key as keyof typeof FINISHING_WORDS_FR]).toEqual({
-        ...FINISHING_WORDS_EN[key as keyof typeof FINISHING_WORDS_EN],
-        fr,
-      });
+    // Adding French writes none of the wording Network Canvas supplies: the
+    // interview shows its French for a stage and protocol that hold none, and
+    // the English the protocol held read as Network Canvas's own.
+    for (const key of Object.keys(FINISHING_WORDS_FR)) {
+      expect(addedFinish).not.toHaveProperty(key);
     }
   }
-  expect(added.interfaceText?.navigation?.back).toEqual({
-    en: 'Back',
-    fr: 'Retour',
-  });
+  expect(added.interfaceText).toBeUndefined();
 
   // Make French the default.
   await expect(defaultLanguage).toHaveAccessibleDescription(

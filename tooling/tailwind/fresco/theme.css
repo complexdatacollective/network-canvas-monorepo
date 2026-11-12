@@ -729,6 +729,18 @@
     @apply my-6 rounded border-[1.2px] border-current/10;
   }
 
+  /* Code is written left to right whatever direction the interface reads in.
+   * Isolating it keeps a punctuation mark at its edge with the code: without
+   * this, the dot of ".netcanvas" inside an Arabic sentence is drawn after the
+   * word, as "netcanvas.". Left-to-right text renders exactly as before. */
+  code,
+  kbd,
+  samp,
+  pre {
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+
   kbd {
     @apply font-monospace inline-flex items-center justify-center rounded-sm border border-current/15 bg-current/5 px-1.5 py-0.5 text-xs leading-none font-medium shadow-[0_1px_0_1px_oklch(from_currentColor_l_c_h/0.1)];
   }

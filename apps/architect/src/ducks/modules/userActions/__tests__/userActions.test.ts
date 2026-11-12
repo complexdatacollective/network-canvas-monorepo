@@ -251,16 +251,8 @@ describe('userActions', () => {
             fr: DEFAULT_FINISH_SESSION_TEXT.fr.finishedContent,
             en: DEFAULT_FINISH_SESSION_TEXT.en.finishedContent,
           },
-          // The screen's own words, which Network Canvas also supplies.
-          finishLabel: { fr: 'Terminer', en: 'Finish' },
-          finishConfirmation: {
-            fr: 'Voulez-vous vraiment terminer l’entretien ?',
-            en: 'Are you sure you want to finish the interview?',
-          },
-          finishFailed: {
-            fr: 'L’entretien n’a pas pu être terminé. Veuillez réessayer. Si le problème persiste, contactez l’équipe responsable de l’étude.',
-            en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
-          },
+          // The screen's own words (`finishLabel` and the like) are Network
+          // Canvas's, which the interview shows: the stage holds none.
           outcome: 'completed',
         },
       ]);
@@ -292,11 +284,8 @@ describe('userActions', () => {
           mode: 'confirmation',
           content: {},
           finishedContent: {},
-          // The screen's own words start empty too, for the researcher to
-          // write in Japanese before the protocol can be downloaded.
-          finishLabel: {},
-          finishConfirmation: {},
-          finishFailed: {},
+          // The screen's own words are not held either; the researcher
+          // writes them in Japanese before the protocol can be downloaded.
           outcome: 'completed',
         },
       ]);

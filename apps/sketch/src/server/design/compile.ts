@@ -7,8 +7,6 @@ import type { z } from 'zod';
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocolSchema,
-  missingSuppliedStageText,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 import { TESTING_MAPBOX_TOKEN } from '@codaco/shared-consts';
 
@@ -33,11 +31,7 @@ import { worldCountriesGeojson } from './world-countries.ts';
 
 type Json = Record<string, unknown>;
 
-/** Arrays count: setAt walks paths that index into them. */
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null;
-
-const hasStageType = (s: Json): s is Json & { type: string } =>
-  typeof s.type === 'string';
 
 /**
  * What compile() emits: the INPUT side of the schema 9 protocol schema (before
@@ -125,21 +119,6 @@ const nameAttribute = (question: string): NAttribute => ({
 /** The English of a localized string Sketch wrote. */
 const textOf = (text: unknown): string =>
   String(isObject(text) ? text[SKETCH_LOCALE] : undefined);
-
-/** Sets `value` at `path` in `target`, creating the records on the way. */
-const setAt = (target: Json, path: readonly string[], value: unknown) => {
-  let at = target;
-  path.slice(0, -1).forEach((k) => {
-    const next = at[k];
-    if (isObject(next)) at = next;
-    else {
-      const fresh: Json = {};
-      at[k] = fresh;
-      at = fresh;
-    }
-  });
-  at[path.at(-1)!] = value;
-};
 
 const INFO_TITLES = {
   welcome: 'Welcome',
@@ -1194,15 +1173,6 @@ export const compile = (
   );
   stageMap.push({ added: 'finish' });
 
-  // The wording Network Canvas supplies for each stage's own controls and
-  // notices, as Architect writes it into a new stage.
-  for (const stage of stages.filter(hasStageType))
-    for (const { path, value } of missingSuppliedStageText(
-      stage,
-      SKETCH_LOCALIZATION,
-    ))
-      setAt(stage, path, value);
-
   const protocol: Json = {
     name: graphemes(
       pick(
@@ -1233,9 +1203,10 @@ export const compile = (
     rosterCount: assets.filter((a) => a.mimeType === 'text/csv').length,
   };
   return {
-    // The interview's shared words for what the protocol uses.
+    // None of the wording Network Canvas supplies is written in: the
+    // interview shows it for a protocol that does not hold it.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see SketchProtocol
-    protocol: withInterfaceText(protocol as SketchProtocol),
+    protocol: protocol as SketchProtocol,
     assets,
     summary,
     stageMap,

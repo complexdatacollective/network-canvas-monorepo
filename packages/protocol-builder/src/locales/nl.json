@@ -1285,7 +1285,7 @@
   "protocolBuilder.pedigree.kindLabel": "Soort relatie",
   "protocolBuilder.pedigree.nameCreateLabel": "Nieuw attribuut voor naam aanmaken",
   "protocolBuilder.pedigree.nameHint": "De naam van elke persoon, door de deelnemer ingevuld in het zijpaneel. Een naam mag leeg blijven: wanneer de deelnemer deze fase verlaat, krijgt iedereen zonder naam een label op basis van de relatie met de deelnemer, zoals “Tante van moederskant” of “Zus (partner van Tom)”. De deelnemer wordt niet naar de eigen naam gevraagd en wordt getoond als “Jij”. De validatieregels van het attribuut gelden voor de namen die de deelnemer invult.",
-  "protocolBuilder.pedigree.nameHintTextHint": "Getoond onder het naamveld, bijvoorbeeld om te zeggen dat een bijnaam volstaat. Laat leeg om niets te tonen.",
+  "protocolBuilder.pedigree.nameHintTextHint": "Getoond onder het naamveld, bijvoorbeeld om te zeggen dat een bijnaam volstaat. Het begint met tekst die Network Canvas levert en die je kunt wijzigen.",
   "protocolBuilder.pedigree.nameHintTextLabel": "Aanwijzing bij de naamvraag",
   "protocolBuilder.pedigree.nameLabel": "Naam",
   "protocolBuilder.pedigree.namePromptHint": "Getoond boven het veld waarin deelnemers de naam van een familielid invullen. Het begint met tekst die Network Canvas levert en die je kunt wijzigen.",

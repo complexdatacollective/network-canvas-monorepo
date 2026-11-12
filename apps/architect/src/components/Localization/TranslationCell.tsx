@@ -29,8 +29,6 @@ import {
   localeDirection,
   type ProtocolLocalization,
   resolveTranslation,
-  withMessage,
-  withTranslation,
 } from '@codaco/protocol-builder/localization/localizedText';
 import { ProtocolLocalizationProvider } from '@codaco/protocol-builder/localization/ProtocolLocalization';
 import { textFieldPropsFor } from '@codaco/protocol-builder/localization/textShape';
@@ -49,7 +47,11 @@ import type { TranslationRow } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
-import { isBlankTranslation, useTranslationDraft } from './translationDrafts';
+import {
+  isBlankTranslation,
+  rowValueWithCell,
+  useTranslationDraft,
+} from './translationDrafts';
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
@@ -190,7 +192,8 @@ const CellMarkdown = ({ children }: { children: string }) => (
  * of its own, or null where it has no translation at all. Only a related
  * language is certain: Architect cannot know which other languages a browser
  * lists, and that only matters when the text has more than one translation to
- * choose from.
+ * choose from. `own` when the text has a translation in `locale` itself,
+ * which an empty cell's text has only where Network Canvas words it.
  */
 export const fallbackFor = (
   value: LocalizedString | undefined,
@@ -207,14 +210,17 @@ export const fallbackFor = (
         text: shown.text,
         lang: shown.lang,
         dir: shown.dir,
+        own: Object.hasOwn(value, locale),
         unlessBrowserLists:
           shown.matchedBy !== 'selected' && translated.length > 1,
       };
 };
 
 /**
- * What participants reading in `locale` see while the cell is empty: the text
- * the interview falls back to, muted, tagged with its language.
+ * What participants reading in `locale` see while the cell is empty, muted:
+ * Network Canvas's own wording in that language for a text it words, which
+ * the cell goes back to when it is left empty, and otherwise the text the
+ * interview falls back to, tagged with its language.
  */
 const Fallback = ({
   id,
@@ -288,27 +294,31 @@ const Fallback = ({
           shown.text
         )}
       </div>
-      <span
-        lang={intl.locale}
-        dir="auto"
-        aria-hidden
-        className="max-w-full rounded-sm bg-current/8 px-1.5 text-xs leading-5 text-current/80"
-      >
-        {intl.formatMessage(
-          unlessBrowserLists
-            ? messages.shownInUnlessBrowserLists
-            : messages.shownIn,
-          { language },
-        )}
-      </span>
-      <span lang={intl.locale} className="sr-only">
-        {intl.formatMessage(
-          unlessBrowserLists
-            ? messages.notTranslatedUnlessBrowserLists
-            : messages.notTranslated,
-          { language },
-        )}
-      </span>
+      {!shown.own && (
+        <>
+          <span
+            lang={intl.locale}
+            dir="auto"
+            aria-hidden
+            className="max-w-full rounded-sm bg-current/8 px-1.5 text-xs leading-5 text-current/80"
+          >
+            {intl.formatMessage(
+              unlessBrowserLists
+                ? messages.shownInUnlessBrowserLists
+                : messages.shownIn,
+              { language },
+            )}
+          </span>
+          <span lang={intl.locale} className="sr-only">
+            {intl.formatMessage(
+              unlessBrowserLists
+                ? messages.notTranslatedUnlessBrowserLists
+                : messages.notTranslated,
+              { language },
+            )}
+          </span>
+        </>
+      )}
     </div>
   );
 };
@@ -414,7 +424,7 @@ const PlainTextCell = ({
         {fallbackShown && (
           <Fallback
             id={fallbackId}
-            value={withTranslation(row.value, locale, empty ? '' : text)}
+            value={rowValueWithCell(row, locale, text)}
             format={row.format}
             locale={locale}
             localization={localization}
@@ -674,7 +684,7 @@ const RichTextCell = ({
   });
   const empty = isBlankTranslation(row, text);
   const fallbackShown = empty && error === undefined;
-  const value = withTranslation(row.value, locale, empty ? '' : text);
+  const value = rowValueWithCell(row, locale, text);
   const describedBy = [
     fallbackShown || !editing ? contentId : undefined,
     error === undefined ? undefined : noteId,
@@ -783,7 +793,7 @@ const MessageCell = ({
   });
   const empty = isBlankTranslation(row, message);
   const fallbackShown = empty && error === undefined;
-  const value = withMessage(row.value, locale, empty ? undefined : message);
+  const value = rowValueWithCell(row, locale, message);
   const describedBy = [
     fallbackShown || !editing ? contentId : undefined,
     error === undefined ? undefined : noteId,
@@ -935,7 +945,7 @@ const DynamicCell = ({
   });
   const empty = isBlankTranslation(row, message);
   const fallbackShown = empty && error === undefined;
-  const value = withMessage(row.value, locale, empty ? undefined : message);
+  const value = rowValueWithCell(row, locale, message);
   const describedBy = [
     fallbackShown || !editing ? contentId : undefined,
     error === undefined ? undefined : noteId,

@@ -211,7 +211,7 @@ describe('timeline structure', () => {
 describe('v8 to v9 migration', () => {
   const schema8 = () => asSchema8Protocol(completeProtocol());
 
-  it('appends one completed finish stage with the supplied English text, under the default language', () => {
+  it('appends one completed finish stage with the supplied English text, under the default language, and none of the wording Network Canvas supplies', () => {
     const migrated = migrateProtocol(schema8(), 9);
     const { defaultLocale } = migrated.localization;
     expect(migrated.stages.at(-1)).toEqual({
@@ -223,7 +223,6 @@ describe('v8 to v9 migration', () => {
       finishedContent: {
         [defaultLocale]: DEFAULT_FINISH_SESSION_TEXT.en.finishedContent,
       },
-      ...englishSettings(defaultLocale),
       outcome: 'completed',
     });
     expect(
@@ -386,8 +385,7 @@ describe('supplied finish text', () => {
       label: { en: DEFAULT_FINISH_SESSION_TEXT.en.label },
       content: { en: DEFAULT_FINISH_SESSION_TEXT.en.content },
       finishedContent: { en: DEFAULT_FINISH_SESSION_TEXT.en.finishedContent },
-      // Network Canvas words the settings in no Japanese.
-      ...englishSettings('en'),
+      // The settings Network Canvas words are not held: the interview shows them.
       outcome: 'completed',
     });
   });
@@ -405,11 +403,6 @@ describe('supplied finish text', () => {
       label: { es: DEFAULT_FINISH_SESSION_TEXT.es.label },
       content: { es: DEFAULT_FINISH_SESSION_TEXT.es.content },
       finishedContent: { es: DEFAULT_FINISH_SESSION_TEXT.es.finishedContent },
-      finishLabel: { es: 'Finalizar' },
-      finishConfirmation: {
-        es: expect.any(String),
-      },
-      finishFailed: { es: expect.any(String) },
       outcome: 'completed',
     });
   });
@@ -603,8 +596,8 @@ describe('closing text missing in the default language', () => {
       ],
     });
 
-  // Network Canvas writes its wording only in a language it has it in, so
-  // the settings are left for the researcher to write too.
+  // Network Canvas has no wording in this language, so the settings are
+  // left for the researcher to write (see the built-in wording problems).
   it('creates the stage with no text, rather than text in another language', () => {
     expect(
       createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
@@ -615,9 +608,6 @@ describe('closing text missing in the default language', () => {
       label: {},
       content: {},
       finishedContent: {},
-      finishLabel: {},
-      finishConfirmation: {},
-      finishFailed: {},
       outcome: 'completed',
     });
   });

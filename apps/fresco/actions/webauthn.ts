@@ -49,113 +49,118 @@ const messages = defineMessages({
     id: 'fresco.actions.webauthn.copyChallengeExpiredPleaseTryAgain',
     defaultMessage: 'Challenge expired. Please try again.',
     description:
-      'Researcher-facing actions / webauthn: Challenge expired. Please try again.',
+      'Error shown during passkey sign-in, passkey registration or re-authentication when the short-lived passkey request (valid about 5 minutes) is missing or has expired. The researcher must start again.',
   },
   copyRegistrationVerificationFailed2: {
     id: 'fresco.actions.webauthn.copyRegistrationVerificationFailed2',
     defaultMessage: 'Registration verification failed.',
     description:
-      'Researcher-facing actions / webauthn: Registration verification failed.',
+      'Error shown when adding a new passkey (in setup, in Settings, or when switching to passkey sign-in) fails because the server could not verify the passkey the device produced.',
   },
   copySetupIsAlreadyComplete: {
     id: 'fresco.actions.webauthn.copySetupIsAlreadyComplete',
     defaultMessage: 'Setup is already complete.',
     description:
-      'Researcher-facing actions / webauthn: Setup is already complete.',
+      'Error shown in the setup wizard when a researcher tries to create the first account with a passkey after the installation has already been set up.',
   },
   copyUsernameMustBeAtLeast4Characters: {
     id: 'fresco.actions.webauthn.copyUsernameMustBeAtLeast4Characters',
     defaultMessage: 'Username must be at least 4 characters.',
     description:
-      'Researcher-facing actions / webauthn: Username must be at least 4 characters.',
+      'Error shown in the setup wizard when creating the first account with a passkey and the chosen username is shorter than 4 characters.',
   },
   copyUsernameAlreadyTaken: {
     id: 'fresco.actions.webauthn.copyUsernameAlreadyTaken',
     defaultMessage: 'Username already taken.',
     description:
-      'Researcher-facing actions / webauthn: Username already taken.',
+      'Error shown in the setup wizard when creating the first account with a passkey fails because the username is already used.',
   },
   copyPasskeyNotRecognized: {
     id: 'fresco.actions.webauthn.copyPasskeyNotRecognized',
     defaultMessage: 'Passkey not recognized.',
     description:
-      'Researcher-facing actions / webauthn: Passkey not recognized.',
+      'Error shown at sign-in or re-authentication when the passkey the researcher chose is not registered to this installation (or, on re-authentication, to their own account).',
   },
   copyVerificationFailed: {
     id: 'fresco.actions.webauthn.copyVerificationFailed',
     defaultMessage: 'Verification failed.',
-    description: 'Researcher-facing actions / webauthn: Verification failed.',
+    description:
+      'Error shown when a signed-in researcher confirms their identity again with a passkey (re-authentication before a sensitive action) and the passkey check fails.',
   },
   copyTooManyAttemptsPleaseTryAgainLater: {
     id: 'fresco.actions.webauthn.copyTooManyAttemptsPleaseTryAgainLater',
     defaultMessage: 'Too many attempts. Please try again later.',
     description:
-      'Researcher-facing actions / webauthn: Too many attempts. Please try again later.',
+      'Error shown on the sign-in page when passkey sign-in is temporarily blocked because too many sign-in attempts were made recently.',
   },
   copyAuthenticationFailed: {
     id: 'fresco.actions.webauthn.copyAuthenticationFailed',
     defaultMessage: 'Authentication failed.',
-    description: 'Researcher-facing actions / webauthn: Authentication failed.',
+    description:
+      'Error shown on the sign-in page when signing in with a passkey fails because the server could not verify the passkey.',
   },
   copyPasskeyNotFound: {
     id: 'fresco.actions.webauthn.copyPasskeyNotFound',
     defaultMessage: 'Passkey not found.',
-    description: 'Researcher-facing actions / webauthn: Passkey not found.',
+    description:
+      'Error shown in the passkey list in Settings when the passkey the researcher tried to remove no longer exists or belongs to another account.',
   },
   copyCannotRemoveYourOnlyPasskeyWithoutA: {
     id: 'fresco.actions.webauthn.copyCannotRemoveYourOnlyPasskeyWithoutA',
     defaultMessage: 'Cannot remove your only passkey without a password set.',
     description:
-      'Researcher-facing actions / webauthn: Cannot remove your only passkey without a password set.',
+      'Error shown in the passkey list in Settings when the researcher tries to remove their last passkey while the account has no password, which would leave no way to sign in.',
   },
   copyCannotResetYourOwnAuthentication: {
     id: 'fresco.actions.webauthn.copyCannotResetYourOwnAuthentication',
     defaultMessage: 'Cannot reset your own authentication.',
     description:
-      'Researcher-facing actions / webauthn: Cannot reset your own authentication.',
+      'Error shown in the user accounts list in Settings when a researcher tries to reset the sign-in methods (password, passkeys, two-factor) of their own account; only another account can be reset.',
   },
   copyUserNotFound: {
     id: 'fresco.actions.webauthn.copyUserNotFound',
     defaultMessage: 'User not found.',
-    description: 'Researcher-facing actions / webauthn: User not found.',
+    description:
+      "Error shown in the user accounts list in Settings when resetting another researcher account's sign-in methods fails because that account no longer exists.",
   },
   copyAccountIsAlreadyInPasskeyMode: {
     id: 'fresco.actions.webauthn.copyAccountIsAlreadyInPasskeyMode',
     defaultMessage: 'Account is already in passkey mode.',
     description:
-      'Researcher-facing actions / webauthn: Account is already in passkey mode.',
+      'Error shown when a researcher asks to switch their account from password sign-in to passkey-only sign-in but the account already uses passkeys only.',
   },
   copyIncorrectPassword: {
     id: 'fresco.actions.webauthn.copyIncorrectPassword',
     defaultMessage: 'Incorrect password.',
-    description: 'Researcher-facing actions / webauthn: Incorrect password.',
+    description:
+      'Error shown in the dialog for switching to passkey-only sign-in when the current password the researcher typed to confirm is wrong.',
   },
   copyAccountIsAlreadyInPasswordMode: {
     id: 'fresco.actions.webauthn.copyAccountIsAlreadyInPasswordMode',
     defaultMessage: 'Account is already in password mode.',
     description:
-      'Researcher-facing actions / webauthn: Account is already in password mode.',
+      'Error shown when a researcher asks to switch their account from passkey-only sign-in to password sign-in but the account already has a password.',
   },
   passkeyDidNotVerifyUserAtSignIn: {
     id: 'fresco.actions.webauthn.passkeyDidNotVerifyUserAtSignIn',
     defaultMessage:
       'This passkey did not verify your identity. Fresco requires a passkey that confirms who you are with a PIN, fingerprint, or face. Try another passkey, or ask another administrator to reset your authentication.',
     description:
-      'Researcher-facing actions / webauthn: sign-in refused because the authenticator skipped user verification; names the two ways back in.',
+      "Error shown on the sign-in page when a passkey is refused because the device did not check the user's identity (PIN, fingerprint or face). Suggests another passkey or asking another administrator to reset authentication.",
   },
   passkeyDidNotVerifyUserAtReauth: {
     id: 'fresco.actions.webauthn.passkeyDidNotVerifyUserAtReauth',
     defaultMessage:
       'This passkey did not verify your identity. Add a passkey that confirms who you are with a PIN, fingerprint, or face, then try again.',
     description:
-      'Researcher-facing actions / webauthn: an already signed-in researcher re-authenticated with a passkey whose authenticator skipped user verification.',
+      'Error shown when a signed-in researcher confirms their identity again with a passkey, and the device did not check their identity (PIN, fingerprint or face). Tells them to add a passkey that does.',
   },
   passkeyCannotVerifyUserAtRegistration: {
     id: 'fresco.actions.webauthn.passkeyCannotVerifyUserAtRegistration',
     defaultMessage:
       'This passkey cannot verify your identity. Choose a passkey that confirms who you are with a PIN, fingerprint, or face.',
     description:
-      'Researcher-facing actions / webauthn: registration refused because the authenticator skipped user verification.',
+      "Error shown when adding a new passkey is refused because the device did not check the user's identity (PIN, fingerprint or face). Tells the researcher to choose a passkey that does.",
   },
 });
 

@@ -26,6 +26,7 @@ import {
   createStageIdentity,
   stageDocument,
   stageDraftFromDocument,
+  stageFieldsForEditing,
   type StageCreation,
   type StageFormDraft,
   type StageIdentity,
@@ -183,15 +184,30 @@ function EditingStage({
     [section.document],
   );
   const identity = opened?.identity;
+  // The form opens on these once and keeps them. It holds Network Canvas's
+  // wording for the settings the stage does not word itself, which is written
+  // in the protocol's languages, so it waits for the settings that declare
+  // them, as a new stage does.
+  const committedFields = useMemo(
+    () =>
+      opened === undefined || localization === undefined
+        ? undefined
+        : Object.freeze(
+            stageFieldsForEditing(
+              opened.identity.type,
+              opened.fields,
+              localization,
+            ),
+          ),
+    [localization, opened],
+  );
 
   const save = useCallback(
     async (
       fields: StageFormDraft,
       interfaceText?: readonly InterfaceTextUpdate[],
     ): Promise<StageSaveOutcome> => {
-      // The stage is saved with the wording it should hold in the protocol's
-      // languages (see `stageDocument`), so the save waits for them.
-      if (identity === undefined || localization === undefined) {
+      if (identity === undefined) {
         return { status: 'refused', message: NOT_READY_MESSAGE };
       }
       // Carried by the submit rather than committed before it: the section and
@@ -200,7 +216,7 @@ function EditingStage({
       // stage nobody saved.
       const promotion = staged.promotion();
       const result = await submit(
-        stageDocument(identity, fields, localization),
+        stageDocument(identity, fields),
         promotion,
         interfaceText,
       );
@@ -211,7 +227,7 @@ function EditingStage({
       }
       return refusalFromHost(result);
     },
-    [identity, localization, onSaved, sectionId, staged, submit],
+    [identity, onSaved, sectionId, staged, submit],
   );
 
   const edit = useMemo<StageEdit>(
@@ -219,12 +235,12 @@ function EditingStage({
       formId,
       identity,
       creation: undefined,
-      committedFields: opened?.fields,
+      committedFields,
       access,
       holder,
       save,
     }),
-    [access, formId, holder, identity, opened, save],
+    [access, committedFields, formId, holder, identity, save],
   );
 
   return <StageEditContext value={edit}>{children}</StageEditContext>;
@@ -287,11 +303,8 @@ function CreatingStage({
       // it, and there is no earlier revision of that stage to have promoted it
       // with. The section, its place in the stage order and the manifest
       // entries are one revision.
-      if (localization === undefined) {
-        return { status: 'refused', message: NOT_READY_MESSAGE };
-      }
       const promotion = staged.promotion();
-      const document = stageDocument(identity, fields, localization);
+      const document = stageDocument(identity, fields);
       // One id for this attempt to add the stage, so a transport that
       // re-sends the request after a lost answer — or a researcher pressing
       // Save again because they were told the add failed — is told which
@@ -331,16 +344,7 @@ function CreatingStage({
       onSaved?.(data.sectionId);
       return { status: 'saved', sectionId: data.sectionId };
     },
-    [
-      addKey,
-      adapter,
-      identity,
-      localization,
-      onSaved,
-      position,
-      protocolId,
-      staged,
-    ],
+    [addKey, adapter, identity, onSaved, position, protocolId, staged],
   );
 
   const edit = useMemo<StageEdit>(

@@ -29,27 +29,32 @@ const messages = defineMessages({
   dashboard: {
     id: 'fresco.NavigationBar.dashboard',
     defaultMessage: 'Dashboard',
-    description: 'Researcher-facing NavigationBar: Dashboard',
+    description:
+      'Link in the main navigation bar of the researcher dashboard that opens the dashboard home page with summary statistics and the activity feed.',
   },
   protocols: {
     id: 'fresco.NavigationBar.protocols',
     defaultMessage: 'Protocols',
-    description: 'Researcher-facing NavigationBar: Protocols',
+    description:
+      'Link in the main navigation bar of the researcher dashboard that opens the page listing the uploaded interview protocols.',
   },
   participants: {
     id: 'fresco.NavigationBar.participants',
     defaultMessage: 'Participants',
-    description: 'Researcher-facing NavigationBar: Participants',
+    description:
+      'Link in the main navigation bar of the researcher dashboard that opens the page listing study participants.',
   },
   interviews: {
     id: 'fresco.NavigationBar.interviews',
     defaultMessage: 'Interviews',
-    description: 'Researcher-facing NavigationBar: Interviews',
+    description:
+      'Link in the main navigation bar of the researcher dashboard that opens the page listing interviews, including those in progress and finished.',
   },
   settings: {
     id: 'fresco.NavigationBar.settings',
     defaultMessage: 'Settings',
-    description: 'Researcher-facing NavigationBar: Settings',
+    description:
+      'Link in the main navigation bar of the researcher dashboard that opens the installation settings page. Noun, not the verb.',
   },
 });
 

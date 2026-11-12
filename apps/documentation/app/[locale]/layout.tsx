@@ -7,12 +7,17 @@ import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { getNow, getTimeZone, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
+import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import type { Messages } from '~/app/types';
 import { LayoutComponent } from '~/components/Layout';
 import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import { env } from '~/env';
+import {
+  documentationAppCatalogSource,
+  documentationAppLocales,
+} from '~/lib/i18n/appLocales';
 import { locales } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
 
@@ -65,6 +70,10 @@ export default async function MainLayout(props: MainLayoutProps) {
     notFound();
   }
 
+  // The shared packages' messages, for the fresco-ui components that have
+  // their own (the footer's language switcher).
+  const appMessages = await documentationAppCatalogSource.load(locale);
+
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className="flex min-h-dvh flex-col">
@@ -89,7 +98,15 @@ export default async function MainLayout(props: MainLayoutProps) {
                 locale={locale}
                 messages={messages.default}
               >
-                <LayoutComponent>{children}</LayoutComponent>
+                <AppI18nProvider
+                  locale={locale}
+                  locales={documentationAppLocales}
+                  messages={appMessages}
+                  manageDocument={false}
+                  timeZone={timeZone}
+                >
+                  <LayoutComponent>{children}</LayoutComponent>
+                </AppI18nProvider>
               </NextIntlClientProvider>
             </ThemeProvider>
           </PostHogClientProvider>

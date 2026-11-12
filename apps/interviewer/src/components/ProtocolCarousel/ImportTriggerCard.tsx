@@ -39,9 +39,12 @@ const messages = defineMessages({
 });
 
 // Rich-text chunk formatters for the two messages above, at module scope so
-// they keep one identity across renders.
+// they keep one identity across renders. The extension is marked left to
+// right so that its dot stays in front of it inside a right-to-left sentence.
 const renderExtension = (chunks: ReactNode[]) => (
-  <span className="font-monospace text-text">{chunks}</span>
+  <span dir="ltr" className="font-monospace text-text">
+    {chunks}
+  </span>
 );
 
 const renderArchitectLink = (chunks: ReactNode[]) => (

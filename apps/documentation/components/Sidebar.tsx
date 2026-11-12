@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { Route } from 'next';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -334,6 +334,7 @@ const SidebarItem = ({
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const locale = toLocale(useLocale()) ?? routing.defaultLocale;
+  const t = useTranslations('Sidebar');
   const segments = pathname.split('/');
   const section = toSection(segments[2]);
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
@@ -369,7 +370,7 @@ export function Sidebar({ className }: { className?: string }) {
 
   if (!sidebarData) {
     return shell(
-      loadFailed ? null : <div className="flex-1 p-2">Loading...</div>,
+      loadFailed ? null : <div className="flex-1 p-2">{t('loading')}</div>,
     );
   }
 

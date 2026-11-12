@@ -280,26 +280,25 @@ export {
   SNAPSHOT_CONDITION_ARGUMENTS,
   SNAPSHOT_INHERITANCE_ARGUMENTS,
 } from './schemas/9/stages/narrative-pedigree.ts';
-// The stage settings whose wording Network Canvas supplies, written into a
-// stage by Architect when it is made and when a language is added, and the
-// text the interview shows for them.
+// The stage settings whose wording Network Canvas supplies: the text the
+// interview shows for them, a stage as it is stored (its author's own wording
+// only) and as an editor holds it (with Network Canvas's wording filled in).
 export {
-  inapplicableStageSettings,
-  missingSuppliedStageText,
   type ShownStageText,
+  stageWithoutSuppliedText,
+  stageWithSuppliedText,
   stageWordingShown,
   type SuppliedStageText,
   suppliedStageText,
   suppliedStageSettingApplies,
-  suppliedStageTextAfterLanguageChange,
 } from './schemas/9/supplied-stage-text.ts';
-// The interview's shared words a protocol holds in its own languages, written
-// and removed by the migration and Architect as the protocol uses them.
+// The interview's shared words: the text shown for each, and what a protocol
+// holds of them (its author's own wording, for the entries it shows).
 export {
   INTERFACE_TEXT_MESSAGES,
   type InterfaceText,
-  interfaceTextAfterLanguageChange,
   interfaceTextArguments,
+  interfaceTextAsShown,
   interfaceTextShown,
   interfaceTextShownBy,
   type InterfaceTextUpdate,
@@ -309,6 +308,12 @@ export {
   suppliedInterfaceText,
   withInterfaceText,
 } from './schemas/9/interface-text.ts';
+// A whole protocol as it is stored, and with the wording it shows written out.
+export {
+  suppliedWordingIn,
+  withoutSuppliedWording,
+  withSuppliedWording,
+} from './schemas/9/protocol-wording.ts';
 // The finish stage text Network Canvas supplies, written into a protocol by
 // the v8 → v9 migration and by Architect.
 export {

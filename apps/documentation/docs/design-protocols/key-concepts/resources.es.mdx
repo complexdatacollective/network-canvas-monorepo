@@ -1,0 +1,117 @@
+---
+title: Recursos
+navOrder: 12
+translatedFrom: 2c6c39cfc45d44315c3338e282c10cf406d037f7
+---
+
+<Definition>
+  Los recursos son archivos y credenciales externos, como audio, imágenes,
+  vídeo, datos de red de listas predefinidas y claves de API, que puedes usar
+  en tu protocolo de entrevista.
+</Definition>
+
+## Detalles {#details}
+
+En Architect, los recursos son los archivos externos que usas en tu entrevista. Pueden ser archivos multimedia, como audio, imágenes o vídeo. También pueden ser archivos de datos de red que puedes usar como lista predefinida (una lista que se importa como archivo de datos), o claves de API que permiten que una interfaz se comunique con un servicio de terceros. Un uso cuidadoso de los recursos puede mejorar la experiencia de entrevista de quienes participan o hacer posibles distintos tipos de flujo de trabajo en la entrevista.
+
+Una vez que añades recursos a tu protocolo, se almacenan como parte del propio protocolo, así que debes actualizarlos o eliminarlos desde Architect. El lugar en el que se almacena el protocolo (y, por tanto, sus recursos) depende de la versión de Architect que uses:
+
+- En **Architect Classic**, tu protocolo es un archivo `.netcanvas` en tu ordenador, y los recursos se almacenan dentro de ese archivo.
+- En **Architect**, tu protocolo y sus recursos se guardan en la [biblioteca](/es/design-protocols/saving-and-backing-up) de tu navegador mientras trabajas, y se incorporan a un archivo `.netcanvas` cuando lo descargas. Como esta biblioteca reside en tu navegador y no es un archivo que controles tú, descarga una copia de cualquier protocolo cuyos recursos no te puedas permitir perder. Consulta [Guardar y hacer copias de seguridad](/es/design-protocols/saving-and-backing-up).
+
+<TipBox danger>
+
+Usar muchos recursos, o recursos mal optimizados, en tu protocolo puede afectar gravemente al rendimiento. Esto significa que los protocolos tardan más en instalarse en los dispositivos y que algunas etapas pueden tardar mucho más en cargarse. Pon especial cuidado en redimensionar y comprimir adecuadamente tus recursos antes de importarlos, y prueba tu protocolo en los dispositivos de campo que vayas a usar para comprobar el rendimiento.
+
+Como norma general, intenta que el tamaño total del archivo de protocolo no supere los 10 MB.
+
+</TipBox>
+
+## Añadir recursos a una etapa {#adding-resources-to-a-stage}
+
+Muchas etapas permiten añadir recursos directamente mientras las configuras. Esto está pensado para que el proceso de creación del protocolo de entrevista sea más fluido. Algunos ejemplos son las imágenes de fondo de la interfaz «Sociograma», los archivos de listas en cualquiera de los dos generadores de nombres basados en listas predefinidas y los archivos multimedia de la interfaz «Información».
+
+Si la etapa que estás configurando usa un recurso, te ofrecerá un espacio para añadirlo directamente y te indicará qué tipo de recurso se necesita.
+
+![](/assets/img/key-concepts/assets/bg-asset.png)
+
+## Añadir y eliminar recursos de la biblioteca de recursos {#adding-and-removing-resources-from-the-resource-library}
+
+<AppOnly app="current">
+
+Para ver un resumen general de todos los recursos de tu protocolo actual, abre la página **Recursos** desde la barra de navegación de la parte superior del editor. Esta es la biblioteca de recursos.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Para ver un resumen general de todos los recursos de tu protocolo actual, haz clic en el botón de la **biblioteca de recursos**, en la esquina superior derecha de la tarjeta de resumen del protocolo, cuando estés en la línea de tiempo. Así se abrirá la biblioteca de recursos.
+
+![](/assets/img/key-concepts/assets/manage-assets-button.png)
+
+</AppOnly>
+
+En la pantalla de la biblioteca de recursos, puedes explorar, filtrar y eliminar cualquier recurso existente, así como añadir otros nuevos. Para añadir un recurso nuevo a la biblioteca de recursos, arrastra y suelta un archivo en la zona indicada o busca el archivo que quieras importar.
+
+![](/assets/img/key-concepts/assets/asset-library.png)
+
+Verás que los recursos existentes que no se usan muestran una etiqueta roja **Sin usar**. Esto indica que puedes eliminarlos. Si intentas eliminar un recurso que se usa en tu entrevista, no se te permitirá. Antes de poder eliminar un recurso, debes actualizar o quitar todos sus usos.
+
+<AppOnly app="current">
+
+## Recursos que faltan {#missing-resources}
+
+Un archivo `.netcanvas` almacena sus recursos en su interior. Si un archivo de protocolo hace referencia a un recurso que en realidad no incluye, Architect abre el protocolo igualmente y muestra un mensaje **Faltan algunos recursos** que indica el nombre de cada archivo que falta. Todas las etapas, preguntas y variables del protocolo se conservan exactamente como estaban.
+
+Para corregir el protocolo, abre la página **Recursos**, donde cada recurso que falta aparece marcado como **Falta el archivo**, y vuelve a añadir el archivo. Hasta que se hayan restaurado todos los archivos que faltan:
+
+- **No se puede descargar el protocolo.** Architect se niega a hacerlo antes que generar un archivo sin los recursos, y el mensaje enumera los archivos que tienes que volver a añadir. No se pierde nada: el protocolo sigue en tu biblioteca tal como estaba.
+- **Interviewer y Fresco no lo aceptan.** Rechazan cualquier protocolo al que le falten recursos, porque un recurso que nunca llega a cargarse parecería un error a la persona participante a mitad de la entrevista. Restaura los archivos en Architect y vuelve a descargar el protocolo antes de distribuirlo.
+
+Un archivo de protocolo cuyo contenido está dañado se notifica como dañado en lugar de abrirse. Prueba con una copia de seguridad o con la copia que descargaste originalmente.
+
+</AppOnly>
+
+## Tipos de recursos admitidos {#supported-resource-types}
+
+### Imagen {#image}
+
+Interviewer admite los formatos de imagen JPEG, GIF, PNG y SVG. Para un
+fondo que se adapte a lienzos en vertical y en horizontal, consulta
+[Fondos SVG adaptables](/es/design-protocols/responsive-svg-backgrounds).
+
+### Audio {#audio}
+
+Interviewer admite los formatos de audio MP3, AIFF, M4A y MP4.
+
+### Vídeo {#video}
+
+Interviewer admite los formatos de vídeo MP4 y MOV. Si usas vídeo, pon especial cuidado en que tus archivos sean lo más pequeños posible.
+
+<AppOnly app="current">
+
+Cuando añadas un vídeo a una etapa [«Información»](/es/design-protocols/interface-documentation/information), rellena la **Descripción** del elemento. Una persona participante que use un lector de pantalla la oye como nombre del vídeo, del mismo modo que la descripción de una imagen se lee como su texto alternativo y la descripción de un elemento de audio da nombre a su reproductor. Si la dejas vacía, el lector de pantalla lee en su lugar el nombre del archivo del vídeo, así que escribe una descripción breve para cada vídeo, como harías con las imágenes y el audio.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Interviewer Classic no transmite la **Description** (descripción) de un elemento a sus reproductores de vídeo o audio, así que una persona participante que use un lector de pantalla no oye ningún nombre para ellos. Cuando esto importe, añade en la misma pantalla un elemento de texto que presente el vídeo.
+
+</AppOnly>
+
+### Red {#network}
+
+Interviewer admite datos de red en formato CSV. La fila de encabezados se usará para establecer los nombres de las [variables](/es/design-protocols/key-concepts/variables) de los nodos que se incorporen a la entrevista. Asegúrate de tener una columna llamada `name` para aprovechar el [etiquetado de nodos](/es/design-protocols/key-concepts/node-labelling) automático. Los encabezados pueden escribirse en cualquier idioma y pueden incluir espacios, pero no pueden contener saltos de línea ni otros caracteres de control; consulta [Trabajar con listas predefinidas](/es/design-protocols/tutorials/working-with-rosters#column-headings) para ver todas las reglas y qué hacer si Architect rechaza un archivo. Descarga un archivo CSV de ejemplo sencillo <DownloadLink href="/assets/previousInterview.csv">desde aquí</DownloadLink>.
+
+### Claves de API {#api-keys}
+
+La interfaz [geoespacial](/es/design-protocols/interface-documentation/geospatial) se comunica con un servicio de terceros que requiere una clave de API: un token de Mapbox que se usa para cargar los mapas. A diferencia de los demás tipos de recursos, una clave de API es una credencial que pegas, no un archivo que subes, pero se almacena en la biblioteca de recursos junto a tus demás recursos, donde puedes copiarla, eliminarla o sustituirla cuando lo necesites.
+
+## Conceptos relacionados {#related-concepts}
+
+- [Interfaces](/es/design-protocols/key-concepts/interfaces): descubre qué interfaces usan recursos
+- [Fondos SVG adaptables](/es/design-protocols/responsive-svg-backgrounds): crea un fondo que se adapte a lienzos en vertical y en horizontal
+- [Libro de códigos](/es/design-protocols/key-concepts/codebook): consulta en el libro de códigos los resúmenes de los recursos de red
+- [Filtrado de la red](/es/design-protocols/key-concepts/network-filtering): filtra los datos de listas predefinidas en las etapas
+- [Variables](/es/design-protocols/key-concepts/variables): entiende cómo las columnas de una lista se convierten en variables

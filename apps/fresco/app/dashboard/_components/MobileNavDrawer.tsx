@@ -22,51 +22,60 @@ const messages = defineMessages({
   interviews: {
     id: 'fresco.MobileNavDrawer.interviews',
     defaultMessage: 'Interviews',
-    description: 'Researcher-facing MobileNavDrawer: Interviews',
+    description:
+      'Link in the mobile navigation menu of the dashboard that opens the Interviews page, where the researcher sees and exports recorded interviews.',
   },
 
   participants: {
     id: 'fresco.MobileNavDrawer.participants',
     defaultMessage: 'Participants',
-    description: 'Researcher-facing MobileNavDrawer: Participants',
+    description:
+      'Link in the mobile navigation menu of the dashboard that opens the Participants page, where the researcher manages study participants.',
   },
 
   protocols: {
     id: 'fresco.MobileNavDrawer.protocols',
     defaultMessage: 'Protocols',
-    description: 'Researcher-facing MobileNavDrawer: Protocols',
+    description:
+      'Link in the mobile navigation menu of the dashboard that opens the Protocols page, where the researcher uploads and manages interview protocols.',
   },
 
   dashboard: {
     id: 'fresco.MobileNavDrawer.dashboard',
     defaultMessage: 'Dashboard',
-    description: 'Researcher-facing MobileNavDrawer: Dashboard',
+    description:
+      'Link in the mobile navigation menu that opens the dashboard home page, which gives an overview of the installation.',
   },
 
   openNavigationMenu: {
     id: 'fresco.MobileNavDrawer.openNavigationMenu',
     defaultMessage: 'Open navigation menu',
-    description: 'Researcher-facing MobileNavDrawer: Open navigation menu',
+    description:
+      'Accessible name of the menu icon button in the dashboard header on small screens; it opens the navigation menu. Read only by screen readers.',
   },
   mobileNavigation: {
     id: 'fresco.MobileNavDrawer.mobileNavigation',
     defaultMessage: 'Mobile navigation',
-    description: 'Researcher-facing MobileNavDrawer: Mobile navigation',
+    description:
+      'Accessible name of the slide-out navigation menu shown on small screens and of the navigation landmark inside it. Read only by screen readers.',
   },
   closeNavigationMenu: {
     id: 'fresco.MobileNavDrawer.closeNavigationMenu',
     defaultMessage: 'Close navigation menu',
-    description: 'Researcher-facing MobileNavDrawer: Close navigation menu',
+    description:
+      'Accessible name of the X button at the top of the mobile navigation menu that closes it. Read only by screen readers.',
   },
   settings: {
     id: 'fresco.MobileNavDrawer.settings',
     defaultMessage: 'Settings',
-    description: 'Researcher-facing MobileNavDrawer: Settings',
+    description:
+      'Link with a gear icon in the mobile navigation menu that opens the Settings page for the installation.',
   },
   signOut: {
     id: 'fresco.MobileNavDrawer.signOut',
     defaultMessage: 'Sign out',
-    description: 'Researcher-facing MobileNavDrawer: Sign out',
+    description:
+      'Button at the bottom of the mobile navigation menu that signs the researcher out of Fresco.',
   },
 });
 

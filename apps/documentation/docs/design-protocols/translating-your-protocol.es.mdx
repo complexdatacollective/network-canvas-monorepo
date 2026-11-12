@@ -1,0 +1,411 @@
+---
+title: Traducir tu protocolo
+navOrder: 5
+date: 22nd October 2026
+translatedFrom: cdfcf116131492b4faa370c1441b762163a436a6
+---
+
+<Definition>
+  La localización prepara un protocolo para que la entrevista se pueda
+  completar en más de un idioma. Un protocolo de Network Canvas localizado
+  guarda, en cada uno de sus idiomas, cada texto que ven quienes participan, y
+  la entrevista presenta a cada participante la versión que mejor
+  se ajusta al idioma que usa.
+</Definition>
+
+<TipBox>
+
+La localización requiere el [esquema 9](/es/get-started/protocol-schema-information#schema-version-9). Los protocolos se localizan en Architect y se pueden usar para recopilar datos en Fresco 5.0 o posterior, o en Interviewer 9.0 o posterior. Architect Classic e Interviewer Classic no pueden abrir un protocolo del esquema 9.
+
+</TipBox>
+
+## Visión general {#overview}
+
+Muchos estudios de redes reclutan participantes que no comparten un idioma. Los estudios sobre migración y vínculos transnacionales, los estudios comparativos entre países y los estudios de poblaciones locales lingüísticamente diversas suelen necesitar un instrumento que cada participante pueda completar en el idioma que lee con más soltura. Antes del esquema 9, un protocolo de Network Canvas se escribía en un solo idioma, y un estudio multilingüe tenía que mantener un protocolo distinto para cada idioma. Cada cambio estructural debía repetirse entonces en cada copia, y cualquier divergencia entre las copias se convertía en una diferencia de medición.
+
+El esquema 9 sustituye este planteamiento por un único protocolo que contiene varios idiomas. El protocolo tiene una sola secuencia de etapas, un solo libro de códigos y un solo conjunto de reglas de lógica de salto y de filtrado. Solo el texto que leen quienes participan varía de un idioma a otro. Como los nombres de las variables, los tipos de nodo y de vínculo y los valores de las opciones de respuesta son compartidos, las entrevistas realizadas en idiomas distintos producen datos con una estructura idéntica, y esos datos se pueden combinar sin recodificarlos. Una estructura compartida no basta por sí sola para establecer que las medidas son equivalentes entre idiomas, que es el tema de la siguiente sección.
+
+La plantilla **Transnational Networks** de Architect es un ejemplo de este planteamiento. Está escrita en inglés, húngaro y español, y se puede abrir desde la pestaña **Plantillas** de la pantalla de inicio.
+
+## La traducción como parte del diseño del instrumento {#translation-as-part-of-instrument-design}
+
+Traducir un protocolo es una tarea metodológica además de lingüística. El objetivo es la equivalencia de significado: una persona participante que lee la versión en español de una pregunta debería entender la misma tarea, y declarar el mismo tipo de relación, que otra que lee la versión en inglés. La correspondencia literal entre los dos textos no lo garantiza, y en algunos casos lo dificulta ([Beaton et al., 2000](https://doi.org/10.1097/00007632-200012150-00014); [Wild et al., 2005](https://doi.org/10.1111/j.1524-4733.2005.04054.x)).
+
+Los generadores de nombres merecen una atención especial, porque su redacción define los límites de la red que se obtiene. Las entrevistas cognitivas con personas encuestadas de habla inglesa han mostrado que incluso un generador de nombres muy utilizado, el ítem de la General Social Survey sobre con quién se hablan «asuntos importantes», se entiende de varias formas distintas, y que su interpretación depende de las preguntas que lo preceden ([Bailey and Marsden, 1999](<https://doi.org/10.1016/S0378-8733(99)00013-1>)). La traducción añade otra fuente de variación. Los términos relacionales de los que dependen los generadores de nombres, como «amigo», «cercano» o «familia», pueden no corresponderse exactamente entre idiomas y culturas, y el funcionamiento de ese mismo ítem de la General Social Survey en un contexto chino se ha examinado en un estudio aparte ([Ruan, 1998](<https://doi.org/10.1016/S0378-8733(98)00004-5>)). Por tanto, un generador de nombres traducido debe evaluarse por las relaciones que obtiene en la población destinataria, además de por la exactitud de su redacción.
+
+Las Cross-Cultural Survey Guidelines prefieren la traducción en equipo a la de una sola persona seguida de una retrotraducción, aunque las directrices para adaptar medidas de salud mantienen la retrotraducción como paso obligatorio ([Beaton et al., 2000](https://doi.org/10.1097/00007632-200012150-00014); [Wild et al., 2005](https://doi.org/10.1111/j.1524-4733.2005.04054.x)). En el modelo TRAPD (Translation, Review, Adjudication, Pretesting and Documentation: traducción, revisión, adjudicación, pretest y documentación), dos o más personas preparan traducciones independientes, que después se revisan conjuntamente con una persona experta en la materia. Una persona encargada de la adjudicación decide la redacción final, el resultado se somete a un pretest con miembros de la población destinataria y las decisiones se documentan para quienes usen los datos más adelante ([Survey Research Center, 2016](https://ccsg.isr.umich.edu/chapters/translation/overview/); [Walde and Völlm, 2023](https://doi.org/10.3389/fpsyt.2023.1199989)). La retrotraducción, cuyo uso como comprobación de la equivalencia expuso de forma sistemática [Brislin (1970)](https://doi.org/10.1177/135910457000100301), sigue siendo útil como una fuente de evidencia más dentro de un procedimiento de este tipo.
+
+La [tabla de traducciones](#the-translation-table), que presenta cada texto junto a sus traducciones, se puede usar para la revisión y la adjudicación, y la pestaña [Resumen](#printing-your-translations) imprime el protocolo completo en todos los idiomas para quienes revisan sin usar Architect. El [modo de vista previa](#previewing-a-language) permite al equipo de investigación comprobar cada etapa en cada idioma antes de someter la traducción a un pretest con participantes.
+
+Parte de la adaptación queda fuera del texto del protocolo. Las imágenes, los vídeos, el audio, las listas predefinidas (listas que se importan como archivo de datos) y los mapas son los mismos en todos los idiomas (consulta [Qué se mantiene igual en todos los idiomas](#what-stays-the-same-in-every-language)), así que un recurso que contiene palabras debe elegirse de forma que sirva a cada participante, o explicarse en un texto que se pueda traducir. Las opciones de respuesta también pueden necesitar una adaptación. Los términos de parentesco, las titulaciones académicas y las instituciones a menudo no tienen un equivalente directo en otro idioma, y puede que haya que cambiar las propias categorías.
+
+## Cómo se organiza un protocolo localizado {#how-a-localized-protocol-is-organized}
+
+Un protocolo localizado tiene un conjunto de **idiomas del protocolo**, uno de los cuales es su **idioma predeterminado**. Cada texto que ven quienes participan, como una pregunta o la etiqueta de una opción de respuesta, se guarda una sola vez, con una traducción para cada idioma al que se ha traducido. Cada idioma se identifica con un código de idioma, como `es` para el español o `pt-BR` para el portugués de Brasil, y un protocolo puede incluir variantes regionales del mismo idioma, como el español (`es`) y el español de México (`es-MX`).
+
+Un texto no necesita una traducción en todos los idiomas. Debe tener una traducción en al menos uno de los idiomas del protocolo, y no tiene por qué ser el idioma predeterminado. La única excepción es la [redacción que aporta Network Canvas](#adding-languages): un protocolo solo la contiene donde se ha cambiado, y un protocolo cuyo idioma predeterminado no tiene redacción de Network Canvas carece de ella en ese idioma hasta que se escriba. Cuando falta una traducción, quienes participan ven el texto en otro idioma, elegido según las reglas descritas en [El idioma predeterminado y qué traducción ve cada participante](#the-default-language-and-which-translation-participants-see). Por eso, Architect indica una traducción que falta como advertencia, y un protocolo con traducciones faltantes se puede guardar, previsualizar y usar para recopilar datos.
+
+### Qué se puede traducir {#what-can-be-translated}
+
+Se puede traducir todo el texto que leen quienes participan. Esto incluye:
+
+- los nombres de las etapas, que quienes participan ven en la lista de etapas de la entrevista
+- las preguntas, las introducciones de las etapas «Formulario del ego» y los títulos de los paneles laterales
+- los títulos de los formularios, y las preguntas y las indicaciones de los campos de formulario, incluidas las etiquetas y las indicaciones de los campos de una etapa [«Compositor de redes»](/es/design-protocols/interface-documentation/network-composer)
+- las etiquetas de las opciones de respuesta, y las etiquetas de cada extremo de un control deslizante
+- los títulos, el texto y las descripciones de los recursos de las etapas «Información»
+- el texto de otras interfaces, como la explicación de una etapa de [anonimización](/es/design-protocols/interface-documentation/anonymisation)
+- las etiquetas de los atributos y los tipos de vínculo que resalta y dibuja una vista predefinida de una etapa [«Narrativa»](/es/design-protocols/interface-documentation/narrative) (una configuración de visualización de la red que defines en esa etapa; consulta [Etiquetas en la leyenda de una etapa «Narrativa»](#labels-in-a-narrative-stages-legend))
+- las etiquetas de los tipos de vínculo que una etapa [«Compositor de redes»](/es/design-protocols/interface-documentation/network-composer) permite trazar a quienes participan (consulta [Etiquetas de los tipos de vínculo de «Compositor de redes»](#labels-for-network-composer-edge-types))
+- la redacción que muestra una etapa alrededor de su contenido, como el botón de la etapa «Pantalla de finalización», los avisos de mínimo y máximo de una etapa «Generador de nombres» o la información emergente de las herramientas de una etapa «Compositor de redes» (consulta [Redacción de las etapas](#stage-wording))
+- los botones y mensajes comunes a todas las etapas, como «Volver», «Continuar» y los mensajes que se muestran cuando una respuesta no es válida, y las palabras que muestran por igual todas las etapas de un mismo tipo, como los botones de zoom de una etapa «Genealogía familiar» (consulta [Texto de entrevista](#interview-text))
+
+### Qué se mantiene igual en todos los idiomas {#what-stays-the-same-in-every-language}
+
+- **Nombres y valores.** Los nombres de los atributos, los nombres de los tipos de nodo y de vínculo y los valores de las opciones de respuesta aparecen en los datos exportados, así que son idénticos en todos los idiomas. Quienes participan nunca ven un nombre del libro de códigos. Cuando una etapa presenta un tipo de nodo, un tipo de vínculo o un atributo a quienes participan, lo hace mediante una etiqueta propia, y esa etiqueta se puede traducir.
+- **Recursos.** Las imágenes, los vídeos, el audio, las listas predefinidas y los mapas son los mismos en todos los idiomas.
+- **Las palabras que solo leen los lectores de pantalla**, como los nombres de los botones que solo muestran un icono y los anuncios que se hacen mientras cada participante trabaja. Están en inglés, sea cual sea el idioma en que se muestre la entrevista.
+
+## Gestionar los idiomas de tu protocolo {#managing-your-protocols-languages}
+
+### Elegir los idiomas al crear un protocolo {#choosing-languages-when-creating-a-protocol}
+
+El cuadro de diálogo **Crear nuevo protocolo** pide los **Idiomas del protocolo**, es decir, los idiomas en los que quienes participan pueden hacer la entrevista. Architect propone el idioma en el que se muestra la propia aplicación, y se pueden buscar más idiomas en la lista. Si se elige más de un idioma, el cuadro de diálogo también pide el **Idioma predeterminado**.
+
+![El cuadro de diálogo Crear nuevo protocolo, con inglés y español elegidos como idiomas del protocolo e inglés como idioma predeterminado.](/assets/img/architect/new-protocol-dialog.png)
+
+Un protocolo creado a partir de una plantilla ya está escrito en un idioma, así que Architect no lo pregunta. Las plantillas que incluye Architect están escritas en inglés (`en`), y la plantilla Transnational Networks también está escrita en húngaro y español.
+
+### La página Idiomas {#the-languages-page}
+
+La página **Idiomas**, que se abre desde la barra de navegación del protocolo, entre **Libro de códigos** y **Resumen**, enumera los idiomas del protocolo. Aparece un símbolo de advertencia en el enlace **Idiomas** mientras falte alguna traducción. Cada idioma aparece con:
+
+- su nombre, su nombre en su propio idioma y su código de idioma
+- una insignia **Predeterminado**, en el idioma predeterminado
+- una barra de progreso y un recuento de los textos traducidos a ese idioma, como «46 de 209 elementos traducidos»
+- una insignia **Traducciones faltantes**, mientras haya textos sin traducción en ese idioma
+- tres botones: **Editar traducciones** (un lápiz), que abre [la tabla de traducciones](#the-translation-table) con ese idioma junto al idioma predeterminado; **Cambiar a otro idioma** (dos flechas), que se describe en [Cambiar el idioma en el que está registrado tu texto](#changing-the-language-your-text-is-recorded-as); y **Eliminar** (una papelera), que se describe en [Eliminar un idioma](#removing-a-language)
+
+Cuando un protocolo tiene más de un idioma, la página también explica el orden en el que se muestran las traducciones a quienes participan, ofrece la lista **Idioma predeterminado** e incluye un botón **Abrir tabla de traducciones**. Los idiomas no tienen un orden propio. Architect los enumera por orden alfabético de su nombre, y el orden en que se guardan no supone ninguna diferencia para quienes participan.
+
+![La página Idiomas de un protocolo escrito en inglés estadounidense y español. El español tiene la insignia Traducciones faltantes, con 46 de 209 textos traducidos.](/assets/img/architect/localization/languages-page.png)
+
+La misma lista, con las mismas reglas, aparece en el editor de una etapa [«Selector de idioma»](/es/design-protocols/interface-documentation/language-chooser), para que se puedan gestionar los idiomas sin salir de la etapa. Un cambio hecho ahí también se aplica a los cambios sin guardar de la etapa. Como la tabla de traducciones se abre sobre la página **Idiomas**, abrirla desde una etapa «Selector de idioma» hace salir de la etapa, y Architect pregunta antes si se descartan los cambios sin guardar.
+
+### Añadir idiomas {#adding-languages}
+
+**Añadir idiomas** abre un cuadro de diálogo en el que se pueden elegir uno o varios idiomas. Un idioma nuevo empieza sin ninguna traducción del texto propio del equipo de investigación. Hasta que ese texto se traduzca, quienes usen el nuevo idioma lo verán en otro idioma.
+
+![El cuadro de diálogo Añadir idiomas, con el español elegido.](/assets/img/architect/localization/add-languages-dialog.png)
+
+Hay dos excepciones, ambas de texto para el que Network Canvas tiene redacción en inglés, alemán, español, francés, italiano, neerlandés, portugués de Brasil, y chino simplificado y tradicional.
+
+La primera es la redacción que muestra una entrevista y que el equipo de investigación no ha cambiado (consulta [Palabras que aporta Network Canvas](#words-network-canvas-supplies)):
+
+- la [redacción de las etapas](#stage-wording) de cada etapa que la tiene, incluida la redacción de la [pregunta sobre el nombre](/es/design-protocols/interface-documentation/family-pedigree#name) y de [lo que ve cada participante](/es/design-protocols/interface-documentation/family-pedigree#customize-built-in-wording) de una etapa [«Genealogía familiar»](/es/design-protocols/interface-documentation/family-pedigree), con la lista de comprobación de completitud, y el [título del panel de la lista de una etapa «Generador de nombres a partir de una lista»](/es/design-protocols/interface-documentation/name-generator-roster#alter-nomination), «Disponibles para añadir»
+- el [texto de entrevista](#interview-text)
+
+Un protocolo no contiene esta redacción. La entrevista muestra la redacción de Network Canvas para ella en cada uno de estos idiomas, así que, cuando se añade uno de ellos, esa redacción ya está ahí y no se escribe nada en el protocolo. Architect la muestra en el editor de etapas y en la tabla de traducciones, donde se puede cambiar, y un protocolo contiene solo la redacción que se ha cambiado. La redacción cambiada en un idioma se sigue mostrando con la redacción de Network Canvas en los demás, así que un protocolo cuyo botón «Continue» en inglés dice «Next» muestra el francés «Continuer» al añadir el francés, que después se puede cambiar para que coincida. Si Network Canvas corrige más adelante su propia redacción, la corrección llega a todos los protocolos que no han cambiado ese texto.
+
+La segunda es el texto que Network Canvas escribe en un protocolo como punto de partida y que pasa a ser después del propio equipo de investigación:
+
+- el texto de cierre y el texto de entrevista finalizada de cada etapa «Pantalla de finalización», y el nombre de esa etapa
+- las respuestas sobre el sexo asignado al nacer y los tipos de progenitor de una etapa [«Genealogía familiar»](/es/design-protocols/interface-documentation/family-pedigree#sex-assigned-at-birth)
+
+Cuando se añade uno de estos idiomas, Architect completa este texto en ese idioma allí donde todavía no tiene traducción. Lo hace incluso donde el texto se ha reformulado en los demás idiomas del protocolo. Añadir un idioma nunca sustituye una traducción que ya existe.
+
+Cada uno de estos idiomas está escrito para una región: la que se presupone cuando se nombra el idioma sin región. El inglés de Network Canvas es el inglés estadounidense, su español es el español de España, su francés es el francés de Francia, su chino tradicional es el chino de Taiwán, y así sucesivamente. Un idioma cuenta como uno de estos cuando es el propio idioma o el idioma en esa región, así que el inglés estadounidense (`en-US`) tiene la redacción en inglés, y el español de España (`es-ES`) tiene la redacción en español.
+
+Network Canvas solo tiene redacción para un idioma que sea uno de estos. Una variante regional escrita para otra región, como el español de México (`es-MX`) o el inglés británico (`en-GB`), y un idioma para el que Network Canvas no aporta redacción, como el japonés (`ja`), no la tienen, y quienes los usan la ven en otro de los idiomas del protocolo hasta que se traduzca.
+
+Cuando se añade una variante regional de uno de estos idiomas, o se crea un protocolo en una de ellas, Architect pregunta si también se añade el idioma del que es variante: para el español de México, pregunta «¿Añadir también español?». Network Canvas tiene redacción para el idioma añadido, y quienes usan la variante ven esa redacción allí donde la variante no tiene texto propio (consulta [El idioma predeterminado y qué traducción ve cada participante](#the-default-language-and-which-translation-participants-see)). El idioma añadido nunca se convierte en el predeterminado. Para un idioma que no es uno de estos, sino que simplemente es próximo a uno de ellos, como el gallego al español, Architect no ofrece añadir también este último, porque quienes usan ese idioma leerían entonces otro idioma.
+
+#### Cuando el idioma predeterminado no tiene redacción aportada {#when-the-default-language-has-no-supplied-wording}
+
+Todo texto que se muestra en una entrevista debe tener redacción en el idioma predeterminado para que el protocolo se pueda descargar; la redacción de Network Canvas para ese idioma también cuenta. Cuando el idioma predeterminado es uno para el que Network Canvas no aporta redacción, como el español de México o el japonés, el protocolo se puede seguir editando y guardando, pero un aviso en la lista de etapas explica que todavía no se puede descargar, y Architect se niega a descargarlo hasta que se haga una de estas dos cosas:
+
+- Traducir la redacción aportada al idioma predeterminado. El enlace **Mostrar la redacción por traducir** del aviso abre la tabla de traducciones con el texto que no tiene traducción en ese idioma.
+- Establecer como predeterminado un idioma para el que Network Canvas aporta redacción, como el español.
+
+Hasta entonces, la sección **Personalizar la redacción predeterminada** de cada etapa se muestra siempre, sin ningún interruptor para desactivarla, de modo que la redacción se puede escribir tanto en el editor de etapas como en la tabla de traducciones.
+
+Esto también se aplica a las variedades regionales del inglés. Un protocolo cuyo idioma predeterminado es el inglés o el inglés estadounidense tiene la redacción aportada; uno cuyo idioma predeterminado es el inglés británico o el australiano no la tiene, y Architect ofrece añadir también el inglés.
+
+Por ejemplo, un protocolo creado en español de México, con el español añadido también cuando Architect lo pregunta, empieza con el español de México como idioma predeterminado y la redacción de Network Canvas solo en español. O bien se establece el español como predeterminado, de modo que quienes usan el español de México ven la redacción en español allí donde no se ha escrito texto en español de México, o bien se traduce toda la redacción aportada al español de México.
+
+Una traducción aportada es texto normal, y se puede editar como cualquier otro.
+
+### El idioma predeterminado y qué traducción ve cada participante {#the-default-language-and-which-translation-participants-see}
+
+El idioma predeterminado es el idioma en el que quienes participan empiezan la entrevista cuando su navegador no indica ninguno de los idiomas del protocolo. Se elige en la lista **Idioma predeterminado** de la página **Idiomas**.
+
+Para cada texto, cada participante ve la primera de las siguientes opciones que tenga una traducción, en el orden que indica Architect en la página **Idiomas**:
+
+1. **Su propio idioma.** Es el idioma en el que se muestra la entrevista: el que ha elegido en una etapa [«Selector de idioma»](/es/design-protocols/interface-documentation/language-chooser) o, si no, el que mejor coincide entre los idiomas que indica su navegador o, si no, el idioma predeterminado (consulta [Cómo se asigna el idioma a cada participante](#how-participants-get-their-language)).
+2. **Un idioma estrechamente relacionado.** Por ejemplo, el idioma más cercano al portugués de Portugal (`pt-PT`) es el portugués de Brasil (`pt-BR`), el más cercano al español de México (`es-MX`) es el español (`es`), y el más cercano al chino usado en Taiwán (`zh-TW`) es el chino tradicional (`zh-Hant`).
+3. **Otro idioma que indica su navegador**, en el orden en que los indica el navegador, cada uno con coincidencia exacta o mediante su idioma relacionado más cercano.
+4. **El idioma predeterminado.**
+5. **Cualquier otro idioma del protocolo** que tenga el texto.
+
+Qué idiomas cuentan como estrechamente relacionados lo determinan los datos de correspondencia de idiomas del proyecto Unicode CLDR, que también considera algunos idiomas sustitutos aceptables entre sí, como el alemán suizo (`gsw`) para el alemán (`de`). Cuando un protocolo incluye dos variantes de un idioma, como el español (`es`) y el español de México (`es-MX`), una persona participante cuyo idioma propio es una de ellas ve el texto en esa variante si tiene traducción y, si no, en la otra variante, antes que en cualquier otro idioma.
+
+A modo de ejemplo, piensa en un protocolo escrito en inglés (el predeterminado), francés y portugués de Brasil, en el que la pregunta «How often do you see them?» se ha traducido al portugués de Brasil, pero no al francés.
+
+| La persona participante                                                   | Ve                  | Motivo                                                                                                                                                                     |
+| ------------------------------------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Usa un navegador configurado en portugués de Portugal (`pt-PT`)           | Portugués de Brasil | El portugués de Portugal no es un idioma del protocolo, y su idioma relacionado más cercano es el portugués de Brasil.                                                     |
+| Usa el francés, y su navegador no indica ningún otro idioma del protocolo | Inglés              | El francés no tiene traducción, y tampoco la tiene ningún otro idioma del navegador, así que se usa el idioma predeterminado.                                              |
+| Usa el francés, y su navegador también indica el portugués                | Portugués de Brasil | El francés no tiene traducción, así que se prueban los demás idiomas del navegador antes que el idioma predeterminado, y el portugués coincide con el portugués de Brasil. |
+
+Si la pregunta solo se hubiera escrito en portugués de Brasil, una persona participante que usa el inglés la seguiría viendo, porque ningún otro idioma la tiene.
+
+### Eliminar un idioma {#removing-a-language}
+
+El botón **Eliminar**, al final de la fila de un idioma, hace que ese idioma deje de ofrecerse. Architect pide confirmación, porque se eliminan todas las traducciones en ese idioma y quienes participan ya no pueden elegirlo.
+
+Hay dos idiomas que no se pueden eliminar:
+
+- el idioma predeterminado, hasta que se haya establecido otro idioma como predeterminado
+- un idioma que contiene la única traducción de algún texto, hasta que ese texto se haya traducido a otro idioma, de modo que todo el texto siga disponible para quienes participan
+
+Para estos idiomas, el botón no está disponible, y al pasar el puntero por encima de él, o al llegar a él con el teclado, se muestra el motivo.
+
+### Cambiar el idioma en el que está registrado tu texto {#changing-the-language-your-text-is-recorded-as}
+
+Cada texto está registrado como escrito en un idioma concreto. Cuando Architect actualiza un protocolo creado antes de que Network Canvas registrara los idiomas, registra todo el texto como inglés, porque no puede determinar en qué idioma está escrito realmente. El texto en sí no cambia.
+
+Si el texto está escrito en realidad en otro idioma, o se eligió un idioma equivocado al crear el protocolo, conviene corregir el registro antes de añadir traducciones:
+
+1. Abre la página **Idiomas**.
+2. En la fila del idioma que quieres corregir, selecciona **Cambiar a otro idioma** (el botón de las dos flechas), que se llama, por ejemplo, «Cambiar inglés a otro idioma».
+3. Elige el idioma correcto en la lista **Idioma**.
+4. Selecciona **Cambiar idioma**.
+
+A partir de ese momento, todo el texto registrado en el idioma anterior queda registrado en el idioma elegido y, si el idioma anterior era el predeterminado, el nuevo idioma pasa a ser el predeterminado. No se traduce ni se elimina nada de lo que ha escrito el equipo de investigación, y el cambio se puede deshacer. Una traducción que sigue siendo la redacción aportada por Network Canvas en el idioma anterior, como el texto de cierre y el texto de entrevista finalizada de una etapa [«Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen), pasa a ser la redacción aportada en el idioma elegido. Si Network Canvas no aporta ninguna en el idioma elegido, esa redacción se elimina y hay que escribirla en el idioma elegido (si ese es el idioma predeterminado, el protocolo no se puede descargar hasta que se escriba). El texto que Network Canvas escribe en el protocolo y que no tiene traducción en el idioma anterior recibe la redacción del idioma elegido, como ocurriría al añadir un idioma. La redacción que el equipo de investigación cambió en el idioma anterior conserva su texto. De la redacción de las etapas y del texto de entrevista, el protocolo solo contiene lo que se ha cambiado; lo demás se muestra en el idioma elegido allí donde Network Canvas tiene redacción en ese idioma. Elegir otro idioma predeterminado no cambia ningún texto.
+
+Un idioma solo se puede cambiar por uno que el protocolo todavía no tenga, porque, de lo contrario, el cambio fusionaría dos conjuntos de traducciones.
+
+## Encontrar las traducciones que faltan {#finding-missing-translations}
+
+Aunque las traducciones que faltan no impiden usar un protocolo, conviene completarlas antes de empezar la recopilación de datos. Architect las señala en tres lugares:
+
+- El enlace **Idiomas** de la barra de navegación muestra un símbolo de advertencia.
+- La lista de etapas muestra una nota que nombra los idiomas a los que les faltan traducciones. Su enlace **Mostrar traducciones faltantes** abre la tabla de traducciones con todos los textos a los que les falta alguna traducción.
+- En la página **Idiomas**, cada idioma al que le faltan traducciones tiene una insignia **Traducciones faltantes**. Para ver los textos que le faltan a un idioma, abre la tabla de traducciones y elige, por ejemplo, **Falta en español** en **Traducciones que mostrar**.
+
+Cuando un protocolo tiene más de un idioma, pero ninguna etapa «Selector de idioma», la lista de etapas muestra una segunda nota, **Los participantes no pueden elegir un idioma**. Prescindir de un selector de idioma es una decisión de diseño legítima, así que esta nota se puede cerrar para ese protocolo.
+
+![Las dos notas de la parte superior de la lista de etapas: una indica que parte de la redacción aún no está traducida al español, y la otra que quienes participan no pueden elegir un idioma.](/assets/img/architect/localization/stage-list-notes.png)
+
+## La tabla de traducciones {#the-translation-table}
+
+La tabla de traducciones presenta cada texto que ven quienes participan junto a su traducción a cada uno de los idiomas del protocolo. Se abre sobre la página **Idiomas** con **Abrir tabla de traducciones**, con el botón **Editar traducciones** de un idioma o con cualquiera de los enlaces descritos en [Encontrar las traducciones que faltan](#finding-missing-translations). Cuando la tabla contiene más textos o idiomas de los que caben en la ventana, se desplaza, y los nombres de los idiomas y de los textos permanecen a la vista.
+
+![La tabla de traducciones, con las primeras etapas del protocolo de ejemplo en inglés estadounidense y español. Las celdas en español sin traducir muestran el texto en inglés estadounidense en un tono más claro, con la etiqueta «Se muestra en inglés estadounidense».](/assets/img/architect/localization/translation-table.png)
+
+Cada fila es un texto y cada columna, un idioma, por orden alfabético. El encabezado de cada columna muestra el nombre del idioma, una insignia **Predeterminado** en el idioma predeterminado y el número de textos traducidos a ese idioma. Las filas se agrupan por ubicación: primero las etapas en orden, después el libro de códigos, a continuación el propio protocolo y, por último, el [texto de entrevista](#interview-text). El grupo de una etapa muestra su posición, su nombre en el idioma predeterminado y su interfaz, y el nombre de la etapa es un enlace que la abre. Cada fila se nombra como el editor de etapas nombra el texto, por ejemplo, «Contenido de la página › Encabezado de página».
+
+Una celda sin traducción muestra, en un tono más claro, el texto que verán en su lugar quienes usen ese idioma, con una etiqueta que nombra el idioma, como **Se muestra en inglés estadounidense**. Un asterisco después de la etiqueta indica que quienes participan pueden ver el texto en otro idioma, porque los demás idiomas del navegador de cada participante se prueban antes que el idioma predeterminado. No aparece ningún asterisco cuando el texto se muestra en un idioma estrechamente relacionado, ni cuando solo un idioma tiene el texto.
+
+### Elegir qué textos e idiomas mostrar {#choosing-which-texts-and-languages-to-show}
+
+Los controles situados encima de la tabla determinan lo que muestra:
+
+- **Traducciones que mostrar** permite elegir **Todas las traducciones**, **Falta en algún idioma mostrado** o los textos que faltan en un idioma, como **Falta en español**. Un texto que se traduce mientras este filtro está activo sigue a la vista hasta que cambia el filtro, para que no desaparezca durante la edición.
+- **Buscar traducciones** encuentra textos por su ubicación o por su redacción en cualquiera de los idiomas mostrados.
+- El menú **Idiomas**, por ejemplo **Idiomas (2 de 2)**, muestra y oculta columnas. Siempre se muestra al menos un idioma. A quienes traducen a un solo idioma puede resultarles útil mostrar solo ese idioma y el idioma desde el que traducen, que es la vista que abre **Editar traducciones**.
+
+Un recuento debajo de la tabla, como «Mostrando 8 de 209 elementos», indica cuántos textos se muestran.
+
+### Editar traducciones {#editing-translations}
+
+Al seleccionar una celda, esta se abre para editarla. Los cambios permanecen en la tabla hasta que se selecciona **Guardar**, y un punto en la esquina de una celda marca un cambio sin guardar. Al pulsar Escape en una celda se restaura su texto guardado, y al borrar todo el texto de una celda se elimina la traducción.
+
+Al salir de una celda, Architect comprueba que su texto se puede guardar y, si no se puede, la celda explica por qué. Por ejemplo, la única traducción de un texto no se puede borrar a menos que antes se escriba otra traducción en la misma fila. La redacción que aporta Network Canvas es distinta (consulta [Palabras que aporta Network Canvas](#words-network-canvas-supplies)): una celda de esa redacción que se deja vacía vuelve a la redacción de Network Canvas en ese idioma. **Guardar** no guarda nada mientras alguna celda tenga un problema; en su lugar, lleva a la primera de esas celdas y la muestra aunque una búsqueda, un filtro o una columna oculta la hubieran dejado fuera de la vista.
+
+Algunos textos varían según el número o la persona a la que se refieren, como los elementos de la [lista de comprobación de completitud](/es/design-protocols/interface-documentation/family-pedigree#customize-built-in-wording) de una etapa «Genealogía familiar», o el mensaje de una regla de validación que usa un número. Una celda de este tipo enumera cada versión, y los marcadores de posición, como el nombre de una persona, se muestran como etiquetas con nombre. Cuando se abre la celda, cada versión tiene su propio cuadro con nombre. El número de versiones sigue la gramática del idioma: un idioma que distingue entre uno, dos y cinco elementos tiene una versión para cada caso. Cada texto establece qué marcadores de posición debe incluir una versión, y la regla es la misma en todos los idiomas. El botón que inserta un marcador de posición se resalta mientras una versión todavía lo requiere, y al salir de la celda se nombra cualquier marcador de posición que falte. Una versión que se usa para un único número, como «one item» en inglés, puede omitir el número.
+
+El texto propio del equipo de investigación también puede mostrar valores, como el nombre de la persona participante. Mostrar un valor es opcional en todos los idiomas, así que una traducción puede omitir un valor que muestra el texto del idioma predeterminado (consulta [Traducir textos que muestran valores](/es/design-protocols/piped-text#translating-text-that-shows-values)).
+
+El texto con formato, como el contenido de una etapa «Información», se muestra tal como lo verán quienes participan hasta que se abre la celda. Entonces muestra los mismos controles de formato que el editor de etapas, que permanecen a la vista mientras se desplaza un texto largo.
+
+La tabla se puede recorrer con el teclado:
+
+| Tecla                           | Efecto                                                                                                                                   |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Intro                           | Pasa a la fila siguiente en un texto de una sola línea; inicia una línea nueva en un texto con saltos de línea.                          |
+| Ctrl+Intro, o ⌘+Intro en un Mac | Pasa a la fila siguiente.                                                                                                                |
+| Flechas arriba y abajo          | Pasan a la fila anterior o siguiente, desde la primera o la última línea de una celda.                                                   |
+| Tabulador                       | Pasa a la celda siguiente. En un texto con formato, pasa primero a los controles de formato y, en una lista, aplica sangría al elemento. |
+| Escape                          | Restaura el texto guardado de la celda.                                                                                                  |
+
+El botón de ayuda (un signo de interrogación) situado encima de la tabla resume estas teclas. **Guardar** aplica todos los cambios a la vez y cierra la tabla, y un solo Deshacer revierte todo lo guardado. **Cancelar** cierra la tabla sin guardar, después de pedir confirmación si hay cambios sin guardar. Pulsar Escape fuera de una celda, o hacer clic fuera de la tabla, no la cierra, y Architect también pregunta antes de descartar los cambios sin guardar cuando se usa el botón Atrás del navegador o se recarga la página.
+
+## Traducir en el editor de etapas {#translating-within-the-stage-editor}
+
+Un texto también se puede traducir allí donde se escribe, en el editor de etapas. Cuando un protocolo tiene más de un idioma, cada campo de texto tiene un menú de idioma que muestra el idioma que se está editando, seguido de insignias de **Predeterminado** y del número de traducciones que faltan. Todos los campos de un editor cambian de idioma a la vez, para que se pueda trabajar en una etapa de idioma en idioma. El editor siempre se abre en el idioma predeterminado, y sus vistas previas muestran el texto en el idioma que se está editando.
+
+![El menú de idioma de un editor de etapas, con el inglés estadounidense, marcado como Predeterminado, y el español, marcado como Falta.](/assets/img/architect/localization/editor-language-menu.png)
+
+Debajo de un texto que no tiene traducción en el idioma que se está editando, una nota nombra el idioma en el que lo verán en su lugar quienes participan, como «Todavía no está traducido a español. Los participantes que usen español verán el texto en inglés estadounidense». Cuando otro de los idiomas del protocolo también tiene el texto y no es un idioma estrechamente relacionado, la nota añade que quienes participan pueden ver ese idioma si su navegador lo indica.
+
+![El campo Encabezado de página con el español elegido para editar. El campo está vacío, y una nota indica que quienes usen el español verán el texto en inglés estadounidense.](/assets/img/architect/localization/editor-missing-translation.png)
+
+Un protocolo con un solo idioma no muestra menús de idioma.
+
+### Etiquetas en la leyenda de una etapa «Narrativa» {#labels-in-a-narrative-stages-legend}
+
+Una vista predefinida de una etapa [«Narrativa»](/es/design-protocols/interface-documentation/narrative) puede resaltar los nodos que tienen uno o varios atributos de verdadero o falso, y dibujar uno o varios tipos de vínculo. Durante la entrevista, el selector de vistas predefinidas enumera estos atributos y tipos de vínculo por su etiqueta. En el editor de la etapa «Narrativa», cada atributo y tipo de vínculo marcado en **Resaltado de nodos** y **Vínculos mostrados** tiene un campo **Etiqueta para «…»**, que inicialmente contiene el nombre del atributo o del tipo de vínculo y tiene un menú de idioma como cualquier otro texto. Cada atributo resaltado y cada tipo de vínculo dibujado necesita una etiqueta.
+
+### Etiquetas de los tipos de vínculo de «Compositor de redes» {#labels-for-network-composer-edge-types}
+
+Cada tipo de vínculo que una etapa [«Compositor de redes»](/es/design-protocols/interface-documentation/network-composer) permite trazar a quienes participan tiene una etiqueta, con la que quienes participan eligen el tipo de vínculo en la barra de herramientas de la etapa y que sirve de título al formulario para ese tipo de vínculo. La etiqueta se escribe en el editor de etapas, debajo del tipo de vínculo. Si se deja vacía, inicialmente es el nombre del tipo de vínculo, y tiene un menú de idioma como cualquier otro texto.
+
+## Palabras que aporta Network Canvas {#words-network-canvas-supplies}
+
+Además del texto propio del equipo de investigación, una entrevista muestra una redacción que aporta Network Canvas. Un protocolo no contiene esta redacción a menos que se haya cambiado: la entrevista muestra la redacción de Network Canvas para cada elemento, en cada idioma en el que Network Canvas la tiene. Cada elemento se puede reformular y traducir como cualquier otro texto, y entonces el protocolo contiene la redacción cambiada. Una traducción que coincide exactamente con la redacción de Network Canvas no se conserva. Para volver a la redacción de Network Canvas de un elemento en un idioma, se vacía su celda en la tabla de traducciones: la celda vuelve a mostrar la redacción de Network Canvas al salir de ella, y el protocolo deja de contener redacción propia ahí. La redacción se divide en dos grupos, según dónde la encuentran quienes participan.
+
+### Redacción de las etapas {#stage-wording}
+
+Parte de la redacción pertenece a un tipo de etapa concreto, como el botón que finaliza la entrevista o el aviso de que no se ha alcanzado el mínimo de una etapa «Generador de nombres». Esta redacción es un ajuste de la etapa, así que un protocolo solo muestra la redacción de las etapas que usa, y solo hay que traducir esa redacción a un idioma en el que Network Canvas no tenga redacción. Cada ajuste se encuentra en la sección **Personalizar la redacción predeterminada** del editor de etapas y, en la tabla de traducciones, bajo su etapa:
+
+| Etapa                                                                                                                                                                                                                                                                                                                                                                                                                           | Contenido                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [«Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen#finishing-the-interview)                                                                                                                                                                                                                                                                                                                | El botón de finalizar, la pregunta de confirmación y el mensaje que se muestra cuando no se puede finalizar                                                                                   |
+| [«Generador de nombres»](/es/design-protocols/interface-documentation/name-generator-using-forms#customize-built-in-wording), [«Generador de nombres (adición rápida)»](/es/design-protocols/interface-documentation/name-generator-using-quick-add#customize-built-in-wording) y [«Generador de nombres a partir de una lista»](/es/design-protocols/interface-documentation/name-generator-roster#customize-built-in-wording) | Los avisos de mínimo y máximo, el texto de ejemplo del cuadro de adición rápida y, en una lista predefinida, el aviso de que no queda nada por añadir y la etiqueta de una entrada sin nombre |
+| [Interfaz geoespacial](/es/design-protocols/interface-documentation/geospatial#customize-built-in-wording)                                                                                                                                                                                                                                                                                                                      | La etiqueta de los lugares situados fuera de las áreas seleccionables                                                                                                                         |
+| [«Narrativa»](/es/design-protocols/interface-documentation/narrative#customize-built-in-wording)                                                                                                                                                                                                                                                                                                                                | Los encabezados de los paneles de la etapa                                                                                                                                                    |
+| [«Genealogía narrativa»](/es/design-protocols/interface-documentation/narrative-pedigree#customize-built-in-wording)                                                                                                                                                                                                                                                                                                            | La primera opción del menú de afecciones, el botón de captura y los encabezados de las capturas                                                                                               |
+| [«Genealogía familiar»](/es/design-protocols/interface-documentation/family-pedigree#customize-built-in-wording)                                                                                                                                                                                                                                                                                                                | El nombre de la propia persona participante, y la redacción para conectar personas y añadir a un familiar                                                                                     |
+| [«Clasificación por categorías»](/es/design-protocols/interface-documentation/categorical-bin#customize-built-in-wording) y [«Clasificación ordinal»](/es/design-protocols/interface-documentation/ordinal-bin#customize-built-in-wording)                                                                                                                                                                                      | El aviso que se muestra cuando una persona participante intenta continuar antes de colocar todos los nodos                                                                                    |
+| [«Selector de idioma»](/es/design-protocols/interface-documentation/language-chooser#configuring-the-language-chooser)                                                                                                                                                                                                                                                                                                          | El encabezado situado encima de la lista de idiomas                                                                                                                                           |
+
+Parte de esta redacción puede mostrar valores que completa la entrevista. Cada uno de esos valores es una etiqueta con nombre dentro del campo, que se inserta con el botón de texto dinámico (piped text) del campo: el número de nodos en un aviso de mínimo o de máximo, el nombre del tipo de nodo de la etapa (tal como lo nombra el libro de códigos) en los avisos de los generadores de nombres y de las etapas «Clasificación por categorías» y «Clasificación ordinal», y el nombre de la afección en la leyenda de una etapa «Genealogía narrativa». El nombre que da una etapa «Genealogía familiar» a la persona participante también puede mostrar un atributo suyo, como un nombre indicado en una etapa «Formulario del ego» anterior (consulta [Texto dinámico](/es/design-protocols/piped-text)).
+
+La sección **Personalizar la redacción predeterminada** se puede desactivar. Mientras está desactivada, la etapa usa la redacción de Network Canvas en todos los idiomas, y al desactivarla se restablece esa redacción, previa confirmación, si se ha cambiado alguna parte de ella. La sección está activada inicialmente cuando el protocolo tiene más de un idioma, para que la redacción que falta por traducir esté a la vista, y cuando la redacción de la etapa ya se ha cambiado. Una etapa sin redacción que personalizar, como una etapa «Generador de nombres» sin mínimo ni máximo, no tiene esta sección.
+
+Algunos tipos de etapa también muestran redacción que es la misma en todas las etapas de ese tipo (consulta [Texto de entrevista](#interview-text)). En ese caso, su sección tiene dos partes, que se abren y se cierran haciendo clic en su encabezado: **Textos exclusivos de esta etapa** y **Textos comunes a todas las etapas de este tipo**. La redacción común también se puede cambiar ahí. Un cambio en ella se aplica a todas las etapas que la muestran, y se guarda en cuanto sales del campo, no al guardar la etapa. Al desactivar la sección también se restablece la redacción común de Network Canvas.
+
+Una etapa ofrece solo la redacción que puede mostrar. La redacción que solo se aplica mientras una parte de una etapa está activada, como el aviso de mínimo de una etapa de generador de nombres, o el aviso de una etapa de clasificación mientras **Exigir que se coloquen todos los nodos** está activado, solo se ofrece mientras esa parte está activada. Architect la muestra, con la redacción de Network Canvas en cada uno de los idiomas del protocolo, cuando se activa esa parte, y elimina la redacción cambiada cuando se desactiva.
+
+### Texto de entrevista {#interview-text}
+
+El resto de la redacción se comparte entre etapas y, por tanto, pertenece a la entrevista en su conjunto. Es el **texto de entrevista** del protocolo, y un protocolo muestra solo las partes que usan sus etapas y su libro de códigos:
+
+- **Navegación de la entrevista.** Los botones «Volver» y «Continuar», y el botón «Salir de la entrevista» con su explicación.
+- **Botones.** «Cancelar» y los botones que copian los detalles de un error. Un protocolo con una etapa «Generador de nombres» muestra «Listo», que cierra su formulario, y uno con una etapa «Genealogía familiar» o «Compositor de redes» muestra «Eliminar». Un protocolo muestra las respuestas «Sí» y «No» cuando se responde a una pregunta con ellas: en una etapa «Censo de díadas», en una etapa «Genealogía familiar», en un atributo de sí o no o en una tarjeta de lista predefinida que muestra uno. La respuesta «Sí» también confirma que se descartan los cambios, así que un protocolo que puede preguntarlo también muestra «Sí». Un protocolo con una etapa [«Genealogía familiar»](/es/design-protocols/interface-documentation/family-pedigree) también muestra «Guardar», «Deshacer», «Rehacer», «Omitir» y la respuesta «No lo sé»; uno con una etapa «Genealogía familiar» o «Genealogía narrativa» muestra «Acercar» y «Alejar», y uno con una etapa «Sociograma» o «Narrativa» que usa la disposición automática muestra la información emergente de los botones que pausan y reanudan la disposición.
+- **Mensajes.** El mensaje que se muestra cuando no se ha podido mostrar una etapa, el nombre que se da a alguien que se ha quedado sin nombre y un mensaje de error general que se muestra siempre que algo falla sin un mensaje más específico, incluso cuando no se ha podido enviar un formulario. Un protocolo con una etapa «Información» que muestra un archivo también muestra el mensaje que se muestra cuando no se ha podido mostrar el archivo. Un protocolo cuya etapa de generador de nombres lee un archivo de datos de red, en un panel lateral o en una lista predefinida, también muestra el mensaje de carga y el mensaje que se muestra cuando no se ha podido cargar ese archivo.
+- **Búsqueda.** El texto de ejemplo de un cuadro de búsqueda y el mensaje que se muestra cuando una búsqueda no encuentra nada. Todos los protocolos los muestran, porque se puede buscar en la lista de pantallas de la entrevista.
+- **Redacción de la frase de contraseña.** La redacción que pide, confirma y explica una frase de contraseña. Un protocolo solo la muestra cuando cifra un atributo o incluye una etapa de [anonimización](/es/design-protocols/interface-documentation/anonymisation). Los mensajes que se muestran cuando las respuestas protegidas por la frase de contraseña están bloqueadas o no están disponibles solo se muestran mientras el protocolo cifra un atributo, y el mensaje de que se ha aceptado la frase de contraseña, solo mientras incluye una etapa de anonimización, que es donde se elige la frase de contraseña.
+- **Formularios.** La pregunta y la explicación de la confirmación que pregunta si se descartan los cambios. Un protocolo solo las muestra cuando tiene una etapa «Formulario del ego», «Formulario por álter» (un formulario para cada álter, es decir, cada persona a la que se nombra durante la entrevista) o «Formulario de vínculos por álter» (un formulario para cada vínculo entre dos álteres), o una etapa «Compositor de redes» con un formulario.
+- **Mensajes de validación.** El mensaje que ve una persona participante cuando una respuesta incumple una regla, como un valor demasiado grande o una respuesta obligatoria que falta. Cada regla tiene una sola redacción, común a todas las preguntas que la usan, y un protocolo muestra solo los mensajes de las reglas que usa.
+- **Controles de la persona entrevistadora.** La redacción que solo ve la persona entrevistadora, como la que sirve para salir de la revisión de una entrevista finalizada o para mostrar una pantalla que las respuestas anteriores han ocultado.
+- **Redacción común a todas las etapas de un mismo tipo.** Un protocolo con una etapa «Genealogía familiar» o «Genealogía narrativa» muestra las descripciones de los botones de zoom y el nombre y la descripción del botón que muestra toda la familia. Uno con una etapa «Genealogía familiar» también muestra los nombres, las descripciones y las indicaciones de sus herramientas, las descripciones de sus botones «Deshacer» y «Rehacer», el elemento de la lista de comprobación que pide todos los datos mientras una etapa «Genealogía familiar» comprueba la completitud y, mientras una etapa «Genealogía familiar» permite a quienes participan elegir las palabras para referirse a su familia, la pregunta que se lo plantea y el botón de la barra de herramientas que las cambia. Uno con una etapa «Genealogía narrativa» muestra el encabezado y las entradas de su leyenda, que pueden mostrar el nombre de la afección, y la información emergente del botón que quita el foco. Los botones que podría mostrar cualquier etapa, como «Deshacer» o «Acercar», se nombran una sola vez entre los botones anteriores, así que todas las etapas que los muestran usan las mismas palabras. Uno con una etapa «Clasificación por categorías» que coloca los nodos con un toque muestra «Colocar aquí»; uno con una etapa «Generador de nombres (adición rápida)» muestra la indicación que explica a quienes participan cómo terminar de añadir un nodo; uno con una etapa «Narrativa» que tiene el dibujo activado muestra la información emergente de sus herramientas de dibujo; uno con una etapa geoespacial muestra el aviso de falta de conexión, el mensaje que se muestra cuando el mapa no está disponible y, mientras un mapa permite buscar, el mensaje que se muestra cuando no se ha podido realizar una búsqueda; y uno con una etapa «Compositor de redes» muestra su redacción, parte de la cual solo mientras una etapa «Compositor de redes» está configurada para mostrarla. Esta redacción se puede cambiar en la tabla de traducciones o en **Textos comunes a todas las etapas de este tipo**, en la sección **Personalizar la redacción predeterminada** de cualquier etapa que la muestre. En ambos casos, el cambio se aplica a todas las etapas que la muestran.
+
+Architect enumera la redacción que muestra un protocolo a medida que este se construye: al activar una regla de validación se enumera su mensaje, y al eliminar el último uso de una regla se quita de la lista. La redacción que se ha cambiado se conserva mientras el protocolo la muestra, y se elimina cuando deja de mostrarla.
+
+En la tabla de traducciones, el texto de entrevista forma el último grupo, **Textos de la entrevista**, y cada fila se nombra según la redacción que contiene. Salvo la redacción común a todas las etapas de un mismo tipo, la tabla de traducciones es el único lugar donde se puede cambiar esta redacción, así que un protocolo con un solo idioma conserva la redacción de Network Canvas para el resto.
+
+## Previsualizar un idioma {#previewing-a-language}
+
+El [modo de vista previa](/es/design-protocols/preview-mode) muestra una etapa tal como la verán quienes participan, en un idioma que se elige en el menú **Idioma de la vista previa**, situado encima de la vista previa (consulta [Elegir el idioma de la vista previa](/es/design-protocols/preview-mode#choosing-the-preview-language)). Un texto sin traducción en el idioma de la vista previa aparece tal como lo vería una persona participante que usa ese idioma. Previsualizar cada etapa en cada idioma permite al equipo comprobar una traducción, incluida la longitud del texto traducido, antes de someterla a un pretest con participantes.
+
+![Vista previa de una etapa «Selector de idioma» en español. El menú «Idioma de la vista previa», situado encima de la vista previa, tiene seleccionado «español», y el encabezado de la etapa dice «Elige un idioma».](/assets/img/architect/localization/preview-language.png)
+
+## Imprimir tus traducciones {#printing-your-translations}
+
+La pestaña **Resumen** presenta el protocolo completo en una sola página, que se puede imprimir con el botón **Imprimir**. Cuando un protocolo tiene más de un idioma, el resumen muestra cada texto en cada uno de los idiomas del protocolo, por orden alfabético, con el idioma predeterminado marcado como **Predeterminado**, y su portada enumera los idiomas del protocolo. Cuando un texto todavía no se ha traducido a un idioma, el resumen lo indica y nombra el idioma que verán en su lugar quienes participan. Cuando el resumen hace referencia a un texto que aparece en otra parte del mismo, como el nombre de una etapa en su índice, usa el idioma predeterminado.
+
+El resumen impreso se puede presentar a un comité de ética para su revisión.
+
+## Cómo se asigna el idioma a cada participante {#how-participants-get-their-language}
+
+Cuando empieza una entrevista, usa el primer idioma de la configuración de idioma de la persona participante en el que esté escrito el protocolo, contando las coincidencias regionales cercanas. Por eso, a una persona participante cuyo navegador está configurado en español de México (`es-MX`) se le muestra el texto en español (`es`), y a una con el navegador en portugués de Portugal (`pt-PT`), el texto en portugués de Brasil (`pt-BR`). Si ninguno de los idiomas de la persona participante coincide, la entrevista usa el idioma predeterminado. Allí donde el protocolo no tiene traducción en ese idioma, la persona participante ve la traducción de otro idioma (consulta [El idioma predeterminado y qué traducción ve cada participante](#the-default-language-and-which-translation-participants-see)).
+
+El origen de esta configuración depende de la aplicación:
+
+- **Fresco** usa los idiomas configurados en el navegador web de la persona participante. El idioma del panel de administración de Fresco no afecta a las entrevistas.
+- **Interviewer** usa la configuración de idioma del dispositivo o del navegador en el que se ejecuta. El ajuste **Idioma de la aplicación** de Interviewer no afecta a las entrevistas.
+
+Una etapa [«Selector de idioma»](/es/design-protocols/interface-documentation/language-chooser) permite que quienes participan elijan el idioma por su cuenta, y es la única forma de cambiar el idioma durante una entrevista. Enumera los idiomas del protocolo por orden alfabético, cada uno en su propio idioma. Una vez que la persona participante ha elegido, la entrevista mantiene esa elección hasta que se cierra la pestaña del navegador, incluso después de recargar la página. La elección no se guarda con la entrevista, así que una entrevista que se abre en una pestaña nueva, o que se reanuda en otro dispositivo, vuelve a seleccionar su idioma hasta que la persona participante elige.
+
+Todo lo que muestra la entrevista procede del protocolo, incluidas su [redacción de las etapas](#stage-wording) y su [texto de entrevista](#interview-text), así que cada participante lee toda la entrevista en un solo idioma. Solo las palabras que leen los lectores de pantalla están siempre en inglés.
+
+Cuando la entrevista se muestra en un idioma que se escribe de derecha a izquierda, como el árabe o el hebreo, sus etapas se disponen de derecha a izquierda. Una familia dibujada en una etapa [«Genealogía familiar»](/es/design-protocols/interface-documentation/family-pedigree#adding-relatives) o [«Genealogía narrativa»](/es/design-protocols/interface-documentation/narrative-pedigree) no se refleja en espejo, porque un árbol genealógico se dibuja con la misma orientación en todos los idiomas.
+
+## Los idiomas en tus datos {#languages-in-your-data}
+
+El idioma en el que se mostró una entrevista no se guarda con la entrevista ni se incluye en los datos exportados. Las respuestas, los valores de las opciones categóricas y ordinales y los nombres de los tipos de nodo, los tipos de vínculo y los atributos son los mismos sea cual sea el idioma en que haya leído la entrevista la persona participante.
+
+Cuando el idioma de administración es relevante para el análisis, por ejemplo, para comprobar si una medida se comporta de forma equivalente entre grupos lingüísticos, conviene registrarlo de forma explícita. Una opción es incluir una pregunta en una etapa «Formulario del ego», que completa la persona participante o la persona entrevistadora, para registrar el idioma en que se realizó la entrevista.
+
+## Prácticas recomendadas {#recommended-practice}
+
+<GoodPractice>
+
+Planifica los idiomas del protocolo antes de escribirlo. Escribe el texto de origen pensando en la traducción, evitando las expresiones idiomáticas y los ejemplos culturalmente específicos que no tienen equivalente en los demás idiomas.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Usa un procedimiento de traducción en equipo y documentado, y registra las decisiones tomadas durante la revisión y la adjudicación. Los generadores de nombres y las categorías de respuesta merecen un examen especialmente atento, porque determinan qué relaciones se declaran y cómo se clasifican.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Somete el protocolo a un pretest en todos los idiomas con miembros de la población que lo va a completar, usando el modo de vista previa o una implementación de prueba, antes de empezar la recopilación de datos.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Completa todas las traducciones antes de usar el protocolo para recopilar datos. La vista **Falta en algún idioma mostrado** de la tabla de traducciones enumera las que quedan.
+
+</GoodPractice>
+
+<BadPractice>
+
+Evita depender de la traducción automática sin una revisión por parte de hablantes con dominio del idioma que entiendan los constructos del estudio. Ese resultado puede leerse con fluidez y, aun así, cambiar el significado de una pregunta.
+
+</BadPractice>
+
+<BadPractice>
+
+Evita cambiar la estructura de un protocolo para resolver un problema detectado en un idioma sin tener en cuenta su efecto en los demás. Todos los idiomas comparten las mismas etapas y el mismo libro de códigos, así que un cambio estructural se aplica a todos ellos.
+
+</BadPractice>
+
+## Referencias {#references}
+
+- Bailey S, Marsden PV.
+  [Interpretation and interview context: examining the General Social Survey
+  name generator using cognitive methods.](<https://doi.org/10.1016/S0378-8733(99)00013-1>)
+  _Social Networks_. 1999;21(3):287–309.
+- Beaton DE, Bombardier C, Guillemin F, Ferraz MB.
+  [Guidelines for the process of cross-cultural adaptation of self-report
+  measures.](https://doi.org/10.1097/00007632-200012150-00014) _Spine_.
+  2000;25(24):3186–3191.
+- Brislin RW.
+  [Back-translation for cross-cultural research.](https://doi.org/10.1177/135910457000100301)
+  _Journal of Cross-Cultural Psychology_. 1970;1(3):185–216.
+- Ruan D.
+  [The content of the General Social Survey discussion networks: an
+  exploration of General Social Survey discussion name generator in a Chinese
+  context.](<https://doi.org/10.1016/S0378-8733(98)00004-5>) _Social Networks_.
+  1998;20(3):247–264.
+- Survey Research Center.
+  [Translation: overview.](https://ccsg.isr.umich.edu/chapters/translation/overview/)
+  In: _Guidelines for Best Practice in Cross-Cultural Surveys_. Ann Arbor:
+  Survey Research Center, Institute for Social Research, University of
+  Michigan; 2016.
+- Walde P, Völlm BA.
+  [The TRAPD approach as a method for questionnaire
+  translation.](https://doi.org/10.3389/fpsyt.2023.1199989) _Frontiers in
+  Psychiatry_. 2023;14:1199989.
+- Wild D, Grove A, Martin M, et al.
+  [Principles of good practice for the translation and cultural adaptation
+  process for patient-reported outcomes (PRO) measures: report of the ISPOR
+  Task Force for Translation and Cultural Adaptation.](https://doi.org/10.1111/j.1524-4733.2005.04054.x)
+  _Value in Health_. 2005;8(2):94–104.

@@ -1,0 +1,460 @@
+---
+title: Variables
+navOrder: 4
+date: 5th October 2026
+translatedFrom: 6a5fb1eb94dfec0dc4ec2f2b4f18585451c40fbb
+---
+
+<Definition>
+  Las variables son campos de datos que defines en tu protocolo para recoger,
+  durante la entrevista, información sobre el ego (la persona entrevistada), sus
+  álteres (cada persona a la que se nombra durante la entrevista) y los
+  vínculos.
+</Definition>
+
+## Resumen {#overview}
+
+Las variables son los elementos de datos fundamentales de los protocolos de Network Canvas. Cada dato que recoges, desde el nombre de un álter hasta la fuerza de una relación, se almacena en una variable. Entender las variables es imprescindible para diseñar protocolos eficaces y para trabajar con tus datos exportados.
+
+Cuando creas un protocolo en Architect, defines las variables de la siguiente manera:
+
+1. Eliges a qué tipo de entidad pertenecen (ego, nodo o vínculo)
+2. Seleccionas un tipo de variable (texto, número, booleano, categórico, etc.)
+3. Asignas un [control de entrada](/es/design-protocols/key-concepts/input-controls), que determina cómo aporta los datos cada participante
+4. Si quieres, configuras [reglas de validación](/es/design-protocols/key-concepts/field-validation)
+
+## Tipos de variable {#variable-types}
+
+Network Canvas admite varios tipos de variable, cada uno pensado para un tipo distinto de datos:
+
+### Texto (cadena) {#text-string}
+
+Las variables de texto recogen respuestas en forma de texto, como nombres, descripciones o respuestas abiertas. Los controles de entrada disponibles son Entrada de texto (una sola línea) y Área de texto (varias líneas). Algunos ejemplos son el nombre de un álter («Juan García»), la descripción de una relación («Nos conocimos en el trabajo y acabamos teniendo una amistad muy estrecha») y notas sobre un álter. En los datos exportados, las variables de texto aparecen como cadenas de texto en CSV y como elementos de texto en GraphML.
+
+### Número {#number}
+
+Las variables numéricas recogen datos numéricos, como edades, recuentos, puntuaciones o mediciones. El control de entrada disponible es Entrada numérica. Algunos ejemplos son la edad (34), el número de interacciones por semana (5) y los años que hace que se conocen (12). En los datos exportados, las variables numéricas aparecen como valores numéricos aptos para el análisis estadístico.
+
+### Booleano {#boolean}
+
+Las variables booleanas recogen datos binarios del tipo verdadero/falso o sí/no. Los controles de entrada disponibles son Interruptor y Casilla (individual). Algunos ejemplos son si vive cerca (verdadero/falso), si ofrece apoyo emocional (sí/no) y si es de la familia (verdadero/falso). En los datos exportados, las variables booleanas aparecen como `true`/`false` en CSV y como valores booleanos en GraphML.
+
+### Categórico (nominal) {#categorical-nominal}
+
+Las variables categóricas recogen datos cuyas opciones de respuesta no tienen un orden propio: las respuestas son categorías diferenciadas. Los controles de entrada disponibles son Grupo de opciones (selección única), Grupo de botones conmutables (selección única) y Grupo de casillas (selección múltiple). Algunos ejemplos son el género (Hombre, Mujer, No binario, Otro), el tipo de relación (Amistad, Familia, Trabajo, Vecindad) y las formas de contacto (Teléfono, Correo electrónico, En persona, Mensaje de texto, con varias respuestas posibles). En los datos exportados, las variables categóricas aparecen como una columna por cada opción, con valores `true`/`false`, tanto si quienes participan pueden seleccionar una sola opción como si pueden seleccionar varias.
+
+### Ordinal {#ordinal}
+
+Las variables ordinales recogen datos cuyas opciones de respuesta tienen un orden o una jerarquía con sentido. Los controles de entrada disponibles son Escala Likert, Grupo de opciones y Grupo de botones conmutables. Algunos ejemplos son la cercanía (Nada cercana, Algo cercana, Muy cercana, Extremadamente cercana), la frecuencia de contacto (Nunca, Rara vez, Mensual, Semanal, Diaria) y el grado de acuerdo (Totalmente en desacuerdo, En desacuerdo, Neutral, De acuerdo, Totalmente de acuerdo). En los datos exportados, las variables ordinales se pueden tratar como categorías ordenadas en un análisis ordinal.
+
+### Escalar (continuo) {#scalar-continuous}
+
+Las variables escalares recogen datos numéricos continuos a lo largo de una escala. El control de entrada disponible es Escala analógica visual (VAS). Algunos ejemplos son la cercanía emocional, el nivel de confianza y la fuerza de la relación. En lugar de un intervalo numérico, das a la escala una etiqueta para cada extremo (como «Nada cercana» y «Extremadamente cercana»), y la persona participante coloca un control deslizante entre ellas. La respuesta se registra en una escala normalizada de 0 a 1, así que en los datos exportados las variables escalares aparecen como decimales aptos para el análisis estadístico de datos continuos.
+
+### Fecha {#date}
+
+Las variables de fecha recogen fechas concretas. El control de entrada disponible es Selector de fecha. Algunos ejemplos son la fecha de nacimiento, la fecha del último contacto y cuándo empezó una relación. En los datos exportados, las variables de fecha aparecen como valores de fecha en formato estándar (AAAA-MM-DD).
+
+### Disposición (coordenadas) {#layout-coordinates}
+
+Las variables de disposición almacenan la posición x/y de los nodos en las interfaces «Sociograma». Las variables de disposición no tienen controles de entrada, porque se registran automáticamente a partir de las interacciones en el sociograma. Algunos ejemplos son la posición de un nodo en el sociograma y las coordenadas de la disposición espacial. En los datos exportados, las variables de disposición aparecen como valores de las coordenadas X e Y (normalizados de 0 a 1 o en píxeles, según las opciones de exportación).
+
+### Ubicación {#location}
+
+Las variables de ubicación almacenan la zona geográfica que cada participante selecciona para un álter en la [interfaz geoespacial](/es/design-protocols/interface-documentation/geospatial). Al igual que las variables de disposición, una variable de ubicación no tiene un control de entrada propio; aunque aparece en la lista de tipos de variable, apenas hay motivos para añadir una ahí por sí sola. En la práctica, Architect crea una cuando configuras la «Variable de selección» de una etapa geoespacial (puedes elegir una variable de ubicación existente o crear una nueva en ese mismo lugar). La zona seleccionada se registra con respecto al archivo de formas GeoJSON que define el mapa.
+
+## Cómo funcionan las variables {#how-variables-work}
+
+### Creación de variables {#variable-creation}
+
+Las variables se crean al configurar las [interfaces](/es/design-protocols/key-concepts/interfaces) en Architect:
+
+1. **Generadores de nombres:** crean variables para los atributos de los álteres (nombre, datos demográficos, características)
+2. **Formularios:** crean variables para cualquier tipo de entidad (atributos del ego, de los álteres o de los vínculos)
+3. **«Clasificación por categorías» y «Clasificación ordinal»:** crean variables categóricas u ordinales
+4. **«Sociograma»:** crea automáticamente variables de disposición para las posiciones de los nodos
+
+### Ámbito de las variables {#variable-scope}
+
+Cada variable pertenece a un tipo de entidad.
+
+Las variables de ego recogen datos sobre la persona participante, como la edad, el género y otros datos demográficos, además de medidas de toda la red y metadatos de la sesión de entrevista. Cada variable de ego tiene un valor por entrevista.
+
+Las variables de nodo recogen datos sobre los álteres, como sus atributos (nombre, edad, tipo de relación), sus características y sus datos demográficos. Cada variable de nodo tiene varios valores por entrevista (uno por álter).
+
+Las variables de vínculo recogen datos sobre las relaciones entre álteres, como los atributos de la relación (fuerza, frecuencia, tipo) y las características del vínculo. Cada variable de vínculo tiene varios valores por entrevista (uno por vínculo).
+
+### Reutilización de variables {#variable-reuse}
+
+Una vez creada una variable, puedes usarla en varias etapas de tu protocolo. Esto aporta coherencia (la misma definición de la variable en todas partes), eficiencia (se define una vez y se usa muchas veces) y calidad de los datos (una estructura de datos coherente). Ten en cuenta que los cambios en una variable (tipo, control de entrada, validación) se aplican a todos los lugares del protocolo en los que se usa.
+
+### Persistencia de las variables {#variable-persistence}
+
+Las variables se conservan a lo largo de toda la entrevista:
+
+- Los valores que se asignan en las primeras etapas están disponibles en las etapas posteriores
+- Puedes usar la [lógica de salto](/es/design-protocols/key-concepts/skip-logic) para mostrar etapas de forma condicional según los valores de las variables
+- Puedes usar el [filtrado de la red](/es/design-protocols/key-concepts/network-filtering) para mostrar solo las entidades con determinados valores de una variable
+
+### Variables cifradas {#encrypted-variables}
+
+Una variable puede llevar la marca `encrypted`, que indica que sus valores se cifran en el dispositivo para que el equipo de investigación no pueda leerlos. Esta marca no se configura en la propia variable: no aparece en el editor de variables. En su lugar, añades a tu protocolo una [interfaz de anonimización](/es/design-protocols/interface-documentation/anonymisation) y seleccionas qué atributos de nodo se cifran en su sección **Atributos cifrados**. Los valores cifrados solo se almacenan en forma cifrada y nunca se incluyen de forma legible en las exportaciones. Consulta la [documentación de la interfaz de anonimización](/es/design-protocols/interface-documentation/anonymisation) para obtener más información.
+
+## Crear variables {#creating-variables}
+
+### En los formularios {#in-forms}
+
+Al crear un campo en un [formulario](/es/design-protocols/key-concepts/forms):
+
+1. <AppOnly app="current">Haz clic en **Seleccionar atributo** y, después, elige un atributo existente o escribe un nombre nuevo (usa nombres descriptivos: `close_friend`, `contact_frequency`) y elige **Crear un atributo nuevo llamado «…».**</AppOnly><AppOnly app="classic">Haz clic en **Create new** (crear nuevo) o selecciona una variable existente y, después, introduce un nombre de variable (usa nombres descriptivos: `close_friend`, `contact_frequency`)</AppOnly>
+2. Selecciona un [control de entrada](/es/design-protocols/key-concepts/input-controls); con él se establece el tipo de variable
+3. Configura las opciones propias del control
+4. Establece [reglas de validación](/es/design-protocols/key-concepts/field-validation) si hace falta
+
+### En las etapas «Clasificación por categorías» y «Clasificación ordinal» {#in-categoricalordinal-bins}
+
+Al configurar estas etapas:
+
+1. Asigna un nombre a la variable (por ejemplo, `relationship_strength`)
+2. Define las categorías o los niveles del orden
+3. El tipo de variable se establece automáticamente como categórico u ordinal
+
+<AppOnly app="current">
+
+En Architect, las opciones de respuesta de un atributo categórico u ordinal se editan directamente debajo del atributo que has elegido, en cualquier lugar donde se elija uno: una pregunta de una etapa de clasificación, un campo de formulario, una pregunta sobre la fuerza del vínculo o una fila de una etapa «Compositor de redes». Se guardan con el mismo botón que guarda el resto de la pregunta o del campo. Las dos etiquetas de un atributo booleano se editan de la misma manera. Las etiquetas de las opciones admiten texto en **negrita** y en _cursiva_, que quienes participan ven como énfasis, y nada más: una etiqueta no puede contener encabezados, enlaces ni listas. Un atributo cuyas opciones de respuesta pertenecen a una interfaz se muestra en modo de solo lectura, con una nota que explica por qué.
+
+</AppOnly>
+
+### Variables automáticas {#automatic-variables}
+
+Algunas variables se crean automáticamente:
+
+**Variables de disposición:** se crean cuando añades una interfaz «Sociograma»
+
+- Almacenan las coordenadas x/y de las posiciones de los nodos
+- Su nombre lo asigna la etapa «Sociograma»
+
+**Variables de ubicación:** se crean cuando configuras una interfaz geoespacial
+
+- Almacenan la zona geográfica seleccionada para un álter
+- Se crean (o se seleccionan) mediante la «Variable de selección» de la etapa
+
+**Variables del sistema:** Network Canvas las crea automáticamente
+
+- `networkCanvasUUID`: identificador único de cada entidad
+- `networkCanvasEgoUUID`: identificador único del ego
+- Marcas de tiempo y metadatos de la sesión de entrevista
+
+## Buenas prácticas para nombrar variables {#variable-naming-best-practices}
+
+El nombre de una variable es el que aparece en el libro de códigos y se convierte en el nombre de la columna en tus datos exportados. En este apartado se explica qué puede contener un nombre, qué nombres rechaza Architect porque coincidirían con otros en los datos exportados y algunos consejos para elegir nombres fáciles de analizar.
+
+### Qué puede contener un nombre {#what-a-name-can-contain}
+
+<AppOnly app="current">
+
+Los nombres pueden estar escritos en cualquier idioma y pueden incluir espacios y signos de puntuación. Todos estos son nombres de variable válidos:
+
+- `close_friend`
+- `género`
+- `关系类型`
+- `contact frequency (per week)`
+
+La misma libertad se aplica a los nombres de los tipos de nodo y de los tipos de vínculo, y a los valores de las opciones categóricas y ordinales. Lo que pueden contener todos ellos solo tiene dos límites. Un nombre:
+
+- no puede estar vacío
+- no puede contener tabulaciones, saltos de línea ni otros caracteres de control invisibles, ni tampoco los códigos especiales U+FFFE y U+FFFF, que no aparecen en el texto normal. Estos caracteres suelen colarse al pegar texto copiado de otro programa.
+
+Además, el nombre de una variable no puede ser igual que el de otra variable del mismo tipo de nodo, del mismo tipo de vínculo o del ego, sin distinguir entre mayúsculas y minúsculas: `Age` y `age` cuentan como el mismo nombre.
+
+Architect limpia cada nombre al guardarlo. Elimina los espacios del principio y del final, y almacena las letras con tilde en una forma única y coherente (Unicode NFC), de modo que un nombre escrito con dos teclados distintos se guarda igual.
+
+Los encabezados de las columnas de un archivo de lista (una lista predefinida que se importa como archivo de datos) funcionan de otra manera: Architect rechaza un encabezado que empiece o termine con un espacio, en lugar de eliminar los espacios. Consulta [Encabezados de las columnas](/es/design-protocols/tutorials/working-with-rosters#column-headings), en Trabajar con listas predefinidas, para saber cuándo ocurre.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Architect Classic solo admite en los nombres de variable las letras de la A a la Z y de la a a la z, los dígitos del 0 al 9 y los símbolos `.`, `_`, `-` y `:`, sin espacios. Los protocolos que usan nombres en otros idiomas, o nombres con espacios u otros signos de puntuación, usan el esquema de protocolo 9, que Architect Classic no puede abrir. Consulta [Información sobre el esquema de protocolo](/es/get-started/protocol-schema-information#schema-version-9).
+
+</AppOnly>
+
+### Nombres que coincidirían en los datos exportados {#names-that-would-clash-in-exported-data}
+
+<AppOnly app="current">
+
+La mayoría de las variables se exportan como una sola columna con el nombre de la variable, pero dos tipos se exportan como varias columnas:
+
+- Una variable **categórica** recibe una columna por cada opción, con el nombre `variable_option`. Una variable `support` con las opciones `emotional` y `financial` recibe las columnas `support_emotional` y `support_financial`.
+- Una variable de **disposición** recibe una columna por cada coordenada: `_x` y `_y` en los archivos CSV, `_X` y `_Y` en los archivos GraphML, y `_screenSpaceX` y `_screenSpaceY` cuando se exportan las coordenadas de la pantalla.
+
+Esto significa que dos nombres distintos pueden dar lugar a la misma columna. Architect lo comprueba cada vez que asignas un nombre a una variable, añades una opción o cambias el valor de una opción, y explica qué columna coincidiría. Al igual que con los nombres repetidos, no se tienen en cuenta las mayúsculas y minúsculas. La comprobación abarca CSV y GraphML, incluidas las columnas de las coordenadas de la pantalla, porque los nombres se eligen mucho antes que las opciones de exportación.
+
+Architect rechaza un nombre o una opción en cada una de estas situaciones:
+
+| Qué coincide                                                              | Ejemplo                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| El nombre de una variable y la opción de otra variable                    | Una variable categórica `support` tiene la opción `emotional`, así que escribe la columna `support_emotional`. Ninguna otra variable puede llamarse `support_emotional`.                                                                                                                                                                       |
+| Una opción y el nombre de otra variable                                   | El caso inverso: si ya existe una variable llamada `support_emotional`, no puedes añadir la opción `emotional` a `support`.                                                                                                                                                                                                                    |
+| Dos opciones de variables distintas                                       | `contact` con la opción `in_person` y `contact_in` con la opción `person` escribirían ambas `contact_in_person`.                                                                                                                                                                                                                               |
+| El nombre de una variable y una coordenada de una variable de disposición | Una variable de disposición `position` escribe `position_x` y `position_y`, así que ninguna otra variable puede llamarse `position_x` (ni `Position_X`).                                                                                                                                                                                       |
+| El nombre de una variable y una columna integrada                         | Todos los archivos de exportación tienen columnas que escribe el propio Network Canvas, como `nodeID`. Una variable de nodo no puede llamarse `nodeID`.                                                                                                                                                                                        |
+| Dos columnas que una exportación escribe igual                            | Los archivos GraphML sustituyen los espacios y la mayoría de los signos de puntuación por `_`, así que `close friend` y `close_friend` se escribirían ambas como `close_friend`. Los archivos CSV anteponen un apóstrofo a los nombres que empiezan por `=`, `+`, `-` o `@`, así que `=total` y `'=total` se escribirían ambas como `'=total`. |
+
+Estos son los nombres de columna integrados que las variables no pueden usar, en cualquier combinación de mayúsculas y minúsculas. Las columnas de las opciones y las columnas de disposición tampoco pueden usarlos.
+
+| Variables de | Nombres de columna reservados                                                                                                                                                                                                                                                            |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ego          | `_uid`, `caseId`, `sessionId`, `protocolName`, `sessionStart`, `sessionFinish`, `sessionExported`, `APP_VERSION`, `COMMIT_HASH`, `label`, `networkCanvasEgoUUID`, `networkCanvasCaseID`, `networkCanvasSessionID`, `networkCanvasProtocolName`, `networkCanvasType`, `networkCanvasUUID` |
+| Nodos        | `_uid`, `nodeID`, `label`, `networkCanvasEgoUUID`, `networkCanvasType`, `networkCanvasUUID`                                                                                                                                                                                              |
+| Vínculos     | `_uid`, `edgeID`, `from`, `to`, `label`, `networkCanvasEgoUUID`, `networkCanvasType`, `networkCanvasUUID`, `networkCanvasSourceUUID`, `networkCanvasTargetUUID`                                                                                                                          |
+
+Los protocolos creados antes de que Architect hiciera estas comprobaciones se abren y se ejecutan como antes. Si uno de ellos tiene dos variables que escriben la misma columna, la exportación renombra una de las columnas y te avisa. Consulta [Nombres de columna que coinciden](/es/analyze-data/data-export#column-names-that-clash).
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Architect Classic no comprueba si dos variables escribirían la misma columna en los datos exportados, así que comprueba por tu cuenta tus variables categóricas y de disposición. Una variable categórica `support` con la opción `emotional` escribe una columna `support_emotional`, y una variable de disposición `position` escribe `position_x` y `position_y`.
+
+</AppOnly>
+
+### Usa nombres descriptivos {#use-descriptive-names}
+
+**Buenos ejemplos:**
+
+- `close_friend` (significado claro)
+- `contact_frequency` (describe lo que se mide)
+- `provides_emotional_support` (inequívoco)
+
+**Malos ejemplos:**
+
+- `var1` (no significa nada)
+- `q3` (no se explica por sí mismo)
+- `test` (propósito poco claro)
+
+### Usa convenciones coherentes {#use-consistent-conventions}
+
+Elige un estilo de nomenclatura y mantenlo:
+
+- **snake_case** (recomendado): `contact_frequency`, `close_friend`
+- **camelCase**: `contactFrequency`, `closeFriend`
+- **PascalCase**: `ContactFrequency`, `CloseFriend`
+
+### Usa nombres concisos {#keep-names-concise}
+
+**Bien:** `age`, `gender`, `rel_type`, `freq`
+**Demasiado largo:** `participants_relationship_type_classification_scheme`
+
+### Piensa en el análisis de los datos {#plan-for-data-analysis}
+
+Tus archivos CSV conservan cada nombre tal como lo escribiste, en cualquier idioma. Sin embargo, algunos programas de análisis no manejan tan bien los espacios y los signos de puntuación en los nombres de columna:
+
+- La función `read.csv` de R base sustituye por puntos los espacios y los signos de puntuación de los nombres de columna, salvo que añadas `check.names = FALSE`. Consulta [Abrir archivos CSV](/es/analyze-data/data-export#opening-csv-files).
+- En R, un nombre de columna que contiene un espacio tiene que ir entre acentos graves, como en `` alters$`close friend` ``. En pandas, solo se puede usar entre corchetes, como en `alters["close friend"]`.
+- Los guiones pueden interpretarse como signos menos en las fórmulas, y algunos programas no aceptan un nombre que empiece por un número, como `1contact`.
+- A un nombre que empieza por `=`, `+`, `-` o `@` se le antepone un apóstrofo cuando es el encabezado de una columna CSV, para que los programas de hojas de cálculo no lo ejecuten como una fórmula. Consulta [Por qué algunos valores empiezan por un apóstrofo](/es/analyze-data/data-export#why-some-values-start-with-an-apostrophe).
+- Algunos paquetes estadísticos tienen reglas más estrictas que Network Canvas para los nombres de variable, y pueden renombrar columnas al importar un archivo.
+- Los nombres de los atributos de GraphML no pueden contener espacios ni la mayoría de los signos de puntuación, así que la exportación GraphML sustituye esos caracteres por `_`. Consulta [Nombres de los atributos de GraphML](/es/analyze-data/data-export#graphml-attribute-names).
+
+Si quieres nombres que nunca tengas que poner entre comillas en R o en Python, usa solo letras, números y guiones bajos (snake_case), y empieza cada nombre por una letra. También ayuda:
+
+- preferir nombres cortos, porque algunos paquetes estadísticos limitan su longitud
+- evitar abreviaturas que dentro de unos meses no se entenderán
+
+## Trabajar con variables {#working-with-variables}
+
+### Ver todas las variables {#viewing-all-variables}
+
+Usa el [libro de códigos](/es/design-protocols/key-concepts/codebook) de Architect:
+
+1. Abre el [libro de códigos](/es/design-protocols/key-concepts/codebook) de tu protocolo
+2. Consulta todas las variables, organizadas por tipo de entidad
+3. Comprueba dónde se usa cada variable
+4. Elimina las variables que no se usan
+
+### Modificar variables {#modifying-variables}
+
+<AppOnly app="current">
+
+Puedes cambiar el control de entrada (si es compatible con el tipo de variable), las reglas de validación, las opciones de respuesta de las variables categóricas y el nombre del atributo. No puedes cambiar el tipo de variable, que se establece al crearla con un control de entrada.
+
+Para renombrar un atributo, haz clic en la píldora del atributo que se ha seleccionado en una sección (la que aparece bajo **Cambiar atributo** en una pregunta, en un campo de formulario o en otro selector de atributos), o sitúa el foco en ella y pulsa Intro o la barra espaciadora. (Las píldoras que aparecen en otros lugares, como en los resultados de la búsqueda de atributos o en el resumen de una regla, son etiquetas y no controles; en el libro de códigos, usa en su lugar el control de edición de la propia fila del atributo). Se abre un cuadro con el nombre actual; escribe el nombre nuevo y haz clic en **Guardar cambios**. El nombre nuevo sigue las mismas reglas que cualquier otro nombre: consulta [Qué puede contener un nombre](#what-a-name-can-contain) y [Nombres que coincidirían en los datos exportados](#names-that-would-clash-in-exported-data). Si cancelas, pulsas Escape o haces clic fuera del cuadro, se mantiene el nombre anterior. Las etapas que usan el atributo lo siguen usando con su nombre nuevo, pero recuerda que el nombre se convierte en el nombre de la columna en los datos exportados.
+
+Los cambios que haces en el libro de códigos mientras hay una etapa abierta (crear un atributo, renombrarlo o editar sus opciones de respuesta o sus reglas de validación) se escriben en el libro de códigos de inmediato. Se conservan aunque después canceles los cambios en la etapa, porque un atributo pertenece a todas las etapas que lo usan y no solo a la etapa que estás editando.
+
+Para cambiar el tipo de variable, crea una variable nueva con la configuración que quieras, sustituye la variable antigua por la nueva en todas las etapas y elimina la variable antigua del libro de códigos.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Puedes cambiar el control de entrada (si es compatible con el tipo de variable), las reglas de validación y las opciones de respuesta de las variables categóricas. No puedes cambiar el tipo de variable (que se establece al crearla con un control de entrada) ni el nombre de la variable (cambiarlo rompería las referencias a ella).
+
+Para cambiar las propiedades que no se pueden modificar, crea una variable nueva con la configuración que quieras, sustituye la variable antigua por la nueva en todas las etapas y elimina la variable antigua del libro de códigos.
+
+</AppOnly>
+
+### Eliminar variables {#deleting-variables}
+
+Solo puedes eliminar las variables que no se usan:
+
+1. Abre el libro de códigos
+2. Busca las variables marcadas como «sin usar»
+3. Elimina las variables que no se usan
+
+**Nota:** las variables que se están usando no se pueden eliminar; primero quítalas de todas las etapas.
+
+## Las variables en los datos exportados {#variables-in-exported-data}
+
+### Estructura de la exportación CSV {#csv-export-structure}
+
+Cada archivo CSV empieza con columnas de identificadores que relacionan los archivos entre sí, seguidas de una o varias columnas por cada variable. La mayoría de las variables ocupan una sola columna. Una variable categórica ocupa una columna por cada opción, cada una con un nombre de la forma `variable_opción` y con el valor `true` o `false`, así que la variable `gender` del ejemplo siguiente se convierte en tres columnas.
+
+**Archivo de ego:** una fila por entrevista, con los datos de la sesión y después las variables de ego
+
+```csv
+networkCanvasEgoUUID,networkCanvasCaseID,networkCanvasSessionID,networkCanvasProtocolName,sessionStart,sessionFinish,sessionExported,APP_VERSION,COMMIT_HASH,networkCanvasFinishOutcome,age,gender_female,gender_male,gender_non_binary
+abc123,case_001,sess456,My Study,2025-01-15T10:30:00.000Z,2025-01-15T11:15:00.000Z,2025-01-16T09:00:00.000Z,9.0.0,1a2b3c4,completed,34,false,true,false
+```
+
+**Archivos de álteres:** una fila por álter, con sus variables de álter
+
+```csv
+nodeID,networkCanvasEgoUUID,networkCanvasUUID,name,age,close_friend
+1,abc123,xyz789,John,32,true
+2,abc123,uvw456,Sarah,29,false
+```
+
+**Archivos de vínculos:** una fila por vínculo, con sus variables de vínculo. `from` y `to` contienen el `nodeID` de los dos álteres que conecta.
+
+```csv
+edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID,relationship_strength,frequency
+1,1,2,abc123,edg001,xyz789,uvw456,strong,weekly
+```
+
+Si quieres una referencia completa que relacione cada tipo de variable con sus columnas CSV y sus atributos de GraphML exportados, junto con consejos para analizar cada tipo, consulta el [Diccionario de datos de exportación](/es/analyze-data/data-dictionary).
+
+### Nombres de las variables en las exportaciones {#variable-naming-in-exports}
+
+Los nombres de las variables de tu protocolo se convierten en nombres de columna en los datos exportados:
+
+- Variable `close_friend` → columna `close_friend`
+- Variables categóricas → una columna por opción, con el nombre `variable_option` y valores `true`/`false`
+- Variables de disposición → columnas con el nombre de la variable y los sufijos `_x` y `_y` (por ejemplo, `my_layout_x` y `my_layout_y`)
+
+Los archivos CSV usan cada nombre exactamente como aparece en el libro de códigos, con espacios, signos de puntuación o letras de otros idiomas. Los nombres de los atributos de GraphML no pueden contener espacios ni la mayoría de los signos de puntuación, así que una variable llamada `contact frequency (per week)` se convierte en `contact_frequency__per_week_` en un archivo GraphML, y el nombre original se conserva junto al nombre convertido. Consulta [Nombres de los atributos de GraphML](/es/analyze-data/data-export#graphml-attribute-names).
+
+<AppOnly app="current">
+
+Architect rechaza los nombres que darían la misma columna a dos variables, incluidos los nombres que solo coinciden una vez que una exportación los escribe, como `close friend` y `close_friend` en GraphML (consulta [Nombres que coincidirían en los datos exportados](#names-that-would-clash-in-exported-data)). Si un protocolo creado antes de que existiera esa comprobación tiene una coincidencia así, la exportación renombra la columna posterior con el sufijo `_2` (o `_3`, etc.) y muestra una advertencia. Cuando dos nombres solo pasan a coincidir al escribirse en GraphML, el nombre que ya era válido conserva la columna sin sufijo, y el otro recibe el sufijo.
+
+</AppOnly>
+
+## Patrones habituales {#common-patterns}
+
+### Variables demográficas (ego) {#demographic-variables-ego}
+
+```
+age: Number (Number Input)
+gender: Categorical (Radio Button Group)
+education: Ordinal (Radio Button Group)
+zip_code: Text (Text Input)
+```
+
+### Identificación de los álteres {#alter-identification}
+
+```
+name: Text (Text Input, required)
+relationship_type: Categorical (Radio Button Group)
+age: Number (Number Input)
+lives_nearby: Boolean (Toggle)
+```
+
+### Características de las relaciones {#relationship-characteristics}
+
+```
+closeness: Ordinal (Likert Scale)
+contact_frequency: Ordinal (Radio Button Group)
+support_type: Categorical (Checkbox Group, multiple)
+relationship_duration: Number (Number Input)
+```
+
+### Redes de apoyo {#support-networks}
+
+```
+provides_emotional_support: Boolean (Toggle)
+provides_practical_support: Boolean (Toggle)
+provides_financial_support: Boolean (Toggle)
+support_frequency: Ordinal (Radio Button Group)
+```
+
+## Solución de problemas {#troubleshooting}
+
+### La variable no aparece en el libro de códigos {#variable-not-appearing-in-codebook}
+
+**Causa:** la variable se ha creado, pero no se ha guardado
+**Solución:** asegúrate de haber guardado la configuración de la etapa
+
+### No se puede cambiar el tipo de variable {#cant-change-variable-type}
+
+**Causa:** el tipo de variable se establece al crearla
+**Solución:** crea una variable nueva con el tipo que quieras y úsala en lugar de la antigua
+
+<AppOnly app="current">
+
+### Necesitas renombrar una variable {#need-to-rename-a-variable}
+
+**Solución:** haz clic en la píldora del atributo y escribe el nombre nuevo. Consulta [Modificar variables](#modifying-variables).
+
+### Architect no acepta el nombre de una variable {#architect-wont-accept-a-variable-name}
+
+**Causa:** el nombre contiene una tabulación, un salto de línea u otro carácter invisible (a menudo procedente de texto pegado desde otro programa), ya pertenece a otra variable o generaría en los datos exportados la misma columna que otra variable o que una columna integrada
+**Solución:** lee el mensaje que aparece debajo del campo del nombre, que indica qué regla incumple el nombre. Vuelve a escribir el nombre en lugar de pegarlo, o elige un nombre que no coincida con otro. Consulta [Buenas prácticas para nombrar variables](#variable-naming-best-practices).
+
+</AppOnly>
+
+### La variable aparece como «sin usar», pero no se puede eliminar {#variable-shows-not-in-use-but-cant-delete}
+
+**Causa:** la variable se usa en algún lugar del protocolo
+**Solución:** revisa todas las etapas y quita todos los usos antes de eliminarla
+
+### Los valores de la variable no aparecen en la exportación {#variable-values-not-in-export}
+
+**Causa:**
+
+- La variable no se asigna en ninguna etapa
+- No se completaron los formularios durante la entrevista
+- La validación impidió completarlos
+
+**Solución:**
+
+- Comprueba que las variables se usan en alguna etapa
+- Comprueba que las etapas se mostraron (que no se omitieron)
+- Revisa las reglas de validación
+
+### La variable categórica muestra códigos extraños en la exportación {#categorical-variable-showing-weird-codes-in-export}
+
+**Causa:** se están usando los valores subyacentes en lugar de las etiquetas
+**Solución:** revisa la configuración de importación de tu software de análisis y asegúrate de que los factores o las variables categóricas se codifican correctamente
+
+## Conceptos relacionados {#related-concepts}
+
+- [Controles de entrada](/es/design-protocols/key-concepts/input-controls): elige los controles de entrada que establecen los tipos de variable
+- [Validación de campos](/es/design-protocols/key-concepts/field-validation): añade reglas de validación a las variables
+- [Formularios](/es/design-protocols/key-concepts/forms): crea formularios que recogen datos de las variables
+- [Libro de códigos](/es/design-protocols/key-concepts/codebook): consulta y gestiona todas las variables de tu protocolo
+- [Exportación de datos](/es/analyze-data/data-export): entiende cómo aparecen las variables en los datos exportados
+- [Interfaces](/es/design-protocols/key-concepts/interfaces): las distintas interfaces para recoger distintos tipos de variables
+- [Lógica de salto](/es/design-protocols/key-concepts/skip-logic): usa los valores de las variables para controlar el flujo de las etapas
+- [Filtrado de la red](/es/design-protocols/key-concepts/network-filtering): filtra las entidades según los valores de las variables
+
+## Próximos pasos {#next-steps}
+
+Ahora que ya conoces las variables, puedes:
+
+1. Planificar la estructura de tus variables antes de crear tu protocolo
+2. Elegir los tipos de variable y los controles de entrada adecuados para tus preguntas de investigación
+3. Revisar la [guía del libro de códigos](/es/design-protocols/key-concepts/codebook) para gestionar las variables de forma eficaz
+4. Conocer los [controles de entrada](/es/design-protocols/key-concepts/input-controls) para elegir los controles adecuados
+5. Entender la [exportación de datos](/es/analyze-data/data-export) para preparar el análisis

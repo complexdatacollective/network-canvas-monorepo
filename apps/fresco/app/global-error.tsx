@@ -18,37 +18,40 @@ const messages = defineMessages({
   copyCopied: {
     id: 'fresco.globalerror.copyCopied',
     defaultMessage: 'Copied!',
-    description: 'Researcher-facing globalerror: Copied!',
+    description:
+      'Text of the copy button on the fatal error page for two seconds after the debug information has been copied to the clipboard.',
   },
   copyCopyDebugInformation: {
     id: 'fresco.globalerror.copyCopyDebugInformation',
     defaultMessage: 'Copy Debug Information',
-    description: 'Researcher-facing globalerror: Copy Debug Information',
+    description:
+      'Button on the fatal error page that copies the error message, page path, browser and stack trace to the clipboard so it can be reported.',
   },
   errorRobot: {
     id: 'fresco.globalerror.errorRobot',
     defaultMessage: 'Error robot',
-    description: 'Researcher-facing globalerror: Error robot',
+    description:
+      'Alternative text of the robot illustration on the fatal error page; read only by screen readers.',
   },
   thereAposSAProblemWithFresco: {
     id: 'fresco.globalerror.thereAposSAProblemWithFresco',
     defaultMessage: "There's a problem with Fresco.",
     description:
-      "Researcher-facing globalerror: There's a problem with Fresco.",
+      'Heading of the fatal error page, shown when an unexpected error stops the whole application from rendering. May be seen by anyone, including a participant.',
   },
   frescoEncounteredASeriousErrorAndIs: {
     id: 'fresco.globalerror.frescoEncounteredASeriousErrorAndIs',
     defaultMessage:
       'Fresco encountered a serious error and is unable to continue.',
     description:
-      'Researcher-facing globalerror: Fresco encountered a serious error and is unable to continue.',
+      'Lead paragraph under the heading of the fatal error page, stating that the application cannot continue. May be seen by anyone, including a participant.',
   },
   thisCouldIndicateAProblemWithYour: {
     id: 'fresco.globalerror.thisCouldIndicateAProblemWithYour',
     defaultMessage:
       "This could indicate a problem with your deployment, or it could be a bug in the application. We've been notified and will investigate the issue, but please feel free to reach out via our <tag1> community website </tag1> .",
     description:
-      "Researcher-facing globalerror: This could indicate a problem with your deployment, or it could be a bug in the application. We've been notified an",
+      'Paragraph on the fatal error page suggesting possible causes. The tag1 element wraps the words that link to the Network Canvas community website; keep the tag around the equivalent words. May be seen by anyone, including a participant.',
   },
 });
 

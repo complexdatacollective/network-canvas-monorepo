@@ -1,0 +1,148 @@
+---
+title: Primeros pasos
+navOrder: 1
+toc: false
+date: 5th October 2026
+translatedFrom: 9549b8380cb604508d504736bd8cde1f8d65587b
+---
+
+Architect existe en dos versiones: la aplicación normal, que funciona en tu navegador sin necesidad de instalar nada (y que se puede instalar como aplicación web progresiva para usarla sin conexión), y **Architect Classic**, una aplicación de escritorio que se descarga. Ambas comparten el mismo flujo de trabajo para crear protocolos, pero **no son intercambiables**. Elige tu versión a continuación; si no sabes cuál usar, consulta [Elegir entre Architect y Architect Classic](/es/design-protocols/choosing-architect), donde se comparan.
+
+<AppSwitch>
+<AppOption label="Architect" icon="globe">
+
+## ¿Qué es Architect? {#what-is-architect}
+
+Architect es la versión para navegador de Architect, el diseñador de protocolos de Network Canvas. Funciona por completo en tu navegador web, sin nada que descargar ni instalar, y permite diseñar generadores de nombres, recoger datos ordinales y categóricos, representar vínculos y explorar narrativas, igual que en la aplicación de escritorio.
+
+## Abrir Architect {#opening-architect}
+
+Architect está disponible en [architect.networkcanvas.com](https://architect.networkcanvas.com). Ábrelo en cualquier navegador web moderno. No hay nada que instalar.
+
+Al abrir Architect, te recibe la **pantalla de inicio**. Un panel de bienvenida presenta la aplicación, con enlaces a la documentación, a la comunidad y al repositorio de código. Desde aquí tienes dos tareas principales: crear un protocolo nuevo o abrir uno existente.
+
+![La pantalla de inicio de Architect.](/assets/img/architect/home-screen.png)
+
+## Cambiar el idioma de la aplicación {#changing-the-interface-language}
+
+La aplicación Architect está disponible en **English**, **English (UK)**, **Español**, **Deutsch**, **Français**, **Italiano**, **Nederlands**, **Português (Brasil)**, **简体中文** (chino simplificado) y **繁體中文** (chino tradicional). Para cambiar el idioma, abre el selector de idioma de la barra de navegación superior, que muestra el idioma que se está usando. En una pantalla estrecha, el selector está en el menú desplegable. La lista muestra cada idioma escrito en ese mismo idioma, además de **Automático**, que sigue el idioma de tu navegador e indica cuál es en ese momento. Tu elección se aplica al instante y se guarda en este dispositivo, así que Architect se abrirá en el mismo idioma la próxima vez.
+
+El idioma de la aplicación cambia los controles, las indicaciones, los cuadros de diálogo y los informes propios de Architect. Nunca cambia tu protocolo: las preguntas, las etiquetas, las opciones de respuesta y los datos que escribes se conservan exactamente como los escribiste. Para ofrecer tu protocolo en más de un idioma, consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol). El idioma de la vista previa se elige por separado: consulta [Elegir el idioma de la vista previa](/es/design-protocols/preview-mode#choosing-the-preview-language).
+
+## Crear un protocolo nuevo {#creating-a-new-protocol}
+
+Para crear un protocolo desde cero, haz clic en **Crear un nuevo protocolo**. Aparece un cuadro de diálogo que te pide un nombre para el protocolo; el nombre es obligatorio para poder continuar. En **Idiomas del protocolo**, elige los idiomas en los que quienes participan pueden hacer la entrevista. Architect propone el idioma en el que se muestra la propia aplicación. Si eliges más de uno, elige también el **Idioma predeterminado**. Puedes cambiar los idiomas más adelante (consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol)). Haz clic en **Crear protocolo** y tu nuevo protocolo, vacío, se abrirá en el editor.
+
+![El cuadro de diálogo para crear un protocolo nuevo.](/assets/img/architect/new-protocol-dialog.png)
+
+## Abrir un protocolo existente {#opening-an-existing-protocol}
+
+Si ya tienes un protocolo guardado como archivo `.netcanvas`, haz clic en **Abrir protocolo existente** y elige el archivo, o simplemente arrastra y suelta un archivo `.netcanvas` en cualquier parte de la pantalla de inicio.
+
+Architect también abre protocolos creados para versiones anteriores del esquema de protocolo, incluidos los creados en Architect Classic. Cuando abres uno, Architect te pregunta cómo quieres abrirlo:
+
+- **Seguir editando en el esquema 8** abre el protocolo, sin actualizarlo al esquema 9, en la versión anterior de Architect, que viene incluida. Si se trata de un protocolo del esquema 7, al hacerlo se migra al esquema 8. Fresco e Interviewer ejecutan el protocolo como esquema 8.
+- **Actualizar al esquema 9** enumera los cambios que introduce la actualización y, a continuación, crea una copia actualizada y la abre. Tu protocolo original no se modifica.
+
+Consulta [Información sobre el esquema de protocolo](/es/get-started/protocol-schema-information#migrating-a-protocol) para saber qué supone cada opción.
+
+## Tu biblioteca de protocolos {#your-protocol-library}
+
+También puedes volver a abrir los protocolos con los que has trabajado antes, directamente desde la pantalla de inicio. Architect mantiene una **biblioteca** de tus protocolos, guardada en este navegador:
+
+- La pestaña **Recientes** muestra los protocolos guardados en este navegador, con el número de etapas de cada uno y cuándo se añadió y se editó por última vez. Haz clic en un protocolo para abrirlo. Los protocolos del esquema 8 que sigues editando también aparecen aquí, con el distintivo **Esquema 8**; su menú ofrece **Abrir en Architect 8** y **Actualizar al esquema 9**.
+- La pestaña **Plantillas** ofrece un conjunto de protocolos ya preparados que puedes abrir y adaptar. Para usar uno, selecciónalo, ponle nombre a tu copia y se abrirá listo para editar.
+
+El **Sample Protocol** (protocolo de ejemplo) es un buen punto de partida si es la primera vez que usas Architect: es un ejemplo que presenta las principales funciones y técnicas disponibles en Network Canvas. Junto a él hay varias plantillas iniciales fundamentadas en la investigación, cada una pensada para un diseño de estudio distinto:
+
+| Plantilla                                                                                             | Qué recoge                                                                                                                                                                |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Transnational Networks**                                                                            | Las personas importantes en la vida de una persona migrante, aquí y en el extranjero, situadas en un mapamundi                                                            |
+| **Mental Health Networks**                                                                            | Las relaciones de apoyo y las relaciones difíciles, y quién conoce tu situación de salud mental                                                                           |
+| **Social Connection & Isolation**                                                                     | Un mapa de las relaciones cercanas, acompañado de cuestionarios sobre la soledad                                                                                          |
+| **Behavioural Influence Networks**                                                                    | Cómo se comparan tus hábitos de salud con los de las personas de tu entorno                                                                                               |
+| **Care & Support Networks**                                                                           | Quién te ayuda durante un periodo de cuidados y qué tipos de ayuda te presta                                                                                              |
+| **Sexual & Injection Risk Networks**                                                                  | Las parejas sexuales y las personas con las que se comparte el consumo de drogas inyectadas, y la cronología de esas relaciones, con los nombres de unas y otras cifrados |
+| **Help-Seeking After Intimate Partner Violence**                                                      | Las personas y los servicios a los que puede recurrir una persona superviviente, con nombres cifrados y notas privadas                                                    |
+| **Life Transitions & Turning Points**                                                                 | Cómo un gran cambio vital transformó el círculo de personas que rodea a quien participa                                                                                   |
+| [**Colored Eco-Genetic Relationship Map (CEGRM)**](/es/design-protocols/tutorials/implementing-cegrm) | Una genealogía familiar combinada con redes de apoyo y de comunicación sobre la salud familiar                                                                            |
+
+![Las pestañas Recientes y Plantillas de la pantalla de inicio.](/assets/img/architect/library-tabs.png)
+
+Además de estas plantillas, la [Galería de protocolos](/es/design-protocols/protocol-gallery) reúne protocolos completos de estudios reales que han compartido otros equipos de investigación, y que puedes consultar para inspirarte.
+
+Como esta biblioteca está en tu navegador y no en un servidor, es importante entender lo que eso supone a la hora de hacer copias de seguridad de tu trabajo y de trasladarlo. Consulta [Guardar y hacer copias de seguridad](/es/design-protocols/saving-and-backing-up).
+
+## La pantalla de vista general del protocolo {#the-protocol-overview-screen}
+
+Una vez que has creado o abierto un protocolo, pasas a la **pantalla de vista general del protocolo**. En la parte superior, una tarjeta muestra el nombre y la descripción del protocolo, que puedes editar aquí, junto con el número de etapas, de tipos de nodo y de tipos de vínculo.
+
+Debajo de la tarjeta está la **línea de tiempo**, que representa las etapas de tu entrevista en el orden en el que las verán quienes participan. Como acabas de crear un protocolo nuevo, la línea de tiempo está vacía, salvo por un botón que te permite añadir la primera etapa.
+
+![La pantalla de vista general del protocolo con la línea de tiempo vacía.](/assets/img/architect/overview-screen.png)
+
+En cualquier momento puedes usar **Descargar** para exportar tu protocolo como archivo `.netcanvas`, por ejemplo, para hacer una copia de seguridad o para subirlo a [Fresco](/es/collect-data/fresco/using-fresco#uploading-protocols) y realizar entrevistas.
+
+## Crear tu protocolo {#building-your-protocol}
+
+Ahora que has abierto Architect y has creado un protocolo, los pasos desde añadir etapas hasta terminar el protocolo son los mismos que en Architect Classic. Continúa con [Crear un protocolo](/es/design-protocols/tutorials/building-a-protocol).
+
+También te puede interesar leer:
+
+- [Guardar y hacer copias de seguridad](/es/design-protocols/saving-and-backing-up): cómo guarda Architect los protocolos y cómo hacer copias de seguridad.
+- [Modo de vista previa](/es/design-protocols/preview-mode): cómo verán una etapa quienes participan.
+- [Traducir tu protocolo](/es/design-protocols/translating-your-protocol): cómo ofrecer tu protocolo en más de un idioma.
+- [Preguntas frecuentes](/es/design-protocols/faq).
+
+</AppOption>
+<AppOption label="Architect Classic" icon="desktop">
+
+## ¿Qué es Architect? {#what-is-architect-1}
+
+Architect es una aplicación de escritorio que funciona en los sistemas operativos Windows, macOS y Linux. Su objetivo es ofrecer a quienes investigan una forma sencilla de crear protocolos de entrevista de Network Canvas sin necesidad de amplios conocimientos técnicos. Sus pantallas pretenden ser visuales e intuitivas, para que puedas centrarte en el contenido de tus entrevistas. No es necesario usar Architect en el mismo ordenador en el que usas Interviewer o Fresco, aunque puedes hacerlo si quieres.
+
+<TipBox>
+
+Te recomendamos seguir los pasos en tu propio ordenador, así que también deberías [descargar e instalar Architect](/es/design-protocols/installing-architect-classic)
+
+</TipBox>
+
+## Abrir Architect {#opening-architect-1}
+
+![La pantalla de inicio de Architect](/assets/img/architect-classic-guide/start-screen.png)
+
+Al abrir Architect, te recibe la **pantalla de inicio**. Al igual que en la pantalla de inicio de Interviewer, verás un panel de bienvenida con enlaces al vídeo de presentación del proyecto y al sitio web de documentación; otras secciones se irán mostrando cuando sea necesario. La primera vez que se abre, la pantalla de inicio de Architect ofrece dos tareas: (1) crear un protocolo nuevo en blanco o (2) abrir un protocolo existente desde tu ordenador.
+
+En este tutorial vamos a crear un protocolo desde cero, así que empezaremos creando un protocolo en blanco. Haz clic en el botón «Create New Protocol» (crear un protocolo nuevo) del panel de tareas. Guarda el archivo con un nombre y en una ubicación que puedas encontrar más adelante.
+
+<KeyConcept title="Concepto clave: el archivo de protocolo">
+
+Los protocolos de Network Canvas se almacenan en un archivo con la extensión `.netcanvas`.
+Son como cualquier otro archivo de tu ordenador, lo que significa que puedes moverlos,
+cambiarles el nombre (más adelante hablaremos de esto) y puedes (¡y debes!) hacer
+copias de seguridad de ellos. El archivo `.netcanvas` contiene todos los datos de tu protocolo. Así que,
+si usas datos de una lista (una lista predefinida que se importa como archivo de datos), imágenes o vídeo, se incrustarán en el
+archivo.
+
+</KeyConcept>
+
+## La pantalla de vista general del protocolo {#the-protocol-overview-screen-1}
+
+Una vez que hayas creado o abierto un protocolo, pasarás a la **pantalla de vista general del protocolo**. Esta pantalla gira en torno a la metáfora de la «línea de tiempo» vertical que también usa Interviewer. Representa visualmente las etapas de tu entrevista en el orden en el que las verán quienes participan.
+
+![La pantalla de vista general](/assets/img/architect-classic-guide/overview-screen.png)
+
+La tarjeta del protocolo, en la parte superior, muestra el nombre y la descripción del protocolo, y ofrece tres botones: descargar el libro de códigos para imprimir, acceder a la biblioteca de recursos y gestionar el libro de códigos. Esta tarjeta aparece cuando importas el protocolo en Interviewer. La descripción del protocolo es opcional y aparecerá en la pantalla de inicio de la aplicación Interviewer.
+
+En Fresco, el nombre del protocolo se mostrará en la página de protocolos. Para obtener más información sobre la gestión de protocolos en Fresco, consulta el tutorial [Usar Fresco](/es/collect-data/fresco/using-fresco#uploading-protocols).
+
+Abajo a la izquierda verás el botón «Return to Start Screen» (volver a la pantalla de inicio). Al hacer clic en él, sales del protocolo actual y vuelves a la pantalla de inicio.
+
+Como acabamos de crear un protocolo nuevo, solo hay un botón en la parte inferior de la pantalla, que nos permite añadir la primera etapa.
+
+## Crear tu protocolo {#building-your-protocol-1}
+
+Ahora que has configurado Architect y has creado un protocolo, los pasos desde añadir etapas hasta terminar el protocolo son los mismos que en Architect. Continúa con [Crear un protocolo](/es/design-protocols/tutorials/building-a-protocol).
+
+</AppOption>
+</AppSwitch>

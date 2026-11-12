@@ -632,18 +632,6 @@
       "searchOptions": {
         "fuzziness": 0.5,
         "matchProperties": ["classmate_name"]
-      },
-      "panelTitle": {
-        "en": "Available to add"
-      },
-      "minNodesNotice": {
-        "en": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
-      },
-      "allAddedNotice": {
-        "en": "There is nothing left to add from this list."
-      },
-      "unnamedLabel": {
-        "en": "Unnamed {count}"
       }
     },
     {
@@ -704,9 +692,6 @@
             }
           }
         ]
-      },
-      "maxNodesNotice": {
-        "en": "You have completed this task. Click the next arrow to continue."
       }
     },
     {
@@ -755,10 +740,7 @@
           },
           "dataSource": "existing"
         }
-      ],
-      "addNamePlaceholder": {
-        "en": "Type a name, then press Enter"
-      }
+      ]
     },
     {
       "id": "friend_strength_intro",
@@ -1197,10 +1179,7 @@
           },
           "variable": "classmate_home_country"
         }
-      ],
-      "outsideAreasLabel": {
-        "en": "Outside Selectable Areas"
-      }
+      ]
     },
     {
       "id": "classmate_form_intro",
@@ -1416,12 +1395,6 @@
         "automaticLayout": true,
         "allowRepositioning": true,
         "freeDraw": true
-      },
-      "attributesHeading": {
-        "en": "Attributes"
-      },
-      "groupsHeading": {
-        "en": "Groups"
       }
     },
     {
@@ -1677,196 +1650,7 @@
       "finishedContent": {
         "en": "# Interview Finished\n\nThank you for participating!"
       },
-      "finishLabel": {
-        "en": "Finish"
-      },
-      "finishConfirmation": {
-        "en": "Are you sure you want to finish the interview?"
-      },
-      "finishFailed": {
-        "en": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
-      },
       "outcome": "completed"
     }
-  ],
-  "interfaceText": {
-    "navigation": {
-      "exitInterview": {
-        "en": "Exit interview"
-      },
-      "exitInterviewDescription": {
-        "en": "Your answers so far will be saved and you can continue later."
-      },
-      "back": {
-        "en": "Back"
-      },
-      "continue": {
-        "en": "Continue"
-      },
-      "exitFailed": {
-        "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
-      }
-    },
-    "interviewer": {
-      "exitReview": {
-        "en": "Exit review"
-      },
-      "exitReviewTitle": {
-        "en": "Exit this review?"
-      },
-      "exitReviewDescription": {
-        "en": "Changes made during this review will not be saved."
-      },
-      "hiddenScreen": {
-        "en": "Hidden by answers"
-      },
-      "outsidePath": {
-        "en": "Outside current path"
-      },
-      "showScreenTitle": {
-        "en": "Show this screen?"
-      },
-      "hiddenScreenDescription": {
-        "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
-      },
-      "outsidePathDescription": {
-        "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
-      },
-      "showScreen": {
-        "en": "Show screen"
-      }
-    },
-    "buttons": {
-      "cancel": {
-        "en": "Cancel"
-      },
-      "done": {
-        "en": "Done"
-      },
-      "delete": {
-        "en": "Delete"
-      },
-      "yes": {
-        "en": "Yes"
-      },
-      "no": {
-        "en": "No"
-      },
-      "save": {
-        "en": "Save"
-      },
-      "pauseLayout": {
-        "en": "Pause automatic layout"
-      },
-      "resumeLayout": {
-        "en": "Resume automatic layout"
-      },
-      "copy": {
-        "en": "Copy"
-      },
-      "copied": {
-        "en": "Copied"
-      }
-    },
-    "messages": {
-      "stageError": {
-        "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
-      },
-      "error": {
-        "en": "An error occurred."
-      },
-      "externalDataError": {
-        "en": "External data could not be loaded."
-      },
-      "loading": {
-        "en": "Loading…"
-      },
-      "unnamed": {
-        "en": "Unnamed"
-      }
-    },
-    "search": {
-      "searchLabel": {
-        "en": "Search"
-      },
-      "searchNoMatch": {
-        "en": "Nothing matched your search term."
-      }
-    },
-    "forms": {
-      "discardChangesTitle": {
-        "en": "Discard changes?"
-      },
-      "discardChangesDescription": {
-        "en": "Do you want to discard your changes?"
-      }
-    },
-    "validation": {
-      "required": {
-        "en": "You must answer this question before continuing."
-      },
-      "minValue": {
-        "en": "Enter a value greater than or equal to {min}."
-      },
-      "maxValue": {
-        "en": "Enter a value less than or equal to {max}."
-      },
-      "maxSelected": {
-        "en": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
-      },
-      "unique": {
-        "en": "Must be unique."
-      }
-    },
-    "quickAdd": {
-      "quickAddHint": {
-        "en": "Press Enter when you are finished."
-      }
-    },
-    "networkComposer": {
-      "addNamePlaceholder": {
-        "en": "Type a name, then press Enter"
-      },
-      "overtakenEditNotice": {
-        "en": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost."
-      },
-      "groupsHeading": {
-        "en": "Groups"
-      },
-      "addNodeTooltip": {
-        "en": "Add node"
-      },
-      "automaticLayoutTooltip": {
-        "en": "Automatic layout"
-      },
-      "drawEdgeTooltip": {
-        "en": "Draw edge"
-      },
-      "connection": {
-        "en": "Connection"
-      }
-    },
-    "narrative": {
-      "toggleDrawing": {
-        "en": "Toggle drawing"
-      },
-      "toggleFreezing": {
-        "en": "Toggle freezing annotations"
-      },
-      "resetAnnotations": {
-        "en": "Reset annotations"
-      }
-    },
-    "geospatial": {
-      "offlineNotice": {
-        "en": "You are offline — the map will not load until you reconnect."
-      },
-      "mapUnavailable": {
-        "en": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow."
-      },
-      "searchFailed": {
-        "en": "Search could not be completed. Try again in a moment."
-      }
-    }
-  }
+  ]
 }

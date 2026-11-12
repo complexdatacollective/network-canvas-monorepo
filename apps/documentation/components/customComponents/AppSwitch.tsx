@@ -1,6 +1,7 @@
 'use client';
 
 import { Globe, Monitor } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Children, isValidElement, type ReactNode } from 'react';
 
 import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
@@ -29,6 +30,7 @@ export const AppSwitch = ({
   children: ReactNode;
   axis?: AppAxis;
 }) => {
+  const t = useTranslations('AppSwitch');
   const [selectedApp, selectApp] = useSelectedApp(axis);
 
   const options = Children.toArray(children)
@@ -52,7 +54,7 @@ export const AppSwitch = ({
   return (
     <div className="py-8">
       <SegmentedSwitcher
-        aria-label="Select application"
+        aria-label={t('label')}
         value={activeLabel}
         onValueChange={selectApp}
         options={options.map((option) => ({

@@ -49,6 +49,11 @@ const ProgressBar = ({
   return (
     <Progress.Root
       value={value}
+      // The spoken value ("50%") is formatted in the interface's language. Left
+      // to its default, Base UI uses the runtime's locale, which is the
+      // server's on the server and the browser's in the browser: two different
+      // strings for one element, and neither is the language on screen.
+      locale={intl.locale}
       aria-label={label ?? intl.formatMessage(messages.progressIndicator)}
       onClick={onClick}
       className={cx(

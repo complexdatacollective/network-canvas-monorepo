@@ -14,6 +14,7 @@ import {
   type LocalizedTextLines,
   type MessageArguments,
   type ProtocolLocalizationWarning,
+  suppliedWordingIn,
 } from '@codaco/protocol-validation';
 import {
   getMapboxTokenId,
@@ -25,7 +26,12 @@ import { findDefaultLanguageTextProblem } from '~/utils/defaultLanguageText';
 import { getAllVariablesByUUID } from './codebook';
 import { getIsUsed } from './codebook/isUsed';
 import { getAssetIndex, utils } from './indexes';
-import { getAssetManifest, getCodebook, getProtocol } from './protocol';
+import {
+  getAssetManifest,
+  getCodebook,
+  getProtocol,
+  getProtocolAsShown,
+} from './protocol';
 
 /**
  * Selectors that surface protocol "issues" — things that are valid but
@@ -219,14 +225,16 @@ const EMPTY_COVERAGE: LocalizationCoverage = {
 
 /**
  * Every participant-facing string, in protocol order, with its field's
- * declaration, walked once per edit.
+ * declaration, walked once per edit. Read from the protocol with the wording
+ * it shows written out, so a text Network Canvas words is listed, with that
+ * wording, whether or not the protocol holds any of its own for it.
  */
-const getLocalizedStrings = createSelector([getProtocol], (protocol) =>
+const getLocalizedStrings = createSelector([getProtocolAsShown], (protocol) =>
   protocol ? collectLocalizedStringFields(protocol) : [],
 );
 
 export const getLocalizationCoverage = createSelector(
-  [getProtocol, getLocalizedStrings],
+  [getProtocolAsShown, getLocalizedStrings],
   (protocol, strings): LocalizationCoverage => {
     if (!protocol) return EMPTY_COVERAGE;
     const { locales, defaultLocale } = protocol.localization;
@@ -326,6 +334,12 @@ export type TranslationRow = {
   lines: LocalizedTextLines;
   /** Every translation the string has. */
   value: LocalizedString;
+  /**
+   * Network Canvas's own wording for the string, in the protocol's languages
+   * it has wording in, when it words the string: what a language reads as
+   * once the researcher's wording in it is cleared.
+   */
+  supplied?: LocalizedString;
   /** What a localized message may use (see `localizedMessage`), when it is one. */
   arguments?: MessageArguments;
   /**
@@ -378,23 +392,26 @@ const stageBindsValues = (
  * protocol's own texts, then the words the interview itself shows.
  */
 export const getTranslationGroups = createSelector(
-  [getProtocol, getLocalizedStrings],
+  [getProtocolAsShown, getLocalizedStrings],
   (protocol, strings): readonly TranslationGroup[] => {
     if (!protocol) return [];
     const groups = new Map<
       string,
       { place: TranslationPlace; rows: TranslationRow[] }
     >();
+    const suppliedWording = suppliedWordingIn(protocol);
     for (const hit of strings) {
       const { key, place, field } = locateTranslation(protocol, hit.path);
       const group = groups.get(key) ?? { place, rows: [] };
       groups.set(key, group);
+      const supplied = suppliedWording(hit.path);
       group.rows.push({
         path: hit.path,
         field,
         format: hit.format,
         lines: hit.lines,
         value: hit.value,
+        ...(supplied === undefined ? {} : { supplied }),
         schema: hit.schema,
         ...(hit.arguments === undefined ? {} : { arguments: hit.arguments }),
         ...(hit.dynamicValues === undefined ||
