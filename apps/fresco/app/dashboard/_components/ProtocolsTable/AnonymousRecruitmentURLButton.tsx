@@ -13,19 +13,19 @@ const messages = defineMessages({
     id: 'fresco.ProtocolsTable.AnonymousRecruitmentURLButton.copyCopyingURLToClipboard',
     defaultMessage: 'Copying URL to clipboard...',
     description:
-      'Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: Copying URL to clipboard...',
+      'Toast shown on the Protocols page while the anonymous recruitment link of a protocol is being copied to the clipboard from its row button.',
   },
   copyURLCopiedToClipboard: {
     id: 'fresco.ProtocolsTable.AnonymousRecruitmentURLButton.copyURLCopiedToClipboard',
     defaultMessage: 'URL copied to clipboard!',
     description:
-      'Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: URL copied to clipboard!',
+      'Toast shown on the Protocols page after the anonymous recruitment link of a protocol has been copied to the clipboard.',
   },
   failedToCopyURLToClipboard: {
     id: 'fresco.ProtocolsTable.AnonymousRecruitmentURLButton.failedToCopyURLToClipboard',
     defaultMessage: 'Failed to copy URL to clipboard.',
     description:
-      'Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: Failed to copy URL to clipboard.',
+      'Error toast shown on the Protocols page when copying the anonymous recruitment link of a protocol to the clipboard failed, for example because the browser refused access.',
   },
 });
 

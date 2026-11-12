@@ -81,6 +81,7 @@ const messages = defineMessages({
   NuqsClearFilterslabel: {
     id: 'fresco.tableFilters.NuqsClearFilterslabel',
     defaultMessage: 'Clear Filters',
-    description: 'Researcher-facing tableFilters: Clear Filters',
+    description:
+      'Button in the filter toolbar above dashboard tables (such as the activity feed) that resets all search and filter fields at once.',
   },
 });

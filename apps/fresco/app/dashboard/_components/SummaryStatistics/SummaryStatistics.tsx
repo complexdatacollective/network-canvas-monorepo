@@ -17,25 +17,25 @@ const messages = defineMessages({
     id: 'fresco.SummaryStatistics.SummaryStatistics.protocols',
     defaultMessage: 'Protocols',
     description:
-      'Researcher-facing SummaryStatistics / SummaryStatistics: Protocols',
+      'Title of the dashboard summary card that shows the number of installed protocols; the card links to the Protocols page. Upper-cased small heading.',
   },
   participants: {
     id: 'fresco.SummaryStatistics.SummaryStatistics.participants',
     defaultMessage: 'Participants',
     description:
-      'Researcher-facing SummaryStatistics / SummaryStatistics: Participants',
+      'Title of the dashboard summary card that shows the number of study participants; the card links to the Participants page. Upper-cased small heading.',
   },
   participantIcon: {
     id: 'fresco.SummaryStatistics.SummaryStatistics.participantIcon',
     defaultMessage: 'Participant icon',
     description:
-      'Researcher-facing SummaryStatistics / SummaryStatistics: Participant icon',
+      'Alternative text of the decorative person icon on the Participants summary card of the dashboard; read only by screen readers.',
   },
   interviews: {
     id: 'fresco.SummaryStatistics.SummaryStatistics.interviews',
     defaultMessage: 'Interviews',
     description:
-      'Researcher-facing SummaryStatistics / SummaryStatistics: Interviews',
+      'Title of the dashboard summary card that shows the number of interviews; the card links to the Interviews page. Upper-cased small heading.',
   },
 });
 

@@ -58,19 +58,19 @@ const messages = defineMessages({
     id: 'fresco.ParticipantsTable.ParticipantsTableClient.error',
     defaultMessage: 'Error',
     description:
-      'Researcher-facing ParticipantsTable / ParticipantsTableClient: Error',
+      'Title of an error toast on the Participants page, shown above the specific error message when looking up or deleting the selected participants fails.',
   },
   filterByIdentifier: {
     id: 'fresco.ParticipantsTable.ParticipantsTableClient.filterByIdentifier',
     defaultMessage: 'Filter by identifier...',
     description:
-      'Researcher-facing ParticipantsTable / ParticipantsTableClient: Filter by identifier...',
+      'Placeholder of the search box above the Participants table, which filters the list by participant identifier.',
   },
   exportParticipants: {
     id: 'fresco.ParticipantsTable.ParticipantsTableClient.exportParticipants',
     defaultMessage: 'Export Participants',
     description:
-      'Researcher-facing ParticipantsTable / ParticipantsTableClient: Export Participants',
+      'Button above the Participants table that exports all participants, with their personal interview links, to a file.',
   },
 });
 

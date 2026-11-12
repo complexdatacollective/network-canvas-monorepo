@@ -69,374 +69,398 @@ const messages = defineMessages({
     defaultMessage:
       '{count, plural, one {Delete # user} other {Delete # users}}',
     description:
-      'Researcher-facing settings.UserManagement: count, plural, one Delete # user other Delete # users',
+      'Confirm button of the dialog opened by Delete Selected in the users table in Settings when several accounts are selected. count is the number of researcher accounts that will be deleted.',
   },
 
   passwordAuth: {
     id: 'fresco.settings.users.passwordAuth',
     defaultMessage: 'Password',
-    description: 'Researcher-facing settings.users: Password',
+    description:
+      'Value in the Auth Method column of the users table in Settings: the researcher account signs in with a password only.',
   },
 
   passwordTwoFactor: {
     id: 'fresco.settings.users.passwordTwoFactor',
     defaultMessage: 'Password + 2FA',
-    description: 'Researcher-facing settings.users: Password + 2FA',
+    description:
+      'Value in the Auth Method column of the users table in Settings: the account signs in with a password plus a two-factor authentication (2FA) code.',
   },
 
   passkeyAuth: {
     id: 'fresco.settings.users.passkeyAuth',
     defaultMessage: 'Passkey',
-    description: 'Researcher-facing settings.users: Passkey',
+    description:
+      'Value in the Auth Method column of the users table in Settings: the account signs in with a passkey (a device-based credential, not a password).',
   },
 
   usernameTaken: {
     id: 'fresco.settings.users.usernameTaken',
     defaultMessage: 'Username is already taken',
-    description: 'Researcher-facing settings.users: Username is already taken',
+    description:
+      'Validation error below the username field of the Add User dialog in Settings, when another researcher account already has that username.',
   },
 
   usernameSpaces: {
     id: 'fresco.settings.users.usernameSpaces',
     defaultMessage: 'Username cannot contain spaces',
     description:
-      'Researcher-facing settings.users: Username cannot contain spaces',
+      'Validation error below the username field of the Add User dialog in Settings, when the username contains a space.',
   },
 
   usernameMinimum: {
     id: 'fresco.settings.users.usernameMinimum',
     defaultMessage: 'Username must be at least 4 characters',
     description:
-      'Researcher-facing settings.users: Username must be at least 4 characters',
+      'Validation error below the username field of the Add User dialog in Settings, when the username is shorter than four characters.',
   },
 
   copyYouCannotDeleteYourOwnAccount: {
     id: 'fresco.settings.UserManagement.copyYouCannotDeleteYourOwnAccount',
     defaultMessage: 'You cannot delete your own account',
     description:
-      'Researcher-facing settings / UserManagement: You cannot delete your own account',
+      'Error raised when the researcher uses Delete Selected in the users table in Settings and the only selected account is their own, which cannot be deleted.',
   },
   copyDeleteUser: {
     id: 'fresco.settings.UserManagement.copyDeleteUser',
     defaultMessage: 'Delete User',
-    description: 'Researcher-facing settings / UserManagement: Delete User',
+    description:
+      'Title and confirm button of the dialog that asks the researcher to confirm deleting the single account selected with Delete Selected in the users table in Settings.',
   },
   copyDeleteMultipleUsers: {
     id: 'fresco.settings.UserManagement.copyDeleteMultipleUsers',
     defaultMessage: 'Delete Multiple Users',
     description:
-      'Researcher-facing settings / UserManagement: Delete Multiple Users',
+      'Title of the dialog that asks the researcher to confirm deleting several accounts selected with Delete Selected in the users table in Settings.',
   },
   copyAreYouSureYouWantToDelete: {
     id: 'fresco.settings.UserManagement.copyAreYouSureYouWantToDelete',
     defaultMessage:
       'Are you sure you want to delete the user "{value1}"? This action cannot be undone.',
     description:
-      'Researcher-facing settings / UserManagement: Are you sure you want to delete the user "value"? This action cannot be undone.',
+      "Body of the confirmation dialog for deleting the single account selected with Delete Selected in the users table in Settings. value1 is that account's username.",
   },
   copyAreYouSureYouWantToDelete2: {
     id: 'fresco.settings.UserManagement.copyAreYouSureYouWantToDelete2',
     defaultMessage:
       'Are you sure you want to delete {value1, plural, one {# user} other {# users}}? This action cannot be undone.',
     description:
-      'Researcher-facing settings / UserManagement: Are you sure you want to delete value users? This action cannot be undone.',
+      'Body of the confirmation dialog for deleting several accounts selected with Delete Selected in the users table in Settings. value1 is the number of researcher accounts.',
   },
   copyPasswordsDoNotMatch: {
     id: 'fresco.settings.UserManagement.copyPasswordsDoNotMatch',
     defaultMessage: 'Passwords do not match',
     description:
-      'Researcher-facing settings / UserManagement: Passwords do not match',
+      'Form error shown in the Add User dialog, and in the Switch to Password Authentication dialog, in Settings, when the password and its confirmation differ.',
   },
   copyNewPasswordsDoNotMatch: {
     id: 'fresco.settings.UserManagement.copyNewPasswordsDoNotMatch',
     defaultMessage: 'New passwords do not match',
     description:
-      'Researcher-facing settings / UserManagement: New passwords do not match',
+      'Form error shown in the Change Password dialog in Settings when the new password and its confirmation differ.',
   },
   copyFailedToStartRegistration: {
     id: 'fresco.settings.UserManagement.copyFailedToStartRegistration',
     defaultMessage: 'Failed to start registration',
     description:
-      'Researcher-facing settings / UserManagement: Failed to start registration',
+      "Fallback form error in the Switch to Passkey Authentication dialog in Settings when the server could not prepare creating a passkey, before the browser's passkey prompt appeared.",
   },
   copyPasskeyCreationFailed: {
     id: 'fresco.settings.UserManagement.copyPasskeyCreationFailed',
     defaultMessage: 'Passkey creation failed.',
     description:
-      'Researcher-facing settings / UserManagement: Passkey creation failed.',
+      'Fallback form error in the Switch to Passkey Authentication dialog in Settings when creating the passkey in the browser failed and no more specific message applies.',
   },
   copyFailedToStartVerification: {
     id: 'fresco.settings.UserManagement.copyFailedToStartVerification',
     defaultMessage: 'Failed to start verification',
     description:
-      'Researcher-facing settings / UserManagement: Failed to start verification',
+      'Fallback error in the Switch to Password Authentication dialog in Settings when the server could not start the passkey identity check.',
   },
   copyVerificationFailed: {
     id: 'fresco.settings.UserManagement.copyVerificationFailed',
     defaultMessage: 'Verification failed',
     description:
-      'Researcher-facing settings / UserManagement: Verification failed',
+      'Fallback error in the Switch to Password Authentication dialog in Settings when the passkey identity check in the browser failed and no more specific message applies.',
   },
   copyVerifying: {
     id: 'fresco.settings.UserManagement.copyVerifying',
     defaultMessage: 'Verifying...',
-    description: 'Researcher-facing settings / UserManagement: Verifying...',
+    description:
+      'Label of the Verify with passkey button in the Switch to Password Authentication dialog while the passkey check is in progress.',
   },
   copyVerifyWithPasskey: {
     id: 'fresco.settings.UserManagement.copyVerifyWithPasskey',
     defaultMessage: 'Verify with passkey',
     description:
-      'Researcher-facing settings / UserManagement: Verify with passkey',
+      "Button in the Switch to Password Authentication dialog in Settings; opens the browser's passkey prompt so the researcher proves who they are.",
   },
   selectAll: {
     id: 'fresco.settings.UserManagement.selectAll',
     defaultMessage: 'Select all',
-    description: 'Researcher-facing settings / UserManagement: Select all',
+    description:
+      'Accessible name of the checkbox in the header of the users table in Settings that selects every row; read only by screen readers.',
   },
   selectRow: {
     id: 'fresco.settings.UserManagement.selectRow',
     defaultMessage: 'Select row',
-    description: 'Researcher-facing settings / UserManagement: Select row',
+    description:
+      'Accessible name of the checkbox on each row of the users table in Settings that selects that researcher account; read only by screen readers.',
   },
   username: {
     id: 'fresco.settings.UserManagement.username',
     defaultMessage: 'Username',
-    description: 'Researcher-facing settings / UserManagement: Username',
+    description:
+      'Column heading of the users table in Settings and label of the username field in the Add User dialog; the name a researcher signs in with.',
   },
   you: {
     id: 'fresco.settings.UserManagement.you',
     defaultMessage: '(you)',
-    description: 'Researcher-facing settings / UserManagement: (you)',
+    description:
+      "Small marker shown after the username of the signed-in researcher's own row in the users table in Settings.",
   },
   authMethod: {
     id: 'fresco.settings.UserManagement.authMethod',
     defaultMessage: 'Auth Method',
-    description: 'Researcher-facing settings / UserManagement: Auth Method',
+    description:
+      'Column heading of the users table in Settings; the column says how each researcher account signs in (password, password with two-factor, or passkey).',
   },
   actions: {
     id: 'fresco.settings.UserManagement.actions',
     defaultMessage: 'Actions',
-    description: 'Researcher-facing settings / UserManagement: Actions',
+    description:
+      'Column heading of the users table in Settings for the row buttons (reset authentication, delete).',
   },
   resetAuth: {
     id: 'fresco.settings.UserManagement.resetAuth',
     defaultMessage: 'Reset Auth',
-    description: 'Researcher-facing settings / UserManagement: Reset Auth',
+    description:
+      "Button in a row of the users table in Settings, for other accounts that have two-factor or passkeys, and confirm button of its dialog; removes that account's sign-in methods (verb).",
   },
   deleteUser: {
     id: 'fresco.settings.UserManagement.deleteUser',
     defaultMessage: 'Delete User',
-    description: 'Researcher-facing settings / UserManagement: Delete User',
+    description:
+      'Title and confirm button of the dialog opened by the Delete button in a row of the users table in Settings; asks to confirm deleting that researcher account.',
   },
   areYouSureYouWantToDelete: {
     id: 'fresco.settings.UserManagement.areYouSureYouWantToDelete',
     defaultMessage:
       'Are you sure you want to delete the user "{value1}"? This action cannot be undone.',
     description:
-      'Researcher-facing settings / UserManagement: Are you sure you want to delete the user "value"? This action cannot be undone.',
+      'Body of the confirmation dialog opened by the Delete button in a row of the users table in Settings. value1 is the username of that researcher account.',
   },
   resetAuthentication: {
     id: 'fresco.settings.UserManagement.resetAuthentication',
     defaultMessage: 'Reset Authentication',
     description:
-      'Researcher-facing settings / UserManagement: Reset Authentication',
+      "Title of the dialog that asks the researcher to confirm resetting another account's authentication, opened by Reset Auth in the users table in Settings.",
   },
   thisWillRemoveAllPasskeys2FAAnd: {
     id: 'fresco.settings.UserManagement.thisWillRemoveAllPasskeys2FAAnd',
     defaultMessage:
       'This will remove all passkeys, 2FA, and recovery codes for {value1}, and set a temporary password. They will need to set up their authentication again.',
     description:
-      'Researcher-facing settings / UserManagement: This will remove all passkeys, 2FA, and recovery codes for value, and set a temporary password. They will need to set up',
+      'Body of the Reset Authentication confirmation dialog. value1 is the username of the researcher account being reset. 2FA is two-factor authentication; recovery codes are its backup codes.',
   },
   loggedInAs: {
     id: 'fresco.settings.UserManagement.loggedInAs',
     defaultMessage: 'Logged in as:',
-    description: 'Researcher-facing settings / UserManagement: Logged in as:',
+    description:
+      "Small caption above the signed-in researcher's username at the top of the account section in Settings; ends with a colon.",
   },
   changePassword: {
     id: 'fresco.settings.UserManagement.changePassword',
     defaultMessage: 'Change Password',
-    description: 'Researcher-facing settings / UserManagement: Change Password',
+    description:
+      "Button in the account section of Settings that opens the dialog for changing the researcher's own password, and the title of that dialog (verb).",
   },
   securityWarning: {
     id: 'fresco.settings.UserManagement.securityWarning',
     defaultMessage: 'Security Warning',
     description:
-      'Researcher-facing settings / UserManagement: Security Warning',
+      'Title of a warning alert in the account section of Settings, shown to a researcher who signs in with a password but has no two-factor authentication.',
   },
   yourAccountIsOnlyProtectedByA: {
     id: 'fresco.settings.UserManagement.yourAccountIsOnlyProtectedByA',
     defaultMessage:
       'Your account is only protected by a password. Enable two-factor authentication for stronger security.',
     description:
-      'Researcher-facing settings / UserManagement: Your account is only protected by a password. Enable two-factor authentication for stronger security.',
+      'Body of the Security Warning alert in the account section of Settings; advises turning on two-factor authentication.',
   },
   switchToPasskeyAuthentication: {
     id: 'fresco.settings.UserManagement.switchToPasskeyAuthentication',
     defaultMessage: 'Switch to Passkey Authentication',
     description:
-      'Researcher-facing settings / UserManagement: Switch to Passkey Authentication',
+      "Label of a setting in the account section of Settings, and title of its dialog; changes the researcher's own account from password sign-in to passkey sign-in.",
   },
   removeYourPasswordAndTwoFactorAuthentication: {
     id: 'fresco.settings.UserManagement.removeYourPasswordAndTwoFactorAuthentication',
     defaultMessage:
       'Remove your password and two-factor authentication, and use a passkey to sign in instead.',
     description:
-      'Researcher-facing settings / UserManagement: Remove your password and two-factor authentication, and use a passkey to sign in instead.',
+      'Hint under the Switch to Passkey Authentication label in Settings; says the password and two-factor authentication are removed in favour of a passkey.',
   },
   switchToPasskey: {
     id: 'fresco.settings.UserManagement.switchToPasskey',
     defaultMessage: 'Switch to Passkey',
     description:
-      'Researcher-facing settings / UserManagement: Switch to Passkey',
+      'Destructive button next to the Switch to Passkey Authentication setting in Settings, and confirm button of its dialog (verb).',
   },
   youAreTheOnlyUserIfYou: {
     id: 'fresco.settings.UserManagement.youAreTheOnlyUserIfYou',
     defaultMessage:
       'You are the only user. If you lose access to your passkey, you will be locked out. Consider adding another user or backing up your passkey.',
     description:
-      'Researcher-facing settings / UserManagement: You are the only user. If you lose access to your passkey, you will be locked out. Consider adding another user or backi',
+      'Info alert in the account section of Settings, shown to a passkey researcher when theirs is the only researcher account on the installation; warns of lockout if the passkey is lost.',
   },
   switchToPasswordAuthentication: {
     id: 'fresco.settings.UserManagement.switchToPasswordAuthentication',
     defaultMessage: 'Switch to Password Authentication',
     description:
-      'Researcher-facing settings / UserManagement: Switch to Password Authentication',
+      "Label of a setting in the account section of Settings, and title of its dialog; changes the researcher's own account from passkey sign-in to password sign-in.",
   },
   removeAllPasskeysAndSwitchToPassword: {
     id: 'fresco.settings.UserManagement.removeAllPasskeysAndSwitchToPassword',
     defaultMessage:
       'Remove all passkeys and switch to password-based authentication.',
     description:
-      'Researcher-facing settings / UserManagement: Remove all passkeys and switch to password-based authentication.',
+      "Hint under the Switch to Password Authentication label in Settings; says all the account's passkeys are removed.",
   },
   switchToPassword: {
     id: 'fresco.settings.UserManagement.switchToPassword',
     defaultMessage: 'Switch to Password',
     description:
-      'Researcher-facing settings / UserManagement: Switch to Password',
+      'Destructive button next to the Switch to Password Authentication setting in Settings, and confirm button of its dialog (verb).',
   },
   allUsers: {
     id: 'fresco.settings.UserManagement.allUsers',
     defaultMessage: 'All Users',
-    description: 'Researcher-facing settings / UserManagement: All Users',
+    description:
+      'Heading above the users table in Settings, also its accessible name; the table lists the researcher accounts of this installation.',
   },
   addUser: {
     id: 'fresco.settings.UserManagement.addUser',
     defaultMessage: 'Add User',
-    description: 'Researcher-facing settings / UserManagement: Add User',
+    description:
+      'Button above the users table in Settings and title of the dialog it opens; creates a new researcher account (verb).',
   },
   noUsersCreatedYet: {
     id: 'fresco.settings.UserManagement.noUsersCreatedYet',
     defaultMessage: 'No users created yet.',
     description:
-      'Researcher-facing settings / UserManagement: No users created yet.',
+      'Text shown in place of rows when the users table in Settings is empty.',
   },
   deleteSelected: {
     id: 'fresco.settings.UserManagement.deleteSelected',
     defaultMessage: 'Delete Selected',
-    description: 'Researcher-facing settings / UserManagement: Delete Selected',
+    description:
+      'Button in the floating bar of the users table in Settings once rows are selected; starts deleting the selected researcher accounts.',
   },
   updateYourAccountPassword: {
     id: 'fresco.settings.UserManagement.updateYourAccountPassword',
     defaultMessage: 'Update your account password.',
     description:
-      'Researcher-facing settings / UserManagement: Update your account password.',
+      'Description under the title of the Change Password dialog in Settings.',
   },
   updatePassword: {
     id: 'fresco.settings.UserManagement.updatePassword',
     defaultMessage: 'Update Password',
-    description: 'Researcher-facing settings / UserManagement: Update Password',
+    description:
+      'Submit button of the Change Password dialog in Settings; saves the new password (verb).',
   },
   passwordUpdatedSuccessfully: {
     id: 'fresco.settings.UserManagement.passwordUpdatedSuccessfully',
     defaultMessage: 'Password updated successfully!',
     description:
-      'Researcher-facing settings / UserManagement: Password updated successfully!',
+      'Success message that replaces the form of the Change Password dialog in Settings for a moment after the password was changed.',
   },
   currentPassword: {
     id: 'fresco.settings.UserManagement.currentPassword',
     defaultMessage: 'Current Password',
     description:
-      'Researcher-facing settings / UserManagement: Current Password',
+      "Label of the field for the researcher's existing password, in the Change Password and Switch to Passkey Authentication dialogs in Settings.",
   },
   newPassword: {
     id: 'fresco.settings.UserManagement.newPassword',
     defaultMessage: 'New Password',
-    description: 'Researcher-facing settings / UserManagement: New Password',
+    description:
+      'Label of the field for the password the researcher wants to use from now on, in the Change Password and Switch to Password Authentication dialogs in Settings.',
   },
   atLeast8CharactersWithLowercaseUppercase: {
     id: 'fresco.settings.UserManagement.atLeast8CharactersWithLowercaseUppercase',
     defaultMessage:
       'At least 8 characters with lowercase, uppercase, number, and symbol',
     description:
-      'Researcher-facing settings / UserManagement: At least 8 characters with lowercase, uppercase, number, and symbol',
+      'Hint under a new-password field (Add User, Change Password and Switch to Password dialogs in Settings) stating the password rules.',
   },
   confirmNewPassword: {
     id: 'fresco.settings.UserManagement.confirmNewPassword',
     defaultMessage: 'Confirm New Password',
     description:
-      'Researcher-facing settings / UserManagement: Confirm New Password',
+      'Label of the field in which the new password is typed a second time, in the Change Password and Switch to Password Authentication dialogs in Settings.',
   },
   createUser: {
     id: 'fresco.settings.UserManagement.createUser',
     defaultMessage: 'Create User',
-    description: 'Researcher-facing settings / UserManagement: Create User',
+    description:
+      'Submit button of the Add User dialog in Settings; creates the new researcher account (verb).',
   },
   atLeast4CharactersNoSpaces: {
     id: 'fresco.settings.UserManagement.atLeast4CharactersNoSpaces',
     defaultMessage: 'At least 4 characters, no spaces',
     description:
-      'Researcher-facing settings / UserManagement: At least 4 characters, no spaces',
+      'Hint listing the rules for the username field of the Add User dialog in Settings.',
   },
   mustBeUnique: {
     id: 'fresco.settings.UserManagement.mustBeUnique',
     defaultMessage: 'Must be unique',
-    description: 'Researcher-facing settings / UserManagement: Must be unique',
+    description:
+      'Hint for the username field of the Add User dialog in Settings: no other researcher account may have the same username.',
   },
   password: {
     id: 'fresco.settings.UserManagement.password',
     defaultMessage: 'Password',
-    description: 'Researcher-facing settings / UserManagement: Password',
+    description:
+      'Label of the password field of the Add User dialog in Settings; the password of the account being created.',
   },
   confirmPassword: {
     id: 'fresco.settings.UserManagement.confirmPassword',
     defaultMessage: 'Confirm Password',
     description:
-      'Researcher-facing settings / UserManagement: Confirm Password',
+      'Label of the field in which the password is typed a second time, in the Add User dialog in Settings.',
   },
   temporaryPassword: {
     id: 'fresco.settings.UserManagement.temporaryPassword',
     defaultMessage: 'Temporary Password',
     description:
-      'Researcher-facing settings / UserManagement: Temporary Password',
+      "Title of the dialog shown after another account's authentication was reset in the users table in Settings; the dialog displays the temporary password.",
   },
   theUserSAuthenticationHasBeenReset: {
     id: 'fresco.settings.UserManagement.theUserSAuthenticationHasBeenReset',
     defaultMessage:
       "The user's authentication has been reset. Share this temporary password with them so they can sign in and set up their account again.",
     description:
-      "Researcher-facing settings / UserManagement: The user's authentication has been reset. Share this temporary password with them so they can sign in and set up their a",
+      'Description in the Temporary Password dialog in Settings. The user is the researcher account that was reset; the researcher reading it must pass the password on to that person.',
   },
   enterYourCurrentPasswordThenRegisterA: {
     id: 'fresco.settings.UserManagement.enterYourCurrentPasswordThenRegisterA',
     defaultMessage:
       'Enter your current password, then register a passkey. Your password and two-factor authentication will be removed.',
     description:
-      'Researcher-facing settings / UserManagement: Enter your current password, then register a passkey. Your password and two-factor authentication will be removed.',
+      'Description under the title of the Switch to Passkey Authentication dialog in Settings; the researcher enters their password, then creates a passkey.',
   },
   allYourPasskeysWillBeRemovedAnd: {
     id: 'fresco.settings.UserManagement.allYourPasskeysWillBeRemovedAnd',
     defaultMessage:
       'All your passkeys will be removed and replaced with a password.',
     description:
-      'Researcher-facing settings / UserManagement: All your passkeys will be removed and replaced with a password.',
+      'Description under the title of the Switch to Password Authentication dialog in Settings; warns that every passkey of the account is removed.',
   },
   verifyYourIdentityWithAPasskeyTo: {
     id: 'fresco.settings.UserManagement.verifyYourIdentityWithAPasskeyTo',
     defaultMessage: 'Verify your identity with a passkey to continue.',
     description:
-      'Researcher-facing settings / UserManagement: Verify your identity with a passkey to continue.',
+      'Instruction in the first step of the Switch to Password Authentication dialog in Settings, above the Verify with passkey button.',
   },
 });
 

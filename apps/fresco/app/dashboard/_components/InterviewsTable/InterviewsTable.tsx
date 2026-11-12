@@ -50,37 +50,38 @@ const messages = defineMessages({
   error: {
     id: 'fresco.InterviewsTable.InterviewsTable.error',
     defaultMessage: 'Error',
-    description: 'Researcher-facing InterviewsTable / InterviewsTable: Error',
+    description:
+      'Title of the error toast on the Interviews page, shown above the error text when the interviews to select, export or delete could not be loaded.',
   },
   exportInterviewData: {
     id: 'fresco.InterviewsTable.InterviewsTable.exportInterviewData',
     defaultMessage: 'Export Interview Data',
     description:
-      'Researcher-facing InterviewsTable / InterviewsTable: Export Interview Data',
+      'Label of the button above the Interviews table that opens a menu of choices for exporting interview data (a verb phrase, not a heading).',
   },
   exportAllInterviews: {
     id: 'fresco.InterviewsTable.InterviewsTable.exportAllInterviews',
     defaultMessage: 'Export all interviews',
     description:
-      'Researcher-facing InterviewsTable / InterviewsTable: Export all interviews',
+      'Menu item in the export menu of the Interviews page. Starts an export of the data of every interview matching the current filters, finished or not.',
   },
   exportAllCompletedInterviews: {
     id: 'fresco.InterviewsTable.InterviewsTable.exportAllCompletedInterviews',
     defaultMessage: 'Export all completed interviews',
     description:
-      'Researcher-facing InterviewsTable / InterviewsTable: Export all completed interviews',
+      'Menu item in the export menu of the Interviews page. Starts an export of the data of only the finished interviews matching the current filters.',
   },
   exportAllUnexportedInterviews: {
     id: 'fresco.InterviewsTable.InterviewsTable.exportAllUnexportedInterviews',
     defaultMessage: 'Export all unexported interviews',
     description:
-      'Researcher-facing InterviewsTable / InterviewsTable: Export all unexported interviews',
+      'Menu item in the export menu of the Interviews page. Starts an export of the data of only the interviews matching the current filters that have not been exported before.',
   },
   filterByIdentifier: {
     id: 'fresco.InterviewsTable.InterviewsTable.filterByIdentifier',
     defaultMessage: 'Filter by identifier...',
     description:
-      'Researcher-facing InterviewsTable / InterviewsTable: Filter by identifier...',
+      'Placeholder of the search box above the Interviews table. The researcher types a participant identifier to narrow the list of interviews.',
   },
 });
 

@@ -30,99 +30,116 @@ const messages = defineMessages({
   selectRow: {
     id: 'fresco.InterviewsTable.Columns.selectRow',
     defaultMessage: 'Select row',
-    description: 'Researcher-facing InterviewsTable / Columns: Select row',
+    description:
+      'Accessible name of the checkbox at the start of each row of the interviews table; read only by screen readers. Selects that one interview.',
   },
   participantIcon: {
     id: 'fresco.InterviewsTable.Columns.participantIcon',
     defaultMessage: 'Participant icon',
     description:
-      'Researcher-facing InterviewsTable / Columns: Participant icon',
+      'Alternative text of the small participant icon shown beside the Participant Identifier column heading of the interviews table; read only by screen readers.',
   },
   participantIdentifier: {
     id: 'fresco.InterviewsTable.Columns.participantIdentifier',
     defaultMessage: 'Participant Identifier',
     description:
-      'Researcher-facing InterviewsTable / Columns: Participant Identifier',
+      "Column heading of the interviews table for the study participant's identifier, the label that identifies the participant who took the interview.",
   },
   protocolIcon: {
     id: 'fresco.InterviewsTable.Columns.protocolIcon',
     defaultMessage: 'Protocol icon',
-    description: 'Researcher-facing InterviewsTable / Columns: Protocol icon',
+    description:
+      'Alternative text of the small protocol icon shown beside the Protocol Name column heading of the interviews table; read only by screen readers.',
   },
   protocolName: {
     id: 'fresco.InterviewsTable.Columns.protocolName',
     defaultMessage: 'Protocol Name',
-    description: 'Researcher-facing InterviewsTable / Columns: Protocol Name',
+    description:
+      'Column heading of the interviews table for the name of the interview protocol each interview was conducted with. Also the label of its filter.',
   },
   started: {
     id: 'fresco.InterviewsTable.Columns.started',
     defaultMessage: 'Started',
-    description: 'Researcher-facing InterviewsTable / Columns: Started',
+    description:
+      'Column heading of the interviews table for the time the interview was started. Past participle used as a label, not an action.',
   },
   updated: {
     id: 'fresco.InterviewsTable.Columns.updated',
     defaultMessage: 'Updated',
-    description: 'Researcher-facing InterviewsTable / Columns: Updated',
+    description:
+      'Column heading of the interviews table for the time the interview was last changed. Past participle used as a label, not an action.',
   },
   notStarted: {
     id: 'fresco.InterviewsTable.Columns.notStarted',
     defaultMessage: 'Not Started',
-    description: 'Researcher-facing InterviewsTable / Columns: Not Started',
+    description:
+      'Preset option in the Progress filter of the interviews table that selects interviews with 0% progress (no stage reached yet).',
   },
   inProgress: {
     id: 'fresco.InterviewsTable.Columns.inProgress',
     defaultMessage: 'In Progress',
-    description: 'Researcher-facing InterviewsTable / Columns: In Progress',
+    description:
+      'Preset option in the Progress filter of the interviews table that selects interviews between 1% and 99% progress (begun but not finished).',
   },
   complete: {
     id: 'fresco.InterviewsTable.Columns.complete',
     defaultMessage: 'Complete',
-    description: 'Researcher-facing InterviewsTable / Columns: Complete',
+    description:
+      'Preset option in the Progress filter of the interviews table that selects interviews at 100% progress (finished). An adjective for the interview, not an action.',
   },
   progress: {
     id: 'fresco.InterviewsTable.Columns.progress',
     defaultMessage: 'Progress',
-    description: 'Researcher-facing InterviewsTable / Columns: Progress',
+    description:
+      'Column heading of the interviews table for how far through its stages each interview has got, shown as a bar and a percentage. Also the label of its filter.',
   },
   entityType: {
     id: 'fresco.InterviewsTable.Columns.entityType',
     defaultMessage: 'Entity Type',
-    description: 'Researcher-facing InterviewsTable / Columns: Entity Type',
+    description:
+      'Label of the first dropdown in the Network filter of the interviews table, where the researcher picks which type of node or edge to count. Entity means a node or an edge.',
   },
   nodes: {
     id: 'fresco.InterviewsTable.Columns.nodes',
     defaultMessage: '{value1} (nodes)',
-    description: 'Researcher-facing InterviewsTable / Columns: value (nodes)',
+    description:
+      'Option in the entity type dropdown of the Network filter of the interviews table. value is a node type name defined by the protocol author; keep it as is.',
   },
   edges: {
     id: 'fresco.InterviewsTable.Columns.edges',
     defaultMessage: '{value1} (edges)',
-    description: 'Researcher-facing InterviewsTable / Columns: value (edges)',
+    description:
+      'Option in the entity type dropdown of the Network filter of the interviews table. value is an edge type name defined by the protocol author; keep it as is.',
   },
   network: {
     id: 'fresco.InterviewsTable.Columns.network',
     defaultMessage: 'Network',
-    description: 'Researcher-facing InterviewsTable / Columns: Network',
+    description:
+      'Column heading of the interviews table for the summary of the network (people or things and their connections) recorded in each interview.',
   },
   exported: {
     id: 'fresco.InterviewsTable.Columns.exported',
     defaultMessage: 'Exported',
-    description: 'Researcher-facing InterviewsTable / Columns: Exported',
+    description:
+      'Option in the Export Status filter of the interviews table that selects interviews whose data has already been exported. Status, not an action.',
   },
   notExported: {
     id: 'fresco.InterviewsTable.Columns.notExported',
     defaultMessage: 'Not Exported',
-    description: 'Researcher-facing InterviewsTable / Columns: Not Exported',
+    description:
+      'Option in the Export Status filter of the interviews table that selects interviews whose data has never been exported. Status, not an action.',
   },
   exportStatus: {
     id: 'fresco.InterviewsTable.Columns.exportStatus',
     defaultMessage: 'Export Status',
-    description: 'Researcher-facing InterviewsTable / Columns: Export Status',
+    description:
+      "Column heading of the interviews table for whether and when each interview's data was last exported. Also the label of its filter.",
   },
   notExported2: {
     id: 'fresco.InterviewsTable.Columns.notExported2',
     defaultMessage: 'Not exported',
-    description: 'Researcher-facing InterviewsTable / Columns: Not exported',
+    description:
+      "Red badge in a cell of the Export Status column of the interviews table when the interview's data has never been exported.",
   },
 });
 
@@ -178,7 +195,11 @@ export const getInterviewColumns = (
             className="flex items-center gap-2"
             title={row.original.participant.identifier}
           >
-            <Badge appearance="outline" className="max-w-80 truncate">
+            <Badge
+              dir="auto"
+              appearance="outline"
+              className="text-match-parent max-w-80 truncate"
+            >
               {row.original.participant.identifier}
             </Badge>
           </div>
@@ -229,7 +250,9 @@ export const getInterviewColumns = (
             className="flex w-full max-w-72 items-center gap-2"
             title={row.original.protocol.name}
           >
-            <span className="truncate">{protocolName}</span>
+            <span dir="auto" className="text-match-parent truncate">
+              {protocolName}
+            </span>
           </div>
         );
       },

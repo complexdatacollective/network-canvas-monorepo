@@ -43,121 +43,121 @@ const messages = defineMessages({
     id: 'fresco.settings.SyntheticInterviewDataSection.copyGenerating',
     defaultMessage: 'Generating...',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Generating...',
+      'Label of the Generate button in the synthetic interview data card of Settings while test interviews are being created. A progress state, not a command.',
   },
   copyGenerate: {
     id: 'fresco.settings.SyntheticInterviewDataSection.copyGenerate',
     defaultMessage: 'Generate',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Generate',
+      'Button in the synthetic interview data card of Settings that creates the chosen number of generated test interviews for the selected protocol. Generate is a verb.',
   },
   copyDeleting: {
     id: 'fresco.settings.SyntheticInterviewDataSection.copyDeleting',
     defaultMessage: 'Deleting...',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Deleting...',
+      'Label of the Delete All button in the synthetic interview data card of Settings while the test interviews are being deleted. A progress state, not a command.',
   },
   copyDeleteAll: {
     id: 'fresco.settings.SyntheticInterviewDataSection.copyDeleteAll',
     defaultMessage: 'Delete All',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Delete All',
+      'Destructive button in the synthetic interview data card of Settings that deletes all generated test interviews and test participants at once. Delete is a verb.',
   },
   generationFailed: {
     id: 'fresco.settings.SyntheticInterviewDataSection.generationFailed',
     defaultMessage: 'Generation failed',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Generation failed',
+      'Title of the error toast shown when generating synthetic test interviews failed; the toast body gives the reason.',
   },
   generationComplete: {
     id: 'fresco.settings.SyntheticInterviewDataSection.generationComplete',
     defaultMessage: 'Generation complete',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Generation complete',
+      'Title of the success toast shown when generating synthetic test interviews has finished.',
   },
   successfullyGeneratedSyntheticInterviews: {
     id: 'fresco.settings.SyntheticInterviewDataSection.successfullyGeneratedSyntheticInterviews',
     defaultMessage:
       'Successfully generated {value1, plural, one {# synthetic interview} other {# synthetic interviews}}.',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Successfully generated value synthetic interviews.',
+      'Body of the success toast shown after synthetic test interviews were generated. value1 is the number of interviews created.',
   },
   syntheticInterviewData: {
     id: 'fresco.settings.SyntheticInterviewDataSection.syntheticInterviewData',
     defaultMessage: 'Synthetic Interview Data',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Synthetic Interview Data',
+      'Title of the card in Settings for generating and deleting synthetic interview data, computer-generated test interviews used to try out a protocol and exports.',
   },
   generateTestInterviews: {
     id: 'fresco.settings.SyntheticInterviewDataSection.generateTestInterviews',
     defaultMessage: 'Generate Test Interviews',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Generate Test Interviews',
+      'Label of the Settings row containing the protocol picker, interview count and Generate button for creating synthetic test interviews.',
   },
   generateSyntheticInterviewDataForTestingSelect: {
     id: 'fresco.settings.SyntheticInterviewDataSection.generateSyntheticInterviewDataForTestingSelect',
     defaultMessage:
       'Generate synthetic interview data for testing. Select a protocol and specify how many interviews to create.',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Generate synthetic interview data for testing. Select a protocol and specify how many interviews to create.',
+      'Hint under the Generate Test Interviews label in Settings, explaining the protocol picker and the number field beside it.',
   },
   selectAProtocol: {
     id: 'fresco.settings.SyntheticInterviewDataSection.selectAProtocol',
     defaultMessage: 'Select a Protocol...',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Select a Protocol...',
+      'Placeholder of the dropdown, and its accessible name, for choosing which uploaded protocol test interviews are generated for.',
   },
   interviewGenerationProgress: {
     id: 'fresco.settings.SyntheticInterviewDataSection.interviewGenerationProgress',
     defaultMessage: 'Interview generation progress',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Interview generation progress',
+      'Accessible name of the progress bar shown while synthetic test interviews are being generated; read only by screen readers.',
   },
   interviewsGenerated: {
     id: 'fresco.settings.SyntheticInterviewDataSection.interviewsGenerated',
     defaultMessage:
       '{value1, number} / {value2, plural, one {# interview generated} other {# interviews generated}}',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: value / value interviews generated',
+      'Progress text under the generation progress bar. value1 is how many interviews have been generated so far; value2 is the total requested.',
   },
   simulateParticipantDropOut: {
     id: 'fresco.settings.SyntheticInterviewDataSection.simulateParticipantDropOut',
     defaultMessage: 'Simulate participant drop-out',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Simulate participant drop-out',
+      "Label of the toggle in Settings that makes generated test interviews end early, as if participants gave up. Also the toggle's accessible name.",
   },
   whenEnabledParticipantsHaveAnIncreasingChance: {
     id: 'fresco.settings.SyntheticInterviewDataSection.whenEnabledParticipantsHaveAnIncreasingChance',
     defaultMessage:
       'When enabled, participants have an increasing chance of abandoning the interview at each stage.',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: When enabled, participants have an increasing chance of abandoning the interview at each stage.',
+      'Hint under the simulate participant drop-out toggle in Settings. A stage is one step of an interview.',
   },
   respectSkipLogicAndFiltering: {
     id: 'fresco.settings.SyntheticInterviewDataSection.respectSkipLogicAndFiltering',
     defaultMessage: 'Respect skip logic and filtering',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Respect skip logic and filtering',
+      "Label of the toggle in Settings that makes generated test interviews follow the protocol's skip logic and network filters. Also the toggle's accessible name.",
   },
   evaluateSkipLogicRulesAndStageNetwork: {
     id: 'fresco.settings.SyntheticInterviewDataSection.evaluateSkipLogicRulesAndStageNetwork',
     defaultMessage:
       'Evaluate skip logic rules and stage network filters during generation. Stages will be skipped or see filtered nodes based on the network state at that point.',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Evaluate skip logic rules and stage network filters during generation. Stages will be skipped or see filtered nodes base',
+      'Hint under the respect skip logic and filtering toggle in Settings. Nodes are the people or items a participant names in an interview.',
   },
   deleteTestInterviews: {
     id: 'fresco.settings.SyntheticInterviewDataSection.deleteTestInterviews',
     defaultMessage: 'Delete Test Interviews',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: Delete Test Interviews',
+      'Label of the Settings row with the button that deletes all generated test interviews and test participants.',
   },
   thereAreCurrentlySyntheticInterviewsAndTest: {
     id: 'fresco.settings.SyntheticInterviewDataSection.thereAreCurrentlySyntheticInterviewsAndTest',
     defaultMessage:
       'There are currently {value1, plural, one {# synthetic interview} other {# synthetic interviews}} and {value2, plural, one {# test participant} other {# test participants}}.',
     description:
-      'Researcher-facing settings / SyntheticInterviewDataSection: There are currently value synthetic interviews and value test participants.',
+      'Hint under the Delete Test Interviews label in Settings. value1 is the number of synthetic interviews, value2 the number of test participants created with them.',
   },
 });
 

@@ -128,6 +128,6 @@ const messages = defineMessages({
     id: 'fresco.protocolImport.files.unreadable',
     defaultMessage: 'The file could not be read.',
     description:
-      'Researcher-facing protocolImport.files: The file could not be read.',
+      'Error raised when the browser cannot read a protocol file the researcher chose to import (upload), so the import of that protocol file stops.',
   },
 });

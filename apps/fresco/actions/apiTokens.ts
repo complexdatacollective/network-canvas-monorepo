@@ -18,19 +18,19 @@ const messages = defineMessages({
     id: 'fresco.actions.apiTokens.copyFailedToCreateAPIToken',
     defaultMessage: 'Failed to create API token',
     description:
-      'Researcher-facing actions / apiTokens: Failed to create API token',
+      'Error toast shown in the API tokens section of Settings when creating a new API token (a credential for programmatic access to this installation) failed.',
   },
   copyFailedToUpdateAPIToken: {
     id: 'fresco.actions.apiTokens.copyFailedToUpdateAPIToken',
     defaultMessage: 'Failed to update API token',
     description:
-      'Researcher-facing actions / apiTokens: Failed to update API token',
+      'Error toast shown in the API tokens section of Settings when switching an API token between active and inactive failed.',
   },
   copyFailedToDeleteAPIToken: {
     id: 'fresco.actions.apiTokens.copyFailedToDeleteAPIToken',
     defaultMessage: 'Failed to delete API token',
     description:
-      'Researcher-facing actions / apiTokens: Failed to delete API token',
+      'Error toast shown in the API tokens section of Settings when deleting an API token failed.',
   },
 });
 

@@ -47,6 +47,12 @@ use an old term change with it.
   "تُسجَّل") and the last vowel of a short imperative ("ألغِ", "أعطِ"). Prefer a
   wording that needs none ("استخدم في التصفية" for "صفِّ"). Never full
   vocalisation.
+- **A file extension keeps its dot in front.** Inside an Arabic sentence the
+  dot of ".netcanvas" is drawn after the word, as "netcanvas.", unless
+  something holds it in place. Where the English wraps the extension in a tag
+  the app renders as code, nothing is needed: code is always laid out left to
+  right. Anywhere else, put a left-to-right mark (U+200E) straight before the
+  dot: "تنزيل ‎.netcanvas".
 - **Never name a physical side** ("على اليسار", "أقصى يمين الشاشة") where the
   English says left or right of something on screen: the Arabic layout is
   mirrored. Say "بجانب", "في بداية السطر" or "في نهاية الشاشة".
@@ -401,6 +407,100 @@ time:
   "تنزيل نسخة".
 - "Participants could not tell these apart." is "لن يتمكن المشاركون من التمييز
   بينها."
+
+## Fresco terms
+
+Fresco's dashboard: signing in, setting the installation up, protocols,
+participants, interviews, exports, the activity feed and settings. UploadThing,
+S3, Netlify and the names of environment variables are never translated.
+
+| English                               | Arabic                             | Notes                                                                                                                                                                                                                                                                           |
+| ------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| account / user                        | حساب / مستخدم (مستخدمون)           | A researcher's account on this installation. "User Management" is "إدارة المستخدمين".                                                                                                                                                                                           |
+| activity (feed, recent)               | النشاط                             | "سجل النشاط" for the feed, "النشاط الأخير" for the dashboard panel. Keep "سجل التغييرات" for Architect's undo history.                                                                                                                                                           |
+| activity event name                   | a verbal noun                      | "User Created", "Password Changed", "Protocol Installed", "Interview Completed" name what happened: "إنشاء مستخدم", "تغيير كلمة المرور", "تثبيت بروتوكول", "اكتمال مقابلة". Never a passive verb.                                                                               |
+| analytics                             | التحليلات                           |                                                                                                                                                                                                                                                                                 |
+| anonymous recruitment                 | استقطاب المشاركين دون تحديد الهوية | The setting that lets anyone with one shared link start an interview without being listed as a participant first. Recruitment always names who is recruited: bare "الاستقطاب" also reads as polarization. Not "التجنيد". An anonymous participant is "مشارك مجهول الهوية".       |
+| API token                             | رمز API (رموز API)                 | The secret a script sends to read interview data. Always with "API". Not "مفتاح".                                                                                                                                                                                               |
+| authenticator app                     | تطبيق المصادقة                     | The phone app that shows six-digit codes. "أداة المصادقة" stays for a device's built-in authenticator.                                                                                                                                                                          |
+| bucket (storage)                      | حاوية التخزين                      | "Bucket Name" is "اسم حاوية التخزين".                                                                                                                                                                                                                                           |
+| code (two-factor) / verification code | رمز التحقق                         | The six digits from the authenticator app. Always qualified: "رمز" alone could be an API token. Where the text may mean either this code or a recovery code, name both ("يجب إدخال رمز التحقق أو رمز الاسترداد") or say "الرمز المُدخَل".                                          |
+| dashboard                             | لوحة التحكم                        |                                                                                                                                                                                                                                                                                 |
+| deployment                            | النشر                              | Putting Fresco on a server.                                                                                                                                                                                                                                                     |
+| endpoint URL                          | عنوان URL لنقطة النهاية            |                                                                                                                                                                                                                                                                                 |
+| environment variable                  | متغيّر بيئة (متغيّرات البيئة)        |                                                                                                                                                                                                                                                                                 |
+| export (interview data)               | تصدير                              | "Exported" as an interview's state is "مُصدَّرة", "Not exported" is "غير مُصدَّرة".                                                                                                                                                                                                   |
+| freeze (completed interviews)         | تجميد                              | The setting that stops a finished interview from being changed.                                                                                                                                                                                                                 |
+| identifier (participant)              | معرّف المشارك                       | The unique text that names a participant in links and exports.                                                                                                                                                                                                                  |
+| installation                          | التثبيت                            | This copy of Fresco on its server: "معرّف التثبيت", "انتهت صلاحية التثبيت".                                                                                                                                                                                                       |
+| interview state                       | feminine adjective                 | "Not Started", "In Progress", "Completed" describe an interview: "لم تبدأ", "جارية", "مكتملة".                                                                                                                                                                                  |
+| label (participant)                   | تسمية                              | The optional readable name beside the identifier.                                                                                                                                                                                                                               |
+| limit interviews                      | تقييد المقابلات                     | The setting that allows each participant one interview.                                                                                                                                                                                                                         |
+| link / URL (to an interview)          | رابط (روابط)                       | "Unique Participant URL" is "رابط المشارك الفريد", "Anonymous Participation URL" is "رابط الانضمام دون تحديد الهوية", the "onboarding link" is "رابط الانضمام": "رابط المشاركة" is the usual phrase for a share link. Write "عنوان URL" only for a technical address in settings. |
+| passkey                               | مفتاح المرور (مفاتيح المرور)       | "Synced passkey" is "مفتاح مرور مُزامَن", "Device-bound" is "مرتبط بالجهاز", "Security key" is "مفتاح أمان".                                                                                                                                                                      |
+| password                              | كلمة المرور                        | "Temporary password" is "كلمة مرور مؤقتة". Fresco has no passphrase.                                                                                                                                                                                                            |
+| recovery code                         | رمز الاسترداد (رموز الاسترداد)       | One of the single-use codes that replace the authenticator app.                                                                                                                                                                                                                 |
+| regenerate                            | إعادة إنشاء                        | Recovery codes, the installation ID.                                                                                                                                                                                                                                            |
+| region (storage)                      | المنطقة                            |                                                                                                                                                                                                                                                                                 |
+| sandbox                               | بيئة تجريبية                       | "Sandbox Credentials" is "بيانات اعتماد البيئة التجريبية". The usual Arabic for a software sandbox; described as "بيئة توضيحية مشتركة" where the text explains it.                                                                                                              |
+| set up / setup (first run)            | الإعداد                             | "Configure Storage" is "إعداد التخزين".                                                                                                                                                                                                                                         |
+| sign in / sign out                    | تسجيل الدخول / تسجيل الخروج        | "Log in" and "login" are the same. "Logged in as:" is "تم تسجيل الدخول باسم:".                                                                                                                                                                                                  |
+| storage provider                      | مزوّد التخزين                       | Where uploaded files are kept: S3-compatible storage or UploadThing.                                                                                                                                                                                                            |
+| test interviews                       | مقابلات اختبارية                    | The generated interviews under "Synthetic Interview Data"; "synthetic" stays "اصطناعي".                                                                                                                                                                                         |
+| two-factor authentication, 2FA        | المصادقة الثنائية                  | "Password + 2FA" is "كلمة المرور + المصادقة الثنائية".                                                                                                                                                                                                                          |
+| upload (a protocol, a file)           | رفع                                |                                                                                                                                                                                                                                                                                 |
+| administrator, admin                  | مسؤول                              | The person who runs the installation: "حساب مسؤول", "يُرجى التواصل مع المسؤول".                                                                                                                                                                                                  |
+| debug information                     | معلومات التصحيح                    | The technical details of an error, copied to send to support.                                                                                                                                                                                                                   |
+| Developer Tools                       | أدوات المطوّر                       | A section of Settings.                                                                                                                                                                                                                                                          |
+| Interview Data API                    | API بيانات المقابلات                | "API" stays in Latin letters; never "واجهة", which names a stage type.                                                                                                                                                                                                          |
+| passkey mode / password mode          | وضع مفتاح المرور / وضع كلمة المرور | How an account signs in. "Auth Method" is "طريقة المصادقة", "Reset Auth" is "إعادة تعيين المصادقة".                                                                                                                                                                             |
+| QR code                               | رمز QR                             | "Scan" is "مسح … ضوئيًا".                                                                                                                                                                                                                                                        |
+| recruitment test                      | اختبار استقطاب المشاركين           | The developer tool that starts a test interview.                                                                                                                                                                                                                                |
+| secret (two-factor setup)             | السر                               | The text typed into the authenticator app when the QR code cannot be scanned.                                                                                                                                                                                                   |
+| S3 settings                           |                                    | "Access Key ID" is "معرّف مفتاح الوصول", "Secret Access Key" is "مفتاح الوصول السري", "Public URL" is "عنوان URL العام".                                                                                                                                                         |
+| test participant                      | مشارك اختباري                      | Created with the test interviews.                                                                                                                                                                                                                                               |
+| uninstall (a protocol)                | إزالة تثبيت                        |                                                                                                                                                                                                                                                                                 |
+| instance (of Fresco)                  | مثيل                               | "A new instance of Fresco" is "مثيل جديد من Fresco". Not "نسخة", which reads as a version.                                                                                                                                                                                      |
+| mobile (devices, navigation)          | الأجهزة المحمولة                    | Not "الجوال", which is regional.                                                                                                                                                                                                                                                |
+| never (last used)                     | لم يُستخدم قط / لا يوجد              | Alone in a table cell: "لم يُستخدم قط". Filled in after "آخر استخدام:" it is "لا يوجد", so the line does not say "used" twice. Not "أبدًا" alone, which needs a negation.                                                                                                          |
+| UploadThing API key / token           | مفتاح API / رمز UploadThing        | The English calls one secret both. The settings field, its help and its placeholder say "مفتاح API" in full ("مفتاح API المحفوظ مخفي"); a sentence that says token says "رمز UploadThing". Never bare "المفتاح" or "الرمز".                                                     |
+| username                              | اسم المستخدم                       |                                                                                                                                                                                                                                                                                 |
+
+Recurring sentences:
+
+- "Are you sure?" as a dialog title: "هل تريد المتابعة؟" ("Are you absolutely
+  sure?": "هل تريد المتابعة فعلًا؟"). In a sentence, "Are you sure you want to
+  …?" is "هل تريد …؟".
+- "This action cannot be undone.": "لا يمكن التراجع عن هذا الإجراء."
+- "Something went wrong.": "حدث خطأ ما."
+- "Please try again.": "يُرجى إعادة المحاولة."
+- "… is required" under a field: "… مطلوب" or "… مطلوبة", agreeing with the
+  field's Arabic name: "اسم المستخدم مطلوب", "كلمة المرور مطلوبة".
+- A progress label that ends in "…" is a verbal noun with "جارٍ": "Saving…" is
+  "جارٍ الحفظ…", "Deleting…" is "جارٍ الحذف…".
+- A placeholder that names what to do is a verbal noun: "Select a Protocol…"
+  is "اختيار بروتوكول…", "Enter an identifier…" is "إدخال معرّف…".
+- A count of nothing inside a sentence is "0" with the singular noun: "0
+  مقابلة", "0 مشارك". On its own it is a sentence: "لا توجد مقابلات محددة".
+- "Username already taken": "اسم المستخدم مستعمَل بالفعل". Not "مستخدم بالفعل", which
+  repeats the word for user, and not "محجوز", which says it is reserved.
+- "while …", "during …": "في أثناء", never bare "أثناء".
+- Fresco is masculine: "يستخدم Fresco", "يتطلب Fresco".
+- An activity sentence about deleting says "قام المستخدم … بحذف …": "حذف المستخدم
+  …" also reads as "the user … was deleted". A sentence about a participant makes
+  the interview the subject ("اكتملت مقابلة المشارك …"), so that no verb takes the
+  participant's gender.
+- "Delete Selected" and "Export Selected" name what is selected: "حذف المقابلات
+  المحددة", "تصدير المشاركين المحددين".
+- A button that confirms something the researcher has done is a verbal noun
+  with "تأكيد": "I've saved my recovery codes" is "تأكيد حفظ رموز الاسترداد". Not
+  a first-person verb, and not "تم …", which reads as the app reporting.
+- A dual that is spelled like its plural carries the number: "مشاركين اثنين",
+  "بروتوكولين اثنين". "مقابلتين" and "مشاركان" need nothing.
+- A list of things a password must contain ends "واحد على الأقل من كل نوع", so
+  that "at least" applies to every item.
+- "the person who recruited you" (read by a participant): "الشخص الذي دعاك إلى
+  المشاركة في هذه الدراسة". "دعاك" reads the same for a man or a woman.
 
 ## Common controls
 

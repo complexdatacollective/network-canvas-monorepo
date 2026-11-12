@@ -12,7 +12,7 @@ const messages = defineMessages({
     defaultMessage:
       'This setting is controlled by your <tag1>.env</tag1> file, and so can only be changed by modifying that file.',
     description:
-      'Researcher-facing settings / ReadOnlyEnvAlert: This setting is controlled by your .env file, and so can only be changed by modifying that file.',
+      'Information banner shown in Settings above a setting that the installation fixes through its .env configuration file, so the control is disabled. The tag1 element formats the file name .env; do not translate it.',
   },
 });
 
