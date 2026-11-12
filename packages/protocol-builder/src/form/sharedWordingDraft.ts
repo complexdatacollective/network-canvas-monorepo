@@ -6,13 +6,13 @@ import type {
   CustomFieldValidation,
   FieldValue,
 } from '@codaco/fresco-ui/form/store/types';
+import { suppliedInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   interfaceTextArguments,
   type InterfaceTextUpdate,
   lacksDefaultLanguageText,
   type LocalizedString,
   sharedStageInterfaceTextUsed,
-  suppliedInterfaceText,
 } from '@codaco/protocol-validation';
 
 import { localizedMessageProblemText } from '../fields/LocalizedMessageField.tsx';

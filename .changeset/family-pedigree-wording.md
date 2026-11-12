@@ -42,7 +42,8 @@ A stage holds one of these settings only where its author changed the
 wording, or wrote it in a language Network Canvas has no wording in. For each
 one it does not hold in a language, the interview shows Network Canvas's
 wording, where Network Canvas has wording in that language
-(`stageWordingShown(stage, localization)`). Architect's stage editor,
+(`stageWordingShown(stage, localization)`, from
+`@codaco/interview/supplied-wording`). Architect's stage editor,
 translation table and protocol summary show that wording for a setting the
 stage does not hold, and a translation that reads exactly as Network Canvas
 words it is not saved, so a correction to Network Canvas's wording reaches
@@ -92,11 +93,11 @@ marked `required`, the new `TokenPill` subpath draws a placeholder the same
 way in text that is only read (`TokenPill`, `TokenizedText`), `Table` takes a
 `scrollerClassName` for its scrolling element, and a dialog's busy
 confirm button is announced through a status region;
-`@codaco/protocol-validation` adds `stageWithoutSuppliedText` (a stage as it
-is stored) and `stageWithSuppliedText` (as an editor holds it),
-`withoutSuppliedWording` and `withSuppliedWording` for a whole protocol,
-`suppliedWordingIn` (Network Canvas's own wording for a text of a protocol),
-`suppliedStageSettingApplies`,
+`@codaco/interview/supplied-wording` gives `stageWithoutSuppliedText` (a stage
+as it is stored) and `stageWithSuppliedText` (as an editor holds it),
+`withoutSuppliedWording` and `withSuppliedWording` for a whole protocol, and
+`suppliedWordingIn` (Network Canvas's own wording for a text of a protocol);
+`@codaco/protocol-validation` adds `suppliedStageSettingApplies`,
 `messageVariants`, `composeMessage`, `findMessageArgumentProblem`,
 `findMissingPlacement` and `requiredArgumentsOf`, and a declared `text` or
 `plural` argument may list the versions it is `required` in; and

@@ -6,9 +6,9 @@ import { useMemo } from 'react';
 import {
   type LocalizationDeclaration,
   type LocalizedString,
-  stageWordingShown,
 } from '@codaco/protocol-validation';
 
+import { stageWordingShown } from '../wording/suppliedWording';
 import { useProtocolLocalization } from './ProtocolLocalizationProvider';
 
 type WordedStage = Parameters<typeof stageWordingShown>[0];

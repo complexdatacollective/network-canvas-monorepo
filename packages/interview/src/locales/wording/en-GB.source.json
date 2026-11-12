@@ -1,0 +1,5 @@
+{
+  "interview.interfaces.mapUnavailable": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
+  "interview.runtime.taskErrorDescription": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
+  "interview.stageWording.finishSession.finishFailed": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+}

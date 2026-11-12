@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
   type FilterOperator,
@@ -12,7 +13,6 @@ import {
   type VariableType,
   validateProtocol,
   VariableTypesKeys,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';

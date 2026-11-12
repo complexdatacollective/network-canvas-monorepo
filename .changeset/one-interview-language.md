@@ -38,7 +38,9 @@ Spanish no longer gets a Spanish protocol inside French buttons.
 - A protocol may hold any of the interface text it shows, or none of it. For
   each text it does not hold in a language, the interview shows Network
   Canvas's wording, where Network Canvas has wording in that language
-  (`interfaceTextShown(interfaceText, group, key, localization)`). Every text
+  (`interfaceTextShown(interfaceText, group, key, localization)`, from
+  `@codaco/interview/supplied-wording`, as are the other functions below
+  that read Network Canvas's wording). Every text
   a protocol shows must have words in its default language, counting Network
   Canvas's wording, before the protocol leaves its editor: a protocol whose
   default language Network Canvas has no wording in must hold each one there.

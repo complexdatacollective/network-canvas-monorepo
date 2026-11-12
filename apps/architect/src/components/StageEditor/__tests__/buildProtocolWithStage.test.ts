@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  type CurrentProtocol,
   interfaceTextAsShown,
+  withInterfaceText,
+} from '@codaco/interview/supplied-wording';
+import {
+  type CurrentProtocol,
   type LocalizedString,
   type Stage,
   validateProtocol,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 

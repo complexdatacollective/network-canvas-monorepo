@@ -1,7 +1,8 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { find, findIndex } from 'es-toolkit/compat';
 
-import { type Asset, withSuppliedWording } from '@codaco/protocol-validation';
+import { withSuppliedWording } from '@codaco/interview/supplied-wording';
+import { type Asset } from '@codaco/protocol-validation';
 import { canRedo, canUndo } from '~/ducks/middleware/timeline';
 import type { RootState } from '~/ducks/modules/root';
 import { deriveAssetDisplayNames } from '~/utils/assetNames';

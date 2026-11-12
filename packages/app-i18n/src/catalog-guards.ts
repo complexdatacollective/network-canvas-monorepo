@@ -660,7 +660,9 @@ export type LocaleStamp = Readonly<{
 
 /**
  * Rewrite every locale's provenance record in `localesDir` from the committed
- * `en.json`, and report what moved.
+ * `en.json`, and report what moved. The English is read from `englishPath`
+ * when a package keeps its translations in another folder than its extracted
+ * English, as the interview does for the wording a protocol may reword.
  *
  * This is a baseline-acceptance tool, so it is built to be read rather than
  * merely run: the caller prints each id with the English it used to be
@@ -669,8 +671,10 @@ export type LocaleStamp = Readonly<{
  * has been deleted is left unstamped, so it keeps failing as an unknown id
  * rather than being quietly blessed.
  */
-export function stampTranslationSources(localesDir: string): LocaleStamp[] {
-  const englishPath = join(localesDir, 'en.json');
+export function stampTranslationSources(
+  localesDir: string,
+  englishPath: string = join(localesDir, 'en.json'),
+): LocaleStamp[] {
   const extractedEnglish: unknown = JSON.parse(
     readFileSync(englishPath, 'utf8'),
   );

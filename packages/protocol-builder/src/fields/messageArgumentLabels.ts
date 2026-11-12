@@ -6,8 +6,8 @@ import {
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
 import {
-  familyPedigreeWordingIn,
   messageVariants,
   PEDIGREE_WORDING_ARGUMENTS,
 } from '@codaco/protocol-validation';

@@ -32,12 +32,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Question asked when leaving a form with invalid unsaved answers. Continuing resets the form, so its unsaved changes will be lost.',
   },
-  discardChanges: {
-    id: 'interview.interfaces.discardChanges',
-    defaultMessage: 'Discard changes',
-    description:
-      'Confirmation action that leaves an invalid form and discards its unsaved changes.',
-  },
   scrollForQuestions: {
     id: 'interview.interfaces.scrollForQuestions',
     defaultMessage: 'Scroll to see more questions',

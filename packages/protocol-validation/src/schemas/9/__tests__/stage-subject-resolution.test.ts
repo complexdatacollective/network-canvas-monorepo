@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { localized, localizedOptions } from '../../../utils/test-utils.ts';
 import { getEntityAttributeReferenceDescriptor } from '../entity-attribute-reference.ts';
@@ -11,7 +12,6 @@ import {
 } from '../family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { getStageSubjectResolution } from '../stage-subject-resolution.ts';
-import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import { stageSchema } from '../stages/index.ts';
 import { narrativePedigreeWords } from './canvas-stage-words.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';

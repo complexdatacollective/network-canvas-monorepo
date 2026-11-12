@@ -194,12 +194,6 @@ export const runtimeMessages = defineMessages({
     defaultMessage: 'Nothing matched your search term.',
     description: 'Empty result after searching the interview screen list.',
   },
-  filter: {
-    id: 'interview.runtime.filter',
-    defaultMessage: 'Filter...',
-    description:
-      'Placeholder for filtering the interview screen navigation list.',
-  },
   notifications: {
     id: 'interview.runtime.notifications',
     defaultMessage: 'Interview notifications',

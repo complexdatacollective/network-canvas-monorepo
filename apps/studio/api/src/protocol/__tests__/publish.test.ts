@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { Effect, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { withInterfaceText } from '@codaco/protocol-validation';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import { SYNC_TABLES } from '@codaco/studio-sync/schema';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';

@@ -1,11 +1,13 @@
 import { v1 as uuid } from 'uuid';
 
 import {
+  interfaceTextWithUpdates,
+  withInterfaceText,
+} from '@codaco/interview/supplied-wording';
+import {
   type CurrentProtocol,
   type InterfaceTextUpdate,
-  interfaceTextWithUpdates,
   type Stage,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 import { creationIndex } from '~/ducks/modules/protocol/stages';
 import prune from '~/utils/prune';

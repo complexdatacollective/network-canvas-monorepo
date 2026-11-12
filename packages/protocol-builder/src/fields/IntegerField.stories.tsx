@@ -4,7 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
-import { suppliedStageText } from '@codaco/protocol-validation';
+import { suppliedStageText } from '@codaco/interview/supplied-wording';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';

@@ -21,11 +21,8 @@ import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
 import { withSafeTypingIntoRichText } from '@codaco/fresco-ui/testing/withSafeTypingIntoRichText';
-import {
-  type Codebook,
-  type StageType,
-  stageWithoutSuppliedText,
-} from '@codaco/protocol-validation';
+import { stageWithoutSuppliedText } from '@codaco/interview/supplied-wording';
+import { type Codebook, type StageType } from '@codaco/protocol-validation';
 import { protocolValidationCatalogLoaders } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {

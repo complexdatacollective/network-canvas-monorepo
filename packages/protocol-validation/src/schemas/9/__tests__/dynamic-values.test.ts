@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { interfaceTextFor } from '../../../__tests__/suppliedWording.ts';
 import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
@@ -9,7 +10,6 @@ import {
   stageDynamicValueContext,
 } from '../dynamic-value-validation.ts';
 import { dynamicValueArgumentsAt } from '../dynamic-values.ts';
-import { interfaceTextFor } from '../interface-text.ts';
 import {
   getLocalizedStringDescriptor,
   localizedMessage,

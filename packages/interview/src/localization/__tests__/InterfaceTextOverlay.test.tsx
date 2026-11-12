@@ -8,8 +8,8 @@ import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
+import { interfaceTextMessages } from '../../i18n/interfaceTextMessages';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
-import { interfaceMessages } from '../../interfaces/messages';
 import { InterfaceTextOverlay } from '../InterfaceTextOverlay';
 import { ProtocolLocalizationProvider } from '../ProtocolLocalizationProvider';
 
@@ -150,7 +150,7 @@ describe('InterfaceTextOverlay', () => {
         <ul>
           <li>{intl.formatMessage(commonMessages.genericError)}</li>
           <li>{intl.formatMessage(formMessages.submitFailed)}</li>
-          <li>{intl.formatMessage(interfaceMessages.discardChanges)}</li>
+          <li>{intl.formatMessage(interfaceTextMessages['buttons.yes'])}</li>
         </ul>
       );
     }

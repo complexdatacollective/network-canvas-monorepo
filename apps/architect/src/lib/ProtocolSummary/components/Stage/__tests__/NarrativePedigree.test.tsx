@@ -1,8 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { familyPedigreeWordingIn } from '@codaco/protocol-validation';
 
 import SummaryContext from '../../SummaryContext';
 import NarrativePedigree from '../NarrativePedigree';

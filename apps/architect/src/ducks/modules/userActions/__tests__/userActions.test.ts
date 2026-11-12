@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
   DEFAULT_FINISH_SESSION_TEXT,
   ProtocolValidationError,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 import { messageFields } from '~/test/messageText';
 

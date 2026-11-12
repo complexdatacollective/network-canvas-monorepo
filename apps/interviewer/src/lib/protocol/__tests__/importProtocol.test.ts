@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
-import { hashProtocol, withInterfaceText } from '@codaco/protocol-validation';
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import { hashProtocol } from '@codaco/protocol-validation';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
 import { importProtocolFromFile } from '../importProtocol';

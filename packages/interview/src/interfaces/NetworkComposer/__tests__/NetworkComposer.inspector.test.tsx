@@ -805,7 +805,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
       fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     });
     const discard = await screen.findByRole('button', {
-      name: 'Discard changes',
+      name: 'Yes',
     });
     act(() => {
       fireEvent.click(discard);
@@ -1162,7 +1162,7 @@ describe('NetworkComposer inspector — leaving an edit', () => {
       tapNode(screen.getByRole('button', { name: /bob/i }));
     });
     await screen.findByRole('dialog', discardDialog);
-    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
 
     expect(await screen.findByDisplayValue('Bob Jones')).toBeTruthy();
     expect(store.getState().session.network).toBe(before);
