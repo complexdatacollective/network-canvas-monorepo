@@ -18,7 +18,7 @@
     },
   ],
   /**
-   * The hourly limits and the day's spending, held exactly in one SQLite
+   * The hourly limits and each provider's spending, held exactly in one SQLite
    * Durable Object instance.
    */
   "durable_objects": {
@@ -32,11 +32,11 @@
    */
   "kv_namespaces": [{ "binding": "SHARED_REVIEWS" }],
   /**
-   * Uploaded with every deploy by the release job, from the
-   * `protocol-review-worker` GitHub environment. Locally, `.dev.vars` holds it
-   * (and `DEV_ALLOWED_ORIGIN`, which is never set in production).
+   * Each provider's API key, uploaded with every deploy by the release job
+   * from the `protocol-review-worker` GitHub environment. Locally, `.dev.vars`
+   * holds them (and `DEV_ALLOWED_ORIGIN`, which is never set in production).
    */
   "secrets": {
-    "required": ["ANTHROPIC_API_KEY"],
+    "required": ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"],
   },
 }

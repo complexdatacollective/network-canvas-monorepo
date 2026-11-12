@@ -24,22 +24,26 @@ const messages = defineMessages({
   navigation: {
     id: 'architect.projectNav.navShell.navigation',
     defaultMessage: 'Main navigation',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
+    description:
+      'Accessible name of the main navigation bar at the top of the screen, which links to the protocol pages (Stages, Resources, Codebook and so on); read only by screen readers.',
   },
   openMenu: {
     id: 'architect.projectNav.navShell.openMenu',
     defaultMessage: 'Open menu',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
+    description:
+      'Accessible name of the icon button, shown on narrow screens, that opens the navigation drawer; read only by screen readers.',
   },
   mobileNavigation: {
     id: 'architect.projectNav.navShell.mobileNavigation',
     defaultMessage: 'Mobile navigation',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
+    description:
+      'Accessible name of the navigation list inside the drawer opened on narrow screens; read only by screen readers.',
   },
   closeMenu: {
     id: 'architect.projectNav.navShell.closeMenu',
     defaultMessage: 'Close menu',
-    description: 'The aria-label text in components / ProjectNav / NavShell.',
+    description:
+      'Accessible name of the icon button that closes the navigation drawer; read only by screen readers.',
   },
 });
 

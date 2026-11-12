@@ -52,46 +52,54 @@ const messages = defineMessages({
   oK: {
     id: 'architect.timeline.timeline.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / Timeline / Timeline.',
+    description:
+      'Button that dismisses the warning dialogs on the timeline, such as the ones for a stage that cannot be deleted.',
   },
   cannotDeleteStage: {
     id: 'architect.timeline.timeline.cannotDeleteStage',
     defaultMessage: 'Cannot delete stage',
-    description: 'The title text in components / Timeline / Timeline.',
+    description:
+      'Title of the dialog shown when the researcher tries to delete a Family Pedigree stage that a Narrative Pedigree stage still uses.',
   },
   thisFamilyPedigreeStageIsUsed: {
     id: 'architect.timeline.timeline.thisFamilyPedigreeStageIsUsed',
     defaultMessage:
       '{stageCount, plural, one {This Family Pedigree stage is used by the Narrative Pedigree stage {names}. Remove that stage or change its source before deleting this stage.} other {This Family Pedigree stage is used by the Narrative Pedigree stages {names}. Remove those stages or change their source before deleting this stage.}}',
-    description: 'The description text in components / Timeline / Timeline.',
+    description:
+      'Body of the Cannot delete stage dialog. stageCount is the number of Narrative Pedigree stages that use this Family Pedigree stage as their source; names is the list of those stages.',
   },
   deleteStage: {
     id: 'architect.timeline.timeline.deleteStage',
     defaultMessage: 'Delete stage',
-    description: 'The title text in components / Timeline / Timeline.',
+    description:
+      'Title of the dialog that asks the researcher to confirm deleting a stage from the timeline.',
   },
   areYouSureYouWantTo: {
     id: 'architect.timeline.timeline.areYouSureYouWantTo',
     defaultMessage:
       'Are you sure you want to delete this stage from your protocol? You can restore it with Undo while this protocol remains open.',
-    description: 'The description text in components / Timeline / Timeline.',
+    description:
+      "Body of the dialog that asks the researcher to confirm deleting a stage from the timeline. Undo is the protocol editor's undo command.",
   },
   protocolStages: {
     id: 'architect.timeline.timeline.protocolStages',
     defaultMessage: 'Protocol stages',
-    description: 'The aria-label text in components / Timeline / Timeline.',
+    description:
+      'Accessible name of the list of stages on the timeline; read only by screen readers.',
   },
   addNewStage: {
     id: 'architect.timeline.timeline.addNewStage',
     defaultMessage: 'Add new stage',
-    description: 'Visible text in components / Timeline / Timeline.',
+    description:
+      'Button at the end of the timeline. Opens the dialog for choosing the interface type of a new stage, which is added after the last stage.',
   },
 });
 const finalMessages = defineMessages({
   untitledStage: {
     id: 'architect.final.components.Timeline.Timeline.untitledStage',
     defaultMessage: 'Untitled stage',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Name shown for a stage on the timeline that has no title yet.',
   },
 });
 

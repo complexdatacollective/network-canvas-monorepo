@@ -8,7 +8,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.dataSource.dataSource',
     defaultMessage: 'DataSource',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / DataSource.',
+      "Section heading in the printable protocol summary, above the uploaded network data file that supplies a stage's nodes.",
   },
 });
 

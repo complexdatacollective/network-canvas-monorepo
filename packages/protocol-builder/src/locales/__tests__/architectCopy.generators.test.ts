@@ -43,9 +43,13 @@ const committedEnGb = JSON.parse(
   readFileSync(join(localesDir, 'en-GB.json'), 'utf8'),
 ) as Readonly<Record<string, string>>;
 
+// `esFrom`, when present, records a deliberate departure of the Spanish from
+// Architect 8.2.5: the `es` value was moved to the shared Spanish glossary and
+// verified by back-translation, and `esFrom` names the change that did it. The
+// English is never amended this way, so `en` still pins Architect's words.
 const fixtureEntries = Object.entries(fixture) as [
   string,
-  Readonly<{ en: string; es: string; from: string }>,
+  Readonly<{ en: string; es: string; from: string; esFrom?: string }>,
 ][];
 
 // The manifest is a JSON array of ids: read it as one. `Object.keys` on an

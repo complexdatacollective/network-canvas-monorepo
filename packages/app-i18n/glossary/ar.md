@@ -336,6 +336,72 @@ managing and exporting interviews.
 | preferences                       | التفضيلات                    |                                                                                                                                                             |
 | revoke (the device lock)          | إزالة                       | "إزالة قفل الجهاز". Never "إلغاء", which is Cancel, or "إبطال", which reads as "invalidate".                                                                |
 
+## Architect terms
+
+Architect's own screens: opening and saving protocols, the stage editor, the
+codebook, resources, languages, the printable summary.
+
+| English                                                    | Arabic                                     | Notes                                                                                                                                                                         |
+| ---------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| access token (Mapbox)                                      | رمز الوصول                                 | "رمز وصول Mapbox". A testing token is "رمز وصول تجريبي". Not "مفتاح", which is the API key resource.                                                                          |
+| capability (of an interface)                               | إمكانية (إمكانيات)                         | What an interface type can do, used to filter the list of interfaces.                                                                                                         |
+| change undone / change redone                              | تم التراجع عن التغيير / أُعيد تنفيذ التغيير | Toasts after Undo and Redo.                                                                                                                                                   |
+| copy (noun, of a protocol)                                 | نسخة                                       | "تنزيل نسخة". The action Copy is "نسخ".                                                                                                                                       |
+| default language                                           | اللغة الافتراضية                            | The language a protocol is written in first.                                                                                                                                  |
+| documentation (the Network Canvas docs)                    | الوثائق                                    | "عرض الوثائق".                                                                                                                                                                |
+| issues (problems to fix in a stage)                        | المشكلات                                    |                                                                                                                                                                               |
+| OK (button that closes a notice)                           | موافق                                      |                                                                                                                                                                               |
+| Protocol Gallery                                           | معرض البروتوكولات                           |                                                                                                                                                                               |
+| tab character / line break / control character             | علامة جدولة / فاصل أسطر / حرف تحكم          | Characters not allowed in a name or value. Not "علامة تبويب", which is a browser tab.                                                                                          |
+| cannot (a rule forbids it) / could not (an attempt failed) | لا يمكن / تعذّر                              | "Cannot delete stage" as the title of a notice that explains why is "لا يمكن حذف المرحلة". "تعذّر" is for something that was tried and did not work.                            |
+| "… failed" (the title of an error)                         | فشل …                                      | "Download failed", "Delete failed", "Source save failed", "Preview failed": "فشل التنزيل", "فشل الحذف". The sentence under the title says what could not be done with "تعذّر". |
+| canonical (source files)                                   | المرجعية                                   | The copy of a protocol's source files that the repository treats as the reference: "ملفات مصدر البروتوكول المرجعية". Not "المعتمدة", which reads as approved.                 |
+| interview text (a kind of text)                            | نص المقابلة                                | The label for the wording the interview itself shows, on the Languages page and as a section of the summary. In a sentence about that wording, use "الصياغة".                 |
+| Outdoors (a map style)                                     | الهواء الطلق                               | Translated like the other map style names, as the other languages do ("Plein air", "Al aire libre").                                                                          |
+| closing screen / finished screen                           | شاشة الختام / شاشة الانتهاء                 | The two screens of a stage that ends the interview: the one the participant reads before finishing, and the one shown afterwards.                                             |
+| draft                                                      | مسودة (مسودات)                             |                                                                                                                                                                               |
+| duplicate (rows, labels)                                   | مكرّر                                       | "صفوف مكرّرة".                                                                                                                                                                 |
+| edge interpreter                                           | مفسّر الروابط                               | Beside "مفسّر الأسماء" for a name interpreter.                                                                                                                                  |
+| editor / stage editor                                      | المحرّر / محرّر المرحلة                      | The screen where one stage is edited.                                                                                                                                         |
+| example data (in a preview)                                | بيانات توضيحية                             | Not "مثالية", which means ideal.                                                                                                                                              |
+| feature (of a map layer)                                   | عنصر (عناصر)                               | "خاصية العنصر المستهدف". Not "ميزة".                                                                                                                                          |
+| history (undo and redo)                                    | سجل التغييرات                              |                                                                                                                                                                               |
+| leave (a screen, an editor)                                | مغادرة                                     | "تجاهل التغييرات والمغادرة".                                                                                                                                                  |
+| page (a section of Architect)                              | صفحة                                       | The Stages, Codebook, Resources, Languages and Summary pages: "صفحة المراحل", "صفحة دليل الترميز", "صفحة الموارد", "صفحة اللغات", "صفحة الملخّص".                              |
+| preview popup                                              | نافذة المعاينة المنبثقة                    | The separate window the interview preview opens in.                                                                                                                           |
+| protocol library                                           | مكتبة البروتوكولات                          | The list of protocols kept in this browser.                                                                                                                                   |
+| protocol summary                                           | ملخّص البروتوكول                            | The printable document that describes a protocol. Print is "طباعة".                                                                                                           |
+| read-only mode                                             | وضع القراءة فقط                            |                                                                                                                                                                               |
+| recent protocols                                           | البروتوكولات الأخيرة                         |                                                                                                                                                                               |
+| rename                                                     | إعادة تسمية                                |                                                                                                                                                                               |
+| resource library                                           | مكتبة الموارد                              | "Assets" and "resources" are the same thing: "الموارد".                                                                                                                       |
+| restore                                                    | استعادة                                    |                                                                                                                                                                               |
+| saved copy / saved version (of a protocol or stage)        | النسخة المحفوظة                            | The content as last saved. Keep "إصدار" for numbered versions of an app or of the schema. "The version the other tab saved" is "النسخة التي حفظتها علامة التبويب الأخرى".       |
+| start screen                                               | شاشة البداية                               | Architect's first screen, where protocols are opened and created. "العودة إلى شاشة البداية".                                                                                  |
+| subject (the node type, edge type or ego a stage is about) | الكيان المعني                              | Not "الموضوع", which means topic.                                                                                                                                             |
+| take (an interview, said of a participant)                 | خوض المقابلة                               | "يخوض المشاركون المقابلة بهذه اللغة". "إجراء المقابلة" is what the person conducting it does.                                                                                 |
+| tab (browser tab)                                          | علامة تبويب (علامات تبويب)                   | "علامة تبويب أخرى". A tab "holds" the saved copy: "تحتفظ بالنسخة المحفوظة".                                                                                                    |
+| template (protocol template)                               | قالب (قوالب)                               |                                                                                                                                                                               |
+| threshold                                                  | عتبة (عتبات)                               |                                                                                                                                                                               |
+| translation (of protocol text)                             | ترجمة (ترجمات)                             | A missing translation is "ترجمة ناقصة".                                                                                                                                       |
+| unsaved changes                                            | تغييرات غير محفوظة                         |                                                                                                                                                                               |
+| used in (column heading)                                   | مواضع الاستخدام                             | A heading with no gender to agree.                                                                                                                                            |
+| untitled                                                   | بلا عنوان                                   | Of a stage or protocol with no name. An option with no label is "بلا تسمية".                                                                                                   |
+
+Sentences that recur across Architect's screens are written the same way each
+time:
+
+- "This protocol is open in another tab, which holds the saved copy." is "هذا
+  البروتوكول مفتوح في علامة تبويب أخرى تحتفظ بالنسخة المحفوظة."
+- "Close the other tab, then …" is "أغلق علامة التبويب الأخرى، ثم …".
+- "You can restore it with Undo while this protocol remains open." is "يمكن
+  استعادته بالتراجع ما دام هذا البروتوكول مفتوحًا." (the pronoun agrees with
+  what was deleted).
+- "Return to start screen" is "العودة إلى شاشة البداية"; "Download a copy" is
+  "تنزيل نسخة".
+- "Participants could not tell these apart." is "لن يتمكن المشاركون من التمييز
+  بينها."
+
 ## Common controls
 
 | English  | Arabic       |     | English        | Arabic         |

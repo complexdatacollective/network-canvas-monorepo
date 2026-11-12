@@ -38,7 +38,8 @@ const chromeMessages = defineMessages({
   untitledProtocol: {
     id: 'architect.chrome.projectNav.projectNav.untitledProtocol',
     defaultMessage: 'Untitled protocol',
-    description: 'The label text in components / ProjectNav / ProjectNav.',
+    description:
+      'Name shown in the top bar breadcrumb when the open protocol has no name yet.',
   },
 });
 const configMessages = defineMessages({
@@ -46,19 +47,19 @@ const configMessages = defineMessages({
     id: 'architect.projectNav.projectNav.config.stages',
     defaultMessage: 'Stages',
     description:
-      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+      'Label of the navigation tab for the page showing the timeline of stages of the protocol.',
   },
   resources: {
     id: 'architect.projectNav.projectNav.config.resources',
     defaultMessage: 'Resources',
     description:
-      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+      'Label of the navigation tab for the page that manages uploaded resources: images, video, audio, data files and map API keys.',
   },
   codebook: {
     id: 'architect.projectNav.projectNav.config.codebook',
     defaultMessage: 'Codebook',
     description:
-      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+      'Label of the navigation tab for the page listing the node types, edge types and variables of the protocol.',
   },
   languages: {
     id: 'architect.projectNav.projectNav.config.languages',
@@ -70,7 +71,7 @@ const configMessages = defineMessages({
     id: 'architect.projectNav.projectNav.config.summary',
     defaultMessage: 'Summary',
     description:
-      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+      'Label of the navigation tab for the page showing a printable summary of the protocol.',
   },
 });
 const experimentsMessages = defineMessages({
@@ -91,24 +92,28 @@ const messages = defineMessages({
   readOnly: {
     id: 'architect.projectNav.projectNav.readOnly',
     defaultMessage: 'Read only',
-    description: 'Visible text in components / ProjectNav / ProjectNav.',
+    description:
+      'Badge in the top bar next to the protocol name, shown when the protocol is open for viewing only and cannot be edited.',
   },
 });
 const finalMessages = defineMessages({
   roleWarning: {
     id: 'architect.final.components.ProjectNav.ProjectNav.roleWarning',
     defaultMessage: 'has attributes written both with and without validation',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Warning, read only by screen readers, completing the sentence after the Stages tab name: some variables are filled in by some stages with validation and by others without.',
   },
   assetsWarning: {
     id: 'architect.final.components.ProjectNav.ProjectNav.assetsWarning',
     defaultMessage: 'has unused resources',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Warning, read only by screen readers, completing the sentence after the Resources tab name: some uploaded resources are not used by any stage.',
   },
   attributesWarning: {
     id: 'architect.final.components.ProjectNav.ProjectNav.attributesWarning',
     defaultMessage: 'has unused attributes',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Warning, read only by screen readers, completing the sentence after the Codebook tab name: some variables are not used by any stage.',
   },
   translationsWarning: {
     id: 'architect.projectNav.projectNav.translationsWarning',

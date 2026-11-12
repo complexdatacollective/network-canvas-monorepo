@@ -4776,11 +4776,13 @@ jobs:
           CLOUDFLARE_API_TOKEN_SET: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
           CLOUDFLARE_ACCOUNT_ID_SET: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
           ANTHROPIC_API_KEY_SET: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          OPENAI_API_KEY_SET: ${{ secrets.OPENAI_API_KEY != '' }}
         run: |
           missing=()
           [[ "$CLOUDFLARE_API_TOKEN_SET" == "true" ]] || missing+=(CLOUDFLARE_API_TOKEN)
           [[ "$CLOUDFLARE_ACCOUNT_ID_SET" == "true" ]] || missing+=(CLOUDFLARE_ACCOUNT_ID)
           [[ "$ANTHROPIC_API_KEY_SET" == "true" ]] || missing+=(ANTHROPIC_API_KEY)
+          [[ "$OPENAI_API_KEY_SET" == "true" ]] || missing+=(OPENAI_API_KEY)
           if (( ${#missing[@]} > 0 )); then
             echo "::error::The protocol-review-worker environment has no value for: ${missing[*]}. Add them (workers/protocol-review/README.md, \"Releasing\") and re-run this job."
             exit 1
@@ -4798,15 +4800,16 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Write the Worker's secrets file
         if: steps.guard.outputs.skip != 'true'
-        # Its own step so that the key is in the environment of nothing but
-        # this one Node process. The value is passed through JSON.stringify,
-        # never through the shell.
+        # Its own step so that the providers' keys are in the environment of
+        # nothing but this one Node process. Each value is passed through
+        # JSON.stringify, never through the shell.
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SECRETS_FILE: ${{ runner.temp }}/protocol-review-secrets.json
         run: |
           umask 077
-          node -e 'require("node:fs").writeFileSync(process.env.SECRETS_FILE, JSON.stringify({ ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY }))'
+          node -e 'require("node:fs").writeFileSync(process.env.SECRETS_FILE, JSON.stringify({ ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY, OPENAI_API_KEY: process.env.OPENAI_API_KEY }))'
       - name: Deploy the Worker to Cloudflare
         if: steps.guard.outputs.skip != 'true'
         working-directory: workers/protocol-review

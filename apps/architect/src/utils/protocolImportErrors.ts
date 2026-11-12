@@ -24,17 +24,20 @@ const importMessages = defineMessages({
     id: 'architect.importFailure.storage',
     defaultMessage:
       'Architect could not save this protocol on this device. Your device may be out of space, or your browser may be blocking storage \u2014 which is common in a private window.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Error shown when a protocol being imported or opened cannot be stored in the browser because the device is out of space or storage is blocked, as in a private browsing window.',
   },
   protocol: {
     id: 'architect.importFailure.protocol',
     defaultMessage: 'Architect could not open this protocol.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Error shown when a protocol file cannot be opened for a reason not covered by a more specific message.',
   },
   template: {
     id: 'architect.importFailure.template',
     defaultMessage: 'Architect could not open this template.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Error shown when a built-in template protocol cannot be opened for a reason not covered by a more specific message.',
   },
 });
 

@@ -19,6 +19,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "1.1.0",
     "@codaco/shared-consts": "workspace:^",
+    "openai": "7.55.0",
     "zod": "catalog:"
   },
   "devDependencies": {

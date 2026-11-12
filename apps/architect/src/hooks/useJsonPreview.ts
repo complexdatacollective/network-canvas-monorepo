@@ -9,12 +9,14 @@ const messages = defineMessages({
   stageJSON: {
     id: 'architect.hooks.useJsonPreview.stageJSON',
     defaultMessage: 'Stage JSON',
-    description: 'The label text in hooks / useJsonPreview.',
+    description:
+      'Title of the developer JSON preview panel when it shows the raw data of the stage being edited. JSON is a data format and stays as written.',
   },
   protocolJSON: {
     id: 'architect.hooks.useJsonPreview.protocolJSON',
     defaultMessage: 'Protocol JSON',
-    description: 'The label text in hooks / useJsonPreview.',
+    description:
+      'Title of the developer JSON preview panel when it shows the raw data of the whole protocol. JSON is a data format and stays as written.',
   },
 });
 

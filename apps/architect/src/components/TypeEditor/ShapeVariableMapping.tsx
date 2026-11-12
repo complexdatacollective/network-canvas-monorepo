@@ -41,13 +41,13 @@ const additionalMessages = defineMessages({
     id: 'architect.additional.typeEditor.shapeVariableMapping.addThreshold',
     defaultMessage: 'Add threshold',
     description:
-      'The addButtonLabel text in components / TypeEditor / ShapeVariableMapping.',
+      "Button below the list of thresholds in the node type editor's shape mapping. Adds a threshold: a number at or above which nodes are drawn with a chosen shape.",
   },
   noThresholdsYetEveryValue: {
     id: 'architect.additional.typeEditor.shapeVariableMapping.noThresholdsYetEveryValue',
     defaultMessage: 'No thresholds yet — every value uses the default shape.',
     description:
-      'The emptyStateMessage text in components / TypeEditor / ShapeVariableMapping.',
+      "Empty-state message in the thresholds list of the node type editor's shape mapping, shown before any threshold is added.",
   },
 });
 const messages = defineMessages({
@@ -73,86 +73,86 @@ const messages = defineMessages({
     id: 'architect.typeEditor.shapeVariableMapping.true',
     defaultMessage: 'True',
     description:
-      'The label text in components / TypeEditor / ShapeVariableMapping.',
+      'Label of the True value of a yes/no variable in the shape mapping of the node type editor, beside the picker for the shape used when the variable is true.',
   },
   false: {
     id: 'architect.typeEditor.shapeVariableMapping.false',
     defaultMessage: 'False',
     description:
-      'The label text in components / TypeEditor / ShapeVariableMapping.',
+      'Label of the False value of a yes/no variable in the shape mapping of the node type editor, beside the picker for the shape used when the variable is false.',
   },
   attribute: {
     id: 'architect.typeEditor.shapeVariableMapping.attribute',
     defaultMessage: 'Attribute',
     description:
-      'The label text in components / TypeEditor / ShapeVariableMapping.',
+      "Label of the dropdown in the node type editor's shape mapping that chooses which variable of the node type decides the node's shape. Attribute means a codebook variable.",
   },
   shapeForEachValue: {
     id: 'architect.typeEditor.shapeVariableMapping.shapeForEachValue',
     defaultMessage: 'Shape for each value',
     description:
-      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+      "Heading above the list of a categorical, ordinal or yes/no variable's values in the shape mapping, each with a picker for the shape used for that value.",
   },
   shapeFor: {
     id: 'architect.typeEditor.shapeVariableMapping.shapeFor',
     defaultMessage: 'Shape for {value1}',
     description:
-      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+      "Accessible name of the shape picker beside one value of the variable in the shape mapping; read only by screen readers. value1 is the value's label.",
   },
   someValuesAreUnmappedAndWill: {
     id: 'architect.typeEditor.shapeVariableMapping.someValuesAreUnmappedAndWill',
     defaultMessage: 'Some values are unmapped and will use the default shape.',
     description:
-      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+      "Warning below the list of values in the shape mapping, shown while at least one value has no shape chosen. Those nodes use the node type's default shape.",
   },
   thresholds: {
     id: 'architect.typeEditor.shapeVariableMapping.thresholds',
     defaultMessage: 'Thresholds',
     description:
-      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+      'Heading and accessible name of the list of numeric thresholds in the shape mapping for a number or scale variable. Each threshold is a value at or above which nodes use a chosen shape.',
   },
   belowFirstThreshold: {
     id: 'architect.typeEditor.shapeVariableMapping.belowFirstThreshold',
     defaultMessage: 'Below first threshold',
     description:
-      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+      'Label of the fixed first row in the thresholds list of the shape mapping. It covers values lower than the lowest threshold, which use the default shape.',
   },
   defaultShape: {
     id: 'architect.typeEditor.shapeVariableMapping.defaultShape',
     defaultMessage: 'Default shape',
     description:
-      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+      "Accessible name of the disabled shape picker in the fixed Below first threshold row; it shows the node type's default shape. Read only by screen readers.",
   },
   usesDefaultShape: {
     id: 'architect.typeEditor.shapeVariableMapping.usesDefaultShape',
     defaultMessage: 'uses default shape',
     description:
-      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+      "Small note at the end of the fixed Below first threshold row, saying that values below the first threshold use the node type's default shape.",
   },
   belowFirstThresholdCannotBeRemoved: {
     id: 'architect.typeEditor.shapeVariableMapping.belowFirstThresholdCannotBeRemoved',
     defaultMessage: 'Below first threshold cannot be removed',
     description:
-      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+      'Accessible name of the disabled delete button in the fixed Below first threshold row; read only by screen readers. The row always exists and cannot be removed.',
   },
   mapAttributeToShape: {
     id: 'architect.typeEditor.shapeVariableMapping.mapAttributeToShape',
     defaultMessage: 'Map attribute to shape',
     description:
-      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+      'Label and accessible name of the on/off toggle in the node type editor that lets a variable of the node type decide the node shape instead of one default shape.',
   },
   overrideTheDefaultShapeBasedOn: {
     id: 'architect.typeEditor.shapeVariableMapping.overrideTheDefaultShapeBasedOn',
     defaultMessage:
       "Override the default shape based on the value of a node's attribute.",
     description:
-      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+      'Hint below the Map attribute to shape toggle. Attribute means a variable recorded about each node of this type.',
   },
   shapeMapping: {
     id: 'architect.typeEditor.shapeVariableMapping.shapeMapping',
     defaultMessage: 'Shape mapping',
     description:
-      'The label text in components / TypeEditor / ShapeVariableMapping.',
+      'Hidden field label (accessible name only) of the shape mapping editor, which holds the chosen variable and its value-to-shape rules.',
   },
 });
 

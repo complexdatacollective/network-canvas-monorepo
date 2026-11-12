@@ -16,7 +16,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.introductionPanel.introductionPanel',
     defaultMessage: 'Introduction Panel',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / IntroductionPanel.',
+      "Section heading in the printable protocol summary, above the title and text of a stage's introduction panel shown to participants.",
   },
 });
 
