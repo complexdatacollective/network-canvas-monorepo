@@ -13,6 +13,8 @@
  * points the other way.
  */
 
+import { withoutBidiFormatting } from '@codaco/app-i18n/messages';
+
 /** One element's box inside its parent's, in one writing direction. */
 export type PlacedElement = Readonly<{
   /** Child indexes from the root: the same element in both renders. */
@@ -235,9 +237,9 @@ export function compareMirrored(
   // A story that moves on by itself (a value advanced by a timer, a clock)
   // shows different content each time it is drawn, and every box that
   // depends on that content moves with it: what differs is not the layout.
-  if (first.text !== second.text) {
+  if (!sameText(first.text, second.text)) {
     return [
-      `the two renders show different content, so they cannot be compared: ${textDifference(first.text, second.text)}`,
+      `the two renders show different content, so they cannot be compared: ${textDifference(withoutBidiFormatting(first.text), withoutBidiFormatting(second.text))}`,
     ];
   }
   const others = new Map(second.elements.map((entry) => [entry.key, entry]));
@@ -274,6 +276,14 @@ export function compareMirrored(
 
 const round = (value: number) => Math.round(value * 10) / 10;
 
+/**
+ * Whether two renders say the same thing. Bidi formatting characters do not
+ * count: a value interpolated into a right-to-left message is wrapped in
+ * isolates the left-to-right render does not carry.
+ */
+const sameText = (first: string, second: string) =>
+  withoutBidiFormatting(first) === withoutBidiFormatting(second);
+
 /** The first place two texts part, with a little on either side. */
 const textDifference = (first: string, second: string): string => {
   let start = 0;
@@ -295,7 +305,7 @@ export function layoutsMatch(
   second: LayoutSnapshot,
   tolerance = 0.5,
 ): boolean {
-  if (first.text !== second.text) return false;
+  if (!sameText(first.text, second.text)) return false;
   if (first.elements.length !== second.elements.length) return false;
   return first.elements.every((entry, index) => {
     const other = second.elements[index];
@@ -344,10 +354,10 @@ export async function layoutShowing({
   let firstMatch: LayoutSnapshot | undefined;
   let current = await snapshot();
   while (now() < deadline) {
-    if (current.direction === direction && current.text === text) {
+    if (current.direction === direction && sameText(current.text, text)) {
       if (
         previous?.direction === direction &&
-        previous.text === text &&
+        sameText(previous.text, text) &&
         layoutsMatch(previous, current)
       ) {
         return current;

@@ -51,6 +51,7 @@ export {
   POP_DIRECTIONAL_ISOLATE,
   isolateArguments,
   isolatedArgumentNames,
+  withoutBidiFormatting,
   withoutIsolates,
 } from './bidi.ts';
 export type { MessageErrorValues } from './messageErrors.ts';

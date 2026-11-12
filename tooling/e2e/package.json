@@ -16,6 +16,9 @@
     "test": "vitest run",
     "typecheck": "tsc --build --noEmit"
   },
+  "dependencies": {
+    "@codaco/app-i18n": "workspace:^"
+  },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
     "@playwright/test": "catalog:",

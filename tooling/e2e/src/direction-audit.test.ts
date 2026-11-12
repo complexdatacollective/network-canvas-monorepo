@@ -137,6 +137,22 @@ describe('compareMirrored', () => {
     ]);
   });
 
+  it('reads text that differs only in bidi formatting as the same', () => {
+    // A value interpolated into a right-to-left message is wrapped in FSI and
+    // PDI (U+2068, U+2069); the left-to-right render has none.
+    expect(
+      compareMirrored(
+        snapshot('ltr', [box('0', 16, 200)], {}, 'Interview P-007: Nickname'),
+        snapshot(
+          'rtl',
+          [box('0', 200, 16)],
+          {},
+          'Interview \u2068P-007\u2069: \u2068Nickname\u2069',
+        ),
+      ),
+    ).toEqual([]);
+  });
+
   it('refuses two renders in the same direction', () => {
     expect(compareMirrored(snapshot('rtl', []), snapshot('rtl', []))).toEqual([
       'both renders are rtl',

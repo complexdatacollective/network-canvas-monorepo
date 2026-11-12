@@ -26,6 +26,23 @@ export const withoutIsolates = (text: string): string =>
   text.replace(ISOLATE_MARKS, '');
 
 /**
+ * Every bidi formatting character: the Arabic letter mark (U+061C), the
+ * left-to-right and right-to-left marks (U+200E, U+200F), the embeddings and
+ * overrides with their pop (U+202A–U+202E), and the isolates with their pop
+ * (U+2066–U+2069). They change the direction text is laid out in, not what
+ * it says.
+ */
+const BIDI_FORMATTING = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;
+
+/**
+ * Text without any bidi formatting character, for comparing what two
+ * renders say when one is in a right-to-left language and carries marks
+ * the other does not (a check that a layout mirrors, say).
+ */
+export const withoutBidiFormatting = (text: string): string =>
+  text.replace(BIDI_FORMATTING, '');
+
+/**
  * A character that is written right to left (Hebrew, Arabic, Syriac, Thaana,
  * N'Ko and the rest of U+0590–U+08FF, their presentation forms, and the
  * right-to-left blocks beyond the BMP), or a formatting character that starts
