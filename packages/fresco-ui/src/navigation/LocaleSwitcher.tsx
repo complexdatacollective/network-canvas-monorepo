@@ -359,7 +359,7 @@ export default function LocaleSwitcher({
           {renderTrigger ? globe : null}
           <span
             className={cx(
-              'min-w-0 truncate leading-normal',
+              'text-match-parent min-w-0 truncate leading-normal',
               responsive && RESPONSIVE_HIDDEN,
             )}
             lang={triggerLocale}

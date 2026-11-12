@@ -1,0 +1,13 @@
+{
+  // Right-to-left rules (Arabic) that the shape of the code can show; each is
+  // described in plugins/direction.mjs. Extended by every workspace whose
+  // interface is offered right to left. Where a rule's physical reading is
+  // what is meant, the line carries a disable comment saying so.
+  "jsPlugins": ["./plugins/direction.mjs"],
+  "rules": {
+    "direction/inline-arrow-turns": "error",
+    "direction/typed-text-matches-parent": "error",
+    "direction/logical-popup-side": "error",
+    "direction/base-ui-number-locale": "error"
+  }
+}

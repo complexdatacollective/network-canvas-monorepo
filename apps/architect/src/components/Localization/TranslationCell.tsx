@@ -300,7 +300,7 @@ const Fallback = ({
             lang={intl.locale}
             dir="auto"
             aria-hidden
-            className="max-w-full rounded-sm bg-current/8 px-1.5 text-xs leading-5 text-current/80"
+            className="text-match-parent max-w-full rounded-sm bg-current/8 px-1.5 text-xs leading-5 text-current/80"
           >
             {intl.formatMessage(
               unlessBrowserLists
@@ -332,7 +332,7 @@ const ProblemNote = ({ id, children }: { id: string; children: string }) => {
       aria-live="polite"
       lang={intl.locale}
       dir="auto"
-      className="text-destructive-ink block px-3 pb-2 text-sm"
+      className="text-destructive-ink text-match-parent block px-3 pb-2 text-sm"
     >
       {children}
     </output>

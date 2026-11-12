@@ -841,7 +841,9 @@ function TeamManagement(props: {
                     <TableCell>
                       {/* Names and addresses people typed take their own
                           direction, on the interface side. */}
-                      <span dir="auto">{name}</span>
+                      <span dir="auto" className="text-match-parent">
+                        {name}
+                      </span>
                       {member.id === props.activeMemberId && (
                         <span className="ms-2 text-sm opacity-70">
                           {intl.formatMessage(messages.you)}
