@@ -262,6 +262,26 @@ const messages = defineMessages({
     description:
       'Text of the daily limit notice when the service did not say when it restarts.',
   },
+  monthlyTitle: {
+    id: 'architect.protocolReview.notice.monthlyTitle',
+    defaultMessage: 'Protocol review has reached its limit for this month',
+    description:
+      'Title of the notice shown when the service’s shared monthly budget is spent.',
+  },
+  monthlyBodyWithTime: {
+    id: 'architect.protocolReview.notice.monthlyBodyWithTime',
+    defaultMessage:
+      'This is a free experimental service with a fixed monthly budget shared by everyone who uses it, and this month’s has been spent. It starts again {when}. Nothing in your protocol was changed.',
+    description:
+      'Text of the monthly limit notice when the service said when it restarts. {when} is a moment such as "1 Dec 2026 at 01:00".',
+  },
+  monthlyBody: {
+    id: 'architect.protocolReview.notice.monthlyBody',
+    defaultMessage:
+      'This is a free experimental service with a fixed monthly budget shared by everyone who uses it, and this month’s has been spent. Nothing in your protocol was changed.',
+    description:
+      'Text of the monthly limit notice when the service did not say when it restarts.',
+  },
   unavailableTitle: {
     id: 'architect.protocolReview.notice.unavailableTitle',
     defaultMessage: 'Protocol review is not available right now',
@@ -295,11 +315,18 @@ const messages = defineMessages({
   },
 });
 
-type NoticeKind = 'offline' | 'hourly' | 'daily' | 'unavailable' | 'too_large';
+type NoticeKind =
+  | 'offline'
+  | 'hourly'
+  | 'daily'
+  | 'monthly'
+  | 'unavailable'
+  | 'too_large';
 
 const failureNotices: Record<ReviewErrorCode, NoticeKind> = {
   hourly_limit: 'hourly',
   daily_limit: 'daily',
+  monthly_limit: 'monthly',
   too_large: 'too_large',
   service_unavailable: 'unavailable',
   // Neither is the researcher's to fix: the service refused a request this
@@ -426,6 +453,15 @@ const ReviewPopoverContent = ({
             retryAt === null
               ? intl.formatMessage(messages.dailyBody)
               : intl.formatMessage(messages.dailyBodyWithTime, {
+                  when: formatWhen(intl, retryAt, now),
+                }),
+        },
+        monthly: {
+          title: intl.formatMessage(messages.monthlyTitle),
+          body:
+            retryAt === null
+              ? intl.formatMessage(messages.monthlyBody)
+              : intl.formatMessage(messages.monthlyBodyWithTime, {
                   when: formatWhen(intl, retryAt, now),
                 }),
         },

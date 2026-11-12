@@ -2713,7 +2713,7 @@
   },
   "architect.protocolReview.availability.availableAgainAt": {
     "defaultMessage": "Available again {when}",
-    "description": "Why Review again is unavailable: the service’s shared daily budget is spent. {when} is a moment such as \"tomorrow at 01:00\"."
+    "description": "Why Review again is unavailable: the service’s shared budget for the day or the month is spent. {when} is a moment such as \"tomorrow at 01:00\" or \"1 Dec 2026 at 01:00\"."
   },
   "architect.protocolReview.availability.nextReviewAt": {
     "defaultMessage": "Next review {when}",
@@ -2934,6 +2934,18 @@
   "architect.protocolReview.notice.hourlyTitle": {
     "defaultMessage": "You have used your {limit, plural, one {# review} other {# reviews}} for this hour",
     "description": "Title of the notice shown when the researcher has started as many reviews as are allowed in an hour. {limit} is that number."
+  },
+  "architect.protocolReview.notice.monthlyBody": {
+    "defaultMessage": "This is a free experimental service with a fixed monthly budget shared by everyone who uses it, and this month’s has been spent. Nothing in your protocol was changed.",
+    "description": "Text of the monthly limit notice when the service did not say when it restarts."
+  },
+  "architect.protocolReview.notice.monthlyBodyWithTime": {
+    "defaultMessage": "This is a free experimental service with a fixed monthly budget shared by everyone who uses it, and this month’s has been spent. It starts again {when}. Nothing in your protocol was changed.",
+    "description": "Text of the monthly limit notice when the service said when it restarts. {when} is a moment such as \"1 Dec 2026 at 01:00\"."
+  },
+  "architect.protocolReview.notice.monthlyTitle": {
+    "defaultMessage": "Protocol review has reached its limit for this month",
+    "description": "Title of the notice shown when the service’s shared monthly budget is spent."
   },
   "architect.protocolReview.notice.offlineBody": {
     "defaultMessage": "Protocol review needs an internet connection. Your last review is still here, and you can keep working through it.",

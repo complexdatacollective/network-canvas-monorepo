@@ -146,6 +146,7 @@ describe('requestReview', () => {
   it.each([
     [429, 'hourly_limit', '2026-11-11T13:00:00.000Z'],
     [503, 'daily_limit', '2026-11-12T00:00:00.000Z'],
+    [503, 'monthly_limit', '2026-12-01T00:00:00.000Z'],
     [413, 'too_large', null],
     [403, 'forbidden_origin', null],
   ] as const)('maps an HTTP %i body to %s', async (status, code, retryAt) => {

@@ -448,24 +448,60 @@ describe('notices', () => {
 
   it.each([
     [
+      'daily_limit',
+      'Protocol review has reached its limit for today',
       FUTURE,
-      /It starts again (?!at ).+ at \d.+\. Nothing in your protocol was changed\.$/,
+      /today’s has been spent\. It starts again (?!at ).+ at \d.+\. Nothing in your protocol was changed\.$/,
     ],
-    [null, /today’s has been spent\. Nothing in your protocol was changed\.$/],
-  ])('explains the daily limit (retry at %s)', async (retryAt, body) => {
-    await reviewedThenChanged();
-    answerWith({ kind: 'error', code: 'daily_limit', retryAt });
-    await store.dispatch(startReview());
-    renderToolbar(store);
+    [
+      'daily_limit',
+      'Protocol review has reached its limit for today',
+      null,
+      /today’s has been spent\. Nothing in your protocol was changed\.$/,
+    ],
+    [
+      'monthly_limit',
+      'Protocol review has reached its limit for this month',
+      FUTURE,
+      /this month’s has been spent\. It starts again (?!at ).+ at \d.+\. Nothing in your protocol was changed\.$/,
+    ],
+    [
+      'monthly_limit',
+      'Protocol review has reached its limit for this month',
+      null,
+      /this month’s has been spent\. Nothing in your protocol was changed\.$/,
+    ],
+  ] as const)(
+    'explains a spent budget (%s: "%s", retry at %s)',
+    async (code, title, retryAt, body) => {
+      await reviewedThenChanged();
+      answerWith({ kind: 'error', code, retryAt });
+      await store.dispatch(startReview());
+      renderToolbar(store);
 
-    const popover = await openPopover();
-    expect(
-      within(popover).getByText(
-        'Protocol review has reached its limit for today',
-      ),
-    ).toBeVisible();
-    expect(within(popover).getByText(body)).toBeVisible();
-  });
+      const popover = await openPopover();
+      expect(within(popover).getByText(title)).toBeVisible();
+      expect(within(popover).getByText(body)).toBeVisible();
+    },
+  );
+
+  it.each(['daily_limit', 'monthly_limit'] as const)(
+    'holds Review again until the service starts again (%s)',
+    async (code) => {
+      await reviewedThenChanged();
+      answerWith({ kind: 'error', code, retryAt: FUTURE });
+      await store.dispatch(startReview());
+      renderToolbar(store);
+
+      const popover = await openPopover();
+      expect(
+        within(popover).getByRole('button', { name: 'Review again' }),
+      ).toHaveAttribute('aria-disabled', 'true');
+      expect(
+        within(popover).getByText(/^Available again (?!at ).+ at \d/),
+      ).toBeVisible();
+    },
+  );
 
   it.each([
     'service_unavailable',

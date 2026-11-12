@@ -36,7 +36,7 @@ const messages = defineMessages({
     id: 'architect.protocolReview.availability.availableAgainAt',
     defaultMessage: 'Available again {when}',
     description:
-      'Why Review again is unavailable: the service’s shared daily budget is spent. {when} is a moment such as "tomorrow at 01:00".',
+      'Why Review again is unavailable: the service’s shared budget for the day or the month is spent. {when} is a moment such as "tomorrow at 01:00" or "1 Dec 2026 at 01:00".',
   },
 });
 
@@ -58,8 +58,8 @@ export type ReviewAvailability = {
 
 /**
  * Whether a new review can start, and why not: the engine's start block,
- * being offline, and a spent daily budget that the service said when it
- * restarts. Moves on by itself when a limit lifts.
+ * being offline, and a spent daily or monthly budget that the service said
+ * when it restarts. Moves on by itself when a limit lifts.
  */
 export const useReviewAvailability = (): ReviewAvailability => {
   const intl = useAppIntl();
@@ -91,9 +91,9 @@ export const useReviewAvailability = (): ReviewAvailability => {
       : run.status === 'failed' && run.code === 'hourly_limit'
         ? (retryAt ?? (quota ? Date.parse(quota.resetsAt) : null))
         : null;
-  const dailyBlocked =
+  const budgetSpent =
     run.status === 'failed' &&
-    run.code === 'daily_limit' &&
+    (run.code === 'daily_limit' || run.code === 'monthly_limit') &&
     retryAt !== null &&
     retryAt > now;
 
@@ -106,7 +106,7 @@ export const useReviewAvailability = (): ReviewAvailability => {
     reason = intl.formatMessage(messages.nextReviewAt, {
       when: formatWhen(intl, Date.parse(block.resetsAt), now),
     });
-  } else if (dailyBlocked) {
+  } else if (budgetSpent) {
     reason = intl.formatMessage(messages.availableAgainAt, {
       when: formatWhen(intl, retryAt, now),
     });
@@ -119,7 +119,7 @@ export const useReviewAvailability = (): ReviewAvailability => {
     remaining,
     retryAt,
     hourlyResetsAt,
-    canStart: online && block === null && !dailyBlocked,
+    canStart: online && block === null && !budgetSpent,
     reason,
   };
 };

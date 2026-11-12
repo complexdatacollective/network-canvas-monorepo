@@ -718,6 +718,41 @@ test.describe('when a review cannot run', () => {
     ).toBeVisible();
   });
 
+  test('503 monthly limit says when the service starts again', async ({
+    architectPage: page,
+    context,
+    seed,
+  }) => {
+    const at = retryAt();
+    const { popover } = await refused(page, context, seed, {
+      kind: 'error',
+      status: 503,
+      error: 'monthly_limit',
+      retryAt: at,
+    });
+    await expect(
+      popover.getByText('Protocol review has reached its limit for this month'),
+    ).toBeVisible();
+    const time = await timeOf(page, at);
+    await expect(
+      popover.getByText(
+        new RegExp(
+          `this month’s has been spent\\. It starts again (today|tomorrow) at ${time}\\. Nothing in your protocol`,
+        ),
+      ),
+    ).toBeVisible();
+    // Nothing reviewed yet, so the button is still Start review; it is held
+    // until the service says it starts again.
+    await expect(
+      popover.getByRole('button', { name: 'Start review' }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    await expect(
+      popover.getByText(
+        new RegExp(`^Available again (today|tomorrow) at ${time}`),
+      ),
+    ).toBeVisible();
+  });
+
   test('503 service unavailable offers Try again, which runs the review', async ({
     architectPage: page,
     context,
