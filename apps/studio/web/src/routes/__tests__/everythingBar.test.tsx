@@ -306,6 +306,9 @@ describe('go to', () => {
       name: /^Waves/,
     });
     expect(groupOf(option)).toBe('Go to');
+    // A result can be a name someone typed, so its label takes its own
+    // direction.
+    expect(option.querySelector('[dir="auto"]')).toHaveTextContent('Waves');
 
     // The keyboard path: the row the combobox points at is the one Enter
     // activates, so this asserts the highlight as well as the navigation.

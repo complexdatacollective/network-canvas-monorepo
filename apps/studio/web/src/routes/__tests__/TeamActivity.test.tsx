@@ -276,9 +276,13 @@ describe('Team activity screen', () => {
     expect(screen.getByText('Unrecognized event')).toBeInTheDocument();
     // Scoped to the row: the same text is now also an actor filter option,
     // because the options come from the team's history rather than the feed.
+    // Who an event names is data, so its cell takes its own direction.
     expect(
       screen.getByRole('cell', { name: 'Studio (System)' }),
-    ).toBeInTheDocument();
+    ).toHaveAttribute('dir', 'auto');
+    expect(
+      screen.getByText('invitee@example.com').closest('td'),
+    ).toHaveAttribute('dir', 'auto');
     expect(
       screen.getByText(/beginning of the recorded activity/),
     ).toBeInTheDocument();
