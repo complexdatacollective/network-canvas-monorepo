@@ -106,6 +106,8 @@ export type ReviewRun =
       startedAt: number;
       /** Characters of the model's answer received so far. */
       received: number;
+      /** Characters of the summary of the model's thinking received so far. */
+      thinking: number;
     }
   | {
       status: 'failed';
@@ -190,18 +192,27 @@ const protocolReviewSlice = createSlice({
         runId: action.payload.runId,
         startedAt: action.payload.startedAt,
         received: 0,
+        thinking: 0,
       };
     },
     // The three below are about one run, and do nothing unless it is the run
     // the slice holds.
     runProgress: (
       state,
-      action: PayloadAction<{ runId: number; received: number }>,
+      action: PayloadAction<{
+        runId: number;
+        received: number;
+        thinking: number;
+      }>,
     ) => {
       if (!isRun(state.run, action.payload.runId)) return;
       state.run.received = Math.max(
         state.run.received,
         action.payload.received,
+      );
+      state.run.thinking = Math.max(
+        state.run.thinking,
+        action.payload.thinking,
       );
     },
     runFinished: (state, action: PayloadAction<{ runId: number }>) => {
@@ -262,16 +273,48 @@ export const getProtocolReviewRun = (state: RootState): ReviewRun =>
   selectReview(state).run;
 
 /**
- * How far a running review has got, from 0 to 0.95, or null when none is
- * running. An estimate from the characters received, by design: it only ever
- * increases, and never reaches the end before the answer does.
+ * What a running review is doing: the model thinks first, then writes its
+ * answer. Writing has begun once any of the answer has arrived.
  */
-export const reviewProgressFraction = (received: number): number =>
-  Math.min(0.95, 0.08 + 0.87 * (1 - Math.exp(-received / 5000)));
+export type ReviewPhase = 'thinking' | 'writing';
 
+const WRITING_STARTS_AT = 0.45;
+
+/**
+ * How far a running review has got, from 0.05 to 0.95. An estimate from the
+ * characters received, by design: it only ever increases, and never reaches
+ * the end before the answer does. The model's thinking fills the bar up to
+ * `WRITING_STARTS_AT` and its answer the rest, so the bar moves from the
+ * start with a service that reports the thinking, and waits at the beginning
+ * with one that does not.
+ */
+export const reviewProgressFraction = (
+  received: number,
+  thinking = 0,
+): number =>
+  received > 0
+    ? Math.min(
+        0.95,
+        WRITING_STARTS_AT +
+          (0.95 - WRITING_STARTS_AT) * (1 - Math.exp(-received / 5000)),
+      )
+    : 0.05 + (WRITING_STARTS_AT - 0.05) * (1 - Math.exp(-thinking / 2500));
+
+/** The running review's progress, or null when none is running. */
 export const getProtocolReviewProgress = (state: RootState): number | null => {
   const { run } = selectReview(state);
-  return run.status === 'running' ? reviewProgressFraction(run.received) : null;
+  return run.status === 'running'
+    ? reviewProgressFraction(run.received, run.thinking)
+    : null;
+};
+
+/** What the running review is doing, or null when none is running. */
+export const getProtocolReviewPhase = (
+  state: RootState,
+): ReviewPhase | null => {
+  const { run } = selectReview(state);
+  if (run.status !== 'running') return null;
+  return run.received > 0 ? 'writing' : 'thinking';
 };
 
 /** Whether reviews of this protocol are shared with the team. Off until chosen. */
@@ -824,8 +867,8 @@ export const startReview =
         protocol: protocolForReview(reviewed),
       },
       signal: controller.signal,
-      onProgress: (received) => {
-        dispatch(actions.runProgress({ runId, received }));
+      onProgress: ({ received, thinking }) => {
+        dispatch(actions.runProgress({ runId, received, thinking }));
       },
     });
 

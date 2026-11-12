@@ -107,8 +107,12 @@ const errorOutcome = async (response: Response): Promise<ReviewOutcome> => {
 type RequestReviewOptions = {
   request: ReviewRequest;
   signal: AbortSignal;
-  /** Characters of the model's answer received so far; only grows. */
-  onProgress?: (received: number) => void;
+  /**
+   * Characters received so far of the model's answer (`received`) and of the
+   * summary of its thinking, which comes first (`thinking`); both only grow.
+   * `thinking` is 0 from a service that does not report it.
+   */
+  onProgress?: (progress: { received: number; thinking: number }) => void;
   url?: string;
   fetchImpl?: typeof fetch;
 };
@@ -149,8 +153,9 @@ export const requestReview = async ({
   let outcome: ReviewOutcome | null = null;
   let malformed = false;
   const handle = (event: ReviewEvent) => {
-    if (event.type === 'progress') onProgress?.(event.received);
-    else if (event.type === 'result') {
+    if (event.type === 'progress') {
+      onProgress?.({ received: event.received, thinking: event.thinking ?? 0 });
+    } else if (event.type === 'result') {
       outcome = { kind: 'result', result: event.result };
     } else {
       outcome = {

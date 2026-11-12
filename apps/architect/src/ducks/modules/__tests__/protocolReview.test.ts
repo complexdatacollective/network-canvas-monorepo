@@ -32,6 +32,7 @@ import {
   decideFinding,
   getProtocolReviewCounts,
   getProtocolReviewFindings,
+  getProtocolReviewPhase,
   getProtocolReviewProgress,
   getProtocolReviewRun,
   getProtocolReviewStartBlock,
@@ -533,14 +534,66 @@ describe('a review run', () => {
   });
 
   it('only ever moves its progress estimate forward, short of the end', () => {
+    // A review as it goes: the thinking grows, then the answer.
+    const steps: [received: number, thinking: number][] = [
+      [0, 0],
+      [0, 200],
+      [0, 2500],
+      [0, 1_000_000],
+      [1, 1_000_000],
+      [500, 1_000_000],
+      [5000, 1_000_000],
+      [1_000_000, 1_000_000],
+    ];
     let previous = 0;
-    for (const received of [0, 10, 500, 5000, 20_000, 1_000_000]) {
-      const fraction = reviewProgressFraction(received);
-      expect(fraction).toBeGreaterThanOrEqual(previous);
+    for (const [received, thinking] of steps) {
+      const fraction = reviewProgressFraction(received, thinking);
+      expect(fraction).toBeGreaterThan(previous);
       expect(fraction).toBeLessThanOrEqual(0.95);
       previous = fraction;
     }
-    expect(reviewProgressFraction(0)).toBeCloseTo(0.08);
+    expect(reviewProgressFraction(0, 0)).toBeCloseTo(0.05);
+  });
+
+  it('moves during the thinking, and never as far as any of the answer takes it', () => {
+    // However long the model thinks, the first of its answer still moves the
+    // estimate on, with or without a service that reports the thinking.
+    expect(reviewProgressFraction(0, 1_000_000)).toBeLessThan(
+      reviewProgressFraction(1, 0),
+    );
+    expect(reviewProgressFraction(0, 2500)).toBeGreaterThan(
+      reviewProgressFraction(0, 0) + 0.2,
+    );
+  });
+
+  it('is thinking until any of the answer has arrived, then writing', async () => {
+    await open(store);
+    expect(getProtocolReviewPhase(store.getState())).toBeNull();
+    const answer = gatedAnswer();
+    vi.stubGlobal('fetch', answer.fetchImpl);
+    const run = store.dispatch(startReview());
+    await vi.waitFor(() => expect(answer.fetchImpl).toHaveBeenCalled());
+    expect(getProtocolReviewPhase(store.getState())).toBe('thinking');
+
+    answer.send({ type: 'progress', received: 0, thinking: 3000 });
+    await vi.waitFor(() => {
+      expect(getProtocolReviewRun(store.getState())).toMatchObject({
+        received: 0,
+        thinking: 3000,
+      });
+    });
+    expect(getProtocolReviewPhase(store.getState())).toBe('thinking');
+    expect(getProtocolReviewProgress(store.getState())).toBeCloseTo(
+      reviewProgressFraction(0, 3000),
+    );
+
+    answer.send({ type: 'progress', received: 40, thinking: 3000 });
+    await vi.waitFor(() => {
+      expect(getProtocolReviewPhase(store.getState())).toBe('writing');
+    });
+    answer.finish();
+    await run;
+    expect(getProtocolReviewPhase(store.getState())).toBeNull();
   });
 });
 

@@ -54,7 +54,10 @@ const streamResponse = (
 const fetchReturning = (response: Response) =>
   vi.fn<typeof fetch>(async () => response);
 
-const run = (fetchImpl: typeof fetch, onProgress?: (n: number) => void) =>
+const run = (
+  fetchImpl: typeof fetch,
+  onProgress?: (progress: { received: number; thinking: number }) => void,
+) =>
   requestReview({
     request: REQUEST,
     signal: new AbortController().signal,
@@ -105,7 +108,9 @@ describe('createEventStreamParser', () => {
 describe('requestReview', () => {
   it('posts the request as JSON and returns the result, reporting progress', async () => {
     const text = sse([
-      { type: 'progress', received: 120 },
+      // The thinking comes first; a service older than the field leaves it out.
+      { type: 'progress', received: 0, thinking: 640 },
+      { type: 'progress', received: 120, thinking: 2100 },
       { type: 'progress', received: 900 },
       { type: 'result', result: RESULT },
     ]);
@@ -117,11 +122,15 @@ describe('requestReview', () => {
       text.slice(51),
     ];
     const fetchImpl = fetchReturning(streamResponse(chunks));
-    const progress: number[] = [];
-    const outcome = await run(fetchImpl, (n) => progress.push(n));
+    const progress: { received: number; thinking: number }[] = [];
+    const outcome = await run(fetchImpl, (reported) => progress.push(reported));
 
     expect(outcome).toEqual({ kind: 'result', result: RESULT });
-    expect(progress).toEqual([120, 900]);
+    expect(progress).toEqual([
+      { received: 0, thinking: 640 },
+      { received: 120, thinking: 2100 },
+      { received: 900, thinking: 0 },
+    ]);
     const [url, init] = fetchImpl.mock.calls[0] ?? [];
     expect(url).toBe('https://review.test/review');
     expect(init?.method).toBe('POST');

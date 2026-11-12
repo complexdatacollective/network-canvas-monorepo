@@ -28,6 +28,7 @@ import {
   dismissReviewFailure,
   getProtocolReviewCounts,
   getProtocolReviewFindings,
+  getProtocolReviewPhase,
   getProtocolReviewProgress,
   getProtocolReviewRun,
   getProtocolReviewSummary,
@@ -93,6 +94,19 @@ const messages = defineMessages({
       'This can take a few minutes. You can close this panel and keep working. The button shows how far the review has got, then a count of the problems found.',
     description:
       'Text while an automated review runs. "The button" is the Review protocol toolbar button.',
+  },
+  phaseThinking: {
+    id: 'architect.protocolReview.popover.phaseThinking',
+    defaultMessage:
+      'The reviewer is reading your protocol and thinking it through.',
+    description:
+      'Line under the progress bar during the first part of an automated review, before the reviewer (an AI model) has begun writing its answer.',
+  },
+  phaseWriting: {
+    id: 'architect.protocolReview.popover.phaseWriting',
+    defaultMessage: 'The reviewer is writing up what it found.',
+    description:
+      'Line under the progress bar during the second part of an automated review, while the reviewer (an AI model) writes its answer.',
   },
   progress: {
     id: 'architect.protocolReview.popover.progress',
@@ -408,6 +422,7 @@ const ReviewPopoverContent = ({
   const findings = useAppSelector(getProtocolReviewFindings);
   const counts = useAppSelector(getProtocolReviewCounts);
   const progress = useAppSelector(getProtocolReviewProgress);
+  const phase = useAppSelector(getProtocolReviewPhase);
   const protocol = useAppSelector(getProtocol);
   const writer = useAppSelector(getProtocolReviewWriter);
   const {
@@ -634,6 +649,12 @@ const ReviewPopoverContent = ({
         label={intl.formatMessage(messages.progress)}
         percentProgress={Math.round((progress ?? 0) * 100)}
       />
+      {/* A status, so the change from thinking to writing is read out once. */}
+      <Paragraph margin="none" role="status" className="text-sm">
+        {intl.formatMessage(
+          phase === 'writing' ? messages.phaseWriting : messages.phaseThinking,
+        )}
+      </Paragraph>
     </div>
   ) : !summary ? (
     <div className="px-6 pb-4">

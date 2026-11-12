@@ -3019,6 +3019,14 @@
     "defaultMessage": "Not reviewed yet",
     "description": "Line under the Protocol review heading before the protocol has ever been reviewed."
   },
+  "architect.protocolReview.popover.phaseThinking": {
+    "defaultMessage": "The reviewer is reading your protocol and thinking it through.",
+    "description": "Line under the progress bar during the first part of an automated review, before the reviewer (an AI model) has begun writing its answer."
+  },
+  "architect.protocolReview.popover.phaseWriting": {
+    "defaultMessage": "The reviewer is writing up what it found.",
+    "description": "Line under the progress bar during the second part of an automated review, while the reviewer (an AI model) writes its answer."
+  },
   "architect.protocolReview.popover.problemsFound": {
     "defaultMessage": "Problems found",
     "description": "Accessible name, read by screen readers, of the list of problems the review found."

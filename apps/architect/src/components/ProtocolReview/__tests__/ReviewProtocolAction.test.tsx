@@ -181,6 +181,60 @@ describe('the button', () => {
     ).toBeNull();
   });
 
+  it('says the reviewer is thinking, moves the bar as it thinks, then says it is writing', async () => {
+    await openProtocol(store);
+    renderToolbar(store);
+    const answer = gatedOutcome();
+    let report: (progress: {
+      received: number;
+      thinking: number;
+    }) => void = () => undefined;
+    client.requestReview.mockImplementationOnce(
+      async ({
+        onProgress,
+      }: {
+        onProgress: (progress: { received: number; thinking: number }) => void;
+      }) => {
+        report = onProgress;
+        return answer.promise;
+      },
+    );
+
+    const popover = await openPopover();
+    await userEvent.click(
+      within(popover).getByRole('button', { name: 'Start review' }),
+    );
+    const status = await within(popover).findByText(
+      'The reviewer is reading your protocol and thinking it through.',
+    );
+    expect(status).toHaveAttribute('role', 'status');
+    const bar = within(popover).getByRole('progressbar', {
+      name: 'Review progress',
+    });
+    const atStart = Number(bar.getAttribute('aria-valuenow'));
+
+    act(() => report({ received: 0, thinking: 4000 }));
+    await waitFor(() =>
+      expect(Number(bar.getAttribute('aria-valuenow'))).toBeGreaterThan(
+        atStart + 20,
+      ),
+    );
+    expect(status).toHaveTextContent(
+      'The reviewer is reading your protocol and thinking it through.',
+    );
+
+    act(() => report({ received: 200, thinking: 4000 }));
+    await waitFor(() =>
+      expect(status).toHaveTextContent(
+        'The reviewer is writing up what it found.',
+      ),
+    );
+
+    await act(async () => {
+      answer.release({ kind: 'result', result: RESULT });
+    });
+  });
+
   it('shows a review’s progress, then the count of problems still to decide', async () => {
     await openProtocol(store);
     renderToolbar(store);
