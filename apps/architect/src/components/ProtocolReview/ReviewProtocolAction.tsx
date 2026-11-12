@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react';
 import {
   type ReactNode,
   useCallback,
@@ -15,7 +16,6 @@ import {
   type ToolbarButtonProps,
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
-import Spinner from '@codaco/fresco-ui/Spinner';
 import type { ProjectActionsMode } from '~/components/ProjectNav/ProjectActions';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
@@ -186,7 +186,7 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
   let label: ReactNode = intl.formatMessage(messages.reviewProtocol);
   let ariaLabel: string | undefined;
   if (running && open) {
-    icon = <Spinner size="xs" className="m-0.5" />;
+    icon = <Loader2 className="motion-safe:animate-spin" aria-hidden />;
     label = intl.formatMessage(messages.reviewing);
   } else if (running) {
     icon = <ReviewProgressRing fraction={progress ?? 0} />;

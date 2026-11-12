@@ -2,7 +2,8 @@ import type { FixOperation } from '@codaco/protocol-review-worker/contract';
 import {
   type CurrentProtocol,
   validateProtocol,
-  withInterfaceText,
+  withoutSuppliedWording,
+  withSuppliedWording,
 } from '@codaco/protocol-validation';
 
 import {
@@ -18,7 +19,31 @@ import { formatPath, isJsonObject, parsePath, readPath } from './fixPath';
  * A fix's edits as they meet a real protocol: written in the protocol's own
  * terms for its translations, recorded against the protocol that was
  * reviewed, and checked before anything reaches the store.
+ *
+ * The review reads the protocol AS REVIEWED (`protocolAsReviewed`): with the
+ * wording Network Canvas supplies written out, which is what a participant is
+ * shown. The store holds less: of that wording, only what the researcher
+ * changed. So everything a fix says about the protocol (its paths, what it
+ * expects to find, what it wrote, what undoes it) is about the protocol as
+ * reviewed, and only the protocol handed back to the store is as stored.
  */
+
+const reviewedForms = new WeakMap<CurrentProtocol, CurrentProtocol>();
+
+/**
+ * `protocol`, as the store holds it, with the wording a participant is shown
+ * written out (`withSuppliedWording`): what is sent for review, and what
+ * every fix is read against. The same object for the same stored protocol.
+ */
+export const protocolAsReviewed = (
+  protocol: CurrentProtocol,
+): CurrentProtocol => {
+  const known = reviewedForms.get(protocol);
+  if (known) return known;
+  const reviewed = withSuppliedWording(protocol);
+  reviewedForms.set(protocol, reviewed);
+  return reviewed;
+};
 
 /**
  * Whether `value` is one of the protocol's localized strings: an object of
@@ -117,7 +142,7 @@ export type RecordedFix = {
   targets: TargetSnapshot[] | null;
 };
 
-/** Records a fix against the protocol that was SENT for review. */
+/** Records a fix against the protocol that was SENT for review (`protocolAsReviewed`). */
 export const recordFix = (
   reviewed: CurrentProtocol,
   operations: readonly FixOperation[],
@@ -131,15 +156,21 @@ export const recordFix = (
 };
 
 /**
- * What the store does to every protocol it is given: bring the interview's
- * shared wording in line (`withInterfaceText`, applied by the store's
- * reducer). A document that is not a schema 9 protocol is left as it is, for
- * validation to refuse.
+ * What a document reads as once the store has taken it: the store keeps, of
+ * the wording Network Canvas supplies, only what differs from it
+ * (`withoutSuppliedWording`, applied by the store's reducer), and the review
+ * reads that with the supplied wording written out again. So a fix that
+ * clears a text Network Canvas words leaves Network Canvas's wording there,
+ * and one that removes the last stage showing a shared word takes the
+ * researcher's wording for it. A document that is not a schema 9 protocol is
+ * left as it is, for validation to refuse.
  */
 const normalizeProtocol = (raw: unknown): unknown =>
   isJsonObject(raw) && raw.schemaVersion === 9
-    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- withInterfaceText reads the protocol's stages and localization; a document whose shape it cannot read throws, which planFix catches, and the result is validated before it is trusted
-      withInterfaceText(raw as unknown as CurrentProtocol)
+    ? withSuppliedWording(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- both read the protocol's stages and localization; a document whose shape they cannot read throws, which planFix catches, and the result is validated before it is trusted
+        withoutSuppliedWording(raw as unknown as CurrentProtocol),
+      )
     : raw;
 
 /**
@@ -165,28 +196,43 @@ const validProtocolOrNull = async (
 export type ProtocolEdit =
   | {
       ok: true;
+      /** The edited protocol as the store holds it. */
       protocol: CurrentProtocol;
-      /** Applied to `protocol`, these give back exactly the protocol edited. */
+      /** Applied to the edited protocol as reviewed, these give back exactly the protocol edited. */
       inverse: StoredOperation[];
-      /** Everything the edit wrote, as `protocol` holds it (see `writtenHolds`). */
+      /** Everything the edit wrote, as the edited protocol reads as reviewed (see `writtenHolds`). */
       written: WrittenSnapshot[];
     }
   | { ok: false; reason: 'changed' | 'invalid' };
 
 /**
- * `protocol` with `operations` applied as the store would hold it, when they
- * apply and the result is a valid protocol, with what undoes it exactly and
- * what it wrote (`planFix`, with the store's normalisation: removing the
- * last Quick Add stage also takes the researcher's Quick Add wording, and
- * the inverse puts it back). Never throws.
+ * `protocol` (as the store holds it) with `operations` applied, when they
+ * apply to it as reviewed and the result is a valid protocol, with what
+ * undoes it exactly and what it wrote (`planFix`, with the store's
+ * normalisation). The protocol handed back is as the store will hold it.
+ * Never throws.
  */
 export const editProtocol = async (
   protocol: CurrentProtocol,
   operations: readonly StoredOperation[],
 ): Promise<ProtocolEdit> => {
-  const plan = planFix(protocol, operations, normalizeProtocol);
+  const plan = planFix(
+    protocolAsReviewed(protocol),
+    operations,
+    normalizeProtocol,
+  );
   if (!plan.ok) return plan;
-  const valid = await validProtocolOrNull(plan.result);
+  let stored: unknown;
+  try {
+    stored =
+      isJsonObject(plan.result) && plan.result.schemaVersion === 9
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- as in normalizeProtocol: it throws on a shape it cannot read, and the result is validated below
+          withoutSuppliedWording(plan.result as unknown as CurrentProtocol)
+        : plan.result;
+  } catch {
+    return { ok: false, reason: 'invalid' };
+  }
+  const valid = await validProtocolOrNull(stored);
   return valid === null
     ? { ok: false, reason: 'invalid' }
     : {

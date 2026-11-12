@@ -41,6 +41,7 @@ import {
 } from '~/protocolReview/fixEngine';
 import {
   editProtocol,
+  protocolAsReviewed,
   protocolReplacement,
   recordFix,
 } from '~/protocolReview/protocolFix';
@@ -492,7 +493,8 @@ const statusOf = (
   // while everything it wrote is as it left it, so the app's own Undo — or
   // the researcher editing what the fix wrote — returns it to undecided.
   if (stored.decision !== 'fix') return stored.decision;
-  return stored.written && writtenHolds(protocol, stored.written)
+  return stored.written &&
+    writtenHolds(protocolAsReviewed(protocol), stored.written)
     ? 'fixed'
     : 'undecided';
 };
@@ -516,14 +518,19 @@ const availabilityOf = (
 ): FixAvailability => {
   if (stored.operations.length === 0) return 'none';
   if (stored.targets === null) return 'invalid';
-  if (!fixFits(protocol, stored.operations, stored.targets)) return 'changed';
+  if (
+    !fixFits(protocolAsReviewed(protocol), stored.operations, stored.targets)
+  ) {
+    return 'changed';
+  }
   const valid = checkResult(checks, stored.finding.id, protocol, 'fix');
   if (valid === null) return 'checking';
   return valid ? 'available' : 'invalid';
 };
 
 const undoApplies = (stored: StoredFinding, protocol: CurrentProtocol) =>
-  stored.inverse !== null && applyOperations(protocol, stored.inverse).ok;
+  stored.inverse !== null &&
+  applyOperations(protocolAsReviewed(protocol), stored.inverse).ok;
 
 /**
  * Every finding of the active protocol's review, as the screen shows it, in
@@ -548,7 +555,10 @@ export const getProtocolReviewFindings = createSelector(
         explanation: finding.explanation,
         fixSummary: finding.fix.summary,
         fixChanges: finding.fix.changes,
-        textEdits: describeFixTextEdits(protocol, stored.operations),
+        textEdits: describeFixTextEdits(
+          protocolAsReviewed(protocol),
+          stored.operations,
+        ),
         decision: stored.decision,
         status,
         availability,
@@ -560,7 +570,7 @@ export const getProtocolReviewFindings = createSelector(
           undoApplies(stored, protocol) &&
           checkResult(checks, finding.id, protocol, 'undo') === true,
         canRestore: status === 'mine' || status === 'dismissed',
-        location: resolveFindingLocation(protocol, finding),
+        location: resolveFindingLocation(protocolAsReviewed(protocol), finding),
       };
     });
   },
@@ -707,9 +717,9 @@ export type StartReviewResult =
 const HOUR_MS = 60 * 60 * 1000;
 
 /**
- * The protocol as sent: as the store holds it, without `experiments`. The
- * study details travel in the request's own `studyContext`; fix targets are
- * still recorded against the full protocol.
+ * The protocol as sent: as reviewed (`protocolAsReviewed`), without
+ * `experiments`. The study details travel in the request's own
+ * `studyContext`; fix targets are still recorded against the full protocol.
  */
 const protocolForReview = (
   protocol: CurrentProtocol,
@@ -778,6 +788,9 @@ export const startReview =
     inflight = run;
     const startedAt = Date.now();
     const fingerprint = reviewFingerprint(protocol, studyContext);
+    // What is sent, and what every fix is recorded against: the protocol with
+    // the wording a participant is shown written out.
+    const reviewed = protocolAsReviewed(protocol);
     const locale = getArchitectIntl().locale;
     const provider = getProtocolReviewProvider(state);
     dispatch(actions.runStarted({ runId, startedAt }));
@@ -790,7 +803,7 @@ export const startReview =
         locale,
         share: record.shareReviews,
         studyContext,
-        protocol: protocolForReview(protocol),
+        protocol: protocolForReview(reviewed),
       },
       signal: controller.signal,
       onProgress: (received) => {
@@ -845,7 +858,7 @@ export const startReview =
     const findings: StoredFinding[] = result.findings.map(
       (finding: Finding) => ({
         finding,
-        ...recordFix(protocol, finding.fix.operations),
+        ...recordFix(reviewed, finding.fix.operations),
         decision: 'undecided',
         inverse: null,
       }),
@@ -1035,7 +1048,9 @@ export const decideFinding =
     if (stored.operations.length === 0 || stored.targets === null) {
       return refused('invalid');
     }
-    if (!fixFits(protocol, stored.operations, stored.targets)) {
+    if (
+      !fixFits(protocolAsReviewed(protocol), stored.operations, stored.targets)
+    ) {
       return refused('changed');
     }
     const edit = await editProtocol(protocol, stored.operations);

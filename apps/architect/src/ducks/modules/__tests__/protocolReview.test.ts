@@ -13,7 +13,10 @@ import {
   type ReviewEvent,
   type ReviewResult,
 } from '@codaco/protocol-review-worker/contract';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  withSuppliedWording,
+} from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import {
@@ -323,22 +326,34 @@ describe('startReview refusals', () => {
 });
 
 describe('a review run', () => {
-  it('sends the protocol as the store holds it and saves the result beside it', async () => {
+  it('sends the protocol with the wording a participant is shown written out, and saves the result beside it', async () => {
     const id = await open(store);
     const answer = gatedAnswer();
     vi.stubGlobal('fetch', answer.fetchImpl);
     const run = store.dispatch(startReview());
     await vi.waitFor(() => expect(answer.fetchImpl).toHaveBeenCalled());
 
-    expect(answer.requestBody()).toEqual({
+    // The store holds none of the Finish button's wording, because it reads
+    // as Network Canvas words it; the review is sent it all the same.
+    expect(protocolOf(store).stages[2]).not.toHaveProperty('finishLabel');
+    const sent = answer.requestBody();
+    expect(sent).toEqual({
       installationId: expect.stringMatching(/^[0-9a-f-]{36}$/u),
       provider: 'anthropic',
       locale: 'en',
       share: false,
       studyContext: STUDY_CONTEXT,
       protocol: JSON.parse(
-        JSON.stringify({ ...protocolOf(store), experiments: undefined }),
+        JSON.stringify({
+          ...withSuppliedWording(protocolOf(store)),
+          experiments: undefined,
+        }),
       ),
+    });
+    expect(sent).toMatchObject({
+      protocol: {
+        stages: [{}, {}, { finishLabel: { en: 'Finish', fr: 'Terminer' } }],
+      },
     });
 
     answer.send({ type: 'progress', received: 2000 });
@@ -612,6 +627,50 @@ describe('decisions', () => {
     expect(stored.review?.findings[1]).toMatchObject({
       decision: 'undecided',
       inverse: null,
+    });
+  });
+
+  it('rewords text Network Canvas supplies, which the protocol holds only once it differs, and Undo takes it back out', async () => {
+    await open(store);
+    vi.stubGlobal(
+      'fetch',
+      answering({
+        ...RESULT,
+        findings: [
+          makeFinding(
+            'finish',
+            [op('set', '/stages/finish/finishLabel/en', 'Send my answers')],
+            { stageId: 'finish' },
+          ),
+        ],
+      }).fetchImpl,
+    );
+    await store.dispatch(startReview());
+    await store.dispatch(checkFixAvailability());
+    const original = protocolOf(store);
+    expect(original.stages[2]).not.toHaveProperty('finishLabel');
+    expect(findingOf(store, 'finish')).toMatchObject({
+      status: 'undecided',
+      availability: 'available',
+      textEdits: [{ now: 'Finish', after: 'Send my answers', locale: 'en' }],
+    });
+
+    expect(await store.dispatch(decideFinding('finish', 'fix'))).toEqual({
+      ok: true,
+    });
+    expect(protocolOf(store).stages[2]).toMatchObject({
+      finishLabel: { en: 'Send my answers' },
+    });
+    expect(findingOf(store, 'finish')).toMatchObject({
+      status: 'fixed',
+      canUndo: true,
+    });
+
+    expect(await store.dispatch(undoFix('finish'))).toEqual({ ok: true });
+    expect(protocolOf(store)).toEqual(original);
+    expect(findingOf(store, 'finish')).toMatchObject({
+      status: 'undecided',
+      availability: 'available',
     });
   });
 
