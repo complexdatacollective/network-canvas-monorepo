@@ -338,6 +338,12 @@ export {
   needsFallbackLanguage,
   withFallbackLanguage,
 } from './schemas/9/fallback-language.ts';
+// The language the interview shows its own text in: text a correction adds
+// within a schema version, which no protocol of that version holds.
+export {
+  type ResolvedAddedText,
+  resolveAddedText,
+} from './schemas/9/added-text.ts';
 export {
   findTimelineStructureProblems,
   isFinishSessionStage,
