@@ -1,0 +1,303 @@
+---
+title: Diccionario de datos de exportación
+navOrder: 2
+toc: true
+date: 5th October 2026
+translatedFrom: c1a4040fb6059ea3a43c053b9de783f18354439a
+---
+
+<Definition>
+  El diccionario de datos de exportación describe exactamente cómo se escribe
+  cada tipo de variable de Network Canvas en los archivos CSV y GraphML
+  exportados, para que puedas interpretar con seguridad cada columna y cada
+  atributo de tus datos.
+</Definition>
+
+## Cómo leer esta página {#how-to-read-this-page}
+
+Cada variable que defines en tu protocolo se exporta con su **nombre de
+variable** del libro de códigos. En los archivos CSV, la mayoría de los tipos de
+variable se convierten en una sola columna con el nombre de la variable; las
+variables categóricas y de disposición se dividen en varias columnas, como se
+describe más abajo. En los archivos GraphML, cada variable se declara con un
+elemento `<key>` cuyo `attr.name` es el nombre de la variable y cuyo
+`attr.type` indica al software de análisis cómo interpretar los valores.
+
+Los nombres de las columnas de los archivos CSV se escriben exactamente como
+aparecen en tu libro de códigos, con espacios, signos de puntuación y letras de
+cualquier idioma. Los nombres de atributo de GraphML no pueden contener espacios
+ni la mayoría de los signos de puntuación, así que en GraphML esos caracteres se
+sustituyen por `_` y el nombre tal como está escrito se conserva en el elemento
+`<desc>` de la clave. Consulta [Nombres de columna](#column-names), más abajo.
+
+Para conocer la estructura general de los archivos (qué archivos genera una
+exportación y cómo se relacionan entre sí), consulta
+[Exportación de datos](/es/analyze-data/data-export). Esta página se centra en
+cómo se codifica cada valor.
+
+## Tipos de variable de un vistazo {#variable-types-at-a-glance}
+
+| Tipo de variable | Columnas CSV                               | Valor en CSV                                   | `attr.type` de GraphML                    | Valor de ejemplo           |
+| ---------------- | ------------------------------------------ | ---------------------------------------------- | ----------------------------------------- | -------------------------- |
+| Texto            | `variable_name`                            | El texto, entre comillas solo cuando hace falta | `string`                                  | `Jane`                     |
+| Número           | `variable_name`                            | El número                                      | `int` o `double` (detectado)              | `34`                       |
+| Booleano         | `variable_name`                            | `true` / `false`                               | `boolean`                                 | `true`                     |
+| Ordinal          | `variable_name`                            | El valor de la opción seleccionada             | `int`, `double` o `string` (detectado)    | `3`                        |
+| Categórico       | `variable_name_option` (una por opción)    | `true` / `false` por opción                    | `boolean` (una clave por opción)          | `true`                     |
+| Escalar          | `variable_name`                            | Número entre 0 y 1                             | `float`                                   | `0.735`                    |
+| Fecha            | `variable_name`                            | Cadena de fecha ISO                            | `string`                                  | `1989-07-21`               |
+| Disposición      | `variable_name_x`, `variable_name_y`       | Coordenadas normalizadas (0–1)                 | `double` (claves `_X` y `_Y`)             | `0.62`, `0.24`             |
+| Ubicación        | `variable_name`                            | Identificador de la zona del mapa seleccionada | `string`                                  | `outside-selectable-areas` |
+
+En los apartados siguientes se detalla cada tipo, incluido cómo aparecen los
+valores que faltan.
+
+## Detalles por tipo {#per-type-details}
+
+### Texto {#text}
+
+Una variable de texto se convierte en una columna CSV con el nombre de la
+variable, que contiene la respuesta de la persona participante tal como la
+introdujo. Los valores que contienen una coma, una comilla o un salto de línea
+se escriben entre comillas dobles (y las comillas internas se duplican), según
+las reglas estándar de CSV. Como protección frente a la inyección de fórmulas en
+hojas de cálculo, a cualquier valor de texto que empiece por `=`, `+`, `-`, `@`,
+un tabulador o un retorno de carro se le antepone una comilla simple (`'`), para
+que las aplicaciones de hojas de cálculo lo traten como texto literal. Los
+encabezados de columna reciben el mismo prefijo, y los números nunca. Consulta
+[Por qué algunos valores empiezan por un apóstrofo](/es/analyze-data/data-export#why-some-values-start-with-an-apostrophe)
+para eliminar el prefijo en R o en Python. En GraphML, los valores de texto se
+exportan con `attr.type="string"` y nunca llevan el prefijo, pero se eliminan
+los caracteres que XML no puede almacenar (consulta
+[Caracteres que se eliminan de los archivos GraphML](/es/analyze-data/data-export#characters-removed-from-graphml-files)).
+
+### Número {#number}
+
+Una variable numérica se convierte en una columna CSV que contiene el valor
+numérico tal como se introdujo, sin redondeo ni cambios de formato. En GraphML,
+el `attr.type` se detecta a partir de los valores de tus datos: `int` cuando
+todos los valores son números enteros, `double` cuando algún valor tiene parte
+decimal, y `string` cuando los valores son de tipos distintos o no hay ninguno.
+
+### Booleano {#boolean}
+
+Una variable booleana se convierte en una columna CSV que contiene `true` o
+`false` (en minúsculas). En GraphML, se declara con `attr.type="boolean"` y cada
+valor se escribe como `true` o `false`. Una pregunta que la persona participante
+no llegó a responder produce una celda vacía en CSV, y ningún valor en GraphML.
+
+### Ordinal {#ordinal}
+
+Una variable ordinal almacena el **valor** de la opción seleccionada (no su
+etiqueta), que puede ser una cadena o un número según cómo hayas definido las
+opciones de respuesta en Architect. La columna CSV contiene ese valor
+directamente. En GraphML, el `attr.type` se detecta a partir de los datos igual
+que en las variables numéricas: si todos los valores de las opciones son
+enteros, se obtiene `int`; si son decimales, `double`, y si son cadenas,
+`string`.
+
+### Categórico {#categorical}
+
+Como cada participante puede seleccionar varias opciones, una variable
+categórica se divide en **una columna por opción**, con el nombre
+`variable_name_optionValue`. Por ejemplo, una variable `support_type` con las
+opciones `emotional` y `financial` genera `support_type_emotional` y
+`support_type_financial`. Cada columna contiene `true` si se seleccionó esa
+opción y `false` en caso contrario. Si la persona participante no llegó a
+responder la pregunta, todas las columnas de opción contienen `false` en CSV.
+
+En GraphML se produce la misma división: una `<key>` por opción con
+`attr.type="boolean"` y `attr.name` igual a `variable_name_optionValue`, y los
+espacios o signos de puntuación que no admiten los nombres de atributo de
+GraphML se sustituyen por `_` (consulta [Nombres de columna](#column-names)). El
+`id` legible por máquina de cada clave es el identificador interno de la
+variable seguido de un hash del valor de la opción (los ID de las claves deben
+ser NMTOKEN de XML, y los valores arbitrarios de las opciones no lo son). Si la
+persona participante no llegó a responder, no se escribe ningún valor para
+ninguna de las claves de opción.
+
+### Escalar {#scalar}
+
+Una variable escalar (que se recoge con la escala analógica visual) almacena un
+número en una escala normalizada de 0 a 1. La columna CSV contiene ese número, y
+GraphML lo declara con `attr.type="float"`.
+
+### Fecha {#date}
+
+Una variable de fecha almacena una cadena de fecha en formato ISO cuya precisión
+coincide con el ajuste de resolución de la variable: `1989-07-21` (completa),
+`1989-07` (mes) o `1989` (año). La columna CSV contiene esta cadena tal cual, y
+GraphML la declara con `attr.type="string"`.
+
+### Disposición {#layout}
+
+Una variable de disposición almacena la posición de un nodo en el lienzo de una
+etapa «Sociograma» como coordenadas normalizadas entre 0 y 1, con el origen en la
+esquina superior izquierda. En CSV se divide en dos columnas, con sufijos en
+minúsculas:
+
+- `variable_name_x`: posición horizontal (0 = borde izquierdo, 1 = borde derecho)
+- `variable_name_y`: posición vertical (0 = borde superior, 1 = borde inferior)
+
+Si está activada la opción de exportación **Usar coordenadas de la pantalla**,
+la exportación mantiene estas columnas normalizadas y añade otras dos, con
+sufijos en camelCase: `variable_name_screenSpaceX` y
+`variable_name_screenSpaceY`. Estas columnas contienen valores en píxeles
+redondeados a dos decimales. La X en el espacio de la pantalla es la x
+normalizada multiplicada por el ancho de la pantalla; la Y en el espacio de la
+pantalla está invertida (se calcula como (1 − y) × alto de la pantalla), de modo
+que se mide desde el borde **inferior** de la pantalla, como en la mayoría del
+software de visualización de grafos.
+
+En GraphML se produce la misma división, pero con sufijos en mayúsculas en los
+nombres legibles para las personas: dos claves cuyos valores de `attr.name` son `variable_name_X` y
+`variable_name_Y`, ambas declaradas como `attr.type="double"` (y también las claves
+`variable_name_screenSpaceX` y `variable_name_screenSpaceY` cuando está
+activada la opción **Usar coordenadas de la pantalla**).
+
+Un nodo que nunca se colocó genera celdas vacías en CSV y ningún valor en
+GraphML.
+
+### Ubicación {#location}
+
+Una variable de ubicación (que se recoge con la interfaz geoespacial) almacena
+un identificador de texto de la zona del mapa que seleccionó la persona
+participante. Ese identificador se toma de la propiedad del archivo de formas
+GeoJSON que la etapa está configurada para registrar (o es el valor especial
+`outside-selectable-areas` cuando se seleccionó un punto fuera de las zonas
+seleccionables). Se convierte en una columna CSV que contiene esa cadena, y
+GraphML la declara con `attr.type="string"`.
+
+## Columnas de identificadores y metadatos {#identifier-and-metadata-columns}
+
+Además de tus variables, cada archivo CSV contiene columnas de identificadores
+que relacionan los archivos entre sí:
+
+- El **archivo de ego** (el ego es la persona entrevistada) empieza por las columnas `networkCanvasEgoUUID`, `networkCanvasCaseID`,
+  `networkCanvasSessionID`, `networkCanvasProtocolName`, `sessionStart`,
+  `sessionFinish`, `sessionExported`, `APP_VERSION`, `COMMIT_HASH` y
+  `networkCanvasFinishOutcome`, seguidas de tus variables de ego. Las marcas de
+  tiempo de la sesión de entrevista son cadenas ISO 8601.
+- Los **archivos de álteres** (un álter es cada persona a la que se nombra
+  durante la entrevista) empiezan por `nodeID` (un número secuencial único
+  dentro de la exportación), `networkCanvasEgoUUID` (la clave de unión con el
+  archivo de ego) y `networkCanvasUUID` (el identificador permanente del álter).
+- Los **archivos de vínculos** empiezan por `edgeID`, `from`, `to` (que hacen
+  referencia a valores de `nodeID` de los archivos de álteres),
+  `networkCanvasEgoUUID`, `networkCanvasUUID` y los identificadores permanentes
+  de los extremos del vínculo, `networkCanvasSourceUUID` y
+  `networkCanvasTargetUUID`.
+
+### Cómo terminó la entrevista {#how-the-interview-ended}
+
+`networkCanvasFinishOutcome` indica cómo terminó la entrevista: el resultado
+elegido en la etapa «Pantalla de finalización» en la que terminó la entrevista.
+Los archivos GraphML registran el mismo valor en el atributo `nc:finishOutcome`
+del elemento `<graph>`.
+
+| Valor        | Significado                                                                                                                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `completed`  | La persona participante llegó al final normal de la entrevista.                                                                                                                                                  |
+| `ineligible` | La persona participante no cumplía los requisitos del estudio.                                                                                                                                                   |
+| `terminated` | La entrevista terminó antes de tiempo por otro motivo, como una interrupción por malestar o por seguridad.                                                                                                      |
+| Vacío (CSV)  | No se registró ningún resultado; por ejemplo, en una entrevista que se finalizó antes de que tu aplicación registrara el resultado, o en una que no se ha finalizado. GraphML omite el atributo.                  |
+
+La columna figura en todos los archivos de ego, aunque todas sus celdas estén
+vacías. Consulta
+[Cómo terminó la entrevista](/es/analyze-data/data-export#how-the-interview-ended)
+para obtener más información.
+
+## Nombres de columna {#column-names}
+
+Los encabezados de columna de los archivos CSV usan cada nombre exactamente como
+aparece en tu libro de códigos, salvo que a un nombre que empiece por `=`, `+`,
+`-` o `@` se le antepone un apóstrofo, igual que a los valores de texto. En
+GraphML, `attr.name` debe ser un token de nombre XML válido (NMTOKEN): se
+admiten letras de cualquier idioma, dígitos y los símbolos `.`, `-`, `_` y `:`,
+pero no los espacios ni la mayoría de los demás signos de puntuación. La
+exportación GraphML sustituye por `_` cada carácter no admitido y conserva el
+nombre tal como está escrito en un elemento `<desc>` dentro de la clave:
+
+```xml
+<key id="…" attr.name="contact_frequency__per_week_" attr.type="string" for="node">
+  <desc>contact frequency (per week)</desc>
+</key>
+```
+
+Solo se escribe un elemento `<desc>` cuando `attr.name` es distinto del nombre
+de tu libro de códigos. Esta sustitución de caracteres no genera ninguna
+advertencia.
+
+Architect rechaza los nombres que darían la misma columna a dos variables,
+incluidos los nombres que solo coinciden una vez que una exportación los
+escribe, como `close friend` y `close_friend` en GraphML. En un protocolo creado
+antes de que existiera esa comprobación, dos variables todavía pueden generar el
+mismo nombre de columna en un archivo; por ejemplo, una variable llamada
+`support_emotional` y una variable categórica `support` con la opción
+`emotional`. Una columna de una lista (una lista predefinida que se importa
+como archivo de datos) que no corresponde a ninguna variable de tu libro de
+códigos también puede tener el mismo nombre que la columna de una
+variable. La exportación nunca combina estas columnas. Las columnas
+fijas de la exportación, como `nodeID`, conservan siempre su nombre; la variable que
+aparece primero en tu libro de códigos conserva el nombre, y cada columna
+posterior se renombra con el primer sufijo libre de entre `_2`, `_3`, etc. Los
+nombres que solo se diferencian en las mayúsculas, como `Age` y `age`, no se
+renombran. Se usan los mismos sufijos cuando, en un protocolo así, dos nombres
+coinciden en GraphML después de sustituir los espacios y los signos de
+puntuación, como ocurre con `close friend` y `close_friend`: el nombre que ya
+era válido lo conserva, y el otro se renombra.
+
+Siempre que se renombra una columna, la exportación muestra una advertencia con
+el título «Se cambió el nombre de algunas columnas». Consulta
+[Advertencias de exportación](/es/analyze-data/data-export#export-warnings) para
+saber dónde aparece, y
+[Nombres que coincidirían en los datos exportados](/es/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data)
+para ver los conflictos de nombres que Architect evita.
+
+## Valores que faltan {#missing-values}
+
+Una pregunta sin responder aparece como una **celda vacía** en CSV y como un
+**valor omitido** en GraphML (puede que la declaración `<key>` siga presente,
+pero no se escribe ningún elemento `<data>` para esa entidad). La única
+excepción son las variables categóricas en CSV, en las que una pregunta sin
+responder genera un `false` explícito en todas las columnas de opción, así que
+interpreta con cuidado una fila con todos los valores en `false` si la pregunta
+era opcional.
+
+## Variables cifradas {#encrypted-variables}
+
+Si tu protocolo usa la
+[interfaz de anonimización](/es/design-protocols/interface-documentation/anonymisation),
+las respuestas cifradas nunca se exportan de forma legible. Cada respuesta que
+se guardó cifrada se exporta como la cadena literal `ENCRYPTED`, tanto en CSV
+como en GraphML, y en GraphML un nodo cuya etiqueta sería una respuesta cifrada
+recibe la etiqueta `Encrypted`. Un valor que no estaba cifrado cuando se guardó
+se exporta tal como se guardó, aunque pertenezca a una variable marcada como
+cifrada.
+
+## Tipos de variable en el análisis {#variable-types-in-analysis}
+
+Cada tipo de variable requiere un enfoque analítico distinto una vez cargados
+los datos:
+
+- Las variables **categóricas y ordinales** se prestan a tablas de frecuencias y
+  tablas cruzadas, y permiten aplicar pruebas de chi cuadrado y regresión
+  logística. Recuerda que las exportaciones contienen los _valores_ de las
+  opciones, así que recodifícalos como factores o categorías con etiqueta en tu
+  software de análisis si quieres obtener resultados legibles.
+- Las variables **booleanas** (incluidas las columnas de opción en las que se
+  dividen las variables categóricas) pueden tratarse como categóricas con dos
+  niveles, o convertirse a 0/1 para usarlas en modelos de regresión.
+- Las variables **numéricas y escalares** permiten calcular estadísticos
+  descriptivos (media, mediana, desviación típica), además de correlaciones,
+  regresiones y pruebas t. Los valores escalares ya están normalizados de 0 a 1,
+  lo que facilita la comparación entre escalas.
+- Las variables de **texto** se prestan sobre todo a enfoques cualitativos, como
+  el análisis de contenido y la codificación.
+
+## Páginas relacionadas {#related-pages}
+
+- [Exportación de datos](/es/analyze-data/data-export): formatos de archivo,
+  opciones de exportación y carga de los datos en R y en Python
+- [Variables](/es/design-protocols/key-concepts/variables): cómo definir
+  variables al diseñar tu protocolo

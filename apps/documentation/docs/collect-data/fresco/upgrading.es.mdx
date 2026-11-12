@@ -1,0 +1,87 @@
+---
+title: Actualizar Fresco
+date: 5th October 2026
+navOrder: 10
+wip: false
+translatedFrom: 2844df3d8aed33238fcf766c1a32f7eada89b0cd
+---
+
+Fresco se mejora continuamente. A medida que publicamos nuevas versiones de Fresco, puedes actualizar tu instancia implementada siguiendo esta guía.
+
+## Cuándo actualizar {#when-to-upgrade}
+
+Eres responsable de actualizar tu propia instancia de Fresco. Te recomendamos actualizar tu instancia de Fresco cada vez que se publique una nueva versión. Así tendrás las funciones y las correcciones de errores más recientes. Puedes enterarte de las nuevas versiones en estos sitios:
+
+- **Comunidad de personas usuarias de Network Canvas**: anunciamos las nuevas versiones en nuestro [foro de la comunidad](https://community.networkcanvas.com/) (en inglés).
+- **Tu repositorio de GitHub**: puedes comprobar si hay nuevas versiones en tu repositorio de GitHub. Si hay una nueva versión disponible, verás en la parte superior del repositorio un mensaje con el número de commits que tu rama lleva de retraso.
+- **Configuración**: puedes comprobar si hay nuevas versiones en la página de configuración de tu panel de administración de Fresco.
+
+## Proceso de actualización {#upgrade-process}
+
+Este proceso se aplica si implementaste Fresco creando un fork del repositorio y conectándolo a Netlify, como se describe en la [Guía de implementación](./guide). Para actualizar Fresco, debes sincronizar tu fork con la versión más reciente del repositorio de Fresco. Así se incorporan los últimos cambios y actualizaciones del repositorio principal de Fresco.
+
+En tu repositorio de GitHub, haz clic en **«Sync Fork»** y selecciona **«Update Branch»**.
+
+![Sincronizar el fork](/assets/img/fresco-images/sync-fork.png)
+
+Netlify empezará a volver a implementar tu instancia de Fresco automáticamente. Este proceso tardará unos minutos.
+
+Para obtener más información sobre cómo sincronizar tu fork, consulta la [documentación de GitHub](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/syncing-a-fork) (en inglés).
+
+## Actualizar una implementación con Docker {#upgrading-a-docker-deployment}
+
+Si implementaste Fresco con Docker en lugar de crear un fork del repositorio, no hay ningún fork que sincronizar. En su lugar, descarga la imagen de contenedor más reciente y vuelve a crear el conjunto de contenedores. Consulta [Actualizar Fresco](./advanced#updating-fresco) en la guía de Implementación avanzada para ver los comandos. Si fijaste una versión concreta de la imagen, actualiza primero la etiqueta en tu archivo Compose.
+
+## Versiones {#versioning}
+
+Fresco usa el [versionado semántico](https://semver.org/) (en inglés) para gestionar sus versiones, lo que significa que cada versión se indica con tres números separados por puntos. Los números se ordenan según su importancia: el primero indica la versión principal (major), el segundo la versión secundaria (minor) y el tercero el «parche» (patch). En general, las versiones principales no son compatibles con la versión anterior (así, la 3.x.x no es compatible con la 2.x.x). Las versiones secundarias sirven para añadir nuevas funciones manteniendo la compatibilidad con versiones anteriores (por ejemplo, la 2.2.x podría introducir una nueva función compatible con la 2.x.x). Las versiones de parche sirven para corregir errores o resolver otros problemas que no cambian el comportamiento ni la funcionalidad del software.
+
+Gracias a esto, siempre debería quedar claro si es seguro instalar una nueva versión de Fresco mientras recopilas datos o si conviene esperar.
+
+Esta información de versión está disponible en varios lugares:
+
+- **Configuración**: puedes encontrar el número de versión de tu instancia de Fresco en el apartado **Detalles de la aplicación** de la página **Configuración** de tu panel, que también te indica si hay una versión más reciente disponible.
+- **GitHub**: puedes encontrar la versión de tu instancia de Fresco en tu repositorio de GitHub, en el archivo `package.json`.
+- **Datos exportados**: el número de versión de tu instancia de Fresco se incluye en los datos exportados, dentro del archivo del ego (la persona entrevistada). Esta información es útil para saber qué versión de Fresco se usó para recopilar los datos.
+
+El endpoint de comprobación de estado, `/api/health`, no indica la versión. Si consultabas la versión de tu instancia a través de él, usa en su lugar la página **Configuración**.
+
+## Actualizar a la versión 5.0.0 {#upgrading-to-500}
+
+Fresco 5.0.0 ejecuta la versión 9 del esquema de protocolo, que permite escribir los protocolos en más de un idioma y dar nombre a las variables, los tipos de nodo y de vínculo y las opciones de respuesta en cualquier idioma. Comprueba lo siguiente antes de actualizar.
+
+- **Si usas una versión anterior, actualiza primero a la última versión 4.x.** Las versiones de Fresco anteriores a la 4.0 almacenaban protocolos del esquema 7. Una implementación que todavía ejecute una de ellas debe actualizarse a la última versión 4.x antes de pasar a la 5.0.0.
+- **Actualiza cuando no haya entrevistas en curso.** Una entrevista que esté abierta en el navegador de una persona participante durante la actualización sigue ejecutando la versión antigua, y las respuestas que se den en ella después de la actualización pueden no guardarse. Las respuestas guardadas antes de la actualización se conservan, y la entrevista continúa con normalidad cuando la persona participante vuelve a cargar la página. Elige un momento en el que no haya participantes haciendo entrevistas, o pide a quien siga a mitad de una entrevista que vuelva a cargar la página cuando haya terminado la actualización.
+- **Actualiza Fresco antes de subir un protocolo del esquema 9.** Architect 9.0 y versiones posteriores guardan los protocolos nuevos y actualizados con el esquema 9, y Fresco 4.x no puede abrirlos. Consulta [Versión 9 del esquema](/es/get-started/protocol-schema-information#schema-version-9).
+- **Tus protocolos no se actualizan.** Fresco nunca actualiza un protocolo al esquema 9. Los protocolos del esquema 8 que ya has subido siguen siendo del esquema 8, y sus entrevistas, incluidas las que estén en curso, siguen ejecutándose en la entrevista del esquema 8 integrada en Fresco, tal como se diseñó el protocolo. Un protocolo del esquema 7 que subas se migra automáticamente al esquema 8, como en versiones anteriores, porque así es como los protocolos de las aplicaciones Classic pasan a Fresco. Para usar las funciones del esquema 9, actualiza el protocolo en Architect y sube la copia actualizada como un protocolo nuevo. Consulta [Migrar un protocolo](/es/get-started/protocol-schema-information#migrating-a-protocol).
+- **Las entrevistas del esquema 9 siguen el idioma del navegador de cada participante.** Una entrevista de un protocolo del esquema 9 ya no usa el idioma del panel, y su menú de ajustes ya no tiene una opción de idioma. Usa, de entre los idiomas configurados en el navegador, el primero en el que esté escrito el protocolo, y quienes participan solo pueden cambiar de idioma en una etapa [«Selector de idioma»](/es/design-protocols/interface-documentation/language-chooser). Consulta [El idioma en las entrevistas](/es/collect-data/fresco/using-fresco#language-in-interviews). Las entrevistas de protocolos del esquema 8 conservan la opción de idioma en su menú de ajustes.
+- **Los nombres de los archivos exportados pueden cambiar en los protocolos del esquema 9.** Ahora los nombres de archivo conservan el nombre de un tipo de nodo o de vínculo tal como lo escribiste, con guiones, puntos, espacios y letras de cualquier idioma. Un tipo llamado «Close-Friend» se exporta ahora a un archivo que termina en `_Close-Friend.csv` en lugar de `_CloseFriend.csv`. Si tus scripts de análisis buscan los archivos exportados por su nombre, revísalos. Consulta [Exportación de datos](/es/analyze-data/data-export).
+- **Todos los protocolos del esquema 9 terminan con una etapa «Pantalla de finalización».** La pantalla que cierra una entrevista es ahora una etapa [«Pantalla de finalización»](/es/design-protocols/interface-documentation/finish-screen) al final del protocolo. Los protocolos del esquema 8 conservan su final anterior. En un protocolo del esquema 9, la persona participante que termina una entrevista ve el texto de entrevista finalizada de la etapa «Pantalla de finalización» en lugar de la antigua página de entrevista finalizada, que ya no existe. La página no muestra ningún botón, así que quienes participan cierran la ventana. Si se vuelve a abrir la URL de una entrevista finalizada, se muestra de nuevo la misma pantalla, y los marcadores o enlaces a `/interview/finished` dejan de funcionar. La columna **Progreso** de la tabla de entrevistas cuenta ahora la etapa «Pantalla de finalización» como una etapa más, así que una entrevista que está esperando en esa etapa muestra menos del 100 % hasta que se finaliza.
+- **Las entrevistas del esquema 9 registran cómo terminaron.** Cada entrevista de un protocolo del esquema 9 registra qué etapa «Pantalla de finalización» la cerró y su resultado (`completed`, `ineligible` o `terminated`). Las entrevistas de protocolos del esquema 8, y las entrevistas finalizadas antes de la actualización, no tienen resultado. Las exportaciones lo incluyen como la columna `networkCanvasFinishOutcome` y el atributo `nc:finishOutcome` (consulta [Cómo terminó la entrevista](/es/analyze-data/data-export#how-the-interview-ended)), y la [API de datos de entrevistas](/es/analyze-data/fresco-api) lo devuelve como `finishOutcome`.
+- **La cookie de «Limitar entrevistas» ha cambiado.** Ahora contiene el ID de la entrevista finalizada de la persona participante, y los scripts de la página no pueden leerla. Si la cookie de una persona participante indica una entrevista finalizada del mismo protocolo, Fresco devuelve a esa persona a la pantalla de entrevista finalizada correspondiente. Las cookies creadas por versiones anteriores se ignoran, así que una persona participante que finalizó una entrevista antes de la actualización quizá pueda empezar otra en el mismo navegador. Consulta [Limitar las entrevistas](/es/collect-data/fresco/using-fresco#limit-interviews).
+- **Las exportaciones pueden mostrar advertencias.** Si una exportación tiene que cambiar el nombre de una columna o eliminar caracteres que GraphML no puede almacenar, Fresco te lo indica en una notificación que permanece hasta que la cierras. Consulta [Advertencias de la exportación](/es/analyze-data/data-export#export-warnings).
+
+## Actualizar a la versión 4.2.0 {#upgrading-to-420}
+
+La mayor parte de Fresco 4.2.0 no requiere que hagas nada, pero comprueba lo siguiente antes de actualizar.
+
+- **Las llaves de acceso deben verificar tu identidad.** Ahora Fresco exige que todas las llaves de acceso confirmen quién eres con un PIN, una huella dactilar o el reconocimiento facial, tanto al registrarlas como cada vez que inicias sesión. Una llave de acceso registrada en una llave de seguridad física sin PIN dejará de servir para iniciar sesión tras la actualización. Antes de actualizar, cada persona con cuenta de administración que inicie sesión con una llave de acceso debería usar **Añadir llave de acceso** en **Configuración → Administración de usuarios** para registrar una llave de acceso que verifique su identidad, o asegurarse de que otra persona con cuenta de administración pueda usar **Restablecer autenticación** en su cuenta. Consulta [Llaves de acceso](/es/collect-data/fresco/accounts#passkeys).
+- **La comprobación de estado ya no indica la versión ni el tiempo de actividad.** `/api/health` sigue respondiendo a las comprobaciones de actividad con el estado del servicio, así que las comprobaciones de estado de los contenedores y los balanceadores de carga siguen funcionando, pero su respuesta ya no incluye la versión de Fresco en ejecución ni el tiempo de actividad del proceso. Actualiza cualquier sistema de monitorización que leyera alguno de esos valores. Consulta [Comprobaciones de estado](/es/collect-data/fresco/advanced#health-checks).
+- **Puedes exigir la autenticación de dos factores.** Una nueva variable de entorno opcional, `REQUIRE_TWO_FACTOR`, hace obligatoria la autenticación de dos factores para todas las cuentas que inician sesión con contraseña. No cambia nada a menos que la definas. Consulta [Exigir la autenticación de dos factores a todas las cuentas](/es/collect-data/fresco/accounts#requiring-two-factor-authentication-for-everyone).
+- **La importación de protocolos explica qué falla.** Un archivo de protocolo al que le falta uno de sus recursos se rechaza, como antes, pero ahora el mensaje indica qué recurso falta, y un archivo de protocolo cuyo contenido está dañado se notifica como dañado. Los protocolos que ya has subido no se ven afectados. Consulta [Subir protocolos](/es/collect-data/fresco/using-fresco#uploading-protocols) para ver cómo corregir un protocolo rechazado.
+
+## Actualización de la variable de UploadThing (solo al actualizar desde versiones anteriores a la 2.0.0) {#uploadthing-variable-update-pre-200-upgrades-only}
+
+Este apartado solo se aplica si actualizas desde una versión de Fresco anterior a la 2.0.0, que usaba un formato anterior de la variable de entorno de UploadThing. Cuando termine el proceso de actualización, actualiza la variable de esta forma:
+
+1. Visita tu panel de UploadThing.
+2. Ve a la sección **API Keys** de la barra lateral y copia tu variable de entorno con el botón de copiar. Debería tener un aspecto parecido a este:
+
+   ```bash
+   UPLOADTHING_TOKEN='abCdefGHiJkLmNopQrsTuvWxYz.......'
+   ```
+
+3. Visita el panel de administración de Fresco. Aparecerá un mensaje que te informa de que tu variable de entorno de UploadThing está desactualizada.
+4. Pega tu nueva variable de entorno en el campo **UPLOADTHING_TOKEN** del formulario.
+
+![Pegar la nueva variable de entorno en el formulario](/assets/img/fresco-images/upgrade.png)

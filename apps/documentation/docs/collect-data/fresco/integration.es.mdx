@@ -1,0 +1,200 @@
+---
+title: Integración con otras herramientas de encuestas
+date: 21st July 2026
+navOrder: 11
+translatedFrom: 8a0260197209f45bbde373dac4216b28a91bf975
+---
+
+Al igual que _Interviewer_, Fresco no pretende sustituir a las herramientas de encuestas de uso general que ya existen, sobre todo para recopilar datos específicos del ego (la persona entrevistada). Te recomendamos hacer la recopilación extensa de datos de ego con una herramienta de encuestas de uso general y usar Fresco para recopilar los datos de red.
+
+Para facilitarlo, Fresco admite la integración con otras herramientas de encuestas mediante identificadores compartidos, llamados «identificadores de participante», que se pueden pasar desde tu herramienta de encuestas convencional a Fresco.
+
+Esta integración permite que quienes participan completen una encuesta «convencional» y después pasen sin interrupciones a la parte de la entrevista dedicada a la red en Fresco, con solo hacer clic en un enlace. Al hacer el análisis, los datos recopilados en Fresco se pueden asociar a los datos de la encuesta mediante el identificador de participante compartido.
+
+En este artículo se explica el proceso con Qualtrics y Prolific como ejemplos, pero el enfoque es parecido en otras herramientas de encuestas y de reclutamiento. Si quieres que añadamos documentación sobre otras herramientas, háznoslo saber.
+
+## ¿Qué es un identificador de participante? {#what-is-a-participant-identifier}
+
+En Fresco, cada participante de tu estudio debe tener un identificador único. Cuando creas participantes manualmente, tienes que proporcionar tú este identificador (o usar el botón correspondiente para generar uno aleatorio). Cuando el reclutamiento anónimo está habilitado, este identificador se genera en el momento en que se crea cada participante a través de la URL de participación anónima o (como veremos más adelante en este tutorial) se puede proporcionar como parte de la URL.
+
+<Tipbox danger>
+
+Los identificadores de participante se usan a veces en URL que se comparten con quienes participan, así que pueden quedar a la vista. Por eso, **no deben contener información sensible ni ser fáciles de adivinar por otras personas participantes** (por ejemplo, números consecutivos o cadenas fáciles de adivinar).
+
+</Tipbox>
+
+## Cómo funciona la integración {#how-integration-works}
+
+<Tipbox>
+  Por ahora, <em>no</em> es posible devolver datos de Fresco a la herramienta
+  de encuestas. Es una integración en un solo sentido.
+</Tipbox>
+
+Como ya hemos dicho, el objetivo final de la integración es que cada participante pueda responder una encuesta «convencional» y, después, hacer clic en un enlace que abra la parte de la entrevista dedicada a la red. Esto, por sí solo, sería fácil de desarrollar, pero la clave es poder relacionar los datos recopilados en la herramienta de encuestas con los datos recopilados en Fresco.
+
+En pocas palabras, esto se consigue incluyendo el identificador de participante en la URL que enlaza con la entrevista de Fresco. Cuando la URL contiene este identificador, Fresco lo usa, antes de iniciar la entrevista, para crear una nueva persona participante con ese identificador (si el reclutamiento anónimo está habilitado) o para enlazar con una persona participante que ya existe.
+
+El identificador se puede incluir en la URL de incorporación de dos formas:
+
+### Parámetros de consulta {#query-parameters}
+
+El identificador de participante se puede incluir en lo que se conoce como «parámetros de consulta». Se trata de una tecnología web estándar que codifica grupos de datos y etiquetas con el formato `label=value`, separados por el carácter «et» (`&`) y añadidos al final de una URL después de un signo de interrogación (`?`). Por ejemplo, un buscador puede usar parámetros de consulta para guardar una búsqueda como esta: `http://google.com?query=networkcanvas`.
+
+En Fresco, el parámetro de consulta debe llamarse `participantIdentifier` (¡distingue entre mayúsculas y minúsculas!) y debe añadirse a la URL de incorporación de tu protocolo. Una URL de incorporación de ejemplo con el identificador de participante incluido como parámetro de consulta podría ser así:
+
+```plaintext
+https://yourstudy.com/onboard/{protocolID}/?participantIdentifier=12345
+```
+
+Usar parámetros de consulta es el método más sencillo, pero el identificador de participante queda a la vista en la URL y se podría manipular.
+
+### Parámetros POST {#post-parameters}
+
+El identificador de participante también se puede incluir en el cuerpo de una solicitud POST. Es un método más seguro, porque los datos no aparecen en la URL, pero es más complejo de desarrollar.
+
+Fresco examina el cuerpo de la solicitud POST e intenta interpretarlo como JSON. Si encuentra una clave llamada `participantIdentifier`, usa el valor de esa clave como identificador de participante.
+
+Esta guía se centra en el método de los parámetros de consulta, porque es más sencillo de desarrollar y debería bastar en la mayoría de los casos.
+
+## Ejemplo de integración con Qualtrics {#example-integration-with-qualtrics}
+
+Como ejemplo, veremos ahora cómo poner en práctica este proceso en [Qualtrics](https://www.qualtrics.com) (en inglés), suponiendo que no tienes una lista previa de participantes. El proceso es parecido en otras herramientas de encuestas, pero los pasos concretos pueden variar.
+
+<Tipbox>
+
+Partimos de que ya has configurado tu instancia de Fresco y has creado o subido un protocolo de entrevista. Si aún no lo has hecho, consulta la [documentación de implementación](./guide) para ver cómo hacerlo.
+
+</Tipbox>
+
+### Configurar tu instancia de Fresco para permitir el reclutamiento anónimo {#set-up-your-fresco-instance-to-allow-anonymous-recruitment}
+
+El reclutamiento anónimo permite que quienes participan se unan a tu estudio sin necesidad de añadir antes a cada participante en Fresco. Así se simplifica el proceso en este ejemplo, ya que no tienes que sincronizar las listas de participantes entre Fresco y tu herramienta de encuestas. Es posible hacer la integración con herramientas externas sin habilitar el reclutamiento anónimo, pero hacerlo así no tiene ninguna ventaja real.
+
+Para activar el reclutamiento anónimo, inicia sesión en tu instancia de Fresco y ve a la pestaña «Configuración» de la barra de navegación superior. Activa el interruptor del apartado «Reclutamiento anónimo».
+
+Ve a la página «Protocolos» y haz clic en el botón de la columna «URL de participación anónima» junto al protocolo que quieras usar. Así se copia la URL de participación anónima al portapapeles. Pégala en un editor de texto para tenerla a mano más adelante. Debería tener un aspecto parecido a este: `https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98`.
+
+### Configurar tu encuesta de Qualtrics para generar o recoger un identificador {#set-up-your-qualtrics-survey-to-generate-or-collect-an-identifier}
+
+Crea tu encuesta en Qualtrics según tus necesidades.
+
+Tendrás que generar un identificador único para cada participante que quieras pasar a Fresco. Puede ser:
+
+- un código generado aleatoriamente
+- una combinación de respuestas a preguntas de la encuesta (por ejemplo, las iniciales y la fecha de nacimiento de cada participante)
+- un ID definido en un archivo de datos externo que hayas subido a Qualtrics
+- el Response ID de Qualtrics (un identificador único que se asigna automáticamente a cada respuesta)
+
+Para ver cómo generar un identificador único en Qualtrics, consulta la [documentación de asistencia de Qualtrics](https://www.qualtrics.com/support/) (en inglés).
+
+En este ejemplo, usaremos el Response ID de Qualtrics, un identificador único que se asigna automáticamente a cada respuesta de la encuesta.
+
+### Usar texto dinámico para pasar el identificador a Fresco {#use-piped-text-to-pass-the-identifier-to-fresco}
+
+Para pasar el identificador, usaremos la función de [«texto dinámico» (piped text)](https://www.qualtrics.com/support/survey-platform/survey-module/editing-questions/piped-text/piped-text-overview/) (en inglés) de Qualtrics. Esta función te permite insertar datos dinámicos en las preguntas y respuestas de tu encuesta o, como en este caso, en la URL con la que enlazarás con Fresco.
+
+En la pantalla de tu encuesta, busca el bloque **«End of Survey»** (fin de la encuesta):
+
+![Bloque «End of Survey»](/assets/img/fresco-images/end-of-survey.png)
+
+Edita el bloque **«End of Survey»** para añadir un enlace a tu encuesta de Fresco con la «URL de participación anónima» que pegaste antes en tu editor de texto.
+
+Modifica el enlace para incluir el código de texto dinámico de tu identificador. En este ejemplo, usaremos el Response ID de Qualtrics como identificador. El Response ID es un identificador único que Qualtrics genera automáticamente para cada respuesta de la encuesta. El código de texto dinámico del Response ID es `${e://Field/ResponseID}`. Añadimos este código a la URL como un parámetro de consulta llamado `participantIdentifier`, y el resultado es el siguiente:
+
+```html
+You have completed the first part of the study. Click the link below to proceed
+to the next section:
+
+<a
+  href="https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98/?participantIdentifier=${e://Field/ResponseID}"
+>
+  Continue to the next section
+</a>
+```
+
+<Tipbox>
+
+**Cómo funcionan los prefijos del texto dinámico de Qualtrics:** Qualtrics usa prefijos distintos para acceder a distintos tipos de datos:
+
+- **`e://`**: sirve para acceder a los campos de datos integrados (embedded data) y a los campos de respuesta propios de Qualtrics, como `ResponseID`. Es el prefijo más habitual en los flujos de trabajo de encuesta estándar.
+- **`l://`**: se usa específicamente dentro de contextos «Loop and Merge» (bucle y combinación) para acceder a los campos de la iteración actual del bucle.
+
+Si usas la función «Loop and Merge» en tu encuesta y necesitas pasar un identificador desde dentro de un bucle, debes usar `${l://FieldName}`. En la mayoría de las encuestas estándar, `e://` es la opción correcta.
+
+</Tipbox>
+
+El enlace _debe_ tener el formato que se muestra para que el identificador de participante se pase correctamente. Prueba el enlace haciendo clic en él para comprobar que lleva a tu encuesta de Fresco y que crea una nueva persona participante con el identificador correcto.
+
+<Tipbox>
+
+Puedes probar el enlace a la entrevista de Fresco con un identificador de participante ficticio para comprobar que crea una nueva persona participante en la página de participantes de Fresco y una entrevista propia con el identificador que se ha pasado.
+
+Basta con sustituir el identificador de participante de la URL por un identificador de prueba. Por ejemplo, si la URL de tu instancia de Fresco es **`https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98`** y quieres probar el enlace con el identificador **`Test123`**, la URL debería ser así:
+
+```plaintext
+https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98/?participantIdentifier=Test123
+```
+
+</Tipbox>
+
+Si la prueba ha funcionado, ya puedes distribuir tu encuesta entre quienes participan. Al completar la encuesta, pasarán a la entrevista de Fresco, y su identificador de participante en Fresco coincidirá con su Response ID en Qualtrics.
+
+## Ejemplo de integración con Prolific {#example-integration-with-prolific}
+
+[Prolific](https://www.prolific.com) (en inglés) es una plataforma de reclutamiento de participantes, no una herramienta de encuestas, así que desempeña un papel algo distinto en tu estudio. En lugar de crear tu encuesta en Prolific, la usas para reclutar participantes y enviar a quienes participan a tu estudio, ya sea directamente a Fresco o primero a tu herramienta de encuestas y después a Fresco.
+
+Pasar un identificador de participante funciona igual que en el ejemplo de Qualtrics anterior: lo añades a la URL de incorporación de Fresco como parámetro de consulta `participantIdentifier`. Lo único que cambia es de dónde sale el identificador. Prolific sustituye automáticamente unos marcadores de posición especiales de la URL de tu estudio por los datos de cada participante:
+
+- `{{%PROLIFIC_PID%}}`: el ID de Prolific único de la persona participante
+- `{{%STUDY_ID%}}`: el ID de tu estudio en Prolific
+- `{{%SESSION_ID%}}`: el ID del envío individual de la persona participante
+
+Te recomendamos usar `{{%PROLIFIC_PID%}}` como identificador de participante, porque identifica a cada participante de forma única y estable a lo largo de todo tu estudio.
+
+### Vía 1: reclutar directamente en Fresco {#route-1-recruit-directly-into-fresco}
+
+Es el enfoque más sencillo y se parece mucho al ejemplo de Qualtrics anterior, salvo que es Prolific, y no una herramienta de encuestas, quien genera el enlace a Fresco.
+
+Primero, habilita el reclutamiento anónimo y copia la «URL de participación anónima» de tu protocolo, exactamente como se describe en el ejemplo de Qualtrics anterior.
+
+Después, al configurar tu estudio en Prolific, elige registrar los ID de Prolific mediante **parámetros de URL** (URL parameters) y define como URL de tu estudio la URL de incorporación de Fresco, con el parámetro de consulta `participantIdentifier` igual al marcador de posición `{{%PROLIFIC_PID%}}`:
+
+```plaintext
+https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98/?participantIdentifier={{%PROLIFIC_PID%}}
+```
+
+Cuando una persona participante empieza tu estudio, Prolific sustituye `{{%PROLIFIC_PID%}}` por su ID de Prolific único. Después, Fresco crea una persona participante cuyo identificador es ese ID de Prolific, lo que te permite relacionar los datos de red recopilados en Fresco con el registro de esa persona en Prolific.
+
+Antes de lanzar el estudio, prueba el enlace con un identificador ficticio para confirmar que crea una persona participante en Fresco, siguiendo el mismo método que se muestra en el consejo sobre pruebas del ejemplo de Qualtrics anterior.
+
+### Vía 2: reclutar a través de una herramienta de encuestas y después pasar a Fresco {#route-2-recruit-via-a-survey-tool-then-fresco}
+
+Si tu estudio también incluye una recopilación extensa de datos de ego, quizá prefieras que cada participante complete una encuesta en una herramienta como Qualtrics antes de continuar con la entrevista de Fresco. En ese caso, Prolific envía a quienes participan a tu herramienta de encuestas, y desde allí un enlace les permite continuar en Fresco.
+
+Haz que tu estudio de Prolific apunte a tu herramienta de encuestas en lugar de a Fresco, y recoge allí el ID de Prolific. En Qualtrics, por ejemplo, guardarías `{{%PROLIFIC_PID%}}` en un campo de datos integrados (embedded data). Consulta la [guía de integración con Qualtrics](https://researcher-help.prolific.com/en/articles/445194-qualtrics-integration-guide) (en inglés) de Prolific para ver los detalles.
+
+Después, sigue el ejemplo de Qualtrics anterior para enlazar tu encuesta con Fresco, pero usa como `participantIdentifier` el ID de Prolific que has recogido en lugar del Response ID de Qualtrics. Si guardaste el ID en un campo de datos integrados llamado `PROLIFIC_PID`, el código de texto dinámico es `${e://Field/PROLIFIC_PID}`, y el enlace queda así:
+
+```html
+<a
+  href="https://your-fresco-instance.com/onboard/clwak4fc70000pybyrk9rvb98/?participantIdentifier=${e://Field/PROLIFIC_PID}"
+>
+  Continue to the next section
+</a>
+```
+
+De este modo, un único identificador, el ID de Prolific de la persona participante, vincula su registro de Prolific, sus respuestas a la encuesta y sus datos de red de Fresco.
+
+### Devolver a quienes participan a Prolific {#returning-participants-to-prolific}
+
+<Tipbox danger>
+
+Prolific exige que cada participante vuelva a Prolific (mediante una URL de finalización o un código de finalización) para que su envío quede registrado y se le pague. Como Fresco es una integración en un solo sentido y no puede redirigir automáticamente a quienes participan a Prolific cuando termina la entrevista, tienes que planificar tú este paso.
+
+Te recomendamos usar el método del **código de finalización** (completion code) de Prolific en lugar de una redirección, y asegurarte de que cada participante solo pueda completar el estudio en Prolific una vez que se hayan enviado los datos de su entrevista. Consulta la [documentación de Prolific sobre la recopilación de datos y la finalización de estudios](https://researcher-help.prolific.com/en/articles/445127-data-collection) (en inglés) para ver las opciones disponibles.
+
+</Tipbox>
+
+## Otras consideraciones {#additional-considerations}
+
+- Con la opción **«Limitar entrevistas»** de la página de configuración de Fresco, puedes impedir que se envíe más de una entrevista con el mismo identificador. Así, cada participante solo puede enviar una entrevista por identificador.
