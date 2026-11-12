@@ -64,12 +64,14 @@ const messages = defineMessages({
   deleteProtocol: {
     id: 'interviewer.deckCard.deleteProtocol',
     defaultMessage: 'Delete Protocol',
-    description: 'User-facing message in Interviewer Deck Card.',
+    description:
+      'Accessible name of the trash icon button on a protocol card that deletes the installed protocol, read only by screen readers.',
   },
   loadingProtocol: {
     id: 'interviewer.deckCard.loadingProtocol',
     defaultMessage: 'Loading protocol',
-    description: 'User-facing message in Interviewer Deck Card.',
+    description:
+      'Accessible name of the progress bar on a protocol card while it is installing, used when no more specific status text is available.',
   },
   cardName: {
     id: 'interviewer.deckCard.cardName',
@@ -80,7 +82,8 @@ const messages = defineMessages({
   interviewCount: {
     id: 'interviewer.deckCard.interviewCount',
     defaultMessage: '{count, plural, one {# interview} other {# interviews}}',
-    description: 'Administration text in Interviewer DeckCard.',
+    description:
+      'Line on a protocol card, a link to its interviews. count is the number of interviews collected with that protocol on this device.',
   },
 });
 
