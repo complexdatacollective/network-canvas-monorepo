@@ -261,7 +261,7 @@ const DocSearchComponent = ({
             ]}
             apiKey={docSearchConfig.apiKey}
             insights={true}
-            placeholder="Search documentation"
+            placeholder={t('modal.searchBox.placeholderText')}
             hitComponent={SearchResultHit}
           />
         </div>
