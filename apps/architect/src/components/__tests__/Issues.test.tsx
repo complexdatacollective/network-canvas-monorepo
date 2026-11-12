@@ -175,11 +175,10 @@ describe('<Issues />', () => {
     expect(screen.getByRole('button', { name: 'Issues (3)' })).toHaveClass(
       'focus:outline-warning',
     );
-    expect(screen.getByRole('dialog')).toHaveClass('p-0');
-    expect(screen.getByRole('dialog').lastElementChild).toHaveClass(
-      'overflow-hidden',
-      'rounded-[inherit]',
-    );
+    // The padding is on the surface inside the dialog, which also clips the
+    // list to its rounded corners.
+    const surface = screen.getByRole('dialog').firstElementChild;
+    expect(surface).toHaveClass('p-0', 'overflow-clip', 'rounded');
   });
 
   describe('a field that fails several rules', () => {
