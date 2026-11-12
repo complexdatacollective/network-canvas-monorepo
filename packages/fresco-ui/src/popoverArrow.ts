@@ -1,3 +1,5 @@
+import { useDirection } from '@base-ui/react/direction-provider';
+
 // Keep overlay arrows outside the rounded-corner zone of floating surfaces.
 // The default fresco `rounded` token is 28px, while Base UI's default
 // arrowPadding is 5px.
@@ -17,3 +19,33 @@ export const POPOVER_ARROW_PADDING = 28;
 export const POPOVER_ARROW_CLASS_NAME =
   // oxlint-disable-next-line tailwindcss/enforce-logical -- sides and offsets follow Base UI's physical placement; see above
   'pointer-events-none aspect-square data-[side=bottom]:top-[-13px] data-[side=bottom]:ml-[-2px] data-[side=left]:right-[-13px] data-[side=left]:mt-[-2px] data-[side=left]:rotate-90 data-[side=right]:left-[-13px] data-[side=right]:mt-[-2px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-13px] data-[side=top]:ml-[-2px] data-[side=top]:rotate-180';
+
+/**
+ * Where a popup opens beside its trigger. `inline-start` and `inline-end` are
+ * the start and end of the line, so a popup opens on the same side as the text
+ * in either writing direction; `left` and `right` stay where they are when the
+ * interface mirrors, for a popup that means a physical side.
+ */
+export type PopupSide =
+  | 'top'
+  | 'bottom'
+  | 'inline-start'
+  | 'inline-end'
+  | 'left'
+  | 'right';
+
+/**
+ * The physical side for Base UI's positioner. Base UI accepts the logical
+ * sides itself, but then reports them back as `data-side="inline-end"`, which
+ * the arrow classes above (placed by distances from the left and the top)
+ * cannot follow. Resolving the side here keeps every side the arrow sees a
+ * physical one.
+ */
+export function usePhysicalSide(
+  side: PopupSide | undefined,
+): 'top' | 'bottom' | 'left' | 'right' | undefined {
+  const rightToLeft = useDirection() === 'rtl';
+  if (side === 'inline-start') return rightToLeft ? 'right' : 'left';
+  if (side === 'inline-end') return rightToLeft ? 'left' : 'right';
+  return side;
+}

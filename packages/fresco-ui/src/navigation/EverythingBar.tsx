@@ -245,6 +245,7 @@ const defaultGroupIcons: Record<
   EverythingBarGroup,
   ComponentType<{ className?: string }>
 > = {
+  // oxlint-disable-next-line direction/inline-arrow-turns -- drawn with inlineIconClass(ItemIcon), which turns it right to left
   'go-to': ArrowRight,
   'commands': Command,
   'documentation': BookOpen,

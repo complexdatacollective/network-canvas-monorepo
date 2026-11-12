@@ -26,7 +26,7 @@ const iconMap = {
   download: <Download className="size-4" />,
   upload: <Upload className="size-4" />,
   trash: <Trash className="size-4" />,
-  chevronRight: <ChevronRight className="size-4" />,
+  chevronRight: <ChevronRight className="size-4 rtl:-scale-x-100" />,
 };
 
 type ButtonStoryArgs = ComponentProps<typeof Button> & {
@@ -285,7 +285,10 @@ export const Icons: Story = {
         <div className="flex flex-col gap-2">
           <span className="text-text/70 text-xs">Right</span>
           <div className="flex gap-2">
-            <Button icon={<ChevronRight />} iconPosition="right">
+            <Button
+              icon={<ChevronRight className="rtl:-scale-x-100" />}
+              iconPosition="right"
+            >
               Next
             </Button>
           </div>
@@ -573,7 +576,11 @@ export const LinkVariant: Story = {
             <Button variant="link" icon={<Download />}>
               Download
             </Button>
-            <Button variant="link" icon={<ChevronRight />} iconPosition="right">
+            <Button
+              variant="link"
+              icon={<ChevronRight className="rtl:-scale-x-100" />}
+              iconPosition="right"
+            >
               Learn more
             </Button>
           </div>

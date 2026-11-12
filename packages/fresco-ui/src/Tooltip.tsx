@@ -8,6 +8,8 @@ import { ArrowSvg } from './Popover';
 import {
   POPOVER_ARROW_CLASS_NAME,
   POPOVER_ARROW_PADDING,
+  type PopupSide,
+  usePhysicalSide,
 } from './popoverArrow';
 import { usePortalContainer } from './PortalContainer';
 import { cx } from './utils/cva';
@@ -23,7 +25,7 @@ type TooltipContentProps = Omit<
   'children'
 > & {
   sideOffset?: number;
-  side?: 'top' | 'bottom' | 'left' | 'right';
+  side?: PopupSide;
   align?: 'start' | 'center' | 'end';
   showArrow?: boolean;
   /**
@@ -52,10 +54,11 @@ const TooltipContent = React.forwardRef<
     ref,
   ) => {
     const portalContainer = usePortalContainer();
+    const physicalSide = usePhysicalSide(side);
     return (
       <BaseTooltip.Portal container={portalContainer ?? undefined}>
         <BaseTooltip.Positioner
-          side={side}
+          side={physicalSide}
           sideOffset={sideOffset}
           align={align}
           arrowPadding={POPOVER_ARROW_PADDING}

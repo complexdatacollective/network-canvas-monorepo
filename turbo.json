@@ -534,6 +534,7 @@
       // each app's _headers, _redirects and older-major pin.
       "inputs": [
         "scripts/**",
+        "tooling/oxlint/**",
         ".github/**",
         ".claude/**",
         ".agents/**",

@@ -17,6 +17,8 @@ import { MotionSurface } from './layout/Surface';
 import {
   POPOVER_ARROW_CLASS_NAME,
   POPOVER_ARROW_PADDING,
+  type PopupSide,
+  usePhysicalSide,
 } from './popoverArrow';
 import { usePortalContainer } from './PortalContainer';
 import { cx } from './utils/cva';
@@ -179,7 +181,7 @@ type PopoverContentProps = Omit<
 > & {
   className?: string;
   children: ReactNode;
-  side?: 'top' | 'right' | 'bottom' | 'left';
+  side?: PopupSide;
   sideOffset?: number;
   showArrow?: boolean;
   keepMounted?: boolean;
@@ -206,6 +208,7 @@ function PopoverContent({
 }: PopoverContentProps) {
   const { mounted } = usePopoverContext();
   const portalContainer = usePortalContainer();
+  const physicalSide = usePhysicalSide(side);
 
   return (
     <BasePopover.Portal
@@ -219,7 +222,7 @@ function PopoverContent({
             sideOffset={sideOffset}
             arrowPadding={POPOVER_ARROW_PADDING}
             align={align}
-            {...(side ? { side } : {})}
+            {...(physicalSide ? { side: physicalSide } : {})}
             {...(anchor ? { anchor } : {})}
           >
             <BasePopover.Popup

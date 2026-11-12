@@ -406,7 +406,7 @@ const LanguageRow = ({
               />
             }
           />
-          <TooltipContent side="left" className="max-w-64">
+          <TooltipContent side="inline-start" className="max-w-64">
             {intl.formatMessage(messages.editTranslations, { language })}
           </TooltipContent>
         </Tooltip>
@@ -426,7 +426,7 @@ const LanguageRow = ({
             />
           }
         />
-        <TooltipContent side="left" className="max-w-64">
+        <TooltipContent side="inline-start" className="max-w-64">
           {intl.formatMessage(messages.changeLanguage, { language })}
         </TooltipContent>
       </Tooltip>
@@ -456,7 +456,7 @@ const LanguageRow = ({
           }
         />
         {removalBlockedReason !== null && (
-          <TooltipContent side="left" className="max-w-64">
+          <TooltipContent side="inline-start" className="max-w-64">
             {removalBlockedReason}
           </TooltipContent>
         )}
