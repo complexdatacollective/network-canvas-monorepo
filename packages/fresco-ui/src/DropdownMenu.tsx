@@ -9,9 +9,8 @@ import { ArrowSvg, BaseUISharedPopoverContainer } from './Popover';
 import {
   POPOVER_ARROW_CLASS_NAME,
   POPOVER_ARROW_PADDING,
-  type PopupSide,
-  usePhysicalSide,
 } from './popoverArrow';
+import { type PopupSide, usePhysicalSide } from './popupSide';
 import { usePortalContainer } from './PortalContainer';
 import {
   dropdownItemVariants,

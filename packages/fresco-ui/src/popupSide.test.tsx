@@ -2,7 +2,7 @@ import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { type PopupSide, usePhysicalSide } from './popoverArrow';
+import { type PopupSide, usePhysicalSide } from './popupSide';
 
 function ResolvedSide({ side }: { side: PopupSide }) {
   return <output>{usePhysicalSide(side)}</output>;
