@@ -112,7 +112,7 @@ describe('the shared stage-editor sections in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('switch', {
-        name: 'Guía para quien realiza la entrevista',
+        name: 'Guía para la persona entrevistadora',
       }),
     ).toBeInTheDocument();
   });
@@ -131,9 +131,7 @@ describe('the shared stage-editor sections in Spanish', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'Crea notas o una guía para quien realiza la entrevista.',
-      ),
+      screen.getByText('Crea notas o una guía para la persona entrevistadora.'),
     ).toBeInTheDocument();
     // The assertions above name what these sections are supposed to say; the
     // sweep reports whatever else they said — including a sentence rebuilt out
@@ -169,7 +167,7 @@ describe('the shared stage-editor sections in Spanish', () => {
     const harness = renderInSpanish();
 
     const guidance = screen.getByRole('switch', {
-      name: 'Guía para quien realiza la entrevista',
+      name: 'Guía para la persona entrevistadora',
     });
     await harness.user.click(guidance);
     const field = await screen.findByRole('textbox', {

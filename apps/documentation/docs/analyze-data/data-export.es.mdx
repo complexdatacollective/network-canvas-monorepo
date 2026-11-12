@@ -2,7 +2,7 @@
 title: Exportación de datos
 navOrder: 1
 date: 5th October 2026
-translatedFrom: 23db1ebc1e0ecce4636437afb701daebd0658567
+translatedFrom: 225a5b04a481d67a40784e4499576258a137cff8
 ---
 
 <Definition>
@@ -48,7 +48,7 @@ La exportación CSV crea un archivo distinto para cada tipo de entidad de tu pro
 
 #### Lista de atributos de ego {#ego-attribute-list}
 
-- **Una fila por ego** (participante)
+- **Una fila** para el ego (participante) de la entrevista
 - **Formato del nombre de archivo:** `caseID_sessionUUID_ego.csv` (consulta [Cómo se nombran los archivos exportados](#how-export-files-are-named))
 - **Contiene:**
   - Las variables de ego que has recopilado
@@ -59,10 +59,11 @@ La exportación CSV crea un archivo distinto para cada tipo de entidad de tu pro
 **Estructura de ejemplo:**
 
 ```csv
-ego_id,networkCanvasEgoUUID,networkCanvasCaseID,age,gender,sessionStart,sessionFinish
-1,abc123-def456,case_001,34,Male,2025-01-15 10:30,2025-01-15 11:15
-2,ghi789-jkl012,case_002,28,Female,2025-01-15 14:00,2025-01-15 14:45
+networkCanvasEgoUUID,networkCanvasCaseID,networkCanvasSessionID,networkCanvasProtocolName,sessionStart,sessionFinish,sessionExported,APP_VERSION,COMMIT_HASH,networkCanvasFinishOutcome,age,gender_female,gender_male,gender_non_binary
+abc123,case_001,sess456,My Study,2025-01-15T10:30:00.000Z,2025-01-15T11:15:00.000Z,2025-01-16T09:00:00.000Z,9.0.0,1a2b3c4,completed,34,false,true,false
 ```
+
+Las columnas de identificadores y de la sesión de entrevista van siempre primero, en este orden, seguidas de tus variables de ego. Una variable categórica como `gender` ocupa una columna `true`/`false` por cada opción (consulta el [Diccionario de datos de exportación](/es/analyze-data/data-dictionary)).
 
 #### Lista de atributos de álteres {#alter-attribute-list}
 
@@ -71,21 +72,20 @@ ego_id,networkCanvasEgoUUID,networkCanvasCaseID,age,gender,sessionStart,sessionF
 - **Contiene:**
   - Todos los atributos de álteres que has recopilado
   - Los identificadores de Network Canvas (UUID del álter, UUID del ego)
-  - Un ID incremental propio de la exportación (único solo dentro de esa exportación)
+  - Un número `nodeID` que identifica a cada álter, pero solo dentro de esta entrevista
 
 **Estructura de ejemplo:**
 
 ```csv
-ego_id,alter_id,networkCanvasUUID,networkCanvasEgoUUID,name,age,close_friend,contact_frequency
-1,1,xyz789,abc123-def456,John,32,true,Daily
-1,2,uvw456,abc123-def456,Sarah,29,true,Weekly
-2,1,rst123,ghi789-jkl012,Michael,31,false,Monthly
+nodeID,networkCanvasEgoUUID,networkCanvasUUID,name,age,close_friend,contact_frequency
+1,abc123,xyz789,John,32,true,Daily
+2,abc123,uvw456,Sarah,29,true,Weekly
 ```
 
 **Notas importantes:**
 
 - Si tu protocolo define varios tipos de nodo (por ejemplo, «Persona» y «Organización»), recibirás un archivo distinto para cada tipo
-- El `alter_id` es un número entero incremental que solo es único dentro de la red de cada ego y de esa exportación concreta
+- El `nodeID` se numera desde 1 en cada entrevista, contando todos sus tipos de nodo, así que en el archivo de un tipo de nodo pueden faltar números. El mismo `nodeID` corresponde a un álter distinto en cada entrevista
 - El `networkCanvasUUID` es el identificador único permanente de cada álter
 
 #### Lista de atributos de vínculos {#edge-attribute-list}
@@ -100,15 +100,15 @@ ego_id,alter_id,networkCanvasUUID,networkCanvasEgoUUID,name,age,close_friend,con
 **Estructura de ejemplo:**
 
 ```csv
-ego_id,edge_id,edge_type,from,to,networkCanvasSourceUUID,networkCanvasTargetUUID,relationship_strength,frequency
-1,1,friendship,1,2,xyz789,uvw456,strong,high
+edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID,relationship_strength,frequency
+1,1,2,abc123,edg001,xyz789,uvw456,strong,high
 ```
 
 **Notas importantes:**
 
-- Las columnas `from` y `to` hacen referencia al `alter_id` de la lista de atributos de álteres
-- Cada tipo de vínculo genera su propio archivo
-- Los archivos de vínculos se crean aunque estén vacíos, es decir, aunque no se haya recopilado ningún vínculo
+- Las columnas `from` y `to` contienen el `nodeID` de los dos álteres que el vínculo conecta. `networkCanvasSourceUUID` y `networkCanvasTargetUUID` contienen el `networkCanvasUUID` de esos dos álteres
+- Cada tipo de vínculo tiene su propio archivo. El tipo de vínculo figura en el nombre del archivo, no en una columna
+- Si la entrevista no tiene ningún vínculo, la exportación genera igualmente un archivo de vínculos, `caseID_sessionUUID_edgeList.csv`, que solo contiene la fila de encabezados
 
 #### Por qué algunos valores empiezan por un apóstrofo {#why-some-values-start-with-an-apostrophe}
 
@@ -424,7 +424,7 @@ Ego (participant)
 
 - Los atributos de los álteres
 - Los atributos del vínculo entre el ego y cada álter
-- La referencia al ego (ego_id o networkCanvasEgoUUID)
+- La referencia al ego (`networkCanvasEgoUUID`)
 
 **Nivel de los vínculos:** las relaciones entre álteres dentro de cada red egocéntrica, que contienen lo siguiente.
 
@@ -684,8 +684,8 @@ G.edges(data=True)   # edges with their attributes
 
 **Problema: los ID de los álteres no coinciden entre archivos**
 
-- **Causa:** se está usando el alter_id incremental en lugar del networkCanvasUUID
-- **Solución:** usa `networkCanvasUUID` para relacionar los datos de distintas exportaciones; `alter_id` es propio de cada exportación
+- **Causa:** se está usando `nodeID` en lugar de `networkCanvasUUID`. `nodeID` se numera desde 1 en cada entrevista, así que el mismo número corresponde a un álter distinto en cada una
+- **Solución:** usa `networkCanvasUUID` para distinguir los álteres cuando combines archivos de varias entrevistas o exportaciones. Usa `nodeID` solo dentro de los archivos de una misma entrevista, por ejemplo, para cruzar las columnas `from` y `to` de sus archivos de vínculos con los álteres de esa entrevista
 
 ### Controles de calidad de los datos {#data-quality-checks}
 

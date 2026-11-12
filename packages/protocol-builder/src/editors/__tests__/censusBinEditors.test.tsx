@@ -304,7 +304,7 @@ const CASES: readonly EditorCase[] = [
     optionalSections: [
       'Filtro de la etapa',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
     ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
@@ -341,7 +341,7 @@ const CASES: readonly EditorCase[] = [
     optionalSections: [
       'Filtro de la etapa',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
     ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
@@ -377,7 +377,7 @@ const CASES: readonly EditorCase[] = [
     optionalSections: [
       'Filtro de la etapa',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
     ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
@@ -422,7 +422,7 @@ const CASES: readonly EditorCase[] = [
     optionalSections: [
       'Filtro de la etapa',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
     ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
@@ -466,7 +466,7 @@ const CASES: readonly EditorCase[] = [
     optionalSections: [
       'Filtro de la etapa',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
     ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
@@ -531,7 +531,7 @@ const CASES: readonly EditorCase[] = [
       'Paneles laterales',
       'Límites de nominación',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
     ownedKeys: [
       'addNamePlaceholder',
@@ -585,7 +585,7 @@ const CASES: readonly EditorCase[] = [
       'Búsqueda en la lista',
       'Límites de nominación',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ],
     ownedKeys: [
       'allAddedNotice',
@@ -878,7 +878,7 @@ describe('the family’s editors, swept under es', () => {
     await screen.findByRole('textbox', { name: 'Nombre de la etapa' });
     await waitFor(() =>
       expect(harness.outline().map((entry) => entry.title)).toContain(
-        'Guía para quien realiza la entrevista',
+        'Guía para la persona entrevistadora',
       ),
     );
     expectNoLocaleLeaks(`${family} at rest`, researcherWords(harness));
