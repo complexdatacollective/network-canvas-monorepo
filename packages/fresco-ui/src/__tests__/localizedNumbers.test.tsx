@@ -14,6 +14,7 @@ import RangeFilter from '../DataTable/filters/RangeFilter';
 import { type OperatorFilterConfig } from '../DataTable/filters/types';
 import SegmentedCodeField from '../form/fields/SegmentedCodeField';
 import VisualAnalogScaleField from '../form/fields/VisualAnalogScale';
+import ProgressBar from '../ProgressBar';
 import { ARABIC, arabicNumber, sourceTemplate } from './catalogFixtures';
 
 const SEGMENT_ID = 'frescoUi.segmentedCodeField.segment';
@@ -199,5 +200,25 @@ describe('the segmented code field’s box names', () => {
       `Digit ${arabicNumber(2)} of ${arabicNumber(3)}`,
       `Digit ${arabicNumber(3)} of ${arabicNumber(3)}`,
     ]);
+  });
+});
+
+describe('the progress bar’s value', () => {
+  it('announces its percentage in the interface’s language, not the runtime’s', () => {
+    // Fixture guard: the runtime here formats in the source language, so the
+    // assertion only discriminates while the two write 50% differently.
+    expect(percent(0.5)).not.toBe(
+      new Intl.NumberFormat(undefined, { style: 'percent' }).format(0.5),
+    );
+
+    render(
+      <Arabic>
+        <ProgressBar percentProgress={50} />
+      </Arabic>,
+    );
+
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuetext')).toBe(
+      percent(0.5),
+    );
   });
 });

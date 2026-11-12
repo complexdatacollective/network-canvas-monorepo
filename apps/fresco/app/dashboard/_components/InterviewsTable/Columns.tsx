@@ -195,7 +195,11 @@ export const getInterviewColumns = (
             className="flex items-center gap-2"
             title={row.original.participant.identifier}
           >
-            <Badge appearance="outline" className="max-w-80 truncate">
+            <Badge
+              dir="auto"
+              appearance="outline"
+              className="text-match-parent max-w-80 truncate"
+            >
               {row.original.participant.identifier}
             </Badge>
           </div>
@@ -246,7 +250,9 @@ export const getInterviewColumns = (
             className="flex w-full max-w-72 items-center gap-2"
             title={row.original.protocol.name}
           >
-            <span className="truncate">{protocolName}</span>
+            <span dir="auto" className="text-match-parent truncate">
+              {protocolName}
+            </span>
           </div>
         );
       },

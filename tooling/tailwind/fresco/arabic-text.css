@@ -80,3 +80,27 @@
     letter-spacing: 0 !important;
   }
 }
+
+/*
+ * The Arabic script has no italic, and Readex Pro has no italic face. Asked
+ * for italic, a browser slants the upright letters itself, to the right,
+ * against the direction the script is read in. In a text box the slant also
+ * pushes the top of the first letter past the edge of the box, where it is
+ * cut off: an italic placeholder that begins with "أ" loses part of its
+ * hamza. Text in these languages is therefore never slanted by the browser.
+ * A face with a real italic, such as the Latin faces, still uses it, so a
+ * Latin word inside Arabic text stays italic.
+ */
+@layer base {
+  :is(
+    :lang(ar),
+    :lang(fa),
+    :lang(ur),
+    :lang(ps),
+    :lang(ckb),
+    :lang(sd),
+    :lang(ug)
+  ) {
+    font-synthesis-style: none;
+  }
+}

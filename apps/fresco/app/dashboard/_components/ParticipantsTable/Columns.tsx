@@ -106,7 +106,7 @@ export function getParticipantColumns(
               height={24}
             />
             <Badge appearance="outline">
-              <span className="max-w-56 truncate">
+              <span dir="auto" className="text-match-parent max-w-56 truncate">
                 {row.original.identifier}
               </span>
             </Badge>
@@ -126,7 +126,11 @@ export function getParticipantColumns(
         );
       },
       cell: ({ row }) => {
-        return <span className="truncate">{row.original.label}</span>;
+        return (
+          <span dir="auto" className="text-match-parent truncate">
+            {row.original.label}
+          </span>
+        );
       },
     },
     {

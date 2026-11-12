@@ -110,7 +110,9 @@ export const getProtocolColumns = (
               height={24}
               className="shrink-0"
             />
-            {row.original.name}
+            <span dir="auto" className="text-match-parent">
+              {row.original.name}
+            </span>
             {isLegacySchemaVersion(row.original.schemaVersion) && (
               <Badge tone="neutral" appearance="outline" size="sm">
                 {intl.formatMessage(messages.schemaBadge, {
