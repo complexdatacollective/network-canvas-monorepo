@@ -44,7 +44,6 @@ import {
   hasInspectorForm,
   leavesEdgeTypesUndrawn,
 } from './stage-wording/network-composer.ts';
-import { requireSuppliedPlacements } from './supplied-stage-setting.ts';
 import {
   type LanguageChange,
   suppliedTextAfterLanguageChange,
@@ -574,7 +573,7 @@ const entrySchema = (entry: InterfaceTextEntry) =>
         entry.shape ?? { format: 'plain', lines: 'single' },
       )
     : localizedMessage(nonBlankText(), {
-        arguments: requireSuppliedPlacements(entry.arguments, entry.message),
+        arguments: entry.arguments,
       });
 
 const groupSchema = (entries: Readonly<Record<string, InterfaceTextEntry>>) =>

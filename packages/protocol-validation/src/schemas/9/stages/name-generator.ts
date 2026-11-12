@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import type { MessageArguments } from '../../../localization/messageArguments.ts';
+import {
+  EVERY_VERSION,
+  type MessageArguments,
+} from '../../../localization/messageArguments.ts';
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import {
   FormSchema,
@@ -15,12 +18,7 @@ import {
   requireWhenShown,
   type StageRecord,
 } from '../stage-wording/conditions.ts';
-import {
-  MAX_NODES_NOTICE,
-  MIN_NODES_NOTICE,
-} from '../stage-wording/name-generator.ts';
 import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
-import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { baseStageSchema } from './base.ts';
 
 // Shared by NameGenerator and NameGeneratorQuickAdd: a node-count window must be
@@ -47,23 +45,22 @@ export const nameGeneratorBehavioursSchema = z
   .optional();
 
 /**
- * What a minimum's notice may use: how many nodes are needed, which every
- * translation must show where the supplied wording does, and the name of the
- * stage's node type.
+ * What a minimum's notice may use: how many nodes are needed, which it must
+ * show, and the name of the stage's node type.
  */
-export const MIN_NODES_ARGUMENTS: MessageArguments = requireSuppliedPlacements(
-  { count: { kind: 'plural' }, ...SUBJECT_ARGUMENTS },
-  MIN_NODES_NOTICE,
-);
+export const MIN_NODES_ARGUMENTS: MessageArguments = {
+  count: { kind: 'plural', required: EVERY_VERSION },
+  ...SUBJECT_ARGUMENTS,
+};
 
 /**
  * What a maximum's notice may use: the most nodes the stage takes, and the
  * name of its node type.
  */
-export const MAX_NODES_ARGUMENTS: MessageArguments = requireSuppliedPlacements(
-  { count: { kind: 'plural' }, ...SUBJECT_ARGUMENTS },
-  MAX_NODES_NOTICE,
-);
+export const MAX_NODES_ARGUMENTS: MessageArguments = {
+  count: { kind: 'plural' },
+  ...SUBJECT_ARGUMENTS,
+};
 
 /**
  * The words a name generator shows about its limits,
