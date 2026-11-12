@@ -18,6 +18,8 @@ import {
 } from '../../localization/messageArguments.ts';
 import { findMessageSyntaxProblem } from '../../localization/messageSyntax.ts';
 import type { DynamicValueSite } from './dynamic-values.ts';
+import { findFallbackLanguageProblem } from './fallback-language.ts';
+import { SUPPLIED_LANGUAGES } from './supplied-text.ts';
 
 const LOCALIZED_STRING = 'localizedString' as const;
 
@@ -124,6 +126,11 @@ export const ProtocolLocalizationSchema = z
     locales: z
       .array(LocaleTagSchema)
       .min(1, { message: 'A protocol must declare at least one language.' }),
+    // Named only where the default language is one Network Canvas has no
+    // wording in (see `needsFallbackLanguage`). A protocol being written may
+    // lack the one it needs, so its absence is a release check and not a rule
+    // here (`findMissingFallbackLanguage`).
+    fallbackLocale: LocaleTagSchema.optional(),
   })
   .superRefine((localization, ctx) => {
     const seen = new Set<LocaleTag>();
@@ -144,6 +151,18 @@ export const ProtocolLocalizationSchema = z
         code: 'custom',
         message: `The default language "${localization.defaultLocale}" must be one of the protocol's languages.`,
         path: ['defaultLocale'],
+      });
+    }
+
+    const fallbackProblem = findFallbackLanguageProblem(localization);
+    if (fallbackProblem !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          fallbackProblem === 'not-needed'
+            ? `Network Canvas has its own wording in the default language "${localization.defaultLocale}", so the protocol cannot name a fallback language.`
+            : `The fallback language "${localization.fallbackLocale}" must be a language Network Canvas has its own wording in (${SUPPLIED_LANGUAGES.join(', ')}).`,
+        path: ['fallbackLocale'],
       });
     }
   });

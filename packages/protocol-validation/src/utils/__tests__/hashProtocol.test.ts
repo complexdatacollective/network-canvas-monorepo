@@ -117,6 +117,22 @@ describe('hashProtocol', () => {
     expect(hashProtocol(changed)).not.toBe(hashProtocol(localizedProtocol()));
   });
 
+  // The fallback language is part of the language declaration, which is
+  // hashed whole, so a protocol that names none hashes as it always did (see
+  // 'keeps the hash of a protocol that holds no shared wording').
+  it('changes when the fallback language is named or changes', () => {
+    const swahili = (fallbackLocale?: string) => ({
+      ...localizedProtocol(),
+      localization: {
+        defaultLocale: 'sw',
+        locales: ['sw'],
+        ...(fallbackLocale === undefined ? {} : { fallbackLocale }),
+      },
+    });
+    const hashes = [swahili(), swahili('en'), swahili('es')].map(hashProtocol);
+    expect(new Set(hashes).size).toBe(3);
+  });
+
   it('does not change when the order of languages changes', () => {
     const reordered = {
       ...localizedProtocol(),
