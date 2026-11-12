@@ -44,7 +44,7 @@ const refusals: RefusalCase[] = [
     english:
       'Unique values are not supported for participant attributes. Remove this validation rule.',
     spanish:
-      'Los valores únicos no se admiten en los atributos del participante. Elimina esta regla de validación.',
+      'La regla de valores únicos no se admite en los atributos de la persona participante. Elimina esta regla de validación.',
   },
   {
     name: 'duplicate fixed node values',

@@ -628,7 +628,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
 
     expect(
       await dialog.findByText(
-        'Elige cómo responde el participante a esta pregunta.',
+        'Elige cómo responde la persona participante a esta pregunta.',
       ),
     ).toBeInTheDocument();
   });
@@ -757,7 +757,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
 
     expect(
       await dialog.findByText(
-        'El atributo de este campo no ofrece al participante ninguna forma de responder. Elige otro atributo o elimina este campo.',
+        'El atributo de este campo no ofrece a la persona participante ninguna forma de responder. Elige otro atributo o elimina este campo.',
       ),
     ).toBeInTheDocument();
     expect(dialog.getByRole('button', { name: 'Guardar' })).toHaveAttribute(
