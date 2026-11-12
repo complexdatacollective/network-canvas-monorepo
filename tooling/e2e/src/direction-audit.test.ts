@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   compareMirrored,
+  layoutShowing,
   layoutsMatch,
   type LayoutSnapshot,
   type PlacedElement,
@@ -15,7 +16,8 @@ const snapshot = (
   direction: 'ltr' | 'rtl',
   elements: readonly PlacedElement[],
   directions: Readonly<Record<string, string>> = {},
-): LayoutSnapshot => ({ direction, elements, directions });
+  text = 'Back to study',
+): LayoutSnapshot => ({ direction, elements, directions, text });
 
 const box = (
   key: string,
@@ -122,6 +124,19 @@ describe('compareMirrored', () => {
     ).toEqual([]);
   });
 
+  it('refuses two renders that show different content', () => {
+    // A progress bar advanced by a timer between the two renders: its fill
+    // is wider in the second, which is no fault of the layout.
+    expect(
+      compareMirrored(
+        snapshot('ltr', [box('0', 0, 380.2)], {}, 'Horizontal (1%)'),
+        snapshot('rtl', [box('0', 376.3, 0)], {}, 'Horizontal (2%)'),
+      ),
+    ).toEqual([
+      'the two renders show different content, so they cannot be compared: “Horizontal (1%)” then “Horizontal (2%)”',
+    ]);
+  });
+
   it('refuses two renders in the same direction', () => {
     expect(compareMirrored(snapshot('rtl', []), snapshot('rtl', []))).toEqual([
       'both renders are rtl',
@@ -139,6 +154,15 @@ describe('layoutsMatch', () => {
     ).toBe(true);
   });
 
+  it('tells text that changed', () => {
+    expect(
+      layoutsMatch(
+        snapshot('ltr', [box('0', 10, 20)], {}, 'Saving…'),
+        snapshot('ltr', [box('0', 10, 20)], {}, 'Saved'),
+      ),
+    ).toBe(false);
+  });
+
   it('tells a box that moved, an element that appeared and an arrow that turned', () => {
     const settled = snapshot('ltr', [box('0', 10, 20, 1)]);
     expect(layoutsMatch(settled, snapshot('ltr', [box('0', 12, 18, 1)]))).toBe(
@@ -153,5 +177,70 @@ describe('layoutsMatch', () => {
     expect(layoutsMatch(settled, snapshot('ltr', [box('0', 10, 20, -1)]))).toBe(
       false,
     );
+  });
+});
+
+describe('layoutShowing', () => {
+  // Frames are scripted: each call to `nextFrame` moves to the next
+  // snapshot, and the clock moves 16ms a frame.
+  const scripted = (frames: readonly LayoutSnapshot[]) => {
+    let frame = 0;
+    return {
+      snapshot: () => frames[Math.min(frame, frames.length - 1)]!,
+      nextFrame: async () => {
+        frame += 1;
+      },
+      now: () => frame * 16,
+      limitMs: frames.length * 16,
+    };
+  };
+  const loading = snapshot('ltr', [box('0', 0, 300)], {}, 'Loading…');
+  const loaded = snapshot('ltr', [box('0', 0, 100)], {}, 'Ada Lovelace');
+  const oldDirection = snapshot('rtl', [box('0', 100, 0)], {}, 'Ada Lovelace');
+
+  it('waits out the old direction and a load, then measures the content', async () => {
+    expect(
+      await layoutShowing({
+        direction: 'ltr',
+        text: 'Ada Lovelace',
+        ...scripted([oldDirection, loading, loading, loaded, loaded]),
+      }),
+    ).toBe(loaded);
+  });
+
+  it('waits for the layout to hold still once the content arrives', async () => {
+    const measuring = snapshot('ltr', [box('0', 0, 140)], {}, 'Ada Lovelace');
+    expect(
+      await layoutShowing({
+        direction: 'ltr',
+        text: 'Ada Lovelace',
+        ...scripted([loading, measuring, loaded, loaded]),
+      }),
+    ).toBe(loaded);
+  });
+
+  it('takes the frame a timer showed the content, before it moved on', async () => {
+    const at = (percent: number) =>
+      snapshot('ltr', [box('0', 0, 384 - percent * 3.84)], {}, `${percent}%`);
+    const frames = [at(0), at(1), at(2), at(3)];
+    expect(
+      await layoutShowing({
+        direction: 'ltr',
+        text: '2%',
+        ...scripted(frames),
+      }),
+    ).toBe(frames[2]);
+  });
+
+  it('gives up on content that never comes, with the last snapshot', async () => {
+    const result = await layoutShowing({
+      direction: 'ltr',
+      text: 'Ada Lovelace',
+      ...scripted([loading, loading, loading]),
+    });
+    expect(result.text).toBe('Loading…');
+    expect(compareMirrored(result, oldDirection)).toEqual([
+      'the two renders show different content, so they cannot be compared: “Loading…” then “Ada Lovelace”',
+    ]);
   });
 });

@@ -35,6 +35,11 @@ export type LayoutSnapshot = Readonly<{
   elements: readonly PlacedElement[];
   /** The `dir` attribute of every element that has one, by key. */
   directions: Readonly<Record<string, string>>;
+  /**
+   * The root's text outside the excluded subtrees, whitespace collapsed: two
+   * renders are only comparable when they show the same content.
+   */
+  text: string;
 }>;
 
 export type SnapshotOptions = Readonly<{
@@ -131,6 +136,19 @@ export function snapshotLayout(options: SnapshotOptions = {}): LayoutSnapshot {
       );
     });
 
+  // The root's text outside the excluded subtrees, whose content is theirs
+  // to vary (an animated background of made-up names).
+  const visibleText = () => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let text = '';
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.parentElement?.closest(excluded)) {
+        text += node.textContent ?? '';
+      }
+    }
+    return text.replace(/\s+/g, ' ').trim();
+  };
+
   const elements: PlacedElement[] = [];
   const directions: Record<string, string> = {};
   const visit = (element: Element, key: string) => {
@@ -193,6 +211,7 @@ export function snapshotLayout(options: SnapshotOptions = {}): LayoutSnapshot {
     direction: getComputedStyle(root).direction === 'rtl' ? 'rtl' : 'ltr',
     elements,
     directions,
+    text: visibleText(),
   };
 }
 
@@ -212,6 +231,14 @@ export function compareMirrored(
 ): string[] {
   if (first.direction === second.direction) {
     return [`both renders are ${first.direction}`];
+  }
+  // A story that moves on by itself (a value advanced by a timer, a clock)
+  // shows different content each time it is drawn, and every box that
+  // depends on that content moves with it: what differs is not the layout.
+  if (first.text !== second.text) {
+    return [
+      `the two renders show different content, so they cannot be compared: ${textDifference(first.text, second.text)}`,
+    ];
   }
   const others = new Map(second.elements.map((entry) => [entry.key, entry]));
   // An element whose `dir` is the same in both renders keeps its contents in
@@ -247,6 +274,16 @@ export function compareMirrored(
 
 const round = (value: number) => Math.round(value * 10) / 10;
 
+/** The first place two texts part, with a little on either side. */
+const textDifference = (first: string, second: string): string => {
+  let start = 0;
+  while (start < first.length && first[start] === second[start]) start += 1;
+  const from = Math.max(0, start - 20);
+  const excerpt = (text: string) =>
+    `${from > 0 ? '…' : ''}${text.slice(from, start + 20)}${text.length > start + 20 ? '…' : ''}`;
+  return `“${excerpt(first)}” then “${excerpt(second)}”`;
+};
+
 /**
  * Whether two snapshots of the same render agree: the same elements in the
  * same places. Taking snapshots until two in a row agree is how a caller
@@ -258,6 +295,7 @@ export function layoutsMatch(
   second: LayoutSnapshot,
   tolerance = 0.5,
 ): boolean {
+  if (first.text !== second.text) return false;
   if (first.elements.length !== second.elements.length) return false;
   return first.elements.every((entry, index) => {
     const other = second.elements[index];
@@ -269,4 +307,60 @@ export function layoutsMatch(
       other.pointing === entry.pointing
     );
   });
+}
+
+/**
+ * The render in `direction`, measured once it shows `text`: the content the
+ * render in the other direction showed. Two renders caught showing different
+ * content cannot be compared, and waiting for them to agree covers both ways
+ * that happens: a render caught before it finished (still loading), and a
+ * story that moves on by itself (a value a timer advances, which starts again
+ * when the story is drawn afresh) and passes the same content again.
+ *
+ * `snapshot` measures the page as it is (a Playwright caller passes one that
+ * goes through `page.evaluate`); snapshots in the old direction, taken before
+ * the redraw reaches the page, do not count. The render is measured once it
+ * shows the text and holds still for a frame, or at the first frame it showed
+ * the text if it moves on straight away. Gives up after `limitMs` and returns
+ * the last snapshot, whose text `compareMirrored` then reports.
+ */
+export async function layoutShowing({
+  direction,
+  text,
+  snapshot,
+  nextFrame,
+  now,
+  limitMs = 5000,
+}: Readonly<{
+  direction: LayoutSnapshot['direction'];
+  text: string;
+  snapshot: () => LayoutSnapshot | Promise<LayoutSnapshot>;
+  nextFrame: () => Promise<void>;
+  now: () => number;
+  limitMs?: number;
+}>): Promise<LayoutSnapshot> {
+  const deadline = now() + limitMs;
+  let previous: LayoutSnapshot | undefined;
+  let firstMatch: LayoutSnapshot | undefined;
+  let current = await snapshot();
+  while (now() < deadline) {
+    if (current.direction === direction && current.text === text) {
+      if (
+        previous?.direction === direction &&
+        previous.text === text &&
+        layoutsMatch(previous, current)
+      ) {
+        return current;
+      }
+      firstMatch ??= current;
+    } else if (firstMatch) {
+      // It showed the content and moved on (a timer): the frame it showed
+      // it is the one to compare.
+      return firstMatch;
+    }
+    previous = current;
+    await nextFrame();
+    current = await snapshot();
+  }
+  return firstMatch ?? current;
 }

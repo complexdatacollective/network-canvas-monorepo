@@ -19,6 +19,7 @@ import { AppDirectionOverride, AppI18nProvider } from '@codaco/app-i18n/react';
 import {
   compareMirrored,
   type LayoutSnapshot,
+  layoutShowing,
   layoutsMatch,
   snapshotLayout,
 } from '@codaco/e2e-helpers/direction-audit';
@@ -437,6 +438,14 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
    * drawn; a story that should be checked open renders open (`defaultOpen`).
    * The accessibility audit has already run on what the play function left.
    *
+   * Motion is not what makes two renders differ here: around `afterEach`
+   * Storybook's test runner sets `transition: none` and pauses every CSS
+   * animation at its end (`pauseAnimations`), and `settleLayout` waits out
+   * any other finite animation. Content is: a render caught still loading,
+   * or a story that moves on by itself (a timer). When the two renders'
+   * text differs, the first direction is drawn again and measured once it
+   * shows what the second showed (`layoutShowing`).
+   *
    * It runs only in an automated browser (the Storybook test suites), so a
    * person clicking through stories never sees the story flip.
    */
@@ -454,10 +463,24 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
       document.documentElement.dir === 'rtl' ? 'rtl' : ('ltr' as const);
     setDirection(drawn);
     await settleLayout();
-    const first = await stableLayout();
+    let first = await stableLayout();
     setDirection(drawn === 'rtl' ? 'ltr' : 'rtl');
     await settleLayout();
     const second = await stableLayout();
+    if (first.text !== second.text) {
+      // The two renders were caught showing different content: the first
+      // before it had finished loading, or a story that moves on by itself.
+      // Draw the first direction again and measure it showing what the
+      // second showed. Each call draws the story afresh.
+      setDirection(drawn);
+      first = await layoutShowing({
+        direction: drawn,
+        text: second.text,
+        snapshot: () => snapshotLayout(),
+        nextFrame,
+        now: () => performance.now(),
+      });
+    }
     // Back to the story's own direction, settled, so the story is left as
     // it was drawn rather than unmounting mid-render.
     setDirection(null);
