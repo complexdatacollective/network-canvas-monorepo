@@ -1,7 +1,7 @@
 ---
 title: Validación de campos
 navOrder: 8
-translatedFrom: 54d8cf71109c5016774aa37cefa9e1b9c08b590f
+translatedFrom: 301b78b4dce37d6101f418f042c69c7d413482ea
 ---
 
 <Definition>
@@ -62,31 +62,45 @@ La validación de campo obligatorio está disponible para todos los tipos de con
 
 Usa la validación de campo obligatorio para los datos esenciales que son fundamentales para tu investigación, las variables que se necesitan en etapas posteriores (como las variables de nombre que se usan como etiquetas) y los campos de consentimiento. No la uses para información opcional que puede no aplicarse a todas las personas participantes, para preguntas delicadas que cada participante debería tener derecho a omitir ni para campos en los que «sin respuesta» es un dato válido.
 
-Entre sus usos habituales están la confirmación del consentimiento, el nombre de cada álter (cada persona a la que se nombra durante la entrevista) en los generadores de nombres y la información demográfica que es central para tu estudio. El mensaje de error que se muestra es «Este campo es obligatorio».
+Entre sus usos habituales están la confirmación del consentimiento, el nombre de cada álter (cada persona a la que se nombra durante la entrevista) en los generadores de nombres y la información demográfica que es central para tu estudio.
 
 ### Validación de campos de texto {#text-field-validation}
 
 La validación de campos de texto está disponible para los controles Entrada de texto y Área de texto.
 
-La validación de longitud mínima garantiza que la respuesta de texto tenga al menos un número determinado de caracteres. Para configurarla, establece un número mínimo de caracteres. Úsala cuando necesites respuestas sustanciales (como descripciones o relatos) o para evitar respuestas de un solo carácter o triviales. Por ejemplo, podrías pedir «Describe tu relación (mínimo 10 caracteres)». El mensaje de error que se muestra es «La respuesta debe tener al menos [X] caracteres».
+La validación de longitud mínima garantiza que la respuesta de texto tenga al menos un número determinado de caracteres. Para configurarla, establece un número mínimo de caracteres. Úsala cuando necesites respuestas sustanciales (como descripciones o relatos) o para evitar respuestas de un solo carácter o triviales. Por ejemplo, podrías pedir «Describe tu relación (mínimo 10 caracteres)».
 
-La validación de longitud máxima limita la respuesta de texto a un número determinado de caracteres. Para configurarla, establece un número máximo de caracteres. Úsala cuando los campos de una base de datos tengan limitaciones de tamaño, para mantener una longitud de respuesta homogénea o para animar a dar respuestas concisas. Por ejemplo, podrías limitar los campos de nombre a 50 caracteres. El mensaje de error que se muestra es «La respuesta no debe superar los [X] caracteres». Establece límites razonables que no parezcan arbitrarios, asegúrate de que el tamaño visible del campo refleje el límite de caracteres y ten en cuenta que algunos nombres o descripciones pueden ser legítimamente largos.
+La validación de longitud máxima limita la respuesta de texto a un número determinado de caracteres. Para configurarla, establece un número máximo de caracteres. Úsala cuando los campos de una base de datos tengan limitaciones de tamaño, para mantener una longitud de respuesta homogénea o para animar a dar respuestas concisas. Por ejemplo, podrías limitar los campos de nombre a 50 caracteres. Establece límites razonables que no parezcan arbitrarios, asegúrate de que el tamaño visible del campo refleje el límite de caracteres y ten en cuenta que algunos nombres o descripciones pueden ser legítimamente largos.
 
 ### Validación de campos numéricos {#number-field-validation}
 
 La validación de campos numéricos está disponible para los controles Entrada numérica.
 
-La validación de valor mínimo garantiza que el número introducido sea mayor o igual que un valor mínimo determinado. Para configurarla, establece un valor mínimo aceptable. Úsala para restricciones de edad (como una edad mínima de 18 años), para garantizar valores positivos cuando los números negativos no tienen sentido o para limitar los intervalos según el diseño de tu investigación. Por ejemplo, podrías exigir que la edad sea de al menos 18 años. El mensaje de error que se muestra es «El valor debe ser como mínimo [X]».
+La validación de valor mínimo garantiza que el número introducido sea mayor o igual que un valor mínimo determinado. Para configurarla, establece un valor mínimo aceptable. Úsala para restricciones de edad (como una edad mínima de 18 años), para garantizar valores positivos cuando los números negativos no tienen sentido o para limitar los intervalos según el diseño de tu investigación. Por ejemplo, podrías exigir que la edad sea de al menos 18 años.
 
-La validación de valor máximo garantiza que el número introducido sea menor o igual que un valor máximo determinado. Para configurarla, establece un valor máximo aceptable. Úsala para fijar límites superiores realistas (como una edad inferior a 120 años), para restringir los intervalos a valores válidos o para evitar errores al introducir los datos. Por ejemplo, podrías exigir que la edad sea inferior a 120 años. El mensaje de error que se muestra es «El valor debe ser como máximo [X]». Establece intervalos realistas que abarquen las respuestas legítimas, ten en cuenta los casos límite (por ejemplo, si 0 es una respuesta válida) y combina el mínimo y el máximo para crear intervalos válidos.
+La validación de valor máximo garantiza que el número introducido sea menor o igual que un valor máximo determinado. Para configurarla, establece un valor máximo aceptable. Úsala para fijar límites superiores realistas (como una edad inferior a 120 años), para restringir los intervalos a valores válidos o para evitar errores al introducir los datos. Por ejemplo, podrías exigir que la edad sea inferior a 120 años. Establece intervalos realistas que abarquen las respuestas legítimas, ten en cuenta los casos límite (por ejemplo, si 0 es una respuesta válida) y combina el mínimo y el máximo para crear intervalos válidos.
 
 ### Validación de campos de fecha {#date-field-validation}
 
+<AppOnly app="current">
+
+El intervalo de un Selector de fecha se establece en los ajustes del atributo, no como una regla de validación. Quienes participan no pueden elegir una fecha fuera de él.
+
+**Fecha más temprana** establece la fecha más temprana que se puede elegir. Si se deja vacía, el selector empieza en 1920. Úsala para descartar fechas demasiado tempranas, para limitar las respuestas a un periodo de estudio o para que las fechas queden dentro de un marco temporal pertinente. Por ejemplo, podrías exigir que la fecha de una visita sea el 1 de enero de 2020 o posterior.
+
+**Fecha más tardía** establece la fecha más tardía que se puede elegir. Si se deja vacía, el selector termina en la fecha de la entrevista, así que una fecha de nacimiento no puede estar en el futuro, a menos que indiques aquí una fecha posterior a la de la entrevista. Úsala para limitar las respuestas a un periodo de estudio o para que las fechas sean realistas. Para los acontecimientos históricos, establece intervalos adecuados y valora si necesitas precisión (fecha exacta frente a mes y año).
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 La validación de campos de fecha está disponible para los controles Selector de fecha.
 
-La validación del inicio del intervalo de fechas establece la fecha más temprana que se puede seleccionar. Para configurarla, indica la fecha válida más temprana. Úsala para evitar fechas pasadas imposibles (como fechas de nacimiento en el futuro), para limitar las respuestas a un periodo de estudio o para garantizar que las fechas estén dentro de un marco temporal pertinente. Por ejemplo, podrías especificar que «La fecha de la visita debe ser posterior al 1 de enero de 2020».
+La validación del inicio del intervalo de fechas establece la fecha más temprana que se puede seleccionar. Para configurarla, indica la fecha válida más temprana. Úsala para descartar fechas demasiado tempranas, para limitar las respuestas a un periodo de estudio o para garantizar que las fechas estén dentro de un marco temporal pertinente. Por ejemplo, podrías especificar que «La fecha de la visita debe ser posterior al 1 de enero de 2020».
 
-La validación del fin del intervalo de fechas establece la fecha más tardía que se puede seleccionar. Para configurarla, indica la fecha válida más tardía. Úsala para evitar fechas futuras cuando no proceden, para limitar las respuestas a un periodo de estudio o para garantizar que las fechas sean realistas. Por ejemplo, podrías especificar que «La fecha de nacimiento debe ser anterior a hoy». Usa «hoy» como fecha de fin para los acontecimientos que no pueden estar en el futuro. Para los acontecimientos históricos, establece intervalos adecuados y valora si necesitas precisión (fecha exacta frente a mes y año).
+La validación del fin del intervalo de fechas establece la fecha más tardía que se puede seleccionar. Para configurarla, indica la fecha válida más tardía. Úsala para evitar fechas futuras cuando no procedan (como fechas de nacimiento en el futuro), para limitar las respuestas a un periodo de estudio o para garantizar que las fechas sean realistas. Por ejemplo, podrías especificar que «La fecha de nacimiento debe ser anterior a hoy». Usa «hoy» como fecha de fin para los acontecimientos que no pueden estar en el futuro. Para los acontecimientos históricos, establece intervalos adecuados y valora si necesitas precisión (fecha exacta frente a mes y año).
+
+</AppOnly>
 
 ### Validación por comparación con otro atributo {#cross-variable-comparison-validation}
 
@@ -105,9 +119,9 @@ Las reglas disponibles son:
 
 La validación de campos categóricos está disponible para los controles Grupo de opciones, Grupo de botones conmutables y Grupo de casillas.
 
-La validación de selecciones mínimas, para los controles Grupo de casillas, exige que cada participante seleccione al menos un número determinado de opciones. Para configurarla, establece un número mínimo de selecciones. Úsala para asegurarte de que quienes participan respondan de verdad a la pregunta o cuando al menos una de las opciones tenga que aplicarse a su caso. Por ejemplo, podrías pedir «Selecciona al menos un idioma que hables». El mensaje de error que se muestra es «Selecciona al menos [X] opción(es)».
+La validación de selecciones mínimas, para los controles Grupo de casillas, exige que cada participante seleccione al menos un número determinado de opciones. Para configurarla, establece un número mínimo de selecciones. Úsala para asegurarte de que quienes participan respondan de verdad a la pregunta o cuando al menos una de las opciones tenga que aplicarse a su caso. Por ejemplo, podrías pedir «Selecciona al menos un idioma que hables».
 
-La validación de selecciones máximas, para los controles Grupo de casillas, limita el número de opciones que puede seleccionar cada participante a un máximo determinado. Para configurarla, establece un número máximo de selecciones. Úsala para obligar a establecer prioridades, para limitar la respuesta a las opciones preferidas o para atender a restricciones de la base de datos o del análisis. Por ejemplo, podrías pedir «Selecciona tus 3 métodos de contacto preferidos». El mensaje de error que se muestra es «Selecciona como máximo [X] opción(es)».
+La validación de selecciones máximas, para los controles Grupo de casillas, limita el número de opciones que puede seleccionar cada participante a un máximo determinado. Para configurarla, establece un número máximo de selecciones. Úsala para obligar a establecer prioridades, para limitar la respuesta a las opciones preferidas o para atender a restricciones de la base de datos o del análisis. Por ejemplo, podrías pedir «Selecciona tus 3 métodos de contacto preferidos».
 
 La validación de selección obligatoria, para los controles Grupo de opciones y Grupo de botones conmutables, garantiza que se seleccione una opción. Para configurarla, activa la validación «Obligatorio». Úsala cuando haya que elegir una opción o cuando las opciones sean mutuamente excluyentes y una de ellas tenga que aplicarse al caso de la persona participante. Por ejemplo, podrías pedir «Indica tu género».
 
@@ -139,7 +153,7 @@ Este enfoque reduce la carga, porque solo se validan los campos pertinentes para
 
 <AppOnly app="current">
 
-Network Canvas incluye un mensaje para cada regla de validación, como «Debes responder a esta pregunta antes de continuar.» para una respuesta obligatoria o «Demasiado corto. Introduce al menos 3 caracteres.» para una longitud mínima. Los mensajes forman parte del [texto de entrevista](/es/design-protocols/translating-your-protocol#interview-text) de tu protocolo, así que cada uno se muestra en el idioma de la entrevista, y puedes cambiar su redacción y traducirlos en la tabla de traducciones.
+Network Canvas incluye un mensaje para cada regla de validación, como «Debes responder a esta pregunta antes de continuar.» para una respuesta obligatoria o «Introduce al menos 3 caracteres.» para una longitud mínima. Los mensajes forman parte del [texto de entrevista](/es/design-protocols/translating-your-protocol#interview-text) de tu protocolo, así que cada uno se muestra en el idioma de la entrevista, y puedes cambiar su redacción y traducirlos en la tabla de traducciones.
 
 Hay una sola redacción para cada regla, compartida por todas las preguntas que usan esa regla, y un mensaje puede mostrar el límite que establece la regla, como la longitud mínima. Tu protocolo solo contiene los mensajes de las reglas que usa, así que solo traduces los mensajes que podría ver una persona participante. Cuando añades una regla a una pregunta, Architect añade su mensaje, y cuando ninguna pregunta usa ya una regla, Architect lo elimina.
 
@@ -174,7 +188,7 @@ Age:
 
 Date of Birth:
 - Type: Date Picker
-- Validation: Required, End Date: Today
+- Validation: Required; latest date: the date of the interview
 - Rationale: Birth date cannot be in the future
 ```
 
@@ -197,7 +211,7 @@ Relationship Description:
 ```
 Last Contact:
 - Type: Date Picker
-- Validation: Required, Start Date: [Study Start], End Date: Today
+- Validation: Required; earliest date: [study start]; latest date: the date of the interview
 - Rationale: Must fall within study period; cannot be future date
 
 Frequency:

@@ -1,7 +1,7 @@
 ---
 title: Lógica de salto
 navOrder: 10
-translatedFrom: a6ad0d831c574870442a541fd9785feb819df7b8
+translatedFrom: 83ec6d783466689c459929d1e9c00f19a8f1b8cb
 ---
 
 <Definition>
@@ -32,11 +32,11 @@ A continuación se ofrece un resumen general de cómo funciona la lógica de sal
 
 ## Añadir lógica de salto a una etapa {#adding-skip-logic-to-a-stage}
 
-Para añadir lógica de salto a una etapa, ábrela desde la vista de la línea de tiempo y haz clic en **Usar lógica de salto** para desplegar la sección.
+Para añadir lógica de salto a una etapa, ábrela desde la vista de la línea de tiempo y activa el interruptor que hay junto al título de la sección **Lógica de salto** para desplegar la sección.
 
 ![](/assets/img/key-concepts/skip-logic/skip-logic-section.png)
 
-Para desactivar la lógica de salto de una etapa, haz clic en el interruptor de la parte superior de esta sección.
+Para quitar la lógica de salto de una etapa, desactiva el interruptor. Architect te pide que lo confirmes antes, porque así se eliminan las reglas de la etapa.
 
 Puedes ver qué etapas tienen la lógica de salto activada gracias al distintivo que
 aparece junto a cada etapa en la línea de tiempo. El distintivo también muestra
@@ -53,7 +53,7 @@ Los operadores disponibles para una regla de atributo dependen del tipo de la va
 
 ## El operador de unión {#the-join-operator}
 
-Las reglas se encadenan (o se «unen») mediante lógica `AND` u `OR`, que se establece en la sección de configuración de la lógica de salto con las opciones **Deben cumplirse todas las reglas** y **Basta con que se cumpla alguna regla**, respectivamente. Los operadores de unión determinan cómo se evalúan conjuntamente varias reglas para obtener el valor booleano general que devuelve la consulta.
+Las reglas se encadenan (o se «unen») mediante lógica `AND` u `OR`, que se establece en la sección de configuración de la lógica de salto, en las opciones de **Cumplimiento de reglas**: **Deben cumplirse todas las reglas** (`AND`) o **Basta con que se cumpla alguna regla** (`OR`). Los operadores de unión determinan cómo se evalúan conjuntamente varias reglas para obtener el valor booleano general que devuelve la consulta.
 
 Si las reglas se unen con `AND` y todas ellas dan como resultado `true`, la condición de nivel superior también será verdadera (por ejemplo: `true && true === true`). En cambio, si alguna de las reglas da como resultado falso, la condición de nivel superior también será falsa (`true && false === false`). Si las reglas se unen con `OR`, basta con que una sola regla resulte verdadera para que la condición de nivel superior también resulte verdadera (`true || false || false === true`).
 
@@ -65,9 +65,9 @@ En cambio, usa la opción «Basta con que se cumpla alguna regla» cuando haya m
 
 ## Omitir o mostrar {#skip-or-show}
 
-Antes de conocer el resultado final de la regla de lógica de salto, hay que tener en cuenta una última propiedad configurable: el selector **Mostrar esta etapa si** u **Omitir esta etapa si**. Esta opción te permite decidir si un resultado «verdadero» al evaluar tus reglas debe hacer que la etapa se omita o que se muestre. En la práctica, esto te permite escribir las reglas en términos _negativos_, es decir, escribir reglas que definan cuándo debe **mostrarse** una etapa en lugar de cuándo debe omitirse. Esto puede ser más útil si tienes muchos valores que incluir o excluir.
+Antes de conocer el resultado final de la regla de lógica de salto, hay que tener en cuenta una última propiedad configurable: el ajuste **Acción**, que puede ser **Mostrar esta etapa** u **Omitir esta etapa**. Esta opción te permite decidir si un resultado «verdadero» al evaluar tus reglas debe hacer que la etapa se omita o que se muestre. En la práctica, esto te permite escribir las reglas en términos _negativos_, es decir, escribir reglas que definan cuándo debe **mostrarse** una etapa en lugar de cuándo debe omitirse. Esto puede ser más útil si tienes muchos valores que incluir o excluir.
 
-Por ejemplo, si quisieras omitir una etapa en función de si una variable categórica con muchas opciones tiene asignado cualquier valor posible salvo uno, normalmente tendrías que escribir una regla para cada valor y usar el operador `OR`. Sin embargo, si configuras la lógica de salto como **Mostrar esta etapa si**, solo tendrías que definir una regla que incluya el valor concreto que se admite.
+Por ejemplo, si quisieras omitir una etapa en función de si una variable categórica con muchas opciones tiene asignado cualquier valor posible salvo uno, normalmente tendrías que escribir una regla para cada valor y usar el operador `OR`. Sin embargo, si eligieras la acción **Mostrar esta etapa**, te bastaría con definir una única regla que incluya el único valor con el que debe mostrarse la etapa.
 
 <TipBox>
 
@@ -120,9 +120,9 @@ Para resolverlo, puedes aplicar una regla de lógica de salto sencilla, como est
 
 ![](/assets/img/key-concepts/skip-logic/example.png)
 
-En el ejemplo anterior, también podrías configurar la lógica de salto para conseguir el mismo resultado aplicando la regla inversa (es decir, omitir la etapa si hay un álter de tipo Person cuyo atributo Relationship [relación] excluye 4, 5, 6, 7 u 8).
+No puedes conseguir el mismo resultado con la versión inversa, es decir, **Omitir esta etapa** con una regla según la cual Relationship (relación) _excluye_ 4, 5, 6, 7 y 8. Una regla sobre álteres se cumple en cuanto cualquier álter encaja en ella, así que esa regla omitiría la etapa si la persona participante hubiera nombrado al menos a un álter con el valor 1, 2 o 3 (1 = amistad, 2 = cónyuge o pareja, 3 = colega de trabajo), aunque también hubiera nombrado a familiares.
 
-En cualquier caso, en cuanto creas más de una regla en la lógica de salto de una etapa, tienes que decidir si quieres que se cumplan todas las reglas o solo alguna de ellas. Siguiendo con los ejemplos anteriores, imagina que quieres crear una etapa posterior para recoger datos sobre la familia nuclear biológica de la persona participante. Quieres que esta etapa se muestre si la persona participante ha nombrado antes álteres con el tipo de Relationship «parent», «sibling» o «child» y si esos álteres incluyen el tipo de Relatedness (parentesco) «biological». En este caso usarías el operador `ALL`, ya que no querrías que la etapa se mostrara si la persona participante tiene en su red álteres con el tipo de Relationship «parent», «sibling» o «child» pero ninguno de ellos incluye el tipo de Relatedness «biological».
+En cuanto creas más de una regla en la lógica de salto de una etapa, tienes que decidir si quieres que se cumplan todas las reglas o que baste con que se cumpla una de ellas. Siguiendo con los ejemplos anteriores, imagina que quieres crear una etapa posterior para recoger datos sobre la familia nuclear biológica de la persona participante. Quieres que esta etapa se muestre si la persona participante ha nombrado antes álteres cuyo valor de Relationship sea «parent», «sibling» o «child» y si alguno de esos álteres tiene además el valor «biological» en Relatedness (parentesco). En este caso usarías el operador `AND` (**Deben cumplirse todas las reglas**), ya que no querrías que la etapa se mostrara si la persona participante tiene en su red álteres cuyo valor de Relationship sea «parent», «sibling» o «child» pero ninguno de ellos tiene el valor «biological» en Relatedness. Con `AND`, un mismo álter tiene que cumplir todas las reglas sobre álteres, así que la etapa solo se muestra si al menos un álter tiene a la vez uno de esos valores en Relationship y el valor «biological» en Relatedness.
 
 ## Conceptos relacionados {#related-concepts}
 

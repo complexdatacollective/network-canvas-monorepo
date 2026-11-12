@@ -60,31 +60,45 @@ Required field validation is available for all input control types and ensures t
 
 Use required validation for essential data points that are critical to your research, variables needed for later stages (such as name variables used as labels), and consent fields. Do not use required validation for optional information that may not apply to all participants, sensitive questions where participants should have the right to skip, or fields where "no response" is a valid data point.
 
-Common uses include consent acknowledgment, alter names in name generators, and demographic information that's central to your study. The error message displayed is "This field is required."
+Common uses include consent acknowledgment, alter names in name generators, and demographic information that's central to your study.
 
 ### Text Field Validation
 
 Text field validation is available for Text Input and Text Area controls.
 
-Minimum length validation ensures the text response contains at least a specified number of characters. Configure this by setting a minimum character count. Use this when you need substantive responses (such as descriptions or narratives) or to prevent single-character or trivial responses. For example, you might require "Please describe your relationship (minimum 10 characters)". The error message displayed is "Response must be at least [X] characters."
+Minimum length validation ensures the text response contains at least a specified number of characters. Configure this by setting a minimum character count. Use this when you need substantive responses (such as descriptions or narratives) or to prevent single-character or trivial responses. For example, you might require "Please describe your relationship (minimum 10 characters)".
 
-Maximum length validation limits the text response to a specified number of characters. Configure this by setting a maximum character count. Use this for database field size limitations, maintaining consistent response lengths, or encouraging concise responses. For example, you might limit name fields to 50 characters. The error message displayed is "Response must be no more than [X] characters." Set reasonable limits that don't feel arbitrary, ensure the visible field size reflects the character limit, and consider that some names or descriptions may be legitimately long.
+Maximum length validation limits the text response to a specified number of characters. Configure this by setting a maximum character count. Use this for database field size limitations, maintaining consistent response lengths, or encouraging concise responses. For example, you might limit name fields to 50 characters. Set reasonable limits that don't feel arbitrary, ensure the visible field size reflects the character limit, and consider that some names or descriptions may be legitimately long.
 
 ### Number Field Validation
 
 Number field validation is available for Number Input controls.
 
-Minimum value validation ensures the number entered is greater than or equal to a specified minimum value. Configure this by setting a minimum acceptable value. Use this for age restrictions (such as minimum age 18), ensuring positive values where negative numbers don't make sense, or range constraints based on your research design. For example, you might require that age must be at least 18. The error message displayed is "Value must be at least [X]."
+Minimum value validation ensures the number entered is greater than or equal to a specified minimum value. Configure this by setting a minimum acceptable value. Use this for age restrictions (such as minimum age 18), ensuring positive values where negative numbers don't make sense, or range constraints based on your research design. For example, you might require that age must be at least 18.
 
-Maximum value validation ensures the number entered is less than or equal to a specified maximum value. Configure this by setting a maximum acceptable value. Use this for realistic upper bounds (such as age less than 120), constraining ranges to valid values, or preventing data entry errors. For example, you might require that age must be less than 120. The error message displayed is "Value must be no more than [X]." Set realistic ranges that cover legitimate responses, consider edge cases (such as whether 0 is a valid response), and combine minimum and maximum to create valid ranges.
+Maximum value validation ensures the number entered is less than or equal to a specified maximum value. Configure this by setting a maximum acceptable value. Use this for realistic upper bounds (such as age less than 120), constraining ranges to valid values, or preventing data entry errors. For example, you might require that age must be less than 120. Set realistic ranges that cover legitimate responses, consider edge cases (such as whether 0 is a valid response), and combine minimum and maximum to create valid ranges.
 
 ### Date Field Validation
 
+<AppOnly app="current">
+
+A Date Picker's range is set in the attribute's settings rather than as a validation rule. Participants can't choose a date outside it.
+
+**Earliest date** sets the earliest date that can be chosen. Left empty, the picker starts in 1920. Use it to rule out dates that are too early, to limit responses to a study period, or to keep dates within a relevant timeframe. For example, you might require that a visit date is on or after January 1, 2020.
+
+**Latest date** sets the latest date that can be chosen. Left empty, the picker ends on the date of the interview, so a birth date can't be in the future unless you set a later date. Use it to limit responses to a study period or to keep dates realistic. For historical events, set appropriate ranges, and consider whether precision is needed (exact date versus month/year).
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 Date field validation is available for Date Picker controls.
 
-Start date range validation sets the earliest date that can be selected. Configure this by specifying the earliest valid date. Use this for preventing impossible past dates (such as birth dates in the future), limiting responses to a study period, or ensuring dates fall within a relevant timeframe. For example, you might specify that "Visit date must be after January 1, 2020."
+Start date range validation sets the earliest date that can be selected. Configure this by specifying the earliest valid date. Use this for ruling out dates that are too early, limiting responses to a study period, or ensuring dates fall within a relevant timeframe. For example, you might specify that "Visit date must be after January 1, 2020."
 
-End date range validation sets the latest date that can be selected. Configure this by specifying the latest valid date. Use this for preventing future dates where inappropriate, limiting responses to a study period, or ensuring dates are realistic. For example, you might specify that "Birth date must be before today." Use "today" as the end date for events that can't be in the future. For historical events, set appropriate ranges, and consider whether precision is needed (exact date versus month/year).
+End date range validation sets the latest date that can be selected. Configure this by specifying the latest valid date. Use this for preventing future dates where inappropriate (such as birth dates in the future), limiting responses to a study period, or ensuring dates are realistic. For example, you might specify that "Birth date must be before today." Use "today" as the end date for events that can't be in the future. For historical events, set appropriate ranges, and consider whether precision is needed (exact date versus month/year).
+
+</AppOnly>
 
 ### Cross-Variable Comparison Validation
 
@@ -103,9 +117,9 @@ Use these to enforce relationships between fields—for example, requiring that 
 
 Categorical field validation is available for Radio Button Group, Toggle Button Group, and Checkbox Group controls.
 
-Minimum selections validation, for Checkbox Groups, requires participants to select at least a specified number of options. Configure this by setting a minimum number of selections. Use this for ensuring participants engage with the question or when at least one option must apply. For example, you might require "Select at least one language you speak." The error message displayed is "Please select at least [X] option(s)."
+Minimum selections validation, for Checkbox Groups, requires participants to select at least a specified number of options. Configure this by setting a minimum number of selections. Use this for ensuring participants engage with the question or when at least one option must apply. For example, you might require "Select at least one language you speak."
 
-Maximum selections validation, for Checkbox Groups, limits participants to selecting no more than a specified number of options. Configure this by setting a maximum number of selections. Use this for forcing prioritization, limiting to top choices, or addressing database or analysis constraints. For example, you might require "Select your top 3 preferred contact methods." The error message displayed is "Please select no more than [X] option(s)."
+Maximum selections validation, for Checkbox Groups, limits participants to selecting no more than a specified number of options. Configure this by setting a maximum number of selections. Use this for forcing prioritization, limiting to top choices, or addressing database or analysis constraints. For example, you might require "Select your top 3 preferred contact methods."
 
 Required selection validation, for Radio Button Groups and Toggle Button Groups, ensures an option is selected. Configure this by toggling "Required" validation. Use this when a choice must be made or for mutually exclusive options where one must apply. For example, you might require "Please indicate your gender."
 
@@ -137,7 +151,7 @@ This approach reduces burden by only validating fields that are relevant to each
 
 <AppOnly app="current">
 
-Network Canvas supplies a message for each validation rule, such as "You must answer this question before continuing." for a required answer, or "Too short. Enter at least 3 characters." for a minimum length. The messages are part of your protocol's [interview text](/en/design-protocols/translating-your-protocol#interview-text), so each is shown in the language of the interview, and you can reword and translate them in the translation table.
+Network Canvas supplies a message for each validation rule, such as "You must answer this question before continuing." for a required answer, or "Enter at least 3 characters." for a minimum length. The messages are part of your protocol's [interview text](/en/design-protocols/translating-your-protocol#interview-text), so each is shown in the language of the interview, and you can reword and translate them in the translation table.
 
 There is one wording for each rule, shared by every question that uses the rule, and a message can show the limit the rule sets, such as the minimum length. Your protocol holds only the messages of the rules it uses, so you only translate the messages that a participant could see. When you add a rule to a question, Architect adds its message, and when no question uses a rule any more, Architect removes it.
 
@@ -172,7 +186,7 @@ Age:
 
 Date of Birth:
 - Type: Date Picker
-- Validation: Required, End Date: Today
+- Validation: Required; latest date: the date of the interview
 - Rationale: Birth date cannot be in the future
 ```
 
@@ -195,7 +209,7 @@ Relationship Description:
 ```
 Last Contact:
 - Type: Date Picker
-- Validation: Required, Start Date: [Study Start], End Date: Today
+- Validation: Required; earliest date: [study start]; latest date: the date of the interview
 - Rationale: Must fall within study period; cannot be future date
 
 Frequency:

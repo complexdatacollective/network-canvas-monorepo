@@ -1,7 +1,7 @@
 ---
 title: Etiquetado de nodos
 navOrder: 13
-translatedFrom: 8dc9a2f009c8fcc545a8d8d85e1f07a6a6a46c53
+translatedFrom: b561f288d8b113fc514c2257d9f6bc3c6718a769
 ---
 
 ## Cómo calcula Interviewer la etiqueta de un nodo {#how-interviewer-calculates-a-nodes-label}
@@ -27,7 +27,7 @@ Consulta también: [trabajar con recursos](/es/design-protocols/key-concepts/res
 
 <TipBox>
 
-El etiquetado personalizado de nodos no es compatible con [Fresco](/es/collect-data/fresco). El `nodeLabelWorker` que se describe a continuación solo se ejecuta en Interviewer.
+El etiquetado personalizado de nodos no es compatible con [Fresco](/es/collect-data/fresco/about). El `nodeLabelWorker` que se describe a continuación solo se ejecuta en Interviewer.
 
 </TipBox>
 
