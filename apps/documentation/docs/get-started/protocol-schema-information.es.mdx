@@ -3,7 +3,7 @@ title: Información sobre el esquema de protocolo
 wip: false
 navOrder: 3
 date: 22nd October 2026
-translatedFrom: 19c4c5e732de805f4727b7efc9f1204a04c0a73b
+translatedFrom: 8631e06e13957a752bfe0a37019beb16d109eeca
 ---
 
 ## Resumen {#summary}
@@ -131,7 +131,7 @@ Antes de ejecutar un protocolo del esquema 9, asegúrate de que la aplicación e
 - **Cómo terminó la entrevista, en los datos exportados.** Cada entrevista exportada registra su resultado, tomado de la etapa «Pantalla de finalización» en la que terminó. Consulta [Cómo terminó la entrevista](/es/analyze-data/data-export#how-the-interview-ended).
 - **Los atributos cifrados ya no son experimentales.** La [interfaz de anonimización](/es/design-protocols/interface-documentation/anonymisation) siempre está disponible al añadir una etapa en Architect, y un atributo que marcas como cifrado en una etapa de anonimización siempre se cifra durante las entrevistas. Los protocolos conservan su ajuste `experiments`, que permite lanzar funciones nuevas dentro de una versión del esquema, pero los atributos cifrados ya no son uno de sus experimentos. El esquema 9 todavía no tiene experimentos que activar, así que Architect ya no tiene la página «Funciones experimentales».
 
-En el archivo de protocolo, cada traducción se almacena como un mensaje [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/), por lo que las llaves y algunos apóstrofos se escapan. Nunca ves estos caracteres de escape: Architect muestra y guarda tu texto exactamente como lo escribes, y quienes participan lo ven igual. Si editas un archivo de protocolo a mano, cada traducción debe ser texto sin formato escrito con esta sintaxis. Un marcador de posición como `{name}` solo se permite en dos lugares: en el texto que puede mostrar [valores dinámicos](/es/design-protocols/piped-text), para un valor que indique el `dynamicValues` de la etapa, y en las [palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies), que deben conservar los marcadores de posición de su redacción inicial.
+En el archivo de protocolo, cada traducción se almacena como un mensaje [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/), por lo que las llaves y algunos apóstrofos se escapan. Nunca ves estos caracteres de escape: Architect muestra y guarda tu texto exactamente como lo escribes, y quienes participan lo ven igual. Si editas un archivo de protocolo a mano, cada traducción debe ser texto sin formato escrito con esta sintaxis. Un marcador de posición como `{name}` solo se permite en dos lugares: en el texto que puede mostrar [valores dinámicos](/es/design-protocols/piped-text), para un valor indicado en el `dynamicValues` de la etapa, y en las [palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies), que deben conservar los marcadores de posición que requiere cada texto.
 
 Junto con el esquema 9, Architect rechaza los nombres y los valores de opciones que harían que dos variables compartieran la misma columna en tus datos exportados. Consulta [Nombres que coincidirían en los datos exportados](/es/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data).
 
