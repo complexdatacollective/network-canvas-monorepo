@@ -33,7 +33,7 @@ const messages = defineMessages({
   missingFallbackLanguage: {
     id: 'architect.fallbackLanguage.missing',
     defaultMessage:
-      'Network Canvas has no built-in wording in {language}, so this protocol needs a fallback language: the language participants see text in when an update adds that text to the interview. Choose one on the Languages page. The protocol can’t be downloaded until then.',
+      'Network Canvas has no built-in wording in {language}, so this protocol needs a fallback language. When an update adds text to the interview, participants see that text in the fallback language. Choose one on the Languages page. The protocol can’t be downloaded until then.',
     description:
       'Shown while the protocol’s default language is one Network Canvas has no built-in wording in (for example Swahili or Mexican Spanish) and the researcher has not yet chosen the protocol’s fallback language. An update to Network Canvas can add text to the interview, such as a new message, that a protocol written earlier has no translation of; participants then see that text in the fallback language, which must be one of the languages Network Canvas has built-in wording in. “The Languages page” is the Architect page that lists the protocol’s languages, where the fallback language is chosen. language is the name of the default language, for example “Swahili”.',
   },

@@ -203,7 +203,7 @@ describe('<DefaultLanguageTextAlert />', () => {
     expect(screen.getByText(TITLE)).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Network Canvas has no built-in wording in Japanese, so this protocol needs a fallback language: the language participants see text in when an update adds that text to the interview. Choose one on the Languages page. The protocol can’t be downloaded until then.',
+        'Network Canvas has no built-in wording in Japanese, so this protocol needs a fallback language. When an update adds text to the interview, participants see that text in the fallback language. Choose one on the Languages page. The protocol can’t be downloaded until then.',
       ),
     ).toBeInTheDocument();
     const link = screen.getByRole('link', {
