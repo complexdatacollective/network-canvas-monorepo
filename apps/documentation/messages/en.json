@@ -40,7 +40,8 @@
         "resetButtonTitle": "Clear the query",
         "resetButtonAriaLabel": "Clear the query",
         "cancelButtonText": "Cancel",
-        "cancelButtonAriaLabel": "Cancel"
+        "cancelButtonAriaLabel": "Cancel",
+        "placeholderText": "Search documentation"
       },
       "startScreen": {
         "recentSearchesTitle": "Recent",
@@ -105,6 +106,9 @@
   },
   "DocPage": {
     "docAvailableTxt": "This document is also available in"
+  },
+  "TableOfContents": {
+    "title": "Table of Contents"
   },
   "InterfaceSummary": {
     "screenshotAlt": "The {name} interface",

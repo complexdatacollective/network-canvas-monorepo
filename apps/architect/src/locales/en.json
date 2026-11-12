@@ -1011,6 +1011,14 @@
     "defaultMessage": "{clashesWith, select, option {In exported data, the option “{optionValue}” and the option “{siblingOption}” of the attribute “{sibling}” would become the same column, “{writtenColumn}”. Change the option’s value or the attribute’s name.} layout {In exported data, the option “{optionValue}” and a position of the layout attribute “{sibling}” would become the same column, “{writtenColumn}”. Change the option’s value or the attribute’s name.} other {In exported data, the option “{optionValue}” and the attribute “{sibling}” would become the same column, “{writtenColumn}”. Change the option’s value or the attribute’s name.}}",
     "description": "Validation error below the list of options of a categorical attribute: exported data has a column for each option, and this option’s column is different from another column but would be written as the same column name. Exported files change some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. writtenColumn is the column name as it would be written. Text inside curly quotes is a name, value or column name; keep it exactly as given. A layout attribute stores a position on a canvas, which is exported as one column for each coordinate."
   },
+  "architect.fallbackLanguage.choose": {
+    "defaultMessage": "Choose a fallback language",
+    "description": "Link in the notice about a protocol that needs a fallback language and has none. It opens the Languages page, where the fallback language is chosen."
+  },
+  "architect.fallbackLanguage.missing": {
+    "defaultMessage": "Network Canvas has no built-in wording in {language}, so this protocol needs a fallback language. When an update adds text to the interview, participants see that text in the fallback language. Choose one on the Languages page. The protocol can’t be downloaded until then.",
+    "description": "Shown while the protocol’s default language is one Network Canvas has no built-in wording in (for example Swahili or Mexican Spanish) and the researcher has not yet chosen the protocol’s fallback language. An update to Network Canvas can add text to the interview, such as a new message, that a protocol written earlier has no translation of; participants then see that text in the fallback language, which must be one of the languages Network Canvas has built-in wording in. “The Languages page” is the Architect page that lists the protocol’s languages, where the fallback language is chosen. language is the name of the default language, for example “Swahili”."
+  },
   "architect.fieldValidation.required": {
     "defaultMessage": "This field is required.",
     "description": "Required field error in the researcher-facing protocol editor."
@@ -1069,7 +1077,7 @@
   },
   "architect.finishStageText.cannotBeDownloadedYet": {
     "defaultMessage": "This protocol can’t be downloaded yet",
-    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, while Network Canvas’s built-in wording has no text in that language, or while two labels participants choose between are the same."
+    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language, while Network Canvas’s built-in wording has no text in that language, while the protocol needs a fallback language and none has been chosen, or while two labels participants choose between are the same."
   },
   "architect.finishStageText.editFinishStage": {
     "defaultMessage": "Edit the stage that ends the interview",
@@ -1886,6 +1894,22 @@
   "architect.localization.languageList.editTranslations": {
     "defaultMessage": "Edit {language} translations",
     "description": "Accessible name and tooltip of the edit button, with a pencil icon, in a protocol language’s row. It opens the translation table showing that language beside the default language, where its translations can be written and changed. language is the language name."
+  },
+  "architect.localization.languageList.fallbackLanguage": {
+    "defaultMessage": "Fallback language",
+    "description": "Label of the list, under the default language, that chooses the protocol’s fallback language. It is shown only while the protocol’s default language is one Network Canvas has no built-in wording in (for example Swahili or Mexican Spanish). It lists the languages Network Canvas has built-in wording in."
+  },
+  "architect.localization.languageList.fallbackLanguageHint": {
+    "defaultMessage": "Network Canvas has no built-in wording in {language}. When an update adds text to the interview, such as a new message, this protocol has no translation of it, and participants see that text in the language you choose here.",
+    "description": "Hint under the list that chooses the protocol’s fallback language, saying when participants see that language. Built-in wording is the text Network Canvas supplies, such as button labels and messages. language is the name of the protocol’s default language, for example “Swahili”."
+  },
+  "architect.localization.languageList.fallbackLanguagePlaceholder": {
+    "defaultMessage": "Choose a language…",
+    "description": "Placeholder of the list that chooses the protocol’s fallback language, shown while none has been chosen."
+  },
+  "architect.localization.languageList.fallbackLanguageRequired": {
+    "defaultMessage": "Choose a fallback language. The protocol can’t be downloaded until you do.",
+    "description": "Error shown under the list that chooses the protocol’s fallback language while none has been chosen."
   },
   "architect.localization.languageList.missingBadge": {
     "defaultMessage": "Missing translations",
@@ -2718,6 +2742,10 @@
   "architect.protocolSummary.cover.documentCreated": {
     "defaultMessage": "Document Created: {now}",
     "description": "Line at the bottom of the cover page of the printable protocol summary stating when the summary was generated. now is the date and time."
+  },
+  "architect.protocolSummary.cover.fallbackLanguage": {
+    "defaultMessage": "Fallback language: {language}",
+    "description": "Line on the cover of the printable protocol summary naming the protocol’s fallback language: the language participants see text in when an update adds that text to the interview and the protocol has no translation of it. Shown only for a protocol that names one, which is one whose default language Network Canvas has no built-in wording in. language is the name of the fallback language, for example “Spanish”."
   },
   "architect.protocolSummary.cover.languages": {
     "defaultMessage": "Languages",

@@ -1,0 +1,5 @@
+# Everything under /_next/static/ is content-hashed, but the static export
+# gets Netlify's default `max-age=0, must-revalidate`, which makes every font
+# and stylesheet revalidate on every page load.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable

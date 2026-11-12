@@ -40,7 +40,8 @@
         "resetButtonTitle": "Borrar la búsqueda",
         "resetButtonAriaLabel": "Borrar la búsqueda",
         "cancelButtonText": "Cancelar",
-        "cancelButtonAriaLabel": "Cancelar"
+        "cancelButtonAriaLabel": "Cancelar",
+        "placeholderText": "Buscar en la documentación"
       },
       "startScreen": {
         "recentSearchesTitle": "Recientes",
@@ -105,6 +106,9 @@
   },
   "DocPage": {
     "docAvailableTxt": "Este documento también está disponible en"
+  },
+  "TableOfContents": {
+    "title": "Índice"
   },
   "InterfaceSummary": {
     "screenshotAlt": "La interfaz «{name}»",

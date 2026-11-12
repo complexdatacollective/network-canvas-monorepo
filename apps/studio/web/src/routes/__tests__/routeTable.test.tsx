@@ -522,7 +522,7 @@ beforeEach(() => {
       }),
     'audit.list': () => Effect.succeed({ items: [], nextCursor: null }),
     'audit.filterOptions': () =>
-      Effect.succeed({ actions: [], actors: [], truncated: false }),
+      Effect.succeed({ eventTypes: [], actors: [], truncated: false }),
   });
 });
 

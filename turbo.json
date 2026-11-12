@@ -572,6 +572,12 @@
         "package.json",
         "packages/**/*.{ts,tsx}",
         "apps/**/*.{ts,tsx}",
+        // The right-to-left fragment guard reads message catalogs and
+        // translated posts.
+        "packages/**/{locales,messages}/*.json",
+        "apps/**/{locales,messages}/*.json",
+        "apps/**/*.md",
+        "apps/**/*.mdx",
         "!**/node_modules/**",
         "!**/dist/**",
         "!**/.*/**"

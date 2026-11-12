@@ -23,8 +23,9 @@ const decodeActorKind = Schema.decodeUnknownSync(AuditActorKind);
 
 // Server-controlled presentation for stored audit events. Interpretation is
 // keyed by the raw `${eventType}@${eventVersion}` pair; a pair this build does
-// not register — a row appended by a newer server — renders generically with
-// its machine type and no details, never through another version's entry.
+// not register — a row appended by a newer server — renders generically, as
+// `rendered: false` with no details, never through another version's entry.
+// Naming the action is the client's, in the reader's language, by eventType.
 
 type RegistryEntry =
   (typeof AUDIT_EVENT_REGISTRY)[keyof typeof AUDIT_EVENT_REGISTRY];
@@ -86,7 +87,6 @@ export function renderAuditEventSummary(
     },
     subject: reference(row.subjectType, row.subjectId, row.subjectLabel),
     resource: reference(row.resourceType, row.resourceId, row.resourceLabel),
-    title: entry?.title ?? row.eventType,
     rendered: entry !== null,
   };
 }

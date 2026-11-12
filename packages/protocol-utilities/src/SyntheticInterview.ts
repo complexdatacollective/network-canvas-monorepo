@@ -1930,6 +1930,9 @@ export class SyntheticInterview {
         localization: {
           defaultLocale: this.localization.defaultLocale,
           locales: [...this.localization.locales],
+          ...(this.localization.fallbackLocale === undefined
+            ? {}
+            : { fallbackLocale: this.localization.fallbackLocale }),
         },
         codebook,
         // Stage configs are built dynamically and satisfy the Stage schema
