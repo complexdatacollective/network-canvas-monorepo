@@ -42,10 +42,12 @@ export type SharedWordingGroup = Readonly<{
   /** Every entry of the group the stage uses, in the order they are shown. */
   keys: readonly string[];
   /**
-   * The entries of those the protocol holds, with what it holds: written to
-   * the protocol as their field is left. An entry in `keys` and not here is
-   * one the protocol does not hold yet, held with the stage's draft and
-   * written when the stage is saved (see `SHARED_WORDING_PATH`).
+   * The entries of those the saved protocol shows, with the text it shows
+   * for each (its own wording, or Network Canvas's where it has none): a
+   * change is written to the protocol as their field is left. An entry in
+   * `keys` and not here is one the saved protocol does not show yet, held
+   * with the stage's draft and written when the stage is saved (see
+   * `SHARED_WORDING_PATH`).
    */
   entries: readonly (readonly [string, LocalizedString | undefined])[];
 }>;
@@ -99,7 +101,10 @@ export function useSharedStageWording(): readonly SharedWordingGroup[] {
   );
 }
 
-/** What the protocol holds for one shared entry, if anything. */
+/**
+ * What the saved protocol shows for one shared entry, if it shows the entry
+ * (see `ProtocolBuilderProtocolContext.interfaceText`).
+ */
 const heldWord = (
   interfaceText: ProtocolBuilderProtocolContext['interfaceText'],
   group: string,
@@ -128,14 +133,20 @@ export const sharedWordingChanges = (
     }),
   );
 
-/** The settings document holding `updates` over the shared words it holds. */
+/**
+ * The settings document after `updates` to its shared words: it holds only
+ * the researcher's own wording (see `interfaceTextWithUpdates`), and no
+ * interface text at all when that leaves none.
+ */
 const withUpdates = (
-  document: SectionDoc,
+  { interfaceText: held, ...document }: SectionDoc,
   updates: readonly InterfaceTextUpdate[],
-): SectionDoc => ({
-  ...document,
-  interfaceText: interfaceTextWithUpdates(document.interfaceText, updates),
-});
+): SectionDoc => {
+  const interfaceText = interfaceTextWithUpdates(held, updates);
+  return Object.keys(interfaceText).length === 0
+    ? document
+    : { ...document, interfaceText };
+};
 
 /**
  * Writes shared words into the protocol at once, under the settings' own

@@ -58,7 +58,7 @@ Three stage-level behaviors change how participants can interact with the canvas
 
 ### Customize built-in wording
 
-The **Customize built-in wording** section of the stage editor holds the headings of the panels, under **Specific to this stage**. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). A heading is in the section only while a preset highlights attributes, shows links or groups nodes, and it is removed when no preset does.
+The **Customize built-in wording** section of the stage editor holds the headings of the panels, under **Specific to this stage**. Each starts as Network Canvas words it, in every language it has wording for, and you can change and translate it like any other text. Your protocol keeps only the wording you change (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). A heading is in the section only while a preset highlights attributes, shows links or groups nodes, and it is removed when no preset does.
 
 The tooltips of the drawing tools are the same on every Narrative stage, so they are under **Shared by every stage of this kind**, in the same section, while **Free-draw** is on. A change to them applies to every such stage, and is saved as soon as you leave the field. There are three: **Toggle drawing tooltip** names the button that switches drawing on and off, **Toggle freezing annotations tooltip** the button that freezes and unfreezes annotations, and **Reset annotations tooltip** the button that clears them.
 

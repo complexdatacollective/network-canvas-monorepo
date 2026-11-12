@@ -148,7 +148,7 @@ describe('a shared word the open stage brings into use', () => {
     );
   });
 
-  it('is saved with the stage, in the language being edited, keeping Network Canvas’s wording in the others', async () => {
+  it('is saved with the stage, in the language being edited, leaving Network Canvas’s wording in the others to the interview', async () => {
     const harness = openMapStage(ENGLISH_AND_SPANISH);
     await openSharedWording(harness);
     await toggleSearch(harness);
@@ -174,8 +174,7 @@ describe('a shared word the open stage brings into use', () => {
     expect(saved).not.toBeNull();
     expect(mapStageAllowsSearch(harness)).toBe(true);
     expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
-      'en-US': supplied(ENGLISH_AND_SPANISH)['en-US'],
-      'es': 'Ningún lugar coincide',
+      es: 'Ningún lugar coincide',
     });
   });
 
@@ -430,9 +429,8 @@ describe('a new stage saved with its shared words, whose answer is lost', () => 
     // add failed, and has since read the words as the protocol's.
     expect(await harness.submit()).toBeNull();
     expect(stageOrder(harness)).toHaveLength(before + 1);
-    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual(
-      supplied(FIXTURE),
-    );
+    // The stage shows Network Canvas's wording for it, and holds none.
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toBeUndefined();
     await waitFor(() =>
       expect(
         screen.getByRole('textbox', { name: SEARCH_FAILED }),
@@ -478,9 +476,7 @@ describe('a stage saved with its shared words, whose answer is lost', () => {
     // failed, and has since read the words as the protocol's.
     expect(await harness.submit()).toBeNull();
     const written = harness.host.store.read(SETTINGS).revision.sequence;
-    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual(
-      supplied(FIXTURE),
-    );
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toBeUndefined();
 
     expect(await harness.submit()).not.toBeNull();
 
@@ -492,11 +488,31 @@ describe('a stage saved with its shared words, whose answer is lost', () => {
   });
 });
 
-/** A collaborator saving one shared word, as the settings' own write. */
+/**
+ * A collaborator saving one shared word, as the settings' own write. They
+ * can only reword a word the protocol shows, so they do it over a second map
+ * stage with its search on, which is what brings the word into use.
+ */
 const collaboratorSaves = (
   harness: StageEditorHarness,
   value: LocalizedString,
 ) => {
+  const other = sectionId({ kind: 'stage', stageId: 'geospatial-2' });
+  const order = sectionId({ kind: 'stageOrder' });
+  const sections = harness.protocolSections();
+  const map = sections[MAP_STAGE];
+  const stages = sections[order]?.stages;
+  if (sections[other] === undefined && map !== undefined) {
+    const options = map.mapOptions as Readonly<Record<string, unknown>>;
+    harness.host.store.applyAsCollaborator(other, {
+      ...map,
+      id: 'geospatial-2',
+      mapOptions: { ...options, allowSearch: true },
+    });
+    harness.host.store.applyAsCollaborator(order, {
+      stages: [...(Array.isArray(stages) ? stages : []), 'geospatial-2'],
+    });
+  }
   const settings = harness.host.store.read(SETTINGS).document;
   harness.host.store.applyAsCollaborator(SETTINGS, {
     ...settings,
@@ -767,9 +783,8 @@ describe('switching the wording section off', () => {
 
     await toggleSearch(harness);
     expect(await harness.submit()).not.toBeNull();
-    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual(
-      supplied(FIXTURE),
-    );
+    // The wording is Network Canvas's, which the protocol does not hold.
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toBeUndefined();
   });
 });
 
@@ -970,9 +985,11 @@ describe('a shared word held with a stage whose save was refused', () => {
       expect(await harness.submit()).toBeNull();
       expect(stageOrder(harness)).toHaveLength(before);
       collaboratorSaves(harness, { 'en-US': 'Their wording' });
+      // The collaborator's own map stage is in the order now.
+      const withCollaborators = stageOrder(harness).length;
 
       expect(await harness.submit()).not.toBeNull();
-      expect(stageOrder(harness)).toHaveLength(before + 1);
+      expect(stageOrder(harness)).toHaveLength(withCollaborators + 1);
       expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
         'en-US': 'Their wording',
       });

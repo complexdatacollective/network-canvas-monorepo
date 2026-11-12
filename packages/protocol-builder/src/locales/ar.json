@@ -1285,7 +1285,7 @@
   "protocolBuilder.pedigree.kindLabel": "نوع العلاقة",
   "protocolBuilder.pedigree.nameCreateLabel": "إنشاء سمة جديدة للاسم",
   "protocolBuilder.pedigree.nameHint": "اسم كل شخص، يكتبه المشارك في اللوحة الجانبية. يمكن ترك الاسم فارغًا: فعند مغادرة المشارك هذه المرحلة يُعطى كل شخص بلا اسم تسمية مستمدة من علاقته بالمشارك، مثل «خالة» أو «أخت (شريكة حياة توم)». لا يُسأل المشارك عن اسمه، ويظهر باسم «أنت». وتسري قواعد التحقق الخاصة بالسمة على الأسماء التي يكتبها المشارك.",
-  "protocolBuilder.pedigree.nameHintTextHint": "يظهر تحت مربع الاسم، مثلًا للإشارة إلى أن الاسم المستعار يكفي. اتركه فارغًا كي لا يظهر شيء.",
+  "protocolBuilder.pedigree.nameHintTextHint": "يظهر تحت مربع الاسم، مثلًا للإشارة إلى أن الاسم الذي يُنادى به الشخص يكفي. يبدأ بصياغة توفرها Network Canvas، ويمكنك تغييرها.",
   "protocolBuilder.pedigree.nameHintTextLabel": "إرشاد سؤال الاسم",
   "protocolBuilder.pedigree.nameLabel": "الاسم",
   "protocolBuilder.pedigree.namePromptHint": "يظهر فوق المربع الذي يكتب فيه المشاركون اسم أحد أفراد العائلة. يبدأ بصياغة توفرها Network Canvas، ويمكنك تغييرها.",

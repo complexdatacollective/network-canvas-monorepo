@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   type CurrentProtocol,
   withInterfaceText,
+  withSuppliedWording,
 } from '@codaco/protocol-validation';
 import createTimeline, { timelineActions } from '~/ducks/middleware/timeline';
 import activeProtocol, {
@@ -96,7 +97,7 @@ describe('protocol language reducers and undo', () => {
     expect(presentOf(store)).toEqual(englishProtocol());
   });
 
-  it('adds Network Canvas’s wording for text the researcher reworded in the same undo step that adds the language', () => {
+  it('writes none of Network Canvas’s wording for text the researcher reworded, in the same undo step that adds the language', () => {
     const english = presentOf(store);
     const reworded: CurrentProtocol = {
       ...english,
@@ -116,8 +117,11 @@ describe('protocol language reducers and undo', () => {
     expect(pastLength(store)).toBe(before + 1);
     expect(presentOf(store).interfaceText?.navigation?.continue).toEqual({
       en: 'Next',
-      fr: 'Continuer',
     });
+    // The interview shows Network Canvas's French beside the rewording.
+    expect(
+      withSuppliedWording(presentOf(store)).interfaceText?.navigation?.continue,
+    ).toEqual({ en: 'Next', fr: 'Continuer' });
 
     store.dispatch(timelineActions.undo());
 

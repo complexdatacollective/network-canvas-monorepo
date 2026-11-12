@@ -1,13 +1,12 @@
 import { withInterfaceText } from '../schemas/9/interface-text.ts';
 
 /**
- * Test support: a schema 9 protocol must end at a finish stage and hold the
- * interface text it uses, so a fixture written to exercise something else
- * gains a finish stage at the end, with its text in every language the
- * fixture declares (so it adds no missing translation), and then the
- * interface text it uses (`withInterfaceText`), keeping any it already holds.
- * A fixture with no stage list is returned as it is; one that already ends at
- * a finish stage gains only the interface text.
+ * Test support: a schema 9 protocol must end at a finish stage, so a fixture
+ * written to exercise something else gains a finish stage at the end, with
+ * its text in every language the fixture declares (so it adds no missing
+ * translation). It then holds the interface text a stored protocol holds
+ * (`withInterfaceText`): its own wording for the entries it shows, and none
+ * for the rest. A fixture with no stage list is returned as it is.
  */
 const TEST_FINISH_STAGE_ID = 'test-finish';
 
@@ -42,7 +41,7 @@ const endsAtFinishStage = (stages: readonly unknown[]) => {
   );
 };
 
-/** The fixture holding the interface text it uses, when it declares languages. */
+/** The fixture holding the interface text a stored protocol holds, when it declares languages. */
 const withFixtureInterfaceText = <T>(protocol: T): T => {
   const fixture = protocol as FixtureLike;
   const localization = fixture.localization;

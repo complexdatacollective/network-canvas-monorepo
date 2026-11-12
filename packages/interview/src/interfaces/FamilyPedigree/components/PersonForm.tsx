@@ -269,7 +269,7 @@ export type GenderIdentityOption = {
 /** The stage's wording for the name question (`nodeConfiguration.nameField`). */
 type NameFieldText = Readonly<{
   prompt: LocalizedString;
-  hint: LocalizedString | undefined;
+  hint: LocalizedString;
 }>;
 
 type PersonFormProps = {
@@ -720,9 +720,7 @@ export default function PersonForm({
                 name={config.nameAttribute}
                 nameMode="opaque"
                 label={resolve(nameField.prompt).text}
-                {...(nameField.hint === undefined
-                  ? {}
-                  : { hint: resolve(nameField.hint).text })}
+                hint={resolve(nameField.hint).text}
                 initialValue={person?.name}
                 autoComplete="off"
                 // Someone new is named first, so the panel opens ready to type.

@@ -1356,11 +1356,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     () => completenessWordingFrom(stageWording),
     [stageWording],
   );
-  // The name question, and the hint beneath it where the stage shows one.
+  // The name question, and the hint beneath it.
   const nameField = useMemo(
     () => ({
       prompt: stageWording.text('nodeConfiguration', 'nameField', 'prompt'),
-      hint: stageWording.shown('nodeConfiguration', 'nameField', 'hint'),
+      hint: stageWording.text('nodeConfiguration', 'nameField', 'hint'),
     }),
     [stageWording],
   );

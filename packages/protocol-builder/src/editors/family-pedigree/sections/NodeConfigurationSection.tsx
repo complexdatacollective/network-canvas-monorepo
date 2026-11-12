@@ -1,5 +1,3 @@
-import { get } from 'es-toolkit/compat';
-
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import {
@@ -14,7 +12,6 @@ import {
 import SlotVariableField from '../../../fields/SlotVariableField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
-import { asLocalizedString } from '../../../localization/localizedText.ts';
 import { markdownTextShapeAt } from '../../../localization/textShape.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import {
@@ -69,8 +66,6 @@ export default function NodeConfigurationSection() {
   const waiting = personSubject === null;
   const { committedFields } = useStageEditorForm();
   const supplied = useSuppliedStageWording('FamilyPedigree');
-  const hasNameQuestion =
-    get(committedFields, NAME_FIELD_PATHS.prompt) !== undefined;
 
   return (
     <BuilderSection
@@ -122,15 +117,12 @@ export default function NodeConfigurationSection() {
                 shape={NAME_HINT_SHAPE}
                 label={intl.formatMessage(messages.nameHintTextLabel)}
                 hint={intl.formatMessage(messages.nameHintTextHint)}
-                // A stage holding the question without guidance had it
-                // removed, so the supplied guidance is not put back.
-                initialValue={
-                  hasNameQuestion
-                    ? asLocalizedString(
-                        get(committedFields, NAME_FIELD_PATHS.hint),
-                      )
-                    : supplied.get(NAME_FIELD_PATHS.hint)
-                }
+                initialValue={startingWording(
+                  committedFields,
+                  NAME_FIELD_PATHS.hint,
+                  supplied,
+                )}
+                required={REQUIRED}
               />
             </>
           )}

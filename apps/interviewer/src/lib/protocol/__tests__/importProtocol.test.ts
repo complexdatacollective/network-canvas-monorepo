@@ -154,17 +154,9 @@ describe('importProtocolFromFile error reporting', () => {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
     };
-    // The interface text a protocol with only a finish stage holds.
-    const { interfaceText } = withInterfaceText<{
-      localization: { defaultLocale: string; locales: string[] };
-      stages: unknown[];
-      interfaceText?: unknown;
-    }>({
-      localization: { defaultLocale: 'en', locales: ['en'] },
-      stages: [{ type: 'FinishSession' }],
-    });
+    // A protocol holds none of Network Canvas's interface text.
     const bytes = await buildArchive({
-      'protocol.json': `{"schemaVersion":${COMPATIBLE_PROTOCOL_SCHEMA_VERSION},"name":"Proto","description":"","localization":{"defaultLocale":"en","locales":["en"]},"interfaceText":${JSON.stringify(interfaceText)},"stages":[{"id":"finish","type":"FinishSession","mode":"confirmation","label":{"en":"Finish"},"content":{"en":"# Finish\\n\\nThank you."},"finishedContent":{"en":"# Finished\\n\\nThank you."},"finishLabel":{"en":"Finish"},"finishConfirmation":{"en":"Finish?"},"finishFailed":{"en":"Not finished."},"outcome":"completed"}],"codebook":{"node":{"__proto__":${JSON.stringify(nodeType)}},"edge":{},"ego":{}},"assetManifest":{}}`,
+      'protocol.json': `{"schemaVersion":${COMPATIBLE_PROTOCOL_SCHEMA_VERSION},"name":"Proto","description":"","localization":{"defaultLocale":"en","locales":["en"]},"stages":[{"id":"finish","type":"FinishSession","mode":"confirmation","label":{"en":"Finish"},"content":{"en":"# Finish\\n\\nThank you."},"finishedContent":{"en":"# Finished\\n\\nThank you."},"finishLabel":{"en":"Finish"},"finishConfirmation":{"en":"Finish?"},"finishFailed":{"en":"Not finished."},"outcome":"completed"}],"codebook":{"node":{"__proto__":${JSON.stringify(nodeType)}},"edge":{},"ego":{}},"assetManifest":{}}`,
     });
 
     const result = await importProtocolFromFile(asFile(bytes));

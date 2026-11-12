@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { localized } from '../../../../utils/test-utils.ts';
 import {
-  inapplicableStageSettings,
-  missingSuppliedStageText,
+  stageWithoutSuppliedText,
+  stageWithSuppliedText,
 } from '../../supplied-stage-text.ts';
 import { categoricalBinStage } from '../categorical-bin.ts';
 import { ordinalBinStage } from '../ordinal-bin.ts';
@@ -83,24 +83,38 @@ describe.each([
     ).toBe(true);
   });
 
-  it('seeds the notice when the gate is switched on, and only then', () => {
+  it('gives an editor the notice once the gate is switched on, and only then', () => {
     const gated = { ...stage, behaviours: { requireCompletePlacement: true } };
-    expect(missingSuppliedStageText(gated, ENGLISH_ONLY)).toEqual([
-      {
-        path: ['unplacedNodesNotice'],
-        value: { en: 'You must place every item before you can continue.' },
-      },
-    ]);
-    expect(missingSuppliedStageText(stage, ENGLISH_ONLY)).toEqual([]);
+    expect(
+      stageWithSuppliedText(gated, ENGLISH_ONLY).unplacedNodesNotice,
+    ).toEqual({ en: 'You must place every item before you can continue.' });
+    expect(stageWithSuppliedText(stage, ENGLISH_ONLY)).not.toHaveProperty(
+      'unplacedNodesNotice',
+    );
   });
 
-  it('drops the notice when the gate is switched off', () => {
+  it('stores the notice only while the gate is on and the researcher reworded it', () => {
+    const gated = { ...stage, behaviours: { requireCompletePlacement: true } };
     expect(
-      inapplicableStageSettings({
+      stageWithoutSuppliedText({
+        ...gated,
+        unplacedNodesNotice: localized('Place everyone first.'),
+      }).unplacedNodesNotice,
+    ).toEqual(localized('Place everyone first.'));
+    expect(
+      stageWithoutSuppliedText({
+        ...gated,
+        unplacedNodesNotice: localized(
+          'You must place every item before you can continue.',
+        ),
+      }),
+    ).not.toHaveProperty('unplacedNodesNotice');
+    expect(
+      stageWithoutSuppliedText({
         ...stage,
         behaviours: { requireCompletePlacement: false },
         unplacedNodesNotice: localized('Place everyone first.'),
       }),
-    ).toEqual([['unplacedNodesNotice']]);
+    ).not.toHaveProperty('unplacedNodesNotice');
   });
 });

@@ -1,7 +1,7 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { find, findIndex } from 'es-toolkit/compat';
 
-import type { Asset } from '@codaco/protocol-validation';
+import { type Asset, withSuppliedWording } from '@codaco/protocol-validation';
 import { canRedo, canUndo } from '~/ducks/middleware/timeline';
 import type { RootState } from '~/ducks/modules/root';
 import { deriveAssetDisplayNames } from '~/utils/assetNames';
@@ -18,6 +18,18 @@ export const getProtocol = (state: RootState) => {
   // mounted component there must resolve to "no protocol" rather than throw.
   return state.activeProtocol?.present ?? null;
 };
+
+/**
+ * The protocol with the wording a participant is shown written out (see
+ * `withSuppliedWording`): each text Network Canvas words holds the protocol's
+ * own translation where it has one and Network Canvas's where it does not.
+ * The protocol itself holds only what its author changed, so this is what a
+ * page that lists, translates or prints every text reads. Never dispatched
+ * back: a change is written through the protocol's own actions.
+ */
+export const getProtocolAsShown = createSelector([getProtocol], (protocol) =>
+  protocol ? withSuppliedWording(protocol) : protocol,
+);
 
 // Protocol metadata selectors
 export const getProtocolName = (state: RootState): string | undefined => {

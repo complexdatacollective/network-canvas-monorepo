@@ -7,6 +7,7 @@ import validateProtocol, {
 import { findBuiltInWordingProblems } from '../built-in-wording.ts';
 import { createDefaultFinishSessionStage } from '../finish-session-defaults.ts';
 import {
+  interfaceTextShown,
   interfaceTextShownBy,
   interfaceTextWithUpdates,
   withInterfaceText,
@@ -15,8 +16,8 @@ import { ProtocolSchemaV9 } from '../schema.ts';
 
 type Localization = { defaultLocale: string; locales: string[] };
 
-// As Architect creates a protocol: a finish stage and the interface text,
-// each written in every language Network Canvas has wording in exactly.
+// As Architect creates a protocol: a finish stage, holding none of the wording
+// Network Canvas supplies (the interview shows that wording).
 const protocolIn = (localization: Localization) =>
   withInterfaceText({
     ...createBaseProtocol(),
@@ -26,10 +27,22 @@ const protocolIn = (localization: Localization) =>
   });
 
 // `withInterfaceText` returns the document it was given, typed without the
-// text it adds.
-const backButton = (protocol: object) =>
+// text it holds.
+const heldBackButton = (protocol: object) =>
   (protocol as { interfaceText?: { navigation?: { back?: unknown } } })
     .interfaceText?.navigation?.back;
+
+// The back button text the interview shows.
+const shownBackButton = (protocol: {
+  localization: Localization;
+  interfaceText?: unknown;
+}) =>
+  interfaceTextShown(
+    protocol.interfaceText,
+    'navigation',
+    'back',
+    protocol.localization,
+  );
 
 const mexicanWithSpanish = { defaultLocale: 'es-MX', locales: ['es-MX', 'es'] };
 
@@ -42,7 +55,8 @@ describe('built-in wording in a default language Network Canvas has none in', ()
 
   it('lets a regional variant fall back to its base language while the protocol is written', async () => {
     const protocol = protocolIn(mexicanWithSpanish);
-    expect(backButton(protocol)).toEqual({ es: 'Volver' });
+    expect(heldBackButton(protocol)).toBeUndefined();
+    expect(shownBackButton(protocol)).toEqual({ es: 'Volver' });
     expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     expect((await validateProtocol(protocol, { draft: true })).success).toBe(
       true,
@@ -79,9 +93,10 @@ describe('built-in wording in a default language Network Canvas has none in', ()
     expect(findBuiltInWordingProblems(protocol)).toEqual([]);
   });
 
-  it('holds wording with no translation at all in a language Network Canvas has none in', () => {
+  it('shows wording with no translation at all in a language Network Canvas has none in', () => {
     const protocol = protocolIn({ defaultLocale: 'sw', locales: ['sw'] });
-    expect(backButton(protocol)).toEqual({});
+    expect(heldBackButton(protocol)).toBeUndefined();
+    expect(shownBackButton(protocol)).toEqual({});
     expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     expect(findBuiltInWordingProblems(protocol)).toContainEqual({
       path: ['interfaceText', 'navigation', 'back'],
@@ -89,21 +104,16 @@ describe('built-in wording in a default language Network Canvas has none in', ()
     });
   });
 
-  it('is never English written in place of the default language', () => {
+  it('is never English shown in place of the default language', () => {
     const protocol = protocolIn({ defaultLocale: 'sw', locales: ['sw', 'en'] });
-    expect(backButton(protocol)).toEqual({ en: 'Back' });
+    expect(heldBackButton(protocol)).toBeUndefined();
+    expect(shownBackButton(protocol)).toEqual({ en: 'Back' });
   });
 });
 
 /** A protocol whose finish stage holds none of the wording supplied for it. */
 const holdingNothing = (localization: Localization) => {
-  const stage = createDefaultFinishSessionStage({ id: 'end', localization });
-  const {
-    finishLabel: _label,
-    finishConfirmation: _confirmation,
-    finishFailed: _failed,
-    ...bare
-  } = stage;
+  const bare = createDefaultFinishSessionStage({ id: 'end', localization });
   return {
     ...createBaseProtocol(),
     codebook: { node: {}, edge: {}, ego: {} },

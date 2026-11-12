@@ -231,8 +231,9 @@ const consumePromotion = (
       );
 
 /**
- * The settings at the draft head, holding `updates` over their shared words:
- * what a stage's write carries as `interfaceText`. A draft always has its
+ * The settings at the draft head after `updates` to their shared words (see
+ * `interfaceTextWithUpdates`): what a stage's write carries as
+ * `interfaceText`. A draft always has its
  * settings, so one with none is a broken draft rather than a refusal.
  */
 const settingsWith = (
@@ -245,11 +246,17 @@ const settingsWith = (
         new Error(`draft ${session.draftId} has no settings section`),
       );
     }
-    const document = Redacted.value(settings.document);
-    return Effect.succeed<SectionDoc>({
-      ...document,
-      interfaceText: interfaceTextWithUpdates(document.interfaceText, updates),
-    });
+    const { interfaceText: held, ...document } = Redacted.value(
+      settings.document,
+    );
+    // Only the researcher's own wording is held, so settings left with none
+    // hold no interface text at all.
+    const interfaceText = interfaceTextWithUpdates(held, updates);
+    return Effect.succeed<SectionDoc>(
+      Object.keys(interfaceText).length === 0
+        ? document
+        : { ...document, interfaceText },
+    );
   });
 
 export type RefactorOutcome =

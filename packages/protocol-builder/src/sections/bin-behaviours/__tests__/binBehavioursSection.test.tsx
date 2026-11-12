@@ -103,7 +103,7 @@ describe.each(CASES)(
       ).toBeInTheDocument();
     });
 
-    it('switched on, saves the gate with the words Network Canvas supplies', async () => {
+    it('switched on, shows the words Network Canvas supplies and saves none of them', async () => {
       const harness = renderStageEditor(open());
 
       await harness.user.click(await gateSwitch());
@@ -116,9 +116,9 @@ describe.each(CASES)(
       expect(request?.stageDocument.behaviours).toEqual({
         requireCompletePlacement: true,
       });
-      expect(request?.stageDocument.unplacedNodesNotice).toEqual({
-        'en-US': 'You must place every item before you can continue.',
-      });
+      // They are Network Canvas's, which the interview shows for a stage
+      // that holds none.
+      expect(request?.stageDocument).not.toHaveProperty('unplacedNodesNotice');
     });
 
     it('switched back off, drops the notice it no longer shows', async () => {

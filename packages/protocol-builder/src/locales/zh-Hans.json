@@ -1285,7 +1285,7 @@
   "protocolBuilder.pedigree.kindLabel": "关系种类",
   "protocolBuilder.pedigree.nameCreateLabel": "创建新的姓名属性",
   "protocolBuilder.pedigree.nameHint": "每个人的姓名，由参与者在侧边面板中输入。姓名可以留空：参与者离开此阶段时，每位未命名的人都会根据其与参与者的关系获得一个标签，例如“姨母”或“姐妹（Tom 的伴侣）”。不会询问参与者本人的姓名，参与者显示为“您”。该属性的验证规则适用于参与者输入的姓名。",
-  "protocolBuilder.pedigree.nameHintTextHint": "显示在姓名框下方，例如说明昵称也可以。留空则不显示任何内容。",
+  "protocolBuilder.pedigree.nameHintTextHint": "显示在姓名框下方，例如用来说明填写昵称即可。它以 Network Canvas 提供的文字开头，您可以更改。",
   "protocolBuilder.pedigree.nameHintTextLabel": "姓名问题提示",
   "protocolBuilder.pedigree.nameLabel": "姓名",
   "protocolBuilder.pedigree.namePromptHint": "显示在参与者输入家庭成员姓名的输入框上方。它以 Network Canvas 提供的文字开头，您可以更改。",

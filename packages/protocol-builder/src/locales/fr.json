@@ -1285,7 +1285,7 @@
   "protocolBuilder.pedigree.kindLabel": "Nature de la relation",
   "protocolBuilder.pedigree.nameCreateLabel": "Créer un attribut de nom",
   "protocolBuilder.pedigree.nameHint": "Le nom de chaque personne, saisi par la personne participante dans le panneau latéral. Un nom peut être laissé vide : lorsque la personne participante quitte cette étape, chaque personne sans nom reçoit un libellé tiré de sa relation avec la personne participante, comme « Tante maternelle » ou « Sœur (partenaire de Tom) ». La personne participante n’est pas invitée à donner son propre nom et apparaît sous le nom « Vous ». Les règles de validation de l’attribut s’appliquent aux noms saisis par la personne participante.",
-  "protocolBuilder.pedigree.nameHintTextHint": "Affiché sous le champ du nom, par exemple pour indiquer qu’un surnom convient. Laissez vide pour ne rien afficher.",
+  "protocolBuilder.pedigree.nameHintTextHint": "Affiché sous le champ du nom, par exemple pour indiquer qu’un surnom convient. Ce texte commence par un libellé fourni par Network Canvas, que vous pouvez modifier.",
   "protocolBuilder.pedigree.nameHintTextLabel": "Indication de la question sur le nom",
   "protocolBuilder.pedigree.nameLabel": "Nom",
   "protocolBuilder.pedigree.namePromptHint": "Affiché au-dessus du champ où les personnes participantes saisissent le nom d’un membre de la famille. Il commence par un libellé fourni par Network Canvas, que vous pouvez modifier.",

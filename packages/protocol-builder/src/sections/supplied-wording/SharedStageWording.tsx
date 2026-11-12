@@ -71,13 +71,17 @@ const messages = defineMessages({
 /**
  * The words every stage of a kind shows alike, edited where the stage is.
  *
- * The protocol holds them once for all those stages, so they are not part of
+ * The protocol words them once for all those stages, so they are not part of
  * the stage: a change is written to the protocol as the researcher leaves the
  * group it is in (through the section's `writes`), and is not undone by
- * discarding the stage's own changes. The exception is an entry the protocol
- * does not hold yet, which the open stage is the first to need: it is held
- * with the stage's draft and saved with the stage (see `SHARED_WORDING_PATH`),
- * and says so beside itself.
+ * discarding the stage's own changes. The exception is an entry the saved
+ * protocol does not show yet, which the open stage is the first to need: it
+ * is held with the stage's draft and saved with the stage (see
+ * `SHARED_WORDING_PATH`), and says so beside itself.
+ *
+ * "Held by the protocol" below means shown by the saved protocol, with the
+ * text it shows: the protocol stores a wording only where the researcher
+ * changed Network Canvas's.
  */
 export default function SharedStageWording({
   groups,

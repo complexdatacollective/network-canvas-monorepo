@@ -24,13 +24,12 @@ import prune from '~/utils/prune';
  * transient empty value, which keeps preview correctly disabled until a title
  * is entered.
  *
- * The result holds the interface text it uses (`withInterfaceText`), as the
- * saved protocol will: a stage of a new kind brings text of its own, such as
- * a Categorical Bin's or a Family Pedigree's. `interfaceText` is the shared
- * wording the stage editor holds with the stage for entries the protocol does
- * not hold yet (`pendingSharedWording`), which a save writes with the stage,
- * so the preview shows the researcher's wording for them rather than Network
- * Canvas's.
+ * The result holds the interface text the saved protocol will
+ * (`withInterfaceText`): the researcher's own wording for the entries it
+ * shows. `interfaceText` is the shared wording the stage editor holds with the
+ * stage for entries the open stage brings into use (`pendingSharedWording`),
+ * which a save writes with the stage, so the preview shows the researcher's
+ * wording for them rather than Network Canvas's.
  */
 export function buildProtocolWithStage(
   protocol: CurrentProtocol,

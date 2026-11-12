@@ -175,8 +175,9 @@ export const familyPedigreeMessages = defineMessages({
   nameHintTextHint: {
     id: 'protocolBuilder.pedigree.nameHintTextHint',
     defaultMessage:
-      'Shown under the name box, for example to say that a nickname will do. Leave it empty to show nothing.',
-    description: 'Guidance under the name-question guidance box.',
+      'Shown under the name box, for example to say that a nickname will do. It starts with wording Network Canvas supplies, which you can change.',
+    description:
+      'Guidance under the box where a researcher writes the short guidance participants see under the name box of a Family Pedigree stage. The guidance is always shown to participants: Network Canvas’s wording until the researcher changes it.',
   },
   nameRequiredUnavailable: {
     id: 'protocolBuilder.pedigree.nameRequiredUnavailable',

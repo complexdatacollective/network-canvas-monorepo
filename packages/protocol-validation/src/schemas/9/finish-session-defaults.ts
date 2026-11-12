@@ -8,7 +8,6 @@ import type {
   FinishOutcome,
   FinishSessionStage,
 } from './stages/finish-session.ts';
-import { suppliedStageText } from './supplied-stage-text.ts';
 import {
   type LanguageChange,
   suppliedTextAfterLanguageChange,
@@ -142,35 +141,12 @@ export const defaultFinishSessionFields = (
   return fields;
 };
 
-/** The finish stage's settings whose wording Network Canvas supplies. */
-type FinishSessionSetting =
-  | 'finishLabel'
-  | 'finishConfirmation'
-  | 'finishFailed';
-
-const suppliedFinishSessionSettings = (
-  localization: LocalizationDeclaration,
-): Record<FinishSessionSetting, LocalizedString> => {
-  const texts = suppliedStageText('FinishSession', localization);
-  const wordingOf = (setting: FinishSessionSetting): LocalizedString => {
-    const value = texts.find(({ path }) => path[0] === setting)?.value;
-    if (value === undefined) {
-      throw new Error(`Network Canvas supplies no wording for ${setting}.`);
-    }
-    return value;
-  };
-  return {
-    finishLabel: wordingOf('finishLabel'),
-    finishConfirmation: wordingOf('finishConfirmation'),
-    finishFailed: wordingOf('finishFailed'),
-  };
-};
-
 /**
- * A finish stage carrying the supplied text in each of the protocol's
- * languages that has it, and the supplied wording of its settings (see
- * `stage-wording/finish-session.ts`), asking the participant to confirm and
- * ending the interview as `completed`.
+ * A finish stage carrying the supplied closing text in each of the
+ * protocol's languages that has it, asking the participant to confirm and
+ * ending the interview as `completed`. It holds none of the settings Network
+ * Canvas words (see `stage-wording/finish-session.ts`): the interview shows
+ * that wording for a stage that does not hold it.
  */
 export const createDefaultFinishSessionStage = ({
   id,
@@ -187,7 +163,6 @@ export const createDefaultFinishSessionStage = ({
   type: 'FinishSession',
   mode,
   ...defaultFinishSessionFields(localization),
-  ...suppliedFinishSessionSettings(localization),
   outcome,
 });
 
