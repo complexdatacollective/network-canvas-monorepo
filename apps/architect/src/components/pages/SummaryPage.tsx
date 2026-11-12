@@ -69,7 +69,7 @@ const SummaryPage = () => {
             )}
           />
         </div>
-        <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8]">
+        <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8] rtl:[&_.variable-pill]:origin-right">
           {/* Cover is the first marker; an explicit page break here would be
             a no-op (CSS Fragmentation: forced breaks at the start of a
             fragment are discarded) so it's omitted. */}

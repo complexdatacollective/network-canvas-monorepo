@@ -145,7 +145,7 @@ export default function GeospatialStubSearch({ className }: Props) {
               spacing="none"
               shadow="none"
               floating
-              className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
+              className="absolute inset-s-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
             >
               <div
                 id={listboxId}

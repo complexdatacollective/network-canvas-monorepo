@@ -3,12 +3,21 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
-import validateProtocol from '../../../validation/validate-protocol.ts';
+import validateProtocol, {
+  BUILT_IN_WORDING_MISSING,
+} from '../../../validation/validate-protocol.ts';
+import { findBuiltInWordingProblems } from '../built-in-wording.ts';
 import { createDefaultFinishSessionStage } from '../finish-session-defaults.ts';
-import { interfaceTextFor, withInterfaceText } from '../interface-text.ts';
+import {
+  interfaceTextFor,
+  interfaceTextShownBy,
+  withInterfaceText,
+} from '../interface-text.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
+
+type WordingProtocol = Parameters<typeof findBuiltInWordingProblems>[0];
 
 type Document = Record<string, unknown> & {
   interfaceText?: Record<string, Record<string, unknown>>;
@@ -44,7 +53,7 @@ const interfaceTextIssues = async (
   );
 };
 
-describe('the interface text a protocol must hold', () => {
+describe('the interface text a protocol may hold', () => {
   it('accepts a protocol holding all the interface text it uses', async () => {
     expect((await validateProtocol(baseProtocol())).error?.issues).toBe(
       undefined,
@@ -54,74 +63,89 @@ describe('the interface text a protocol must hold', () => {
     ).toBe(true);
   });
 
-  it('refuses a protocol with no interface text, at each group it uses', async () => {
+  it('accepts a protocol with no interface text, in a default language Network Canvas supplies', async () => {
     const { interfaceText: _held, ...protocol } = baseProtocol();
-    const used = Object.keys(
-      interfaceTextFor(protocol as Parameters<typeof interfaceTextFor>[0]),
+    expect(Object.keys(interfaceTextFor(protocol as never))).toContain(
+      'navigation',
     );
-    expect(used).toContain('navigation');
 
     for (const draft of [false, true]) {
-      const issues = await interfaceTextIssues(protocol, { draft });
-      expect(issues.map(({ path }) => path)).toEqual(
-        used.map((group) => ['interfaceText', group]),
+      expect((await validateProtocol(protocol, { draft })).error?.issues).toBe(
+        undefined,
       );
     }
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
-  });
-
-  it('refuses a protocol missing one group it uses, naming the entries the group must hold', async () => {
-    const protocol = baseProtocol();
-    const navigation = Object.keys(protocol.interfaceText?.navigation ?? {});
-    delete protocol.interfaceText?.navigation;
-
-    expect(await interfaceTextIssues(protocol)).toEqual([
-      {
-        code: 'custom',
-        path: ['interfaceText', 'navigation'],
-        message: `The interview shows text from the "navigation" interface text group, so the protocol must hold this group, with these entries in its languages: ${navigation.map((key) => `"${key}"`).join(', ')}.`,
-      },
-    ]);
-  });
-
-  it('refuses a protocol missing the group of a kind of stage it has', async () => {
-    const protocol: Document = completeProtocol();
-    expect(protocol.interfaceText?.quickAdd).toBeDefined();
-    delete protocol.interfaceText?.quickAdd;
-
+    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     expect(
-      (await interfaceTextIssues(protocol)).map(({ path }) => path),
-    ).toEqual([['interfaceText', 'quickAdd']]);
+      findBuiltInWordingProblems(protocol as unknown as WordingProtocol),
+    ).toEqual([]);
   });
 
-  it('refuses a protocol missing the message of a validation rule it uses, though it holds others', async () => {
+  it('accepts a protocol missing a group, an entry or a button it shows', async () => {
     const protocol = withNameRules(baseProtocol());
-    expect(Object.keys(protocol.interfaceText?.validation ?? {})).toEqual([
-      'required',
-      'minLength',
-    ]);
+    delete protocol.interfaceText?.navigation;
     delete protocol.interfaceText?.validation?.required;
+    delete protocol.interfaceText?.buttons?.done;
 
     for (const draft of [false, true]) {
-      expect(await interfaceTextIssues(protocol, { draft })).toEqual([
-        {
-          code: 'custom',
-          path: ['interfaceText', 'validation', 'required'],
-          message:
-            'The interview shows the "required" text of the "validation" interface text group, so the group must hold it in the protocol\'s languages.',
-        },
-      ]);
+      expect((await validateProtocol(protocol, { draft })).error?.issues).toBe(
+        undefined,
+      );
+    }
+
+    const quickAdd: Document = completeProtocol();
+    expect(quickAdd.interfaceText?.quickAdd).toBeDefined();
+    delete quickAdd.interfaceText?.quickAdd;
+    expect((await validateProtocol(quickAdd)).error?.issues).toBe(undefined);
+  });
+
+  it('still refuses an unknown group or entry, and blank text', async () => {
+    const group = baseProtocol();
+    Object.assign(group.interfaceText ?? {}, { invented: { a: { en: 'A' } } });
+    const entry = baseProtocol();
+    Object.assign(entry.interfaceText?.navigation ?? {}, {
+      invented: { en: 'A' },
+    });
+    const blank = baseProtocol();
+    Object.assign(blank.interfaceText?.navigation ?? {}, { back: { en: ' ' } });
+
+    for (const protocol of [group, entry, blank]) {
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
+      expect((await interfaceTextIssues(protocol)).length).toBeGreaterThan(0);
     }
   });
 
-  it('refuses a protocol missing a button it shows', async () => {
-    // The base protocol's name generator closes its form with Done.
-    const protocol = baseProtocol();
-    delete protocol.interfaceText?.buttons?.done;
+  it('reports what the interview shows and the protocol lacks, in a default language Network Canvas has no wording in', async () => {
+    const swahili = { defaultLocale: 'sw', locales: ['sw'] };
+    const protocol = {
+      ...createBaseProtocol(),
+      codebook: { node: {}, edge: {}, ego: {} },
+      localization: swahili,
+      stages: [
+        createDefaultFinishSessionStage({ id: 'end', localization: swahili }),
+      ],
+    };
+    const used = interfaceTextShownBy(protocol);
 
-    expect(
-      (await interfaceTextIssues(protocol)).map(({ path }) => path),
-    ).toEqual([['interfaceText', 'buttons', 'done']]);
+    expect(used.length).toBeGreaterThan(0);
+    const issues = (await validateProtocol(protocol)).error?.issues.filter(
+      ({ code }) => code === BUILT_IN_WORDING_MISSING,
+    );
+    expect(issues?.map(({ path }) => path)).toEqual(
+      expect.arrayContaining(
+        used.map(({ group, key }) => ['interfaceText', group, key, 'sw']),
+      ),
+    );
+    expect((await validateProtocol(protocol, { draft: true })).success).toBe(
+      true,
+    );
+  });
+
+  it('accepts an entry held as undefined, as if absent', async () => {
+    const { protocol } = withUndefinedText();
+
+    for (const draft of [false, true]) {
+      expect(await interfaceTextIssues(protocol, { draft })).toEqual([]);
+    }
   });
 
   /**
@@ -144,21 +168,6 @@ describe('the interface text a protocol must hold', () => {
       held,
     };
   };
-
-  it('refuses an entry or a group it shows held as undefined, as if absent', async () => {
-    const { protocol } = withUndefinedText();
-
-    for (const draft of [false, true]) {
-      expect(
-        (await interfaceTextIssues(protocol, { draft })).map(
-          ({ path }) => path,
-        ),
-      ).toEqual([
-        ['interfaceText', 'buttons', 'done'],
-        ['interfaceText', 'search'],
-      ]);
-    }
-  });
 
   it('fills an entry or a group held as undefined, as if absent', () => {
     const { protocol, held } = withUndefinedText();

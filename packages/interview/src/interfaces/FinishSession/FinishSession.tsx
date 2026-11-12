@@ -32,6 +32,7 @@ import type { CompletedAction } from '../../contract/types';
 import { DynamicTextParts } from '../../dynamicValues/DynamicText';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import { getInterviewId } from '../../selectors/session';
 import { getStages } from '../../store/modules/protocol';
 import { useSyncFlush } from '../../store/SyncFlushContext';
@@ -116,6 +117,11 @@ type FinishState = 'idle' | 'finishing';
  * cannot be left backwards either (see `useInterviewNavigation`).
  */
 const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
+  // The stage's own words, and Network Canvas's where the stage holds none.
+  const wording = useStageWording(stage);
+  const finishLabel = wording.text('finishLabel');
+  const finishConfirmation = wording.text('finishConfirmation');
+  const finishFailed = wording.text('finishFailed');
   const interviewId = useSelector(getInterviewId);
   const { onFinish } = useContractHandlers();
   const finishConfirmationDescription = useFinishConfirmationDescription();
@@ -175,12 +181,12 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
   const reportFailure = useCallback(() => {
     setFailed(true);
     showToast({
-      description: <StageText value={stage.finishFailed} />,
+      description: <StageText value={finishFailed} />,
       variant: 'destructive',
       anchor: 'forward',
       timeout: 8000,
     });
-  }, [showToast, stage.finishFailed]);
+  }, [showToast, finishFailed]);
 
   // Finishing without asking: automatic mode, and the retry after it failed.
   const finishNow = useCallback(async () => {
@@ -202,9 +208,9 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
       outcome: 'abandoned',
     };
     const finished = await confirm({
-      title: <StageText value={stage.finishConfirmation} />,
+      title: <StageText value={finishConfirmation} />,
       description: finishConfirmationDescription,
-      confirmLabel: <StageText value={stage.finishLabel} />,
+      confirmLabel: <StageText value={finishLabel} />,
       onConfirm: async (signal: AbortSignal) => {
         // A failure closes the question and returns to the closing screen,
         // where the toast says what happened, rather than keeping the
@@ -252,7 +258,7 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
           disabled={state === 'finishing'}
           onClick={() => void finishNow()}
         >
-          <StageText value={stage.finishLabel} />
+          <StageText value={finishLabel} />
         </Button>
       </FinishSessionLayout>
     );
@@ -266,7 +272,7 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
         disabled={state === 'finishing'}
         onClick={() => void finishWithConfirmation()}
       >
-        <StageText value={stage.finishLabel} />
+        <StageText value={finishLabel} />
       </Button>
     </FinishSessionLayout>
   );

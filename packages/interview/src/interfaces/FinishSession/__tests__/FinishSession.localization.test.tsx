@@ -348,4 +348,50 @@ describe('FinishSession localized recoverable failures', () => {
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Finish' })).toBeEnabled();
   });
+
+  // The stage's own words are Network Canvas's wherever the stage holds
+  // none, in each language Network Canvas words them in.
+  describe('a stage that holds none of its own words', () => {
+    const {
+      finishLabel: _finishLabel,
+      finishConfirmation: _finishConfirmation,
+      finishFailed: _finishFailed,
+      ...unworded
+    } = finishStage;
+
+    it('shows Network Canvas’s wording in the interview’s language', async () => {
+      const user = userEvent.setup();
+      render(
+        makeView(
+          () => Promise.resolve(true),
+          () => Promise.resolve(),
+          unworded,
+        )('es'),
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Finalizar' }));
+
+      expect(
+        await screen.findByRole('dialog', {
+          name: '¿Seguro que quieres finalizar la entrevista?',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('keeps a word the stage holds in one language, and shows Network Canvas’s in the others', () => {
+      const reworded = { ...unworded, finishLabel: { es: 'Terminar ya' } };
+      const view = makeView(
+        () => Promise.resolve(true),
+        () => Promise.resolve(),
+        reworded,
+      );
+
+      const { unmount } = render(view('es'));
+      expect(screen.getByRole('button', { name: 'Terminar ya' })).toBeEnabled();
+      unmount();
+
+      render(view('en'));
+      expect(screen.getByRole('button', { name: 'Finish' })).toBeEnabled();
+    });
+  });
 });

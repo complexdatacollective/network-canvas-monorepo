@@ -16,7 +16,7 @@ import {
 } from './actionButtonVariants';
 
 const actionButtonVariants = cva({
-  base: 'group focusable relative mt-2 mr-4 flex aspect-square h-26 rounded-full',
+  base: 'group focusable relative me-4 mt-2 flex aspect-square h-26 rounded-full',
   variants: {
     disabled: {
       true: 'pointer-events-none cursor-not-allowed opacity-50',

@@ -5,6 +5,7 @@ import { useMotionValueEvent, useScroll } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import {
   type CSSProperties,
+  type FocusEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -19,7 +20,6 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useHidePageBackground } from '~/components/ui/pageBackgroundVisibility';
 import { SectionHeading } from '~/components/ui/SectionHeading';
-import { useScrollCarousel } from '~/components/ui/useScrollCarousel';
 import { cn } from '~/lib/cn';
 import { Link } from '~/lib/i18n/navigation';
 import type { Publication } from '~/lib/siteContent';
@@ -46,6 +46,27 @@ const headingId = 'recent-publications-heading';
 const wideQuery = '(min-width: 1024px)';
 // Where the reading line sits, as a fraction of the viewport height.
 const FOCAL = 0.5;
+
+// Space left above a stop too tall to centre, so its start is not flush with
+// the top of the screen.
+const TALL_STOP_GAP = 24;
+
+/**
+ * Where to scroll so a focused stop sits on the reading line. A stop taller
+ * than the screen cannot be centred without pushing its start (the card's
+ * title) above the screen, so it is brought to the top instead.
+ */
+export function readingScrollTop(
+  scrollY: number,
+  stopTop: number,
+  stopHeight: number,
+  viewportHeight: number,
+): number {
+  if (stopHeight > viewportHeight - TALL_STOP_GAP * 2) {
+    return scrollY + stopTop - TALL_STOP_GAP;
+  }
+  return scrollY + stopTop + stopHeight / 2 - viewportHeight * FOCAL;
+}
 
 type Stage = { kind: StageKind; index: number };
 type HubStyle = CSSProperties & { '--hub': string };
@@ -88,7 +109,6 @@ export function PublicationsNetwork({
   const sectionRef = useRef<HTMLElement>(null);
   const readingRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
-  useScrollCarousel(readingRef);
 
   // The page's background weave would compete with the network's colours.
   useHidePageBackground(sectionRef, isWide);
@@ -151,12 +171,29 @@ export function PublicationsNetwork({
 
   useMotionValueEvent(scrollY, 'change', updateStage);
 
+  // A keyboard visitor moving through the links brings each stop to the
+  // reading line, so the network follows them too.
+  const onStopFocus = (event: FocusEvent<HTMLAnchorElement>) => {
+    if (!isWide || !event.currentTarget.matches(':focus-visible')) return;
+    const stop = event.currentTarget.closest('[data-reading-stop]');
+    if (!stop) return;
+    const rect = stop.getBoundingClientRect();
+    window.scrollTo({
+      top: readingScrollTop(
+        window.scrollY,
+        rect.top,
+        rect.height,
+        window.innerHeight,
+      ),
+    });
+  };
+
   const activeHub = stage.kind === 'card' ? graph.hubs[stage.index] : undefined;
 
   // On wide screens the text sits in one column over a full-width network;
   // narrow screens show the text alone.
   const column =
-    'tablet-landscape:col-start-1 tablet-landscape:ml-[max(2.5rem,calc(50%-750px+2.5rem))] tablet-landscape:w-[min(34rem,44%)] tablet-landscape:px-0 relative px-6';
+    'tablet-landscape:col-start-1 tablet-landscape:ms-[max(2.5rem,calc(50%-750px+2.5rem))] tablet-landscape:w-[min(34rem,44%)] tablet-landscape:px-0 relative px-6';
 
   return (
     <section
@@ -174,7 +211,7 @@ export function PublicationsNetwork({
           <SectionHeading
             title={t('heading')}
             id={headingId}
-            className="tablet-landscape:mx-0 tablet-landscape:text-left"
+            className="tablet-landscape:mx-0 tablet-landscape:text-start"
           >
             <Paragraph margin="none">
               {t.rich('introduction', {
@@ -228,6 +265,7 @@ export function PublicationsNetwork({
                   publication={publication}
                   index={index}
                   state={state}
+                  onFocus={onStopFocus}
                   related={
                     state === 'active'
                       ? (graph.hubs[index]?.partners ?? []).flatMap(
@@ -250,6 +288,7 @@ export function PublicationsNetwork({
               authors: graph.authors.size,
             })}
             current={stage.kind === 'finale'}
+            onFocus={onStopFocus}
           />
         </div>
       </div>
@@ -261,6 +300,7 @@ function PublicationCard({
   publication,
   index,
   state,
+  onFocus,
   related,
   relatedLabel,
   onRelatedFocus,
@@ -268,6 +308,7 @@ function PublicationCard({
   publication: Publication;
   index: number;
   state: 'idle' | 'active' | 'dim';
+  onFocus: (event: FocusEvent<HTMLAnchorElement>) => void;
   // Publications sharing an author with this one, while it is being read.
   related: (Publication & { index: number })[];
   relatedLabel: string;
@@ -278,17 +319,13 @@ function PublicationCard({
   return (
     <li
       data-reading-stop
-      // On wide screens, where the network follows the reader, each card is
-      // a stop in the cards' carousel (`useScrollCarousel`), resting centred
-      // on the reading line; reaching a card from the keyboard brings it
-      // there too, so the network follows.
-      data-scroll-snap-stop
-      className="tablet-landscape:min-h-[36svh] tablet-landscape:snap-center flex flex-col justify-center py-3"
+      className="tablet-landscape:min-h-[36svh] flex flex-col justify-center py-3"
     >
       <a
         href={publication.href}
         target="_blank"
         rel="noreferrer"
+        onFocus={onFocus}
         style={hubStyle}
         className={cn(
           'focusable bg-surface/60 text-text hover:bg-surface/85 tablet-portrait:p-7 relative block w-full overflow-hidden rounded p-6 backdrop-blur-md transition-opacity duration-500',
@@ -299,7 +336,7 @@ function PublicationCard({
         <span
           aria-hidden
           className={cn(
-            'absolute inset-y-0 left-0 w-1.5 origin-top bg-(--hub) transition-transform duration-500 ease-out',
+            'absolute inset-y-0 inset-s-0 w-1.5 origin-top bg-(--hub) transition-transform duration-500 ease-out',
             state === 'active' ? 'scale-y-100' : 'scale-y-0',
           )}
         />
@@ -314,11 +351,11 @@ function PublicationCard({
           <svg
             aria-hidden
             viewBox="0 0 12 14"
-            className="mr-2.5 inline-block h-3.5 w-3 fill-(--hub) align-[-0.15em]"
+            className="me-2.5 inline-block h-3.5 w-3 fill-(--hub) align-[-0.15em]"
           >
             <PageGlyph />
           </svg>
-          <cite className="mr-3 font-semibold">{publication.source}</cite>
+          <cite className="me-3 font-semibold">{publication.source}</cite>
           <time dateTime={publication.year} className="text-text/60">
             {publication.year}
           </time>
@@ -352,18 +389,20 @@ function PublicationCard({
 function AllPublicationsLink({
   label,
   current,
+  onFocus,
 }: {
   label: string;
   current: boolean;
+  onFocus: (event: FocusEvent<HTMLAnchorElement>) => void;
 }) {
   return (
     <div
       data-reading-stop
-      data-scroll-snap-stop
-      className="tablet-landscape:min-h-[60svh] tablet-landscape:snap-center flex items-center py-3"
+      className="tablet-landscape:min-h-[60svh] flex items-center py-3"
     >
       <Link
         href="/publications"
+        onFocus={onFocus}
         className={cn(
           'focusable bg-surface/70 text-text hover:bg-surface tablet-portrait:p-10 group flex w-full items-center justify-between gap-6 rounded p-7 backdrop-blur-md transition-shadow duration-700',
           current && 'elevation-medium',

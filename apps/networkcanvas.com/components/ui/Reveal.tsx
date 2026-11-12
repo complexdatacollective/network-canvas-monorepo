@@ -1,5 +1,6 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import { motion, useScroll, useTransform } from 'motion/react';
 import {
   Children,
@@ -51,6 +52,19 @@ function getEntryOffset(direction: RevealDirection, distance: number) {
   };
 }
 
+/**
+ * Where the content starts from. A reveal from the left or the right is
+ * written for a left-to-right page, where it brings content in from the side
+ * of the page it sits on; a right-to-left language mirrors the page, so it
+ * mirrors the side too. The direction is the same on the server as in the
+ * browser, so the offset is safe in the server's markup.
+ */
+function useEntryOffset(direction: RevealDirection, distance: number) {
+  const mirrored = useDirection() === 'rtl';
+  const offset = getEntryOffset(direction, distance);
+  return mirrored && offset.x !== 0 ? { ...offset, x: -offset.x } : offset;
+}
+
 function ScrollLinkedReveal({
   children,
   className,
@@ -90,7 +104,7 @@ function ScrollLinkedReveal({
     0.78 - phaseShift,
     1 - phaseShift,
   ];
-  const entryOffset = getEntryOffset(direction, distance);
+  const entryOffset = useEntryOffset(direction, distance);
   const opacity = useTransform(scrollYProgress, phases, [0, 1, 1, 0.12]);
   const x = useTransform(scrollYProgress, phases, [
     entryOffset.x,
@@ -142,7 +156,7 @@ function InViewReveal({
   easing,
   ...props
 }: RevealContentProps) {
-  const entryOffset = getEntryOffset(direction, distance);
+  const entryOffset = useEntryOffset(direction, distance);
   const initial = {
     opacity: 0,
     ...entryOffset,

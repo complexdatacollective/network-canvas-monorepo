@@ -25,13 +25,21 @@ import { useContentFormat } from '../../../localization/useContentFormat';
 import type { CompletenessItem, CompletenessProgress } from '../completeness';
 import { messages } from '../messages';
 import type { Family } from '../model';
-import { showPiped, usePedigreePiped } from '../pedigreeWords';
+import {
+  type CompletenessWording,
+  showPiped,
+  usePedigreePiped,
+} from '../pedigreeWords';
 
-/** The stage's completeness setting: its enforcement and its wording. */
+/**
+ * The stage's completeness setting: its enforcement, and its wording as the
+ * interview shows it.
+ */
 type TrackerCompleteness = Pick<
   NonNullable<FamilyPedigreeStageDefinition['completeness']>,
-  'enforcement' | 'itemText' | 'recommendedNote'
->;
+  'enforcement'
+> &
+  CompletenessWording;
 
 type CompletenessTrackerProps = {
   progress: CompletenessProgress;
@@ -347,7 +355,7 @@ function CompletenessTracker({
                       <div className="flex flex-col items-start gap-2">
                         <button
                           type="button"
-                          className="focusable cursor-pointer text-left underline-offset-4 hover:underline"
+                          className="focusable cursor-pointer text-start underline-offset-4 hover:underline"
                           onClick={() => {
                             // The list is put away for what it leads to, the
                             // person's panel, which it would otherwise cover.

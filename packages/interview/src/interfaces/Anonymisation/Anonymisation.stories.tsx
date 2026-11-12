@@ -122,6 +122,28 @@ export const Default: Story = {
   render: (args) => <AnonymisationStoryWrapper {...args} />,
 };
 
+/**
+ * The arrow on the button that moves on points the way reading goes: to the
+ * left in a right-to-left interview.
+ */
+export const ContinueArrowInARightToLeftInterview: Story = {
+  globals: { appDirection: 'rtl' },
+  render: (args) => <AnonymisationStoryWrapper {...args} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const submit = await canvas.findByRole(
+      'button',
+      { name: 'Submit' },
+      { timeout: 10_000 },
+    );
+    await expect(getComputedStyle(submit).direction).toBe('rtl');
+    const arrow = submit.querySelector('svg');
+    if (!arrow) throw new Error('The button has no icon');
+    // Drawn pointing right, and turned round.
+    await expect(getComputedStyle(arrow).rotate).toBe('180deg');
+  },
+};
+
 export const MinimalExplanation: Story = {
   render: (args) => <AnonymisationStoryWrapper {...args} />,
   args: {

@@ -112,7 +112,7 @@ const LabelCollisionsAlert = () => {
         <span className="block">
           {intl.formatMessage(messages.description)}
         </span>
-        <ul className="list-disc space-y-2 pl-5">
+        <ul className="list-disc space-y-2 ps-5">
           {collisions.map((collision) => {
             const { duplicate } = collision;
             const language = languageName(duplicate.locale);

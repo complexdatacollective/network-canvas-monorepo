@@ -514,7 +514,10 @@ const ProjectActions = ({
           key="project-navigation"
           aria-label={intl.formatMessage(messages.navigationActions)}
         >
-          <ToolbarButton icon={<ArrowLeftToLine />} onClick={handleReturn}>
+          <ToolbarButton
+            icon={<ArrowLeftToLine className="rtl:rotate-180" />}
+            onClick={handleReturn}
+          >
             {returnLabel}
           </ToolbarButton>
         </ToolbarGroup>,

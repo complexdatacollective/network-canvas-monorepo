@@ -49,13 +49,13 @@ const LockedOptions = ({ options }: LockedOptionsProps) => {
   const localization = useSelector(getLocalization);
   return (
     <div className="bg-surface-2 text-text relative rounded p-4">
-      <Lock aria-hidden className="absolute top-4 right-4 h-4 w-4" />
+      <Lock aria-hidden className="absolute inset-e-4 top-4 h-4 w-4" />
       <table className="w-full text-sm">
-        <caption className="pr-8 pb-2 text-left text-sm">
+        <caption className="pe-8 pb-2 text-start text-sm">
           {intl.formatMessage(CAPTION)}
         </caption>
         <thead>
-          <tr className="text-left">
+          <tr className="text-start">
             <th className="pb-2 font-bold">
               {intl.formatMessage(messages.label)}
             </th>

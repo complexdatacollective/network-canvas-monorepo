@@ -2,64 +2,35 @@
 
 import { ArrowUpRight } from 'lucide-react';
 import {
-  animate,
-  type AnimationPlaybackControls,
-  inView,
   motion,
   type MotionValue,
-  useMotionValue,
-  useMotionValueEvent,
   useScroll,
+  useSpring,
   useTransform,
 } from 'motion/react';
 import { useTranslations } from 'next-intl';
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type Ref, useId, useLayoutEffect, useRef } from 'react';
 
 import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Container } from '~/components/ui/Container';
+import { heroScrollSpring } from '~/components/ui/scrollDrivenMotion';
 import { SectionHeading } from '~/components/ui/SectionHeading';
-import {
-  measureStops,
-  nearestStop,
-  useScrollCarousel,
-} from '~/components/ui/useScrollCarousel';
 import { principles } from '~/lib/content';
 
 import {
-  cardScene,
   FORM_COLORS,
-  FORM_SETTLED,
+  scenePhase,
   smoothstep,
 } from './designPrinciplesGeometry';
 import { DesignPrinciplesScene } from './DesignPrinciplesScene';
 
 // Design principles. Under a centred heading, each principle sits on a card
-// beside one scene (see DesignPrinciplesScene). The cards page like a
-// carousel, and the scene follows the card in view on its own clock rather
-// than the scroll's: the network grows in when the canvas is first seen, and
-// each card moves the scene to its form, then plays its own sequence there
-// (the interview's beats, the workflow's line). Moving back plays the way
-// back.
-
-// One form to the next, and each further form when several are crossed at
-// once (arriving mid-section), up to a cap.
-const FORM_DURATION = 1.8;
-const EXTRA_FORM_DURATION = 0.6;
-const MAX_FORM_DURATION = 3.6;
-// A card's own sequence, from its first beat to where it rests.
-const SEQUENCE_DURATION = 2.8;
-// Out of the blocks with the page, settling slowly into the new form.
-const FORM_EASE = [0.33, 1, 0.68, 1] as const;
+// beside one scene that the reader's scroll moves through: the network grows
+// in as the first card arrives, and each later card moves the scene on by one
+// form (see DesignPrinciplesScene). Each form holds while its card is read.
 
 type PrincipleCopy = {
   id: (typeof principles)[number]['id'];
@@ -99,11 +70,13 @@ function PrincipleCard({
   index,
   focus,
   motionEnabled,
+  blockRef,
 }: {
   item: PrincipleCopy;
   index: number;
   focus: MotionValue<number>;
   motionEnabled: boolean;
+  blockRef?: Ref<HTMLDivElement>;
 }) {
   // The card being read is full strength; the others' words recede. The card
   // itself stays solid, since it passes in front of the canvas.
@@ -115,13 +88,8 @@ function PrincipleCard({
   const keyColor = `var(--color-${FORM_COLORS[index + 2] ?? 'slate-blue'})`;
   return (
     <div
-      // Each card is a stop in the cards' carousel (`useScrollCarousel`).
-      // Below the wide layout the canvas is pinned over the top 44% of the
-      // screen, so a card rests just below it; on wide screens it rests
-      // centred on the reading line, 58% down (the top margin moves the snap
-      // area's centre that far).
-      data-scroll-snap-stop
-      className="tablet-landscape:min-h-[80svh] tablet-landscape:py-10 tablet-landscape:snap-center tablet-landscape:scroll-mt-[16svh] flex min-h-[56svh] snap-start scroll-mt-[44svh] flex-col justify-center py-6"
+      ref={blockRef}
+      className="tablet-landscape:min-h-[80svh] tablet-landscape:py-10 flex min-h-[56svh] flex-col justify-center py-6"
     >
       <article className="bg-surface elevation-high tablet-portrait:p-9 relative overflow-hidden rounded-[2rem] p-7 pt-9">
         <motion.div style={motionEnabled ? { opacity } : undefined}>
@@ -148,7 +116,7 @@ function PrincipleCard({
               <ArrowUpRight
                 aria-hidden
                 strokeWidth={3}
-                className="ml-1 inline-block size-[0.8em] -translate-y-[0.06em] opacity-50 group-hover/title:opacity-100"
+                className="ms-1 inline-block size-[0.8em] -translate-y-[0.06em] opacity-50 group-hover/title:opacity-100"
               />
             </a>
           </Heading>
@@ -173,58 +141,9 @@ export function DesignPrinciples() {
   const motionEnabled = useScrollMotionEnabled();
 
   const columnRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const firstCardRef = useRef<HTMLDivElement>(null);
   const blocksRef = useRef<Block[]>([]);
   const columnHeightRef = useRef(0);
-
-  // The card in view: the one whose resting place is nearest where the page
-  // is, or is being carried to, or -1 while the reader is still above the
-  // first (by half the gap to the second). Taking the carousel's destination
-  // means the scene sets off as the page does.
-  const [card, setCard] = useState(-1);
-  const destinationRef = useRef<number | null>(null);
-  const updateCard = useCallback(() => {
-    const column = columnRef.current;
-    if (!column) return;
-    const { stops } = measureStops(column);
-    const first = stops[0];
-    if (first === undefined) return;
-    const second = stops[1];
-    const lead =
-      second === undefined
-        ? window.innerHeight / 2
-        : (second.start - first.end) / 2;
-    const position = destinationRef.current ?? window.scrollY;
-    const next =
-      position < first.start - lead ? -1 : (nearestStop(stops, position) ?? -1);
-    setCard((current) => (current === next ? current : next));
-  }, []);
-  const { scrollY } = useScroll();
-  useMotionValueEvent(scrollY, 'change', updateCard);
-  const onDestination = useCallback(
-    (top: number | null) => {
-      destinationRef.current = top;
-      updateCard();
-    },
-    [updateCard],
-  );
-  useScrollCarousel(columnRef, onDestination);
-
-  // Whether the canvas has come into view, before any card is: the network
-  // grows in as it does.
-  const [seen, setSeen] = useState(false);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return undefined;
-    return inView(
-      canvas,
-      () => {
-        setSeen(true);
-        return () => setSeen(false);
-      },
-      { amount: 0.35 },
-    );
-  }, []);
 
   useLayoutEffect(() => {
     const column = columnRef.current;
@@ -236,13 +155,10 @@ export function DesignPrinciples() {
       columnHeightRef.current = column.offsetHeight;
     };
     measure();
-    const observer = new ResizeObserver(() => {
-      measure();
-      updateCard();
-    });
+    const observer = new ResizeObserver(measure);
     observer.observe(column);
     return () => observer.disconnect();
-  }, [updateCard]);
+  }, []);
 
   // Reading position through the cards, in cards: 0.5 is the middle of the
   // first, 4.5 the middle of the last.
@@ -262,58 +178,20 @@ export function DesignPrinciples() {
     );
   });
 
-  const phase = useMotionValue(0);
-  const reading = useMotionValue(0);
-  const { form, from, reading: readTo } = cardScene(card, seen);
-  useEffect(() => {
-    // Reduced motion: the scene cuts straight to the card's form, its
-    // sequence complete (the scene is given no reading position).
-    if (!motionEnabled) {
-      phase.jump(form);
-      return undefined;
-    }
-    const controls: Pick<AnimationPlaybackControls, 'stop'>[] = [];
-    const distance = Math.abs(form - phase.get());
-    const duration = Math.min(
-      MAX_FORM_DURATION,
-      FORM_DURATION + Math.max(0, distance - 1) * EXTRA_FORM_DURATION,
-    );
-    if (readTo >= reading.get()) {
-      // On: the cards before are done; this card's sequence starts at its
-      // first beat as soon as the scene has all but arrived at its form,
-      // without waiting out the end of the move.
-      reading.jump(Math.max(reading.get(), from));
-      controls.push(animate(phase, form, { duration, ease: FORM_EASE }));
-      const play = () => {
-        const left = readTo - reading.get();
-        controls.push(
-          animate(reading, readTo, {
-            duration: (SEQUENCE_DURATION * left) / (readTo - from || 1),
-            ease: 'linear',
-          }),
-        );
-      };
-      if (Math.abs(form - phase.get()) <= FORM_SETTLED) {
-        play();
-      } else {
-        const unsubscribe = phase.on('change', (value) => {
-          if (Math.abs(form - value) > FORM_SETTLED) return;
-          unsubscribe();
-          play();
-        });
-        controls.push({ stop: unsubscribe });
-      }
-    } else {
-      // Back: the sequence unwinds as the scene returns.
-      controls.push(
-        animate(phase, form, { duration, ease: FORM_EASE }),
-        animate(reading, readTo, { duration, ease: FORM_EASE }),
-      );
-    }
-    return () => {
-      for (const control of controls) control.stop();
-    };
-  }, [form, from, readTo, motionEnabled, phase, reading]);
+  // How far the first card has come up to the reading line.
+  const { scrollYProgress: entry } = useScroll({
+    target: firstCardRef,
+    offset: ['start 75%', 'start 58%'],
+  });
+  const phase = useTransform(() =>
+    scenePhase(entry.get(), focus.get(), items.length),
+  );
+  const smoothPhase = useSpring(phase, heroScrollSpring);
+  // The reading position, on the same spring: it draws the workflow's line
+  // as its card is read.
+  const smoothFocus = useSpring(focus, heroScrollSpring);
+  // Reduced motion: the scene cuts straight to the form being read.
+  const restingPhase = useTransform(phase, (p) => Math.round(p));
 
   return (
     <section aria-labelledby={headingId}>
@@ -329,14 +207,11 @@ export function DesignPrinciples() {
             what it shows. The reading column runs on below the last card,
             so the canvas stays until that card has been read. */}
         <div className="tablet-landscape:mt-4 tablet-landscape:grid tablet-landscape:grid-cols-12 tablet-landscape:gap-x-12 mt-10">
-          <div
-            ref={canvasRef}
-            className="tablet-landscape:col-span-8 tablet-landscape:col-start-1 tablet-landscape:row-start-1 tablet-landscape:mx-0 tablet-landscape:h-svh tablet-landscape:self-start tablet-landscape:z-0 tablet-landscape:items-center tablet-landscape:justify-end tablet-landscape:pr-[calc((100%-21rem)/8-2rem)] sticky top-0 z-10 -mx-6 flex h-[44svh]"
-          >
+          <div className="tablet-landscape:col-span-8 tablet-landscape:col-start-1 tablet-landscape:row-start-1 tablet-landscape:mx-0 tablet-landscape:h-svh tablet-landscape:self-start tablet-landscape:z-0 tablet-landscape:items-center tablet-landscape:justify-end tablet-landscape:pe-[calc((100%-21rem)/8-2rem)] sticky top-0 z-10 -mx-6 flex h-[44svh]">
             <DesignPrinciplesScene
-              key={motionEnabled ? 'animated' : 'resting'}
-              phase={phase}
-              reading={motionEnabled ? reading : undefined}
+              key={motionEnabled ? 'scrubbed' : 'resting'}
+              phase={motionEnabled ? smoothPhase : restingPhase}
+              reading={motionEnabled ? smoothFocus : undefined}
               animated={motionEnabled}
               className="elevation-high tablet-landscape:aspect-square tablet-landscape:h-auto tablet-landscape:max-h-[86svh] tablet-landscape:max-w-[86svh] tablet-landscape:rounded-[2.5rem] h-full w-full rounded-b-[2rem]"
             />
@@ -354,6 +229,7 @@ export function DesignPrinciples() {
                 index={index}
                 focus={focus}
                 motionEnabled={motionEnabled}
+                blockRef={index === 0 ? firstCardRef : undefined}
               />
             ))}
           </div>

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import type { MessageArguments } from '../../../localization/messageArguments.ts';
+import {
+  EVERY_VERSION,
+  type MessageArguments,
+  type RequiredPlacements,
+} from '../../../localization/messageArguments.ts';
 import { duplicateIdRefinement } from '../../../utils/validation-helpers.ts';
 import {
   TitlelessFormSchema,
@@ -13,17 +17,12 @@ import {
   PEDIGREE_COMPLETENESS_SCOPES,
   PEDIGREE_GENDER_WORDS,
 } from '../family-pedigree-values.ts';
-import { PARENTS_ITEM } from '../family-pedigree-wording.ts';
 import {
   localizedMessage,
+  type LocalizedString,
   localizedString,
   nonBlankText,
 } from '../localized-string.ts';
-import {
-  asksGenderIdentity,
-  FAMILY_PEDIGREE_SUPPLIED_TEXT,
-} from '../stage-wording/family-pedigree.ts';
-import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { categoricalOptionValueSchema } from '../variables/variable.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -111,17 +110,21 @@ export const NodeConfigurationSchema = z.strictObject({
     requireType: ['text'],
   }),
   // The question asking that name, and the hint beneath it, worded like a
-  // form field's prompt and hint. Network Canvas supplies both.
-  nameField: z.strictObject({
-    prompt: localizedString(nonBlankText(), {
-      format: 'plain',
-      lines: 'single',
-    }),
-    hint: localizedString(nonBlankText(), {
-      format: 'markdown',
-      lines: 'single',
-    }).optional(),
-  }),
+  // form field's prompt and hint. Network Canvas supplies both; a stage that
+  // omits the prompt shows Network Canvas's wording, and one that omits the
+  // hint shows none.
+  nameField: z
+    .strictObject({
+      prompt: localizedString(nonBlankText(), {
+        format: 'plain',
+        lines: 'single',
+      }).optional(),
+      hint: localizedString(nonBlankText(), {
+        format: 'markdown',
+        lines: 'single',
+      }).optional(),
+    })
+    .optional(),
   // Optional: the gender identity question and the words it decides. See
   // `GenderIdentitySchema`.
   genderIdentity: GenderIdentitySchema.optional(),
@@ -212,49 +215,52 @@ export const EdgeConfigurationSchema = z.strictObject({
 /**
  * What wording about one person may use: whether that person is the
  * participant (`isYou` is `true`), so the text can say "you", and their name
- * as the participant has it.
+ * as the participant has it, which every version about someone else must
+ * show. The tracker's texts and several of the stage's words share it.
  */
-const PERSON_ARGUMENTS = {
+export const PEDIGREE_PERSON_ARGUMENTS = {
   isYou: { kind: 'select', cases: ['true'] },
-  name: { kind: 'text' },
+  name: { kind: 'text', required: [{ isYou: 'other' }] },
 } as const satisfies MessageArguments;
 
-/**
- * What the tracker's wording about one person may use (see
- * `PERSON_ARGUMENTS`). Every tracker text names someone else in the same
- * versions, so one declaration serves them all; it requires what the first
- * of them shows, and a test holds the others to it.
- */
-export const PEDIGREE_PERSON_ARGUMENTS: MessageArguments =
-  requireSuppliedPlacements(PERSON_ARGUMENTS, PARENTS_ITEM);
-
 const personMessage = () =>
-  localizedMessage(nonBlankText(), { arguments: PEDIGREE_PERSON_ARGUMENTS });
+  localizedMessage(nonBlankText(), {
+    arguments: PEDIGREE_PERSON_ARGUMENTS,
+  }).optional();
 
 /**
  * The tracker's wording, by the kind of thing it says is missing
  * (`CompletenessItem.kind` in the interview): the entry in its list
  * (`listItem`), the button recording that a person has no siblings or
  * children (`noneButton`), and the side panel's question about them
- * (`question`). Network Canvas supplies all of it.
+ * (`question`). Network Canvas supplies all of it; the interview shows
+ * Network Canvas's wording for any of it a stage omits.
  */
 const CompletenessTextSchema = z.strictObject({
-  parents: z.strictObject({
-    listItem: personMessage(),
-  }),
-  siblings: z.strictObject({
-    listItem: personMessage(),
-    noneButton: personMessage(),
-    question: personMessage(),
-  }),
-  children: z.strictObject({
-    listItem: personMessage(),
-    noneButton: personMessage(),
-    question: personMessage(),
-  }),
-  details: z.strictObject({
-    listItem: personMessage(),
-  }),
+  parents: z
+    .strictObject({
+      listItem: personMessage(),
+    })
+    .optional(),
+  siblings: z
+    .strictObject({
+      listItem: personMessage(),
+      noneButton: personMessage(),
+      question: personMessage(),
+    })
+    .optional(),
+  children: z
+    .strictObject({
+      listItem: personMessage(),
+      noneButton: personMessage(),
+      question: personMessage(),
+    })
+    .optional(),
+  details: z
+    .strictObject({
+      listItem: personMessage(),
+    })
+    .optional(),
 });
 
 /**
@@ -278,13 +284,13 @@ export const CompletenessSchema = z.strictObject({
     },
     ownedOptions: 'pedigreeRelativesNotRecorded',
   }),
-  itemText: CompletenessTextSchema,
+  itemText: CompletenessTextSchema.optional(),
   // Shown under the tracker when the family is only recommended. Kept under
   // either enforcement, so switching between them loses no wording.
   recommendedNote: localizedString(nonBlankText(), {
     format: 'plain',
     lines: 'single',
-  }),
+  }).optional(),
 });
 
 /**
@@ -414,28 +420,42 @@ export const PEDIGREE_RELATIVE_TERMS = [
 ] as const;
 
 const SELECT_TRUE = { kind: 'select', cases: ['true'] } as const;
-const TEXT = { kind: 'text' } as const;
 const PLURAL = { kind: 'plural' } as const;
 
-/** What a message about two people may use: whether the first is the participant. */
+/** A value every version of the message must show. */
+const SHOWN = { kind: 'text', required: EVERY_VERSION } as const;
+
+/**
+ * A value the message must show in the versions named: those whose select
+ * cases include every case one of `versions` lists.
+ */
+const shownWhen = (...versions: RequiredPlacements) =>
+  ({ kind: 'text', required: versions }) as const;
+
+/**
+ * What a message about two people may use: whether the first is the
+ * participant. It names the second always, and the first unless they are the
+ * participant.
+ */
 const TWO_PEOPLE_ARGUMENTS = {
   firstIsYou: SELECT_TRUE,
-  first: TEXT,
-  second: TEXT,
+  first: shownWhen({ firstIsYou: 'other' }),
+  second: SHOWN,
 } as const satisfies MessageArguments;
 
 /** What a message about a family member and one of their twins may use:
- * whether either is the participant. */
+ * whether either is the participant. It names whoever is not. */
 const TWIN_PAIR_ARGUMENTS = {
   who: { kind: 'select', cases: ['personIsYou', 'twinIsYou'] },
-  name: TEXT,
-  twin: TEXT,
+  name: shownWhen({ who: 'twinIsYou' }, { who: 'other' }),
+  twin: shownWhen({ who: 'personIsYou' }, { who: 'other' }),
 } as const satisfies MessageArguments;
 
 /** What a message naming the answers it makes unavailable may use: the
- * answers, already joined into a list, and how many there are. */
+ * answers, already joined into a list, which it must show, and how many
+ * there are. */
 const UNAVAILABLE_ANSWERS_ARGUMENTS = {
-  answers: TEXT,
+  answers: SHOWN,
   count: PLURAL,
 } as const satisfies MessageArguments;
 
@@ -443,45 +463,50 @@ const UNAVAILABLE_ANSWERS_ARGUMENTS = {
  * What each of the Family Pedigree's wording settings with arguments may use,
  * by setting. A `select` argument lists the cases the message chooses between
  * (`other` is always allowed), a `plural` argument is a count, and a `text`
- * argument is shown as it is.
+ * argument is shown as it is. Each says which versions of the message must
+ * show it: a person is named wherever the message is not addressed to them
+ * as "you", and a value the message is about (an answer, a kinship term) is
+ * always shown. The same holds for Network Canvas's wording and for any
+ * rewording or translation of it.
  */
-const WORDING_ARGUMENTS = {
+export const PEDIGREE_WORDING_ARGUMENTS = {
   biologicalParentBoth: TWO_PEOPLE_ARGUMENTS,
   carriedSiblingsPregnancyLabel: {
     single: SELECT_TRUE,
-    count: TEXT,
-    ...PERSON_ARGUMENTS,
+    count: shownWhen({ single: 'other' }),
+    isYou: SELECT_TRUE,
+    name: shownWhen({ single: 'true', isYou: 'other' }),
   },
-  changeWouldCutOff: { count: PLURAL, names: TEXT },
+  changeWouldCutOff: { count: PLURAL, names: SHOWN },
   childKindDonor: { isYou: SELECT_TRUE },
   childKindSocial: { isYou: SELECT_TRUE },
   childKindSurrogate: { isYou: SELECT_TRUE },
   disconnectStandIn: {
     childIsYou: SELECT_TRUE,
-    child: TEXT,
-    standIn: TEXT,
+    child: shownWhen({ childIsYou: 'other' }),
+    standIn: SHOWN,
   },
   carrierReplaced: {
-    answer: TEXT,
+    answer: SHOWN,
     who: { kind: 'select', cases: ['carrierIsYou', 'childIsYou'] },
-    carrier: TEXT,
-    child: TEXT,
+    carrier: shownWhen({ who: 'childIsYou' }, { who: 'other' }),
+    child: shownWhen({ who: 'carrierIsYou' }, { who: 'other' }),
   },
   connectParent: {
     parentIsYou: SELECT_TRUE,
-    parent: TEXT,
+    parent: shownWhen({ parentIsYou: 'other' }),
     childIsYou: SELECT_TRUE,
-    child: TEXT,
+    child: shownWhen({ childIsYou: 'other' }, { parentIsYou: 'true' }),
   },
   connectPartners: { current: SELECT_TRUE, ...TWO_PEOPLE_ARGUMENTS },
   connectQuestion: TWO_PEOPLE_ARGUMENTS,
   disconnectConfirmTitle: TWO_PEOPLE_ARGUMENTS,
-  disconnectWouldCutOff: { count: PLURAL, names: TEXT },
+  disconnectWouldCutOff: { count: PLURAL, names: SHOWN },
   geneticParentReplaced: {
-    answer: TEXT,
+    answer: SHOWN,
     who: { kind: 'select', cases: ['parentIsYou', 'childIsYou'] },
-    parent: TEXT,
-    child: TEXT,
+    parent: shownWhen({ who: 'childIsYou' }, { who: 'other' }),
+    child: shownWhen({ who: 'parentIsYou' }, { who: 'other' }),
   },
   generatedLabelOf: {
     relation: {
@@ -489,30 +514,41 @@ const WORDING_ARGUMENTS = {
       cases: ['partner', 'formerPartner', 'parent', 'sibling', 'owner'],
     },
     isYou: SELECT_TRUE,
-    term: TEXT,
-    name: TEXT,
-    owner: TEXT,
+    term: SHOWN,
+    // Someone else's relative is named after them, except where the label
+    // names its owner instead.
+    name: shownWhen(
+      { relation: 'partner', isYou: 'other' },
+      { relation: 'formerPartner', isYou: 'other' },
+      { relation: 'parent', isYou: 'other' },
+      { relation: 'sibling', isYou: 'other' },
+      { relation: 'other', isYou: 'other' },
+    ),
+    owner: shownWhen({ relation: 'owner' }),
   },
-  identicalTwinSharesParents: { ...TWIN_PAIR_ARGUMENTS, answer: TEXT },
-  otherParentBiologicalLabel: { otherIsYou: SELECT_TRUE, other: TEXT },
+  identicalTwinSharesParents: { ...TWIN_PAIR_ARGUMENTS, answer: SHOWN },
+  otherParentBiologicalLabel: {
+    otherIsYou: SELECT_TRUE,
+    other: shownWhen({ otherIsYou: 'other' }),
+  },
   panelTitle: {
     relation: {
       kind: 'select',
       cases: ['edit', 'parent', 'sibling', 'partner'],
     },
-    ...PERSON_ARGUMENTS,
+    ...PEDIGREE_PERSON_ARGUMENTS,
   },
   parentCarriedLabel: {
     named: SELECT_TRUE,
     parentIsYou: SELECT_TRUE,
-    parent: TEXT,
+    parent: shownWhen({ named: 'true', parentIsYou: 'other' }),
   },
-  parentKindCarrier: { parentKind: TEXT },
+  parentKindCarrier: { parentKind: SHOWN },
   parentLinkKindLabel: {
     parentIsYou: SELECT_TRUE,
     personIsYou: SELECT_TRUE,
-    parent: TEXT,
-    child: TEXT,
+    parent: shownWhen({ parentIsYou: 'other' }),
+    child: shownWhen({ personIsYou: 'other' }, { parentIsYou: 'true' }),
   },
   placeholderParentsNote: {
     shared: { kind: 'select', cases: ['eggParent', 'spermParent'] },
@@ -524,124 +560,115 @@ const WORDING_ARGUMENTS = {
   removeConfirmDescription: {
     hasOthers: SELECT_TRUE,
     count: PLURAL,
-    names: TEXT,
+    names: shownWhen({ hasOthers: 'true' }),
   },
-  removeConfirmTitle: { name: TEXT },
+  removeConfirmTitle: { name: SHOWN },
   sexChangeClearsCoParentSex: {
     who: {
       kind: 'select',
       cases: ['personIsYou', 'childIsYou', 'coParentIsYou'],
     },
-    coParent: TEXT,
-    children: TEXT,
-    sex: TEXT,
+    coParent: shownWhen(
+      { who: 'personIsYou' },
+      { who: 'childIsYou' },
+      { who: 'other' },
+    ),
+    children: shownWhen(
+      { who: 'personIsYou' },
+      { who: 'coParentIsYou' },
+      { who: 'other' },
+    ),
+    sex: SHOWN,
   },
   sexChangeEndsCarrying: {
     who: { kind: 'select', cases: ['personIsYou', 'childIsYou'] },
-    children: TEXT,
-    sex: TEXT,
+    children: shownWhen({ who: 'personIsYou' }, { who: 'other' }),
+    sex: SHOWN,
   },
   sharedDonorsLabel: {
-    ...PERSON_ARGUMENTS,
+    ...PEDIGREE_PERSON_ARGUMENTS,
     hasSurrogate: SELECT_TRUE,
   },
-  sharedParentCountLabel: PERSON_ARGUMENTS,
+  sharedParentCountLabel: PEDIGREE_PERSON_ARGUMENTS,
   sharedParentEggOnly: {
     parent: { kind: 'select', cases: ['egg'] },
     framing: { kind: 'select', cases: ['gamete'] },
   },
-  sharedParentsNotSibling: { ...PERSON_ARGUMENTS, chosen: TEXT },
-  sharedSurrogateLabel: PERSON_ARGUMENTS,
-  siblingTwinLabel: PERSON_ARGUMENTS,
+  sharedParentsNotSibling: { ...PEDIGREE_PERSON_ARGUMENTS, chosen: SHOWN },
+  sharedSurrogateLabel: PEDIGREE_PERSON_ARGUMENTS,
+  siblingTwinLabel: PEDIGREE_PERSON_ARGUMENTS,
   standInPlaceTaken: {
     anchorIsYou: SELECT_TRUE,
-    anchor: TEXT,
+    anchor: shownWhen({ anchorIsYou: 'other' }),
     count: PLURAL,
-    names: TEXT,
+    names: SHOWN,
   },
   stillTogetherLabel: {
     named: SELECT_TRUE,
     personIsYou: SELECT_TRUE,
-    partner: TEXT,
+    partner: shownWhen(
+      { named: 'true', partnerIsYou: 'other' },
+      { named: 'true', personIsYou: 'true' },
+    ),
     partnerIsYou: SELECT_TRUE,
   },
-  twinsLabel: PERSON_ARGUMENTS,
+  twinsLabel: PEDIGREE_PERSON_ARGUMENTS,
   twinZygosityLabel: TWIN_PAIR_ARGUMENTS,
   unavailableAncestor: {
     who: { kind: 'select', cases: ['parentIsYou', 'childIsYou'] },
-    parent: TEXT,
-    child: TEXT,
+    parent: shownWhen({ who: 'childIsYou' }, { who: 'other' }),
+    child: shownWhen({ who: 'parentIsYou' }, { who: 'other' }),
   },
   unavailableBothSameSex: {
     ...UNAVAILABLE_ANSWERS_ARGUMENTS,
     ...TWO_PEOPLE_ARGUMENTS,
-    sex: TEXT,
+    sex: SHOWN,
   },
   unavailableCannotCarry: {
     ...UNAVAILABLE_ANSWERS_ARGUMENTS,
     who: { kind: 'select', cases: ['you', 'this'] },
-    name: TEXT,
-    sex: TEXT,
+    name: shownWhen({ who: 'other' }),
+    sex: SHOWN,
   },
   unavailableCarried: {
     who: { kind: 'select', cases: ['personIsYou', 'childIsYou'] },
-    children: TEXT,
-    sex: TEXT,
+    children: shownWhen({ who: 'personIsYou' }, { who: 'other' }),
+    sex: SHOWN,
   },
   unavailableCarrierRecorded: {
     ...UNAVAILABLE_ANSWERS_ARGUMENTS,
     who: { kind: 'select', cases: ['carrierIsYou', 'childIsYou'] },
-    carrier: TEXT,
-    child: TEXT,
+    carrier: shownWhen({ who: 'childIsYou' }, { who: 'other' }),
+    child: shownWhen({ who: 'carrierIsYou' }, { who: 'other' }),
   },
   unavailableGeneticParentsFull: {
     ...UNAVAILABLE_ANSWERS_ARGUMENTS,
     who: { kind: 'select', cases: ['childIsYou', 'includesYou'] },
-    child: TEXT,
-    first: TEXT,
-    second: TEXT,
+    child: shownWhen({ who: 'includesYou' }, { who: 'other' }),
+    first: shownWhen({ who: 'childIsYou' }, { who: 'other' }),
+    second: SHOWN,
   },
   unavailableSameSexGeneticParent: {
     ...UNAVAILABLE_ANSWERS_ARGUMENTS,
     who: { kind: 'select', cases: ['coParentIsYou', 'childIsYou'] },
-    coParent: TEXT,
-    child: TEXT,
-    sex: TEXT,
+    coParent: shownWhen({ who: 'childIsYou' }, { who: 'other' }),
+    child: shownWhen({ who: 'coParentIsYou' }, { who: 'other' }),
+    sex: SHOWN,
   },
 } as const satisfies Readonly<Record<string, MessageArguments>>;
 
-type WordingWithArguments = keyof typeof WORDING_ARGUMENTS;
-
-const suppliedWordingOf = (key: string) => {
-  const setting = FAMILY_PEDIGREE_SUPPLIED_TEXT.find(
-    ({ path }) => path.length === 2 && path[0] === 'wording' && path[1] === key,
-  );
-  if (setting === undefined) {
-    throw new Error(`No wording is supplied for "${key}".`);
-  }
-  return setting.message;
-};
-
-/**
- * What each of the Family Pedigree's wording settings with arguments may use
- * (see `WORDING_ARGUMENTS`), each requiring in every translation what its
- * supplied English wording shows.
- */
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- one entry per key of WORDING_ARGUMENTS, so the keys are exactly WordingWithArguments
-export const PEDIGREE_WORDING_ARGUMENTS = Object.fromEntries(
-  Object.entries(WORDING_ARGUMENTS).map(([key, declaration]) => [
-    key,
-    requireSuppliedPlacements(declaration, suppliedWordingOf(key)),
-  ]),
-) as Readonly<Record<WordingWithArguments, MessageArguments>>;
+type WordingWithArguments = keyof typeof PEDIGREE_WORDING_ARGUMENTS;
 
 const plainWording = () =>
-  localizedString(nonBlankText(), { format: 'plain', lines: 'single' });
+  localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }).optional();
 
 const argumentWording = (key: WordingWithArguments) =>
   localizedMessage(nonBlankText(), {
     arguments: PEDIGREE_WORDING_ARGUMENTS[key],
-  });
+  }).optional();
 
 /**
  * The words the interface shows a participant on this stage, which Network
@@ -649,12 +676,11 @@ const argumentWording = (key: WordingWithArguments) =>
  * the message's id in the interface's catalog, so the translations keep the
  * names their messages were written with. The tools, their hints and the
  * framing question, which every Family Pedigree shows alike, are interface
- * text (`interface-text-wording.ts`).
+ * text (`interface-text-wording.ts`). A stage that omits a key shows Network
+ * Canvas's wording for it.
  *
- * The gender identity question and the note on a question limited to one sex
- * at birth are shown only in some configurations: they are
- * optional here, and required by the stage while their configuration is on
- * (see `CONFIGURED_WORDING`).
+ * The gender identity question is shown only while the stage asks about
+ * gender identity.
  */
 export const FamilyPedigreeWordingSchema = z.strictObject({
   alsoParentOfLabel: plainWording(),
@@ -681,7 +707,7 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   disconnectConfirmTitle: argumentWording('disconnectConfirmTitle'),
   disconnectStandIn: argumentWording('disconnectStandIn'),
   disconnectWouldCutOff: argumentWording('disconnectWouldCutOff'),
-  genderIdentityLabel: plainWording().optional(),
+  genderIdentityLabel: plainWording(),
   generatedLabelOf: argumentWording('generatedLabelOf'),
   geneticParentReplaced: argumentWording('geneticParentReplaced'),
   identicalTwinSharesParents: argumentWording('identicalTwinSharesParents'),
@@ -741,24 +767,26 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
     nonBlankText(),
     { format: 'plain', lines: 'single' },
     { dynamicValues: 'stageText' },
-  ),
+  ).optional(),
 });
 
 export type FamilyPedigreeWording = z.infer<typeof FamilyPedigreeWordingSchema>;
 
 /**
- * The words that are required only while a configuration is on, with that
- * configuration. The stage refuses to hold one of them missing while the
- * configuration applies, and a researcher who switches the configuration off
- * keeps the words.
+ * The Family Pedigree's wording with a text for every key: what the
+ * interview shows, which is the stage's wording over Network Canvas's own.
  */
-const CONFIGURED_WORDING = [
-  {
-    key: 'genderIdentityLabel',
-    applies: asksGenderIdentity,
-    requiredWhen: 'the stage asks about gender identity',
-  },
-] as const;
+export type CompleteFamilyPedigreeWording = Readonly<{
+  [Key in keyof FamilyPedigreeWording]-?: LocalizedString;
+}>;
+
+/** Whether `wording` has a text for every key of the stage's wording. */
+export const isCompleteFamilyPedigreeWording = (
+  wording: Readonly<Record<string, LocalizedString>>,
+): wording is CompleteFamilyPedigreeWording =>
+  Object.keys(FamilyPedigreeWordingSchema.shape).every((key) =>
+    Object.hasOwn(wording, key),
+  );
 
 /**
  * The stage a participant draws their family on.
@@ -771,46 +799,34 @@ const CONFIGURED_WORDING = [
  * sex assigned at birth), how they are related to the person they are added
  * to, and then the researcher's `form` fields.
  */
-export const familyPedigreeStage = baseStageSchema
-  .extend({
-    type: z.literal('FamilyPedigree'),
-    subject: NodeStageSubjectSchema,
-    prompt: localizedString(
-      nonBlankText(),
-      { format: 'markdown', lines: 'single' },
-      {
-        dynamicValues: 'prompt',
-      },
-    ),
-    nodeConfiguration: NodeConfigurationSchema,
-    edgeConfiguration: EdgeConfigurationSchema,
-    // Which words describe family members, or `participantPreference` to let
-    // the participant choose. Absent: `gendered`.
-    framing: z.enum(FRAMING_SETTINGS).optional(),
-    // Absent: the participant may continue with any family they have drawn.
-    completeness: CompletenessSchema.optional(),
-    // Researcher-defined person fields, asked after the interface's own.
-    form: TitlelessFormSchema.optional(),
-    // Asked in turn once the family is drawn, each its own prompt.
-    nominationPrompts: z
-      .array(NominationPromptSchema)
-      .min(1)
-      .superRefine(duplicateIdRefinement('Nomination prompts'))
-      .optional(),
-    // The words the interface shows, which Network Canvas supplies.
-    wording: FamilyPedigreeWordingSchema,
-  })
-  .superRefine((stage, ctx) => {
-    for (const { key, applies, requiredWhen } of CONFIGURED_WORDING) {
-      if (applies(stage) && stage.wording[key] === undefined) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `The "${key}" wording is required when ${requiredWhen}.`,
-          path: ['wording', key],
-        });
-      }
-    }
-  });
+export const familyPedigreeStage = baseStageSchema.extend({
+  type: z.literal('FamilyPedigree'),
+  subject: NodeStageSubjectSchema,
+  prompt: localizedString(
+    nonBlankText(),
+    { format: 'markdown', lines: 'single' },
+    {
+      dynamicValues: 'prompt',
+    },
+  ),
+  nodeConfiguration: NodeConfigurationSchema,
+  edgeConfiguration: EdgeConfigurationSchema,
+  // Which words describe family members, or `participantPreference` to let
+  // the participant choose. Absent: `gendered`.
+  framing: z.enum(FRAMING_SETTINGS).optional(),
+  // Absent: the participant may continue with any family they have drawn.
+  completeness: CompletenessSchema.optional(),
+  // Researcher-defined person fields, asked after the interface's own.
+  form: TitlelessFormSchema.optional(),
+  // Asked in turn once the family is drawn, each its own prompt.
+  nominationPrompts: z
+    .array(NominationPromptSchema)
+    .min(1)
+    .superRefine(duplicateIdRefinement('Nomination prompts'))
+    .optional(),
+  // The words the interface shows, which Network Canvas supplies.
+  wording: FamilyPedigreeWordingSchema.optional(),
+});
 
 export type FamilyPedigreeStageDefinition = z.infer<typeof familyPedigreeStage>;
 export type FamilyPedigreeNodeConfiguration = z.infer<

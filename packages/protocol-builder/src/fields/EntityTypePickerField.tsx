@@ -469,7 +469,7 @@ function EdgeChip({
       )}
       style={chipStyle}
     >
-      <Icon name="links" className="mr-2.5 size-6" style={iconStyle} />
+      <Icon name="links" className="me-2.5 size-6" style={iconStyle} />
       {label}
     </span>
   );

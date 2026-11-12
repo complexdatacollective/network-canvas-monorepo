@@ -514,7 +514,7 @@ export default function NodeShapeMappingFields({
                     onChange={() => undefined}
                   />
                 </div>
-                <span className="ml-auto text-xs text-current/70">
+                <span className="ms-auto text-xs text-current/70">
                   {intl.formatMessage(messages.shapeUsesDefault)}
                 </span>
                 <IconButton

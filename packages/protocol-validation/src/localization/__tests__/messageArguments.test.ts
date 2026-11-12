@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  EVERY_VERSION,
   composeMessage,
   findMessageArgumentProblem,
   findMissingPlacement,
@@ -9,7 +10,6 @@ import {
   pluralCategoriesOf,
   pluralCountExamples,
   requiredArgumentsOf,
-  requirePlacements,
 } from '../messageArguments.ts';
 
 /** What the Family Pedigree tracker's parents entry may use. */
@@ -196,43 +196,56 @@ describe('variants written back as a message', () => {
   });
 });
 
-describe('what a translation must show', () => {
+describe('what a message must show', () => {
   const NOTICE: MessageArguments = { count: { kind: 'plural' } };
-  const NOTICE_EN =
-    '{count, plural, one {Add # more person} other {Add # more people}}';
-  const notice = requirePlacements(NOTICE, NOTICE_EN, 'en');
-  const parents = requirePlacements(PARENTS, PARENTS_EN, 'en');
+  const notice: MessageArguments = {
+    count: { kind: 'plural', required: EVERY_VERSION },
+  };
+  // Everyone but the participant is named, and the count never has to show.
+  const parents: MessageArguments = {
+    ...PARENTS,
+    name: { kind: 'text', required: [{ isYou: 'other' }] },
+  };
 
-  it('requires what the original shows, in the versions it shows it', () => {
-    // The English names everyone but the participant, and never the count.
-    expect(parents).toEqual({
+  // A requirement names the cases it is about and no others: a message with
+  // a second select is held to it in every case of that select.
+  it('requires a value in every version whose cases include the ones named', () => {
+    const declaration: MessageArguments = {
       isYou: { kind: 'select', cases: ['true'] },
+      current: { kind: 'select', cases: ['true'] },
       name: { kind: 'text', required: [{ isYou: 'other' }] },
-      missing: { kind: 'plural' },
-    });
-    expect(notice).toEqual({ count: { kind: 'plural', required: [{}] } });
-  });
-
-  // English says "one more person" without the number, which other
-  // languages' "one" cannot.
-  it('requires a number the original shows in any of its versions', () => {
+    };
     expect(
-      requirePlacements(
-        NOTICE,
-        '{count, plural, one {Add one more person} other {Add # more people}}',
+      findMissingPlacement(
+        '{isYou, select, true {Your partner} other {{current, select, true {{name}\u2019s partner} other {A former partner}}}}',
+        declaration,
         'en',
       ),
-    ).toEqual({ count: { kind: 'plural', required: [{}] } });
+    ).toEqual({
+      argument: 'name',
+      when: { isYou: 'other', current: 'other' },
+    });
+    expect(
+      findMissingPlacement(
+        '{isYou, select, true {Your partner} other {{current, select, true {{name}\u2019s partner} other {{name}\u2019s former partner}}}}',
+        declaration,
+        'en',
+      ),
+    ).toBeUndefined();
   });
 
-  it('requires text only where the original shows it in every version', () => {
+  it('requires a value in every version when no case is named', () => {
+    const declaration: MessageArguments = {
+      isYou: { kind: 'select', cases: ['true'] },
+      term: { kind: 'text', required: EVERY_VERSION },
+    };
     expect(
-      requirePlacements(
-        PARENTS,
-        '{missing, plural, one {Add a parent for {name}} other {Add parents}}',
+      findMissingPlacement(
+        '{isYou, select, true {Your relative} other {Their {term}}}',
+        declaration,
         'en',
-      ).name,
-    ).toEqual({ kind: 'text' });
+      ),
+    ).toEqual({ argument: 'term', when: { isYou: 'true' } });
   });
 
   it('accepts a translation showing what it must', () => {

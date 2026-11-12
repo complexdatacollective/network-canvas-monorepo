@@ -37,8 +37,11 @@ Portuguese, and Simplified and Traditional Chinese):
   as the stage's `wording`, including the name question and the checklist of
   family members still needed.
 
-A setting shown only under some configuration, such as the layout tooltips
-while automatic layout is on, is held only while that configuration is on:
+A stage may omit any of these settings. For each one it does not hold in a
+language, the interview shows Network Canvas's wording, where Network Canvas
+has wording in that language (`stageWordingShown(stage, localization)`). A
+setting shown only under some configuration, such as the layout tooltips
+while automatic layout is on, is offered only while that configuration is on:
 Architect fills it in with the starting wording when the configuration is
 switched on and removes it when it is switched off, so a protocol never asks
 for text its participants cannot see to be translated. Upgrading a protocol
@@ -46,9 +49,9 @@ from schema 8 gives each stage the wording it has always shown. Several
 settings read differently when they are about the participant and when they
 are about someone else, or show a name or a number; Architect's stage editor,
 translation table and protocol summary show each version separately, named,
-with placeholders as named pills. A translation must show each placeholder
-in the versions where Network Canvas's English shows it, so a translation
-cannot drop a person's name or a count by accident. A version for a plural
+with placeholders as named pills. Each setting says which placeholders a
+version must show, in every language, so a rewording or a translation cannot
+drop a person's name or a count by accident. A version for a plural
 form that only one number takes, such as English "one", may leave the number
 out. Architect marks the placeholders a version still needs, and names the
 missing placeholder and its version in the error.

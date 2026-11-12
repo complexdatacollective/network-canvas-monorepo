@@ -42,6 +42,10 @@ vi.mock('../../../hooks/useNodeLimits', () => ({
   default: () => ({ maxNodesReached: false, minNodesReached: true }),
 }));
 vi.mock('../../../hooks/usePortalTarget', () => ({ default: () => null }));
+// The stage's words are not what these tests are about.
+vi.mock('../../../localization/useStageWording', () => ({
+  useStageWording: () => ({ text: () => ({}), shown: () => undefined }),
+}));
 vi.mock('../../../hooks/useStageSelector', () => ({
   useStageSelector: (selector: unknown) =>
     typeof selector === 'function' ? [] : {},

@@ -23,7 +23,7 @@ import {
   PROJECT_RADIUS,
   PROMPT,
   PROMPT_BUBBLE,
-  cardScene,
+  scenePhase,
 } from '../designPrinciplesGeometry';
 import { DesignPrinciplesScene } from '../DesignPrinciplesScene';
 
@@ -65,8 +65,10 @@ describe('DesignPrinciples', () => {
     const cards = screen.getAllByRole('article');
     expect(cards).toHaveLength(titles.length);
     for (const [index, card] of cards.entries()) {
-      // The canvas at rest on this card.
-      const { from, to, mix } = formBlend(cardScene(index, true).form);
+      // The canvas at rest on this card's reading position.
+      const { from, to, mix } = formBlend(
+        scenePhase(1, index + 0.5, titles.length),
+      );
       const light = FORM_COLORS[mix === 0 ? from : to];
       const bar = card.querySelector<HTMLElement>('[aria-hidden][style]');
       expect(bar?.style.backgroundColor).toBe(`var(--color-${light})`);
@@ -211,14 +213,14 @@ describe('DesignPrinciples', () => {
         'tablet-landscape:max-w-[86svh]',
       ]),
     );
-    // At the right of its columns, its right edge two rem past the start
-    // of the reading column's: one column, less two rem, of padding.
+    // At the end of its columns, its end edge two rem past the start of the
+    // reading column's: one column, less two rem, of padding.
     const holder = canvas.parentElement!.getAttribute('class')!.split(/\s+/);
     expect(holder).toEqual(
       expect.arrayContaining([
         'tablet-landscape:col-span-8',
         'tablet-landscape:justify-end',
-        'tablet-landscape:pr-[calc((100%-21rem)/8-2rem)]',
+        'tablet-landscape:pe-[calc((100%-21rem)/8-2rem)]',
       ]),
     );
   });

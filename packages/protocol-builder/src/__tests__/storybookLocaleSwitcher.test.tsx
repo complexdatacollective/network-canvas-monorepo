@@ -98,6 +98,7 @@ describe('the Storybook language control', () => {
       'pt-BR',
       'it',
       'fr',
+      'ar',
       'en-XA',
       'ar-XB',
     ]);

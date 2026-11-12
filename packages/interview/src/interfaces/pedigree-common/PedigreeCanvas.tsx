@@ -143,6 +143,7 @@ export function PedigreeViewport({
       <motion.div
         ref={contentRef}
         data-testid="pedigree-canvas-content"
+        // oxlint-disable-next-line tailwindcss/enforce-logical -- panned and zoomed by a transform from the top left
         className="absolute top-0 left-0 w-max p-40"
         style={{
           x: panZoom.x,

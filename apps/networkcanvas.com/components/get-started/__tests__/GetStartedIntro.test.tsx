@@ -131,10 +131,16 @@ describe('GetStartedIntro', () => {
       'text-xl',
       'tablet-portrait:text-2xl',
     );
-    expect(documentationLink.querySelector('svg')?.parentElement).toHaveClass(
+    // In the end corner, pointing into it and moving further in on hover,
+    // whichever side the language ends on.
+    const arrow = documentationLink.querySelector('svg');
+    expect(arrow).toHaveClass('rtl:-scale-x-100');
+    expect(arrow?.parentElement).toHaveClass(
       'absolute',
-      'right-8',
+      'inset-e-8',
       'bottom-8',
+      'group-hover:translate-x-1',
+      'rtl:group-hover:-translate-x-1',
     );
 
     expect(
@@ -213,12 +219,12 @@ describe('GetStartedIntro', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Elija por dónde empezar',
+        name: 'Elige por dónde empezar',
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Para empezar, haga clic en la tarjeta que mejor describa en qué etapa se encuentra su investigación y su familiaridad con Network Canvas.',
+        'Para empezar, haz clic en la tarjeta que mejor describa en qué etapa se encuentra tu investigación y tu familiaridad con Network Canvas.',
       ),
     ).toBeInTheDocument();
     expect(

@@ -597,7 +597,13 @@ export function ProtocolDeck({
           <IconButton
             size="xl"
             variant="glass"
-            icon={<ChevronLeft strokeWidth={2.8} aria-hidden />}
+            icon={
+              <ChevronLeft
+                strokeWidth={2.8}
+                aria-hidden
+                className="rtl:rotate-180"
+              />
+            }
             aria-label={intl.formatMessage(messages.previousProtocol)}
             onClick={() => setActiveIndex(Math.max(0, activeIndex - 1))}
             disabled={atStart}
@@ -622,7 +628,13 @@ export function ProtocolDeck({
           <IconButton
             size="xl"
             variant="glass"
-            icon={<ChevronRight strokeWidth={2.8} aria-hidden />}
+            icon={
+              <ChevronRight
+                strokeWidth={2.8}
+                aria-hidden
+                className="rtl:rotate-180"
+              />
+            }
             aria-label={intl.formatMessage(messages.nextProtocol)}
             onClick={() =>
               setActiveIndex(Math.min(slides.length - 1, activeIndex + 1))

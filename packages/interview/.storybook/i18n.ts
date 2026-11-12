@@ -13,10 +13,10 @@ import { storybookI18n } from '@codaco/storybook-config/i18n';
  * nothing else in it.
  *
  * Direction is the control this Storybook is given them for. It mirrors every
- * story that renders a component by itself. A story that mounts `Shell` is the
- * exception, as it is in a host: `Shell` takes its direction from the
- * interview's language, so it is read right to left by giving its protocol a
- * right-to-left language.
+ * story that renders a component by itself. `Shell` takes its direction from
+ * the interview's language and from nothing else, as it does in a host, so
+ * the story shell (`StoryInterviewShell`) passes the control on by describing
+ * the story's languages as written right to left.
  */
 export const { globalTypes, initialGlobals, withAppI18n } = storybookI18n({
   locales: defineAppLocales([

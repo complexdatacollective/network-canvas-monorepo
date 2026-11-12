@@ -1,6 +1,12 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import type { Decorator, Preview } from '@storybook/react-vite';
-import { type ReactNode, useEffect, useLayoutEffect } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+} from 'react';
 
 import {
   type AppLocale,
@@ -46,6 +52,20 @@ const directionModes = {
 } as const;
 
 export type DirectionMode = keyof typeof directionModes;
+
+const DirectionModeContext = createContext<DirectionMode>('auto');
+
+/**
+ * What the Direction control is set to, for a story that takes its direction
+ * from something of its own and has to tell "Automatic" from a choice. An
+ * interview is one: it reads from its protocol's language whatever surrounds
+ * it, so its stories pass an explicit LTR or RTL on and leave Automatic to
+ * the language. The direction a story is drawn in, whichever way it was
+ * arrived at, is `useAppDirection()`.
+ */
+export function useStorybookDirectionMode(): DirectionMode {
+  return useContext(DirectionModeContext);
+}
 
 export type StorybookI18nOptions = Readonly<{
   /**
@@ -221,34 +241,36 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
       // language's own direction to the document and hand it to Base UI: the
       // CSS and the controls would disagree. On Automatic there is nothing to
       // override, and each language keeps its own direction.
-      <AppDirectionOverride direction={mode === 'auto' ? null : mode}>
-        <AppI18nProvider
-          locale={locale}
-          locales={offered}
-          messages={catalogs[locale]}
-          // The effect above owns `<html lang>`/`<html dir>`: it is what the
-          // comment there explains, and two writers would be one too many.
-          manageDocument={false}
-        >
-          {/*
-          Base UI reads direction from context, not from the DOM, and uses it
-          for popover placement and for which arrow key moves where. Without
-          this provider a story's CSS mirrors while its dropdowns, tabs and
-          menus keep behaving as LTR — so the switcher would show a layout
-          that looks right and hide the interaction bugs it exists to find.
-        */}
-          <DirectionProvider direction={direction}>
+      <DirectionModeContext.Provider value={mode}>
+        <AppDirectionOverride direction={mode === 'auto' ? null : mode}>
+          <AppI18nProvider
+            locale={locale}
+            locales={offered}
+            messages={catalogs[locale]}
+            // The effect above owns `<html lang>`/`<html dir>`: it is what the
+            // comment there explains, and two writers would be one too many.
+            manageDocument={false}
+          >
             {/*
-            `contents` so the wrapper contributes no box of its own: a story
-            laid out by its parent (a grid cell, a flex child) must not gain
-            an anonymous block between it and that parent.
+            Base UI reads direction from context, not from the DOM, and uses it
+            for popover placement and for which arrow key moves where. Without
+            this provider a story's CSS mirrors while its dropdowns, tabs and
+            menus keep behaving as LTR — so the switcher would show a layout
+            that looks right and hide the interaction bugs it exists to find.
           */}
-            <div dir={direction} className="contents">
-              {children}
-            </div>
-          </DirectionProvider>
-        </AppI18nProvider>
-      </AppDirectionOverride>
+            <DirectionProvider direction={direction}>
+              {/*
+              `contents` so the wrapper contributes no box of its own: a story
+              laid out by its parent (a grid cell, a flex child) must not gain
+              an anonymous block between it and that parent.
+            */}
+              <div dir={direction} className="contents">
+                {children}
+              </div>
+            </DirectionProvider>
+          </AppI18nProvider>
+        </AppDirectionOverride>
+      </DirectionModeContext.Provider>
     );
   }
 

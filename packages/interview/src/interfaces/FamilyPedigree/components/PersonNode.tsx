@@ -136,6 +136,7 @@ export default function PersonNode({
             aria-hidden
             className={cx(
               'border-text pointer-events-none absolute -inset-y-2 w-3 border-solid',
+              // oxlint-disable-next-line tailwindcss/enforce-logical -- a pair of brackets, one on each side of the symbol
               side === 'left' ? '-left-4' : '-right-4',
             )}
             style={{
@@ -195,6 +196,7 @@ export default function PersonNode({
         <span
           aria-hidden
           data-missing-details-badge
+          // oxlint-disable-next-line tailwindcss/enforce-logical -- a family tree is drawn the same way in every language, and so is what marks its symbols
           className="bg-warning text-warning-contrast elevation-low absolute top-0 right-0 flex size-8 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
         >
           <TriangleAlert className="size-5" aria-hidden />

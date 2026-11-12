@@ -226,7 +226,7 @@ export const StageEditorToolbar = ({
           className="gap-[0.16em]"
         >
           <ToolbarButton
-            className={`${previewButtonClassName} relative rounded-r-none! focus-visible:z-10`}
+            className={`${previewButtonClassName} relative rounded-e-none! focus-visible:z-10`}
             disabled={isOpeningPreview || isStageInvalid}
             icon={
               isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />
@@ -244,7 +244,7 @@ export const StageEditorToolbar = ({
             trigger={
               <ToolbarIconButton
                 aria-label={intl.formatMessage(messages.previewSettings)}
-                className={`${previewButtonClassName} relative rounded-l-none! focus-visible:z-10 [&>.lucide]:-translate-x-0.5`}
+                className={`${previewButtonClassName} relative rounded-s-none! focus-visible:z-10 [&>.lucide]:-translate-x-0.5 rtl:[&>.lucide]:translate-x-0.5`}
                 disabled={!previewOptionsContent}
                 icon={<Settings />}
               />

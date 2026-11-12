@@ -135,7 +135,7 @@ const SAVE_SNAPSHOT = {
 } as const satisfies SuppliedWording;
 
 /** The snapshot's heading for a condition: the stage's title, then the condition. */
-export const SNAPSHOT_CONDITION = {
+const SNAPSHOT_CONDITION = {
   'en': '{title}: {condition}',
   'de': '{title}: {condition}',
   'es': '{title}: {condition}',
@@ -148,7 +148,7 @@ export const SNAPSHOT_CONDITION = {
 } as const satisfies SuppliedWording;
 
 /** The snapshot's heading for a condition focused on a person. */
-export const SNAPSHOT_INHERITANCE = {
+const SNAPSHOT_INHERITANCE = {
   'en': '{title}: {condition} — inheritance for {name}',
   'de': '{title}: {condition} – Vererbung für {name}',
   'es': '{title}: {condition} — herencia de {name}',

@@ -323,6 +323,21 @@ React dependency. Hosts choosing localized presentation install the peer and
 add the package's catalog loaders (listed under
 [Loading catalogs](#loading-catalogs)) to their catalog source.
 
+## Terminology glossaries
+
+`glossary/<tag>.md` records, for each language, how Network Canvas concepts
+(protocol, stage, node, edge, codebook, …) and interface names are translated.
+Every surface that carries translated text uses it: these catalogs, the apps'
+and packages' catalogs, networkcanvas.com, the documentation and protocol
+text. A translator works from it, and a reviewer checks translations against
+it, so that a concept has one name wherever a reader meets it.
+
+A glossary entry is translation work like any other: a new or changed entry
+goes through the reverse-translation check in the `verifying-translations`
+skill, with the reviewer shown every existing use of the term in the catalogs.
+When an entry changes, the catalog strings that use the old term change with
+it.
+
 ## Translation provenance
 
 Changing an English sentence invalidates its translations. Each locale catalog

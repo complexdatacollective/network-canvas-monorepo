@@ -155,7 +155,7 @@ const SEED_SCREEN = { w: 236, h: 236, r: 118 };
 
 const NODE_COUNT = 9;
 
-// The forms, in phase order (see cardScene): 0 the seed, 1 the plain
+// The forms, in phase order (see scenePhase): 0 the seed, 1 the plain
 // network, and from 2 one per principle, so card i shows form i + 2.
 const DEVICE_CONFIG = 3;
 export const INTERVIEWER_CONFIG = 3;
@@ -875,38 +875,27 @@ const LAST_PHASE = CONFIG_COUNT - 1;
 export const formAt = (phase: number) =>
   Math.min(LAST_PHASE, Math.max(0, Math.round(phase)));
 
-/**
- * Where a card's own sequence starts, and where the reading position rests
- * once it has played: the interview's first beat starts 0.13 of the way in
- * (the workflow's line just after), its last ends 0.56 of the way in, and the
- * workflow's export is done by the middle. Short of the next card's.
- */
-const SEQUENCE_FROM = 0.13;
-const READ_REST = 0.6;
+// Map continuous reading position onto a staircase: each principle holds its
+// form for most of its card and the scene moves only around the boundaries.
+function stair(q: number) {
+  const whole = Math.floor(q);
+  return whole + smoothstep((q - whole - 0.28) / 0.44);
+}
 
 /**
- * How near its form the scene must be for the form's sequence to play:
- * the interview's beats and the workflow's line start once the move into
- * their form is this close to done. The move eases out, so by here the
- * frames have all but landed and only the last, slow stretch is left; the
- * sequence plays over it rather than waiting it out.
+ * The scene's phase from the reader's position. `entry` (0 to 1) is how far
+ * the first card has come up to the reading line; `focus` is the reading
+ * position through the cards, in cards (0.5 is the middle of the first). The
+ * network grows in (form 0 to 1) with `entry` and takes on its types (form 2)
+ * as the first card is read; each later card moves the scene on by one form,
+ * so card `i` shows form `i + 2`.
  */
-export const FORM_SETTLED = 0.15;
-
-/**
- * The scene a card shows: its form, and the stretch of reading position its
- * own sequence plays through once the scene has moved there (`from` to
- * `reading`). `card` is the card in view, or -1 before the first: there the
- * seed shows until the canvas has been seen (`seen`), then the plain network.
- * Card `i` shows form `i + 2`.
- */
-export function cardScene(card: number, seen: boolean) {
-  if (card < 0) return { form: seen ? 1 : 0, from: 0, reading: 0 };
-  return {
-    form: Math.min(LAST_PHASE, card + 2),
-    from: card + SEQUENCE_FROM,
-    reading: card + READ_REST,
-  };
+export function scenePhase(entry: number, focus: number, cardCount: number) {
+  const reading =
+    focus < 0.5
+      ? smoothstep((focus - 0.08) / 0.37)
+      : 1 + stair(Math.min(cardCount - 1, focus - 0.5));
+  return entry + reading;
 }
 
 /**
@@ -1174,13 +1163,13 @@ const LINE_SHARE = 0.78;
  * How far the reader has taken the workflow (0–1): nothing until the form
  * has settled, then it follows the reading of the card, so the line draws
  * as the words are read. `focus` is the reading position in cards (see
- * cardScene); a reader who has read every card has taken it all the way.
+ * scenePhase); a reader who has read every card has taken it all the way.
  */
 function workflowProgress(phase: number, focus: number) {
   const settled =
     phase >= WORKFLOW_CONFIG
       ? 1
-      : smoothstep((phase - (WORKFLOW_CONFIG - FORM_SETTLED - 0.1)) / 0.1);
+      : smoothstep((phase - (WORKFLOW_CONFIG - 0.12)) / 0.1);
   return settled * clamp01((focus - (WORKFLOW_CARD + READ_FROM)) / READ_SPAN);
 }
 
@@ -1471,7 +1460,7 @@ export function interviewBeats(phase: number, focus: number): InterviewBeats {
   const settled =
     phase >= INTERVIEWER_CONFIG
       ? 1
-      : smoothstep((phase - (INTERVIEWER_CONFIG - FORM_SETTLED - 0.1)) / 0.1);
+      : smoothstep((phase - (INTERVIEWER_CONFIG - 0.12)) / 0.1);
   const read = ({ from, span }: { from: number; span: number }) =>
     settled * clamp01((focus - (INTERVIEW_CARD + from)) / span);
   return {

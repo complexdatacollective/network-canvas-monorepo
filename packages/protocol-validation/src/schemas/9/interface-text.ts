@@ -25,6 +25,7 @@ import {
   VALIDATION_INTERFACE_TEXT,
 } from './interface-text-wording.ts';
 import {
+  heldTranslations,
   type LocalizedString,
   localizedMessage,
   localizedString,
@@ -44,7 +45,6 @@ import {
   hasInspectorForm,
   leavesEdgeTypesUndrawn,
 } from './stage-wording/network-composer.ts';
-import { requireSuppliedPlacements } from './supplied-stage-setting.ts';
 import {
   type LanguageChange,
   suppliedTextAfterLanguageChange,
@@ -53,13 +53,15 @@ import {
 
 /**
  * The interface text a protocol holds: the words the interview shows that
- * are not one stage's own, in the protocol's own languages. Every word a
- * participant reads comes from the protocol, in the one language the
- * interview negotiates from the protocol's languages: the interview's
- * built-in text is English only, and what the protocol holds here stands in
- * for it. Text only screen readers read is not interface text: the
- * interview words it in English whatever the protocol's languages, so no
- * group holds a message the interview gives only to screen readers.
+ * are not one stage's own, in the protocol's own languages. A protocol may
+ * hold any of it, or none: for each text it does not hold in a language, the
+ * interview shows Network Canvas's own wording where Network Canvas has it in
+ * that language (`interfaceTextShown`). Every text the protocol shows must
+ * have text in the protocol's default language, counting Network Canvas's
+ * wording for that language (`findBuiltInWordingProblems`). Text only screen
+ * readers read is not interface text: the interview words it in English
+ * whatever the protocol's languages, so no group holds a message the
+ * interview gives only to screen readers.
  *
  * Text several kinds of stage show alike, such as Save, a search box and the
  * automatic layout toggle, is interface text; so are the controls only an
@@ -70,7 +72,7 @@ import {
  * which its stage editor's Wording section shows as shared by every such
  * stage. Text one stage words for itself is that stage's setting instead.
  *
- * A protocol holds only the text it can show: the `navigation`,
+ * A protocol shows only the text it can show: the `navigation`,
  * `interviewer` and `search` groups always, the `buttons` and `messages`
  * groups always but for the entries only some stages show (Yes and No where
  * a question is answered with them, Don't know on a Family Pedigree), each
@@ -574,20 +576,14 @@ const entrySchema = (entry: InterfaceTextEntry) =>
         entry.shape ?? { format: 'plain', lines: 'single' },
       )
     : localizedMessage(nonBlankText(), {
-        arguments: requireSuppliedPlacements(entry.arguments, entry.message),
+        arguments: entry.arguments,
       });
 
+/**
+ * A group whose entries are each optional: the interview shows Network
+ * Canvas's wording for an entry the protocol does not hold.
+ */
 const groupSchema = (entries: Readonly<Record<string, InterfaceTextEntry>>) =>
-  z.strictObject(
-    Object.fromEntries(
-      Object.entries(entries).map(([key, entry]) => [key, entrySchema(entry)]),
-    ),
-  );
-
-/** A group whose entries are each held only while the protocol shows it. */
-const partialGroupSchema = (
-  entries: Readonly<Record<string, InterfaceTextEntry>>,
-) =>
   z.strictObject(
     Object.fromEntries(
       Object.entries(entries).map(([key, entry]) => [
@@ -600,24 +596,20 @@ const partialGroupSchema = (
 export const InterfaceTextSchema = z.strictObject({
   navigation: groupSchema(NAVIGATION_INTERFACE_TEXT).optional(),
   interviewer: groupSchema(INTERVIEWER_INTERFACE_TEXT).optional(),
-  buttons: partialGroupSchema(BUTTONS_INTERFACE_TEXT).optional(),
-  messages: partialGroupSchema(MESSAGES_INTERFACE_TEXT).optional(),
+  buttons: groupSchema(BUTTONS_INTERFACE_TEXT).optional(),
+  messages: groupSchema(MESSAGES_INTERFACE_TEXT).optional(),
   search: groupSchema(SEARCH_INTERFACE_TEXT).optional(),
-  passphrase: partialGroupSchema(PASSPHRASE_INTERFACE_TEXT).optional(),
+  passphrase: groupSchema(PASSPHRASE_INTERFACE_TEXT).optional(),
   forms: groupSchema(FORMS_INTERFACE_TEXT).optional(),
-  validation: partialGroupSchema(VALIDATION_INTERFACE_TEXT).optional(),
+  validation: groupSchema(VALIDATION_INTERFACE_TEXT).optional(),
   familyTreeView: groupSchema(FAMILY_TREE_VIEW_INTERFACE_TEXT).optional(),
-  familyPedigree: partialGroupSchema(FAMILY_PEDIGREE_INTERFACE_TEXT).optional(),
-  narrativePedigree: partialGroupSchema(
-    NARRATIVE_PEDIGREE_INTERFACE_TEXT,
-  ).optional(),
+  familyPedigree: groupSchema(FAMILY_PEDIGREE_INTERFACE_TEXT).optional(),
+  narrativePedigree: groupSchema(NARRATIVE_PEDIGREE_INTERFACE_TEXT).optional(),
   categoricalBin: groupSchema(CATEGORICAL_BIN_INTERFACE_TEXT).optional(),
   quickAdd: groupSchema(QUICK_ADD_INTERFACE_TEXT).optional(),
-  networkComposer: partialGroupSchema(
-    NETWORK_COMPOSER_INTERFACE_TEXT,
-  ).optional(),
+  networkComposer: groupSchema(NETWORK_COMPOSER_INTERFACE_TEXT).optional(),
   narrative: groupSchema(NARRATIVE_INTERFACE_TEXT).optional(),
-  geospatial: partialGroupSchema(GEOSPATIAL_INTERFACE_TEXT).optional(),
+  geospatial: groupSchema(GEOSPATIAL_INTERFACE_TEXT).optional(),
 });
 
 /**
@@ -702,6 +694,51 @@ export const suppliedInterfaceText = (
   return entry === undefined ? undefined : suppliedValue(entry, localization);
 };
 
+/**
+ * The text the interview shows for one interface text: Network Canvas's
+ * wording in every protocol language it writes one in
+ * (`suppliedInterfaceText`), with the protocol's own translations of the
+ * entry laid over it per language. `interfaceText` is whatever the protocol
+ * holds under `interfaceText`, so anything that is not a record of groups
+ * reads as holding nothing. Undefined for an entry that does not exist.
+ */
+export const interfaceTextShown = (
+  interfaceText: unknown,
+  group: string,
+  key: string,
+  localization: LocalizationDeclaration,
+): LocalizedString | undefined => {
+  const supplied = suppliedInterfaceText(group, key, localization);
+  if (supplied === undefined) return undefined;
+  const entries = isRecord(interfaceText) ? interfaceText[group] : undefined;
+  const held = isRecord(entries) ? entries[key] : undefined;
+  return { ...supplied, ...heldTranslations(held) };
+};
+
+/**
+ * Every interface text `protocol` shows, as the interview shows it
+ * (`interfaceTextShown`): the entries of the groups the protocol uses, in the
+ * order of `INTERFACE_TEXT_GROUPS`.
+ */
+export const interfaceTextShownBy = (
+  protocol: ProtocolDocument,
+): readonly Readonly<{
+  group: string;
+  key: string;
+  value: LocalizedString;
+}>[] =>
+  usedInterfaceText(protocol).flatMap(({ group, keys }) =>
+    keys.flatMap((key) => {
+      const value = interfaceTextShown(
+        protocol.interfaceText,
+        group,
+        key,
+        protocol.localization,
+      );
+      return value === undefined ? [] : [{ group, key, value }];
+    }),
+  );
+
 const heldText = (protocol: ProtocolDocument): InterfaceText =>
   isRecord(protocol.interfaceText)
     ? (protocol.interfaceText as InterfaceText)
@@ -709,8 +746,7 @@ const heldText = (protocol: ProtocolDocument): InterfaceText =>
 
 /**
  * The groups `protocol` uses, each with the entries of it the protocol shows:
- * the interface text it must hold (`findMissingInterfaceText`), and so what
- * `interfaceTextFor` writes.
+ * the interface text it shows, and so what `interfaceTextFor` writes.
  */
 const usedInterfaceText = (
   protocol: ProtocolDocument,
@@ -805,45 +841,6 @@ export const withInterfaceText = <Protocol extends ProtocolDocument>(
     protocol.interfaceText !== undefined
     ? protocol
     : { ...protocol, interfaceText: next };
-};
-
-/**
- * Interface text a protocol shows but does not hold: a whole group, with the
- * entries of it the protocol shows, or one entry of a group it holds.
- */
-type MissingInterfaceText = Readonly<{
-  group: string;
-  /** The entry missing, or undefined when the whole group is. */
-  key?: string;
-  /** The entries of the group the protocol shows, each of which it must hold. */
-  entries: readonly string[];
-}>;
-
-/**
- * The interface text `protocol` shows but does not hold: each group it uses
- * that it lacks, and each entry it shows of a group it holds that the group
- * lacks — what `interfaceTextFor` would add (`usedInterfaceText`). A protocol
- * must hold all of it, as the interview shows these words in the protocol's
- * language from what it holds. An entry may hold no text yet where the rules
- * for supplied wording allow (see `findEmptyTextPaths`), but it must be there.
- * A group or entry held as undefined is missing, as `interfaceTextFor` fills
- * it and a saved file drops it.
- */
-export const findMissingInterfaceText = (
-  protocol: ProtocolDocument,
-): readonly MissingInterfaceText[] => {
-  const held = isRecord(protocol.interfaceText) ? protocol.interfaceText : {};
-  return usedInterfaceText(protocol).flatMap(
-    ({ group, keys }): MissingInterfaceText[] => {
-      const current = Object.hasOwn(held, group) ? held[group] : undefined;
-      if (!isRecord(current)) return [{ group, entries: keys }];
-      return keys
-        .filter(
-          (key) => !Object.hasOwn(current, key) || current[key] === undefined,
-        )
-        .map((key) => ({ group, key, entries: keys }));
-    },
-  );
 };
 
 /** One interface text, by group and name, as it reads after a change. */

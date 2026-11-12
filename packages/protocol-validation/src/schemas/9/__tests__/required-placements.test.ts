@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   findMessageArgumentProblem,
   findMissingPlacement,
-  requirePlacements,
 } from '../../../localization/messageArguments.ts';
 import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
 import {
@@ -100,7 +99,9 @@ const messageSites = collectLocalizedStrings(suppliedProtocol()).flatMap(
       : [{ ...hit, declaration: hit.arguments, site: hit.path.join('.') }],
 );
 
-describe('the placements supplied wording requires', () => {
+// What a text must show is its setting's to declare. Network Canvas's own
+// wording is held to the declaration like anyone's: nothing is read from it.
+describe('the placeholders supplied wording must show', () => {
   it('covers the supplied text with placeholders', () => {
     const sites = messageSites.map(({ site }) => site);
     expect(sites).toContain('interfaceText.validation.minLength');
@@ -110,18 +111,8 @@ describe('the placements supplied wording requires', () => {
     expect(sites).toContain('stages.7.conditionText.snapshotInheritance');
   });
 
-  // A declaration shared by several settings must suit each of them.
   it.each(messageSites.map((site) => [site.site, site]))(
-    'are exactly what the English shows at %s',
-    (_site, { declaration, value }) => {
-      expect(requirePlacements(declaration, value.en ?? '', 'en')).toEqual(
-        declaration,
-      );
-    },
-  );
-
-  it.each(messageSites.map((site) => [site.site, site]))(
-    'are met by every supplied translation at %s',
+    'are shown by the supplied wording in every language at %s',
     (_site, { declaration, value }) => {
       for (const locale of SUPPLIED_LOCALES) {
         const message = value[locale];

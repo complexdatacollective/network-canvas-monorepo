@@ -5,7 +5,10 @@ import {
   findDuplicateLocalizedLabels,
 } from '../../../localization/duplicateLabels.ts';
 import type { LocalizationDeclaration } from '../../../localization/localeTag.ts';
-import type { MessageArguments } from '../../../localization/messageArguments.ts';
+import {
+  EVERY_VERSION,
+  type MessageArguments,
+} from '../../../localization/messageArguments.ts';
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { NodeColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
@@ -18,11 +21,6 @@ import {
 import { INHERITANCE_PATTERNS } from '../narrative-pedigree-values.ts';
 import { stageReference } from '../stage-reference.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
-import {
-  SNAPSHOT_CONDITION,
-  SNAPSHOT_INHERITANCE,
-} from '../stage-wording/narrative-pedigree.ts';
-import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { baseStageSchema } from './base.ts';
 
 /**
@@ -42,22 +40,16 @@ export const findDuplicateDiseaseLabels = (
 
 // The snapshot's heading is built from the stage's title and the condition's
 // name, and from the focused person's name too for the inheritance heading.
-// Every translation must show them where the supplied wording does.
-export const SNAPSHOT_CONDITION_ARGUMENTS: MessageArguments =
-  requireSuppliedPlacements(
-    { title: { kind: 'text' }, condition: { kind: 'text' } },
-    SNAPSHOT_CONDITION,
-  );
+// A heading must show each of them.
+export const SNAPSHOT_CONDITION_ARGUMENTS: MessageArguments = {
+  title: { kind: 'text', required: EVERY_VERSION },
+  condition: { kind: 'text', required: EVERY_VERSION },
+};
 
-export const SNAPSHOT_INHERITANCE_ARGUMENTS: MessageArguments =
-  requireSuppliedPlacements(
-    {
-      title: { kind: 'text' },
-      condition: { kind: 'text' },
-      name: { kind: 'text' },
-    },
-    SNAPSHOT_INHERITANCE,
-  );
+export const SNAPSHOT_INHERITANCE_ARGUMENTS: MessageArguments = {
+  ...SNAPSHOT_CONDITION_ARGUMENTS,
+  name: { kind: 'text', required: EVERY_VERSION },
+};
 
 // A narrative pedigree describes the people of the FamilyPedigree it points
 // at, so its subject is that stage's alter node type. `sourceStageId` is
@@ -132,25 +124,28 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
       });
     }),
   // The interview's own words on this stage, which Network Canvas supplies
-  // (`stage-wording/narrative-pedigree.ts`). The key's heading and rows and
-  // the clear focus tooltip, which every Narrative Pedigree shows alike, are
-  // interface text (`interface-text-wording.ts`).
+  // (`stage-wording/narrative-pedigree.ts`); a stage that omits one shows
+  // Network Canvas's wording. The key's heading and rows and the clear focus
+  // tooltip, which every Narrative Pedigree shows alike, are interface text
+  // (`interface-text-wording.ts`).
   saveSnapshot: localizedString(nonBlankText(), {
     format: 'plain',
     lines: 'single',
-  }),
-  conditionText: z.strictObject({
-    selectCondition: localizedString(nonBlankText(), {
-      format: 'plain',
-      lines: 'single',
-    }),
-    snapshotCondition: localizedMessage(nonBlankText(), {
-      arguments: SNAPSHOT_CONDITION_ARGUMENTS,
-    }),
-    snapshotInheritance: localizedMessage(nonBlankText(), {
-      arguments: SNAPSHOT_INHERITANCE_ARGUMENTS,
-    }),
-  }),
+  }).optional(),
+  conditionText: z
+    .strictObject({
+      selectCondition: localizedString(nonBlankText(), {
+        format: 'plain',
+        lines: 'single',
+      }).optional(),
+      snapshotCondition: localizedMessage(nonBlankText(), {
+        arguments: SNAPSHOT_CONDITION_ARGUMENTS,
+      }).optional(),
+      snapshotInheritance: localizedMessage(nonBlankText(), {
+        arguments: SNAPSHOT_INHERITANCE_ARGUMENTS,
+      }).optional(),
+    })
+    .optional(),
 });
 
 export const narrativePedigreeStage = withStageSubjectResolution(
