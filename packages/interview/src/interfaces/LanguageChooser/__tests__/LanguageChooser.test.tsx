@@ -287,9 +287,10 @@ describe('LanguageChooser', () => {
     const shell = screen.getByRole('main');
     await waitFor(() => expect(shell).toHaveAttribute('dir', 'rtl'));
     expect(shell).toHaveAttribute('lang', 'ar');
-    // The heading has no Arabic, so it falls back to the default language.
+    // The protocol holds no Arabic heading, so Network Canvas's own Arabic
+    // wording shows.
     expect(
-      screen.getByRole('listbox', { name: 'Choose a language' }),
+      await screen.findByRole('listbox', { name: 'اختيار لغة' }),
     ).toBeVisible();
     expect(
       within(group).getByRole('option', { name: label('ar') }),
