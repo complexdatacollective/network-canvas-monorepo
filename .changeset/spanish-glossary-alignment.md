@@ -2,7 +2,6 @@
 '@codaco/architect': patch
 'fresco': patch
 '@codaco/interviewer': patch
-'@codaco/protocol-builder': patch
 '@codaco/protocol-validation': patch
 '@codaco/protocol-utilities': patch
 ---
