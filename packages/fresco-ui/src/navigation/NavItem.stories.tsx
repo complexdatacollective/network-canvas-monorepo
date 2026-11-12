@@ -174,11 +174,6 @@ export const WithoutIcon: Story = {
 };
 
 /**
- * A translated label runs about a third longer than its English source, and
- * some languages compound rather than break. The label wraps and the row grows
- * — it is never truncated, and the count never gets pushed out.
- */
-/**
  * A way back. The arrow points along the line of text, so NavItem turns it
  * (`inlineIconClass`): in a right-to-left language back is to the right.
  */
@@ -186,6 +181,11 @@ export const BackLink: Story = {
   args: { icon: ArrowLeft, label: 'Back to study', count: undefined },
 };
 
+/**
+ * A translated label runs about a third longer than its English source, and
+ * some languages compound rather than break. The label wraps and the row grows
+ * — it is never truncated, and the count never gets pushed out.
+ */
 export const LongLabel: Story = {
   args: {
     label: 'Teilnehmerinnen und Teilnehmer verwalten',
