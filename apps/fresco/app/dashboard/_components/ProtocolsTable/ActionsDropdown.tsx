@@ -28,41 +28,43 @@ const messages = defineMessages({
     id: 'fresco.ProtocolsTable.ActionsDropdown.copyFailedToDownloadProtocolFile',
     defaultMessage: 'Failed to download protocol file',
     description:
-      'Researcher-facing ProtocolsTable / ActionsDropdown: Failed to download protocol file',
+      'Error message used when fetching the stored protocol file for the Download menu item fails, for example because the storage server answered with an error.',
   },
   copyDownloadingProtocol: {
     id: 'fresco.ProtocolsTable.ActionsDropdown.copyDownloadingProtocol',
     defaultMessage: 'Downloading protocol...',
     description:
-      'Researcher-facing ProtocolsTable / ActionsDropdown: Downloading protocol...',
+      'Toast shown on the Protocols page while a protocol file is being downloaded after the researcher chose Download in the row menu.',
   },
   copyProtocolDownloaded: {
     id: 'fresco.ProtocolsTable.ActionsDropdown.copyProtocolDownloaded',
     defaultMessage: 'Protocol downloaded!',
     description:
-      'Researcher-facing ProtocolsTable / ActionsDropdown: Protocol downloaded!',
+      'Toast shown on the Protocols page after a protocol file has been downloaded from the row menu.',
   },
   openMenu: {
     id: 'fresco.ProtocolsTable.ActionsDropdown.openMenu',
     defaultMessage: 'Open menu',
     description:
-      'Researcher-facing ProtocolsTable / ActionsDropdown: Open menu',
+      "Accessible name of the icon-only button at the end of each row of the protocols table that opens that protocol's actions menu; read only by screen readers.",
   },
   actions: {
     id: 'fresco.ProtocolsTable.ActionsDropdown.actions',
     defaultMessage: 'Actions',
-    description: 'Researcher-facing ProtocolsTable / ActionsDropdown: Actions',
+    description:
+      'Heading at the top of the row actions menu in the protocols table; a plural noun naming the group of menu items below it.',
   },
   failedToDownloadProtocol: {
     id: 'fresco.ProtocolsTable.ActionsDropdown.failedToDownloadProtocol',
     defaultMessage: 'Failed to download protocol.',
     description:
-      'Researcher-facing ProtocolsTable / ActionsDropdown: Failed to download protocol.',
+      'Error toast shown on the Protocols page when downloading a protocol file from the row menu failed.',
   },
   download: {
     id: 'fresco.ProtocolsTable.ActionsDropdown.download',
     defaultMessage: 'Download',
-    description: 'Researcher-facing ProtocolsTable / ActionsDropdown: Download',
+    description:
+      "Menu item in the row actions menu of the protocols table that downloads the original protocol file to the researcher's computer. A verb.",
   },
 });
 

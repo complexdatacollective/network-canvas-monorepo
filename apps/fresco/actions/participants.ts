@@ -16,19 +16,19 @@ const messages = defineMessages({
     id: 'fresco.actions.participants.copyFailedToResolveParticipants',
     defaultMessage: 'Failed to resolve participants',
     description:
-      'Researcher-facing actions / participants: Failed to resolve participants',
+      'Error returned to the Participants page when looking up the selected participants fails, for example when preparing to export or delete them.',
   },
   copyFailedToCreateParticipant: {
     id: 'fresco.actions.participants.copyFailedToCreateParticipant',
     defaultMessage: 'Failed to create participant',
     description:
-      'Researcher-facing actions / participants: Failed to create participant',
+      'Error shown to the researcher when adding participants, one by one or by CSV import, fails on the server.',
   },
   copyFailedToUpdateParticipant: {
     id: 'fresco.actions.participants.copyFailedToUpdateParticipant',
     defaultMessage: 'Failed to update participant',
     description:
-      'Researcher-facing actions / participants: Failed to update participant',
+      "Error shown to the researcher when saving edits to an existing participant's identifier or label fails on the server.",
   },
 });
 

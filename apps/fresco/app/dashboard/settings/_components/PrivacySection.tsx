@@ -14,20 +14,20 @@ const messages = defineMessages({
   privacy: {
     id: 'fresco.settings.PrivacySection.privacy',
     defaultMessage: 'Privacy',
-    description: 'Researcher-facing settings / PrivacySection: Privacy',
+    description: 'Heading of the Privacy card on the Settings page.',
   },
   disableAnalytics: {
     id: 'fresco.settings.PrivacySection.disableAnalytics',
     defaultMessage: 'Disable Analytics',
     description:
-      'Researcher-facing settings / PrivacySection: Disable Analytics',
+      'Label and accessible name of the toggle in the Privacy card of Settings that turns off sending anonymous usage analytics. Disable is a verb.',
   },
   ifThisOptionIsEnabledNoAnonymous: {
     id: 'fresco.settings.PrivacySection.ifThisOptionIsEnabledNoAnonymous',
     defaultMessage:
       'If this option is enabled, no anonymous analytics data will be sent to the Network Canvas team.',
     description:
-      'Researcher-facing settings / PrivacySection: If this option is enabled, no anonymous analytics data will be sent to the Network Canvas team.',
+      'Description under the Disable Analytics toggle in the Privacy card of Settings. This option refers to that toggle.',
   },
 });
 

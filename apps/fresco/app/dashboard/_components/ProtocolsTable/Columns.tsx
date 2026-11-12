@@ -18,32 +18,38 @@ const messages = defineMessages({
   selectAll: {
     id: 'fresco.ProtocolsTable.Columns.selectAll',
     defaultMessage: 'Select all',
-    description: 'Researcher-facing ProtocolsTable / Columns: Select all',
+    description:
+      'Accessible name of the checkbox in the header of the Protocols table that selects every protocol on the page. Read only by screen readers.',
   },
   selectRow: {
     id: 'fresco.ProtocolsTable.Columns.selectRow',
     defaultMessage: 'Select row',
-    description: 'Researcher-facing ProtocolsTable / Columns: Select row',
+    description:
+      'Accessible name of the checkbox at the start of each row of the Protocols table that selects that one protocol. Read only by screen readers.',
   },
   name: {
     id: 'fresco.ProtocolsTable.Columns.name',
     defaultMessage: 'Name',
-    description: 'Researcher-facing ProtocolsTable / Columns: Name',
+    description:
+      'Column heading in the Protocols table above the protocol names. Clicking it sorts the table by name.',
   },
   protocolIcon: {
     id: 'fresco.ProtocolsTable.Columns.protocolIcon',
     defaultMessage: 'Protocol icon',
-    description: 'Researcher-facing ProtocolsTable / Columns: Protocol icon',
+    description:
+      'Alternative text of the small decorative protocol picture shown beside each protocol name in the Protocols table. Read only by screen readers.',
   },
   imported: {
     id: 'fresco.ProtocolsTable.Columns.imported',
     defaultMessage: 'Imported',
-    description: 'Researcher-facing ProtocolsTable / Columns: Imported',
+    description:
+      'Column heading in the Protocols table above how long ago each protocol was uploaded to this installation. Clicking it sorts by that date.',
   },
   modified: {
     id: 'fresco.ProtocolsTable.Columns.modified',
     defaultMessage: 'Modified',
-    description: 'Researcher-facing ProtocolsTable / Columns: Modified',
+    description:
+      'Column heading in the Protocols table above how long ago each protocol was last modified, as recorded in the protocol. Clicking it sorts by that date.',
   },
   schemaBadge: {
     id: 'fresco.ProtocolsTable.Columns.schemaBadge',
@@ -55,7 +61,7 @@ const messages = defineMessages({
     id: 'fresco.ProtocolsTable.Columns.anonymousParticipationURL',
     defaultMessage: 'Anonymous Participation URL',
     description:
-      'Researcher-facing ProtocolsTable / Columns: Anonymous Participation URL',
+      'Column heading in the Protocols table, shown only when anonymous recruitment is on, above a button that copies the link a participant can open to start an interview without a personal identifier.',
   },
 });
 

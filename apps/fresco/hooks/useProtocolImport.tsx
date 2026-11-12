@@ -69,20 +69,21 @@ const messages = defineMessages({
     defaultMessage:
       'The uploaded protocol file did not match the requested file.',
     description:
-      'Researcher-facing protocolImport: The uploaded protocol file did not match the requested file.',
+      'Error in the protocol import toast when the file reported back by storage after upload has a different name from the protocol file the researcher chose.',
   },
 
   checkAssets: {
     id: 'fresco.protocolImport.checkAssets',
     defaultMessage: 'Could not check for existing assets.',
     description:
-      'Researcher-facing protocolImport: Could not check for existing assets.',
+      "Error in the protocol import toast when asking the server which of the protocol's media files (assets) are already stored fails.",
   },
 
   importedName: {
     id: 'fresco.protocolImport.importedName',
     defaultMessage: '{name} has been imported.',
-    description: 'Researcher-facing protocolImport: name has been imported.',
+    description:
+      'Body of the success toast after a protocol file has been imported. name is the protocol file name without the .netcanvas extension.',
   },
 
   validationFailed: {
@@ -90,14 +91,14 @@ const messages = defineMessages({
     defaultMessage:
       'The protocol is invalid. Please check the protocol structure.',
     description:
-      'Researcher-facing protocolImport.validation: The protocol is invalid. Please check the protocol structure.',
+      'Error in the protocol import toast when the protocol inside the imported file fails validation against the protocol format.',
   },
 
   missingDependencies: {
     id: 'fresco.protocolImport.validation.missingDependencies',
     defaultMessage: 'Migration failed: missing {dependencies}.',
     description:
-      'Researcher-facing protocolImport.validation: Migration failed: missing dependencies.',
+      'Error in the protocol import toast when upgrading an older protocol to the supported format fails because required items are absent. dependencies is a list of the missing items.',
   },
 
   unsupportedVersion: {
@@ -105,40 +106,40 @@ const messages = defineMessages({
     defaultMessage:
       'Protocol version not supported. Fresco supports {count, plural, one {version} other {versions}} {versions}.',
     description:
-      'Researcher-facing protocolImport.validation: Protocol version not supported. Fresco supports count, plural, one version other versions versions.',
+      "Error in the protocol import toast when the protocol's schema version is not one this Fresco can import. count is how many versions are supported; versions is the list of supported schema version numbers.",
   },
 
   invalidProtocol: {
     id: 'fresco.protocolImport.validation.invalidProtocol',
     defaultMessage: 'The uploaded file does not contain a valid protocol.',
     description:
-      'Researcher-facing protocolImport.validation: The uploaded file does not contain a valid protocol.',
+      'Error in the protocol import toast when the chosen file does not contain a protocol at all, for example when it is not a Network Canvas protocol file.',
   },
 
   copyImportCompleted: {
     id: 'fresco.hooks.useProtocolImport.copyImportCompleted',
     defaultMessage: 'Import completed!',
     description:
-      'Researcher-facing hooks / useProtocolImport: Import completed!',
+      'Body of the success toast after a protocol import when no protocol name is available to show.',
   },
   copyAssetUploadFailed: {
     id: 'fresco.hooks.useProtocolImport.copyAssetUploadFailed',
     defaultMessage: 'Asset upload failed',
     description:
-      'Researcher-facing hooks / useProtocolImport: Asset upload failed',
+      "Error in the protocol import toast when one of the protocol's media files (assets) is missing from the results returned after uploading to storage.",
   },
   protocolImportedSuccessfully: {
     id: 'fresco.hooks.useProtocolImport.protocolImportedSuccessfully',
     defaultMessage: 'Protocol imported successfully',
     description:
-      'Researcher-facing hooks / useProtocolImport: Protocol imported successfully',
+      'Title of the success toast shown after a protocol file has been imported on the Protocols page.',
   },
   protocolAlreadyExistsDeleteTheExistingProtocol: {
     id: 'fresco.hooks.useProtocolImport.protocolAlreadyExistsDeleteTheExistingProtocol',
     defaultMessage:
       'Protocol already exists. Delete the existing protocol first before importing again.',
     description:
-      'Researcher-facing hooks / useProtocolImport: Protocol already exists. Delete the existing protocol first before importing again.',
+      'Error in the protocol import toast when an identical protocol is already installed, so the researcher must delete that one before importing the file again.',
   },
 });
 

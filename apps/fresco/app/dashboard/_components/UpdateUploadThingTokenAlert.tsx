@@ -13,14 +13,14 @@ const messages = defineMessages({
     id: 'fresco.UpdateUploadThingTokenAlert.configurationUpdateRequired',
     defaultMessage: 'Configuration update required',
     description:
-      'Researcher-facing UpdateUploadThingTokenAlert: Configuration update required',
+      'Title of a red alert on the dashboard shown when the installation uses UploadThing storage but still has the old-style UploadThing configuration.',
   },
   youNeedToAddANewUploadThing: {
     id: 'fresco.UpdateUploadThingTokenAlert.youNeedToAddANewUploadThing',
     defaultMessage:
       'You need to add a new UploadThing API key before you can upload protocols. See the <tag1> upgrade documentation </tag1> for more information.',
     description:
-      'Researcher-facing UpdateUploadThingTokenAlert: You need to add a new UploadThing API key before you can upload protocols. See the  upgrade documentation  for more info',
+      'Body of the red alert on the dashboard about the old UploadThing configuration. The tag1 element is a link to the upgrade documentation; keep the tags around the link text.',
   },
 });
 

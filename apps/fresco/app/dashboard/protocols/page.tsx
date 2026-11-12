@@ -15,13 +15,14 @@ const messages = defineMessages({
   protocols: {
     id: 'fresco.protocols.page.protocols',
     defaultMessage: 'Protocols',
-    description: 'Researcher-facing protocols / page: Protocols',
+    description:
+      'Main heading of the Protocols page of the dashboard, which lists the interview protocols installed on this Fresco.',
   },
   uploadAndManageYourInterviewProtocols: {
     id: 'fresco.protocols.page.uploadAndManageYourInterviewProtocols',
     defaultMessage: 'Upload and manage your interview protocols.',
     description:
-      'Researcher-facing protocols / page: Upload and manage your interview protocols.',
+      'Sub-heading under the title of the Protocols page; says the page is for importing protocol files and managing the installed protocols.',
   },
 });
 

@@ -14,25 +14,25 @@ const messages = defineMessages({
     id: 'fresco.ActivityFeed.ActivityFeedToolbar.filterByActivityDetails',
     defaultMessage: 'Filter by activity details...',
     description:
-      'Researcher-facing ActivityFeed / ActivityFeedToolbar: Filter by activity details...',
+      'Placeholder in the text search box above the activity feed table on the dashboard. The search matches the description text of each activity entry.',
   },
   filterType: {
     id: 'fresco.ActivityFeed.ActivityFeedToolbar.filterType',
     defaultMessage: 'Filter Type...',
     description:
-      'Researcher-facing ActivityFeed / ActivityFeedToolbar: Filter Type...',
+      'Label of the button that opens the activity-type filter above the activity feed table. Type means the kind of activity (for example a sign-in or a protocol upload), not a verb.',
   },
   searchType: {
     id: 'fresco.ActivityFeed.ActivityFeedToolbar.searchType',
     defaultMessage: 'Search Type...',
     description:
-      'Researcher-facing ActivityFeed / ActivityFeedToolbar: Search Type...',
+      'Placeholder in the search box inside the activity-type filter list, for finding a kind of activity by name. Type is a noun (kind of activity), not a verb.',
   },
   noTypeFound: {
     id: 'fresco.ActivityFeed.ActivityFeedToolbar.noTypeFound',
     defaultMessage: 'No type found.',
     description:
-      'Researcher-facing ActivityFeed / ActivityFeedToolbar: No type found.',
+      'Message in the activity-type filter list when nothing matches what the researcher typed. Type is a noun (kind of activity).',
   },
 });
 

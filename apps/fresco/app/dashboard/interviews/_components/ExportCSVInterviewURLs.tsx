@@ -19,43 +19,44 @@ const messages = defineMessages({
     defaultMessage:
       'An error occurred while exporting incomplete interview URLs',
     description:
-      'Researcher-facing interviews / ExportCSVInterviewURLs: An error occurred while exporting incomplete interview URLs',
+      'Message of an error thrown, not shown directly, when downloading the CSV of links to incomplete interviews failed. Same wording as the error toast body.',
   },
   copyExporting: {
     id: 'fresco.interviews.ExportCSVInterviewURLs.copyExporting',
     defaultMessage: 'Exporting...',
     description:
-      'Researcher-facing interviews / ExportCSVInterviewURLs: Exporting...',
+      'Label of the export button in the incomplete interview links popover while the CSV file is being created. A progress state, not a command.',
   },
   copyExport: {
     id: 'fresco.interviews.ExportCSVInterviewURLs.copyExport',
     defaultMessage: 'Export',
     description:
-      'Researcher-facing interviews / ExportCSVInterviewURLs: Export',
+      "Button in the incomplete interview links popover on the Interviews page that downloads a CSV file of links to the selected protocol's unfinished interviews. Export is a verb.",
   },
   success: {
     id: 'fresco.interviews.ExportCSVInterviewURLs.success',
     defaultMessage: 'Success',
     description:
-      'Researcher-facing interviews / ExportCSVInterviewURLs: Success',
+      'Title of the toast shown after the CSV file of links to incomplete interviews has been downloaded.',
   },
   incompleteInterviewURLsCSVExportedSuccessfully: {
     id: 'fresco.interviews.ExportCSVInterviewURLs.incompleteInterviewURLsCSVExportedSuccessfully',
     defaultMessage: 'Incomplete interview URLs CSV exported successfully',
     description:
-      'Researcher-facing interviews / ExportCSVInterviewURLs: Incomplete interview URLs CSV exported successfully',
+      'Body of the success toast shown after the CSV file of links (URLs) to unfinished interviews has been downloaded.',
   },
   error: {
     id: 'fresco.interviews.ExportCSVInterviewURLs.error',
     defaultMessage: 'Error',
-    description: 'Researcher-facing interviews / ExportCSVInterviewURLs: Error',
+    description:
+      'Title of the error toast shown when downloading the CSV file of links to incomplete interviews failed.',
   },
   anErrorOccurredWhileExportingIncompleteInterview: {
     id: 'fresco.interviews.ExportCSVInterviewURLs.anErrorOccurredWhileExportingIncompleteInterview',
     defaultMessage:
       'An error occurred while exporting incomplete interview URLs',
     description:
-      'Researcher-facing interviews / ExportCSVInterviewURLs: An error occurred while exporting incomplete interview URLs',
+      'Body of the error toast shown when downloading the CSV file of links (URLs) to incomplete interviews failed.',
   },
 });
 
