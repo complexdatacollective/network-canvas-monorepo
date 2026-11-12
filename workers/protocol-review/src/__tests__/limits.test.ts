@@ -382,10 +382,12 @@ describe('the monthly spending ceiling', () => {
 
   it('starts again with the month, and forgets the month before', () => {
     const store = createMemoryStore();
-    store.spend.set('2026-11-15', MONTHLY_CEILING_MICROS / 2);
-    store.spend.set('2026-11-30', MONTHLY_CEILING_MICROS / 2);
+    store.spend.set('2026-11-15', 1);
+    // The last day alone spent the whole of November…
+    store.spend.set('2026-11-30', MONTHLY_CEILING_MICROS);
     expect(admitAt(store, at('2026-11-30T23:00:00.000Z')).ok).toBe(false);
 
+    // …and none of it counts in December, though that day is still stored.
     expect(admitAt(store, at('2026-12-01T00:30:00.000Z')).ok).toBe(true);
     // Yesterday is kept for reviews still settling against it; the rest of
     // last month is gone.
