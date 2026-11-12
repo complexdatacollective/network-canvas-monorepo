@@ -31,6 +31,8 @@
     "@codaco/tailwind-config": "workspace:^",
     "@docsearch/css": "^5.1.2",
     "@docsearch/react": "^5.1.2",
+    "@fontsource-variable/inclusive-sans": "catalog:",
+    "@fontsource-variable/nunito": "catalog:",
     "@next/bundle-analyzer": "catalog:",
     "@next/third-parties": "catalog:",
     "@posthog/nextjs-config": "catalog:",
