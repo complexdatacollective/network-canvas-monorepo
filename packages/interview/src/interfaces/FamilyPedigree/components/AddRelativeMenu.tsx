@@ -1,5 +1,6 @@
 'use client';
 
+import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toolbar } from '@base-ui/react/toolbar';
 import { type MotionValue, motion, useMotionValue } from 'motion/react';
 import { useLayoutEffect, useRef } from 'react';
@@ -141,65 +142,76 @@ export default function AddRelativeMenu({
   return createPortal(
     <div
       ref={placed}
+      // oxlint-disable-next-line tailwindcss/enforce-logical -- moved to the person's measured position, which is a distance from the left
       className="pointer-events-none absolute top-0 left-0 origin-top-left"
       data-add-menu={personId}
     >
-      <Toolbar.Root
-        aria-label={intl.formatMessage(messages.actionsLabel, {
-          isYou: isYou ? 'true' : 'false',
-          name,
-        })}
-        loopFocus
-        className="pointer-events-none absolute inset-0"
-      >
-        {ITEMS.map((item, index) => (
-          // Placed by a wrapper, so the button's own pressed nudge does not
-          // replace the translate that centres it.
-          <motion.div
-            key={item.relation}
-            className={cx('absolute', item.placement)}
-            style={{ scale: counterScale }}
-            data-add-menu-item
-          >
-            <Toolbar.Button
-              ref={index === 0 ? firstButton : undefined}
-              onClick={() => onAdd(item.relation)}
-              data-testid={`pedigree-menu-${item.relation}`}
-              render={
-                <MotionButton
-                  size="sm"
-                  initial={reduceMotion ? false : { opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 500,
-                    damping: 30,
-                    delay: reduceMotion ? 0 : index * 0.02,
-                  }}
-                  className={cx(
-                    'pointer-events-auto size-18 max-w-none shrink-0 rounded-full p-0 whitespace-nowrap',
-                    // Set apart from the family and the canvas beneath them
-                    // by a soft, wide shadow, the same at rest, on hover and
-                    // when pressed.
-                    'shadow-[0_2px_10px_oklch(from_var(--background)_0.05_c_h/0.35),0_10px_40px_oklch(from_var(--background)_0.05_c_h/0.5)]!',
-                    // No Button colour fills with one colour and hovers to
-                    // another: the text colour at rest, primary on hover. The
-                    // fill changes at once, so the hover does not read as lag.
-                    'bg-text text-background ui-enabled:hover:bg-primary ui-enabled:hover:text-primary-contrast',
-                    // Opacity is left to the entrance animation alone. Were it
-                    // also a CSS transition, Safari and Firefox would fade the
-                    // buttons in a second time, from transparent, when that
-                    // animation hands its final opacity over to the style.
-                    'transition-[box-shadow,translate]',
-                  )}
-                />
-              }
+      {/*
+        The buttons sit where the new relative will be drawn, and a family is
+        drawn the same way round in every language: siblings to the left,
+        partners to the right. The arrow keys follow that, so the toolbar is
+        told it reads left to right whatever the interview's language. Left to
+        the language, the right arrow key would move left in a right-to-left
+        one.
+      */}
+      <DirectionProvider direction="ltr">
+        <Toolbar.Root
+          aria-label={intl.formatMessage(messages.actionsLabel, {
+            isYou: isYou ? 'true' : 'false',
+            name,
+          })}
+          loopFocus
+          className="pointer-events-none absolute inset-0"
+        >
+          {ITEMS.map((item, index) => (
+            // Placed by a wrapper, so the button's own pressed nudge does not
+            // replace the translate that centres it.
+            <motion.div
+              key={item.relation}
+              className={cx('absolute', item.placement)}
+              style={{ scale: counterScale }}
+              data-add-menu-item
             >
-              {formatRelativeTerm(item.relation, words)}
-            </Toolbar.Button>
-          </motion.div>
-        ))}
-      </Toolbar.Root>
+              <Toolbar.Button
+                ref={index === 0 ? firstButton : undefined}
+                onClick={() => onAdd(item.relation)}
+                data-testid={`pedigree-menu-${item.relation}`}
+                render={
+                  <MotionButton
+                    size="sm"
+                    initial={reduceMotion ? false : { opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 500,
+                      damping: 30,
+                      delay: reduceMotion ? 0 : index * 0.02,
+                    }}
+                    className={cx(
+                      'pointer-events-auto size-18 max-w-none shrink-0 rounded-full p-0 whitespace-nowrap',
+                      // Set apart from the family and the canvas beneath them
+                      // by a soft, wide shadow, the same at rest, on hover and
+                      // when pressed.
+                      'shadow-[0_2px_10px_oklch(from_var(--background)_0.05_c_h/0.35),0_10px_40px_oklch(from_var(--background)_0.05_c_h/0.5)]!',
+                      // No Button colour fills with one colour and hovers to
+                      // another: the text colour at rest, primary on hover. The
+                      // fill changes at once, so the hover does not read as lag.
+                      'bg-text text-background ui-enabled:hover:bg-primary ui-enabled:hover:text-primary-contrast',
+                      // Opacity is left to the entrance animation alone. Were it
+                      // also a CSS transition, Safari and Firefox would fade the
+                      // buttons in a second time, from transparent, when that
+                      // animation hands its final opacity over to the style.
+                      'transition-[box-shadow,translate]',
+                    )}
+                  />
+                }
+              >
+                {formatRelativeTerm(item.relation, words)}
+              </Toolbar.Button>
+            </motion.div>
+          ))}
+        </Toolbar.Root>
+      </DirectionProvider>
     </div>,
     layer,
   );

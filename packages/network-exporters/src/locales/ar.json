@@ -1,0 +1,17 @@
+{
+  "networkExporters.stage.fetching": "جارٍ جلب بيانات المقابلات…",
+  "networkExporters.stage.formatting": "جارٍ تنسيق الجلسات…",
+  "networkExporters.stage.generating": "جارٍ إنشاء الملفات…",
+  "networkExporters.stage.outputting": "جارٍ كتابة المخرجات…",
+  "networkExporters.warning.columnRenamed.description": "كانت بعض الأعمدة ستحمل الاسم نفسه الذي يحمله عمود آخر في الملف ذاته. ولكي لا تضيع أي إجابات، كُتب كل منها باسم مرقّم بدلًا من ذلك. الأعمدة التي أُعيدت تسميتها هي:",
+  "networkExporters.warning.columnRenamed.fromVariableItem": "في {format, select, csv {ملفات CSV} other {ملفات GraphML}} الخاصة بالبروتوكول {protocolName}، كُتب {entity, select, ego {عمود الأنا} other {العمود الخاص بـ {entityTypeName}}} «{column}»، من المتغيّر {variable}، باسم «{renamedTo}».",
+  "networkExporters.warning.columnRenamed.item": "في {format, select, csv {ملفات CSV} other {ملفات GraphML}} الخاصة بالبروتوكول {protocolName}، كُتب {entity, select, ego {عمود الأنا} other {العمود الخاص بـ {entityTypeName}}} «{column}» باسم «{renamedTo}».",
+  "networkExporters.warning.columnRenamed.title": "أُعطيت أسماء جديدة لبعض الأعمدة",
+  "networkExporters.warning.protocolText.description": "احتوى بعض نصوص البروتوكول نفسه على أحرف لا يستطيع GraphML تخزينها، فأُزيلت في ملفات GraphML. هذه الأحرف غير مرئية عادةً، لذا يُذكر كل منها بنقطة ترميزه في Unicode، مثل U+0007. النصوص المتأثرة هي:",
+  "networkExporters.warning.protocolText.item": "{text, select, protocolName {اسم البروتوكول «{name}»، مع إزالة {characters}} nodeTypeName {اسم نوع العقدة «{name}» في {protocolName}، مع إزالة {characters}} edgeTypeName {اسم نوع الرابطة «{name}» في {protocolName}، مع إزالة {characters}} other {اسم العمود «{name}» في {protocolName}، مع إزالة {characters}}}",
+  "networkExporters.warning.protocolText.title": "أُزيلت بعض الأحرف من نص البروتوكول في ملفات GraphML",
+  "networkExporters.warning.xmlCharacters.caseId": "معرّف الحالة",
+  "networkExporters.warning.xmlCharacters.description": "احتوى بعض الإجابات على أحرف لا يستطيع GraphML تخزينها، فأُزيلت من ملفات GraphML فقط. أما ملفات CSV فتحتفظ بكل إجابة دون تغيير. المقابلات والمتغيّرات المتأثرة هي:",
+  "networkExporters.warning.xmlCharacters.interview": "المقابلة {caseId}: {variables}",
+  "networkExporters.warning.xmlCharacters.title": "أُزيلت بعض الأحرف من ملفات GraphML"
+}

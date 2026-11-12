@@ -23,6 +23,26 @@ export type StageIdentity = Readonly<{ id: string; type: StageType }>;
 export type StageFormDraft = Readonly<SectionDoc>;
 
 /**
+ * Where the stage form holds the words every stage of its kind shares, for
+ * the entries the open stage brings into use that the protocol does not hold
+ * yet.
+ *
+ * Such an entry cannot be written to the protocol while the stage is open: the
+ * protocol does not use it until the stage is saved, and Architect drops what
+ * a protocol does not use on its next change. So its wording is held with the
+ * stage's draft, as a field of the stage form, and written with the stage when
+ * it is saved (see `pendingSharedWording`). A stage holds no key of this name,
+ * so `stageDocument` leaves it out of the stage itself.
+ */
+export const SHARED_WORDING_PATH = 'interfaceText';
+
+/** The stage's own fields: the draft without the shared words held with it. */
+export function stageFieldsOf(draft: StageFormDraft): StageFormDraft {
+  const { [SHARED_WORDING_PATH]: _shared, ...fields } = draft;
+  return fields;
+}
+
+/**
  * A stage being CREATED rather than opened.
  *
  * Present only while the interview does not contain the stage yet, which is
@@ -80,6 +100,9 @@ export function stageDraftFromDocument(document: SectionDoc): Readonly<{
  * removed from an optional object). So a wording field never has to be on
  * screen for its setting to be saved.
  *
+ * The shared words the form holds beside the stage are not the stage's (see
+ * `SHARED_WORDING_PATH`), so they are left out.
+ *
  * `localization` is undefined while the protocol's languages are not known
  * yet; nothing is written then, and a save waits for them.
  */
@@ -92,7 +115,7 @@ export function stageDocument(
   const document: SectionDoc = {
     id: identity.id,
     type: identity.type,
-    ...structuredClone(fields),
+    ...structuredClone(stageFieldsOf(fields)),
   };
   for (const path of inapplicableStageSettings({
     ...document,

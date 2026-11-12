@@ -11,17 +11,19 @@ const messages = defineMessages({
   pageNotFound: {
     id: 'interviewer.notFound.pageNotFound',
     defaultMessage: 'Page not found',
-    description: 'Visible copy in Interviewer Not Found.',
+    description:
+      'Heading of the error page shown when the app address does not match any screen.',
   },
   thePageYouWereLookingForDoes: {
     id: 'interviewer.notFound.thePageYouWereLookingForDoes',
     defaultMessage: 'The page you were looking for does not exist.',
-    description: 'Visible copy in Interviewer Not Found.',
+    description: 'Explanation under the "Page not found" heading.',
   },
   returnHome: {
     id: 'interviewer.notFound.returnHome',
     defaultMessage: 'Return home',
-    description: 'Visible copy in Interviewer Not Found.',
+    description:
+      'Button on the page-not-found screen that goes back to the home screen.',
   },
 });
 

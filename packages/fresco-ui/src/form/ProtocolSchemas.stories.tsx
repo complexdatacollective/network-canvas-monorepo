@@ -131,7 +131,7 @@ function NameGeneratorPromptItem({
           </div>
         )}
       </motion.div>
-      <motion.div layout className="ml-auto flex items-center gap-1">
+      <motion.div layout className="ms-auto flex items-center gap-1">
         <IconButton
           size="sm"
           variant="text"
@@ -391,7 +391,7 @@ function AdditionalAttributeItem({
                 {item.value ? 'true' : 'false'}
               </span>
             </motion.div>
-            <motion.div layout className="ml-auto flex items-center gap-1">
+            <motion.div layout className="ms-auto flex items-center gap-1">
               <IconButton
                 size="sm"
                 variant="text"

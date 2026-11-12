@@ -26,19 +26,19 @@ const messages = defineMessages({
     id: 'architect.stageEditor.stageDraftConflictDialog.downloadACopy',
     defaultMessage: 'Download a Copy',
     description:
-      'The label text in components / StageEditor / StageDraftConflictDialog.',
+      'Button in the dialog asking what to do with unsaved stage changes after the other tab closed. Downloads a copy of the protocol including the unsaved stage changes; the dialog then asks again.',
   },
   discardMyChanges: {
     id: 'architect.stageEditor.stageDraftConflictDialog.discardMyChanges',
     defaultMessage: 'Discard My Changes',
     description:
-      'The label text in components / StageEditor / StageDraftConflictDialog.',
+      'Button in the dialog asking what to do with unsaved stage changes. Leaves the stage editor and throws away the unsaved changes to the stage, keeping the version the other tab saved. It cannot be undone.',
   },
   decideLater: {
     id: 'architect.stageEditor.stageDraftConflictDialog.decideLater',
     defaultMessage: 'Decide Later',
     description:
-      'The label text in components / StageEditor / StageDraftConflictDialog.',
+      'Button in the dialog asking what to do with unsaved stage changes. Closes the dialog without choosing; nothing is changed or discarded.',
   },
 });
 
@@ -61,7 +61,7 @@ const CONFLICT_TITLE = defineMessages({
     id: 'architect.constants.components.stageeditor.stagedraftconflictdialog.conflictTitle',
     defaultMessage: 'Choose what to do with your unsaved changes',
     description:
-      'Researcher-facing status or validation message. Context: components/StageEditor/StageDraftConflictDialog.tsx.',
+      'Title of the dialog shown when the other browser tab holding the protocol closes while this tab has unsaved changes to a stage. Offers to download a copy, discard the changes, or decide later.',
   },
 }).message;
 
@@ -71,7 +71,7 @@ const PENDING_DESCRIPTION = defineMessages({
     defaultMessage:
       'The other tab has been closed, so this protocol can be edited here again. Your unsaved changes to this stage were made before that tab saved its own version, and there is no safe way to combine the two. You can download a copy of the protocol as it stands here, with your changes to this stage included in it — that copy will not contain anything the other tab saved. Loading the saved version instead discards your unsaved changes to this stage.',
     description:
-      'Researcher-facing status or validation message. Context: components/StageEditor/StageDraftConflictDialog.tsx.',
+      'Body of the dialog asking what to do with unsaved stage changes after the other browser tab closed. Explains that the two versions cannot be combined and describes what downloading a copy or discarding the changes does.',
   },
 }).message;
 
@@ -81,7 +81,7 @@ const DOWNLOADED_DESCRIPTION = defineMessages({
     defaultMessage:
       'Your copy has been downloaded. It contains your changes to this stage, but not the changes the other tab saved, so keep it alongside your protocol rather than in place of it. Nothing in this tab has been changed yet. Loading the saved version now discards your unsaved changes to this stage.',
     description:
-      'Researcher-facing status or validation message. Context: components/StageEditor/StageDraftConflictDialog.tsx.',
+      'Body of the same dialog after the researcher has pressed Download a Copy. Confirms the copy was downloaded, says what it does and does not contain, and repeats that loading the saved version discards the unsaved stage changes.',
   },
 }).message;
 
@@ -177,13 +177,14 @@ const StageDraftConflictDialog = ({
       // Read at the moment the copy is built, from the editor's own form, so
       // the one download offered to save this work is not missing the last few
       // seconds of typing.
-      const stage = readStageDraft().stage;
+      const { stage, interfaceText } = readStageDraft();
       const withDraft = stage
         ? buildProtocolWithStage(
             protocol,
             stage,
             latest.current.stageId,
             latest.current.insertAtIndex,
+            interfaceText,
           )
         : protocol;
 

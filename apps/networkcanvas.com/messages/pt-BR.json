@@ -334,7 +334,7 @@
       "bestFor": "Ideal para",
       "downloadVersion": "Baixar a versão {version}",
       "platformAccessibleName": "{platform} para {app}",
-      "schemaVersionInfo": "O Architect Classic e o Interviewer Classic são compatíveis com protocolos do esquema 7. As versões do Architect, do Interviewer e do Fresco que funcionam no navegador usam o esquema 9, que inclui as funcionalidades mais recentes. A atualização de um protocolo é irreversível, então mantenha o arquivo original do esquema 7 se você ainda precisar dos aplicativos Classic.",
+      "schemaVersionInfo": "O Architect Classic e o Interviewer Classic são compatíveis com protocolos que usam um esquema mais antigo. O Architect, o Interviewer e o Fresco, que funcionam no navegador, usam o esquema mais recente, que inclui todas as funcionalidades mais novas. Migrar um protocolo para o esquema mais recente é irreversível, então mantenha uma cópia do arquivo original se você ainda precisar dos aplicativos Classic.",
       "schemaVersionLink": "Saiba mais sobre as versões de esquema"
     },
     "platforms": {
@@ -387,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · Modo de manutenção",
-        "description": "Use apenas quando seu estudo precisar continuar compatível com o Interviewer Classic e o esquema 7.",
+        "description": "Use apenas quando seu estudo precisar continuar compatível com o Interviewer Classic, que usa um esquema mais antigo.",
         "bestFor": {
           "classicCompatibility": "Um estudo existente que precisa continuar compatível com o Interviewer Classic",
-          "editWithoutMigration": "Um protocolo do esquema 7 que precisa continuar sendo editado sem migração"
+          "editWithoutMigration": "Um protocolo que usa um esquema mais antigo e precisa continuar sendo editado sem migração"
         }
       },
       "interviewerClassic": {
         "status": "Classic · Estudos existentes",
-        "description": "Para estudos consolidados no esquema 7 e fluxos de trabalho offline em computador ou tablet. Mantido para garantir a compatibilidade e corrigir bugs.",
+        "description": "Para estudos consolidados que usam um esquema mais antigo e para fluxos de trabalho offline em computador ou tablet. Mantido para garantir a compatibilidade e corrigir bugs.",
         "bestFor": {
-          "schema7Study": "Um estudo consolidado que depende do esquema 7",
+          "schema7Study": "Um estudo consolidado que depende de um esquema mais antigo",
           "desktopTablet": "Manter um fluxo de trabalho existente em computador ou tablet",
           "offlineCollection": "Estudos que exigem o fluxo de trabalho antigo de coleta offline"
         }

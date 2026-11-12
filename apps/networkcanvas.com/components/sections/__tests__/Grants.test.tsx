@@ -29,7 +29,12 @@ const page = vi.hoisted(() => ({
 vi.mock('motion/react', async (importOriginal) => {
   const actual = await importOriginal<{ motionValue: typeof motionValue }>();
   page.scrollY = actual.motionValue(0);
-  return { ...actual, useScroll: () => ({ scrollY: page.scrollY }) };
+  // The heading's own scroll progress (target-relative) is not under test.
+  const scrollYProgress = actual.motionValue(0);
+  return {
+    ...actual,
+    useScroll: () => ({ scrollY: page.scrollY, scrollYProgress }),
+  };
 });
 
 function scrollPageTo(top: number) {
@@ -175,6 +180,15 @@ function isPinned(element: HTMLElement) {
 }
 
 describe('Grants', () => {
+  it('draws each card’s stripe from the start edge', () => {
+    renderGrants();
+
+    for (const grant of grants) {
+      const stripe = card(grant).querySelector('.origin-left');
+      expect(stripe).toHaveClass('inset-x-0', 'rtl:origin-right');
+    }
+  });
+
   it('links every grant to its page from a card that names its institution', () => {
     renderGrants();
 

@@ -1,14 +1,19 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import type { Decorator, Preview } from '@storybook/react-vite';
-import { type ReactNode, useEffect, useLayoutEffect } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+} from 'react';
 
 import {
   type AppLocale,
   type CatalogMessages,
-  PSEUDO_LOCALE,
-  pseudoAppLocale,
+  pseudoAppLocales,
 } from '@codaco/app-i18n/locales';
-import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { AppDirectionOverride, AppI18nProvider } from '@codaco/app-i18n/react';
 
 /**
  * Storybook's language and writing-direction controls, shared by every
@@ -25,13 +30,13 @@ import { AppI18nProvider } from '@codaco/app-i18n/react';
  *
  * - **Language** proves a component reads its copy from a catalog. Switching
  *   it should visibly change every string a component owns; anything that
- *   stays in English is hardcoded. The pseudo-locale makes that verdict
- *   available before any translation exists.
+ *   stays in English is hardcoded. The accented pseudo-locale makes that
+ *   verdict available before any translation exists.
  * - **Direction** proves a component lays out with logical properties. It is
- *   a separate axis on purpose: no right-to-left locale ships yet, so binding
- *   direction to language would leave RTL untestable until one does. Left on
- *   "Automatic" it follows the selected locale's declared direction, which is
- *   what a real host does.
+ *   a separate axis on purpose: it mirrors a story in any language, real
+ *   words included, where the right-to-left pseudo-locale brings its own
+ *   right-to-left text with it. Left on "Automatic" it follows the selected
+ *   locale's declared direction, which is what a real host does.
  */
 
 const LOCALE_KEY = 'appLocale';
@@ -47,6 +52,20 @@ const directionModes = {
 } as const;
 
 export type DirectionMode = keyof typeof directionModes;
+
+const DirectionModeContext = createContext<DirectionMode>('auto');
+
+/**
+ * What the Direction control is set to, for a story that takes its direction
+ * from something of its own and has to tell "Automatic" from a choice. An
+ * interview is one: it reads from its protocol's language whatever surrounds
+ * it, so its stories pass an explicit LTR or RTL on and leave Automatic to
+ * the language. The direction a story is drawn in, whichever way it was
+ * arrived at, is `useAppDirection()`.
+ */
+export function useStorybookDirectionMode(): DirectionMode {
+  return useContext(DirectionModeContext);
+}
 
 export type StorybookI18nOptions = Readonly<{
   /**
@@ -64,8 +83,9 @@ export type StorybookI18nOptions = Readonly<{
   /** Which locale a Storybook with no stored preference opens in. */
   defaultLocale?: string;
   /**
-   * Whether to offer the pseudo-locale. On by default: it is the only way to
-   * see untranslated strings and clipped layouts before translations exist.
+   * Whether to offer the pseudo-locales. On by default: they are the only way
+   * to see untranslated strings, clipped layouts and right-to-left text
+   * before translations exist.
    */
   includePseudoLocale?: boolean;
 }>;
@@ -144,14 +164,17 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     throw new Error('storybookI18n: the locale registry is empty');
   }
 
-  // The pseudo-locale is appended rather than expected in the registry: a
-  // production registry must never contain it, so every caller would
+  // The pseudo-locales are appended rather than expected in the registry: a
+  // production registry must never contain them, so every caller would
   // otherwise have to build a Storybook-only copy of its own list.
-  const offered: readonly AppLocale[] =
-    includePseudoLocale &&
-    !locales.some((entry) => entry.locale === PSEUDO_LOCALE)
-      ? [...locales, pseudoAppLocale]
-      : locales;
+  const offered: readonly AppLocale[] = includePseudoLocale
+    ? [
+        ...locales,
+        ...pseudoAppLocales.filter(
+          (pseudo) => !locales.some((entry) => entry.locale === pseudo.locale),
+        ),
+      ]
+    : locales;
 
   const isOffered = (value: string): value is string =>
     offered.some((entry) => entry.locale === value);
@@ -210,34 +233,44 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
     }, [locale, direction]);
 
     return (
-      <AppI18nProvider
-        locale={locale}
-        locales={offered}
-        messages={catalogs[locale]}
-        // The effect above owns `<html lang>`/`<html dir>` instead, because
-        // the toolbar's direction is an override the provider cannot see: it
-        // would write the locale's own direction and undo an explicit RTL
-        // selection on every render.
-        manageDocument={false}
-      >
-        {/*
-          Base UI reads direction from context, not from the DOM, and uses it
-          for popover placement and for which arrow key moves where. Without
-          this provider a story's CSS mirrors while its dropdowns, tabs and
-          menus keep behaving as LTR — so the switcher would show a layout
-          that looks right and hide the interaction bugs it exists to find.
-        */}
-        <DirectionProvider direction={direction}>
-          {/*
-            `contents` so the wrapper contributes no box of its own: a story
-            laid out by its parent (a grid cell, a flex child) must not gain
-            an anonymous block between it and that parent.
+      // An explicit LTR or RTL is an override for every language provider in
+      // the story, not only the one below. A story that mounts a host's own
+      // provider stack (`ArchitectI18nProvider`, say) puts that host's
+      // registry and its `LocaleDirectionProvider` nearer the components than
+      // anything here, and without the override they would write the
+      // language's own direction to the document and hand it to Base UI: the
+      // CSS and the controls would disagree. On Automatic there is nothing to
+      // override, and each language keeps its own direction.
+      <DirectionModeContext.Provider value={mode}>
+        <AppDirectionOverride direction={mode === 'auto' ? null : mode}>
+          <AppI18nProvider
+            locale={locale}
+            locales={offered}
+            messages={catalogs[locale]}
+            // The effect above owns `<html lang>`/`<html dir>`: it is what the
+            // comment there explains, and two writers would be one too many.
+            manageDocument={false}
+          >
+            {/*
+            Base UI reads direction from context, not from the DOM, and uses it
+            for popover placement and for which arrow key moves where. Without
+            this provider a story's CSS mirrors while its dropdowns, tabs and
+            menus keep behaving as LTR — so the switcher would show a layout
+            that looks right and hide the interaction bugs it exists to find.
           */}
-          <div dir={direction} className="contents">
-            {children}
-          </div>
-        </DirectionProvider>
-      </AppI18nProvider>
+            <DirectionProvider direction={direction}>
+              {/*
+              `contents` so the wrapper contributes no box of its own: a story
+              laid out by its parent (a grid cell, a flex child) must not gain
+              an anonymous block between it and that parent.
+            */}
+              <div dir={direction} className="contents">
+                {children}
+              </div>
+            </DirectionProvider>
+          </AppI18nProvider>
+        </AppDirectionOverride>
+      </DirectionModeContext.Provider>
     );
   }
 

@@ -8,6 +8,7 @@ import Section from '@codaco/fresco-ui/Section';
 import {
   CATEGORICAL_BIN_MAX_BINS,
   type VariableType,
+  categoricalBinPromptSchema,
 } from '@codaco/protocol-validation';
 
 import CodebookVariableValidationSection from '../../../codebook/validation/CodebookVariableValidationSection.tsx';
@@ -29,6 +30,7 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { asLocalizedString } from '../../../localization/localizedText.ts';
+import { markdownTextShapeAt } from '../../../localization/textShape.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
 import { attributeOptionsFieldFor } from '../../../sections/AttributeValueFields.tsx';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
@@ -38,6 +40,14 @@ import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
 import { binMessages } from '../../ordinal-bin/sections/binMessages.ts';
 import BinSortOrders from '../../ordinal-bin/sections/BinSortOrders.tsx';
+
+const OTHER_LABEL_SHAPE = markdownTextShapeAt(categoricalBinPromptSchema, [
+  'otherOptionLabel',
+]);
+
+const OTHER_PROMPT_SHAPE = markdownTextShapeAt(categoricalBinPromptSchema, [
+  'otherVariablePrompt',
+]);
 
 /** Where the prompt keeps the attribute whose values are the bins. */
 const BINS_FIELD = 'variable';
@@ -350,6 +360,7 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name={OTHER_LABEL_FIELD}
           component={LocalizedRichTextField}
+          shape={OTHER_LABEL_SHAPE}
           // The bin's caption, which is not about the node being placed.
           dynamicValues="stageText"
           label={intl.formatMessage(categoricalBinPromptMessages.otherBinLabel)}
@@ -357,7 +368,6 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
           placeholder={intl.formatMessage(
             categoricalBinPromptMessages.otherBinPlaceholder,
           )}
-          singleLine
           initialValue={asLocalizedString(item[OTHER_LABEL_FIELD])}
           required={intl.formatMessage(
             categoricalBinPromptMessages.otherBinRequired,
@@ -366,6 +376,7 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name={OTHER_PROMPT_FIELD}
           component={LocalizedRichTextField}
+          shape={OTHER_PROMPT_SHAPE}
           // A question about the node just put in the "other" bin, which is
           // a one-field form about it.
           dynamicValues="formField"
@@ -379,7 +390,6 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
           placeholder={intl.formatMessage(
             categoricalBinPromptMessages.otherPromptPlaceholder,
           )}
-          singleLine
           initialValue={asLocalizedString(item[OTHER_PROMPT_FIELD])}
           required={intl.formatMessage(
             categoricalBinPromptMessages.otherPromptRequired,

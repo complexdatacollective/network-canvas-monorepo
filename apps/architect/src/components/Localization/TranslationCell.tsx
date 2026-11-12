@@ -11,6 +11,7 @@ import {
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { hasVersionRowBeside } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { useFormFieldScope } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import {
@@ -32,6 +33,7 @@ import {
   withTranslation,
 } from '@codaco/protocol-builder/localization/localizedText';
 import { ProtocolLocalizationProvider } from '@codaco/protocol-builder/localization/ProtocolLocalization';
+import { textFieldPropsFor } from '@codaco/protocol-builder/localization/textShape';
 import {
   type DynamicValues,
   type DynamicValueSite,
@@ -41,6 +43,7 @@ import {
   type LocalizedStringFormat,
   type MessageArguments,
 } from '@codaco/protocol-validation';
+import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 import { useAppSelector } from '~/ducks/hooks';
 import type { TranslationRow } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
@@ -86,8 +89,6 @@ const messages = defineMessages({
 export type TranslationCellProps = {
   /** The text, as the protocol has it. */
   row: TranslationRow;
-  /** True where no translation has a line break, so Enter moves on. */
-  singleLine: boolean;
   locale: LocaleTag;
   localization: ProtocolLocalization;
   /** The row header and column header that name the cell. */
@@ -123,8 +124,9 @@ const UnsavedMark = () => (
 
 // The text, the stand-in that shows through an empty cell, and the sizer that
 // grows the cell share one padding and wrapping, so each lines up over the
-// others.
-const CELL_TEXT_CLASSES = 'px-3 py-2 wrap-break-word';
+// others. A word longer than the column breaks wherever it must: the cell is a
+// grid item, which `break-word` would let widen past its column.
+const CELL_TEXT_CLASSES = 'px-3 py-2 wrap-anywhere';
 const PLAIN_TEXT_CLASSES = cx(CELL_TEXT_CLASSES, 'whitespace-pre-wrap');
 
 /** Every declared language the text has a translation in. */
@@ -342,7 +344,6 @@ const isCaretAt = (element: HTMLTextAreaElement, edge: 'start' | 'end') => {
  */
 const PlainTextCell = ({
   row,
-  singleLine,
   locale,
   localization,
   labelledBy,
@@ -353,6 +354,8 @@ const PlainTextCell = ({
   const fallbackId = useId();
   const noteId = useId();
   const formScope = useFormFieldScope();
+  // As the text's field declares it, so Enter in a one-line text moves on.
+  const { singleLine } = textFieldPropsFor(row);
   const draft = useTranslationDraft({ row, locale });
   const { text, error } = draft;
   const empty = isBlankTranslation(row, text);
@@ -420,7 +423,15 @@ const PlainTextCell = ({
         <textarea
           rows={1}
           value={text}
-          onChange={(event) => draft.change(event.target.value)}
+          // A one-line text holds no line break: one typed with Shift+Enter
+          // or pasted becomes a space.
+          onChange={(event) =>
+            draft.change(
+              singleLine
+                ? lineBreaksAsSpaces(event.target.value)
+                : event.target.value,
+            )
+          }
           onBlur={draft.leave}
           onKeyDown={handleKeyDown}
           aria-labelledby={labelledBy}
@@ -579,6 +590,13 @@ const useEditedCell = ({
       (event.key === 'ArrowUp' && isAtEdge(editable, 'start')) ||
       (event.key === 'ArrowDown' && isAtEdge(editable, 'end'))
     ) {
+      // Versions listed open step between their own rows first.
+      if (
+        editable.matches('[data-version]') &&
+        hasVersionRowBeside(editable, event.key === 'ArrowUp' ? -1 : 1)
+      ) {
+        return;
+      }
       if (onMove(event.key === 'ArrowUp' ? -1 : 1)) {
         event.preventDefault();
         event.stopPropagation();
@@ -631,7 +649,6 @@ const CellOpener = ({
  */
 const RichTextCell = ({
   row,
-  singleLine,
   locale,
   localization,
   labelledBy,
@@ -643,6 +660,10 @@ const RichTextCell = ({
   const editorId = useId();
   const noteId = useId();
   const formScope = useFormFieldScope();
+  // The editor the text's field declares, as the stage editor offers it: a
+  // one-line text gets bold and italics, a text of several lines the whole
+  // toolbar, whatever its translations hold now.
+  const { singleLine } = textFieldPropsFor(row);
   const draft = useTranslationDraft({ row, locale });
   const { text, error } = draft;
   const { editing, revision, cellProps } = useEditedCell({
@@ -889,7 +910,6 @@ const useDynamicSite = (
  */
 const DynamicCell = ({
   row,
-  singleLine,
   locale,
   localization,
   labelledBy,
@@ -905,21 +925,17 @@ const DynamicCell = ({
   const site = useDynamicSite(row.path, dynamicValues);
   const draft = useTranslationDraft({ row, locale });
   const { text: message, error } = draft;
-  const markdown = row.format === 'markdown';
+  // As the text's field declares it (see `RichTextCell`).
+  const { markdown, singleLine } = textFieldPropsFor(row);
   const { editing, revision, cellProps } = useEditedCell({
     draft,
-    singleLine: !markdown || singleLine,
+    singleLine,
     onMove,
     isAtEdge: isEditableCaretAt,
   });
   const empty = isBlankTranslation(row, message);
   const fallbackShown = empty && error === undefined;
   const value = withMessage(row.value, locale, empty ? undefined : message);
-  const originalMessage = row.value[localization.defaultLocale];
-  const original =
-    originalMessage === undefined
-      ? undefined
-      : { locale: localization.defaultLocale, message: originalMessage };
   const describedBy = [
     fallbackShown || !editing ? contentId : undefined,
     error === undefined ? undefined : noteId,
@@ -964,10 +980,9 @@ const DynamicCell = ({
               autoFocus
               readOnly={false}
               markdown={markdown}
-              singleLine={!markdown || singleLine}
+              singleLine={singleLine}
               message={message}
               onMessageChange={(next) => draft.change(next ?? '')}
-              original={original}
               locale={locale}
               site={site}
               showsProblems={false}

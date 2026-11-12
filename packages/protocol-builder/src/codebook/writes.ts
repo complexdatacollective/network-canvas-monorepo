@@ -343,9 +343,7 @@ async function createEgoCodebook(
     kind: 'codebookEgo',
     document: Redacted.make(document),
   });
-  if (created.isSuccess || created.refusal !== undefined) {
-    egoKey.settled(requestId);
-  }
+  if (created.answered) egoKey.settled(requestId);
   if (created.isSuccess) {
     await readCreatedSection(deps, created.data.sectionId);
     return { status: 'applied', sectionId: created.data.sectionId };
@@ -394,9 +392,7 @@ export function useCreateCodebookEntity(): (
         kind,
         document: Redacted.make(document),
       });
-      if (created.isSuccess || created.refusal !== undefined) {
-        createKey.settled(requestId);
-      }
+      if (created.answered) createKey.settled(requestId);
       if (created.isSuccess) {
         // Read in before the caller is answered: what it does next is point
         // the stage at the new type.

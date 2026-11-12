@@ -59,7 +59,7 @@ export default function BehavioursPanel({
     <SegmentedToolbar
       aria-label={intl.formatMessage(interfaceMessages.layoutAndDrawing)}
       size="lg"
-      className="absolute bottom-10 left-10 z-10"
+      className="absolute inset-s-10 bottom-10 z-10"
     >
       {showLayoutToggle ? (
         <ToolbarGroup

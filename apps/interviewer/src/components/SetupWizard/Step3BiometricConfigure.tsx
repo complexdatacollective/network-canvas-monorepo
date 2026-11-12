@@ -14,51 +14,58 @@ const messages = defineMessages({
   biometricSetupFailed: {
     id: 'interviewer.step3BiometricConfigure.biometricSetupFailed',
     defaultMessage: 'Biometric setup failed.',
-    description: 'User-facing message in Interviewer Step3Biometric Configure.',
+    description:
+      'Error message shown in the biometric setup step when enrolling biometrics fails and no more specific reason is available.',
   },
   biometricUnlockUsesYourDeviceSFace: {
     id: 'interviewer.step3BiometricConfigure.biometricUnlockUsesYourDeviceSFace',
     defaultMessage:
       "Biometric unlock uses your device's Face ID, Touch ID, or Windows Hello. When you continue, you'll be prompted to register it.",
-    description: 'Visible copy in Interviewer Step3Biometric Configure.',
+    description:
+      'Explanation at the top of the biometric setup step; when the researcher continues, the browser asks them to register their biometric (Face ID, Touch ID, Windows Hello).',
   },
   setARecoveryPassphrase: {
     id: 'interviewer.step3BiometricConfigure.setARecoveryPassphrase',
     defaultMessage: 'Set a recovery passphrase',
-    description: 'Visible copy in Interviewer Step3Biometric Configure.',
+    description:
+      'Title of an informational callout in the biometric setup step, prompting for a backup passphrase.',
   },
   ifYourBiometricEverBecomesUnavailableYou: {
     id: 'interviewer.step3BiometricConfigure.ifYourBiometricEverBecomesUnavailableYou',
     defaultMessage:
       'If your biometric ever becomes unavailable — you reset Face ID, replace the device, or remove the credential — this passphrase is the only way to unlock your data. Store it somewhere safe.',
-    description: 'Visible copy in Interviewer Step3Biometric Configure.',
+    description:
+      'Body of the "Set a recovery passphrase" callout; the passphrase is the only way to unlock the data if the biometric is lost or reset.',
   },
   recoveryPassphrase: {
     id: 'interviewer.step3BiometricConfigure.recoveryPassphrase',
     defaultMessage: 'Recovery passphrase',
-    description: 'The label label in Interviewer Step3Biometric Configure.',
+    description:
+      'Field label for the recovery passphrase input in the biometric setup step.',
   },
   atLeast12CharactersCombiningUppercaseLowercase: {
     id: 'interviewer.step3BiometricConfigure.atLeast12CharactersCombiningUppercaseLowercase',
     defaultMessage:
       'At least 12 characters combining uppercase, lowercase, numbers, and symbols.',
-    description: 'The hint label in Interviewer Step3Biometric Configure.',
+    description:
+      'Hint under the recovery passphrase field stating the strength requirements.',
   },
   enterRecoveryPassphrase: {
     id: 'interviewer.step3BiometricConfigure.enterRecoveryPassphrase',
     defaultMessage: 'Enter recovery passphrase',
-    description:
-      'The placeholder label in Interviewer Step3Biometric Configure.',
+    description: 'Placeholder text inside the empty recovery passphrase field.',
   },
   confirmRecoveryPassphrase: {
     id: 'interviewer.step3BiometricConfigure.confirmRecoveryPassphrase',
     defaultMessage: 'Confirm recovery passphrase',
-    description: 'The label label in Interviewer Step3Biometric Configure.',
+    description:
+      'Field label, and also its placeholder, for re-typing the recovery passphrase to confirm it.',
   },
   passphrasesDoNotMatch: {
     id: 'interviewer.step3BiometricConfigure.passphrasesDoNotMatch',
     defaultMessage: 'Passphrases do not match.',
-    description: 'Visible copy in Interviewer Step3Biometric Configure.',
+    description:
+      'Inline error under the recovery passphrase fields when the confirmation differs from the first entry.',
   },
 });
 

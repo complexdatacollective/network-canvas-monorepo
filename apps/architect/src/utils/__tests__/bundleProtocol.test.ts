@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
+  interfaceTextShownBy,
 } from '@codaco/protocol-validation';
 
 import type { StoredAsset } from '../assetDB';
@@ -11,7 +12,7 @@ import {
   bundleLegacyProtocol,
   bundleProtocol,
   downloadProtocolAsNetcanvas,
-  MissingDefaultLanguageTextError,
+  DownloadRefusedError,
   UnresolvedAssetsError,
 } from '../bundleProtocol';
 import type { LegacyStoredProtocolRow } from '../legacyProtocolLibrary';
@@ -227,13 +228,22 @@ describe('the finish stage text guard', () => {
   const japanese = { defaultLocale: 'ja', locales: ['ja'] };
   // As Architect creates a protocol in a language Network Canvas supplies no
   // closing text for.
-  const japaneseProtocol = (): CurrentProtocol => ({
-    ...makeProtocol({ 'id-1': asset('image', 'photo.jpg', 'Photo') }),
-    localization: japanese,
-    stages: [
-      createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
-    ],
-  });
+  // The interview's shared words are written in Japanese, as a researcher
+  // would write them: Network Canvas has no wording there.
+  const japaneseProtocol = (): CurrentProtocol => {
+    const protocol = {
+      ...makeProtocol({ 'id-1': asset('image', 'photo.jpg', 'Photo') }),
+      localization: japanese,
+      stages: [
+        createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+      ],
+    };
+    const interfaceText: Record<string, Record<string, { ja: string }>> = {};
+    for (const { group, key } of interfaceTextShownBy(protocol)) {
+      (interfaceText[group] ??= {})[key] = { ja: '日本語' };
+    }
+    return { ...protocol, interfaceText };
+  };
 
   beforeEach(() => {
     getAssetById.mockReset();
@@ -242,9 +252,7 @@ describe('the finish stage text guard', () => {
 
   it('refuses to bundle a protocol whose finish stage has no closing or finished text in the default language', async () => {
     const refusal = bundleProtocol(japaneseProtocol());
-    await expect(refusal).rejects.toBeInstanceOf(
-      MissingDefaultLanguageTextError,
-    );
+    await expect(refusal).rejects.toBeInstanceOf(DownloadRefusedError);
     await expect(refusal).rejects.toMatchObject({
       problem: {
         stageId: 'end',
@@ -330,7 +338,7 @@ describe('the finish stage text guard', () => {
   it('passes the refusal through a download unwrapped, so its caller can describe it', async () => {
     await expect(
       downloadProtocolAsNetcanvas(japaneseProtocol(), 'Japanese'),
-    ).rejects.toBeInstanceOf(MissingDefaultLanguageTextError);
+    ).rejects.toBeInstanceOf(DownloadRefusedError);
   });
 });
 

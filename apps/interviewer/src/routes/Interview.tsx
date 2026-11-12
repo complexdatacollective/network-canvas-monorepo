@@ -94,13 +94,15 @@ const messages = defineMessages({
   interviewUnavailable: {
     id: 'interviewer.interview.interviewUnavailable',
     defaultMessage: 'Interview unavailable',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Heading of the full-screen message shown in place of an interview that cannot be opened because its protocol is incompatible or an older version is unavailable.',
   },
   theProtocolThisInterviewUsesCouldNot: {
     id: 'interviewer.interview.theProtocolThisInterviewUsesCouldNot',
     defaultMessage:
       'The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      "Body under the Interview unavailable heading when the interview's protocol could not be migrated to this app version. Architect is the protocol design app.",
   },
   thisInterviewUsesAnOlderSchema: {
     id: 'interviewer.interview.thisInterviewUsesAnOlderSchema',
@@ -112,18 +114,21 @@ const messages = defineMessages({
   returnHome: {
     id: 'interviewer.interview.returnHome',
     defaultMessage: 'Return home',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Button on the interview error screens that goes back to the home screen. Verb phrase.',
   },
   interviewNotFound: {
     id: 'interviewer.interview.interviewNotFound',
     defaultMessage: 'Interview not found',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Heading of the full-screen message shown when the opened interview address matches no stored interview.',
   },
   thisInterviewMayHaveBeenDeletedOr: {
     id: 'interviewer.interview.thisInterviewMayHaveBeenDeletedOr',
     defaultMessage:
       'This interview may have been deleted, or the protocol it used is no longer installed.',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Body under the Interview not found heading, suggesting the interview was deleted or its protocol was removed from the device.',
   },
   interviewCouldNotBeOpened: {
     id: 'interviewer.interview.interviewCouldNotBeOpened',
@@ -141,13 +146,15 @@ const messages = defineMessages({
   readOnlyReview: {
     id: 'interviewer.interview.readOnlyReview',
     defaultMessage: 'Read-only review',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Title of the notice shown at the top while a finished interview is open for review only. Read-only is an adjective.',
   },
   changesMadeWhileReviewingThisInterviewWill: {
     id: 'interviewer.interview.changesMadeWhileReviewingThisInterviewWill',
     defaultMessage:
       'Changes made while reviewing this interview will not be saved.',
-    description: 'Visible copy in Interviewer Interview.',
+    description:
+      'Description in the read-only review notice warning that edits made while reviewing a finished interview are not kept.',
   },
 });
 

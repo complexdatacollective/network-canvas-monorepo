@@ -1,0 +1,58 @@
+---
+title: Acerca de Interviewer
+date: 22nd July 2026
+navOrder: 0
+translatedFrom: fcfd298e94ec495c883fc49a7bee84594b3efa87
+---
+
+<Paragraph variant="lead">
+  Interviewer es la aplicación de Network Canvas para realizar entrevistas de
+  red presenciales, con ayuda de una persona entrevistadora, en un dispositivo
+  que tú controlas.
+</Paragraph>
+
+Funciona en tu navegador web (ábrelo en [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com), sin descargar nada) y, si quieres, se puede instalar en tu dispositivo como aplicación web progresiva (PWA) para acceder a él rápidamente y usarlo sin conexión.
+
+Todo lo que almacena Interviewer (protocolos, entrevistas y configuración) se queda en el dispositivo, sin sincronización en la nube ni ningún componente de servidor. Importas los protocolos, realizas las entrevistas y exportas los datos desde la propia aplicación.
+
+![El panel de administración de Interviewer.](/assets/img/interviewer-guide/start-screen.png)
+
+## Empezar directamente {#jump-straight-in}
+
+Si quieres empezar directamente, abre [Interviewer](https://interviewer.networkcanvas.com) en tu navegador y prueba el protocolo de ejemplo integrado: el tutorial [Usar Interviewer](/es/collect-data/interviewer/using-interviewer) te guía paso a paso.
+
+Si no, sigue leyendo para saber qué hace Interviewer y qué lugar ocupa en el ecosistema de Network Canvas.
+
+## ¿Qué es Interviewer? {#what-is-interviewer}
+
+Interviewer es una herramienta de administración de entrevistas diseñada para que resulte sencilla e intuitiva a quienes participan en una investigación, y para integrarse con el resto de herramientas de Network Canvas. Es la pieza central del proyecto Network Canvas: sus interfaces están optimizadas para las necesidades específicas de las entrevistas de red, y se configura a partir de los archivos de protocolo que diseñas para tu estudio.
+
+Interviewer está desarrollado sobre la misma plataforma que Fresco 4.0, y lleva la experiencia de entrevista renovada a la recopilación de datos en el dispositivo con ayuda de una persona entrevistadora. Mientras que [Fresco](/es/collect-data/fresco/about) permite a cada participante completar la entrevista a distancia en su propio navegador, con los datos almacenados en un servidor que alojas tú, en Interviewer una persona entrevistadora con formación guía la entrevista en un dispositivo controlado, y los datos se almacenan en ese dispositivo. Consulta [Realizar entrevistas](/es/collect-data) para ver una comparación completa de las dos aplicaciones.
+
+## Dos versiones de Interviewer {#two-versions-of-interviewer}
+
+Interviewer tiene dos versiones admitidas:
+
+- La aplicación actual funciona en tu **navegador web** (se puede instalar como aplicación web progresiva en un dispositivo que tú controlas), admite protocolos de los **esquemas 8 y 9** y es la recomendada para todos los estudios nuevos.
+- **Interviewer Classic** es la aplicación ya consolidada para **ordenador y tableta**, que se descarga e instala en cada dispositivo. Ejecuta protocolos del esquema 7 y funciona completamente sin conexión.
+
+Qué versión puede ejecutar un protocolo concreto depende de su versión del esquema; consulta [Información sobre el esquema de protocolo](/es/get-started/protocol-schema-information). La [guía de instalación](/es/collect-data/interviewer/installing-interviewer) explica cómo conseguir cada versión, y [Usar Interviewer](/es/collect-data/interviewer/using-interviewer) te permite alternar entre las dos a lo largo de todo el tutorial.
+
+## Funciones principales {#key-capabilities}
+
+- **Ejecuta los protocolos de Architect**: Interviewer es compatible con tus protocolos actuales. Ejecuta los protocolos del esquema 9 y del esquema 8 con el esquema para el que se crearon, y nunca los actualiza. Un protocolo del esquema 7 procedente de las aplicaciones Classic se migra automáticamente al esquema 8 al importarlo. Para usar las funciones del esquema 9 en un protocolo anterior, actualízalo en Architect.
+- **Funciona sin conexión, con excepciones documentadas**: una vez instalado como aplicación web progresiva, Interviewer sigue disponible sin conexión. Interviewer tiene un único estado de disponibilidad sin conexión para toda la aplicación, que indica **Listo para uso sin conexión** cuando todos los protocolos del dispositivo, incluidos los del esquema 8, se pueden usar sin conexión. Algunas interfaces del esquema 8 (como la [interfaz geoespacial](/es/design-protocols/interface-documentation/geospatial)) necesitan conexión a internet durante la entrevista, y las tarjetas de protocolo muestran el indicador **Requiere internet** cuando un protocolo las usa.
+- **Datos en el dispositivo, con seguridad en la propia aplicación**: cuando configuras un bloqueo de la aplicación (un PIN, una frase de contraseña o biometría), los datos almacenados se cifran en reposo con una clave derivada de tu credencial. Consulta [Almacenamiento y seguridad de los datos](/es/collect-data/interviewer/data-storage) para saber de qué te protege y de qué no.
+- **Exportación de datos a CSV y GraphML**: exporta las sesiones que selecciones en un único archivo `.zip`, con los formatos y las opciones configurados una sola vez en **Configuración → Exportación de datos**. Consulta la [guía de exportación de datos](/es/analyze-data/data-export) para saber qué contienen los archivos exportados.
+- **Datos sintéticos**: genera sesiones de entrevista ficticias a partir de cualquier protocolo instalado para ensayar y validar tu proceso de exportación antes de recopilar datos reales.
+
+## Próximos pasos {#next-steps}
+
+Para empezar a usar Interviewer, te recomendamos estos recursos:
+
+- [Instalar Interviewer](/es/collect-data/interviewer/installing-interviewer): abre la aplicación en tu navegador o instálala como aplicación web progresiva, o descarga Interviewer Classic.
+- [Usar Interviewer](/es/collect-data/interviewer/using-interviewer): un recorrido por el protocolo de ejemplo que trata tanto la experiencia de entrevista de quienes participan como las funciones de la aplicación destinadas al equipo de investigación.
+- [Elegir un dispositivo para Interviewer](/es/collect-data/interviewer/choosing-hardware): consejos para elegir un dispositivo que ofrezca a quienes participan una experiencia de entrevista fluida.
+- [Almacenamiento y seguridad de los datos](/es/collect-data/interviewer/data-storage): dónde se guardan los datos de tus entrevistas, qué los protege y cómo mantenerlos a salvo sobre el terreno.
+
+Si tienes algún problema, te animamos a usar la función de búsqueda de la parte superior de cada página o a visitar nuestro [foro de la comunidad](https://community.networkcanvas.com) (en inglés) para obtener ayuda.

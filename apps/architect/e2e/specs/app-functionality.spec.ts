@@ -69,10 +69,8 @@ test('separates history controls and returns project subpages to the timeline', 
 
 // Undo and redo cover the protocol's own history and not typing inside an
 // editor: the stage editor holds its document in its form until it is saved,
-// and the save is the one step the timeline records
-// (docs/superpowers/plans/2026-09-09-protocol-builder-rework.md, "no undo
-// fencing"). Before this, the History toolbar appeared as soon as a stage name
-// was typed and undid keystrokes.
+// and the save is the one step the timeline records. Before this, the History
+// toolbar appeared as soon as a stage name was typed and undid keystrokes.
 test('keeps history to saved changes while a stage editor is open', async ({
   architectPage,
   seed,
@@ -161,11 +159,11 @@ test('downloads the active protocol as a .netcanvas', async ({
     /^All_Interfaces-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}\.netcanvas$/,
   );
 
-  // ProjectActions.tsx swaps the button's label to "Downloaded" once the
-  // export promise resolves (reverting to "Download" after a 2s timeout), so
+  // ProjectActions.tsx swaps the Export button's label to "Downloaded" once
+  // the export promise resolves (reverting to "Export" after a 2s timeout), so
   // this proves the export actually completed rather than just that the
   // anchor's synchronous `.click()` fired.
-  await toolbar.expectLabel('download', 'Downloaded');
+  await toolbar.expectLabel('export', 'Downloaded');
 });
 
 test('downloads the active protocol while returning to the start screen', async ({

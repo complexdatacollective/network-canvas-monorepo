@@ -193,8 +193,7 @@ verdict, or any unrecognised path (root configs, `.github/`, `scripts/`, the
 lockfile) re-runs the suite. Force-pushed refreshes of a release PR after
 unrelated merges to `main` therefore keep their E2E verdicts without
 re-running, while any change that ships in the lane re-runs as before (see
-`scripts/ci/release-e2e-policy.mjs` and
-`docs/superpowers/specs/2026-07-17-release-e2e-equivalence-reuse-design.md`).
+`scripts/ci/release-e2e-policy.mjs`).
 
 Merge groups run only a lightweight `quality` acknowledgement. The main
 ruleset requires every pull request to pass its full `quality` check before it

@@ -1,6 +1,6 @@
 import {
   defineAppLocales,
-  pseudoAppLocale,
+  pseudoAppLocales,
   type AppLocale,
 } from '@codaco/app-i18n/locales';
 
@@ -16,10 +16,11 @@ export const architectProductionLocales = defineAppLocales([
   { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
   { locale: 'it', label: 'Italiano', direction: 'ltr' },
   { locale: 'fr', label: 'Français', direction: 'ltr' },
+  { locale: 'ar', label: 'العربية', direction: 'rtl' },
 ]);
 
 export const architectLocales: readonly AppLocale[] = import.meta.env.DEV
-  ? [...architectProductionLocales, pseudoAppLocale]
+  ? [...architectProductionLocales, ...pseudoAppLocales]
   : architectProductionLocales;
 
 export const architectDefaultLocale = 'en';

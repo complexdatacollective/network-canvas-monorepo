@@ -26,76 +26,87 @@ const messages = defineMessages({
   searchTheCodebookByName: {
     id: 'architect.codebook.codebook.searchTheCodebookByName',
     defaultMessage: 'Search the codebook by name',
-    description: 'The label text in components / Codebook / Codebook.',
+    description:
+      'Label of the search field at the top of the Codebook page, which filters the node types, edge types and variables listed below it by name.',
   },
   searchTypesAndAttributesByName: {
     id: 'architect.codebook.codebook.searchTypesAndAttributesByName',
     defaultMessage: 'Search types and attributes by name...',
-    description: 'The placeholder text in components / Codebook / Codebook.',
+    description:
+      'Placeholder inside the search field at the top of the Codebook page. Types means node types and edge types; attributes means the codebook variables recorded about them.',
   },
   showUnusedOnly: {
     id: 'architect.codebook.codebook.showUnusedOnly',
     defaultMessage: 'Show unused only',
-    description: 'Visible text in components / Codebook / Codebook.',
+    description:
+      'Label of the checkbox at the top of the Codebook page that, when ticked, lists only variables that no stage uses.',
   },
   thereAreCurrentlyNoTypesOr: {
     id: 'architect.codebook.codebook.thereAreCurrentlyNoTypesOr',
     defaultMessage:
       'There are currently no types or attributes defined in this protocol. Use the buttons below to create your first node or edge type, or add ego attributes.',
-    description: 'Visible text in components / Codebook / Codebook.',
+    description:
+      'Message on the Codebook page when the protocol has no node types, edge types, ego attributes or network resources yet. The buttons below it create a node type, an edge type or an ego attribute.',
   },
   ego: {
     id: 'architect.codebook.codebook.ego',
     defaultMessage: 'Ego',
-    description: 'Visible text in components / Codebook / Codebook.',
+    description:
+      'Heading of the Codebook page section for the ego, the study participant being interviewed, whose own attributes (variables) are listed under it.',
   },
   egoAttributes: {
     id: 'architect.codebook.codebook.egoAttributes',
     defaultMessage: 'Ego attributes',
-    description: 'The title text in components / Codebook / Codebook.',
+    description:
+      'Title of the section on the Codebook page listing the ego attributes, the codebook variables recorded about the participant themselves rather than about people they name.',
   },
   reviewTheAttributesCollectedAboutThe: {
     id: 'architect.codebook.codebook.reviewTheAttributesCollectedAboutThe',
     defaultMessage: 'Review the attributes collected about the participant.',
-    description: 'The description text in components / Codebook / Codebook.',
+    description:
+      'Hint under the Ego attributes section title, saying that the section lists the attributes (variables) collected about the participant.',
   },
   nodeTypes: {
     id: 'architect.codebook.codebook.nodeTypes',
     defaultMessage: 'Node Types ({value1, number})',
     description:
-      'Codebook section heading. value1 is the total number of node types in the protocol.',
+      'Codebook section heading. value1 is the total number of node types in the protocol. A node type is a kind of person or thing that participants name, such as Person.',
   },
   createNodeType: {
     id: 'architect.codebook.codebook.createNodeType',
     defaultMessage: 'Create node type',
-    description: 'Visible text in components / Codebook / Codebook.',
+    description:
+      'Button beside the Node Types heading on the Codebook page that opens a dialog for creating a new node type. Create is a verb.',
   },
   noNodeTypesYet: {
     id: 'architect.codebook.codebook.noNodeTypesYet',
     defaultMessage: 'No node types yet.',
-    description: 'Visible text in components / Codebook / Codebook.',
+    description:
+      'Message under the Node Types heading on the Codebook page when the protocol has no node types.',
   },
   edgeTypes: {
     id: 'architect.codebook.codebook.edgeTypes',
     defaultMessage: 'Edge Types ({value1, number})',
     description:
-      'Codebook section heading. value1 is the total number of edge types in the protocol.',
+      'Codebook section heading. value1 is the total number of edge types in the protocol. An edge type is a kind of relationship between two nodes, such as Friend.',
   },
   createEdgeType: {
     id: 'architect.codebook.codebook.createEdgeType',
     defaultMessage: 'Create edge type',
-    description: 'Visible text in components / Codebook / Codebook.',
+    description:
+      'Button beside the Edge Types heading on the Codebook page that opens a dialog for creating a new edge type. Create is a verb.',
   },
   noEdgeTypesYet: {
     id: 'architect.codebook.codebook.noEdgeTypesYet',
     defaultMessage: 'No edge types yet.',
-    description: 'Visible text in components / Codebook / Codebook.',
+    description:
+      'Message under the Edge Types heading on the Codebook page when the protocol has no edge types.',
   },
   networkAssets: {
     id: 'architect.codebook.codebook.networkAssets',
     defaultMessage: 'Network Assets ({value1, number})',
     description:
-      'Codebook section heading. value1 is the total number of network resources in the protocol.',
+      'Codebook section heading. value1 is the total number of network resources in the protocol. A network resource is an uploaded file of nodes or edges that stages can use as a roster.',
   },
 });
 

@@ -37,10 +37,10 @@ describe('SplitButton', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Save' })).toHaveClass(
-      'rounded-r-none!',
+      'rounded-e-none!',
     );
     expect(screen.getByRole('button', { name: 'Open options' })).toHaveClass(
-      'rounded-l-none!',
+      'rounded-s-none!',
     );
 
     rerender(
@@ -53,10 +53,10 @@ describe('SplitButton', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Save' })).toHaveClass(
-      'rounded-l-none!',
+      'rounded-s-none!',
     );
     expect(screen.getByRole('button', { name: 'Open options' })).toHaveClass(
-      'rounded-r-none!',
+      'rounded-e-none!',
     );
   });
 

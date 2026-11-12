@@ -6,7 +6,9 @@ import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   inapplicableStageSettings,
   missingSuppliedStageText,
+  stageWordingShown,
   suppliedStageSettingApplies,
+  suppliedStageSettingPaths,
   suppliedStageText,
   suppliedStageTextAfterLanguageChange,
 } from '../supplied-stage-text.ts';
@@ -81,7 +83,7 @@ describe('the roster panel title Network Canvas supplies', () => {
       ]);
     });
 
-    it('is the researcher’s once they write it in that default language', () => {
+    it('is still filled into a new language once the researcher writes it in that default language', () => {
       const roster = {
         type: 'NameGeneratorRoster',
         panelTitle: { 'es-MX': 'Disponibles', 'es': 'Disponibles para añadir' },
@@ -91,7 +93,16 @@ describe('the roster panel title Network Canvas supplies', () => {
           before: { defaultLocale: 'es-MX', locales: ['es-MX', 'es'] },
           after: { defaultLocale: 'es-MX', locales: ['es-MX', 'es', 'fr'] },
         }),
-      ).toEqual([]);
+      ).toEqual([
+        {
+          path: ['panelTitle'],
+          value: {
+            'es-MX': 'Disponibles',
+            'es': 'Disponibles para añadir',
+            'fr': 'Éléments disponibles',
+          },
+        },
+      ]);
     });
   });
 
@@ -106,7 +117,7 @@ describe('the roster panel title Network Canvas supplies', () => {
     panelTitle,
   });
 
-  it('is filled into a new language while it is still the supplied text in the default language', () => {
+  it('is filled into a new language', () => {
     expect(
       suppliedStageTextAfterLanguageChange(roster({ en: 'Available to add' }), {
         before: english,
@@ -162,13 +173,108 @@ describe('the roster panel title Network Canvas supplies', () => {
     ]);
   });
 
-  it('is the researcher’s once they have reworded it', () => {
+  it('is filled into a new language even once the researcher has reworded it in the default language', () => {
     expect(
       suppliedStageTextAfterLanguageChange(roster({ en: 'Services' }), {
         before: english,
-        after: { defaultLocale: 'en', locales: ['en', 'fr'] },
+        after: { defaultLocale: 'en', locales: ['en', 'fr', 'de'] },
       }),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        path: ['panelTitle'],
+        value: {
+          en: 'Services',
+          fr: 'Éléments disponibles',
+          de: 'Zum Hinzufügen verfügbar',
+        },
+      },
+    ]);
+  });
+
+  it('never overwrites a translation', () => {
+    // French is the researcher's own; German was written before it was
+    // declared, as an open stage editor can hold it.
+    expect(
+      suppliedStageTextAfterLanguageChange(
+        roster({ en: 'Services', fr: 'Nos services', de: 'Dienste' }),
+        {
+          before: { defaultLocale: 'en', locales: ['en', 'fr'] },
+          after: { defaultLocale: 'en', locales: ['en', 'fr', 'de', 'es'] },
+        },
+      ),
+    ).toEqual([
+      {
+        path: ['panelTitle'],
+        value: {
+          en: 'Services',
+          fr: 'Nos services',
+          de: 'Dienste',
+          es: 'Disponibles para añadir',
+        },
+      },
+    ]);
+  });
+
+  it('moves the researcher’s own translation unchanged to a corrected language', () => {
+    expect(
+      suppliedStageTextAfterLanguageChange(
+        roster({ en: 'Available to add', fr: 'Nos services' }),
+        {
+          before: { defaultLocale: 'en', locales: ['en', 'fr'] },
+          after: { defaultLocale: 'en', locales: ['en', 'de'] },
+          renamed: { fr: 'de' },
+        },
+      ),
+    ).toEqual([
+      {
+        path: ['panelTitle'],
+        value: { en: 'Available to add', de: 'Nos services' },
+      },
+    ]);
+  });
+
+  it('gains nothing in a new language Network Canvas has no wording in', () => {
+    expect(
+      suppliedStageTextAfterLanguageChange(roster({ en: 'Services' }), {
+        before: english,
+        after: { defaultLocale: 'en', locales: ['en', 'ja', 'fr-CA'] },
+      }),
+    ).toEqual([{ path: ['panelTitle'], value: { en: 'Services' } }]);
+  });
+
+  it('becomes the corrected language’s text where it is Network Canvas’s, even beside reworded text in the default language', () => {
+    expect(
+      suppliedStageTextAfterLanguageChange(
+        roster({ en: 'Services', fr: 'Éléments disponibles' }),
+        {
+          before: { defaultLocale: 'en', locales: ['en', 'fr'] },
+          after: { defaultLocale: 'en', locales: ['en', 'de'] },
+          renamed: { fr: 'de' },
+        },
+      ),
+    ).toEqual([
+      {
+        path: ['panelTitle'],
+        value: { en: 'Services', de: 'Zum Hinzufügen verfügbar' },
+      },
+    ]);
+  });
+
+  it('fills no gap in a language the protocol already had, as when the default changes or another language is removed', () => {
+    const missingFrench = roster({ en: 'Available to add' });
+    const both = { defaultLocale: 'en', locales: ['en', 'fr'] };
+    expect(
+      suppliedStageTextAfterLanguageChange(missingFrench, {
+        before: both,
+        after: { defaultLocale: 'fr', locales: ['en', 'fr'] },
+      }),
+    ).toEqual([{ path: ['panelTitle'], value: { en: 'Available to add' } }]);
+    expect(
+      suppliedStageTextAfterLanguageChange(missingFrench, {
+        before: { defaultLocale: 'en', locales: ['en', 'fr', 'de'] },
+        after: both,
+      }),
+    ).toEqual([{ path: ['panelTitle'], value: { en: 'Available to add' } }]);
   });
 });
 
@@ -445,5 +551,235 @@ describe('the settings a stage holds but no longer shows', () => {
     expect(
       inapplicableStageSettings({ type: 'NameGenerator', behaviours: {} }),
     ).toEqual([]);
+  });
+});
+
+describe('the text the interview shows for a stage', () => {
+  const locales = { defaultLocale: 'en', locales: ['en', 'es', 'sw'] };
+  const minNotice = (stage: {
+    type: string;
+    [key: string]: unknown;
+  }): ReturnType<typeof stageWordingShown>[number] | undefined =>
+    stageWordingShown(stage, locales).find(
+      ({ path }) => path.join('.') === 'minNodesNotice',
+    );
+  const supplied = suppliedStageText('NameGenerator', locales).find(
+    ({ path }) => path.join('.') === 'minNodesNotice',
+  )?.value;
+
+  it('lists every supplied setting of the stage type, in table order', () => {
+    expect(
+      stageWordingShown({ type: 'NameGenerator' }, locales).map(
+        ({ path }) => path,
+      ),
+    ).toEqual(suppliedStageSettingPaths('NameGenerator'));
+    expect(stageWordingShown({ type: 'Information' }, locales)).toEqual([]);
+  });
+
+  it('is Network Canvas’s wording where the stage holds none', () => {
+    expect(supplied).toEqual({
+      en: expect.any(String),
+      es: expect.any(String),
+    });
+    expect(minNotice({ type: 'NameGenerator' })?.value).toEqual(supplied);
+  });
+
+  it('is the stage’s own translation where it holds one, and the rest from Network Canvas', () => {
+    const shown = minNotice({
+      type: 'NameGenerator',
+      minNodesNotice: { en: 'Add more people', sw: 'Ongeza watu' },
+    })?.value;
+
+    expect(shown).toEqual({
+      en: 'Add more people',
+      es: supplied?.es,
+      sw: 'Ongeza watu',
+    });
+  });
+
+  it('is only what the stage holds in a language Network Canvas has no wording in', () => {
+    const swahili = { defaultLocale: 'sw', locales: ['sw'] };
+    const shownIn = (stage: { type: string; [key: string]: unknown }) =>
+      stageWordingShown(stage, swahili).find(
+        ({ path }) => path.join('.') === 'minNodesNotice',
+      )?.value;
+
+    expect(shownIn({ type: 'NameGenerator' })).toEqual({});
+    expect(
+      shownIn({ type: 'NameGenerator', minNodesNotice: { sw: 'Ongeza' } }),
+    ).toEqual({ sw: 'Ongeza' });
+  });
+
+  it('reads anything but an object of text as holding nothing', () => {
+    for (const held of ['text', ['en'], null, { en: 3 }]) {
+      expect(
+        minNotice({ type: 'NameGenerator', minNodesNotice: held })?.value,
+      ).toEqual(supplied);
+    }
+  });
+
+  it('shows a setting with a `when` only while the stage is configured to', () => {
+    expect(
+      minNotice({ type: 'NameGenerator', behaviours: { minNodes: 2 } })?.shown,
+    ).toBe(true);
+    expect(
+      minNotice({ type: 'NameGenerator', behaviours: { minNodes: 0 } })?.shown,
+    ).toBe(false);
+    expect(minNotice({ type: 'NameGenerator' })?.shown).toBe(false);
+  });
+
+  it('shows an optional setting only while the stage holds it', () => {
+    const hint = (nameField: unknown) =>
+      stageWordingShown(
+        { type: 'FamilyPedigree', nodeConfiguration: { nameField } },
+        locales,
+      ).find(
+        ({ path }) => path.join('.') === 'nodeConfiguration.nameField.hint',
+      );
+
+    expect(hint({ prompt: { en: 'Name?' } })?.shown).toBe(false);
+    expect(hint({ prompt: { en: 'Name?' }, hint: { en: 'Hint' } })?.shown).toBe(
+      true,
+    );
+    expect(
+      hint({ prompt: { en: 'Name?' }, hint: { en: 'Hint' } })?.value.en,
+    ).toBe('Hint');
+    // The prompt is not optional: the interview shows it, wording its own.
+    expect(
+      stageWordingShown(
+        { type: 'FamilyPedigree', nodeConfiguration: {} },
+        locales,
+      ).find(
+        ({ path }) => path.join('.') === 'nodeConfiguration.nameField.prompt',
+      )?.shown,
+    ).toBe(true);
+  });
+
+  it('shows a setting within an optional object only while the stage has the object', () => {
+    const completenessTexts = (stage: Record<string, unknown>) =>
+      stageWordingShown({ type: 'FamilyPedigree', ...stage }, locales).filter(
+        ({ path }) => path[0] === 'completeness',
+      );
+
+    expect(completenessTexts({}).length).toBeGreaterThan(0);
+    expect(completenessTexts({}).some(({ shown }) => shown)).toBe(false);
+    expect(
+      completenessTexts({ completeness: { scope: 'parents' } }).every(
+        ({ shown }) => shown,
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('a stage that omits the wording Network Canvas supplies', () => {
+  const stageTypes = [
+    'CategoricalBin',
+    'FamilyPedigree',
+    'FinishSession',
+    'Geospatial',
+    'LanguageChooser',
+    'NameGenerator',
+    'NameGeneratorQuickAdd',
+    'NameGeneratorRoster',
+    'Narrative',
+    'NarrativePedigree',
+    'OrdinalBin',
+  ];
+
+  /**
+   * `document` without the value at `path`, and without any object that
+   * leaves empty, so a stage omits an object that held only wording too.
+   */
+  const without = (document: unknown, path: readonly (string | number)[]) => {
+    const copy = structuredClone(document);
+    const holders: unknown[] = [copy];
+    for (const key of path.slice(0, -1)) {
+      const holder = holders.at(-1);
+      holders.push(
+        typeof holder === 'object' && holder !== null
+          ? Reflect.get(holder, key)
+          : undefined,
+      );
+    }
+    for (let depth = path.length - 1; depth >= 2; depth -= 1) {
+      const holder = holders[depth];
+      const key = path[depth];
+      if (typeof holder !== 'object' || holder === null || key === undefined)
+        break;
+      Reflect.deleteProperty(holder, key);
+      if (Object.keys(holder).length > 0) break;
+    }
+    return copy;
+  };
+
+  const stages = completeProtocol().stages;
+  const heldAt = (document: unknown, path: readonly string[]) =>
+    path.reduce<unknown>(
+      (current, key) =>
+        typeof current === 'object' && current !== null
+          ? Reflect.get(current, key)
+          : undefined,
+      document,
+    );
+  const CONDITIONAL_AND_ABSENT = [
+    'NameGeneratorQuickAdd minNodesNotice',
+    'NameGeneratorQuickAdd maxNodesNotice',
+    'CategoricalBin unplacedNodesNotice',
+  ];
+
+  it('starts from a protocol that is valid with all of it held', () => {
+    expect(ProtocolSchemaV9.safeParse(completeProtocol()).success).toBe(true);
+  });
+
+  // The whole protocol is validated once for each setting, which for the
+  // Family Pedigree is some eighty times: seconds on a loaded machine, so the
+  // time allowed is set for that rather than for one validation.
+  it.each(stageTypes)(
+    'is accepted, whichever setting it omits, on a %s stage',
+    { timeout: 60_000 },
+    (type) => {
+      const paths = suppliedStageSettingPaths(type);
+      expect(paths.length).toBeGreaterThan(0);
+      const indexes = stages.flatMap((stage, index) =>
+        stage.type === type ? [index] : [],
+      );
+      expect(indexes.length).toBeGreaterThan(0);
+
+      for (const index of indexes) {
+        for (const path of paths) {
+          const key = `${type} ${path.join('.')}`;
+          // A setting only some configurations show is absent from a
+          // fixture that is not configured so; omitting it is a no-op.
+          expect(
+            heldAt(stages[index], path) !== undefined ||
+              CONDITIONAL_AND_ABSENT.includes(key),
+            `the fixture's ${key}`,
+          ).toBe(true);
+          const result = ProtocolSchemaV9.safeParse(
+            without(completeProtocol(), ['stages', index, ...path]),
+          );
+          expect(
+            result.success,
+            `${type} without ${path.join('.')}: ${JSON.stringify(result.error?.issues)}`,
+          ).toBe(true);
+        }
+      }
+    },
+  );
+
+  it('is accepted when it omits all of it at once', () => {
+    let protocol: unknown = completeProtocol();
+    stages.forEach((stage, index) => {
+      for (const path of suppliedStageSettingPaths(stage.type)) {
+        protocol = without(protocol, ['stages', index, ...path]);
+      }
+    });
+    const result = ProtocolSchemaV9.safeParse(protocol);
+    expect(result.success, JSON.stringify(result.error?.issues)).toBe(true);
+  });
+
+  it('is accepted by a protocol with no interface text at all', () => {
+    const { interfaceText: _held, ...protocol } = completeProtocol();
+    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
   });
 });

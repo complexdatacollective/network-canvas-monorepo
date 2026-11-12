@@ -22,12 +22,14 @@ const messages = defineMessages({
   protocolImported: {
     id: 'interviewer.protocolImport.protocolImported',
     defaultMessage: 'Protocol imported',
-    description: 'User-facing message in Interviewer Protocol Import.',
+    description:
+      'Title of the success toast shown when a protocol has been installed on the device.',
   },
   importFailed: {
     id: 'interviewer.protocolImport.importFailed',
     defaultMessage: 'Import failed',
-    description: 'User-facing message in Interviewer Protocol Import.',
+    description:
+      'Title of the error toast shown when installing a protocol fails; the toast body says why.',
   },
   cannotReadSelectedFile: {
     id: 'interviewer.protocolImport.cannotReadSelectedFile',
@@ -39,17 +41,20 @@ const messages = defineMessages({
   viewDetails: {
     id: 'interviewer.protocolImport.viewDetails',
     defaultMessage: 'View details',
-    description: 'User-facing message in Interviewer Protocol Import.',
+    description:
+      'Button on the protocol import error toast that opens the dialog listing the technical validation errors. Verb phrase.',
   },
   anUnexpectedErrorOccurred: {
     id: 'interviewer.protocolImport.anUnexpectedErrorOccurred',
     defaultMessage: 'An unexpected error occurred.',
-    description: 'User-facing message in Interviewer Protocol Import.',
+    description:
+      'Body of the protocol import error toast when the failure has no more specific explanation.',
   },
   importSuccess: {
     id: 'interviewer.protocolImport.importSuccess',
     defaultMessage: '{name} is ready to use.',
-    description: 'Administration text in Interviewer useProtocolImport.',
+    description:
+      'Body of the protocol imported success toast. name is the protocol name; the protocol can now be used to start interviews.',
   },
 });
 

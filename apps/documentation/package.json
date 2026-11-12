@@ -16,7 +16,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "validate-redirects": "tsx ./scripts/validate-redirects.ts",
-    "test-redirects": "tsx ./scripts/test-redirects.ts"
+    "test-redirects": "tsx ./scripts/test-redirects.ts",
+    "translations:stamp": "tsx ./scripts/stampTranslations.ts"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",

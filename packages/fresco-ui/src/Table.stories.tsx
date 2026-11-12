@@ -374,17 +374,17 @@ export const WithAlignment: Story = {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="text-left">Left</TableHead>
+          <TableHead className="text-start">Start</TableHead>
           <TableHead className="text-center">Center</TableHead>
-          <TableHead className="text-right">Right</TableHead>
+          <TableHead className="text-end">End</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {[1, 2, 3].map((i) => (
           <TableRow key={i}>
-            <TableCell className="text-left">Left aligned</TableCell>
+            <TableCell className="text-start">Start aligned</TableCell>
             <TableCell className="text-center">Center aligned</TableCell>
-            <TableCell className="text-right">Right aligned</TableCell>
+            <TableCell className="text-end">End aligned</TableCell>
           </TableRow>
         ))}
       </TableBody>

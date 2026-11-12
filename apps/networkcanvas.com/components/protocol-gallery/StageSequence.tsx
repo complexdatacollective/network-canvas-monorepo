@@ -58,7 +58,7 @@ export function StageSequence({ stages }: { stages: ProtocolStage[] }) {
                 <Eyebrow
                   tone="subtle"
                   render={<span />}
-                  className="@lg:text-right @lg:whitespace-nowrap"
+                  className="@lg:text-end @lg:whitespace-nowrap"
                 >
                   {t(`stageTypes.${stage.type}`)}
                 </Eyebrow>

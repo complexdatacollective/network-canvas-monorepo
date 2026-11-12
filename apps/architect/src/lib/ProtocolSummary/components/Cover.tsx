@@ -19,17 +19,20 @@ const messages = defineMessages({
   protocolSummaryDocument: {
     id: 'architect.protocolSummary.cover.protocolSummaryDocument',
     defaultMessage: 'Protocol Summary Document',
-    description: 'Visible text in lib / ProtocolSummary / components / Cover.',
+    description:
+      'Title across the top of the cover page of the printable protocol summary.',
   },
   aNetworkCanvasProject: {
     id: 'architect.protocolSummary.cover.aNetworkCanvasProject',
     defaultMessage: 'A Network Canvas project',
-    description: 'The alt text in lib / ProtocolSummary / components / Cover.',
+    description:
+      'Accessible name of the Network Canvas logo on the cover page of the printable protocol summary; read only by screen readers.',
   },
   documentCreated: {
     id: 'architect.protocolSummary.cover.documentCreated',
     defaultMessage: 'Document Created: {now}',
-    description: 'Visible text in lib / ProtocolSummary / components / Cover.',
+    description:
+      'Line at the bottom of the cover page of the printable protocol summary stating when the summary was generated. now is the date and time.',
   },
   languages: {
     id: 'architect.protocolSummary.cover.languages',
@@ -63,7 +66,7 @@ const Cover = () => {
 
   return (
     <div className="relative flex h-(--page-size-height) flex-col items-center justify-center print:h-screen">
-      <div className="border-platinum absolute top-0 left-0 flex w-full items-center justify-between border-b-2">
+      <div className="border-platinum absolute inset-s-0 top-0 flex w-full items-center justify-between border-b-2">
         <Heading level="h2" margin="none">
           {intl.formatMessage(messages.protocolSummaryDocument)}
         </Heading>

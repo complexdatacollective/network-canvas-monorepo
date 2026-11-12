@@ -19,13 +19,15 @@ const messages = defineMessages({
   protocolSummary: {
     id: 'architect.pages.summaryPage.protocolSummary',
     defaultMessage: 'Protocol Summary',
-    description: 'The title text in components / pages / SummaryPage.',
+    description:
+      'Heading of the Protocol Summary page, a printable overview of the whole protocol.',
   },
   belowIsAComprehensiveSummaryOf: {
     id: 'architect.pages.summaryPage.belowIsAComprehensiveSummaryOf',
     defaultMessage:
       'Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets.',
-    description: 'The description text in components / pages / SummaryPage.',
+    description:
+      'Introductory text under the heading of the Protocol Summary page. Describes what the summary contains: stages, codebook and resources (assets).',
   },
 });
 
@@ -69,7 +71,7 @@ const SummaryPage = () => {
             )}
           />
         </div>
-        <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8]">
+        <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8] rtl:[&_.variable-pill]:origin-right">
           {/* Cover is the first marker; an explicit page break here would be
             a no-op (CSS Fragmentation: forced breaks at the start of a
             fragment are discarded) so it's omitted. */}

@@ -334,7 +334,7 @@
       "bestFor": "Ideaal voor",
       "downloadVersion": "Versie {version} downloaden",
       "platformAccessibleName": "{platform} voor {app}",
-      "schemaVersionInfo": "Architect Classic en Interviewer Classic ondersteunen protocollen in schema 7. Architect, Interviewer en Fresco in de browser gebruiken schema 9, met de nieuwste functies. Het upgraden van een protocol is onomkeerbaar. Bewaar daarom het originele bestand in schema 7 als je de Classic-apps nog nodig hebt.",
+      "schemaVersionInfo": "Architect Classic en Interviewer Classic ondersteunen protocollen die een ouder schema gebruiken. Architect, Interviewer en Fresco, die in de browser werken, gebruiken het meest recente schema, met alle nieuwste functies. Het upgraden van een protocol is onomkeerbaar. Bewaar daarom een kopie van het originele bestand als je de Classic-apps nog nodig hebt.",
       "schemaVersionLink": "Meer over schemaversies"
     },
     "platforms": {
@@ -387,17 +387,17 @@
       },
       "architectClassic": {
         "status": "Classic · Onderhoudsmodus",
-        "description": "Gebruik deze app alleen als je onderzoek compatibel moet blijven met Interviewer Classic en schema 7.",
+        "description": "Gebruik deze app alleen als je onderzoek compatibel moet blijven met Interviewer Classic en het oudere schema dat die app gebruikt.",
         "bestFor": {
           "classicCompatibility": "Een bestaand onderzoek dat compatibel moet blijven met Interviewer Classic",
-          "editWithoutMigration": "Een protocol in schema 7 dat zonder migratie verder bewerkt moet worden"
+          "editWithoutMigration": "Een protocol dat een ouder schema gebruikt en zonder migratie verder bewerkt moet worden"
         }
       },
       "interviewerClassic": {
         "status": "Classic · Bestaande onderzoeken",
-        "description": "Voor bestaande onderzoeken in schema 7 en offline workflows op desktop of tablet. Wordt onderhouden voor compatibiliteit en bugfixes.",
+        "description": "Voor bestaande onderzoeken die een ouder schema gebruiken, en voor offline workflows op desktop of tablet. Wordt onderhouden voor compatibiliteit en bugfixes.",
         "bestFor": {
-          "schema7Study": "Een bestaand onderzoek dat afhankelijk is van schema 7",
+          "schema7Study": "Een bestaand onderzoek dat afhankelijk is van een ouder schema",
           "desktopTablet": "Een bestaande workflow op desktop of tablet behouden",
           "offlineCollection": "Onderzoeken die de oudere offline workflow voor gegevensverzameling nodig hebben"
         }

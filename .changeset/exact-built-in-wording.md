@@ -23,8 +23,9 @@ wording recorded as that language.
   `suppliedBaseLanguage(locale)` gives the one a variant for another region
   belongs to (es-MX to es, en-GB to en, zh-HK to zh-Hant).
 - Built-in wording may hold no text while a protocol is being written. A
-  protocol leaving its editor (`validateProtocol` without `draft`) must hold it
-  in its default language: each text without it is a
+  protocol leaving its editor (`validateProtocol` without `draft`) must have
+  words in its default language for every built-in text it shows, counting
+  Network Canvas's own wording for that language: each text without them is a
   `BUILT_IN_WORDING_MISSING` issue (`findBuiltInWordingProblems`). The check
   that a text has at least one translation now runs over the whole protocol and
   leaves built-in wording out.

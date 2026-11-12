@@ -63,6 +63,9 @@ catalogs:
     '@fontsource-variable/nunito':
       specifier: ^5.3.0
       version: 5.3.0
+    '@fontsource-variable/readex-pro':
+      specifier: ^5.3.0
+      version: 5.3.0
     '@formatjs/cli-lib':
       specifier: ^10.0.11
       version: 10.0.11
@@ -536,6 +539,9 @@ importers:
       '@codaco/e2e-helpers':
         specifier: workspace:^
         version: link:../../tooling/e2e
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/vitest-config':
         specifier: workspace:^
         version: link:../../tooling/vitest
@@ -1284,6 +1290,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.6.0(storybook@10.6.3(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
@@ -1492,6 +1501,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.6.0(storybook@10.6.3(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/vitest-config':
         specifier: workspace:^
         version: link:../../tooling/vitest
@@ -2808,6 +2820,9 @@ importers:
       '@codaco/protocols':
         specifier: workspace:^
         version: link:../protocols
+      '@codaco/storybook-config':
+        specifier: workspace:^
+        version: link:../../tooling/storybook
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
@@ -3035,6 +3050,9 @@ importers:
       es-toolkit:
         specifier: 'catalog:'
         version: 1.52.0
+      intl-messageformat:
+        specifier: 'catalog:'
+        version: 12.1.4
       lucide-react:
         specifier: 'catalog:'
         version: 1.61.0(@types/react@19.3.0)(react@19.3.1)
@@ -3338,6 +3356,9 @@ importers:
       '@fontsource-variable/nunito':
         specifier: 'catalog:'
         version: 5.3.0
+      '@fontsource-variable/readex-pro':
+        specifier: 'catalog:'
+        version: 5.3.0
       '@tailwindcss/cli':
         specifier: 'catalog:'
         version: 4.3.3
@@ -3503,6 +3524,9 @@ importers:
       '@fontsource-variable/nunito':
         specifier: 'catalog:'
         version: 5.3.0
+      '@fontsource-variable/readex-pro':
+        specifier: 'catalog:'
+        version: 5.3.0
       motion:
         specifier: 'catalog:'
         version: 14.6.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -3567,6 +3591,31 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      wrangler:
+        specifier: 'catalog:'
+        version: 4.151.3(@types/node@24.19.2)
+
+  workers/protocol-review:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: 1.1.0
+        version: 1.1.0(zod@4.6.7)
+      '@codaco/shared-consts':
+        specifier: workspace:^
+        version: link:../../packages/shared-consts
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@codaco/tsconfig':
+        specifier: workspace:^
+        version: link:../../tooling/typescript
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.106.1)(sass@1.106.1)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))
       wrangler:
         specifier: 'catalog:'
         version: 4.151.3(@types/node@24.19.2)
@@ -5660,6 +5709,9 @@ packages:
 
   '@fontsource-variable/nunito@5.3.0':
     resolution: {integrity: sha512-tw0ch7evIDSwoeUy+0XzocYHfbRWLeCRPJy22KgbrLjDLAbNw/fErBiil10Ssrs3Sjr55zaZrr36a975j8cBkQ==}
+
+  '@fontsource-variable/readex-pro@5.3.0':
+    resolution: {integrity: sha512-ebrEcz8sjzQk92x6K3WtYzOgEKTIDe5D+iPqef0YYvPdqCfxzVkRgpsog5POX4sWa7e4wccCQ1IhmMuRka2hZg==}
 
   '@formatjs/cli-lib@10.0.11':
     resolution: {integrity: sha512-bHTMOpbGR1G1E9s12AgkZBQRDR2ZB//wNVqeEeYHJoh5xm/+QLqSNmLLrYrI1n1dGzUZwNyywvU9g0prftt3lw==}
@@ -12257,8 +12309,8 @@ packages:
   fast-xml-builder@1.3.1:
     resolution: {integrity: sha512-pIM/1n3ntFXKYrUZwW7QCK0gAW7XY+wzj1YMIV3tLDvPj/V+zTGJK5e3/4WJfwj0qWw2ElNXiTixda/R+3YSug==}
 
-  fast-xml-parser@5.11.2:
-    resolution: {integrity: sha512-R9iDuNrQYeQut46cn2r2wHKn4HYzVDvDm5J1wW+koZewykv0yuO2HChTYeZtrULyHIDM9cj9TUXloCsueCQUog==}
+  fast-xml-parser@5.12.0:
+    resolution: {integrity: sha512-/pXxRBtwxY9w8z7YbgsvIPPcPvFDsTbIkWwTQJhzNJPokj+TbN6ftmcv4j/pEQDvOCNnKGDzuk5Bo2oogIOiFg==}
     hasBin: true
 
   fastq@1.20.1:
@@ -13221,8 +13273,8 @@ packages:
     resolution: {integrity: sha512-p3EcsicXjit7SaskXHs1hA91QxgTw46Fv6EFKKGS5DRFLD8yKnohjF3hxoju94b/OcMZoQukzpPpBE9uLVKzgQ==}
     engines: {node: '>= 0.4'}
 
-  is-unsafe@2.0.2:
-    resolution: {integrity: sha512-HgbIHPBH0KHHCcjLfGsCvhtPTVxjaAZlXjwdz7/GQC40SjSe4sfQsar8J5VFo8JOSbarkpV0OLG95bbaNd9aAQ==}
+  is-unsafe@2.0.3:
+    resolution: {integrity: sha512-ZBllczCCO267vgdFb6Tq3pv+LhHaCiGMdr+ZsuL+OopruAg7S+3ZDs1vD0RPC0uSrkjzbraxaGjtX1YBxjPeFQ==}
 
   is-weakmap@2.0.2:
     resolution: {integrity: sha512-K5pXYOm9wqY1RgjpL3YTkF39tni1XajUIkawTLUo9EZEVUFga5gSQJF8nNS7ZwJQ02y+1YCNYcMh+HIf1ZqE+w==}
@@ -16653,8 +16705,8 @@ packages:
   strip-markdown@4.2.0:
     resolution: {integrity: sha512-sZYHI1KoKOOBfIq78R3E62NHg7kk6aKtZSqiH7wWxFB6Ak6PTZe4N88aJnzjV00Lbfw91oyLpy3baYfTTqNYBA==}
 
-  strnum@2.4.2:
-    resolution: {integrity: sha512-rDG3Ah4TV0k1hWvLSzkZtMmLN9+eS+h3knq4MP6A42Y3Yh5qGNnOUs1jJkoSr8FG5dsL28c7KgkIBzSEykqtuw==}
+  strnum@2.5.1:
+    resolution: {integrity: sha512-UM4nTLWzQiDBseVxUGxN0wJzIk0UU89Qi7pKXz9qISo+lhviJikTuikBsK/oFRlpvYHvSdz0TVoLyQ+sEpYwxA==}
 
   strtok3@10.3.5:
     resolution: {integrity: sha512-ki4hZQfh5rX0QDLLkOCj+h+CVNkqmp/CMf8v8kZpkNVK6jGQooMytqzLZYUVYIZcFZ6yDB70EfD8POcFXiF5oA==}
@@ -18512,7 +18564,7 @@ snapshots:
 
   '@azure/core-xml@1.6.0':
     dependencies:
-      fast-xml-parser: 5.11.2
+      fast-xml-parser: 5.12.0
       tslib: 2.8.1
 
   '@azure/identity@4.14.0(supports-color@10.2.2)':
@@ -20811,6 +20863,8 @@ snapshots:
   '@fontsource-variable/inclusive-sans@5.3.0': {}
 
   '@fontsource-variable/nunito@5.3.0': {}
+
+  '@fontsource-variable/readex-pro@5.3.0': {}
 
   '@formatjs/cli-lib@10.0.11':
     dependencies:
@@ -27086,13 +27140,13 @@ snapshots:
       path-expression-matcher: 1.6.2
       xml-naming: 0.3.0
 
-  fast-xml-parser@5.11.2:
+  fast-xml-parser@5.12.0:
     dependencies:
       '@nodable/entities': 3.1.0
       fast-xml-builder: 1.3.1
-      is-unsafe: 2.0.2
+      is-unsafe: 2.0.3
       path-expression-matcher: 1.6.2
-      strnum: 2.4.2
+      strnum: 2.5.1
       xml-naming: 0.3.0
 
   fastq@1.20.1:
@@ -28222,7 +28276,7 @@ snapshots:
     dependencies:
       which-typed-array: 1.1.20
 
-  is-unsafe@2.0.2: {}
+  is-unsafe@2.0.3: {}
 
   is-weakmap@2.0.2: {}
 
@@ -32451,7 +32505,7 @@ snapshots:
 
   strip-markdown@4.2.0: {}
 
-  strnum@2.4.2:
+  strnum@2.5.1:
     dependencies:
       anynum: 1.0.1
 

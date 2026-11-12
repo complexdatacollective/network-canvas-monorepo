@@ -11,13 +11,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.protocolCard.lastModified',
     defaultMessage: 'Last Modified: {value1}',
     description:
-      'Visible text in lib / ProtocolSummary / components / ProtocolCard.',
+      'Line on the protocol card on the cover of the printable protocol summary giving when the protocol was last changed. value1 is a date and time.',
   },
   schemaVersion: {
     id: 'architect.protocolSummary.protocolCard.schemaVersion',
     defaultMessage: 'Schema Version: {schemaVersion}',
     description:
-      'Visible text in lib / ProtocolSummary / components / ProtocolCard.',
+      'Line on the protocol card on the cover of the printable protocol summary giving the protocol file format (schema) version. schemaVersion is a number.',
   },
 });
 
@@ -94,7 +94,7 @@ const ProtocolCard = ({
           dir="auto"
           title={name}
           className={cx(
-            'wrap-break-word hyphens-auto',
+            'text-match-parent wrap-break-word hyphens-auto',
             countGraphemes(name) > PROTOCOL_NAME_MAX_LENGTH && 'line-clamp-3',
           )}
         >
@@ -102,7 +102,9 @@ const ProtocolCard = ({
         </Heading>
 
         {description && (
-          <div className="text-sm wrap-break-word">{description}</div>
+          <div dir="auto" className="text-match-parent text-sm wrap-break-word">
+            {description}
+          </div>
         )}
 
         <div className="text-navy-taupe/70 font-monospace mt-2.5 flex flex-col gap-1 text-xs tracking-widest uppercase">

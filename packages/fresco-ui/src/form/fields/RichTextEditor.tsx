@@ -65,6 +65,7 @@ import {
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { linesOf } from '@codaco/shared-consts';
 
 import { buttonVariants, iconButtonVariants, Button } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
@@ -92,6 +93,7 @@ import {
   type RichTextInsertMenuItem,
 } from './richText/InsertMenu';
 import {
+  hasVersionRowBeside,
   NestedEditingContext,
   VERSIONS_NODE,
   VersionsNode,
@@ -528,11 +530,11 @@ const addAtom = (run: OneLineRun, atom: JSONContent) => {
   run.collected.push(atom);
 };
 
-/** A run of newlines, however the platform that wrote them spells one. */
-const LINE_BREAKS = /(?:\r\n|[\n\r])+/;
-
 /**
- * Adds a text node, treating the newlines INSIDE it as breaks like any other.
+ * Adds a text node, treating the line breaks INSIDE it as breaks like any
+ * other: newlines however a platform spells them, and Unicode's line and
+ * paragraph separators, which the schema refuses in one-line text just the
+ * same (`linesOf`, the one definition of a line break).
  *
  * A line break can live inside the text itself, where no schema was ever going
  * to refuse it: markdown's own soft break parses to one text node with the
@@ -545,7 +547,7 @@ const addTextLines = (
   text: string,
   marks: JSONContent['marks'],
 ) => {
-  for (const [index, line] of text.split(LINE_BREAKS).entries()) {
+  for (const [index, line] of linesOf(text).entries()) {
     if (index > 0) {
       run.breakPending = true;
     }
@@ -680,7 +682,7 @@ export type {
   RichTextVersion,
   RichTextVersionsAttributes,
 } from './richText/versionsNode';
-export { VERSIONS_NODE };
+export { hasVersionRowBeside, VERSIONS_NODE };
 
 const swallowKeystroke = () => true;
 
@@ -1017,8 +1019,12 @@ function createCustomExtensions({
   return extensions;
 }
 
+// The text is a contenteditable element rather than an input, which the
+// shared ring (`interactiveStateVariants`) looks for, so the field's own text
+// is named here. Only its own: the editors of its versions draw a ring of
+// their own, and the toolbar's buttons have theirs.
 const editorContainerOwnVariants = cva({
-  base: 'flex h-auto w-full min-w-0 flex-col',
+  base: 'has-[>div>.tiptap:focus-visible]:focus-styles flex h-auto w-full min-w-0 flex-col outline-(--focus-color,currentColor)',
 });
 
 const editorContainerVariants = cva({
@@ -1084,13 +1090,16 @@ const selectInsertedVersions = (
 
 const editorContentVariants = cva({
   base: cx(
-    'order-2 flex-1',
+    // Named for the rows of versions inside it, which stack when it is narrow.
+    // Not the field itself: a container is a containing block for fixed
+    // elements, and the field holds the insert menu's caret anchor.
+    '@container/rich-text order-2 flex-1',
     'outline-none',
     '[&_.tiptap]:outline-none',
     // Placeholder styles
     '[&_.tiptap_p.is-editor-empty:first-child::before]:text-input-contrast/50',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none',
-    '[&_.tiptap_p.is-editor-empty:first-child::before]:float-left',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:float-start',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:h-0',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:italic',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
@@ -1180,6 +1189,14 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      * the insert menu.
      */
     'versions'?: boolean;
+    /**
+     * Shows the versions permanently open, one labelled row each, when the
+     * whole text is one set of versions and nothing else: a message that is
+     * a plural or a choice and no more. A pill that opens would hide every
+     * word of such a field at rest. Versions inside a sentence, or inside
+     * another version, still fold to a pill. Needs `versions`.
+     */
+    'openWholeMessageVersions'?: boolean;
     /** A searchable menu of things to insert at the caret. */
     'insertMenu'?: RichTextInsertMenu;
     'id': string;
@@ -1237,6 +1254,7 @@ export default function RichTextEditorField({
   singleLine = false,
   tokens: tokensProp,
   versions = false,
+  openWholeMessageVersions = false,
   insertMenu,
   className,
   onFocus,
@@ -1516,8 +1534,16 @@ export default function RichTextEditorField({
       editable: !disabled && !readOnly,
       onFocusEditor: setVersionEditor,
       active: isActive,
+      openWholeMessage: openWholeMessageVersions,
     }),
-    [versionExtensions, disabled, readOnly, setVersionEditor, isActive],
+    [
+      versionExtensions,
+      disabled,
+      readOnly,
+      setVersionEditor,
+      isActive,
+      openWholeMessageVersions,
+    ],
   );
   // The schema these extensions make, worked out before there is an editor to
   // ask. A value has to be flattened against the marks the field will actually
@@ -2367,6 +2393,8 @@ export default function RichTextEditorField({
                       align="start"
                       side="bottom"
                       aria-label={insertMenu.label}
+                      // A list of options, padded as menus and comboboxes are.
+                      spacing="xs"
                       anchor={triggered === null ? undefined : caretAnchorRef}
                       // Closed by a pick, the menu hands the caret to the text
                       // the item went into; opened by typing, back to the

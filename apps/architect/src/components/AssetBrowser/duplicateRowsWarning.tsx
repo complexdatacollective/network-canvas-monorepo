@@ -9,7 +9,8 @@ const messages = defineMessages({
   warningContainsDuplicateRows: {
     id: 'architect.form.autoFileDrop.warningContainsDuplicateRows',
     defaultMessage: 'Warning: {value1} contains duplicate rows',
-    description: 'The title text in components / Form / AutoFileDrop.',
+    description:
+      'Title of the warning dialog shown after the researcher adds a network data file (a roster of nodes) that has duplicate rows. value1 is the file name.',
   },
   theFileContainsDuplicateDuplicate: {
     id: 'architect.form.autoFileDrop.theFileContainsDuplicateDuplicate',
@@ -22,13 +23,13 @@ const messages = defineMessages({
     id: 'architect.form.autoFileDrop.considerRemovingDuplicatesFromYourCSV',
     defaultMessage:
       'Consider removing duplicates from your CSV file before importing.',
-    description: 'Visible text in components / Form / AutoFileDrop.',
+    description:
+      'Second paragraph of the duplicate-rows warning dialog, advising the researcher to remove duplicate rows from the CSV file before importing it.',
   },
   oK: {
     id: 'architect.assetBrowser.duplicateRowsWarning.oK',
     defaultMessage: 'OK',
-    description:
-      'The label text in components / AssetBrowser / duplicateRowsWarning.',
+    description: 'Button that dismisses the duplicate-rows warning dialog.',
   },
 });
 

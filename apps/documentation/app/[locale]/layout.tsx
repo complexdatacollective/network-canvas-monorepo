@@ -1,5 +1,6 @@
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import '@codaco/tailwind-config/fonts/readex-pro.css';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import type { Metadata } from 'next';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';

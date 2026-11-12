@@ -17,7 +17,7 @@ export const InterviewIcon = () => (
       <div className="bg-platinum-dark h-[2.5px] w-3/12 rounded-full" />
     </div>
     <div className="bg-platinum-dark flex h-2/4 w-full items-center gap-[3px] px-[6px]">
-      <div className="flex w-2/4 flex-col gap-[3px] pr-[2px]">
+      <div className="flex w-2/4 flex-col gap-[3px] pe-[2px]">
         <div className="bg-platinum h-[2.5px] w-full rounded-full" />
         <div className="bg-platinum h-[2.5px] w-full rounded-full" />
       </div>

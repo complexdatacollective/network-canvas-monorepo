@@ -59,39 +59,46 @@ const messages = defineMessages({
   attribute: {
     id: 'architect.variablePill.attribute',
     defaultMessage: '{type} attribute',
-    description: 'The alt text in components / VariablePill.',
+    description:
+      'Alt text of the small icon on an attribute (codebook variable) pill, read only by screen readers. type is the lowercase name of the attribute type, such as text or number.',
   },
   editAttributeName: {
     id: 'architect.variablePill.editAttributeName',
     defaultMessage: 'Edit attribute name: {label}',
-    description: 'The aria-label text in components / VariablePill.',
+    description:
+      'Accessible name and tooltip of the pill button that opens the attribute rename editor. label is the current attribute name.',
   },
   editAttributeName62aa3: {
     id: 'architect.variablePill.editAttributeName62aa3',
     defaultMessage: 'Edit attribute name',
-    description: 'The aria-label text in components / VariablePill.',
+    description:
+      'Accessible name of the dialog in which the researcher renames an attribute (codebook variable); read only by screen readers.',
   },
   attributeName: {
     id: 'architect.variablePill.attributeName',
     defaultMessage: 'Attribute name',
-    description: 'The aria-label text in components / VariablePill.',
+    description:
+      'Accessible name of the text field in the attribute rename dialog; read only by screen readers.',
   },
   enterAnAttributeName: {
     id: 'architect.variablePill.enterAnAttributeName',
     defaultMessage: 'Enter an attribute name...',
-    description: 'The placeholder text in components / VariablePill.',
+    description:
+      'Placeholder shown in the empty text field of the attribute rename dialog.',
   },
   saveChanges: {
     id: 'architect.variablePill.saveChanges',
     defaultMessage: 'Save Changes',
-    description: 'Visible text in components / VariablePill.',
+    description:
+      'Button in the attribute rename dialog that saves the new attribute name. Disabled until the name is valid and changed.',
   },
 });
 const finalMessages = defineMessages({
   required: {
     id: 'architect.final.components.VariablePill.required',
     defaultMessage: 'You must enter an attribute name',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Validation error in the attribute rename dialog when the name field is empty.',
   },
 });
 
@@ -205,7 +212,7 @@ const getVariablePillClassName = ({
     animated ? 'variable-pill-effect-border' : 'bg-(--variable-pill-accent)',
     !interactive && 'cursor-default',
     interactive &&
-      'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-left transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5',
+      'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-start transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5',
     className,
   );
 
@@ -233,7 +240,7 @@ function VariablePillContents({
           : 'grid-cols-[3rem_minmax(0,auto)]',
       )}
     >
-      <span className="flex items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
+      <span className="flex items-center justify-center border-e border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
         <img
           // oxlint-disable-next-line tailwindcss/no-unknown-classes -- icon selector hook for the parent
           className="icon opacity-80"
@@ -450,7 +457,10 @@ export const VariablePill = ({
         style={style}
       >
         <VariablePillContents type={type}>
-          <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
+          <span
+            dir="auto"
+            className="text-match-parent m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
+          >
             {label}
           </span>
         </VariablePillContents>
@@ -479,7 +489,10 @@ export const VariablePill = ({
               onClick={handleStartEditing}
             >
               <VariablePillContents type={type}>
-                <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
+                <span
+                  dir="auto"
+                  className="text-match-parent m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
+                >
                   {label}
                 </span>
               </VariablePillContents>
@@ -539,7 +552,7 @@ export const VariablePill = ({
                   aria-label={intl.formatMessage(messages.attributeName)}
                   aria-invalid={validation ? true : undefined}
                   aria-describedby={validation ? validationId : undefined}
-                  className="h-full w-full rounded-l-none! outline-none!"
+                  className="h-full w-full rounded-s-none! outline-none!"
                   placeholder={intl.formatMessage(
                     messages.enterAnAttributeName,
                   )}

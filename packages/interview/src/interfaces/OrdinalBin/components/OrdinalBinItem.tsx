@@ -203,9 +203,9 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
     missingValue && 'bg-surface-1',
     select?.focalNode && 'cursor-pointer',
     isFirst &&
-      'rounded-tl rounded-bl portrait:rounded-tr portrait:rounded-bl-none',
+      'rounded-ss rounded-es portrait:rounded-se portrait:rounded-es-none',
     isLast &&
-      'rounded-tr rounded-br portrait:rounded-tr-none portrait:rounded-bl',
+      'rounded-se rounded-ee portrait:rounded-se-none portrait:rounded-es',
   );
 
   // `overflow-hidden` keeps the header inside the row the grid gave it: in

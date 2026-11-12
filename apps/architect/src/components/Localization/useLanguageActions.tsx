@@ -4,8 +4,6 @@ import { useSelector } from 'react-redux';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import {
   collectLocalizedStrings,
   type LanguageChange,
@@ -31,11 +29,7 @@ import {
 import { getProtocol } from '~/selectors/protocol';
 
 import { getLanguageChoices } from './languageChoices';
-import {
-  chosenLanguages,
-  LanguagePicker,
-  languageOptionText,
-} from './LanguagePicker';
+import { chosenLanguages, LanguagePicker } from './LanguagePicker';
 import { useBaseLanguageOffer } from './useBaseLanguageOffer';
 import { useLanguageName } from './useLanguageName';
 
@@ -70,9 +64,9 @@ const messages = defineMessages({
   changeDescription: {
     id: 'architect.localization.languageActions.changeDescription',
     defaultMessage:
-      'Use this when the wording recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Every {language} translation is recorded as the language you choose instead. Nothing is translated or deleted.',
+      'Use this when the wording recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Everything recorded as {language} is recorded as the language you choose instead. Wording you wrote or changed moves as it is, without being translated or deleted. Built-in wording you haven’t changed becomes Network Canvas’s version of it in the language you choose. Any built-in wording that Network Canvas doesn’t have in that language is removed, and you’ll need to write it.',
     description:
-      'Explanation in the dialog that records the translations of one protocol language as another language. language is the name of the language being changed.',
+      'Explanation in the dialog that records the translations of one protocol language as another language. language is the name of the language being changed. Built-in wording is the text Network Canvas supplies, such as button labels and the closing screen. Text the researcher wrote, or built-in wording they reworded, keeps its words and moves to the chosen language. Built-in wording they have not changed is replaced, item by item, with Network Canvas’s wording in the chosen language; an item Network Canvas has no wording for in that language is removed, and the researcher must write it.',
   },
   languageLabel: {
     id: 'architect.localization.languageActions.languageLabel',
@@ -238,6 +232,7 @@ export const useLanguageActions = (
         <LanguagePicker
           label={intl.formatMessage(messages.languagesLabel)}
           choices={availableChoices(declared)}
+          unavailable={declared}
           initialValue={[]}
         />
       ),
@@ -288,22 +283,20 @@ export const useLanguageActions = (
         submitLabel: intl.formatMessage(messages.changeSubmit),
         finalFocus: focusAfter(returnFocus),
         children: (
-          <Field<typeof NativeSelectField>
-            name="language"
+          <LanguagePicker
+            single
             label={intl.formatMessage(messages.languageLabel)}
-            component={NativeSelectField}
+            choices={availableChoices(declared)}
+            unavailable={declared}
+            initialValue={[]}
             placeholder={intl.formatMessage(messages.chooseALanguage)}
-            options={availableChoices(declared).map((choice) => ({
-              value: choice.locale,
-              label: languageOptionText(intl, choice),
-            }))}
-            required={intl.formatMessage(messages.chooseOne)}
+            requiredMessage={intl.formatMessage(messages.chooseOne)}
           />
         ),
       });
       if (!values) return;
-      const tag = values.language;
-      if (typeof tag !== 'string') return;
+      const [tag] = chosenLanguages(values);
+      if (tag === undefined) return;
       const before = localizationNow();
       dispatch(changeProtocolLocale({ from, to: tag }));
       // The language as the protocol now declares it, which is the tag after

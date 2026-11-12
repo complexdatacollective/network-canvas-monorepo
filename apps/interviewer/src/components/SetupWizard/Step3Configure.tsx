@@ -16,17 +16,20 @@ const messages = defineMessages({
   biometricConfigured: {
     id: 'interviewer.step3Configure.biometricConfigured',
     defaultMessage: 'Biometric configured.',
-    description: 'User-facing message in Interviewer Step3Configure.',
+    description:
+      'Status line in the setup wizard confirming biometric unlock has been set up; a state, not an instruction.',
   },
   pINConfigured: {
     id: 'interviewer.step3Configure.pINConfigured',
     defaultMessage: 'PIN configured.',
-    description: 'User-facing message in Interviewer Step3Configure.',
+    description:
+      'Status line in the setup wizard confirming a PIN has been set up; a state, not an instruction.',
   },
   passphraseConfigured: {
     id: 'interviewer.step3Configure.passphraseConfigured',
     defaultMessage: 'Passphrase configured.',
-    description: 'User-facing message in Interviewer Step3Configure.',
+    description:
+      'Status line in the setup wizard confirming a passphrase has been set up; a state, not an instruction.',
   },
   change: {
     id: 'interviewer.step3Configure.change',

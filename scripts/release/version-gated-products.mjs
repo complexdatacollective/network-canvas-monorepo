@@ -86,15 +86,17 @@ export function applyProductReleases(cwd, plans, consumed) {
 }
 
 // What merging each lane's release PR actually does. Documentation and
-// Website deploy to production from their release jobs; Studio has no
-// automated deploy lane yet, so its release PR only records versions and
-// changelogs.
+// Website deploy to production from their release jobs, and so does the
+// protocol review Worker; Studio has no automated deploy lane yet, so its
+// release PR only records versions and changelogs.
 const LANE_MERGE_EFFECTS = {
-  documentation: (products) =>
+  'documentation': (products) =>
     `Merging this PR releases ${products} to Netlify **production**.`,
-  website: (products) =>
+  'website': (products) =>
     `Merging this PR releases ${products} to Netlify **production**.`,
-  studio: (products) =>
+  'protocol-review': (products) =>
+    `Merging this PR deploys ${products} to Cloudflare **production** at \`protocol-review.networkcanvas.com\`.`,
+  'studio': (products) =>
     `Merging this PR versions ${products} and records the changelog entries below. Studio has no automated production deploy lane yet.`,
 };
 

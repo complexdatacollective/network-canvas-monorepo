@@ -12,12 +12,14 @@ const messages = defineMessages({
     id: 'architect.timeline.insertButton.addStageHereBeforeStage',
     defaultMessage:
       'Add stage here, before stage {position, number}: {nextStageName}',
-    description: 'The aria-label text in components / Timeline / InsertButton.',
+    description:
+      'Accessible name of the button between two stages on the timeline that adds a new stage there; read only by screen readers. position is the number the new stage would take; nextStageName is the name of the stage it would be inserted before.',
   },
   addStageHere: {
     id: 'architect.timeline.insertButton.addStageHere',
     defaultMessage: 'Add stage here',
-    description: 'Visible text in components / Timeline / InsertButton.',
+    description:
+      'Visible label of the button between two stages on the timeline that adds a new stage at that point. It appears when the button is hovered or focused.',
   },
 });
 

@@ -27,6 +27,7 @@ import Section from '@codaco/fresco-ui/Section';
 import {
   duplicateFormFieldIndices,
   isBlankMessage,
+  FormFieldSchema,
 } from '@codaco/protocol-validation';
 
 import {
@@ -90,6 +91,7 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolAuthoringLinks } from '../../interfaces/documentation.ts';
 import { asLocalizedString } from '../../localization/localizedText.ts';
+import { markdownTextShapeAt } from '../../localization/textShape.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
@@ -120,6 +122,10 @@ import {
   NEW_VARIABLE_VALIDATION,
   useInventingAttribute,
 } from './inventedAttribute.ts';
+
+const PROMPT_SHAPE = markdownTextShapeAt(FormFieldSchema, ['prompt']);
+
+const HINT_SHAPE = markdownTextShapeAt(FormFieldSchema, ['hint']);
 
 /** Where every interface that holds a whole form keeps its fields. */
 const FIELDS_PATH = 'form.fields';
@@ -1534,24 +1540,24 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name="prompt"
           component={LocalizedRichTextField}
+          shape={PROMPT_SHAPE}
           dynamicValues="formField"
           fieldPath={PROMPT_PATH}
           label={intl.formatMessage(formFieldsMessages.promptLabel)}
           hint={intl.formatMessage(formFieldsMessages.promptHint)}
           placeholder={intl.formatMessage(formFieldsMessages.promptPlaceholder)}
-          singleLine
           initialValue={asLocalizedString(item.prompt)}
           required={intl.formatMessage(formFieldsMessages.promptRequired)}
         />
         <Field<typeof LocalizedRichTextField>
           name="hint"
           component={LocalizedRichTextField}
+          shape={HINT_SHAPE}
           dynamicValues="formField"
           fieldPath={HINT_PATH}
           label={intl.formatMessage(formFieldsMessages.hintLabel)}
           hint={intl.formatMessage(formFieldsMessages.hintHint)}
           placeholder={intl.formatMessage(formFieldsMessages.hintPlaceholder)}
-          singleLine
           initialValue={asLocalizedString(item.hint)}
         />
         <Field<typeof ToggleField>

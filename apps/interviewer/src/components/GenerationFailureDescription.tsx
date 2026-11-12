@@ -56,7 +56,7 @@ export function GenerationFailureDescription({
   return (
     <>
       <p>{intl.formatMessage(messages.summary)}</p>
-      <ul className="list-disc space-y-1 pl-5">
+      <ul className="list-disc space-y-1 ps-5">
         {error.conflicts.map((conflict, index) => (
           <ConstraintConflictItem
             key={[

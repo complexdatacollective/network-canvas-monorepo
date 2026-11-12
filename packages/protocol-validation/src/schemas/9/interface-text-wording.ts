@@ -1,5 +1,8 @@
-import type { MessageArguments } from '../../localization/messageArguments.ts';
-import type { LocalizedStringFormat } from './localized-string.ts';
+import {
+  EVERY_VERSION,
+  type MessageArguments,
+} from '../../localization/messageArguments.ts';
+import type { LocalizedTextShape } from './localized-string.ts';
 import {
   CONNECT_HINT,
   CONNECT_TOOL,
@@ -39,12 +42,12 @@ import {
   GROUPS_HEADING,
   OVERTAKEN_EDIT_NOTICE,
 } from './stage-wording/network-composer.ts';
-import { SUBJECT_ARGUMENTS } from './stage-wording/subject.ts';
 import type { SuppliedWording } from './supplied-stage-setting.ts';
 
 // The wording Network Canvas supplies for the interface text a protocol holds
 // (`interface-text.ts`), in every language Network Canvas supplies, with the
-// arguments the English message uses. Each entry's English is the English of
+// arguments its message may use and those it must show, which hold for any
+// rewording or translation of it too. Each entry's English is the English of
 // the message it stands in for, as the interview, fresco-ui and app-i18n word
 // it; the exceptions are the entries that merge several messages
 // (`buttons.yes`, `messages.error` and `search.searchLabel`, see their
@@ -62,11 +65,11 @@ export type InterfaceTextEntry = Readonly<{
   ids: readonly string[];
   arguments?: MessageArguments;
   /**
-   * How the text is written: markdown for a message the researcher may format
-   * and add links to, which the interview renders as markdown. Absent, the
-   * text is plain.
+   * What the text may hold (see `LocalizedTextShape`): markdown, over several
+   * lines, for a message the researcher may format and add links to, which
+   * the interview renders as markdown. Absent, the text is one plain line.
    */
-  format?: LocalizedStringFormat;
+  shape?: LocalizedTextShape;
   message: SuppliedWording;
 }>;
 
@@ -512,7 +515,7 @@ export const BUTTONS_INTERFACE_TEXT = {
 export const MESSAGES_INTERFACE_TEXT = {
   stageError: {
     ids: ['interview.runtime.taskErrorDescription'],
-    format: 'markdown',
+    shape: { format: 'markdown', lines: 'multiple' },
     message: {
       'en': '# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.',
       'en-GB':
@@ -718,23 +721,6 @@ export const PASSPHRASE_INTERFACE_TEXT = {
       'zh-Hant': '您的回答尚未儲存。請輸入您的通關密語，然後再試一次。',
     },
   },
-  protectedAnswersUnavailable: {
-    ids: ['interview.runtime.protectedAnswersUnavailable'],
-    message: {
-      'en': 'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.',
-      'de': 'Durch eine Passphrase geschützte Antworten können in diesem Interview nicht angezeigt oder gespeichert werden. Bitte informieren Sie die Person, die Sie für diese Studie gewonnen hat.',
-      'es': 'Las respuestas protegidas por una frase de contraseña no se pueden mostrar ni guardar en esta entrevista. Avisa a la persona que te invitó a participar en este estudio.',
-      'fr': 'Les réponses protégées par une phrase secrète ne peuvent être ni affichées ni enregistrées dans cet entretien. Veuillez en informer la personne responsable de votre recrutement dans cette étude.',
-      'it': 'Le risposte protette da una passphrase non possono essere mostrate né salvate in questa intervista. Avvisa la persona che ti ha invitato a partecipare a questo studio.',
-      'nl': 'Antwoorden die met een wachtzin zijn beschermd, kunnen in dit interview niet worden getoond of opgeslagen. Laat het de persoon weten die je voor dit onderzoek heeft geworven.',
-      'pt-BR':
-        'Respostas protegidas por uma frase secreta não podem ser exibidas nem salvas nesta entrevista. Avise a pessoa que recrutou você para este estudo.',
-      'zh-Hans':
-        '本次访谈无法显示或保存受密码短语保护的回答。请告知招募您参与本研究的人员。',
-      'zh-Hant':
-        '本次訪談無法顯示或儲存受通關密語保護的回答。請告知邀請您參加本研究的人員。',
-    },
-  },
   answerUnavailable: {
     ids: ['interview.runtime.answerUnavailable'],
     message: {
@@ -794,20 +780,6 @@ export const PASSPHRASE_INTERFACE_TEXT = {
       'zh-Hant': '通關密語驗證成功！請點選「下一步」繼續。',
     },
   },
-  checkingPassphrase: {
-    ids: ['interview.runtime.checkingPassphrase'],
-    message: {
-      'en': 'Checking your passphrase…',
-      'de': 'Ihre Passphrase wird geprüft…',
-      'es': 'Comprobando tu frase de contraseña…',
-      'fr': 'Vérification de votre phrase secrète…',
-      'it': 'Verifica della passphrase in corso…',
-      'nl': 'Je wachtzin wordt gecontroleerd…',
-      'pt-BR': 'Verificando sua frase secreta…',
-      'zh-Hans': '正在检查您的密码短语…',
-      'zh-Hant': '正在檢查您的通關密語…',
-    },
-  },
   passwordPlaceholder: {
     ids: ['frescoUi.passwordField.placeholder'],
     message: {
@@ -855,6 +827,16 @@ export const FORMS_INTERFACE_TEXT = {
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
+/**
+ * What a message comparing an answer with an earlier one may use: whether the
+ * earlier question has a label, and that label, which the message must show
+ * when there is one.
+ */
+const COMPARED_ANSWER_ARGUMENTS = {
+  hasLabel: { kind: 'select', cases: ['true'] },
+  label: { kind: 'text', required: [{ hasLabel: 'true' }] },
+} as const satisfies MessageArguments;
+
 export const VALIDATION_INTERFACE_TEXT = {
   required: {
     ids: ['frescoUi.validation.required'],
@@ -872,7 +854,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minLength: {
     ids: ['frescoUi.validation.minLengthError'],
-    arguments: { min: { kind: 'plural' } },
+    arguments: { min: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}',
       'de': '{min, plural, one {Geben Sie mindestens # Zeichen ein.} other {Geben Sie mindestens # Zeichen ein.}}',
@@ -888,7 +870,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxLength: {
     ids: ['frescoUi.validation.maxLengthError'],
-    arguments: { max: { kind: 'plural' } },
+    arguments: { max: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}',
       'de': '{max, plural, one {Geben Sie höchstens # Zeichen ein.} other {Geben Sie höchstens # Zeichen ein.}}',
@@ -904,7 +886,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minValue: {
     ids: ['frescoUi.validation.minValueError'],
-    arguments: { min: { kind: 'text' } },
+    arguments: { min: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Enter a value greater than or equal to {min}.',
       'de': 'Geben Sie einen Wert größer oder gleich {min} ein.',
@@ -919,7 +901,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxValue: {
     ids: ['frescoUi.validation.maxValueError'],
-    arguments: { max: { kind: 'text' } },
+    arguments: { max: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Enter a value less than or equal to {max}.',
       'de': 'Geben Sie einen Wert kleiner oder gleich {max} ein.',
@@ -934,7 +916,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minDate: {
     ids: ['frescoUi.validation.minDate'],
-    arguments: { min: { kind: 'text' } },
+    arguments: { min: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Must be on or after {min}.',
       'de': 'Darf nicht früher als {min} sein.',
@@ -949,7 +931,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxDate: {
     ids: ['frescoUi.validation.maxDate'],
-    arguments: { max: { kind: 'text' } },
+    arguments: { max: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Must be on or before {max}.',
       'de': 'Darf nicht später als {max} sein.',
@@ -964,7 +946,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minSelected: {
     ids: ['frescoUi.validation.minSelectedError'],
-    arguments: { count: { kind: 'plural' } },
+    arguments: { count: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{count, plural, one {Select at least # value.} other {Select at least # values.}}',
       'de': '{count, plural, one {Wählen Sie mindestens # Wert aus.} other {Wählen Sie mindestens # Werte aus.}}',
@@ -980,7 +962,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxSelected: {
     ids: ['frescoUi.validation.maxSelectedError'],
-    arguments: { count: { kind: 'plural' } },
+    arguments: { count: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}',
       'de': '{count, plural, one {Wählen Sie höchstens # Wert aus.} other {Wählen Sie höchstens # Werte aus.}}',
@@ -1010,10 +992,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   differentFrom: {
     ids: ['frescoUi.validation.differentFromError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be different from your answer to ''{label}''.} other {Your answer must be different from your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss sich von Ihrer Antwort auf „{label}“ unterscheiden.} other {Ihre Antwort muss sich von Ihrer vorherigen Antwort unterscheiden.}}',
@@ -1031,10 +1010,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   sameAs: {
     ids: ['frescoUi.validation.sameAsError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss mit Ihrer Antwort auf „{label}“ übereinstimmen.} other {Ihre Antwort muss mit Ihrer vorherigen Antwort übereinstimmen.}}',
@@ -1052,10 +1028,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   greaterThan: {
     ids: ['frescoUi.validation.greaterThanError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be greater than your answer to ''{label}''.} other {Your answer must be greater than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss größer sein als Ihre Antwort auf „{label}“.} other {Ihre Antwort muss größer sein als Ihre vorherige Antwort.}}',
@@ -1073,10 +1046,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   lessThan: {
     ids: ['frescoUi.validation.lessThanError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be less than your answer to ''{label}''.} other {Your answer must be less than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss kleiner sein als Ihre Antwort auf „{label}“.} other {Ihre Antwort muss kleiner sein als Ihre vorherige Antwort.}}',
@@ -1094,10 +1064,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   greaterThanOrEqual: {
     ids: ['frescoUi.validation.greaterThanOrEqualError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be the same as or greater than your answer to ''{label}''.} other {Your answer must be the same as or greater than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss mindestens so groß sein wie Ihre Antwort auf „{label}“.} other {Ihre Antwort muss mindestens so groß sein wie Ihre vorherige Antwort.}}',
@@ -1115,10 +1082,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   lessThanOrEqual: {
     ids: ['frescoUi.validation.lessThanOrEqualError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be the same as or less than your answer to ''{label}''.} other {Your answer must be the same as or less than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort darf höchstens so groß sein wie Ihre Antwort auf „{label}“.} other {Ihre Antwort darf höchstens so groß sein wie Ihre vorherige Antwort.}}',
@@ -1341,7 +1305,10 @@ export const FAMILY_PEDIGREE_INTERFACE_TEXT = {
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
-/** Every Categorical Bin stage's own controls. */
+/**
+ * The button an opened bin shows on a Categorical Bin that places nodes by
+ * tapping, which places the node being placed in that bin.
+ */
 export const CATEGORICAL_BIN_INTERFACE_TEXT = {
   placeHere: {
     ids: ['interview.interfaces.binSelectPlaceHere'],
@@ -1359,28 +1326,6 @@ export const CATEGORICAL_BIN_INTERFACE_TEXT = {
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
-/**
- * Every roster name generator's own words. The message over the list while
- * an added node is dragged back may name the stage's node type.
- */
-export const ROSTER_INTERFACE_TEXT = {
-  dropToRemove: {
-    ids: ['interview.runtime.dropToRemove'],
-    arguments: SUBJECT_ARGUMENTS,
-    message: {
-      'en': 'Drop here to remove',
-      'de': 'Zum Entfernen hier ablegen',
-      'es': 'Suelta aquí para quitar',
-      'fr': 'Déposer ici pour retirer',
-      'it': 'Rilascia qui per rimuovere',
-      'nl': 'Hier neerzetten om weg te halen',
-      'pt-BR': 'Solte aqui para remover',
-      'zh-Hans': '放置到此处以移除',
-      'zh-Hant': '放到這裡即可移除',
-    },
-  },
-} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
-
 /** Every quick-add Name Generator stage's own words. */
 export const QUICK_ADD_INTERFACE_TEXT = {
   quickAddHint: {
@@ -1390,9 +1335,11 @@ export const QUICK_ADD_INTERFACE_TEXT = {
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
 /**
- * Every Network Composer stage's own words. The groups heading and the edge
- * tool's tooltip are shown only by a stage with groups and edge types (see
- * `INTERFACE_TEXT_GROUPS`).
+ * Every Network Composer stage's own words. The Groups tool's name and the
+ * edge tool's tooltip are shown only by a stage with groups and edge types,
+ * the notice about an overtaken edit only by one whose inspector has a form,
+ * and the name of a connection of another type only while the codebook has an
+ * edge type the stage does not draw (see `INTERFACE_TEXT_GROUPS`).
  */
 export const NETWORK_COMPOSER_INTERFACE_TEXT = {
   addNamePlaceholder: {
@@ -1431,24 +1378,6 @@ export const NETWORK_COMPOSER_INTERFACE_TEXT = {
       'pt-BR': 'Conexão',
       'zh-Hans': '连接',
       'zh-Hant': '連結',
-    },
-  },
-} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
-
-/** Every Ego Form stage's own words. */
-export const EGO_FORM_INTERFACE_TEXT = {
-  scrollForQuestions: {
-    ids: ['interview.interfaces.scrollForQuestions'],
-    message: {
-      'en': 'Scroll to see more questions',
-      'de': 'Scrollen Sie, um weitere Fragen zu sehen',
-      'es': 'Desplázate para ver más preguntas',
-      'fr': 'Faites défiler pour voir d’autres questions',
-      'it': 'Scorri per vedere altre domande',
-      'nl': 'Scroll om meer vragen te zien',
-      'pt-BR': 'Role para ver mais perguntas',
-      'zh-Hans': '向下滚动查看更多问题',
-      'zh-Hant': '向下捲動以查看更多問題',
     },
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;

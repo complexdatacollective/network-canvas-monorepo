@@ -121,9 +121,14 @@ function isToolId(value: string | undefined): value is Tool['id'] {
   return tools.some((tool) => tool.id === value);
 }
 
-function layoutOffset(element: HTMLElement, ancestor: HTMLElement): Point {
-  // Offsets stay in layout space, so the cards' own reveal motion can never
-  // feed back into the thread's geometry.
+/**
+ * Where `element` sits inside `ancestor`, in layout space: transforms (such as
+ * a card's own entrance motion) never feed back into a thread's geometry.
+ */
+export function layoutOffset(
+  element: HTMLElement,
+  ancestor: HTMLElement,
+): Point {
   let x = 0;
   let y = 0;
   let current: HTMLElement | null = element;

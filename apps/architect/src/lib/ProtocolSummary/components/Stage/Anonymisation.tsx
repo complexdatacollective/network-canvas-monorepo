@@ -25,26 +25,28 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.anonymisation.explanationText',
     defaultMessage: 'Explanation Text',
     description:
-      'The title text in lib / ProtocolSummary / components / Stage / Anonymisation.',
+      'Section heading in the printable protocol summary, above the text an Anonymisation stage shows participants to explain the passphrase.',
   },
   theFollowingAttributesWillBeEncrypted: {
     id: 'architect.protocolSummary.stage.anonymisation.theFollowingAttributesWillBeEncrypted',
     defaultMessage:
       "The following attributes will be encrypted using the participant's passphrase:",
     description:
-      'Visible text in lib / ProtocolSummary / components / Stage / Anonymisation.',
+      "Sentence in the printable protocol summary of an Anonymisation stage, above the table of variables that are encrypted with the participant's passphrase.",
   },
 });
 const finalMessages = defineMessages({
   minimumPassphrase: {
     id: 'architect.final.lib.ProtocolSummary.components.Stage.Anonymisation.minimumPassphrase',
     defaultMessage: 'Minimum passphrase length',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in the printable protocol summary of an Anonymisation stage; its value is the fewest characters a participant's passphrase may have.",
   },
   maximumPassphrase: {
     id: 'architect.final.lib.ProtocolSummary.components.Stage.Anonymisation.maximumPassphrase',
     defaultMessage: 'Maximum passphrase length',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Row label in the printable protocol summary of an Anonymisation stage; its value is the most characters a participant's passphrase may have. Shown only when the stage sets a maximum.",
   },
 });
 

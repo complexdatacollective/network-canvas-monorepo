@@ -26,7 +26,7 @@ const SectionFrame = ({
       level="h2"
       variant="all-caps"
       margin="none"
-      className="bg-platinum absolute top-0 left-0 w-full px-5 py-2.5 text-xs font-semibold"
+      className="bg-platinum absolute inset-s-0 top-0 w-full px-5 py-2.5 text-xs font-semibold"
     >
       {title}
     </Heading>

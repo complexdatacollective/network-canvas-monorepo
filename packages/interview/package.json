@@ -99,6 +99,7 @@
     "@codaco/interface-images": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocols": "workspace:^",
+    "@codaco/storybook-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
     "@microsoft/api-extractor": "catalog:",

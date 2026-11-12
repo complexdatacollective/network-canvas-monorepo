@@ -1,4 +1,5 @@
-import { render, waitFor } from '@testing-library/react';
+import { DirectionProvider } from '@base-ui/react/direction-provider';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
@@ -69,5 +70,31 @@ describe('the height Architect’s navigation bar publishes', () => {
     unmount();
 
     expect(publishedHeight()).toBe('');
+  });
+});
+
+describe('the menu Architect’s navigation bar opens on a narrow screen', () => {
+  // Motion writes where an element starts from into its style before the
+  // first frame, which is where the menu is caught here.
+  const openMenu = (direction: 'ltr' | 'rtl') => {
+    render(
+      <ArchitectI18nProvider>
+        {/* Nearer the bar than the language's own direction, which it
+            stands in for: no language Architect offers is right-to-left. */}
+        <DirectionProvider direction={direction}>
+          <NavShell />
+        </DirectionProvider>
+      </ArchitectI18nProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+    return screen.getByRole('dialog');
+  };
+
+  it('slides in from beyond the right edge it is drawn against', () => {
+    expect(openMenu('ltr').style.transform).toContain('translateX(100%)');
+  });
+
+  it('slides in from beyond the left edge in a right-to-left language', () => {
+    expect(openMenu('rtl').style.transform).toContain('translateX(-100%)');
   });
 });

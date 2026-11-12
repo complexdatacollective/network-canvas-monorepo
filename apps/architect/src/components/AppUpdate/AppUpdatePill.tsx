@@ -8,7 +8,8 @@ const messages = defineMessages({
   v: {
     id: 'architect.appUpdate.appUpdatePill.v',
     defaultMessage: 'v{appVersion}',
-    description: 'The label text in components / AppUpdate / AppUpdatePill.',
+    description:
+      'Label of the pill in the Architect header showing the installed app version. appVersion is the version number, for example 9.0.1; the leading v stands for version.',
   },
 });
 
@@ -18,7 +19,7 @@ const UNSAVED_WORK_CAVEAT = defineMessages({
     defaultMessage:
       'Installing the update will reload only this tab. Any unsaved work in this tab will be lost. Other open Architect tabs will keep running until they are reloaded.',
     description:
-      'Researcher-facing explanation in components/AppUpdate/AppUpdatePill.tsx.',
+      'Warning shown with the update-available pill, before the researcher installs a new Architect version. Explains that installing reloads only the current browser tab, so unsaved work in this tab is lost, while other open Architect tabs keep running.',
   },
 }).message;
 

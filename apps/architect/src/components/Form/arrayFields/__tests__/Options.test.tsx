@@ -458,8 +458,28 @@ describe('an option label', () => {
 
     await waitFor(() =>
       expect(labelField()).toHaveTextContent(
-        'This value is already in use. Enter a different value.',
+        'Every option needs a unique label.',
       ),
+    );
+  });
+
+  // The cell asks the rule the list is refused by, so a pair the list refuses
+  // is never one neither cell explains: spaces at either end are not read.
+  it('says so under a label that differs from another only by a space at its end', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    setup([
+      { label: en('Close'), value: 1 },
+      { label: en('Close '), value: 2 },
+    ]);
+
+    const box = await openRow(1);
+    await user.type(box, 'r{Backspace}');
+    await waitFor(() => expect(labelOf(0)).toBe('Close'));
+
+    await waitFor(() =>
+      expect(
+        document.querySelector('[data-field-name="options[0].label"]'),
+      ).toHaveTextContent('Every option needs a unique label.'),
     );
   });
 

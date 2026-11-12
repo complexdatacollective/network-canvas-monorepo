@@ -18,6 +18,7 @@ export const interviewerCatalogLoaders: CatalogLoaders = {
   'pt-BR': () => import('./pt-BR.json'),
   'it': () => import('./it.json'),
   'fr': () => import('./fr.json'),
+  'ar': () => import('./ar.json'),
 };
 
 // Every language is its own chunk (vite.config.ts groups each tag's catalogs

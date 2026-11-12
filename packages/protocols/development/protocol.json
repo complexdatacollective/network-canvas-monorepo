@@ -130,8 +130,8 @@
           {
             "variable": "cc7d7fdb-c6e8-4c67-a3f3-e76c56511c41",
             "prompt": {
-              "en": "Pick your favourite day that is _after_ than the day above\n",
-              "es": "Elige tu día favorito que sea _posterior_ al día de arriba\n"
+              "en": "Pick your favourite day that is _after_ than the day above",
+              "es": "Elige tu día favorito que sea _posterior_ al día de arriba"
             }
           }
         ]
@@ -1105,8 +1105,8 @@
         {
           "id": "31f7ee2e-6ff8-4881-9db4-ee1fc369dc5f",
           "text": {
-            "en": "Which of these classmates would help you with homework?\n",
-            "es": "¿Cuáles de estos compañeros de clase te ayudarían con las tareas?\n"
+            "en": "Which of these classmates would help you with homework?",
+            "es": "¿Cuáles de estos compañeros de clase te ayudarían con las tareas?"
           },
           "additionalAttributes": [
             {
@@ -3931,10 +3931,6 @@
         "en": "Your answers have not been saved. Enter your passphrase, then try again.",
         "es": "Tus respuestas no se han guardado. Introduce tu frase de contraseña y vuelve a intentarlo."
       },
-      "protectedAnswersUnavailable": {
-        "en": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.",
-        "es": "Las respuestas protegidas por una frase de contraseña no se pueden mostrar ni guardar en esta entrevista. Avisa a la persona que te invitó a participar en este estudio."
-      },
       "answerUnavailable": {
         "en": "Answer unavailable",
         "es": "Respuesta no disponible"
@@ -3950,10 +3946,6 @@
       "passphraseAccepted": {
         "en": "Passphrase accepted! Click \"Next\" to continue.",
         "es": "¡Frase de contraseña aceptada! Pulsa la flecha de avance para continuar."
-      },
-      "checkingPassphrase": {
-        "en": "Checking your passphrase…",
-        "es": "Comprobando tu frase de contraseña…"
       },
       "passwordPlaceholder": {
         "en": "Enter password",
@@ -4082,10 +4074,6 @@
       "redoDescription": {
         "en": "Bring back the change you undid.",
         "es": "Vuelve a hacer el cambio que deshiciste."
-      },
-      "trackerAllDetails": {
-        "en": "Add required details for all family members",
-        "es": "Añade los datos obligatorios de todos los miembros de la familia"
       }
     },
     "narrativePedigree": {
@@ -4114,32 +4102,16 @@
         "es": "Quitar el foco"
       }
     },
-    "categoricalBin": {
-      "placeHere": {
-        "en": "Place here",
-        "es": "Colocar aquí"
-      }
-    },
     "quickAdd": {
       "quickAddHint": {
         "en": "Press Enter when you are finished.",
         "es": "Pulsa Intro cuando hayas terminado."
       }
     },
-    "roster": {
-      "dropToRemove": {
-        "en": "Drop here to remove",
-        "es": "Suelta aquí para quitar"
-      }
-    },
     "networkComposer": {
       "addNamePlaceholder": {
         "en": "Type a name, then press Enter",
         "es": "Escribe un nombre y pulsa Intro"
-      },
-      "overtakenEditNotice": {
-        "en": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.",
-        "es": "Deshacer o rehacer cambió una respuesta mientras la editabas, así que tu cambio no se ha guardado. Para conservarlo, vuelve a cambiar esa respuesta. Si continúas, se perderá tu cambio."
       },
       "addNodeTooltip": {
         "en": "Add node",
@@ -4176,12 +4148,6 @@
       "mapUnavailable": {
         "en": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
         "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance."
-      }
-    },
-    "egoForm": {
-      "scrollForQuestions": {
-        "en": "Scroll to see more questions",
-        "es": "Desplázate para ver más preguntas"
       }
     }
   }

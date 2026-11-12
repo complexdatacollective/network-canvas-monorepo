@@ -1,0 +1,66 @@
+---
+title: Almacenamiento y seguridad de los datos
+navOrder: 5
+toc: true
+translatedFrom: 9190f0490d40730b01a26acd6c87bb9022e154a5
+---
+
+<Paragraph variant="lead">
+  Interviewer guarda todos los datos de tu investigación en el dispositivo en
+  el que se ejecuta. Esta página responde a las preguntas prácticas que se
+  plantea un equipo de campo: dónde se guardan los datos de las entrevistas,
+  qué los protege, qué puede destruirlos y cómo mantenerlos a salvo.
+</Paragraph>
+
+## Dónde se guardan tus datos {#where-your-data-lives}
+
+Todo lo que almacena Interviewer (protocolos, entrevistas y configuración) se queda en el dispositivo, sin sincronización en la nube ni ningún componente de servidor. El equipo de Network Canvas nunca recibe, transmite ni almacena datos de participantes, y ningún dato de participantes sale del dispositivo a menos que lo exportes. Los datos analíticos de uso anónimos, que son opcionales, no contienen datos de participantes (nunca se recopilan datos de red, respuestas, ID de casos, contenido de los protocolos ni archivos de recursos), y se pueden desactivar en cualquier momento en **Configuración → Privacidad**.
+
+Hay una excepción documentada a este modelo exclusivamente local: en las etapas que usan la [interfaz geoespacial](/es/design-protocols/interface-documentation/geospatial), las teselas del mapa se obtienen del servicio externo Mapbox durante la entrevista, y todo lo que una persona participante escribe en el cuadro de búsqueda de esa interfaz se envía a la API de búsqueda de Mapbox. Tenlo en cuenta al planificar estudios en los que las ubicaciones sean sensibles.
+
+Interviewer almacena sus datos en el **almacenamiento de tu navegador web**, en el dispositivo que uses. Todos ellos deben tratarse como potencialmente sensibles:
+
+- **Protocolos**: además de la estructura de tu entrevista, un protocolo puede incluir cualquier conjunto de datos necesario para realizarla, como una lista predefinida de participantes.
+- **Datos de las sesiones**: los datos de las respuestas de cada participante, además de metadatos como la fecha en que se realizó una sesión.
+- **Configuración y metadatos de la aplicación**: los ajustes de la aplicación y los metadatos de los protocolos.
+
+<TipBox>
+
+**Interviewer Classic**, en cambio, almacena sus datos dentro de la aplicación, en el dispositivo, y no cifra su almacén de datos: el cifrado del dispositivo es su única protección en reposo. Consulta [Comités de ética (IRB) y buenas prácticas de seguridad](/es/get-started/planning-a-study/irb-best-practices) para ver recomendaciones que abarcan las dos versiones.
+
+</TipBox>
+
+## Qué protege tus datos {#what-protects-your-data}
+
+Cuando estableces un bloqueo de la aplicación durante la configuración inicial (un PIN, una frase de contraseña o biometría), los datos del dispositivo se **cifran en reposo** con una clave derivada de tu credencial, y la misma autenticación que desbloquea la aplicación libera la clave con la que se descifran. Mientras la aplicación está bloqueada, la pantalla de bloqueo no revela nada de lo que hay almacenado: ni nombres de protocolos, ni el número de sesiones de entrevista, ni ningún otro detalle. Interviewer se bloquea automáticamente tras un periodo de inactividad y cuando se cierra la aplicación, y además puedes exigir una nueva autenticación al entrar en una entrevista, al salir al panel de administración o al exportar datos. Consulta [Seguridad y bloqueo](/es/collect-data/interviewer/using-interviewer#security-and-locking) para saber cómo configurar todo esto.
+
+Si elegiste **Sin seguridad** durante la configuración, no hay ninguna protección en la propia aplicación, y tus datos dependen únicamente de las protecciones del dispositivo.
+
+En cualquier caso, la seguridad de la aplicación es una capa que debes usar _además_ de las protecciones del dispositivo, no en su lugar. Activa el cifrado completo del disco en el dispositivo, usa una autenticación de usuario robusta y el bloqueo automático de la pantalla, y restringe el acceso físico; consulta las [buenas prácticas de seguridad](/es/get-started/planning-a-study/irb-best-practices#security-best-practices) para ver la lista completa.
+
+## Qué puede destruir tus datos {#what-can-destroy-your-data}
+
+Como tus datos solo están en el dispositivo, hay varias cosas que pueden eliminarlos para siempre:
+
+- **Perder tu credencial.** Un **PIN o una frase de contraseña** olvidados no se pueden recuperar: los datos que protegen quedan inaccesibles para siempre en ese dispositivo. Al configurar la **biometría** también se registra una **frase de contraseña de recuperación** obligatoria: si solo pierdes el autenticador (por ejemplo, al cambiar de hardware), el desbloqueo recurre a esa frase de contraseña, y solo si pierdes ambos la pérdida es permanente.
+- **Desactivar el bloqueo del dispositivo.** Registrar un **PIN o una frase de contraseña** nuevos (después de demostrar que conoces tu credencial actual) conserva el acceso a tus datos, pero pasar a la **biometría** o dejar de usarla exige desactivar el bloqueo del dispositivo, lo que borra del dispositivo todos los protocolos, todas las sesiones de entrevista y todas las credenciales guardadas. La opción **Desactivar bloqueo del dispositivo / Restablecer dispositivo** de **Configuración → Seguridad** hace lo mismo y te devuelve al asistente de configuración inicial.
+- **Borrar los datos del navegador o eliminar la aplicación.** Los datos de Interviewer están en el almacenamiento de tu navegador, así que borrar los datos de sitios que guarda el navegador (o desinstalar el navegador o la aplicación web progresiva instalada de un modo que elimine sus datos) se lleva consigo tus protocolos y entrevistas. Trata el borrado de los datos del navegador en un dispositivo de entrevista como si eliminaras los datos de tu investigación.
+- **Eliminar un protocolo.** Al eliminar un protocolo del dispositivo también se eliminan todas las entrevistas registradas con él. Interviewer te pide que lo confirmes antes, porque no se puede deshacer.
+- **Perder el propio dispositivo.** Un dispositivo perdido, robado, borrado o averiado se lleva consigo sus datos.
+
+<TipBox danger={true}>
+
+La solución es la misma en todos estos casos: **exporta tus entrevistas con regularidad**, para que perder un dispositivo (o cambiar su método de seguridad) nunca suponga perder tus datos.
+
+</TipBox>
+
+## Mantener los datos a salvo sobre el terreno {#keeping-data-safe-in-the-field}
+
+Como los datos de las entrevistas solo existen en el dispositivo hasta que los exportas, la exportación es a la vez tu mecanismo de copia de seguridad y el paso más vulnerable del flujo de trabajo. Te recomendamos que:
+
+- **Exportes con regularidad.** Exporta las sesiones desde la vista **Datos** a medida que las recopilas, en lugar de dejar que los datos se acumulen en los dispositivos de campo. El [proceso de exportación](/es/collect-data/interviewer/using-interviewer#the-export-process) reúne las sesiones que selecciones en un único archivo `.zip`.
+- **Reduzcas al mínimo el tiempo que los datos permanecen en los dispositivos de campo.** Sube las exportaciones con la mayor frecuencia posible a la ubicación de almacenamiento segura que se haya designado y, después, elimina las sesiones del dispositivo. Así se limita el riesgo que supone la pérdida o el robo de un dispositivo.
+- **Organices tus exportaciones y hagas copias de seguridad.** Sigue las [prácticas recomendadas para organizar los datos y hacer copias de seguridad](/es/collect-data/protocol-and-data-workflows#data-organization-and-backup-best-practices): una copia en una única ubicación en la nube no es una copia de seguridad.
+- **Ensayes tu proceso de exportación antes de recopilar datos reales.** Usa la función **Datos sintéticos** de Configuración para generar sesiones ficticias y pasarlas por todo tu flujo de trabajo de exportación y copia de seguridad, de modo que la primera vez que dependas de él no sea con datos reales de participantes.
+
+Para tener una visión más amplia de la seguridad (incluidas tus responsabilidades como quien custodia los datos), consulta [Comités de ética (IRB) y buenas prácticas de seguridad](/es/get-started/planning-a-study/irb-best-practices).

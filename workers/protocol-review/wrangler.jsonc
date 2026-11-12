@@ -1,0 +1,42 @@
+/**
+ * The automated protocol review service. See README.md for what it does,
+ * what it keeps, and how to deploy it.
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "protocol-review-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "observability": {
+    "enabled": true,
+  },
+  "routes": [
+    {
+      "pattern": "protocol-review.networkcanvas.com",
+      "custom_domain": true,
+    },
+  ],
+  /**
+   * The hourly limits and the day's spending, held exactly in one SQLite
+   * Durable Object instance.
+   */
+  "durable_objects": {
+    "bindings": [{ "name": "LIMITER", "class_name": "ReviewLimiter" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ReviewLimiter"] }],
+  /**
+   * Reviews a researcher chose to share. No id: the first deploy creates the
+   * namespace (`protocol-review-worker-shared-reviews`) and every later one
+   * finds it on the deployed Worker (see the README, "Releasing").
+   */
+  "kv_namespaces": [{ "binding": "SHARED_REVIEWS" }],
+  /**
+   * Uploaded with every deploy by the release job, from the
+   * `protocol-review-worker` GitHub environment. Locally, `.dev.vars` holds it
+   * (and `DEV_ALLOWED_ORIGIN`, which is never set in production).
+   */
+  "secrets": {
+    "required": ["ANTHROPIC_API_KEY"],
+  },
+}

@@ -192,90 +192,32 @@ export const createDefaultFinishSessionStage = ({
 });
 
 /**
- * The text a participant reads: what decides whether a stage is still ours.
- * An automatic stage never shows its closing screen, so only its finished
- * screen counts; the closing text it keeps (empty, or left from before the
- * mode changed) says nothing about whether the researcher has written their
- * own.
- */
-const shownTextFields = (
-  mode: FinishMode,
-): readonly FinishSessionTextField[] =>
-  mode === 'automatic'
-    ? ['finishedContent']
-    : (['content', 'finishedContent'] as const);
-
-const PARTICIPANT_TEXT_FIELDS = [
-  'content',
-  'finishedContent',
-] as const satisfies readonly FinishSessionTextField[];
-
-type FinishSessionScreens = Pick<
-  FinishSessionStage,
-  FinishSessionTextField | 'mode'
->;
-
-/**
- * Whether the fields hold, in one language, exactly the text Network Canvas
- * supplies there: none, where it supplies none in that language.
- */
-const holdsSuppliedText = (
-  stage: Pick<FinishSessionStage, FinishSessionTextField>,
-  locale: LocaleTag,
-  fields: readonly FinishSessionTextField[],
-): boolean => {
-  const text = defaultFinishSessionText(locale);
-  return fields.every((field) => {
-    const held = stage[field];
-    const written =
-      held !== undefined && Object.hasOwn(held, locale)
-        ? held[locale]
-        : undefined;
-    return written === text?.[field];
-  });
-};
-
-/**
- * Whether a finish stage's screens in one language are still
- * exactly the supplied text for that language: the researcher has not changed
- * what the participant reads. Only the screens the stage's mode shows count.
- * Architect only fills in a newly added language when this holds for the
- * default language, because supplied text beside a researcher's own wording
- * would say something else. The stage's label is a name, not something the
- * participant reads, so renaming it does not count. In a language Network
- * Canvas supplies no text in, the screens are still its own while the
- * researcher has written none.
- */
-export const hasDefaultFinishSessionText = (
-  stage: FinishSessionScreens,
-  locale: LocaleTag,
-): boolean => holdsSuppliedText(stage, locale, shownTextFields(stage.mode));
-
-/**
- * The finish stage's text as Network Canvas writes it after a change to the
- * protocol's languages (see `suppliedTextAfterLanguageChange`): the screens it
- * shows when, in the default language before the change, they are still the
- * supplied text, any screen it hides that is still supplied text as well, and
- * its label while that too is the supplied one. Only those fields are
- * returned; text the researcher has changed is theirs.
+ * The finish stage's text as it reads after a change to the protocol's
+ * languages (see `suppliedTextAfterLanguageChange`): each of its closing
+ * text, finished text and stage name that it holds. A language the protocol
+ * did not have gains the supplied text for each of them with no translation
+ * in it, whether or not the researcher has changed it in another language,
+ * and the supplied text for a corrected language becomes the supplied text
+ * for the language as corrected. A closing text the stage does not hold (an
+ * automatic stage whose closing text was cleared) is left out.
  */
 export const defaultFinishSessionTextAfterLanguageChange = (
-  stage: FinishSessionScreens,
+  stage: Pick<FinishSessionStage, FinishSessionTextField>,
   change: LanguageChange,
-): Partial<Record<FinishSessionTextField, LocalizedString>> => {
-  const { defaultLocale } = change.before;
-  if (!hasDefaultFinishSessionText(stage, defaultLocale)) return {};
-  const fields = [...PARTICIPANT_TEXT_FIELDS, 'label' as const].filter(
-    (field) => holdsSuppliedText(stage, defaultLocale, [field]),
+): Partial<Record<FinishSessionTextField, LocalizedString>> =>
+  Object.fromEntries(
+    FINISH_SESSION_TEXT_FIELDS.flatMap((field) => {
+      const held = stage[field];
+      if (held === undefined) return [];
+      return [
+        [
+          field,
+          suppliedTextAfterLanguageChange(
+            held,
+            (locale) => defaultFinishSessionText(locale)?.[field],
+            change,
+          ),
+        ],
+      ];
+    }),
   );
-  return Object.fromEntries(
-    fields.map((field) => [
-      field,
-      suppliedTextAfterLanguageChange(
-        stage[field] ?? {},
-        (locale) => defaultFinishSessionText(locale)?.[field],
-        change,
-      ),
-    ]),
-  );
-};

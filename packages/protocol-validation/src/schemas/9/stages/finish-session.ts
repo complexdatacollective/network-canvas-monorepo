@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { localizedString, nonBlankText } from '../localized-string.ts';
-import { baseStageSchema } from './base.ts';
+import { baseStageSchema, stageLabelText } from './base.ts';
 
 /**
  * How an interview that ends at a finish stage ended. Every outcome ends the
@@ -73,27 +73,50 @@ export const finishSessionStage = baseStageSchema.extend({
   // language (`findFinishStageTextProblems`, checked by `validateProtocol`).
   //
   // A translation that is there is never blank: the interview would choose
-  // it over falling back, and show a participant nothing.
-  label: localizedString(nonBlankText(), 'plain', { mayBeEmpty: true }),
+  // it over falling back, and show a participant nothing. It is held to the
+  // length every stage name is (`STAGE_LABEL_MAX_LENGTH`).
+  label: localizedString(
+    stageLabelText(),
+    { format: 'plain', lines: 'single' },
+    { mayBeEmpty: true },
+  ),
   // The closing screen, shown in confirmation mode. Its heading is part of
   // the text. An automatic stage shows none, so its text may be absent
   // altogether: one set to finish automatically after its text was cleared
   // has nowhere left to write it.
-  content: localizedString(nonBlankText(), 'markdown', {
-    mayBeEmpty: true,
-    dynamicValues: 'stageText',
-  }).optional(),
+  content: localizedString(
+    nonBlankText(),
+    { format: 'markdown', lines: 'multiple' },
+    {
+      mayBeEmpty: true,
+      dynamicValues: 'stageText',
+    },
+  ).optional(),
   // The finished screen, shown once the interview has ended.
-  finishedContent: localizedString(nonBlankText(), 'markdown', {
-    mayBeEmpty: true,
-    dynamicValues: 'stageText',
-  }),
+  finishedContent: localizedString(
+    nonBlankText(),
+    { format: 'markdown', lines: 'multiple' },
+    {
+      mayBeEmpty: true,
+      dynamicValues: 'stageText',
+    },
+  ),
   // The interview's own words on this screen, which Network Canvas supplies
   // (`stage-wording/finish-session.ts`): the Finish button, the question it
-  // asks, and what the interview says when it could not be ended.
-  finishLabel: localizedString(nonBlankText(), 'plain'),
-  finishConfirmation: localizedString(nonBlankText(), 'plain'),
-  finishFailed: localizedString(nonBlankText(), 'plain'),
+  // asks, and what the interview says when it could not be ended. A stage
+  // that omits one shows Network Canvas's wording.
+  finishLabel: localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }).optional(),
+  finishConfirmation: localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }).optional(),
+  finishFailed: localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }).optional(),
   outcome: FinishOutcomeSchema,
 });
 

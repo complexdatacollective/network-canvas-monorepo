@@ -66,13 +66,13 @@ const trilingual: CurrentProtocol = {
   ],
 };
 
-const renderTable = () => {
+const renderTable = (protocol: CurrentProtocol = trilingual) => {
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
-  store.dispatch(setActiveProtocol(structuredClone(trilingual)));
+  store.dispatch(setActiveProtocol(structuredClone(protocol)));
   const onSaved = vi.fn();
   render(
     <Provider store={store}>
@@ -127,8 +127,15 @@ const stageTitle = (store: Rendered['store'], index: number) => {
 
 const shownCount = () => screen.getByText(/^Showing /);
 
-const save = (user: Rendered['user']) =>
-  user.click(screen.getByRole('button', { name: 'Save' }));
+/**
+ * Presses Save and waits for it to finish: Save checks the protocol it would
+ * write before writing it, which takes a moment.
+ */
+const save = async (user: Rendered['user']) => {
+  const button = screen.getByRole('button', { name: 'Save' });
+  await user.click(button);
+  await waitFor(() => expect(button).toBeEnabled());
+};
 
 const ONLY_ENGLISH =
   'This is the only translation, and it is in English. Add a translation in another language before clearing it.';
@@ -196,14 +203,10 @@ describe('TranslationTable', () => {
       'Interviewer controls › Outside path explanation',
       'Interviewer controls › Show screen button',
       'Buttons › Cancel button',
-      'Buttons › Done button',
-      'Buttons › Delete button',
       'Buttons › Copy button',
       'Buttons › Copied message',
       'Messages › Screen error message',
-      'Messages › Missing item message',
       'Messages › Error message',
-      'Messages › Loading message',
       'Messages › Unnamed label',
       'Search › Search field',
       'Search › No results message',
@@ -365,6 +368,21 @@ describe('TranslationTable', () => {
     expect(stageTitle(store, 0)).toEqual({ en: 'Hello', es: 'Hola' });
   });
 
+  it('keeps a one-line text on one line, whatever is typed or pasted into it', async () => {
+    const { store, user } = renderTable();
+
+    await user.click(cell('2', 'Page heading', 'French'));
+    // The space a break leaves stays while the text is being typed, so the
+    // next word typed is a word of its own.
+    await user.keyboard('Merci{Shift>}{Enter}{/Shift}beaucoup');
+    await user.paste(`${String.fromCodePoint(0x2029)}!`);
+    await save(user);
+    expect(stageTitle(store, 1)).toEqual({
+      en: 'Thank you',
+      fr: 'Merci beaucoup !',
+    });
+  });
+
   it('does not count text participants would not see as another translation', async () => {
     const { user } = renderTable();
 
@@ -439,14 +457,14 @@ describe('TranslationTable', () => {
     });
 
     await user.type(search, 'hola');
-    expect(shownCount()).toHaveTextContent('Showing 1 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 1 of 29 strings');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
       'Page content › Page heading',
     ]);
 
     await user.clear(search);
     await user.type(search, 'thanks');
-    expect(shownCount()).toHaveTextContent('Showing 3 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 3 of 29 strings');
 
     await user.clear(search);
     await user.type(search, 'nothing like this');
@@ -459,11 +477,11 @@ describe('TranslationTable', () => {
     const { user } = renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('All translations');
-    expect(shownCount()).toHaveTextContent('Showing 33 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 29 of 29 strings');
     await user.selectOptions(filterMenu(), 'Missing in any shown language');
 
     // Both stage labels are translated into every language.
-    expect(shownCount()).toHaveTextContent('Showing 5 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 5 of 29 strings');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
       'Page content › Page heading',
       'Page content › Item 1 › Content',
@@ -486,7 +504,7 @@ describe('TranslationTable', () => {
     expect(window.location.search).toBe('?missing=any');
 
     await user.selectOptions(filterMenu(), 'All translations');
-    expect(shownCount()).toHaveTextContent('Showing 33 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 29 of 29 strings');
     expect(window.location.search).toBe('');
   });
 
@@ -495,7 +513,7 @@ describe('TranslationTable', () => {
 
     await user.selectOptions(filterMenu(), 'Missing Spanish');
 
-    expect(shownCount()).toHaveTextContent('Showing 2 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 29 strings');
     expect(screen.getByRole('link', { name: 'Thanks' })).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Welcome' }),
@@ -517,7 +535,7 @@ describe('TranslationTable', () => {
     renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('Missing Spanish');
-    expect(shownCount()).toHaveTextContent('Showing 2 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 29 strings');
   });
 
   it('opens on one language beside the default language when a link asks for it', () => {
@@ -576,7 +594,7 @@ describe('TranslationTable', () => {
     renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('All translations');
-    expect(shownCount()).toHaveTextContent('Showing 33 of 33 strings');
+    expect(shownCount()).toHaveTextContent('Showing 29 of 29 strings');
   });
 
   it('shows the column of the language whose gaps it lists', async () => {
@@ -704,19 +722,24 @@ describe('TranslationTable', () => {
       expect(formattedCell('1', 'French')).toHaveAccessibleDescription('Lisez');
     });
 
-    it('edits the screen error message with links and lists, even while it is one line', async () => {
+    it('edits a text with the editor its field declares, whatever its translations hold', async () => {
       const { user } = renderTable();
 
-      // A one-line formatted text of a stage gets only bold and italic.
+      // An Information screen's text is declared several lines, so a text
+      // that is one line for now still gets links, headings and lists.
       await user.click(formattedCell('1', 'French'));
       const stageEditor = await formattedEditor('1', 'French');
       const stageCell = stageEditor.closest('td');
       expect(stageCell).not.toBeNull();
+      const stageToolbar = within(stageCell as HTMLElement).getByRole(
+        'toolbar',
+      );
       expect(
-        within(stageCell as HTMLElement).queryByRole('button', {
-          name: 'Add link',
-        }),
-      ).toBeNull();
+        within(stageToolbar).getByRole('button', { name: 'Add link' }),
+      ).toBeInTheDocument();
+      expect(
+        within(stageToolbar).getByRole('button', { name: 'Bullet list' }),
+      ).toBeInTheDocument();
 
       const name = /^Interview text Messages › Screen error message English$/;
       await user.click(screen.getByRole('button', { name }));
@@ -730,6 +753,77 @@ describe('TranslationTable', () => {
       expect(
         within(toolbar).getByRole('button', { name: 'Bullet list' }),
       ).toBeInTheDocument();
+    });
+
+    it('keeps the heading of a one-line Information text through an edit', async () => {
+      const welcome = structuredClone(trilingual);
+      const [first] = welcome.stages;
+      if (first?.type !== 'Information')
+        throw new Error('No Information stage');
+      first.items = [
+        {
+          id: 'intro',
+          type: 'text',
+          content: { en: '## Welcome', fr: '## Bienvenue' },
+        },
+      ];
+      const { store, user } = renderTable(welcome);
+
+      await user.click(formattedCell('1', 'English'));
+      const editor = await formattedEditor('1', 'English');
+      expect(editor.querySelector('h2')).toHaveTextContent('Welcome');
+      await user.type(editor, '!');
+      await user.click(cell('1', 'Page heading', 'Spanish'));
+      await save(user);
+
+      expect(itemContent(store, 0)).toEqual({
+        en: '## Welcome!',
+        fr: '## Bienvenue',
+      });
+    });
+
+    it('edits a prompt as one line, even where a translation holds a line break', async () => {
+      const census = {
+        ...structuredClone(trilingual),
+        codebook: {
+          ...structuredClone(trilingual.codebook),
+          edge: { knows: { name: 'Knows', color: 'edge-color-seq-1' } },
+        },
+        stages: [
+          {
+            id: 'census',
+            type: 'DyadCensus',
+            label: { en: 'Census' },
+            subject: { entity: 'node', type: 'person' },
+            prompts: [
+              {
+                id: 'knows',
+                text: { en: 'Who knows\neach other?' },
+                createEdge: 'knows',
+              },
+            ],
+          },
+        ],
+      } as unknown as CurrentProtocol;
+      renderTable(census);
+
+      const promptCell = screen.getByRole('button', {
+        name: /^Stage 1 .* English$/,
+      });
+      const promptTd = promptCell.closest('td');
+      expect(promptTd).not.toBeNull();
+      await userEvent.setup().click(promptCell);
+      const editor = await within(promptTd as HTMLElement).findByRole(
+        'textbox',
+      );
+      expect(editor).toHaveAttribute('aria-multiline', 'false');
+      const toolbar = within(promptTd as HTMLElement).getByRole('toolbar');
+      expect(
+        within(toolbar).queryByRole('button', { name: 'Bullet list' }),
+      ).toBeNull();
+      expect(
+        within(toolbar).queryByRole('button', { name: 'Add link' }),
+      ).toBeNull();
     });
 
     it('says why the only translation cannot be cleared, and Save opens it again', async () => {

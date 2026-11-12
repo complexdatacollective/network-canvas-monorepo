@@ -1,0 +1,5 @@
+# Local secrets for `wrangler dev` (ANTHROPIC_API_KEY, DEV_ALLOWED_ORIGIN).
+.dev.vars*
+!.dev.vars.example
+# Wrangler's local state (Durable Object and KV data from `wrangler dev`).
+.wrangler/

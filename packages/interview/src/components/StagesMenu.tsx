@@ -370,8 +370,11 @@ export default function StagesMenu({
         custom={custom}
         initial={animate}
         animate={animate}
+        // A stage name may be one long word: `wrap-anywhere` breaks it inside
+        // the card, where `break-word` lets it widen a centred flex item and
+        // run across the cards beside it.
         className={cx(
-          'flex flex-col gap-1 text-sm leading-tight font-bold wrap-break-word',
+          'flex flex-col gap-1 text-sm leading-tight font-bold wrap-anywhere',
           isHorizontal ? 'items-center text-center' : 'min-w-0 flex-1',
         )}
       >
@@ -554,6 +557,8 @@ export default function StagesMenu({
           <div className="border-text/10 shrink-0 border-t p-4">
             <CollectionFilterInput
               placeholder={intl.formatMessage(messages.filter)}
+              loadingText={intl.formatMessage(messages.loadingStatus)}
+              indexingText={intl.formatMessage(messages.loadingStatus)}
               size="sm"
               showResultCount={false}
             />

@@ -4,35 +4,46 @@ import {
   useEffect,
   useEffectEvent,
   useId,
+  useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 
-import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   interfaceTextArguments,
   type LocalizedString,
+  suppliedInterfaceText,
 } from '@codaco/protocol-validation';
 
-import LocalizedMessageField, {
-  localizedMessageProblemText,
-} from '../../fields/LocalizedMessageField.tsx';
+import LocalizedMessageField from '../../fields/LocalizedMessageField.tsx';
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
+import {
+  isHandedOver,
+  sharedWordingFieldName,
+  sharedWordingInForm,
+  sharedWordingProblem,
+  sharedWordingValidation,
+} from '../../form/sharedWordingDraft.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
   hintInterfaceText,
   nameInterfaceText,
   nameInterfaceTextGroup,
 } from '../../localization/interfaceTextNames.ts';
+import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { useProtocolLocalization } from '../../localization/ProtocolLocalization.tsx';
 import { useLatest } from '../../state/useLatest.ts';
-import type {
-  SharedWordingGroup,
-  SharedWordingWrites,
+import {
+  carryHandedOverWording,
+  type SharedWordingGroup,
+  type SharedWordingWrites,
 } from './sharedWordingState.ts';
 
 const messages = defineMessages({
@@ -43,26 +54,19 @@ const messages = defineMessages({
     description:
       'Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage. The protocol holds them once, so changing one changes it on all those stages, and the change is saved as soon as the researcher leaves the field rather than when they save the stage.',
   },
+  sharedNoteNoneHeld: {
+    id: 'protocolBuilder.stageWording.sharedNoteNoneHeld',
+    defaultMessage: 'These words appear on every stage of this kind.',
+    description:
+      'Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the drawing tools of every Narrative stage, shown when the protocol uses none of them yet because the stage being edited is the first to need them. The protocol holds them once, so changing one changes it on all those stages. Each of them says beside itself when a change to it is saved.',
+  },
+  savedWithStage: {
+    id: 'protocolBuilder.stageWording.savedWithStage',
+    defaultMessage: 'Changes to this are saved when you save the stage.',
+    description:
+      'Shown under one of the words every stage of the same type shares, in a stage’s wording section, when the protocol does not use that word until the stage being edited is saved, for example the message shown when a map search finds nothing, which a map stage needs only once its search is turned on. Unlike the other shared words, which are saved as soon as the researcher leaves the field, a change to this one is saved together with the stage, and discarded if the stage is not saved. "this" is the word above the note.',
+  },
 });
-
-/**
- * Why a shared word cannot be saved as it reads, or undefined when it can:
- * every one the protocol holds needs words in its default language, and one
- * that shows values has to show them as its setting allows.
- */
-const problemOf = (
-  group: string,
-  key: string,
-  value: LocalizedString,
-  defaultLocale: string,
-  intl: IntlShape,
-): string | undefined => {
-  if ((value[defaultLocale] ?? '').trim() === '') return REQUIRED;
-  const declaration = interfaceTextArguments(group, key);
-  return declaration === undefined
-    ? undefined
-    : localizedMessageProblemText(value, declaration, intl);
-};
 
 /**
  * The words every stage of a kind shows alike, edited where the stage is.
@@ -70,7 +74,10 @@ const problemOf = (
  * The protocol holds them once for all those stages, so they are not part of
  * the stage: a change is written to the protocol as the researcher leaves the
  * group it is in (through the section's `writes`), and is not undone by
- * discarding the stage's own changes.
+ * discarding the stage's own changes. The exception is an entry the protocol
+ * does not hold yet, which the open stage is the first to need: it is held
+ * with the stage's draft and saved with the stage (see `SHARED_WORDING_PATH`),
+ * and says so beside itself.
  */
 export default function SharedStageWording({
   groups,
@@ -83,9 +90,16 @@ export default function SharedStageWording({
   // Shown only while the section is on, so showing them again means the
   // section was switched back on after closing held its writes back.
   useEffect(() => writes.resume(), [writes]);
+  // The note that changes are saved straight away is said only over words
+  // that are: an entry held with the stage says the opposite beside itself.
+  const anyHeld = groups.some(({ entries }) => entries.length > 0);
   return (
     <>
-      <Paragraph>{intl.formatMessage(messages.sharedNote)}</Paragraph>
+      <Paragraph>
+        {intl.formatMessage(
+          anyHeld ? messages.sharedNote : messages.sharedNoteNoneHeld,
+        )}
+      </Paragraph>
       {groups.map((group) => (
         <SharedWordingGroupFields
           key={group.group}
@@ -99,7 +113,7 @@ export default function SharedStageWording({
 }
 
 function SharedWordingGroupFields({
-  group: { group, entries },
+  group: { group, keys, entries },
   named,
   writes,
 }: Readonly<{
@@ -108,9 +122,30 @@ function SharedWordingGroupFields({
   writes: SharedWordingWrites;
 }>) {
   const intl = useAppIntl();
-  const { readOnly } = useStageEditorForm();
+  const { readOnly, storeApi } = useStageEditorForm();
   const localization = useProtocolLocalization();
   const headingId = useId();
+
+  // The entries the protocol holds whose field still holds the researcher's
+  // unsaved change from before it did (`isHandedOver`): kept in the field the
+  // researcher was using, as their draft of the shared word, until it is
+  // written. One control throughout, so a word being typed when the protocol
+  // comes to hold it keeps its text, its caret and focus.
+  const heldWordOf = useCallback(
+    (key: string) => entries.find(([heldKey]) => heldKey === key)?.[1],
+    [entries],
+  );
+  const handedOverKeys = useSyncExternalStore(storeApi.subscribe, () =>
+    keys
+      .filter((key) =>
+        isHandedOver(
+          sharedWordingInForm(storeApi, group, key),
+          heldWordOf(key),
+        ),
+      )
+      .join('\n'),
+  );
+  const handedOver = new Set(handedOverKeys.split('\n'));
 
   // What the researcher has typed and the protocol does not hold yet, by
   // entry, and why the protocol would not take it.
@@ -169,8 +204,13 @@ function SharedWordingGroupFields({
         ? sending.current.get(key)
         : held.find(([heldKey]) => heldKey === key)?.[1];
       return isEqual(current, value) ||
-        problemOf(group, key, value, localization.defaultLocale, intl) !==
-          undefined
+        sharedWordingProblem(
+          group,
+          key,
+          value,
+          localization.defaultLocale,
+          intl,
+        ) !== undefined
         ? []
         : [{ group, key, value }];
     });
@@ -227,20 +267,50 @@ function SharedWordingGroupFields({
       className="not-last:mb-8"
       // The change is written as focus leaves a field, not on every
       // keystroke: each write is a revision of the protocol.
-      onBlur={() => void flush()}
+      onBlur={() => {
+        void flush();
+        if (readOnly) return;
+        void carryHandedOverWording({
+          storeApi,
+          writes,
+          held: (heldGroup, key) =>
+            heldGroup === group ? heldWordOf(key) : undefined,
+          localization,
+          intl,
+        });
+      }}
     >
       {named && (
         <p id={headingId} className="mb-4 font-semibold">
           {nameInterfaceTextGroup(intl, group)}
         </p>
       )}
-      {entries.map(([key, held]) => {
+      {keys.map((key) => {
+        const heldEntry = entries.find(([heldKey]) => heldKey === key);
+        if (heldEntry === undefined || handedOver.has(key)) {
+          return (
+            <PendingSharedWord
+              key={key}
+              group={group}
+              wordKey={key}
+              localization={localization}
+              heldByProtocol={heldEntry !== undefined}
+            />
+          );
+        }
+        const [, held] = heldEntry;
         const value = drafts.get(key) ?? held;
         const drafted = drafts.get(key);
         const problem =
           drafted === undefined
             ? undefined
-            : problemOf(group, key, drafted, localization.defaultLocale, intl);
+            : sharedWordingProblem(
+                group,
+                key,
+                drafted,
+                localization.defaultLocale,
+                intl,
+              );
         const refusal = refusals.get(key);
         const errors = [problem, refusal].filter(
           (error): error is string => error !== undefined,
@@ -277,5 +347,70 @@ function SharedWordingGroupFields({
         );
       })}
     </section>
+  );
+}
+
+/**
+ * One shared word the protocol does not hold yet: the open stage is the first
+ * to need it. Its wording is a field of the stage form, so it starts with
+ * Network Canvas's wording in every language, is held with the stage's draft
+ * and checked by the rule a held word is checked by, and is written when the
+ * stage is saved (see `pendingSharedWording`) or thrown away with the draft.
+ *
+ * Still this control if the protocol comes to hold the entry while the field
+ * holds a change of the researcher's (`heldByProtocol`), until that change is
+ * written: the field, its text and focus stay where they are.
+ */
+function PendingSharedWord({
+  group,
+  wordKey,
+  localization,
+  heldByProtocol,
+}: Readonly<{
+  group: string;
+  wordKey: string;
+  localization: ProtocolLocalization;
+  /**
+   * The protocol has come to hold the entry while the field held the
+   * researcher's change: it is their draft of a shared word now, written as
+   * one is, so the field no longer says it is saved with the stage.
+   */
+  heldByProtocol: boolean;
+}>) {
+  const intl = useAppIntl();
+  const { readOnly } = useStageEditorForm();
+  const { defaultLocale } = localization;
+  const validation = useMemo(
+    () => sharedWordingValidation(group, wordKey, defaultLocale, intl),
+    [defaultLocale, group, intl, wordKey],
+  );
+  const hint = [
+    hintInterfaceText(intl, wordKey),
+    heldByProtocol ? undefined : intl.formatMessage(messages.savedWithStage),
+  ]
+    .filter((part): part is string => part !== undefined)
+    .join('\n\n');
+  const declaration = interfaceTextArguments(group, wordKey);
+  const common = {
+    name: sharedWordingFieldName(group, wordKey),
+    label: nameInterfaceText(intl, wordKey),
+    hint,
+    initialValue: suppliedInterfaceText(group, wordKey, localization),
+    readOnly,
+    required: REQUIRED,
+    custom: validation,
+  };
+  return declaration === undefined ? (
+    <Field<typeof LocalizedInputField>
+      {...common}
+      component={LocalizedInputField}
+      wraps
+    />
+  ) : (
+    <Field<typeof LocalizedMessageField>
+      {...common}
+      component={LocalizedMessageField}
+      arguments={declaration}
+    />
   );
 }

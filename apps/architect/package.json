@@ -67,6 +67,7 @@
   },
   "devDependencies": {
     "@codaco/e2e-helpers": "workspace:^",
+    "@codaco/storybook-config": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
     "@playwright/test": "catalog:",
     "@storybook/addon-a11y": "catalog:",

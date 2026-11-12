@@ -1,0 +1,295 @@
+---
+title: Guía de implementación
+date: 8th October 2025
+navOrder: 5
+translatedFrom: 6f6dbb36497044eda5ae83931ecb6e6413726592
+---
+
+<SummaryCard duration="60 minutos">
+
+<SummarySection>
+Esta guía te acompaña paso a paso en el proceso de implementar tu instancia de Fresco.
+
+</SummarySection>
+
+<PrerequisitesSection>
+Antes de empezar, deberías:
+
+- Leer el artículo [Acerca de Fresco](/es/collect-data/fresco/about) para entender qué es Fresco y cómo funciona.
+- Crear una cuenta en [GitHub](https://github.com/) (en inglés) si aún no tienes una.
+- Reservar tiempo suficiente para completar el proceso de implementación de una sola vez.
+
+</PrerequisitesSection>
+</SummaryCard>
+
+¡Gracias por dedicar tu tiempo a implementar Fresco! Esperamos que te resulte una herramienta valiosa para tu investigación y tu recopilación de datos. Esta guía te acompaña paso a paso en el proceso de implementar tu instancia de Fresco.
+
+Fresco es distinto de otros programas que quizá hayas instalado antes. Es una aplicación web, lo que significa que no se instala en un ordenador portátil o de sobremesa. En su lugar, se «implementa» en uno o varios servidores (tu «infraestructura»), a los que después puedes acceder desde el navegador web.
+
+Este enfoque permite a quienes investigan gestionar sus propios datos y adaptar las características de su infraestructura a sus necesidades.
+
+¡Esto _también_ significa que eres responsable de la seguridad y el mantenimiento de tu propia implementación! Por diseño, el equipo del proyecto Network Canvas no tiene acceso a tus datos ni a tu infraestructura.
+
+Para implementar Fresco, usaremos los siguientes servicios y tecnologías:
+
+- **GitHub**: una plataforma para alojar y compartir código, propiedad de Microsoft, que también la gestiona. El código de Fresco se comparte a través de GitHub, y necesitarás una cuenta de GitHub para implementarlo. Si no tienes una cuenta de GitHub, puedes crearla gratis en <a href="https://github.com/" target="_blank">github.com</a>.
+- **PostgreSQL**: un sistema de base de datos relacional potente y de código abierto. Fresco usa PostgreSQL para almacenar los datos de tu estudio, de quienes participan y de sus respuestas.
+- **Almacenamiento de objetos**: Fresco almacena los recursos de los protocolos (como los archivos multimedia) en un almacenamiento de objetos compatible con S3. Puedes usar **UploadThing**, un servicio gestionado que es la opción más sencilla, o aportar tu propio **bucket compatible con S3** (AWS S3, Cloudflare R2, MinIO o Backblaze B2).
+
+Para que el proceso de implementación sea lo más sencillo posible, hemos diseñado Fresco para implementarlo con <a href="https://www.netlify.com/" target="_blank">Netlify</a> (en inglés), una plataforma en la nube especializada en implementar aplicaciones web. Está diseñada para ser fácil de usar y tiene un plan gratuito generoso, adecuado para
+la mayoría de los proyectos de investigación. No es obligatorio usar Netlify para alojar Fresco, pero es la forma más sencilla de empezar y es el método que usaremos en esta guía.
+
+Antes recomendábamos implementar Fresco en otra plataforma en la nube, Vercel, que ofrece muchas de las mismas funciones que Netlify. La guía de implementación en Vercel [sigue disponible](/es/collect-data/fresco/guide-vercel), por si prefieres usarla.
+
+## ¿Cuánto cuesta implementar Fresco? {#how-much-does-deploying-fresco-cost}
+
+Puedes implementar Fresco para tu estudio de forma totalmente gratuita siguiendo los pasos que se detallan en esta guía. Lo hemos creado así para que el software sea accesible al mayor número posible de personas. El método de implementación gratuito tiene algunas limitaciones, como la cantidad de datos que puedes almacenar y transferir, y el rendimiento general de la aplicación.
+
+Si vas a realizar un estudio grande, necesitas niveles de rendimiento garantizados o tu comité de ética (IRB) te impone requisitos especiales sobre los datos de participantes, quizá prefieras usar un plan de pago u otro enfoque de implementación. Consulta la página de [precios de los servicios en la nube](./cloud-pricing) para obtener más información. Ten en cuenta que el equipo de Network Canvas no obtiene ningún beneficio económico del proveedor en la nube que elijas.
+
+También es posible implementar Fresco en cualquier infraestructura a la que tengas acceso. Para obtener información al respecto, consulta nuestra guía de [implementación avanzada](./advanced).
+
+## Crear un fork de Fresco {#create-a-fork-of-fresco}
+
+Implementar Fresco implica configurar tu propia versión única del proyecto, a la que llamamos tu **instancia**. El primer paso para crear esta instancia es crear una copia (o «fork») del código de Fresco en GitHub.
+
+Para ello, asegúrate de tener una cuenta de GitHub y de haber iniciado sesión, y después:
+
+1. Visita el <a href="https://github.com/complexdatacollective/Fresco" target="_blank">repositorio de Fresco en GitHub</a> (en inglés) y haz clic en **«Fork»**.
+
+   ![](/assets/img/fresco-images/github-fork1.png)
+
+2. Introduce un nombre para el repositorio (será el nombre de tu instancia de Fresco, así que quizá quieras usar el nombre de tu estudio o de tu proyecto), junto con una descripción, y haz clic en **«Create Fork»**. Deja seleccionada la opción «copy main branch».
+
+   ![](/assets/img/fresco-images/github-fork2.png)
+
+Cuando hayas completado este paso, se te redirigirá a tu repositorio bifurcado (tu fork) en GitHub. Esta copia del código de Fresco ya es tuya, y puedes implementarla o modificarla como quieras.
+``
+
+## Crear una base de datos {#create-a-database}
+
+Fresco usa una base de datos PostgreSQL para almacenar los datos de tu estudio, de quienes participan y de sus respuestas. A continuación, crearemos una nueva base de datos con la plataforma <a href="https://www.neon.com/" target="_blank">Neon</a> (en inglés).
+
+1. Visita el <a href="https://neon.com" target="_blank">sitio web de Neon</a> y haz clic en **Login**. Te recomendamos conectarte a Neon con GitHub haciendo clic en el botón **GitHub**. Se te redirigirá al panel de Neon.
+
+2. En el panel de Neon, selecciona **Create Project**.
+
+   ![Crear una base de datos en Neon](/assets/img/fresco-images/neon-db-1.png)
+
+3. Ponle un nombre a tu base de datos y, si quieres, elige una región en el menú desplegable. De forma predeterminada, la base de datos se crea en el plan gratuito (Free). Para obtener más información sobre los precios de los planes de base de datos, consulta la página de [precios de los servicios en la nube](./cloud-pricing). Después, haz clic en **Create**. Se generará tu base de datos y se te redirigirá al panel del proyecto en Neon.
+
+<TipBox>
+
+Te recomendamos seleccionar **AWS US East 2 (Ohio)** como región de la base de datos.
+Es la misma región que usa el alojamiento del plan gratuito de Netlify, lo que puede mejorar la velocidad de conexión entre tu aplicación y la base de datos.
+
+</TipBox>
+   
+   ![Crear la base de datos](/assets/img/fresco-images/neon-db-2.png)
+
+4. Bajo el encabezado «Connect to your databse», haz clic en **Connect**.
+
+   ![Hacer clic en Connect](/assets/img/fresco-images/neon-db-3.png)
+
+5. Elige **Prisma** en el menú desplegable y selecciona la pestaña **.env**. Verás las variables de entorno de tu base de datos. Haz clic en **«Copy Snippet»** para copiar las variables de entorno al portapapeles.
+
+   ![Seleccionar Prisma, hacer clic en la pestaña `.env` y copiar las variables de entorno](/assets/img/fresco-images/neon-db-4.png)
+
+6. Pega las variables de entorno en un archivo de texto o en una aplicación de notas para guardarlas. Necesitarás estas variables de entorno más adelante en el proceso de implementación.
+
+<Tipbox danger>
+
+**Debes eliminar el «#»** que hay delante de `DATABSE_URL_UNPOOLED`. Haz este cambio en el archivo de texto o en la aplicación de notas donde pegaste estas variables.
+
+El archivo editado debería tener un aspecto parecido a este:
+
+```bash
+
+DATABASE_URL="postgresql://neondb_owner:***************@ep-wispy-thunder-aduy7cf8-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+# uncomment next line if you use Prisma <5.10
+DATABASE_URL_UNPOOLED="postgresql://neondb_owner:*************@ep-wispy-thunder-aduy7cf8.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+```
+
+</Tipbox>
+
+## Crear un proyecto en Netlify {#create-a-project-on-netlify}
+
+A continuación, implementaremos tu fork de la aplicación en la plataforma Netlify. Puedes usar el plan gratuito (Free) o los planes de pago (para obtener más información sobre los precios de los servicios en la nube, lee nuestra documentación sobre [precios de los servicios en la nube](./cloud-pricing)), pero en esta guía usaremos el plan gratuito.
+
+<Tipbox>
+
+Si tienes algún problema, consulta la guía de [solución de problemas](/es/collect-data/fresco/deployment-troubleshooting) o escribe a la <a href="https://community.networkcanvas.com" target="_blank">comunidad de personas usuarias</a> (en inglés).
+
+</Tipbox>
+
+1. Haz clic <a href="https://app.netlify.com/start" target="_blank">aquí</a> para crear un nuevo proyecto en Netlify. Inicia sesión con GitHub si aún no lo has hecho.
+
+2. Bajo el encabezado **Let's deploy your project with...**, selecciona **GitHub**.
+
+   ![Importar el repositorio de Git](/assets/img/fresco-images/netlify-1.png)
+
+3. Autoriza los permisos de GitHub. Se te redirigirá de nuevo a la pantalla de creación de proyectos de Netlify.
+
+4. Busca el nombre de tu instancia de Fresco en la lista de tus repositorios de Git y haz clic en él.
+
+5. Ponle un nombre a tu proyecto. El nombre del proyecto determina la URL predeterminada de tu proyecto. Si no indicas ninguno, se generará un nombre de proyecto aleatorio.
+
+   ![Poner nombre al proyecto](/assets/img/fresco-images/netlify-2.png)
+
+6. Abre el editor de texto o la aplicación de notas donde guardaste las variables de entorno de la base de datos de Neon. Selecciona **todo** el texto y cópialo al portapapeles.
+
+7. Desplázate hasta la parte inferior de la pantalla. Haz clic en «Add environment variables». Después, haz clic en **Import from a .env file**.
+
+   ![Añadir variables de entorno](/assets/img/fresco-images/netlify-3.png)
+
+8. Pega tus variables en el cuadro de texto «Contents of .env file» (el que contiene el marcador de posición `EXAMPLE_KEY_1=my-secret-value-1`). Tus variables se añadirán automáticamente. Después, marca la casilla **Contains secret values**.
+
+   ![Al pegar tus variables, se añaden automáticamente](/assets/img/fresco-images/netlify-4.png)
+
+9. Haz clic en el botón **«Deploy»** y espera a que termine la implementación. ¡Netlify está creando tu instancia de Fresco! Tardará entre 2 y 5 minutos.
+
+10. Cuando tu aplicación esté implementada, haz clic en la URL de la implementación. Aparecerá en verde bajo el nombre de tu proyecto una vez implementada.
+
+![URL de la implementación](/assets/img/fresco-images/netlify-5.png)
+
+## Configuración inicial {#configuration-and-setup}
+
+Para usar Fresco, tienes que crear una cuenta de administración que te permitirá acceder a las partes protegidas de la aplicación para gestionar el estudio. Es la primera cuenta de tu instancia; más adelante puedes añadir más cuentas desde el panel de administración.
+
+<TipBox danger>
+
+Para garantizar la seguridad de tu implementación, dispones de **2 horas** desde que se implementa la aplicación para completar la configuración inicial. Si ese tiempo transcurre antes de completar todos los pasos, la configuración caducará. Para volver a implementar Fresco, sigue nuestra guía para [restablecer la base de datos](/es/collect-data/fresco/deployment-troubleshooting#reset-your-database).
+
+</TipBox>
+
+### Crear una cuenta de usuario {#create-a-user-account}
+
+Visita tu aplicación implementada y crea tu primera cuenta. Puedes protegerla con un nombre de usuario y una contraseña (que sea lo más segura posible) o, en su lugar, con una llave de acceso. En **Fresco v4 y versiones posteriores** puedes añadir más cuentas, activar la autenticación de dos factores y registrar llaves de acceso más adelante desde el panel. Consulta [Cuentas y seguridad](/es/collect-data/fresco/accounts).
+
+<TipBox>
+
+En **Fresco v4 y versiones posteriores**, si varias personas del equipo necesitan acceso, crea una cuenta para cada una desde **Configuración → Administración de usuarios** en lugar de compartir un mismo conjunto de credenciales. Ten en cuenta que todas las cuentas tienen los mismos permisos de administración, con acceso completo al estudio.
+
+</TipBox>
+
+![Crear una cuenta de administración](/assets/img/fresco-images/fresco1.png)
+
+<TipBox danger>
+
+Fresco no permite restablecer la contraseña por correo electrónico. Si olvidas tu contraseña, puedes recuperar el acceso con un código de recuperación, pidiendo a otra persona con cuenta de administración que restablezca la autenticación de tu cuenta o, como último recurso, restableciendo la base de datos (lo que destruye todos los datos). Guarda tus credenciales en un lugar seguro y da de alta más de una cuenta de administración. Consulta [Cuentas y seguridad](/es/collect-data/fresco/accounts) para ver los detalles.
+
+</TipBox>
+
+### Configurar el almacenamiento {#configure-storage}
+
+Fresco almacena los recursos de los protocolos (como imágenes, audio, vídeo y archivos de red) en un almacenamiento de objetos compatible con S3. Puedes usar uno de estos dos proveedores de almacenamiento:
+
+- **UploadThing**: un servicio de almacenamiento gestionado. Es la opción más sencilla y la que recomendamos para la mayoría de los estudios: creas una cuenta, generas un token y lo pegas.
+- **Un bucket compatible con S3**: AWS S3, Cloudflare R2, MinIO, Backblaze B2 o cualquier endpoint compatible con S3. Plantéatelo si necesitas controlar la región de almacenamiento y la ubicación de los datos, quieres mantener todos los componentes dentro de tu propia infraestructura o ya tienes almacenamiento S3 disponible.
+
+<TipBox danger>
+
+Elige con cuidado tu proveedor de almacenamiento durante la configuración inicial. Después, el panel te permite actualizar las credenciales del proveedor que hayas elegido, pero **no te permite cambiar de tipo de proveedor**.
+
+</TipBox>
+
+<TipBox>
+
+El tamaño máximo de un único archivo de protocolo `.netcanvas` subido es de **256 MB**, sea cual sea el proveedor de almacenamiento que elijas.
+
+</TipBox>
+
+#### Crear un bucket de almacenamiento con UploadThing {#create-a-storage-bucket-using-uploadthing}
+
+Fresco puede usar un servicio de terceros llamado «UploadThing» para almacenar archivos multimedia, incluidos los recursos de los protocolos. Para usar este servicio, creas una cuenta en UploadThing que te permite generar un token de API con el que Fresco se comunica con el servicio de forma segura.
+
+<Tipbox>
+
+Tu cuenta de UploadThing es exclusivamente tuya, lo que significa que nadie más tendrá acceso a los archivos almacenados en tu instancia de Fresco. Para obtener más información sobre UploadThing, consulta la <a href="https://docs.uploadthing.com" target="_blank">documentación de UploadThing</a> (en inglés).
+
+</Tipbox>
+
+Para crear una aplicación en UploadThing:
+
+1. Ve a <a href="https://uploadthing.com" target="_blank">uploadthing.com</a> (en inglés).
+
+2. Haz clic en **«Get started»**.
+
+   ![Seleccionar «Get Started»](/assets/img/fresco-images/uploadthing1.png)
+
+3. Inicia sesión con GitHub.
+
+4. Autoriza a UploadThing haciendo clic en **«Authorize pingdotgg»**.
+
+5. Se te pedirá que vayas a tu panel de UploadThing. Desde ese panel, haz clic en **«Create a new app»**.
+
+   ![Crear una nueva aplicación](/assets/img/fresco-images/uploadthing4.png)
+
+6. Ponle un nombre a tu aplicación y haz clic en **«Create App»**. No cambies la región.
+
+   ![Crear la aplicación](/assets/img/fresco-images/uploadthing5.png)
+
+7. En tu panel de UploadThing, ve a la sección **«API Keys»** de la barra lateral y copia tu variable de entorno con el botón de copiar.
+
+   ![Copiar las claves de API](/assets/img/fresco-images/uploadthing6.png)
+
+8. Pega tu variable de entorno en el campo UPLOADTHING_TOKEN del formulario. Debería tener un aspecto parecido a este:
+
+   ```bash
+   UPLOADTHING_TOKEN='abCdefGHiJkLmNopQrsTuvWxYz.......'
+   ```
+
+   ![Pegar la variable de entorno en el formulario](/assets/img/fresco-images/fresco2.png)
+
+#### Usar un bucket compatible con S3 {#use-an-s3-compatible-bucket}
+
+Si prefieres usar tu propio almacenamiento, selecciona **S3 / compatible con S3** en el paso de almacenamiento en lugar de UploadThing.
+
+Antes de empezar, crea un bucket con tu proveedor de S3 (AWS S3, Cloudflare R2, MinIO, Backblaze B2, etc.), genera una clave de acceso y su secreto con permisos de lectura y escritura sobre ese bucket, y configura la política CORS del bucket para que admita solicitudes desde el dominio de tu instancia de Fresco.
+
+Después, completa el formulario:
+
+1. **URL del endpoint**: el endpoint de S3 de tu proveedor (por ejemplo, `https://s3.amazonaws.com`).
+2. **URL pública**: la URL que usan los navegadores para acceder al almacenamiento. En AWS S3 o Cloudflare R2 suele ser la misma que la URL del endpoint.
+3. **Nombre del bucket**, **Región**, **ID de clave de acceso** y **Clave de acceso secreta** de tu bucket.
+
+Haz clic en **Guardar y continuar**. Fresco comprueba la conexión antes de seguir.
+
+![Selección de un bucket compatible con S3 en el paso de almacenamiento](/assets/img/fresco-images/configure-storage-s3.png)
+
+### Subir un protocolo {#upload-a-protocol}
+
+Si quieres, puedes subir un protocolo. Los protocolos también se pueden subir desde la página de protocolos una vez completados los pasos de la configuración inicial.
+
+![Subir un protocolo](/assets/img/fresco-images/fresco3.png)
+
+### Terminar la configuración inicial {#finish-setup}
+
+El último paso del asistente confirma que tu instancia está lista y enlaza con la documentación. Haz clic en **Ir al panel** para empezar a usar Fresco.
+
+![El último paso de la configuración inicial enlaza con la documentación y abre el panel](/assets/img/fresco-images/fresco4.png)
+
+Todo lo demás se gestiona desde el panel. En concreto, **añade participantes** desde la página **Participantes** (de uno en uno o importando un archivo CSV) y, desde **Configuración**, **habilita el reclutamiento anónimo**, que permite a cada participante unirse a tu estudio visitando una URL. Consulta la guía [Usar Fresco](/es/collect-data/fresco/using-fresco) para ver cómo se hacen ambas cosas.
+
+<TipBox>
+
+Recopilamos datos analíticos anónimos sobre el uso y los errores de las instancias de Fresco para solucionar problemas. Los eventos propios de Fresco no contienen datos de participantes ni identificadores de entrevistas. Lo único que puede llegarnos es un término de búsqueda del panel: al buscar en la tabla de participantes, de entrevistas o del registro de actividad, lo que escribes se añade a la dirección de la página, y los eventos de visita de página que envía la biblioteca que recopila los datos analíticos incluyen esa dirección. Consulta [¿Envía Fresco datos a terceros?](/es/collect-data/fresco/it-faq#does-fresco-send-data-to-third-parties) para ver la información completa, y desactiva la recopilación de datos analíticos en **Configuración → Privacidad** o con `DISABLE_ANALYTICS` si eso supone un problema para tu implementación.
+
+Si quieres desactivar toda la recopilación de datos analíticos, activa **Deshabilitar análisis de uso** en el apartado **Privacidad** de la página de configuración. Otra opción es añadir una variable de entorno `DISABLE_ANALYTICS` con el valor `true` a las variables de entorno de tu proyecto de Netlify y volver a implementarlo; así se desactiva la recopilación de datos analíticos y se bloquea el ajuste.
+
+Si dejas «Deshabilitar análisis de uso» en `false` (el valor predeterminado), nos ayudarás a detectar errores y a mejorar la aplicación.
+
+</TipBox>
+
+## Configurar un dominio personalizado (opcional) {#set-up-a-custom-domain-optional}
+
+Si prefieres usar un dominio personalizado para tu instancia de Fresco, puedes configurarlo en el panel de Netlify siguiendo estos pasos:
+
+1. Ve al panel de tu proyecto en Netlify. Haz clic en la pestaña **Domain Management**.
+
+2. En la sección Domains, tienes dos opciones:
+   - Si has comprado un dominio, puedes añadirlo aquí haciendo clic en **Add a domain**.
+   - También puedes modificar el dominio predeterminado de Netlify para adaptarlo a tus necesidades haciendo clic en **Options** y, después, en **Edit project name**.
+
+   ![Opciones de configuración del dominio](/assets/img/fresco-images/netlify-domain.png)

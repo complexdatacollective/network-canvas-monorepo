@@ -202,6 +202,7 @@
       "ignoreDependencies": [
         "@fontsource-variable/inclusive-sans",
         "@fontsource-variable/nunito",
+        "@fontsource-variable/readex-pro",
         "@tailwindcss/cli"
       ]
     },
@@ -218,7 +219,8 @@
       "project": ["shared/**/*.ts"],
       "ignoreDependencies": [
         "@fontsource-variable/inclusive-sans",
-        "@fontsource-variable/nunito"
+        "@fontsource-variable/nunito",
+        "@fontsource-variable/readex-pro"
       ]
     },
     "tooling/vitest": {
@@ -339,6 +341,9 @@
       }
     },
     "workers/development-protocol": {},
-    "workers/posthog-proxy": {}
+    "workers/posthog-proxy": {},
+    "workers/protocol-review": {
+      "ignoreDependencies": ["cloudflare"]
+    }
   }
 }

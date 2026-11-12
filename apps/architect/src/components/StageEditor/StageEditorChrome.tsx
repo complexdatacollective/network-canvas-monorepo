@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import { createElement, useCallback, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
@@ -17,9 +18,16 @@ import type {
   StageProblemsStore,
   StageSectionsStore,
 } from '@codaco/protocol-builder/stage-editor-contract';
-import { stageDocument } from '@codaco/protocol-builder/stageDocument';
+import {
+  stageDocument,
+  stageFieldsOf,
+} from '@codaco/protocol-builder/stageDocument';
 import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
-import { type Stage, validateProtocol } from '@codaco/protocol-validation';
+import {
+  type Stage,
+  suppliedInterfaceText,
+  validateProtocol,
+} from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import { launchPreview } from '~/components/PreviewHost/launchPreview';
 import { StageEditorToolbar } from '~/components/ProjectNav/StageEditorNav';
@@ -50,68 +58,74 @@ const messages = defineMessages({
     id: 'architect.chrome.stageEditor.stageEditor.openingPreview',
     defaultMessage: 'Opening preview…',
     description:
-      'Researcher-facing explanatory text in components / StageEditor / StageEditor.',
+      'Label of the Preview button in the stage editor toolbar while the preview window is being opened. Replaces the label Preview for a moment.',
   },
   preview: {
     id: 'architect.chrome.stageEditor.stageEditor.preview',
     defaultMessage: 'Preview',
     description:
-      'Researcher-facing explanatory text in components / StageEditor / StageEditor.',
+      'Label of the button in the stage editor toolbar that opens the interview preview in a new window, starting at the stage being edited. The verb, not the name of the window.',
   },
   oK: {
     id: 'architect.stageEditor.stageEditorChrome.oK',
     defaultMessage: 'OK',
     description:
-      'The label that dismisses a preview dialog in components / StageEditor / StageEditorChrome.',
+      'Button that closes the dialog shown when the interview preview cannot start from the stage editor, either because no protocol is loaded or because the stage has errors.',
   },
   previewError: {
     id: 'architect.stageEditor.stageEditor.previewError',
     defaultMessage: 'Preview Error',
-    description: 'The title text in components / StageEditor / StageEditor.',
+    description:
+      'Title of the error dialog shown when the Preview button is pressed but no protocol is loaded.',
   },
   noProtocolLoaded: {
     id: 'architect.stageEditor.stageEditor.noProtocolLoaded',
     defaultMessage: 'No protocol loaded',
     description:
-      'The description text in components / StageEditor / StageEditor.',
+      'Body of the Preview Error dialog, shown when the preview was requested but there is no open protocol to preview.',
   },
   cannotPreview: {
     id: 'architect.stageEditor.stageEditor.cannotPreview',
     defaultMessage: 'Cannot Preview',
-    description: 'The title text in components / StageEditor / StageEditor.',
+    description:
+      'Title of the dialog shown when the protocol, with the stage being edited, is invalid and so cannot be previewed. The body shows the technical validation error.',
   },
   previewPopupBlocked: {
     id: 'architect.stageEditor.stageEditor.previewPopupBlocked',
     defaultMessage: 'Preview popup blocked',
-    description: 'The title text in components / StageEditor / StageEditor.',
+    description:
+      'Title of the dialog shown when the browser blocked the new window that the preview opens in.',
   },
   yourBrowserBlockedThePreviewPopup: {
     id: 'architect.stageEditor.stageEditor.yourBrowserBlockedThePreviewPopup',
     defaultMessage:
       'Your browser blocked the preview popup. Allow popups for this site, then click Preview again.',
     description:
-      'The description text in components / StageEditor / StageEditor.',
+      'Body of the Preview popup blocked dialog. Tells the researcher to allow popups for this site and press the Preview button in the stage editor toolbar again.',
   },
   previewFailed: {
     id: 'architect.stageEditor.stageEditor.previewFailed',
     defaultMessage: 'Preview Failed',
-    description: 'The title text in components / StageEditor / StageEditor.',
+    description:
+      'Title of the error dialog shown when opening the preview window failed unexpectedly.',
   },
   failedToOpenPreview: {
     id: 'architect.stageEditor.stageEditor.failedToOpenPreview',
     defaultMessage: 'Failed to open preview',
     description:
-      'The description text in components / StageEditor / StageEditor.',
+      'Fallback body of the Preview Failed dialog, used when the error gives no more specific reason that could be shown instead.',
   },
   startPreviewWithExampleData: {
     id: 'architect.stageEditor.stageEditor.startPreviewWithExampleData',
     defaultMessage: 'Start preview with example data',
-    description: 'Visible text in components / StageEditor / StageEditor.',
+    description:
+      'Label of a toggle in the preview options menu of the stage editor toolbar. When on, the preview begins with generated example data (nodes and edges) instead of an empty network.',
   },
   respectSkipLogic: {
     id: 'architect.stageEditor.stageEditor.respectSkipLogic',
     defaultMessage: 'Respect skip logic',
-    description: 'Visible text in components / StageEditor / StageEditor.',
+    description:
+      "Label of a toggle in the preview options menu of the stage editor toolbar. When on, the preview applies the protocol's skip logic and so may skip stages, as a real interview would.",
   },
 });
 
@@ -204,7 +218,8 @@ export function StageEditorHeader({
  * something nobody is looking at.
  */
 function StageDraftPublisher() {
-  const { liveDraft, storeApi, identity } = useStageEditorForm();
+  const { liveDraft, pendingSharedWording, storeApi, identity } =
+    useStageEditorForm();
   const { committedFields, access } = useStageEdit();
   const localization = useProtocolLocalization();
   const { withoutProposal } = useStandingStageNameProposal();
@@ -214,15 +229,32 @@ function StageDraftPublisher() {
     if (committedFields === undefined) return undefined;
     const publish = () => {
       const draft = liveDraft();
+      const words = pendingSharedWording();
       publishStageDraft(
         // As it would be saved, holding the wording a save writes in.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the draft is a plain record that may not satisfy the stage schema mid-edit; every reader validates the protocol built from it (validateProtocol) before relying on it
         stageDocument(identity, draft, localization) as unknown as Stage,
         committedFields,
         // Compared without a name the editor proposed and nobody has touched:
-        // that is not work the researcher would lose by leaving.
-        withoutProposal(draft, committedFields),
+        // that is not work the researcher would lose by leaving. The shared
+        // words held beside the stage are weighed on their own below.
+        withoutProposal(stageFieldsOf(draft), committedFields),
         editing,
+        {
+          words,
+          // Network Canvas's wording for an entry the stage brings in is what
+          // the protocol would gain anyway; only the researcher's is theirs
+          // to lose.
+          reworded:
+            localization !== undefined &&
+            words.some(
+              ({ group, key, value }) =>
+                !isEqual(
+                  value,
+                  suppliedInterfaceText(group, key, localization),
+                ),
+            ),
+        },
       );
     };
     publish();
@@ -237,6 +269,7 @@ function StageDraftPublisher() {
     identity,
     liveDraft,
     localization,
+    pendingSharedWording,
     storeApi,
     withoutProposal,
   ]);
@@ -265,9 +298,15 @@ function StageEditorActions({
   const [isStageValid, setIsStageValid] = useState(false);
 
   const stagePreviewProtocol = useCallback(() => {
-    const stage = readStageDraft().stage;
+    const { stage, interfaceText } = readStageDraft();
     if (protocol === null || stage === undefined) return undefined;
-    return buildProtocolWithStage(protocol, stage, stageId, insertAtIndex);
+    return buildProtocolWithStage(
+      protocol,
+      stage,
+      stageId,
+      insertAtIndex,
+      interfaceText,
+    );
   }, [insertAtIndex, protocol, stageId]);
 
   /**

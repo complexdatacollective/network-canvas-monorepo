@@ -20,7 +20,7 @@ const metadataMessages = vi.hoisted(() => ({
   'es': {
     title: 'Comenzar',
     description:
-      'Elija la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes.',
+      'Elige la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes.',
   },
 }));
 
@@ -164,7 +164,7 @@ describe('localized Get Started page', () => {
     expect(metadata).toMatchObject({
       title: 'Comenzar',
       description:
-        'Elija la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes.',
+        'Elige la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes.',
       alternates: {
         canonical: 'https://networkcanvas.com/es/get-started',
         languages: {

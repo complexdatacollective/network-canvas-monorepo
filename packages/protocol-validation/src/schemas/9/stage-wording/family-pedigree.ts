@@ -36,10 +36,18 @@ export const choosesFraming = (
 ): boolean => stage.framing === 'participantPreference';
 
 /**
+ * Whether the stage tracks how complete the family is, which shows its
+ * checklist of what is still needed.
+ */
+export const tracksCompleteness = (
+  stage: Readonly<{ completeness?: unknown }>,
+): boolean => stage.completeness !== undefined;
+
+/**
  * Whether the stage asks about gender identity, which it does when
  * `nodeConfiguration.genderIdentity` is set.
  */
-export const asksGenderIdentity = (
+const asksGenderIdentity = (
   stage: Readonly<{ nodeConfiguration?: unknown }>,
 ): boolean => {
   const { nodeConfiguration } = stage;

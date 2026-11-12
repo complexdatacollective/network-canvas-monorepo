@@ -2,13 +2,16 @@ import { createSelector } from '@reduxjs/toolkit';
 
 import {
   analyzeProtocolLocalization,
-  collectLocalizedStrings,
+  collectLocalizedStringFields,
   type CurrentProtocol,
   type DynamicValueSite,
+  findLabelCollisions,
   findVariableRoleConflicts,
   type LocaleTag,
   type LocalizedString,
+  type LocalizedStringField,
   type LocalizedStringFormat,
+  type LocalizedTextLines,
   type MessageArguments,
   type ProtocolLocalizationWarning,
 } from '@codaco/protocol-validation';
@@ -35,6 +38,8 @@ import { getAssetManifest, getCodebook, getProtocol } from './protocol';
  *  - A finish stage without its heading or text in the default language, or
  *    built-in wording without text there, which unlike the rest stops the
  *    protocol being downloaded
+ *  - Two labels participants choose between that read the same in some
+ *    language, which also stops it being downloaded
  *  - Several languages but no stage where participants choose one
  */
 
@@ -159,6 +164,18 @@ export const getDefaultLanguageTextProblem = createSelector(
 );
 
 /**
+ * Each pair of labels a participant chooses between that reads the same in
+ * some language (`findLabelCollisions`): two options of one attribute, or two
+ * diseases of one stage. A protocol being written may hold one — a change of
+ * its languages can leave two labels reading the same through fallback, and
+ * is made anyway — but cannot be downloaded until none is left
+ * (`findDownloadRefusal`).
+ */
+export const getLabelCollisions = createSelector([getProtocol], (protocol) =>
+  protocol ? findLabelCollisions(protocol) : [],
+);
+
+/**
  * True when the protocol offers more than one language but has no Language
  * Chooser stage. That is valid: each interview then opens in the protocol
  * language that best matches the participant's browser. It is worth a note
@@ -200,9 +217,12 @@ const EMPTY_COVERAGE: LocalizationCoverage = {
   warnings: [],
 };
 
-/** Every participant-facing string, in protocol order, walked once per edit. */
+/**
+ * Every participant-facing string, in protocol order, with its field's
+ * declaration, walked once per edit.
+ */
 const getLocalizedStrings = createSelector([getProtocol], (protocol) =>
-  protocol ? collectLocalizedStrings(protocol) : [],
+  protocol ? collectLocalizedStringFields(protocol) : [],
 );
 
 export const getLocalizationCoverage = createSelector(
@@ -251,7 +271,11 @@ export type TranslationPlace =
   /** The words the interview itself shows, such as its buttons. */
   | { kind: 'interface' };
 
-const locateTranslation = (
+/**
+ * Where the text at `path`, or anything else the protocol holds there, is
+ * edited, and its path below that place.
+ */
+export const locateTranslation = (
   protocol: CurrentProtocol,
   path: readonly (string | number)[],
 ): { key: string; place: TranslationPlace; field: (string | number)[] } => {
@@ -298,6 +322,8 @@ export type TranslationRow = {
   field: readonly (string | number)[];
   /** Whether participants see the string rendered as markdown. */
   format: LocalizedStringFormat;
+  /** Whether the string is one line or several, as its field declares. */
+  lines: LocalizedTextLines;
   /** Every translation the string has. */
   value: LocalizedString;
   /** What a localized message may use (see `localizedMessage`), when it is one. */
@@ -308,6 +334,11 @@ export type TranslationRow = {
    * text like any other.
    */
   dynamicValues?: DynamicValueSite;
+  /**
+   * The declaration of the field the string is in: a candidate value parsed
+   * with it is held to every rule the field declares.
+   */
+  schema: LocalizedStringField['schema'];
 };
 
 export type TranslationGroup = {
@@ -362,7 +393,9 @@ export const getTranslationGroups = createSelector(
         path: hit.path,
         field,
         format: hit.format,
+        lines: hit.lines,
         value: hit.value,
+        schema: hit.schema,
         ...(hit.arguments === undefined ? {} : { arguments: hit.arguments }),
         ...(hit.dynamicValues === undefined ||
         !stageBindsValues(protocol, hit.path)

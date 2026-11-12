@@ -32,7 +32,6 @@ describe('DynamicMessageEditor', () => {
           singleLine
           message="Hello {gone}, welcome"
           onMessageChange={onMessageChange}
-          original={undefined}
           locale={LOCALE}
           site={{
             context: { roles: new Set(['ego']), variablesFor: () => ({}) },

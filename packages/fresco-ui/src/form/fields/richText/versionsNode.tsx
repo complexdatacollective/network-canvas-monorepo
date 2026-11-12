@@ -7,6 +7,7 @@ import {
   mergeAttributes,
   Node as TiptapNode,
 } from '@tiptap/core';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { NodeSelection, Plugin } from '@tiptap/pm/state';
 import {
   EditorContent,
@@ -15,6 +16,7 @@ import {
   type ReactNodeViewProps,
   ReactNodeViewRenderer,
   useEditor,
+  useEditorState,
 } from '@tiptap/react';
 import { isEqual } from 'es-toolkit';
 import {
@@ -27,6 +29,8 @@ import {
   useRef,
   useState,
 } from 'react';
+
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { TokenPillContent, tokenPillClasses } from '../../../TokenPill';
 import { cx } from '../../../utils/cva';
@@ -79,9 +83,26 @@ type NestedEditing = Readonly<{
    * back to its pill when they leave it.
    */
   active?: boolean;
+  /**
+   * Whether the versions of a message that is nothing but one set of versions
+   * stay open: the field is then those versions, and a pill hiding all of its
+   * words would be a field that shows nothing at rest. Versions inside a
+   * sentence, or inside another version, still fold to a pill.
+   */
+  openWholeMessage?: boolean;
 }>;
 
 export const NestedEditingContext = createContext<NestedEditing | null>(null);
+
+/**
+ * The labels of the versions a version's editor sits inside, outermost first:
+ * what a nested row's editor names itself by besides its own label, so that
+ * it says which case it is the wording for.
+ */
+const VersionPathContext = createContext<readonly string[]>([]);
+
+/** Each version's editor by its element, for stepping between rows. */
+const versionEditorsByElement = new WeakMap<HTMLElement, Editor>();
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -128,6 +149,102 @@ const versionsAttributesOf = (
   versions: versionsIn(attrs.versions),
 });
 
+/**
+ * Whether `doc` is one line holding a single set of versions and nothing but
+ * whitespace around it: the field's whole message is that one switch.
+ */
+const isWholeMessageVersions = (doc: ProseMirrorNode): boolean => {
+  if (doc.childCount !== 1) return false;
+  const line = doc.child(0);
+  let sets = 0;
+  let other = false;
+  line.forEach((child) => {
+    if (child.type.name === VERSIONS_NODE) sets += 1;
+    else if (!(child.isText && (child.text ?? '').trim() === '')) other = true;
+  });
+  return sets === 1 && !other;
+};
+
+/**
+ * Whether a version's editor is a row the arrow keys can stop at. The rule,
+ * which is the only place it is stated:
+ *
+ * - it is rendered, and neither it nor anything around it is `hidden`. A set
+ *   folded to a pill among words keeps its editors mounted but hidden, so
+ *   they are not there to step to until the pill is opened; and
+ * - it is not a pure frame: a row whose own document is a single set of
+ *   versions and nothing else (the test that decides what opens) holds no
+ *   words, its rows are the ones to stop at.
+ *
+ * It is read from the row's own editor and its place in the page, never from
+ * what is inside it: a hidden set inside a row says nothing about the row.
+ *
+ * Every row inside a set of versions listed open is one of them, and every
+ * editor there steps by this one rule, at the moment of the key: a set among
+ * words that has been opened is drawn in the flow of its row, so its rows are
+ * visible rows holding words like any other, and the keys walk into and out
+ * of it in reading order. Outside any set listed open there are no rows to
+ * walk, and the arrow keys are the line's own.
+ */
+const isNavigableRow = (element: HTMLElement): boolean => {
+  const editor = versionEditorsByElement.get(element);
+  if (!editor || editor.isDestroyed) return false;
+  if (element.closest('[hidden]') !== null) return false;
+  return !isWholeMessageVersions(editor.state.doc);
+};
+
+/**
+ * The rows the arrow keys stop at among the versions listed open that `row`
+ * is one of, in the order they read: the navigable rows (see
+ * `isNavigableRow`) of the outermost such element.
+ */
+const navigableRowsAround = (row: HTMLElement): HTMLElement[] => {
+  let outermost: Element | null = row.closest('[data-always-open]');
+  while (outermost?.parentElement) {
+    const outer: Element | null =
+      outermost.parentElement.closest('[data-always-open]');
+    if (outer === null) break;
+    outermost = outer;
+  }
+  if (outermost === null) return [];
+  return [...outermost.querySelectorAll<HTMLElement>('[data-version]')].filter(
+    isNavigableRow,
+  );
+};
+
+/**
+ * The navigable row above (-1) or below (1) `row`. None when there is no such
+ * row, and none when `row` is not itself one of them: a row the arrow keys
+ * do not stop at has no neighbours to step to, so the key is left alone.
+ */
+const rowBeside = (
+  row: HTMLElement,
+  delta: -1 | 1,
+): HTMLElement | undefined => {
+  const rows = navigableRowsAround(row);
+  const at = rows.indexOf(row);
+  return at === -1 ? undefined : rows[at + delta];
+};
+
+/**
+ * Whether the rows listed open have one beside `row`, above (-1) or below
+ * (1) it, which the arrow keys step to.
+ */
+export const hasVersionRowBeside = (row: HTMLElement, delta: -1 | 1) =>
+  rowBeside(row, delta) !== undefined;
+
+/** Moves the caret to the row beside `row`; false when there is none. */
+const stepToVersionRow = (row: HTMLElement, delta: -1 | 1): boolean => {
+  const target = rowBeside(row, delta);
+  const editor = target && versionEditorsByElement.get(target);
+  if (!editor || editor.isDestroyed) return false;
+  editor
+    .chain()
+    .focus(delta === 1 ? 'start' : 'end')
+    .run();
+  return true;
+};
+
 /** Asks an element's view to open, from the line's keyboard handling. */
 const EXPAND_EVENT = 'versions:expand';
 /** Asks an element's view to fold back to its pill. */
@@ -156,7 +273,12 @@ const versionClasses = cx('contents');
 // that wraps grew up out of the box. The label keeps the version's font for
 // its own line, padded as the version's is, so its smaller words still sit on
 // the baseline of the version's first line.
-const versionLabelClasses = cx('py-1 select-none');
+// In a field too narrow for the label beside a line of words, the label sits
+// above its line instead (see the grid's own classes).
+const versionLabelClasses = cx('py-1 select-none @max-sm/rich-text:pb-0');
+// Inside another version the rows are always stacked, so the whole message
+// reads as an outline: a case, then what it shows, indented under it.
+const nestedVersionLabelClasses = cx('py-1 pb-0 select-none');
 
 const versionLabelTextClasses = cx('text-xs font-semibold text-current/70');
 
@@ -173,10 +295,10 @@ const versionEditorClasses = cx(
   'block min-w-48 rounded-sm bg-current/5',
   'focus-within:outline-primary focus-within:outline-2',
   '[&_.tiptap]:cursor-text [&_.tiptap]:px-2 [&_.tiptap]:py-1 [&_.tiptap]:outline-none',
-  '[&_.tiptap_p]:inline-block [&_.tiptap_p]:min-w-full [&_.tiptap_p]:pr-4',
+  '[&_.tiptap_p]:inline-block [&_.tiptap_p]:min-w-full [&_.tiptap_p]:pe-4',
   '[&_.tiptap_p.is-editor-empty::before]:content-[attr(data-placeholder)]',
   '[&_.tiptap_p.is-editor-empty::before]:pointer-events-none',
-  '[&_.tiptap_p.is-editor-empty::before]:float-left',
+  '[&_.tiptap_p.is-editor-empty::before]:float-start',
   '[&_.tiptap_p.is-editor-empty::before]:h-0',
   '[&_.tiptap_p.is-editor-empty::before]:font-normal',
   '[&_.tiptap_p.is-editor-empty::before]:italic',
@@ -208,6 +330,18 @@ function VersionEditor({
     onChangeRef.current = onChange;
     onEscapeRef.current = onEscape;
   });
+  const intl = useAppIntl();
+  const parentLabels = useContext(VersionPathContext);
+  // Which case this row is wording for, from the outermost down: a row inside
+  // another version names both, so it is not mistaken for its namesakes.
+  const labels = useMemo(
+    () => [...parentLabels, version.label],
+    [parentLabels, version.label],
+  );
+  const accessibleName =
+    labels.length === 1
+      ? version.label
+      : intl.formatList(labels, { type: 'unit', style: 'short' });
 
   const extensions = nested?.extensions;
   const schema = useMemo(
@@ -237,10 +371,30 @@ function VersionEditor({
         attributes: {
           'role': 'textbox',
           'aria-multiline': 'false',
-          'aria-label': version.label,
+          'aria-label': accessibleName,
           'data-version': version.key,
         },
-        handleKeyDown: (_view, event) => {
+        handleKeyDown: (view, event) => {
+          if (
+            (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
+            !event.shiftKey &&
+            !event.altKey &&
+            !event.ctrlKey &&
+            !event.metaKey
+          ) {
+            // Only from the line's first or last position, so a version that
+            // wraps is still walked a line at a time.
+            const { selection, doc } = view.state;
+            const up = event.key === 'ArrowUp';
+            const atEdge =
+              selection.empty &&
+              selection.head === (up ? 1 : doc.content.size - 1);
+            if (atEdge && stepToVersionRow(view.dom, up ? -1 : 1)) {
+              event.preventDefault();
+              return true;
+            }
+            return false;
+          }
           if (event.key !== 'Escape') return false;
           event.preventDefault();
           // Escape is spent here: a dialog around the text must not also
@@ -286,25 +440,65 @@ function VersionEditor({
   }, [editor, nested?.editable]);
 
   useEffect(() => {
+    if (!editor) return undefined;
+    const element = editor.view.dom;
+    versionEditorsByElement.set(element, editor);
+    return () => {
+      versionEditorsByElement.delete(element);
+    };
+  }, [editor]);
+
+  // A row that is only another set of versions listed open is a frame for
+  // its rows, not a place to type: Tab goes on to them.
+  const holdsOpenVersions = useEditorState({
+    editor,
+    selector: ({ editor: current }) =>
+      current !== null && isWholeMessageVersions(current.state.doc),
+  });
+  const framesRows = holdsOpenVersions && (nested?.openWholeMessage ?? false);
+
+  useEffect(() => {
     editor?.setOptions({
       editorProps: {
         ...editor.options.editorProps,
         attributes: {
           'role': 'textbox',
           'aria-multiline': 'false',
-          'aria-label': version.label,
+          'aria-label': accessibleName,
           'data-version': version.key,
+          ...(framesRows && { tabindex: '-1' }),
         },
       },
     });
-  }, [editor, version.key, version.label]);
+  }, [editor, version.key, accessibleName, framesRows]);
 
   return (
     <span className={versionClasses}>
-      <span aria-hidden className={versionLabelClasses}>
+      <span
+        aria-hidden
+        className={
+          parentLabels.length > 0
+            ? nestedVersionLabelClasses
+            : versionLabelClasses
+        }
+      >
         <span className={versionLabelTextClasses}>{version.label}</span>
       </span>
-      <EditorContent editor={editor} className={versionEditorClasses} />
+      <VersionPathContext.Provider value={labels}>
+        <EditorContent
+          editor={editor}
+          // A frame for rows draws none of the row's own box: the rows in it
+          // are the boxes.
+          className={cx(
+            versionEditorClasses,
+            framesRows &&
+              'bg-transparent focus-within:outline-0 [&_.tiptap]:p-0',
+            // Rows inside a version take what room there is: each level of
+            // nesting has already used some of it.
+            parentLabels.length > 0 && 'min-w-0',
+          )}
+        />
+      </VersionPathContext.Provider>
     </span>
   );
 }
@@ -329,6 +523,16 @@ function VersionsView({
   const active = nested?.active ?? true;
   const versionsId = useId();
   const wrapperRef = useRef<HTMLElement>(null);
+  // The versions are the whole message: nothing but whitespace is around the
+  // element in its line. Followed as the line is edited, since text typed
+  // beside the element makes it one in a sentence.
+  const isWholeMessage = useEditorState({
+    editor,
+    selector: ({ editor: current }) =>
+      isWholeMessageVersions(current.state.doc),
+  });
+  const alwaysOpen = (nested?.openWholeMessage ?? false) && isWholeMessage;
+  const insideVersion = useContext(VersionPathContext).length > 0;
 
   // Open while the element is selected, until Escape or leaving the field
   // folds it back to its pill; selecting it again after the caret has been
@@ -352,7 +556,7 @@ function VersionsView({
       setFocusWithin(false);
     }
   }
-  const expanded = (selected || focusWithin) && !folded;
+  const expanded = alwaysOpen || ((selected || focusWithin) && !folded);
 
   useEffect(() => {
     const element = wrapperRef.current;
@@ -385,7 +589,6 @@ function VersionsView({
     setFolded(true);
     selectSelf();
   };
-
   return (
     <NodeViewWrapper
       ref={wrapperRef}
@@ -395,30 +598,35 @@ function VersionsView({
       aria-label={attributes.label}
       data-versions-element=""
       data-expanded={expanded || undefined}
+      data-always-open={alwaysOpen || undefined}
       className="mx-0.5"
     >
-      {/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus, jsx-a11y/click-events-have-key-events -- an atom in the editor's line: the caret reaches it as a node selection and the editor's Enter and Space shortcuts open it (openOrEnter), so it is not a tab stop of its own. */}
-      <span
-        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- see above: a <button> would be a tab stop inside the editable line.
-        role="button"
-        aria-expanded={expanded}
-        aria-controls={versionsId}
-        data-versions-pill=""
-        data-selected={selected || undefined}
-        // Open, the element shows its versions in the pill's place.
-        hidden={expanded}
-        className={tokenPillClasses(
-          cx('mx-0 cursor-pointer', expanded && 'hidden'),
-        )}
-        // Selects the element and opens it, also when it was already
-        // selected and folded.
-        onClick={() => {
-          selectSelf();
-          setFolded(false);
-        }}
-      >
-        <TokenPillContent label={attributes.summary ?? attributes.label} />
-      </span>
+      {!alwaysOpen && (
+        <>
+          {/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus, jsx-a11y/click-events-have-key-events -- an atom in the editor's line: the caret reaches it as a node selection and the editor's Enter and Space shortcuts open it (openOrEnter), so it is not a tab stop of its own. */}
+          <span
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- see above: a <button> would be a tab stop inside the editable line.
+            role="button"
+            aria-expanded={expanded}
+            aria-controls={versionsId}
+            data-versions-pill=""
+            data-selected={selected || undefined}
+            // Open, the element shows its versions in the pill's place.
+            hidden={expanded}
+            className={tokenPillClasses(
+              cx('mx-0 cursor-pointer', expanded && 'hidden'),
+            )}
+            // Selects the element and opens it, also when it was already
+            // selected and folded.
+            onClick={() => {
+              selectSelf();
+              setFolded(false);
+            }}
+          >
+            <TokenPillContent label={attributes.summary ?? attributes.label} />
+          </span>
+        </>
+      )}
       <span
         id={versionsId}
         // Folded versions stay mounted, so their editors keep their history
@@ -443,14 +651,27 @@ function VersionsView({
         className={cx(
           expanded ? 'inline-grid' : 'hidden',
           'max-w-full grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-3 gap-y-2 align-baseline',
-          'border-primary/40 bg-primary/5 rounded-sm border border-dashed px-3 py-2',
+          // The field's text area is the container. Its width, not the
+          // window's, decides when the rows stack; inside a version they
+          // always do, for the room each level of nesting would take.
+          insideVersion
+            ? 'w-full grid-cols-[minmax(0,1fr)] gap-y-1'
+            : '@max-sm/rich-text:w-full @max-sm/rich-text:grid-cols-[minmax(0,1fr)] @max-sm/rich-text:gap-y-1',
+          'border-primary/40 bg-primary/5 rounded-sm border border-dashed',
+          insideVersion ? 'px-2 py-1.5' : 'px-3 py-2',
+          // With no pill to show it, the element being selected in the line
+          // (what Escape in a row leaves it) is shown by its frame: whatever
+          // is typed next replaces it.
+          alwaysOpen && selected && 'border-primary border-solid',
         )}
       >
         {attributes.versions.map((version, index) => (
           <VersionEditor
             key={version.key}
             version={version}
-            onEscape={foldToPill}
+            // A permanently open element has nothing to fold back to: Escape
+            // hands the caret back to the line, with the element selected.
+            onEscape={alwaysOpen ? selectSelf : foldToPill}
             onChange={(content) => {
               const current = latest.current;
               updateAttributes({
@@ -510,6 +731,11 @@ const openOrEnter = ({ editor }: { editor: Editor }) => {
  * its own: Enter or Space on the selected element opens it, or moves into its
  * versions once it is open, and Escape moves back out to the pill and folds
  * the element. Leaving the field folds it too.
+ *
+ * A field that opts in (`NestedEditing.openWholeMessage`) shows the versions
+ * of a message that is nothing else permanently open instead, one labelled
+ * row each, with no pill; the arrow keys step between the rows, and Escape
+ * moves out of a row to the line without hiding anything.
  */
 export const VersionsNode = TiptapNode.create({
   name: VERSIONS_NODE,
@@ -598,7 +824,13 @@ export const VersionsNode = TiptapNode.create({
           handleKeyDown: (_view, event) => {
             if (event.key !== 'Escape') return false;
             const element = selectedElement(editor);
-            if (element === null || !element.hasAttribute('data-expanded')) {
+            // Nothing to fold on an element that is always open: Escape is
+            // left to whatever surrounds the text.
+            if (
+              element === null ||
+              !element.hasAttribute('data-expanded') ||
+              element.hasAttribute('data-always-open')
+            ) {
               return false;
             }
             event.preventDefault();

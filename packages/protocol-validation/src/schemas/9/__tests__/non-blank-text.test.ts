@@ -38,7 +38,10 @@ const BLANK_TRANSLATIONS = [
 ] as const;
 
 describe('nonBlankText', () => {
-  const required = localizedString(nonBlankText(), 'markdown');
+  const required = localizedString(nonBlankText(), {
+    format: 'markdown',
+    lines: 'single',
+  });
 
   it('accepts a translation with text in it', () => {
     expect(required.safeParse({ en: 'How old are you?' }).success).toBe(true);
@@ -446,10 +449,19 @@ describe('option labels', () => {
       { label: localized('Blue'), value: 'blue' },
     ],
   });
+  const ordinalVariable = (label: Record<string, string>) => ({
+    name: 'Closeness',
+    type: 'ordinal',
+    options: [
+      { label, value: 1 },
+      { label: localized('Very close'), value: 2 },
+    ],
+  });
 
   it.each([
     ['a Boolean choice', booleanVariable],
     ['a categorical option', categoricalVariable],
+    ['an ordinal option', ordinalVariable],
   ])('%s accepts a label with text', (_n, variable) => {
     expect(VariableSchema.safeParse(variable({ en: 'Red' })).success).toBe(
       true,
@@ -461,6 +473,8 @@ describe('option labels', () => {
     ['a Boolean choice', '   ', booleanVariable],
     ['a categorical option', '', categoricalVariable],
     ['a categorical option', '   ', categoricalVariable],
+    ['an ordinal option', '', ordinalVariable],
+    ['an ordinal option', '   ', ordinalVariable],
   ])('%s rejects the label %j', (_n, text, variable) => {
     expect(
       VariableSchema.safeParse(variable({ en: 'Red', fr: text })).success,

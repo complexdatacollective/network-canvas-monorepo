@@ -65,10 +65,12 @@ export default function ScaleValuePopover({
         <div
           ref={positionerRef}
           aria-hidden="true"
+          // oxlint-disable-next-line tailwindcss/enforce-logical -- the effect above moves this to the thumb's measured viewport position, which is a distance from the left
           className="pointer-events-none! fixed top-0 left-0 z-60"
         >
           {/* Centred on the thumb, floated above it; the outer wrapper owns the
               positioning transform so motion is free to animate the bubble. */}
+          {/* oxlint-disable-next-line tailwindcss/enforce-logical -- centred on the positioner's origin, a point placed by measurement */}
           <div className="absolute bottom-2 left-0 -translate-x-1/2">
             <motion.div
               data-testid="scale-value-popover"
@@ -109,6 +111,7 @@ export default function ScaleValuePopover({
                   so it sits in front. */}
               <span
                 aria-hidden="true"
+                // oxlint-disable-next-line tailwindcss/enforce-logical -- the right and bottom borders of a square turned 45° are what draw a point facing down
                 className="border-outline bg-surface-popover absolute top-full left-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-r-2 border-b-2"
               />
             </motion.div>

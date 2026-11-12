@@ -6,6 +6,7 @@ import {
   validateBooleanAnswers,
   type BooleanAnswer,
 } from '../codebook/variableOptions.ts';
+import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 
 /**
  * The attribute's `options` list, as the protocol's boolean pair: two records
@@ -42,6 +43,7 @@ export default function BooleanAnswersField({
   'aria-describedby': ariaDescribedBy,
 }: BooleanAnswersFieldProps) {
   const answers = readBooleanAnswers(value);
+  const localization = useProtocolLocalization();
 
   return (
     <div
@@ -53,7 +55,7 @@ export default function BooleanAnswersField({
     >
       <VariableBooleanAnswerFields
         answers={answers}
-        issues={validateBooleanAnswers(value)}
+        issues={validateBooleanAnswers(value, localization)}
         readOnly={disabled || readOnly}
         onChange={(index: number, answer: BooleanAnswer) => {
           if (disabled || readOnly) return;

@@ -10,12 +10,14 @@ const messages = defineMessages({
   label: {
     id: 'architect.options.lockedOptions.label',
     defaultMessage: 'Label',
-    description: 'Visible text in components / Options / LockedOptions.',
+    description:
+      'Column header of the read-only options table; this column shows the option text a participant sees.',
   },
   value: {
     id: 'architect.options.lockedOptions.value',
     defaultMessage: 'Value',
-    description: 'Visible text in components / Options / LockedOptions.',
+    description:
+      'Column header of the read-only options table; this column shows the stored value recorded for each option.',
   },
 });
 
@@ -28,7 +30,7 @@ const CAPTION = defineMessages({
     defaultMessage:
       'These options are automatically configured by the interface and cannot be modified.',
     description:
-      'Researcher-facing explanation in components/Options/LockedOptions.tsx.',
+      'Caption above the read-only options table, read aloud by screen readers; explains the options come from the interface the stage uses and cannot be edited.',
   },
 }).message;
 
@@ -49,13 +51,13 @@ const LockedOptions = ({ options }: LockedOptionsProps) => {
   const localization = useSelector(getLocalization);
   return (
     <div className="bg-surface-2 text-text relative rounded p-4">
-      <Lock aria-hidden className="absolute top-4 right-4 h-4 w-4" />
+      <Lock aria-hidden className="absolute inset-e-4 top-4 h-4 w-4" />
       <table className="w-full text-sm">
-        <caption className="pr-8 pb-2 text-left text-sm">
+        <caption className="pe-8 pb-2 text-start text-sm">
           {intl.formatMessage(CAPTION)}
         </caption>
         <thead>
-          <tr className="text-left">
+          <tr className="text-start">
             <th className="pb-2 font-bold">
               {intl.formatMessage(messages.label)}
             </th>

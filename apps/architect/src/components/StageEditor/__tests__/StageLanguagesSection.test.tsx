@@ -263,7 +263,7 @@ describe('the language chooser’s languages in Architect', () => {
   it('changes the language of a language’s text in the open stage too', async () => {
     const { store } = await openEditor();
     globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
-      language: 'es',
+      languages: ['es'],
     });
 
     await userEvent.click(
@@ -285,6 +285,59 @@ describe('the language chooser’s languages in Architect', () => {
     };
     expect(savedStage(store)).toMatchObject({ title: heading });
     expect(readStageDraft().stage).toMatchObject({ title: heading });
+  });
+
+  it('gives the open stage’s unsaved, reworded heading Network Canvas’s wording in a language added from it', async () => {
+    const { store } = await openEditor();
+    globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
+      languages: ['es', 'ja'],
+    });
+
+    const heading = screen.getByRole('textbox', { name: 'Heading' });
+    await userEvent.clear(heading);
+    await userEvent.type(heading, 'Pick your language');
+    await waitFor(() =>
+      expect(readStageDraft().stage).toMatchObject({
+        title: { en: 'Pick your language' },
+      }),
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Add languages' }),
+    );
+
+    await waitFor(() =>
+      expect(getProtocol(store.getState())?.localization.locales).toEqual([
+        'en',
+        'fr',
+        'de',
+        'es',
+        'ja',
+      ]),
+    );
+    // Spanish gains Network Canvas's heading although English was reworded;
+    // the French and German translations stay as they were, and Japanese,
+    // which Network Canvas has no wording in, gains nothing.
+    const expected = {
+      en: 'Pick your language',
+      fr: 'Choisissez une langue',
+      de: 'Wählen Sie eine Sprache aus',
+      es: 'Elige un idioma',
+    };
+    await waitFor(() =>
+      expect(
+        (readStageDraft().stage as { title?: unknown } | undefined)?.title,
+      ).toEqual(expected),
+    );
+    expect(readStageDraft().dirty).toBe(true);
+    expect(savedStage(store)).toMatchObject({
+      title: {
+        en: 'Choose a language',
+        fr: 'Choisissez une langue',
+        de: 'Wählen Sie eine Sprache aus',
+        es: 'Elige un idioma',
+      },
+    });
   });
 
   it('saves a stage edited across a language’s removal as a valid protocol', async () => {

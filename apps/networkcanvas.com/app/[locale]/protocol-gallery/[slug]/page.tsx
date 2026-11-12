@@ -96,7 +96,7 @@ export default async function ProtocolDetailPage({
                 asChild
                 color="default"
                 size="sm"
-                icon={<ArrowLeft aria-hidden />}
+                icon={<ArrowLeft aria-hidden className="rtl:-scale-x-100" />}
               >
                 <a href={protocolGalleryHref(locale)}>{t('detail.back')}</a>
               </Button>

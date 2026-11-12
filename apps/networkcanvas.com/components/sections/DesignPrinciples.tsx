@@ -116,7 +116,7 @@ function PrincipleCard({
               <ArrowUpRight
                 aria-hidden
                 strokeWidth={3}
-                className="ml-1 inline-block size-[0.8em] -translate-y-[0.06em] opacity-50 group-hover/title:opacity-100"
+                className="ms-1 inline-block size-[0.8em] -translate-y-[0.06em] opacity-50 group-hover/title:opacity-100"
               />
             </a>
           </Heading>
@@ -207,7 +207,7 @@ export function DesignPrinciples() {
             what it shows. The reading column runs on below the last card,
             so the canvas stays until that card has been read. */}
         <div className="tablet-landscape:mt-4 tablet-landscape:grid tablet-landscape:grid-cols-12 tablet-landscape:gap-x-12 mt-10">
-          <div className="tablet-landscape:col-span-8 tablet-landscape:col-start-1 tablet-landscape:row-start-1 tablet-landscape:mx-0 tablet-landscape:h-svh tablet-landscape:self-start tablet-landscape:z-0 tablet-landscape:items-center tablet-landscape:justify-end tablet-landscape:pr-[calc((100%-21rem)/8-2rem)] sticky top-0 z-10 -mx-6 flex h-[44svh]">
+          <div className="tablet-landscape:col-span-8 tablet-landscape:col-start-1 tablet-landscape:row-start-1 tablet-landscape:mx-0 tablet-landscape:h-svh tablet-landscape:self-start tablet-landscape:z-0 tablet-landscape:items-center tablet-landscape:justify-end tablet-landscape:pe-[calc((100%-21rem)/8-2rem)] sticky top-0 z-10 -mx-6 flex h-[44svh]">
             <DesignPrinciplesScene
               key={motionEnabled ? 'scrubbed' : 'resting'}
               phase={motionEnabled ? smoothPhase : restingPhase}
