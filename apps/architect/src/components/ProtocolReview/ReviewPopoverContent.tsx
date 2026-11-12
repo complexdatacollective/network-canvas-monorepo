@@ -530,7 +530,10 @@ const ReviewPopoverContent = ({
         ? formatLocationLink(intl, finding.location)
         : null;
     return (
-      <li key={finding.id} className="border-outline border-t">
+      <li
+        key={finding.id}
+        className="border-outline has-[>button:hover]:bg-surface-1 border-t"
+      >
         <button
           type="button"
           ref={(row) => {
@@ -539,7 +542,7 @@ const ReviewPopoverContent = ({
             row.focus();
           }}
           onClick={() => openFinding(finding.id)}
-          className="focusable hover:bg-surface-1 flex w-full items-start gap-3 px-6 py-3 text-start"
+          className="focusable flex w-full items-start gap-3 px-6 py-3 text-start"
         >
           <SeverityIcon severity={finding.severity} />
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
