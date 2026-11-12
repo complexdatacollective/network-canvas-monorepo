@@ -122,19 +122,21 @@ const chromeMessages = defineMessages({
     id: 'architect.chrome.home.libraryPanel.anExampleIntroducingTheKeyFeatures',
     defaultMessage:
       'An example introducing the key features and techniques available in Network Canvas.',
-    description: 'The description text in components / Home / LibraryPanel.',
+    description:
+      'Description of the Sample Protocol in the Templates tab of the start screen; used only if the sample protocol has no description of its own.',
   },
   yourProtocolsAreSavedOnlyOn: {
     id: 'architect.chrome.home.libraryPanel.yourProtocolsAreSavedOnlyOn',
     defaultMessage:
       '{protocolCount, plural, one {Your protocol is saved only on this device. It is never uploaded to a server.} other {Your # protocols are saved only on this device. They are never uploaded to a server.}}',
     description:
-      'Researcher-facing explanatory text in components / Home / LibraryPanel.',
+      'Tooltip on the info button above the Recent list of the start screen, reassuring the researcher that protocols stay on this device. protocolCount is the number of saved protocols.',
   },
   thisProtocolHasNoDescription: {
     id: 'architect.chrome.home.libraryPanel.thisProtocolHasNoDescription',
     defaultMessage: 'This protocol has no description.',
-    description: 'Visible text in components / Home / LibraryPanel.',
+    description:
+      'Shown in the protocol info dialog in place of the description when the protocol has none.',
   },
 });
 const additionalMessages = defineMessages({
@@ -142,19 +144,22 @@ const additionalMessages = defineMessages({
     id: 'architect.additional.home.libraryPanel.moreExamplesOfNetworkCanvasProtocols',
     defaultMessage:
       'More examples of Network Canvas protocols can be found on our <ExternalLink>Protocol Gallery</ExternalLink>.',
-    description: 'Visible text in components / Home / LibraryPanel.',
+    description:
+      'Text of the Looking for more card on the start screen. ExternalLink wraps the words Protocol Gallery, which link to the online gallery of example protocols.',
   },
   becauseYourWorkIsStoredLocally: {
     id: 'architect.additional.home.libraryPanel.becauseYourWorkIsStoredLocally',
     defaultMessage:
       'Because your work is stored locally, clearing Architect\'s app data, or using "Clear all protocols", will permanently remove it. Download the protocol as a <code>.netcanvas</code> file to save a copy or move it to another device. See our guide to <ExternalLink>saving and backing up your work</ExternalLink> for more.',
-    description: 'Visible text in components / Home / LibraryPanel.',
+    description:
+      'Paragraph in the Protocol Storage dialog warning that protocols saved in the browser are lost if app data is cleared or Clear all protocols is used. code wraps the file extension .netcanvas; ExternalLink wraps the link to the saving and backing up guide.',
   },
   lookingForInspirationBrowseExampleResearch: {
     id: 'architect.additional.home.libraryPanel.lookingForInspirationBrowseExampleResearch',
     defaultMessage:
       'Looking for inspiration? Browse example research protocols in the <ExternalLink>Protocol Gallery</ExternalLink>.',
-    description: 'Visible text in components / Home / LibraryPanel.',
+    description:
+      'Paragraph in the Protocol Storage dialog suggesting example protocols. ExternalLink wraps the words Protocol Gallery, which link to the online gallery.',
   },
 });
 const messages = defineMessages({
@@ -177,130 +182,155 @@ const messages = defineMessages({
   actionsFor: {
     id: 'architect.home.libraryPanel.actionsFor',
     defaultMessage: 'Actions for {name}',
-    description: 'The aria-label text in components / Home / LibraryPanel.',
+    description:
+      "Accessible name of the three-dot menu button on a row of the protocol list on the start screen; read only by screen readers. name is the protocol's name.",
   },
   open: {
     id: 'architect.home.libraryPanel.open',
     defaultMessage: 'Open',
-    description: 'Visible text in components / Home / LibraryPanel.',
+    description:
+      'Menu item on a protocol row of the start screen that opens that protocol for editing.',
   },
   seeMoreInfo: {
     id: 'architect.home.libraryPanel.seeMoreInfo',
     defaultMessage: 'See more info',
-    description: 'Visible text in components / Home / LibraryPanel.',
+    description:
+      'Menu item on a protocol row of the start screen that opens a dialog with details of the protocol, such as number of stages, types and dates.',
   },
   download: {
     id: 'architect.home.libraryPanel.download',
     defaultMessage: 'Download',
-    description: 'Visible text in components / Home / LibraryPanel.',
+    description:
+      "Menu item on a protocol row of the start screen that saves the protocol to the researcher's computer as a .netcanvas file. Download is the action, not a noun.",
   },
   protocolGallery: {
     id: 'architect.home.libraryPanel.protocolGallery',
     defaultMessage: 'Protocol gallery',
-    description: 'The aria-label text in components / Home / LibraryPanel.',
+    description:
+      'Accessible name of the card on the start screen that links to the online Protocol Gallery of example protocols; read only by screen readers.',
   },
   lookingForMore: {
     id: 'architect.home.libraryPanel.lookingForMore',
     defaultMessage: 'Looking for more?',
-    description: 'Visible text in components / Home / LibraryPanel.',
+    description:
+      'Heading of the card on the start screen that points to the online Protocol Gallery of example protocols.',
   },
   dismiss: {
     id: 'architect.home.libraryPanel.dismiss',
     defaultMessage: 'Dismiss',
-    description: 'The aria-label text in components / Home / LibraryPanel.',
+    description:
+      'Accessible name of the close button on the Protocol Gallery card of the start screen; it hides the card. Read only by screen readers.',
   },
   someAssetsCouldNotBeIncluded: {
     id: 'architect.home.libraryPanel.someAssetsCouldNotBeIncluded',
     defaultMessage: 'Some resources could not be read',
-    description: 'The title text in components / Home / LibraryPanel.',
+    description:
+      'Title of the dialog shown when downloading a protocol is stopped because some of its uploaded resource files could not be read.',
   },
   wasDownloadedButThese: {
     id: 'architect.home.libraryPanel.wasDownloadedButThese',
     defaultMessage:
       'These resources could not be read, so "{value1}" was not downloaded: {assetList}. Open the protocol and add the files again in Resources, then download it.',
-    description: 'The description text in components / Home / LibraryPanel.',
+    description:
+      'Body of the dialog shown when downloading a protocol is stopped because some resource files could not be read. value1 is the protocol name; assetList is the list of unreadable resource files.',
   },
   oK: {
     id: 'architect.home.libraryPanel.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / Home / LibraryPanel.',
+    description:
+      'Button that dismisses an information or error dialog on the start screen.',
   },
   downloadFailed: {
     id: 'architect.home.libraryPanel.downloadFailed',
     defaultMessage: 'Download failed',
-    description: 'The title text in components / Home / LibraryPanel.',
+    description:
+      'Title of the error dialog shown when downloading a protocol as a file fails.',
   },
   couldNotBeDownloaded: {
     id: 'architect.home.libraryPanel.couldNotBeDownloaded',
     defaultMessage: '"{value1}" could not be downloaded.',
-    description: 'The description text in components / Home / LibraryPanel.',
+    description:
+      'Body of the error dialog shown when downloading a protocol fails. value1 is the protocol name.',
   },
   deleteProtocol: {
     id: 'architect.home.libraryPanel.deleteProtocol',
     defaultMessage: 'Delete protocol?',
-    description: 'The title text in components / Home / LibraryPanel.',
+    description:
+      'Title of the dialog that asks the researcher to confirm deleting a protocol from the start screen list.',
   },
   andItsAssetsWill: {
     id: 'architect.home.libraryPanel.andItsAssetsWill',
     defaultMessage:
       '"{value1}" and its assets will be permanently removed from this device. This cannot be undone.',
-    description: 'The description text in components / Home / LibraryPanel.',
+    description:
+      'Body of the confirmation dialog for deleting a protocol from the start screen list. value1 is the protocol name; assets are its uploaded resource files.',
   },
   deleteFailed: {
     id: 'architect.home.libraryPanel.deleteFailed',
     defaultMessage: 'Delete failed',
-    description: 'The title text in components / Home / LibraryPanel.',
+    description:
+      'Title of the error dialog shown when deleting a protocol from the start screen list fails.',
   },
   couldNotBeDeleted: {
     id: 'architect.home.libraryPanel.couldNotBeDeleted',
     defaultMessage: '"{value1}" could not be deleted.',
-    description: 'The description text in components / Home / LibraryPanel.',
+    description:
+      'Body of the error dialog shown when deleting a protocol fails. value1 is the protocol name.',
   },
   stages: {
     id: 'architect.home.libraryPanel.stages',
     defaultMessage: 'Stages',
-    description: 'The label text in components / Home / LibraryPanel.',
+    description:
+      'Row label in the protocol info dialog, followed by the number of stages (interview screens) in the protocol.',
   },
   nodeTypes: {
     id: 'architect.home.libraryPanel.nodeTypes',
     defaultMessage: 'Node types',
-    description: 'The label text in components / Home / LibraryPanel.',
+    description:
+      "Row label in the protocol info dialog, followed by the number of node types in the protocol's codebook.",
   },
   edgeTypes: {
     id: 'architect.home.libraryPanel.edgeTypes',
     defaultMessage: 'Edge types',
-    description: 'The label text in components / Home / LibraryPanel.',
+    description:
+      "Row label in the protocol info dialog, followed by the number of edge types in the protocol's codebook.",
   },
   assets: {
     id: 'architect.home.libraryPanel.assets',
     defaultMessage: 'Assets',
-    description: 'The label text in components / Home / LibraryPanel.',
+    description:
+      'Row label in the protocol info dialog, followed by the number of uploaded resource files (images, video, audio, data files) in the protocol.',
   },
   added: {
     id: 'architect.home.libraryPanel.added',
     defaultMessage: 'Added',
-    description: 'The label text in components / Home / LibraryPanel.',
+    description:
+      'Row label in the protocol info dialog, followed by the date the protocol was created.',
   },
   edited: {
     id: 'architect.home.libraryPanel.edited',
     defaultMessage: 'Edited',
-    description: 'The label text in components / Home / LibraryPanel.',
+    description:
+      'Row label in the protocol info dialog, followed by the date the protocol was last changed.',
   },
   protocolStorage: {
     id: 'architect.home.libraryPanel.protocolStorage',
     defaultMessage: 'Protocol Storage',
-    description: 'The title text in components / Home / LibraryPanel.',
+    description:
+      'Title of the dialog, opened from the info button above the Recent list, that explains where protocols are stored.',
   },
   yourProtocolsAreSavedOnlyOn: {
     id: 'architect.home.libraryPanel.yourProtocolsAreSavedOnlyOn',
     defaultMessage:
       'Your protocols are saved only on this device. They are never uploaded to a server.',
-    description: 'Visible text in components / Home / LibraryPanel.',
+    description:
+      'First paragraph of the Protocol Storage dialog: protocols are kept only on this device and never uploaded.',
   },
   removeAllData: {
     id: 'architect.home.libraryPanel.removeAllData',
     defaultMessage: 'Remove all data?',
-    description: 'The title text in components / Home / LibraryPanel.',
+    description:
+      'Title of the dialog that asks the researcher to confirm deleting every saved protocol from this device.',
   },
   clearAllKeepsSchema8Protocols: {
     id: 'architect.home.libraryPanel.clearAllKeepsSchema8Protocols',
@@ -312,81 +342,96 @@ const messages = defineMessages({
   removeAll: {
     id: 'architect.home.libraryPanel.removeAll',
     defaultMessage: 'Remove all',
-    description: 'The label text in components / Home / LibraryPanel.',
+    description:
+      'Confirm button of the dialog that deletes every saved protocol from this device.',
   },
   couldNotRemoveData: {
     id: 'architect.home.libraryPanel.couldNotRemoveData',
     defaultMessage: 'Could not remove data',
-    description: 'The title text in components / Home / LibraryPanel.',
+    description:
+      'Title of the error dialog shown when deleting all saved protocols fails.',
   },
   architectSStoredDataCouldNotBe: {
     id: 'architect.home.libraryPanel.architectSStoredDataCouldNotBe',
     defaultMessage: "Architect's stored data could not be removed.",
-    description: 'The description text in components / Home / LibraryPanel.',
+    description:
+      'Body of the error dialog shown when deleting all saved protocols fails.',
   },
   includesExamplesOfEveryStageType: {
     id: 'architect.home.libraryPanel.includesExamplesOfEveryStageType',
     defaultMessage: 'Includes examples of every stage type',
-    description: 'The description text in components / Home / LibraryPanel.',
+    description:
+      'Description of the Development Protocol in the Templates tab; shown only in development builds of the app.',
   },
   whereYourProtocolsAreStored: {
     id: 'architect.home.libraryPanel.whereYourProtocolsAreStored',
     defaultMessage: 'Where your protocols are stored',
-    description: 'The aria-label text in components / Home / LibraryPanel.',
+    description:
+      'Accessible name of the info button above the Recent list that opens the Protocol Storage dialog; read only by screen readers.',
   },
   clearAllLocallySavedProtocols: {
     id: 'architect.home.libraryPanel.clearAllLocallySavedProtocols',
     defaultMessage: 'Clear all locally saved protocols',
-    description: 'The aria-label text in components / Home / LibraryPanel.',
+    description:
+      'Accessible name and tooltip of the trash button above the Recent list that starts deleting every saved protocol on this device.',
   },
   protocolLibrary: {
     id: 'architect.home.libraryPanel.protocolLibrary',
     defaultMessage: 'Protocol library',
-    description: 'The aria-label text in components / Home / LibraryPanel.',
+    description:
+      'Accessible name of the tab group on the start screen that switches between Recent protocols and Templates; read only by screen readers.',
   },
   recent: {
     id: 'architect.home.libraryPanel.recent',
     defaultMessage: 'Recent',
-    description: 'The label text in components / Home / LibraryPanel.',
+    description:
+      'Tab label on the start screen for the list of protocols the researcher has recently opened or created.',
   },
   templates: {
     id: 'architect.home.libraryPanel.templates',
     defaultMessage: 'Templates',
-    description: 'The label text in components / Home / LibraryPanel.',
+    description:
+      'Tab label on the start screen for the list of template and sample protocols to start from.',
   },
   recentProtocols: {
     id: 'architect.home.libraryPanel.recentProtocols',
     defaultMessage: 'Recent protocols',
-    description: 'The aria-label text in components / Home / LibraryPanel.',
+    description:
+      'Accessible name of the list of recent protocols on the start screen; read only by screen readers.',
   },
   noRecentProtocolsYet: {
     id: 'architect.home.libraryPanel.noRecentProtocolsYet',
     defaultMessage: 'No recent protocols yet.',
-    description: 'Visible text in components / Home / LibraryPanel.',
+    description:
+      'Empty-state message in the Recent tab of the start screen when the researcher has no saved protocols.',
   },
   protocolTemplates: {
     id: 'architect.home.libraryPanel.protocolTemplates',
     defaultMessage: 'Protocol templates',
-    description: 'The aria-label text in components / Home / LibraryPanel.',
+    description:
+      'Accessible name of the list of template protocols on the start screen; read only by screen readers.',
   },
 });
 const extraMessages = defineMessages({
   justNow: {
     id: 'architect.library.metadata.justNow',
     defaultMessage: '< 1 min ago',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Time shown on a protocol row of the start screen for a change made less than a minute ago. The less-than sign is part of the text.',
   },
   protocolMeta: {
     id: 'architect.library.metadata.protocolMeta',
     defaultMessage:
       '{count, plural, one {# stage} other {# stages}} \u00b7 Added {created} \u00b7 Edited {updated}',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Summary line on a protocol row of the start screen. count is the number of stages; created is the date added; updated is the date last edited.',
   },
   templateMeta: {
     id: 'architect.library.metadata.templateMeta',
     defaultMessage:
       '{stages, plural, one {# stage} other {# stages}} \u00b7 {nodes, plural, one {# node type} other {# node types}} \u00b7 {edges, plural, one {# edge type} other {# edge types}}',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Summary line on a template row of the start screen. stages is the number of stages; nodes is the number of node types; edges is the number of edge types.',
   },
 });
 

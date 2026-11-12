@@ -11,13 +11,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.protocolCard.lastModified',
     defaultMessage: 'Last Modified: {value1}',
     description:
-      'Visible text in lib / ProtocolSummary / components / ProtocolCard.',
+      'Line on the protocol card on the cover of the printable protocol summary giving when the protocol was last changed. value1 is a date and time.',
   },
   schemaVersion: {
     id: 'architect.protocolSummary.protocolCard.schemaVersion',
     defaultMessage: 'Schema Version: {schemaVersion}',
     description:
-      'Visible text in lib / ProtocolSummary / components / ProtocolCard.',
+      'Line on the protocol card on the cover of the printable protocol summary giving the protocol file format (schema) version. schemaVersion is a number.',
   },
 });
 

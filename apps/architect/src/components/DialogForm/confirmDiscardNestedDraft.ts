@@ -9,20 +9,20 @@ const utilityMessages = defineMessages({
     id: 'architect.utility.dialogForm.confirmDiscardNestedDraft.unsavedChanges',
     defaultMessage: 'Unsaved Changes',
     description:
-      'The title text in components / DialogForm / confirmDiscardNestedDraft.',
+      'Title of the confirmation dialog shown when the researcher tries to close an editor window that has unsaved changes.',
   },
   youHaveUnsavedChangesInThis: {
     id: 'architect.utility.dialogForm.confirmDiscardNestedDraft.youHaveUnsavedChangesInThis',
     defaultMessage:
       'You have unsaved changes in this editor. Are you sure you want to close without saving?',
     description:
-      'The description text in components / DialogForm / confirmDiscardNestedDraft.',
+      'Body of the confirmation dialog shown when the researcher tries to close an editor window that has unsaved changes. Asks whether to close and lose them.',
   },
   closeWithoutSaving: {
     id: 'architect.utility.dialogForm.confirmDiscardNestedDraft.closeWithoutSaving',
     defaultMessage: 'Close Without Saving',
     description:
-      'The label text in components / DialogForm / confirmDiscardNestedDraft.',
+      'Button in the unsaved-changes confirmation dialog that closes the editor and discards the changes.',
   },
 });
 

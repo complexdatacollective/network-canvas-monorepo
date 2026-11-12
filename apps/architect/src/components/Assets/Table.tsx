@@ -11,7 +11,8 @@ const messages = defineMessages({
   toggleSortBy: {
     id: 'architect.assets.table.toggleSortBy',
     defaultMessage: 'Toggle SortBy',
-    description: 'The title text in components / Assets / Table.',
+    description:
+      'Tooltip on a column header of the data table in a resource preview. Clicking the header cycles the table between ascending, descending and unsorted order by that column.',
   },
 });
 

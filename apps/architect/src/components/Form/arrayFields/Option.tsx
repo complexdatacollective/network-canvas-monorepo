@@ -45,28 +45,32 @@ const messages = defineMessages({
   removeOption: {
     id: 'architect.form.arrayFields.option.removeOption',
     defaultMessage: 'Remove option',
-    description: 'The title text in components / Form / arrayFields / Option.',
+    description:
+      'Title and confirm button of the dialog that asks the researcher to confirm removing one option from a categorical or ordinal variable. Remove is the action.',
   },
   areYouSureYouWantTo: {
     id: 'architect.form.arrayFields.option.areYouSureYouWantTo',
     defaultMessage: 'Are you sure you want to remove this option?',
     description:
-      'The description text in components / Form / arrayFields / Option.',
+      'Body of the confirmation dialog shown before removing one option from a categorical or ordinal variable.',
   },
   reorderOptionOf: {
     id: 'architect.form.arrayFields.option.reorderOptionOf',
     defaultMessage: 'Reorder option {value1, number} of {itemCount, number}',
-    description: 'The label text in components / Form / arrayFields / Option.',
+    description:
+      "Accessible name of the drag handle that moves an option up or down in the list of a variable's options; read only by screen readers. value1 is the option's position, itemCount is how many options there are.",
   },
   untitledOption: {
     id: 'architect.form.arrayFields.option.untitledOption',
     defaultMessage: 'Untitled option',
-    description: 'Visible text in components / Form / arrayFields / Option.',
+    description:
+      "Shown in italics in the summary line of an option in a variable's option list when the option has no label yet.",
   },
   noValue: {
     id: 'architect.form.arrayFields.option.noValue',
     defaultMessage: 'No value',
-    description: 'Visible text in components / Form / arrayFields / Option.',
+    description:
+      "Shown in italics in the summary line of an option in a variable's option list when the option has no value yet.",
   },
   editOption: {
     id: 'architect.form.arrayFields.option.editOption',
@@ -84,29 +88,31 @@ const messages = defineMessages({
     id: 'architect.form.arrayFields.option.finishEditingOption',
     defaultMessage: 'Finish editing option',
     description:
-      'The aria-label text in components / Form / arrayFields / Option.',
+      "Accessible name of the check-mark button that closes the inline editor of one option in a variable's option list; read only by screen readers.",
   },
   label: {
     id: 'architect.form.arrayFields.option.label',
     defaultMessage: 'Label',
-    description: 'The label text in components / Form / arrayFields / Option.',
+    description:
+      'Field label for the text of an option, which is what the participant reads, in the inline option editor of a categorical or ordinal variable.',
   },
   enterALabel: {
     id: 'architect.form.arrayFields.option.enterALabel',
     defaultMessage: 'Enter a label...',
     description:
-      'The placeholder text in components / Form / arrayFields / Option.',
+      'Placeholder in the label field of the inline option editor for a categorical or ordinal variable.',
   },
   value: {
     id: 'architect.form.arrayFields.option.value',
     defaultMessage: 'Value',
-    description: 'The label text in components / Form / arrayFields / Option.',
+    description:
+      'Field label for the value of an option, which is what is stored and exported when the participant picks it, in the inline option editor of a categorical or ordinal variable.',
   },
   enterAValue: {
     id: 'architect.form.arrayFields.option.enterAValue',
     defaultMessage: 'Enter a value...',
     description:
-      'The placeholder text in components / Form / arrayFields / Option.',
+      'Placeholder in the value field of the inline option editor for a categorical or ordinal variable.',
   },
 });
 

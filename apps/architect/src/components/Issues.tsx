@@ -36,7 +36,8 @@ const messages = defineMessages({
   issues: {
     id: 'architect.issues.issues',
     defaultMessage: 'Issues ({issueCount, number})',
-    description: 'Visible text in components / Issues.',
+    description:
+      'Label of the toolbar button, and heading of the list it opens, showing how many problems must be fixed in the open stage. issueCount is that number.',
   },
 });
 

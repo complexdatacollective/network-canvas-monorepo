@@ -38,14 +38,14 @@ const utilityMessages = defineMessages({
     defaultMessage:
       '{remaining, number} of {maximum, number} characters remaining',
     description:
-      'Researcher-facing explanatory text in components / ProtocolInfoCard.',
+      'Counter below the protocol name field on the Stages page showing how many more characters can be typed. remaining is the number of characters still allowed; maximum is the longest allowed name.',
   },
   overTheCharacterLimit: {
     id: 'architect.utility.protocolInfoCard.overTheCharacterLimit',
     defaultMessage:
       '{over, plural, one {# character over the {maximum, number} character limit} other {# characters over the {maximum, number} character limit}}',
     description:
-      'Researcher-facing explanatory text in components / ProtocolInfoCard.',
+      'Error below the protocol name field on the Stages page when the name is longer than allowed. over is how many characters too many; maximum is the longest allowed name.',
   },
 });
 const messages = defineMessages({
@@ -57,39 +57,46 @@ const messages = defineMessages({
   requiresInternet: {
     id: 'architect.protocolInfoCard.requiresInternet',
     defaultMessage: 'Requires Internet',
-    description: 'Visible text in components / ProtocolInfoCard.',
+    description:
+      'Warning badge on the protocol card of the Stages page, shown when the protocol contains a Geospatial stage, which displays an online map, so the interview cannot be run offline.',
   },
   enterProtocolName: {
     id: 'architect.protocolInfoCard.enterProtocolName',
     defaultMessage: 'Enter protocol name...',
-    description: 'The placeholder text in components / ProtocolInfoCard.',
+    description:
+      'Placeholder inside the empty protocol name field on the protocol card of the Stages page.',
   },
   protocolName: {
     id: 'architect.protocolInfoCard.protocolName',
     defaultMessage: 'Protocol name',
-    description: 'The aria-label text in components / ProtocolInfoCard.',
+    description:
+      'Accessible name of the editable protocol name field on the protocol card of the Stages page; read only by screen readers.',
   },
   protocolDescription: {
     id: 'architect.protocolInfoCard.protocolDescription',
     defaultMessage: 'Protocol description',
-    description: 'The aria-label text in components / ProtocolInfoCard.',
+    description:
+      'Accessible name of the editable protocol description field on the protocol card of the Stages page; read only by screen readers.',
   },
   enterADescriptionForYourProtocol: {
     id: 'architect.protocolInfoCard.enterADescriptionForYourProtocol',
     defaultMessage: 'Enter a description for your protocol...',
-    description: 'The placeholder text in components / ProtocolInfoCard.',
+    description:
+      'Placeholder inside the empty protocol description field on the protocol card of the Stages page.',
   },
   node: {
     id: 'architect.protocolInfoCard.node',
     defaultMessage:
       '{nodeTypeCount, plural, one {# node type} other {# node types}}',
-    description: 'Visible text in components / ProtocolInfoCard.',
+    description:
+      'Count of node types in the codebook, shown on the protocol card of the Stages page. nodeTypeCount is the number of node types.',
   },
   edge: {
     id: 'architect.protocolInfoCard.edge',
     defaultMessage:
       '{edgeTypeCount, plural, one {# edge type} other {# edge types}}',
-    description: 'Visible text in components / ProtocolInfoCard.',
+    description:
+      'Count of edge types in the codebook, shown on the protocol card of the Stages page. edgeTypeCount is the number of edge types.',
   },
 });
 

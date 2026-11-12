@@ -59,39 +59,46 @@ const messages = defineMessages({
   attribute: {
     id: 'architect.variablePill.attribute',
     defaultMessage: '{type} attribute',
-    description: 'The alt text in components / VariablePill.',
+    description:
+      'Alt text of the small icon on an attribute (codebook variable) pill, read only by screen readers. type is the lowercase name of the attribute type, such as text or number.',
   },
   editAttributeName: {
     id: 'architect.variablePill.editAttributeName',
     defaultMessage: 'Edit attribute name: {label}',
-    description: 'The aria-label text in components / VariablePill.',
+    description:
+      'Accessible name and tooltip of the pill button that opens the attribute rename editor. label is the current attribute name.',
   },
   editAttributeName62aa3: {
     id: 'architect.variablePill.editAttributeName62aa3',
     defaultMessage: 'Edit attribute name',
-    description: 'The aria-label text in components / VariablePill.',
+    description:
+      'Accessible name of the dialog in which the researcher renames an attribute (codebook variable); read only by screen readers.',
   },
   attributeName: {
     id: 'architect.variablePill.attributeName',
     defaultMessage: 'Attribute name',
-    description: 'The aria-label text in components / VariablePill.',
+    description:
+      'Accessible name of the text field in the attribute rename dialog; read only by screen readers.',
   },
   enterAnAttributeName: {
     id: 'architect.variablePill.enterAnAttributeName',
     defaultMessage: 'Enter an attribute name...',
-    description: 'The placeholder text in components / VariablePill.',
+    description:
+      'Placeholder shown in the empty text field of the attribute rename dialog.',
   },
   saveChanges: {
     id: 'architect.variablePill.saveChanges',
     defaultMessage: 'Save Changes',
-    description: 'Visible text in components / VariablePill.',
+    description:
+      'Button in the attribute rename dialog that saves the new attribute name. Disabled until the name is valid and changed.',
   },
 });
 const finalMessages = defineMessages({
   required: {
     id: 'architect.final.components.VariablePill.required',
     defaultMessage: 'You must enter an attribute name',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Validation error in the attribute rename dialog when the name field is empty.',
   },
 });
 

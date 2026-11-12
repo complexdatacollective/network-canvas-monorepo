@@ -36,7 +36,7 @@ const additionalMessages = defineMessages({
     id: 'architect.additional.form.arrayFields.options.noOptionsHaveBeenAddedYet',
     defaultMessage: 'No options have been added yet.',
     description:
-      'The emptyStateMessage text in components / Form / arrayFields / Options.',
+      'Message shown in place of the list when a categorical or ordinal variable has no options yet.',
   },
 });
 const messages = defineMessages({

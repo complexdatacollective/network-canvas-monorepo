@@ -16,14 +16,14 @@ const messages = defineMessages({
     defaultMessage:
       '{count, plural, one {# unused resource} other {# unused resources}}',
     description:
-      'Visible text in components / AssetBrowser / UnusedAssetsAlert.',
+      'Title of the warning at the top of the resource library when some resources are not used by any stage. count is the number of unused resources (uploaded files or API keys).',
   },
   notUsedByAnyStage: {
     id: 'architect.assetBrowser.unusedAssetsAlert.notUsedByAnyStage',
     defaultMessage:
       '{count, plural, one {This resource is not used by any stage in your protocol and is marked <strong>Unused</strong> below. Reference it in a stage, or remove it to keep your protocol tidy.} other {These resources are not used by any stage in your protocol and are marked <strong>Unused</strong> below. Reference them in a stage, or remove them to keep your protocol tidy.}}',
     description:
-      'Visible text in components / AssetBrowser / UnusedAssetsAlert.',
+      'Body of the warning at the top of the resource library about resources that no stage uses. count is the number of unused resources; strong marks the word Unused, which matches the Unused badge shown on each such resource card.',
   },
 });
 

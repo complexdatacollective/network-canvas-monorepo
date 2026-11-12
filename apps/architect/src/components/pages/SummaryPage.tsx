@@ -19,13 +19,15 @@ const messages = defineMessages({
   protocolSummary: {
     id: 'architect.pages.summaryPage.protocolSummary',
     defaultMessage: 'Protocol Summary',
-    description: 'The title text in components / pages / SummaryPage.',
+    description:
+      'Heading of the Protocol Summary page, a printable overview of the whole protocol.',
   },
   belowIsAComprehensiveSummaryOf: {
     id: 'architect.pages.summaryPage.belowIsAComprehensiveSummaryOf',
     defaultMessage:
       'Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets.',
-    description: 'The description text in components / pages / SummaryPage.',
+    description:
+      'Introductory text under the heading of the Protocol Summary page. Describes what the summary contains: stages, codebook and resources (assets).',
   },
 });
 
