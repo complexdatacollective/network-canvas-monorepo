@@ -18,16 +18,17 @@ import { frescoCatalogSource } from '../src/locales/catalogs';
  * toolbar can switch to any of them mid-session and `storybookI18n` reads its
  * catalogs synchronously.
  */
-export const { globalTypes, initialGlobals, withAppI18n } = storybookI18n({
-  locales: frescoLocales,
-  catalogs: Object.fromEntries(
-    await Promise.all(
-      frescoLocales.map(
-        async ({ locale }): Promise<[string, CatalogMessages]> => [
-          locale,
-          await frescoCatalogSource.load(locale),
-        ],
+export const { globalTypes, initialGlobals, withAppI18n, mirrorCheck } =
+  storybookI18n({
+    locales: frescoLocales,
+    catalogs: Object.fromEntries(
+      await Promise.all(
+        frescoLocales.map(
+          async ({ locale }): Promise<[string, CatalogMessages]> => [
+            locale,
+            await frescoCatalogSource.load(locale),
+          ],
+        ),
       ),
     ),
-  ),
-});
+  });

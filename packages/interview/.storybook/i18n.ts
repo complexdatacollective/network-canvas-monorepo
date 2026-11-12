@@ -18,9 +18,10 @@ import { storybookI18n } from '@codaco/storybook-config/i18n';
  * the story shell (`StoryInterviewShell`) passes the control on by describing
  * the story's languages as written right to left.
  */
-export const { globalTypes, initialGlobals, withAppI18n } = storybookI18n({
-  locales: defineAppLocales([
-    { locale: 'en', label: 'English', direction: 'ltr' },
-  ]),
-  catalogs: {},
-});
+export const { globalTypes, initialGlobals, withAppI18n, mirrorCheck } =
+  storybookI18n({
+    locales: defineAppLocales([
+      { locale: 'en', label: 'English', direction: 'ltr' },
+    ]),
+    catalogs: {},
+  });

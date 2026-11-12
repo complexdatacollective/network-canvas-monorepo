@@ -9,7 +9,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { StrictMode } from 'react';
 
 import Providers from '../components/Providers';
-import { globalTypes, initialGlobals, withAppI18n } from './i18n';
+import { globalTypes, initialGlobals, mirrorCheck, withAppI18n } from './i18n';
 
 import '../styles/globals.css';
 
@@ -19,6 +19,11 @@ import '../styles/globals.css';
 // See: https://github.com/chromaui/addon-visual-tests/pull/404
 
 export default definePreview({
+  // Every story is checked right to left after its play function (see
+  // `mirrorCheck` in @codaco/storybook-config); a story that is not a layout
+  // in the reading direction opts out with the `!mirror` tag and says why.
+  tags: ['mirror'],
+  afterEach: mirrorCheck,
   addons: [addonDocs(), addonA11y(), addonVitest()],
   parameters: {
     options: {

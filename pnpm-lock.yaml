@@ -3505,6 +3505,9 @@ importers:
       '@codaco/app-i18n':
         specifier: workspace:^
         version: link:../../packages/app-i18n
+      '@codaco/e2e-helpers':
+        specifier: workspace:^
+        version: link:../e2e
       react:
         specifier: 'catalog:'
         version: 19.3.1

@@ -16,6 +16,7 @@ import './preview.css';
 import {
   globalTypes as i18nGlobalTypes,
   initialGlobals as i18nInitialGlobals,
+  mirrorCheck,
   withAppI18n,
 } from './i18n';
 import Providers from './Providers';
@@ -80,6 +81,8 @@ const ThemedDocsContainer = ({
 // See: https://github.com/chromaui/addon-visual-tests/pull/404
 
 export default definePreview({
+  tags: ['mirror'],
+  afterEach: mirrorCheck,
   beforeEach: () => {
     // Playwright's Linux Firefox can leave a newly isolated story iframe
     // inactive. Activate its window before interactions so native focus and

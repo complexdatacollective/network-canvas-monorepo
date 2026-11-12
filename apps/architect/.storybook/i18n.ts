@@ -13,16 +13,17 @@ import { architectCatalogSource } from '../src/locales/catalogs';
  * toolbar can switch to any of them mid-session and `storybookI18n` reads its
  * catalogs synchronously.
  */
-export const { globalTypes, initialGlobals, withAppI18n } = storybookI18n({
-  locales: architectProductionLocales,
-  catalogs: Object.fromEntries(
-    await Promise.all(
-      architectProductionLocales.map(
-        async ({ locale }): Promise<[string, CatalogMessages]> => [
-          locale,
-          await architectCatalogSource.load(locale),
-        ],
+export const { globalTypes, initialGlobals, withAppI18n, mirrorCheck } =
+  storybookI18n({
+    locales: architectProductionLocales,
+    catalogs: Object.fromEntries(
+      await Promise.all(
+        architectProductionLocales.map(
+          async ({ locale }): Promise<[string, CatalogMessages]> => [
+            locale,
+            await architectCatalogSource.load(locale),
+          ],
+        ),
       ),
     ),
-  ),
-});
+  });
