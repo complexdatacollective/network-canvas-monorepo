@@ -330,7 +330,7 @@
   "protocolBuilder.compoundFailure.invalidShape": "Este cambio no es algo que el libro de códigos pueda contener, así que no se ha guardado nada. Revisa lo que has introducido e inténtalo de nuevo.",
   "protocolBuilder.compoundFailure.protocolGone": "Este protocolo ya no está abierto, así que no se ha guardado nada. Vuelve a cargarlo e inténtalo de nuevo.",
   "protocolBuilder.compoundFailure.referencesRemain": "{references, plural, one {Otra parte del protocolo todavía usa esto} other {# otras partes del protocolo todavía usan esto}}, así que no se ha eliminado nada. Cámbialas primero y elimínalo después.",
-  "protocolBuilder.compoundFailure.sectionCreatedElsewhere": "Otra persona acaba de añadir el primer atributo de ego, así que no se ha guardado nada. Inténtalo de nuevo para añadir el tuyo junto al que ha añadido esa otra persona.",
+  "protocolBuilder.compoundFailure.sectionCreatedElsewhere": "Otra persona acaba de añadir el primer atributo de la persona participante, así que no se ha guardado nada. Inténtalo de nuevo para añadir el tuyo junto al que ha añadido esa otra persona.",
   "protocolBuilder.compoundFailure.sectionGone": "Esta parte del libro de códigos ya no existe, así que no se ha guardado nada. Cierra este editor y empieza de nuevo.",
   "protocolBuilder.compoundFailure.subjectGone": "Esta etapa trabaja con algo que el libro de códigos ya no contiene, así que no se ha guardado nada. Elige de nuevo con qué trabaja.",
   "protocolBuilder.compoundFailure.unexplained": "No se pudo guardar este cambio y no se modificó nada. Espera un momento e inténtalo de nuevo.",
