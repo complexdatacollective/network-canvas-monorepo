@@ -79,25 +79,31 @@ assetDb.version(1).stores({
  * Clear all removes them. localStorage is left alone for the same reason: every
  * key in it (language, analytics, dismissed notices) is shared with Architect 8.
  *
- * Throws when either cannot be cleared, so the caller can say so. The reviews
- * go first: a failure there leaves the library as it was, so what the caller
- * reports is what the researcher still sees. The other order could remove
- * every protocol and then report that nothing was removed.
+ * Throws when either cannot be cleared, so the caller can say so, and removes
+ * nothing then. The two are separate databases, which no one transaction
+ * spans: the reviews go first (a failure there leaves the library untouched),
+ * and are put back if the library's own transaction then fails. So what the
+ * caller reports is what the researcher still has.
  */
 export async function clearAllStorage(): Promise<void> {
   // A review describes a protocol that no longer exists once the library is
   // empty; nothing else would ever read or remove it.
-  await clearReviewRecords();
-  await assetDb.transaction(
-    'rw',
-    [assetDb.assets, assetDb.protocols, assetDb.legacyProtocolChoices],
-    async () => {
-      await Promise.all([
-        assetDb.assets.clear(),
-        assetDb.protocols.clear(),
-        assetDb.legacyProtocolChoices.clear(),
-      ]);
-    },
-  );
+  const restoreReviews = await clearReviewRecords();
+  try {
+    await assetDb.transaction(
+      'rw',
+      [assetDb.assets, assetDb.protocols, assetDb.legacyProtocolChoices],
+      async () => {
+        await Promise.all([
+          assetDb.assets.clear(),
+          assetDb.protocols.clear(),
+          assetDb.legacyProtocolChoices.clear(),
+        ]);
+      },
+    );
+  } catch (error) {
+    await restoreReviews();
+    throw error;
+  }
   window.location.reload();
 }

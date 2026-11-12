@@ -3144,8 +3144,8 @@
     "description": "Heading of the first step of the dialog that starts an automated protocol review. It says what the feature does, what it sends, and asks whether the review may be shared."
   },
   "architect.protocolReview.wizard.model.allSpent": {
-    "defaultMessage": "This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. Every provider’s budget has been spent, so a review cannot start for now. What you have entered here is kept.",
-    "description": "Notice on the last step of the dialog that starts an automated protocol review, when no model can be chosen because every provider’s budget is spent."
+    "defaultMessage": "This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. Every provider’s budget has been spent, so a review cannot start for now. Save your study details now, and start the review once a budget starts again.",
+    "description": "Notice on the last step of the dialog that starts an automated protocol review, when no model can be chosen because every provider’s budget is spent. The button below it then reads \"Save details\" in place of \"Start review\"."
   },
   "architect.protocolReview.wizard.model.by": {
     "defaultMessage": "Made by {company}",
@@ -3246,6 +3246,10 @@
   "architect.protocolReview.wizard.questions.title": {
     "defaultMessage": "What are your research questions?",
     "description": "Heading of the fourth step of the dialog that starts an automated protocol review. The step is optional."
+  },
+  "architect.protocolReview.wizard.saveDetails": {
+    "defaultMessage": "Save details",
+    "description": "Last button of the dialog that starts an automated protocol review, in place of \"Start review\" when no review can start because every provider’s budget is spent: saves the study details the researcher entered, so they are filled in next time, and starts nothing."
   },
   "architect.protocolReview.wizard.sending.neverApiKeys": {
     "defaultMessage": "API keys saved in your protocol",

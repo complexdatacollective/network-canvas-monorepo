@@ -127,6 +127,13 @@ export const readReviewRecord = async (
   if (pending) return pending;
   try {
     const stored = await getReviewDb().reviews.get(protocolId);
+    // A record written while this read was out is newer than what it found:
+    // a decision made in that moment must not be replaced by the copy from
+    // before it, here or in whoever asked.
+    const written = unsaved.has(protocolId)
+      ? memory.get(protocolId)
+      : undefined;
+    if (written) return written;
     if (stored) {
       memory.set(protocolId, stored);
       return stored;
@@ -155,14 +162,39 @@ export const writeReviewRecord = async (
 };
 
 /**
- * Removes every protocol's record, with the whole library (Clear all).
+ * Removes every protocol's record, with the whole library (Clear all), and
+ * answers with the way to put them all back. The library is a database of its
+ * own, cleared after this one, and no transaction spans the two: when that
+ * clear fails the caller calls what this returned, so a library that is still
+ * there keeps its reviews.
+ *
  * Throws when storage refuses, so the caller can say the library was not
- * cleared; the session copy is emptied either way.
+ * cleared; nothing is removed then, the session copy included.
  */
-export const clearReviewRecords = async (): Promise<void> => {
+export const clearReviewRecords = async (): Promise<() => Promise<void>> => {
+  const db = getReviewDb();
+  const stored = await db.reviews.toArray();
+  await db.reviews.clear();
+  const session = new Map(memory);
+  const pending = new Set(unsaved);
   memory.clear();
   unsaved.clear();
-  await getReviewDb().reviews.clear();
+  return async () => {
+    for (const [protocolId, record] of session) memory.set(protocolId, record);
+    for (const protocolId of pending) unsaved.add(protocolId);
+    try {
+      await db.reviews.bulkPut(stored);
+    } catch (error) {
+      // What storage would not take back is still this session's copy.
+      for (const record of stored) {
+        if (!memory.has(record.protocolId)) {
+          memory.set(record.protocolId, record);
+        }
+        unsaved.add(record.protocolId);
+      }
+      noteFailure(error, 'protocolReviewRestore');
+    }
+  };
 };
 
 /** Removes the protocol's record, with the protocol. Never throws. */

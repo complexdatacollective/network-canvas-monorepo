@@ -560,10 +560,14 @@ describe('choosing the model', () => {
     );
   });
 
-  it('cannot start, and says why, once the service says every budget is spent', async () => {
+  it('saves the details instead of starting once the service says every budget is spent', async () => {
     await openProtocol(store);
     renderToolbar(store);
-    await openRequestDialogAt('What are your research questions?');
+    await openRequestDialogAt('Who takes part, and how?');
+    await userEvent.clear(population());
+    await userEvent.type(population(), 'Adults over 70');
+    await pressNext();
+    await requestStep('What are your research questions?');
     client.requestProviderStatus.mockResolvedValue([
       {
         provider: 'anthropic',
@@ -583,17 +587,29 @@ describe('choosing the model', () => {
 
     expect(
       await requestDialog().findByText(
-        /Every provider’s budget has been spent, so a review cannot start for now\. What you have entered here is kept\./,
+        /Every provider’s budget has been spent, so a review cannot start for now\. Save your study details now, and start the review once a budget starts again\./,
       ),
     ).toBeVisible();
     expect(model(/Claude Opus 5\.5/)).toBeDisabled();
     expect(model(/GPT-6\.1 Sol/)).toBeDisabled();
-    const start = requestDialog().getByRole('button', {
-      name: 'Start review',
-    });
-    expect(start).toBeDisabled();
-    await userEvent.click(start);
+    // No review can start, so the button no longer offers one.
+    expect(
+      requestDialog().queryByRole('button', { name: 'Start review' }),
+    ).not.toBeInTheDocument();
+
+    // What was typed is not lost with the dialog: the button saves it.
+    await pressNext('Save details');
+    await waitFor(() =>
+      expect(getProtocolReviewStudyContext(store.getState())).toEqual({
+        ...STUDY_CONTEXT,
+        population: 'Adults over 70',
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId('wizard-next')).not.toBeInTheDocument(),
+    );
     expect(client.requestReview).not.toHaveBeenCalled();
+    expect(getProtocolReviewRun(store.getState()).status).toBe('idle');
   });
 
   it('cannot start while offline, and does not ask the service', async () => {

@@ -1,5 +1,6 @@
 // fake-indexeddb must be installed before Dexie opens a database.
 import 'fake-indexeddb/auto';
+import { Dexie } from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -11,7 +12,7 @@ import {
 } from '~/protocolReview/reviewStore';
 
 import { assetDb, clearAllStorage } from '../assetDB';
-import { LEGACY_LIBRARIES } from '../storageNames';
+import { LEGACY_LIBRARIES, PROTOCOL_REVIEW_DB_NAME } from '../storageNames';
 
 const LEGACY_DB_NAME = LEGACY_LIBRARIES[0].dbName;
 
@@ -64,6 +65,17 @@ const readArchitect8Rows = async () => {
     return await request(
       db.transaction('protocols').objectStore('protocols').getAll(),
     );
+  } finally {
+    db.close();
+  }
+};
+
+/** The review database, read directly, past the store's session copy. */
+const readReviewsFromDisk = async () => {
+  const db = new Dexie(PROTOCOL_REVIEW_DB_NAME);
+  db.version(1).stores({ reviews: 'protocolId' });
+  try {
+    return await db.table('reviews').toArray();
   } finally {
     db.close();
   }
@@ -171,6 +183,21 @@ describe('clearAllStorage', () => {
     // One transaction: nothing was removed when part of it failed.
     expect(await assetDb.protocols.count()).toBe(1);
     expect(await assetDb.legacyProtocolChoices.count()).toBe(1);
+  });
+
+  // The reviews are a database of their own, cleared first; a library that
+  // is still there afterwards must still have them.
+  it('puts the reviews back when the library could not be cleared', async () => {
+    const kept = { protocolId: 'v9-row', shareReviews: true, review: null };
+    await writeReviewRecord(kept);
+    vi.spyOn(assetDb.assets, 'clear').mockRejectedValue(
+      new Error('clear failed'),
+    );
+
+    await expect(clearAllStorage()).rejects.toThrow('clear failed');
+
+    expect(await readReviewsFromDisk()).toContainEqual(kept);
+    expect(await readReviewRecord('v9-row')).toEqual(kept);
   });
 
   // The caller says nothing was removed and leaves the list on screen, so

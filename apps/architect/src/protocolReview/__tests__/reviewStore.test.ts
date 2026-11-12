@@ -100,6 +100,19 @@ describe('D: the session’s newest record wins until it has been saved', () => 
     expect(await readReviewRecord('d1')).toMatchObject({ shareReviews: false });
   });
 
+  it('answers a read with a record written while the read was out', async () => {
+    await writeReviewRecord(record('d3'));
+    // The read is out to storage when the newer record is written.
+    const read = readReviewRecord('d3');
+    const write = writeReviewRecord({ ...record('d3'), shareReviews: false });
+
+    expect(await read).toMatchObject({ shareReviews: false });
+    await write;
+    // And the older copy the read found has not become the session's.
+    expect(await readReviewRecord('d3')).toMatchObject({ shareReviews: false });
+    expect(await readFromDisk('d3')).toMatchObject({ shareReviews: false });
+  });
+
   it('refreshes from storage again once the newest record is saved', async () => {
     const writes = failWrites();
     await writeReviewRecord({ ...record('d2'), shareReviews: false });

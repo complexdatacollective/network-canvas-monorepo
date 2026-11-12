@@ -343,9 +343,9 @@ const messages = defineMessages({
   allSpent: {
     id: 'architect.protocolReview.wizard.model.allSpent',
     defaultMessage:
-      'This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. Every provider’s budget has been spent, so a review cannot start for now. What you have entered here is kept.',
+      'This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. Every provider’s budget has been spent, so a review cannot start for now. Save your study details now, and start the review once a budget starts again.',
     description:
-      'Notice on the last step of the dialog that starts an automated protocol review, when no model can be chosen because every provider’s budget is spent.',
+      'Notice on the last step of the dialog that starts an automated protocol review, when no model can be chosen because every provider’s budget is spent. The button below it then reads "Save details" in place of "Start review".',
   },
   offline: {
     id: 'architect.protocolReview.wizard.model.offline',
@@ -366,6 +366,12 @@ const messages = defineMessages({
     defaultMessage: 'Start review',
     description:
       'Last button of the dialog that starts an automated protocol review: saves the study details and starts the review.',
+  },
+  saveDetails: {
+    id: 'architect.protocolReview.wizard.saveDetails',
+    defaultMessage: 'Save details',
+    description:
+      'Last button of the dialog that starts an automated protocol review, in place of "Start review" when no review can start because every provider’s budget is spent: saves the study details the researcher entered, so they are filled in next time, and starts nothing.',
   },
 });
 
@@ -696,7 +702,8 @@ function ModelStep() {
   const intl = useAppIntl();
   const store = useAppStore();
   const dispatch = useAppDispatch();
-  const { data, setStepData, setBeforeNext, setNextEnabled } = useWizard();
+  const { data, setStepData, setBeforeNext, setNextEnabled, setNextLabel } =
+    useWizard();
   const { now, online, limit, remaining, providers } = useReviewAvailability();
   const lastChosen = useAppSelector((state) => state.protocolReview.provider);
   const labelId = useId();
@@ -709,9 +716,20 @@ function ModelStep() {
 
   const anyAvailable = providers.some((choice) => choice.available);
   useEffect(() => {
-    setNextEnabled(online && anyAvailable);
+    setNextEnabled(online);
     return () => setNextEnabled(true);
-  }, [anyAvailable, online, setNextEnabled]);
+  }, [online, setNextEnabled]);
+
+  // With every budget spent no review can start, perhaps not until next
+  // month, and what was typed in the earlier steps lives only in this dialog.
+  // The button then saves it instead: the dialog completes as usual, the
+  // review that follows is refused for want of a budget, and the panel says
+  // when one starts again.
+  const allSpent = online && !anyAvailable;
+  useEffect(() => {
+    setNextLabel(allSpent ? intl.formatMessage(messages.saveDetails) : null);
+    return () => setNextLabel(null);
+  }, [allSpent, intl, setNextLabel]);
 
   // Completing the wizard writes the study details into the protocol, a write
   // only the tab that owns the saved copy can keep. Another tab can take the
@@ -760,7 +778,7 @@ function ModelStep() {
           </AlertDescription>
         </Alert>
       )}
-      {online && !anyAvailable && (
+      {allSpent && (
         <Alert variant="warning" className="my-0">
           <AlertDescription>
             {intl.formatMessage(messages.allSpent)}

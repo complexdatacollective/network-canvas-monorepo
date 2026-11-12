@@ -1279,7 +1279,7 @@ test.describe('when a review cannot run', () => {
     expect(service.bodies).toHaveLength(0);
   });
 
-  test('budgets spent while the dialog is open: the last step says so and Start review cannot be pressed', async ({
+  test('budgets spent while the dialog is open: the last step says so and saves the details in place of starting', async ({
     architectPage: page,
     context,
     seed,
@@ -1315,7 +1315,14 @@ test.describe('when a review cannot run', () => {
     await expect(modelOption(page, 'GPT-6.1 Sol')).toBeDisabled();
     await expect(
       model.getByRole('button', { name: 'Start review' }),
-    ).toBeDisabled();
+    ).toHaveCount(0);
+
+    // What was entered is not lost with the dialog: the button saves it,
+    // and the panel then says why no review started.
+    await model.getByRole('button', { name: 'Save details' }).click();
+    await expect(model).toBeHidden();
+    await expect(popoverOf(page)).toBeVisible();
+    await expect(reviewButton(page)).toHaveAccessibleName('Review protocol');
     expect(service.bodies).toHaveLength(0);
   });
 
