@@ -16,20 +16,20 @@ const messages = defineMessages({
     id: 'fresco.interviews.ExportInterviewsDialog.confirmFileExportOptions',
     defaultMessage: 'Confirm File Export Options',
     description:
-      'Researcher-facing interviews / ExportInterviewsDialog: Confirm File Export Options',
+      'Title of the dialog, opened from the interviews table, where the researcher confirms the file options (CSV, GraphML, layout) before exporting interview data.',
   },
   beforeExportingPleaseConfirmTheExportOptions: {
     id: 'fresco.interviews.ExportInterviewsDialog.beforeExportingPleaseConfirmTheExportOptions',
     defaultMessage:
       'Before exporting, please confirm the export options that you wish to use. These options are identical to those found in Interviewer.',
     description:
-      'Researcher-facing interviews / ExportInterviewsDialog: Before exporting, please confirm the export options that you wish to use. These options are identical to those found in ',
+      'Description under the title of the dialog for confirming interview data export options. Interviewer is the name of the Network Canvas interview app and is not translated.',
   },
   startExportProcess: {
     id: 'fresco.interviews.ExportInterviewsDialog.startExportProcess',
     defaultMessage: 'Start export process',
     description:
-      'Researcher-facing interviews / ExportInterviewsDialog: Start export process',
+      'Confirm button in the footer of the dialog for interview data export options; pressing it starts exporting and downloading the selected interviews.',
   },
 });
 

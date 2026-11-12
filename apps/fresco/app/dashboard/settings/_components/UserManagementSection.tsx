@@ -14,7 +14,7 @@ const messages = defineMessages({
     id: 'fresco.settings.UserManagementSection.userManagement',
     defaultMessage: 'User Management',
     description:
-      'Researcher-facing settings / UserManagementSection: User Management',
+      'Title of the Settings card that manages researcher accounts: password, passkeys, two-factor authentication and the list of users who can sign in.',
   },
 });
 

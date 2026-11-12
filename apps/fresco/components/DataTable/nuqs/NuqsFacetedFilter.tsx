@@ -90,18 +90,21 @@ const messages = defineMessages({
   NuqsFacetedFilteremptyMessage: {
     id: 'fresco.tableFilters.NuqsFacetedFilteremptyMessage',
     defaultMessage: 'No options found.',
-    description: 'Researcher-facing tableFilters: No options found.',
+    description:
+      'Message inside the open multi-select filter dropdown of a table, shown when the search typed in the dropdown matches no option. Default; a table can supply its own.',
   },
 
   NuqsFacetedFiltersearchPlaceholder: {
     id: 'fresco.tableFilters.NuqsFacetedFiltersearchPlaceholder',
     defaultMessage: 'Search...',
-    description: 'Researcher-facing tableFilters: Search...',
+    description:
+      'Placeholder of the search box inside the open multi-select filter dropdown of a table, which narrows the list of options. Default; a table can supply its own.',
   },
 
   NuqsFacetedFilterplaceholder: {
     id: 'fresco.tableFilters.NuqsFacetedFilterplaceholder',
     defaultMessage: 'Filter...',
-    description: 'Researcher-facing tableFilters: Filter...',
+    description:
+      'Placeholder of the closed multi-select filter dropdown above a table when no option is chosen. Default; a table can supply its own.',
   },
 });

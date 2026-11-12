@@ -14,6 +14,7 @@ export const frescoLocales = defineAppLocales([
   { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
   { locale: 'it', label: 'Italiano', direction: 'ltr' },
   { locale: 'fr', label: 'Français', direction: 'ltr' },
+  { locale: 'ar', label: 'العربية', direction: 'rtl' },
 ] as const);
 export type FrescoLocale = (typeof frescoLocales)[number]['locale'];
 /** The device mirror of the account's choice in the dashboard's switcher. */

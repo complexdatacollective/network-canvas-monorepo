@@ -32,23 +32,25 @@ const messages = defineMessages({
     id: 'fresco.InterviewsTable.ActionsDropdown.openMenu',
     defaultMessage: 'Open menu',
     description:
-      'Researcher-facing InterviewsTable / ActionsDropdown: Open menu',
+      "Accessible name of the icon button at the end of an interviews table row that opens the row's actions menu; read only by screen readers.",
   },
   actions: {
     id: 'fresco.InterviewsTable.ActionsDropdown.actions',
     defaultMessage: 'Actions',
-    description: 'Researcher-facing InterviewsTable / ActionsDropdown: Actions',
+    description:
+      'Label at the top of the actions menu of an interviews table row, above the delete, export and enter-interview items.',
   },
   export: {
     id: 'fresco.InterviewsTable.ActionsDropdown.export',
     defaultMessage: 'Export',
-    description: 'Researcher-facing InterviewsTable / ActionsDropdown: Export',
+    description:
+      "Menu item in the actions menu of an interviews table row that opens the dialog for exporting that one interview's data. Export is a verb.",
   },
   enterInterview: {
     id: 'fresco.InterviewsTable.ActionsDropdown.enterInterview',
     defaultMessage: 'Enter Interview',
     description:
-      'Researcher-facing InterviewsTable / ActionsDropdown: Enter Interview',
+      'Menu item in the actions menu of an interviews table row that opens that interview in the interview screen, as the participant would see it.',
   },
 });
 

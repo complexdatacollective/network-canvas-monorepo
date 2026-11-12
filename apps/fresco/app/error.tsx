@@ -17,32 +17,34 @@ const messages = defineMessages({
   success: {
     id: 'fresco.error.success',
     defaultMessage: 'Success',
-    description: 'Researcher-facing error: Success',
+    description:
+      'Title of the success toast shown on the error page after the researcher copies the debug information. Appears above the confirmation text.',
   },
   debugInformationCopiedToClipboard: {
     id: 'fresco.error.debugInformationCopiedToClipboard',
     defaultMessage: 'Debug information copied to clipboard',
     description:
-      'Researcher-facing error: Debug information copied to clipboard',
+      'Text of the success toast shown on the error page after pressing the Copy Debug Information button; the technical details of the error are now on the clipboard.',
   },
   frescoEncounteredAnErrorWhileTryingTo: {
     id: 'fresco.error.frescoEncounteredAnErrorWhileTryingTo',
     defaultMessage:
       'Fresco encountered an error while trying to load the page, and could not continue.',
     description:
-      'Researcher-facing error: Fresco encountered an error while trying to load the page, and could not continue.',
+      'Lead paragraph of the error page shown when a page of the app fails to load. Fresco is the product name. It sits under the heading Error. May be seen by anyone, including a participant.',
   },
   thisErrorHasBeenAutomaticallyReportedTo: {
     id: 'fresco.error.thisErrorHasBeenAutomaticallyReportedTo',
     defaultMessage:
       'This error has been automatically reported to us, but if you would like to provide further information that you think might be useful please contact us. You can also use the retry button to attempt to load the page again.',
     description:
-      'Researcher-facing error: This error has been automatically reported to us, but if you would like to provide further information that you think mi',
+      'Paragraph on the error page that says the error was reported automatically to the Fresco team, invites the reader to contact them, and points to the retry button that reloads the page. May be seen by anyone, including a participant.',
   },
   copyDebugInformation: {
     id: 'fresco.error.copyDebugInformation',
     defaultMessage: 'Copy Debug Information',
-    description: 'Researcher-facing error: Copy Debug Information',
+    description:
+      'Button on the error page that copies technical details of the error (message, path, browser, stack trace) to the clipboard so they can be sent to support.',
   },
 });
 

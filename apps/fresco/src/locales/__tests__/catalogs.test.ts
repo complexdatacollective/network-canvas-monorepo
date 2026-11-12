@@ -17,6 +17,7 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { frescoLocales } from '~/i18n/locales';
+import ar from '~/src/locales/ar.json';
 import {
   frescoCatalogLoaders,
   frescoCatalogSource,
@@ -53,6 +54,7 @@ const nlSources = readTranslationSources(localesDir, 'nl');
 const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
 const italianSources = readTranslationSources(localesDir, 'it');
 const frSources = readTranslationSources(localesDir, 'fr');
+const arSources = readTranslationSources(localesDir, 'ar');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 // What the app renders: every package's catalog for the locale, merged.
 const mergedEs = await frescoCatalogSource.load('es');
@@ -82,6 +84,7 @@ describe('Fresco researcher message catalogs', () => {
       'pt-BR',
       'it',
       'fr',
+      'ar',
     ]);
     for (const { locale } of frescoLocales) {
       expect(ecosystemLocales.map((entry) => entry.locale)).toContain(locale);
@@ -132,6 +135,10 @@ describe('Fresco researcher message catalogs', () => {
 
   it('requires complete French and matching ICU arguments and rich text tags', () => {
     expect(checkFullLocale(en, fr, frSources)).toEqual([]);
+  });
+
+  it('requires complete Arabic, with all six plural forms and matching ICU arguments and rich text tags', () => {
+    expect(checkFullLocale(en, ar, arSources)).toEqual([]);
   });
 
   it('keeps British English sparse with only reviewed differences', () => {

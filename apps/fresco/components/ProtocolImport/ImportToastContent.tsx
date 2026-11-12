@@ -23,55 +23,64 @@ const messages = defineMessages({
   failed: {
     id: 'fresco.ImportToastContent.failed',
     defaultMessage: 'Import failed',
-    description: 'Researcher-facing ImportToastContent: Import failed',
+    description:
+      'Title of the protocol import toast when importing a protocol file has failed; the error and a retry button appear under it.',
   },
 
   complete: {
     id: 'fresco.ImportToastContent.complete',
     defaultMessage: 'Import complete',
-    description: 'Researcher-facing ImportToastContent: Import complete',
+    description:
+      'Title of the protocol import toast when a protocol file has been imported successfully.',
   },
 
   saving: {
     id: 'fresco.ImportToastContent.saving',
     defaultMessage: 'Saving...',
-    description: 'Researcher-facing ImportToastContent: Saving...',
+    description:
+      'Progress step shown in the protocol import toast while the imported protocol is being saved to the database.',
   },
 
   uploadingAssets: {
     id: 'fresco.ImportToastContent.uploadingAssets',
     defaultMessage: 'Uploading assets...',
-    description: 'Researcher-facing ImportToastContent: Uploading assets...',
+    description:
+      "Progress step shown in the protocol import toast while the protocol's media files (images, audio, video) are uploaded to storage.",
   },
 
   uploadingProtocol: {
     id: 'fresco.ImportToastContent.uploadingProtocol',
     defaultMessage: 'Uploading protocol...',
-    description: 'Researcher-facing ImportToastContent: Uploading protocol...',
+    description:
+      'Progress step shown in the protocol import toast while the protocol file itself is uploaded to storage.',
   },
 
   extracting: {
     id: 'fresco.ImportToastContent.extracting',
     defaultMessage: 'Extracting assets...',
-    description: 'Researcher-facing ImportToastContent: Extracting assets...',
+    description:
+      'Progress step shown in the protocol import toast while the media files are unpacked from the protocol file.',
   },
 
   duplicates: {
     id: 'fresco.ImportToastContent.duplicates',
     defaultMessage: 'Checking duplicates...',
-    description: 'Researcher-facing ImportToastContent: Checking duplicates...',
+    description:
+      'Progress step shown in the protocol import toast while Fresco checks whether the same protocol or media files were already imported.',
   },
 
   validating: {
     id: 'fresco.ImportToastContent.validating',
     defaultMessage: 'Validating...',
-    description: 'Researcher-facing ImportToastContent: Validating...',
+    description:
+      'Progress step shown in the protocol import toast while the protocol is checked for errors.',
   },
 
   parsing: {
     id: 'fresco.ImportToastContent.parsing',
     defaultMessage: 'Reading file...',
-    description: 'Researcher-facing ImportToastContent: Reading file...',
+    description:
+      'First progress step shown in the protocol import toast while the chosen protocol file is opened and read.',
   },
 });
 

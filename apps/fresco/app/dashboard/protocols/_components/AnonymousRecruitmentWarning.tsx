@@ -12,14 +12,14 @@ const messages = defineMessages({
     id: 'fresco.protocols.AnonymousRecruitmentWarning.pleaseNote',
     defaultMessage: 'Please Note',
     description:
-      'Researcher-facing protocols / AnonymousRecruitmentWarning: Please Note',
+      'Title of an information box on the dashboard overview, shown only while the anonymous recruitment setting is switched on.',
   },
   anonymousRecruitmentIsEnabledThisMeansThat: {
     id: 'fresco.protocols.AnonymousRecruitmentWarning.anonymousRecruitmentIsEnabledThisMeansThat',
     defaultMessage:
       'Anonymous recruitment is enabled. This means that participants can self-enroll in your study without needing to be invited, by visiting the protocol-specific onboarding link. To disable anonymous recruitment, visit <tag1>the settings page</tag1>.',
     description:
-      'Researcher-facing protocols / AnonymousRecruitmentWarning: Anonymous recruitment is enabled. This means that participants can self-enroll in your study without needing to be invit',
+      "Text of the information box shown while anonymous recruitment is on: anyone with a protocol's onboarding link can start an interview without an invitation. tag1 wraps a link to the Settings page.",
   },
 });
 

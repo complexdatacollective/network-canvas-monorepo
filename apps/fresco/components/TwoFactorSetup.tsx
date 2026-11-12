@@ -33,94 +33,102 @@ const messages = defineMessages({
   requiredCode: {
     id: 'fresco.TwoFactorSetup.requiredCode',
     defaultMessage: 'Code is required',
-    description: 'Researcher-facing TwoFactorSetup: Code is required',
+    description:
+      'Validation error under the 6-digit code field of the two-factor setup wizard, shown when the researcher continues without entering the code from their authenticator app.',
   },
 
   copyCopied: {
     id: 'fresco.TwoFactorSetup.copyCopied',
     defaultMessage: 'Copied!',
-    description: 'Researcher-facing TwoFactorSetup: Copied!',
+    description:
+      'Label of the small copy button beside the setup secret in the two-factor setup wizard for two seconds after the secret was copied. Confirms the copy; not an action.',
   },
   copyCopy: {
     id: 'fresco.TwoFactorSetup.copyCopy',
     defaultMessage: 'Copy',
-    description: 'Researcher-facing TwoFactorSetup: Copy',
+    description:
+      'Small button beside the secret text field in the two-factor setup wizard; it copies the secret to the clipboard. A verb, not a noun.',
   },
   copyVerify: {
     id: 'fresco.TwoFactorSetup.copyVerify',
     defaultMessage: 'Verify',
-    description: 'Researcher-facing TwoFactorSetup: Verify',
+    description:
+      'Label of the next button on the code-entry step of the two-factor setup wizard; it checks the 6-digit code from the authenticator app. A verb.',
   },
   copyIVeSavedMyRecoveryCodes: {
     id: 'fresco.TwoFactorSetup.copyIVeSavedMyRecoveryCodes',
     defaultMessage: "I've saved my recovery codes",
     description:
-      "Researcher-facing TwoFactorSetup: I've saved my recovery codes",
+      'Label of the final button of the two-factor setup wizard, shown under the list of recovery codes. Pressing it confirms the codes are stored safely and finishes setup.',
   },
   singleAccountWarning: {
     id: 'fresco.TwoFactorSetup.singleAccountWarning',
     defaultMessage: 'Single account warning',
-    description: 'Researcher-facing TwoFactorSetup: Single account warning',
+    description:
+      'Title of the warning box at the top of the first step of the two-factor setup wizard, shown only when the installation has a single researcher account.',
   },
   youAreTheOnlyUserAccountIf: {
     id: 'fresco.TwoFactorSetup.youAreTheOnlyUserAccountIf',
     defaultMessage:
       'You are the only user account. If you lose access to your authenticator app and recovery codes, there will be no way to recover your account. Consider creating a second user account first.',
     description:
-      'Researcher-facing TwoFactorSetup: You are the only user account. If you lose access to your authenticator app and recovery codes, there will be no way to ',
+      'Text of the warning box on the first step of the two-factor setup wizard, shown when the researcher has the only account. User account means researcher account; the warning is about being locked out.',
   },
   generatingSecret: {
     id: 'fresco.TwoFactorSetup.generatingSecret',
     defaultMessage: 'Generating secret...',
-    description: 'Researcher-facing TwoFactorSetup: Generating secret...',
+    description:
+      'Loading text with a spinner on the first step of the two-factor setup wizard while the secret and QR code are being generated.',
   },
   qRCodeForAuthenticatorApp: {
     id: 'fresco.TwoFactorSetup.qRCodeForAuthenticatorApp',
     defaultMessage: 'QR code for authenticator app',
     description:
-      'Researcher-facing TwoFactorSetup: QR code for authenticator app',
+      'Alternative text of the QR code image in the two-factor setup wizard, which the researcher scans with an authenticator app. Read only by screen readers.',
   },
   canTScanTheQRCodeEnter: {
     id: 'fresco.TwoFactorSetup.canTScanTheQRCodeEnter',
     defaultMessage: "Can't scan the QR code? Enter this secret manually:",
     description:
-      "Researcher-facing TwoFactorSetup: Can't scan the QR code? Enter this secret manually:",
+      'Label above the read-only field under the QR code in the two-factor setup wizard. The field shows the secret text that can be typed into an authenticator app when the QR code cannot be scanned.',
   },
   enterYour6DigitCodeFromYour: {
     id: 'fresco.TwoFactorSetup.enterYour6DigitCodeFromYour',
     defaultMessage: 'Enter your 6-digit code from your authenticator app',
     description:
-      'Researcher-facing TwoFactorSetup: Enter your 6-digit code from your authenticator app',
+      'Label of the 6-digit code field on the second step of the two-factor setup wizard. The code is the current one-time two-factor code, not a recovery code.',
   },
   setUpTwoFactorAuthentication: {
     id: 'fresco.TwoFactorSetup.setUpTwoFactorAuthentication',
     defaultMessage: 'Set Up Two-Factor Authentication',
     description:
-      'Researcher-facing TwoFactorSetup: Set Up Two-Factor Authentication',
+      'Title of the wizard dialog, and of its first step, that guides a researcher through turning on two-factor authentication for their account.',
   },
   scanTheQRCodeWithYourAuthenticator: {
     id: 'fresco.TwoFactorSetup.scanTheQRCodeWithYourAuthenticator',
     defaultMessage:
       'Scan the QR code with your authenticator app, then enter the code to verify.',
     description:
-      'Researcher-facing TwoFactorSetup: Scan the QR code with your authenticator app, then enter the code to verify.',
+      'Instruction under the title of the first step of the two-factor setup wizard, telling the researcher to scan the QR code with an authenticator app.',
   },
   verifyCode: {
     id: 'fresco.TwoFactorSetup.verifyCode',
     defaultMessage: 'Verify Code',
-    description: 'Researcher-facing TwoFactorSetup: Verify Code',
+    description:
+      'Title of the second step of the two-factor setup wizard, where the researcher types the 6-digit code from their authenticator app to check that setup works.',
   },
   enterThe6DigitCodeFromYour: {
     id: 'fresco.TwoFactorSetup.enterThe6DigitCodeFromYour',
     defaultMessage:
       'Enter the 6-digit code from your authenticator app to verify setup.',
     description:
-      'Researcher-facing TwoFactorSetup: Enter the 6-digit code from your authenticator app to verify setup.',
+      'Instruction under the title of the second step of the two-factor setup wizard, asking for the current 6-digit code from the authenticator app.',
   },
   saveRecoveryCodes: {
     id: 'fresco.TwoFactorSetup.saveRecoveryCodes',
     defaultMessage: 'Save Recovery Codes',
-    description: 'Researcher-facing TwoFactorSetup: Save Recovery Codes',
+    description:
+      'Title of the last step of the two-factor setup wizard, which lists the one-time recovery codes the researcher must store for use if the authenticator app is lost.',
   },
 });
 
