@@ -249,10 +249,27 @@ describe('request size and shape', () => {
     ['an unknown key', { ...validRequest(), extra: true }],
     ['a protocol that is not an object', { ...validRequest(), protocol: [] }],
     [
-      'blank research questions',
+      'a blank research question',
       {
         ...validRequest(),
-        studyContext: { ...validRequest().studyContext, researchQuestions: [] },
+        studyContext: {
+          ...validRequest().studyContext,
+          researchQuestions: ['  '],
+        },
+      },
+    ],
+    [
+      'no synopsis',
+      {
+        ...validRequest(),
+        studyContext: { ...validRequest().studyContext, synopsis: undefined },
+      },
+    ],
+    [
+      'a blank synopsis',
+      {
+        ...validRequest(),
+        studyContext: { ...validRequest().studyContext, synopsis: ' \n ' },
       },
     ],
   ])('refuses %s with 400', async (_, body) => {
@@ -266,6 +283,29 @@ describe('request size and shape', () => {
     });
     expect(model.calls).toHaveLength(0);
     expect(store.windows.size).toBe(0);
+  });
+});
+
+describe('study details without research questions', () => {
+  it('are reviewed: research questions are recommended, not required', async () => {
+    const model = okModel();
+    const { deps } = createHarness(model);
+    const response = await handleRequest(
+      reviewRequest({
+        ...validRequest(),
+        studyContext: { ...validRequest().studyContext, researchQuestions: [] },
+      }),
+      deps,
+    );
+    expect(response.status).toBe(200);
+    const events = await readEvents(response);
+    expect(events.at(-1)?.type).toBe('result');
+    expect(model.calls).toHaveLength(1);
+    // The model is told there are none, as an empty list, and what to do then.
+    expect(model.calls[0]?.user).toContain('"researchQuestions":[]');
+    expect(model.calls[0]?.system).toContain(
+      '## When no research questions are given',
+    );
   });
 });
 
