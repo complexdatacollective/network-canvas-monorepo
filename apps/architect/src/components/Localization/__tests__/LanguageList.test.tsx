@@ -443,6 +443,7 @@ describe('LanguageList', () => {
           .map((option) => option.textContent),
       ).toEqual([
         'Choose a language…',
+        'Arabic',
         'Brazilian Portuguese',
         'Dutch',
         'English',

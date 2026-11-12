@@ -1,5 +1,6 @@
 import { SUPPLIED_LANGUAGES } from '@codaco/protocol-validation';
 
+import ar from '../locales/added/ar.json' with { type: 'json' };
 import de from '../locales/added/de.json' with { type: 'json' };
 import en from '../locales/added/en.json' with { type: 'json' };
 import es from '../locales/added/es.json' with { type: 'json' };
@@ -27,6 +28,7 @@ export type AddedTextCatalogues = Readonly<
 /** The interview's catalogues of the text corrections have added. */
 export const ADDED_TEXT: AddedTextCatalogues = {
   en,
+  ar,
   de,
   es,
   fr,
