@@ -229,14 +229,14 @@ Los archivos CSV conservan cada respuesta exactamente como se introdujo, así qu
 
 ### Elegir entre CSV y GraphML {#choosing-between-csv-and-graphml}
 
-| Aspecto                       | CSV                                              | GraphML                                                  |
-| ----------------------------- | ------------------------------------------------ | -------------------------------------------------------- |
-| **Enfoque del análisis**      | Análisis estadístico, medidas de redes egocéntricas | Visualización de redes, análisis de grafos            |
-| **Número de archivos**        | Varios archivos (uno por tipo de entidad)        | Un solo archivo por sesión de entrevista                 |
-| **Legibilidad**               | Legible por personas, se abre en Excel           | Formato XML, requiere software especializado             |
-| **Compatibilidad con R**      | Compatibilidad nativa, funciona con egor         | Requiere paquetes de grafos (igraph, network)            |
-| **Estructura de los datos**   | Relacional (tablas separadas)                    | Grafo (nodos y vínculos)                                 |
-| **Ideal para principiantes**  | ✓ Formato más familiar                           | Puede requerir un periodo de aprendizaje                 |
+| Aspecto                      | CSV                                                 | GraphML                                       |
+| ---------------------------- | --------------------------------------------------- | --------------------------------------------- |
+| **Enfoque del análisis**     | Análisis estadístico, medidas de redes egocéntricas | Visualización de redes, análisis de grafos    |
+| **Número de archivos**       | Varios archivos (uno por tipo de entidad)           | Un solo archivo por sesión de entrevista      |
+| **Legibilidad**              | Legible por personas, se abre en Excel              | Formato XML, requiere software especializado  |
+| **Compatibilidad con R**     | Compatibilidad nativa, funciona con egor            | Requiere paquetes de grafos (igraph, network) |
+| **Estructura de los datos**  | Relacional (tablas separadas)                       | Grafo (nodos y vínculos)                      |
+| **Ideal para principiantes** | ✓ Formato más familiar                              | Puede requerir un periodo de aprendizaje      |
 
 **Nuestra recomendación:** exporta los datos en **ambos formatos** cuando empieces a trabajar con datos de Network Canvas. Así podrás experimentar y decidir qué formato se adapta mejor a tu flujo de trabajo de análisis.
 
@@ -249,10 +249,10 @@ Cada exportación registra cómo terminó cada entrevista: el resultado que eleg
 
 El valor es uno de los siguientes:
 
-| Valor        | Significado                                                                                                                                                            |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `completed`  | La persona participante llegó al final normal de la entrevista.                                                                                                       |
-| `ineligible` | La persona participante no cumplía los requisitos del estudio.                                                                                                         |
+| Valor        | Significado                                                                                                                                                                               |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `completed`  | La persona participante llegó al final normal de la entrevista.                                                                                                                           |
+| `ineligible` | La persona participante no cumplía los requisitos del estudio.                                                                                                                            |
 | `terminated` | La entrevista terminó antes de tiempo por otro motivo, como una interrupción por malestar emocional o por motivos de seguridad. Es la opción **Finalizada antes de tiempo** de Architect. |
 
 La celda del CSV queda vacía, y el atributo de GraphML se omite, cuando no se ha registrado ningún resultado. Esto ocurre con las entrevistas que se finalizaron antes de que tu aplicación registrara el resultado y con las entrevistas que no se han finalizado. La columna del CSV siempre está presente, aunque todas sus celdas estén vacías.
@@ -293,11 +293,11 @@ Los nombres que solo se diferencian en las mayúsculas y minúsculas, como `Age`
 
 Una exportación puede terminar con advertencias sobre los cambios que ha hecho en tus datos. Aun así, la exportación se completa correctamente. Hay tres tipos de advertencia, cada uno con su propio título:
 
-| Advertencia                                                                       | Qué ha ocurrido                                                                                                                                                                       |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| «Se eliminaron algunos caracteres de los archivos GraphML»                        | Algunas respuestas contenían caracteres que GraphML no puede almacenar. Consulta [Caracteres eliminados de los archivos GraphML](#characters-removed-from-graphml-files).             |
-| «Se eliminaron algunos caracteres del texto del protocolo en los archivos GraphML» | El propio texto del protocolo, como su nombre o el nombre de un tipo de nodo, contenía ese tipo de caracteres.                                                                        |
-| «Se cambió el nombre de algunas columnas»                                         | Dos columnas del mismo archivo habrían tenido el mismo nombre. Consulta [Nombres de columna que coinciden](#column-names-that-clash).                                                   |
+| Advertencia                                                                        | Qué ha ocurrido                                                                                                                                                           |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| «Se eliminaron algunos caracteres de los archivos GraphML»                         | Algunas respuestas contenían caracteres que GraphML no puede almacenar. Consulta [Caracteres eliminados de los archivos GraphML](#characters-removed-from-graphml-files). |
+| «Se eliminaron algunos caracteres del texto del protocolo en los archivos GraphML» | El propio texto del protocolo, como su nombre o el nombre de un tipo de nodo, contenía ese tipo de caracteres.                                                            |
+| «Se cambió el nombre de algunas columnas»                                          | Dos columnas del mismo archivo habrían tenido el mismo nombre. Consulta [Nombres de columna que coinciden](#column-names-that-clash).                                     |
 
 Cada advertencia enumera exactamente qué se ha visto afectado. Dónde ves las advertencias depende de la aplicación:
 

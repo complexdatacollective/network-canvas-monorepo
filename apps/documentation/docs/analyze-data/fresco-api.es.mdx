@@ -75,13 +75,13 @@ Devuelve una lista paginada de entrevistas, empezando por las actualizadas más 
 
 **Parámetros de consulta** (todos opcionales; se pasan en la cadena de consulta de la URL):
 
-| Parámetro       | Tipo   | Valor predeterminado | Descripción                                  |
-| --------------- | ------ | -------------------- | -------------------------------------------- |
-| `page`          | entero | `1`                  | Número de la página que se devuelve.         |
-| `perPage`       | entero | `10`                 | Elementos por página (máximo `100`).         |
-| `protocolId`    | cadena | ninguno              | Solo las entrevistas de este protocolo.      |
+| Parámetro       | Tipo   | Valor predeterminado | Descripción                                        |
+| --------------- | ------ | -------------------- | -------------------------------------------------- |
+| `page`          | entero | `1`                  | Número de la página que se devuelve.               |
+| `perPage`       | entero | `10`                 | Elementos por página (máximo `100`).               |
+| `protocolId`    | cadena | ninguno              | Solo las entrevistas de este protocolo.            |
 | `participantId` | cadena | ninguno              | Solo las entrevistas de esta persona participante. |
-| `status`        | cadena | ninguno              | `completed` o `in-progress`.                 |
+| `status`        | cadena | ninguno              | `completed` o `in-progress`.                       |
 
 **Ejemplo de solicitud**
 
@@ -121,27 +121,27 @@ curl -H "Authorization: Bearer $FRESCO_TOKEN" \
 
 Cada objeto de `data` es un resumen de una entrevista:
 
-| Campo           | Descripción |
-| --------------- | ----------- |
-| `id`            | Identificador único de la entrevista. |
-| `startTime`     | Cuándo empezó la entrevista. |
-| `finishTime`    | Cuándo se completó, o `null` mientras está en curso. |
-| `lastUpdated`   | Cuándo cambiaron por última vez los datos de la entrevista. |
-| `currentStep`   | La etapa a la que ha llegado la persona participante. |
+| Campo           | Descripción                                                                                                                                                                                              |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | Identificador único de la entrevista.                                                                                                                                                                    |
+| `startTime`     | Cuándo empezó la entrevista.                                                                                                                                                                             |
+| `finishTime`    | Cuándo se completó, o `null` mientras está en curso.                                                                                                                                                     |
+| `lastUpdated`   | Cuándo cambiaron por última vez los datos de la entrevista.                                                                                                                                              |
+| `currentStep`   | La etapa a la que ha llegado la persona participante.                                                                                                                                                    |
 | `finishStageId` | El ID de la etapa «Pantalla de finalización» del protocolo en la que terminó la entrevista, o `null` en las entrevistas que no se han finalizado o que se finalizaron antes de que Fresco lo registrara. |
-| `finishOutcome` | Cómo terminó la entrevista: `completed`, `ineligible` o `terminated`. `null` en las entrevistas que no se han finalizado o que se finalizaron antes de que Fresco registrara el resultado. |
-| `protocolId`    | ID del protocolo utilizado. |
-| `participantId` | ID de la persona participante. |
-| `participant`   | Resumen de la persona participante: `id`, `identifier`, `label`. |
-| `protocol`      | Resumen del protocolo: `id`, `name`. |
+| `finishOutcome` | Cómo terminó la entrevista: `completed`, `ineligible` o `terminated`. `null` en las entrevistas que no se han finalizado o que se finalizaron antes de que Fresco registrara el resultado.               |
+| `protocolId`    | ID del protocolo utilizado.                                                                                                                                                                              |
+| `participantId` | ID de la persona participante.                                                                                                                                                                           |
+| `participant`   | Resumen de la persona participante: `id`, `identifier`, `label`.                                                                                                                                         |
+| `protocol`      | Resumen del protocolo: `id`, `name`.                                                                                                                                                                     |
 
 El objeto `meta` describe la página actual:
 
-| Campo       | Descripción |
-| ----------- | ----------- |
-| `page`      | El número de la página actual. |
-| `perPage`   | Elementos por página. |
-| `pageCount` | Número total de páginas. |
+| Campo       | Descripción                                         |
+| ----------- | --------------------------------------------------- |
+| `page`      | El número de la página actual.                      |
+| `perPage`   | Elementos por página.                               |
+| `pageCount` | Número total de páginas.                            |
 | `total`     | Total de entrevistas que coinciden con la consulta. |
 
 ### Obtener una entrevista {#get-a-single-interview}
@@ -216,23 +216,23 @@ curl -H "Authorization: Bearer $FRESCO_TOKEN" \
 
 El objeto `data` contiene el registro completo de la entrevista:
 
-| Campo           | Descripción |
-| --------------- | ----------- |
-| `id`            | Identificador único de la entrevista. |
-| `startTime`     | Cuándo empezó la entrevista. |
-| `finishTime`    | Cuándo se completó, o `null` mientras está en curso. |
-| `exportTime`    | Cuándo se exportó la entrevista desde el panel por última vez, o `null` si nunca se ha exportado. |
-| `lastUpdated`   | Cuándo cambiaron por última vez los datos de la entrevista. |
-| `currentStep`   | La etapa a la que ha llegado la persona participante. |
+| Campo           | Descripción                                                                                                                                                                                              |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | Identificador único de la entrevista.                                                                                                                                                                    |
+| `startTime`     | Cuándo empezó la entrevista.                                                                                                                                                                             |
+| `finishTime`    | Cuándo se completó, o `null` mientras está en curso.                                                                                                                                                     |
+| `exportTime`    | Cuándo se exportó la entrevista desde el panel por última vez, o `null` si nunca se ha exportado.                                                                                                        |
+| `lastUpdated`   | Cuándo cambiaron por última vez los datos de la entrevista.                                                                                                                                              |
+| `currentStep`   | La etapa a la que ha llegado la persona participante.                                                                                                                                                    |
 | `finishStageId` | El ID de la etapa «Pantalla de finalización» del protocolo en la que terminó la entrevista, o `null` en las entrevistas que no se han finalizado o que se finalizaron antes de que Fresco lo registrara. |
-| `finishOutcome` | Cómo terminó la entrevista: `completed`, `ineligible` o `terminated`. `null` en los mismos casos que `finishStageId`. |
-| `isSynthetic`   | `true` para datos de prueba generados, `false` para una entrevista real. |
-| `network`       | Los datos de red recopilados (nodos, vínculos, ego). |
-| `stageMetadata` | Metadatos internos de algunas etapas, como las respuestas negativas de las etapas «Censo de díadas» y «Censo de fuerza de vínculos». Normalmente es `null`. |
-| `protocolId`    | ID del protocolo utilizado. |
-| `participantId` | ID de la persona participante. |
-| `participant`   | Resumen de la persona participante: `id`, `identifier`, `label`. |
-| `protocol`      | Detalle del protocolo: `id`, `name`, `schemaVersion`, `description`, `codebook`. |
+| `finishOutcome` | Cómo terminó la entrevista: `completed`, `ineligible` o `terminated`. `null` en los mismos casos que `finishStageId`.                                                                                    |
+| `isSynthetic`   | `true` para datos de prueba generados, `false` para una entrevista real.                                                                                                                                 |
+| `network`       | Los datos de red recopilados (nodos, vínculos, ego).                                                                                                                                                     |
+| `stageMetadata` | Metadatos internos de algunas etapas, como las respuestas negativas de las etapas «Censo de díadas» y «Censo de fuerza de vínculos». Normalmente es `null`.                                              |
+| `protocolId`    | ID del protocolo utilizado.                                                                                                                                                                              |
+| `participantId` | ID de la persona participante.                                                                                                                                                                           |
+| `participant`   | Resumen de la persona participante: `id`, `identifier`, `label`.                                                                                                                                         |
+| `protocol`      | Detalle del protocolo: `id`, `name`, `schemaVersion`, `description`, `codebook`.                                                                                                                         |
 
 ### Enumerar protocolos {#list-protocols}
 
@@ -268,12 +268,12 @@ curl -H "Authorization: Bearer $FRESCO_TOKEN" \
 
 Cada objeto de la matriz describe un protocolo:
 
-| Campo          | Descripción |
-| -------------- | ----------- |
+| Campo          | Descripción                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------ |
 | `id`           | Identificador único del protocolo. Úsalo como filtro `protocolId` en el endpoint de entrevistas. |
-| `name`         | El nombre del protocolo. |
-| `importedAt`   | Cuándo se importó el protocolo en la instancia. |
-| `lastModified` | Cuándo se modificó por última vez el archivo de protocolo. |
+| `name`         | El nombre del protocolo.                                                                         |
+| `importedAt`   | Cuándo se importó el protocolo en la instancia.                                                  |
+| `lastModified` | Cuándo se modificó por última vez el archivo de protocolo.                                       |
 
 ## Paginación {#pagination}
 
@@ -499,12 +499,12 @@ if __name__ == "__main__":
 
 Los errores usan un código de estado HTTP estándar con un cuerpo JSON `{ "error": ... }`.
 
-| Estado                      | Significado |
-| --------------------------- | ----------- |
-| `401 Unauthorized`          | Falta el token, no es válido o está desactivado. |
+| Estado                      | Significado                                                          |
+| --------------------------- | -------------------------------------------------------------------- |
+| `401 Unauthorized`          | Falta el token, no es válido o está desactivado.                     |
 | `403 Forbidden`             | La API de datos de entrevistas está desactivada en la configuración. |
-| `404 Not Found`             | ID de entrevista desconocido o versión de la API no admitida. |
-| `500 Internal Server Error` | Error inesperado del servidor. |
+| `404 Not Found`             | ID de entrevista desconocido o versión de la API no admitida.        |
+| `500 Internal Server Error` | Error inesperado del servidor.                                       |
 
 ## Versiones de la API {#versioning}
 

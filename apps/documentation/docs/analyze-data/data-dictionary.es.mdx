@@ -37,17 +37,17 @@ cómo se codifica cada valor.
 
 ## Tipos de variable de un vistazo {#variable-types-at-a-glance}
 
-| Tipo de variable | Columnas CSV                               | Valor en CSV                                   | `attr.type` de GraphML                    | Valor de ejemplo           |
-| ---------------- | ------------------------------------------ | ---------------------------------------------- | ----------------------------------------- | -------------------------- |
-| Texto            | `variable_name`                            | El texto, entre comillas solo cuando hace falta | `string`                                  | `Jane`                     |
-| Número           | `variable_name`                            | El número                                      | `int` o `double` (detectado)              | `34`                       |
-| Booleano         | `variable_name`                            | `true` / `false`                               | `boolean`                                 | `true`                     |
-| Ordinal          | `variable_name`                            | El valor de la opción seleccionada             | `int`, `double` o `string` (detectado)    | `3`                        |
-| Categórico       | `variable_name_option` (una por opción)    | `true` / `false` por opción                    | `boolean` (una clave por opción)          | `true`                     |
-| Escalar          | `variable_name`                            | Número entre 0 y 1                             | `float`                                   | `0.735`                    |
-| Fecha            | `variable_name`                            | Cadena de fecha ISO                            | `string`                                  | `1989-07-21`               |
-| Disposición      | `variable_name_x`, `variable_name_y`       | Coordenadas normalizadas (0–1)                 | `double` (claves `_X` y `_Y`)             | `0.62`, `0.24`             |
-| Ubicación        | `variable_name`                            | Identificador de la zona del mapa seleccionada | `string`                                  | `outside-selectable-areas` |
+| Tipo de variable | Columnas CSV                            | Valor en CSV                                    | `attr.type` de GraphML                 | Valor de ejemplo           |
+| ---------------- | --------------------------------------- | ----------------------------------------------- | -------------------------------------- | -------------------------- |
+| Texto            | `variable_name`                         | El texto, entre comillas solo cuando hace falta | `string`                               | `Jane`                     |
+| Número           | `variable_name`                         | El número                                       | `int` o `double` (detectado)           | `34`                       |
+| Booleano         | `variable_name`                         | `true` / `false`                                | `boolean`                              | `true`                     |
+| Ordinal          | `variable_name`                         | El valor de la opción seleccionada              | `int`, `double` o `string` (detectado) | `3`                        |
+| Categórico       | `variable_name_option` (una por opción) | `true` / `false` por opción                     | `boolean` (una clave por opción)       | `true`                     |
+| Escalar          | `variable_name`                         | Número entre 0 y 1                              | `float`                                | `0.735`                    |
+| Fecha            | `variable_name`                         | Cadena de fecha ISO                             | `string`                               | `1989-07-21`               |
+| Disposición      | `variable_name_x`, `variable_name_y`    | Coordenadas normalizadas (0–1)                  | `double` (claves `_X` y `_Y`)          | `0.62`, `0.24`             |
+| Ubicación        | `variable_name`                         | Identificador de la zona del mapa seleccionada  | `string`                               | `outside-selectable-areas` |
 
 En los apartados siguientes se detalla cada tipo, incluido cómo aparecen los
 valores que faltan.
@@ -195,12 +195,12 @@ elegido en la etapa «Pantalla de finalización» en la que terminó la entrevis
 Los archivos GraphML registran el mismo valor en el atributo `nc:finishOutcome`
 del elemento `<graph>`.
 
-| Valor        | Significado                                                                                                                                                                                                      |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `completed`  | La persona participante llegó al final normal de la entrevista.                                                                                                                                                  |
-| `ineligible` | La persona participante no cumplía los requisitos del estudio.                                                                                                                                                   |
-| `terminated` | La entrevista terminó antes de tiempo por otro motivo, como una interrupción por malestar o por seguridad.                                                                                                      |
-| Vacío (CSV)  | No se registró ningún resultado; por ejemplo, en una entrevista que se finalizó antes de que tu aplicación registrara el resultado, o en una que no se ha finalizado. GraphML omite el atributo.                  |
+| Valor        | Significado                                                                                                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `completed`  | La persona participante llegó al final normal de la entrevista.                                                                                                                                  |
+| `ineligible` | La persona participante no cumplía los requisitos del estudio.                                                                                                                                   |
+| `terminated` | La entrevista terminó antes de tiempo por otro motivo, como una interrupción por malestar o por seguridad.                                                                                       |
+| Vacío (CSV)  | No se registró ningún resultado; por ejemplo, en una entrevista que se finalizó antes de que tu aplicación registrara el resultado, o en una que no se ha finalizado. GraphML omite el atributo. |
 
 La columna figura en todos los archivos de ego, aunque todas sus celdas estén
 vacías. Consulta
