@@ -15,15 +15,18 @@
 
 import { withoutBidiFormatting } from '@codaco/app-i18n/messages';
 
-/** One element's box inside its parent's, in one writing direction. */
+/**
+ * One element's box inside the box it is measured against (its parent, or
+ * for a fixed box its containing block), in one writing direction.
+ */
 export type PlacedElement = Readonly<{
   /** Child indexes from the root: the same element in both renders. */
   key: string;
   /** Tag, id, first classes and a little text, for a failure message. */
   label: string;
-  /** Distance from the parent box's left edge to this box's left edge. */
+  /** Distance from the left edge of the box it is measured against. */
   left: number;
-  /** Distance from this box's right edge to the parent box's right edge. */
+  /** Distance from this box's right edge to the right edge it is measured against. */
   right: number;
   /**
    * For an icon that points along the line: -1 drawn pointing left, 1 drawn
@@ -151,6 +154,53 @@ export function snapshotLayout(options: SnapshotOptions = {}): LayoutSnapshot {
     return text.replace(/\s+/g, ' ').trim();
   };
 
+  // Whether an element is the containing block of `position: fixed`
+  // descendants: a transform of any kind, a filter, perspective,
+  // or layout or paint containment, including a `will-change` promising one.
+  // Motion's layout animations put a transform on an ancestor for as long
+  // as they run, which moves a fixed layer's containing block without
+  // moving anything else.
+  const containsFixed = (style: CSSStyleDeclaration) =>
+    style.transform !== 'none' ||
+    style.translate !== 'none' ||
+    style.scale !== 'none' ||
+    style.rotate !== 'none' ||
+    style.perspective !== 'none' ||
+    style.filter !== 'none' ||
+    style.backdropFilter !== 'none' ||
+    /\b(?:layout|paint|strict|content)\b/.test(style.contain) ||
+    /\b(?:transform|translate|scale|rotate|perspective|filter|backdrop-filter)\b/.test(
+      style.willChange,
+    );
+
+  // The left and right edges a box is measured against: its parent's, except
+  // for a fixed box, which is placed against the viewport or a transformed
+  // ancestor and has nothing to do with its DOM parent. (An absolute box is
+  // still measured from its parent: the parent is itself measured from its
+  // own, so a fault anywhere up the chain is still caught.)
+  const edgesFor = (
+    element: Element,
+    position: string,
+    parent: Element,
+  ): { left: number; right: number } => {
+    if (position === 'fixed') {
+      for (
+        let ancestor = element.parentElement;
+        ancestor && ancestor !== document.documentElement;
+        ancestor = ancestor.parentElement
+      ) {
+        if (containsFixed(getComputedStyle(ancestor))) {
+          const box = ancestor.getBoundingClientRect();
+          const left = box.left + ancestor.clientLeft;
+          return { left, right: left + ancestor.clientWidth };
+        }
+      }
+      return { left: 0, right: document.documentElement.clientWidth };
+    }
+    const box = parent.getBoundingClientRect();
+    return { left: box.left, right: box.right };
+  };
+
   const elements: PlacedElement[] = [];
   const directions: Record<string, string> = {};
   const visit = (element: Element, key: string) => {
@@ -174,7 +224,7 @@ export function snapshotLayout(options: SnapshotOptions = {}): LayoutSnapshot {
       style.visibility !== 'hidden'
     ) {
       const box = element.getBoundingClientRect();
-      const parentBox = parent.getBoundingClientRect();
+      const placedIn = edgesFor(element, style.position, parent);
       // Boxes nobody sees are not laid out for reading: screen-reader text
       // (`sr-only` is 1px and clipped), Base UI's hidden inputs and focus
       // guards.
@@ -190,8 +240,8 @@ export function snapshotLayout(options: SnapshotOptions = {}): LayoutSnapshot {
         elements.push({
           key,
           label: describe(element),
-          left: box.left - parentBox.left,
-          right: parentBox.right - box.right,
+          left: box.left - placedIn.left,
+          right: placedIn.right - box.right,
           ...(arrow
             ? {
                 pointing: ((arrow === 'left' ? -1 : 1) *
