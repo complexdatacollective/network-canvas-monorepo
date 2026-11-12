@@ -28,5 +28,5 @@ asks an AI model to look for problems in your protocol and suggest fixes.
   kept by the service unless you choose to share your reviews with the Network
   Canvas team, in which case each one is kept for 90 days.
 - The service is free and limited: 5 reviews an hour for each browser, and a
-  daily budget shared by everyone who uses it. Architect tells you when either
-  limit is reached and when you can review again.
+  daily and a monthly budget shared by everyone who uses it. Architect tells
+  you when a limit is reached and when you can review again.
