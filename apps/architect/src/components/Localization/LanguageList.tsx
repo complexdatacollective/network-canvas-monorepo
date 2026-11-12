@@ -26,7 +26,9 @@ import {
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   type LocaleTag,
+  needsFallbackLanguage,
   sortByLanguageName,
+  SUPPLIED_LANGUAGES,
 } from '@codaco/protocol-validation';
 import {
   getLocalizationCoverage,
@@ -79,6 +81,32 @@ const messages = defineMessages({
       'Participants see this language wherever there is no translation in a language they use.',
     description:
       'Hint under the list that chooses the protocol’s default language, saying what the default language does.',
+  },
+  fallbackLanguage: {
+    id: 'architect.localization.languageList.fallbackLanguage',
+    defaultMessage: 'Fallback language',
+    description:
+      'Label of the list, under the default language, that chooses the protocol’s fallback language. It is shown only while the protocol’s default language is one Network Canvas has no built-in wording in (for example Swahili or Mexican Spanish). It lists the languages Network Canvas has built-in wording in.',
+  },
+  fallbackLanguageHint: {
+    id: 'architect.localization.languageList.fallbackLanguageHint',
+    defaultMessage:
+      'Network Canvas has no built-in wording in {language}. When an update adds text to the interview, such as a new message, this protocol has no translation of it, and participants see that text in the language you choose here.',
+    description:
+      'Hint under the list that chooses the protocol’s fallback language, saying when participants see that language. Built-in wording is the text Network Canvas supplies, such as button labels and messages. language is the name of the protocol’s default language, for example “Swahili”.',
+  },
+  fallbackLanguagePlaceholder: {
+    id: 'architect.localization.languageList.fallbackLanguagePlaceholder',
+    defaultMessage: 'Choose a language…',
+    description:
+      'Placeholder of the list that chooses the protocol’s fallback language, shown while none has been chosen.',
+  },
+  fallbackLanguageRequired: {
+    id: 'architect.localization.languageList.fallbackLanguageRequired',
+    defaultMessage:
+      'Choose a fallback language. The protocol can’t be downloaded until you do.',
+    description:
+      'Error shown under the list that chooses the protocol’s fallback language while none has been chosen.',
   },
   addLanguages: {
     id: 'architect.localization.languageList.addLanguages',
@@ -206,11 +234,19 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
     removeLanguage,
     removalImpact,
     setDefaultLanguage,
+    setFallbackLanguage,
   } = useLanguageActions(addButtonRef, draft);
   const locales = protocol?.localization.locales ?? EMPTY_LOCALES;
   const sortedLocales = useMemo(
     () => sortByLanguageName(locales, languageName, intl.locale),
     [intl.locale, languageName, locales],
+  );
+
+  // The languages Network Canvas has built-in wording in, any of which can
+  // be the fallback language whether or not the protocol declares it.
+  const fallbackChoices = useMemo(
+    () => sortByLanguageName(SUPPLIED_LANGUAGES, languageName, intl.locale),
+    [intl.locale, languageName],
   );
 
   const coverageByLocale = useMemo(
@@ -229,6 +265,8 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
   // does not offer it.
   const showTable = draft === undefined;
 
+  const { defaultLocale, fallbackLocale } = protocol.localization;
+
   return (
     <>
       {locales.length > 1 && (
@@ -241,10 +279,46 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
             value: locale,
             label: languageName(locale),
           }))}
-          value={protocol.localization.defaultLocale}
+          value={defaultLocale}
           onChange={(locale) => {
             if (typeof locale === 'string') {
               setDefaultLanguage(locale);
+            }
+          }}
+        />
+      )}
+      {/* Shown with a single language too: a protocol written only in a
+          language Network Canvas has no wording in needs one as well. */}
+      {needsFallbackLanguage(defaultLocale) && (
+        <UnconnectedField
+          name="fallback-language"
+          label={intl.formatMessage(messages.fallbackLanguage)}
+          hint={intl.formatMessage(messages.fallbackLanguageHint, {
+            language: languageName(defaultLocale),
+          })}
+          component={NativeSelectField}
+          required
+          // Offered only until a language is chosen: a protocol that needs a
+          // fallback language cannot go back to having none.
+          placeholder={
+            fallbackLocale === undefined
+              ? intl.formatMessage(messages.fallbackLanguagePlaceholder)
+              : undefined
+          }
+          options={fallbackChoices.map((locale) => ({
+            value: locale,
+            label: languageName(locale),
+          }))}
+          value={fallbackLocale}
+          errors={
+            fallbackLocale === undefined
+              ? [intl.formatMessage(messages.fallbackLanguageRequired)]
+              : undefined
+          }
+          showErrors={fallbackLocale === undefined}
+          onChange={(locale) => {
+            if (typeof locale === 'string') {
+              setFallbackLanguage(locale);
             }
           }}
         />

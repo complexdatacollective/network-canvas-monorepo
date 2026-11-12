@@ -7,6 +7,7 @@ import {
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
   BUILT_IN_WORDING_MISSING,
+  FALLBACK_LANGUAGE_MISSING,
   FINISH_STAGE_TEXT_MISSING,
 } from '../../../validation/validate-protocol.ts';
 import {
@@ -657,6 +658,12 @@ describe('closing text missing in the default language', () => {
       builtIn('finishLabel'),
       builtIn('finishConfirmation'),
       builtIn('finishFailed'),
+      {
+        code: FALLBACK_LANGUAGE_MISSING,
+        path: ['localization', 'fallbackLocale'],
+        message:
+          "Network Canvas has no wording of its own in the protocol's default language (ja), so the protocol must name a fallback language, or a language Network Canvas has wording in made the default.",
+      },
     ]);
   });
 

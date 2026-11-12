@@ -46,6 +46,7 @@ import {
 } from './utils/validateExternalData.ts';
 import validateProtocol, {
   BUILT_IN_WORDING_MISSING,
+  FALLBACK_LANGUAGE_MISSING,
   FINISH_STAGE_TEXT_MISSING,
   formatProtocolValidationIssues,
   ProtocolValidationError,
@@ -333,6 +334,14 @@ export {
   type BuiltInWordingProblem,
   findBuiltInWordingProblems,
 } from './schemas/9/built-in-wording.ts';
+// The one language a protocol names for the interview's own text, where its
+// default language is not one Network Canvas has wording in.
+export {
+  findMissingFallbackLanguage,
+  isFallbackLanguageChoice,
+  needsFallbackLanguage,
+  withFallbackLanguage,
+} from './schemas/9/fallback-language.ts';
 export {
   findTimelineStructureProblems,
   isFinishSessionStage,
@@ -406,6 +415,7 @@ export {
   extractProtocol,
   extractProtocolFromZip,
   BUILT_IN_WORDING_MISSING,
+  FALLBACK_LANGUAGE_MISSING,
   FINISH_STAGE_TEXT_MISSING,
   findCollidingAttributeNames,
   formatProtocolValidationIssues,

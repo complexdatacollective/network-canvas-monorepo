@@ -50,8 +50,11 @@ const builtInWording = {
   finishFailed: { ja: 'インタビューを終了できませんでした。' },
 };
 
+// Every text is written, and the protocol names the fallback language its
+// default language needs.
 const written = {
   ...newJapaneseProtocol,
+  localization: { ...japanese, fallbackLocale: 'en' },
   stages: [
     {
       ...newJapaneseProtocol.stages[0],
@@ -155,6 +158,7 @@ describe('<DefaultLanguageTextAlert />', () => {
   it('renders nothing for an automatic finish stage with its finished text', () => {
     renderAlert({
       ...newJapaneseProtocol,
+      localization: written.localization,
       stages: [
         {
           ...newJapaneseProtocol.stages[0],
@@ -191,6 +195,32 @@ describe('<DefaultLanguageTextAlert />', () => {
     expect(location.history?.at(-1)).toBe(
       translationTableHref({ kind: 'language', locale: 'ja' }),
     );
+  });
+
+  it('then asks for a fallback language once the text is written, and links to the Languages page', () => {
+    const { location } = renderAlert({ ...written, localization: japanese });
+
+    expect(screen.getByText(TITLE)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Network Canvas has no built-in wording in Japanese, so this protocol needs a fallback language: the language participants see text in when an update adds that text to the interview. Choose one on the Languages page. The protocol can’t be downloaded until then.',
+      ),
+    ).toBeInTheDocument();
+    const link = screen.getByRole('link', {
+      name: 'Choose a fallback language',
+    });
+    expect(link).toHaveAttribute('href', '/protocol/localization');
+    fireEvent.click(link);
+    expect(location.history?.at(-1)).toBe('/protocol/localization');
+  });
+
+  it('reports missing text before the missing fallback language', () => {
+    renderAlert(newJapaneseProtocol);
+
+    expect(screen.getByRole('link', EDIT_LINK)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Choose a fallback language' }),
+    ).not.toBeInTheDocument();
   });
 
   it('counts only the default language', () => {

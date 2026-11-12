@@ -18,6 +18,7 @@ import {
   changeProtocolLocale,
   removeProtocolLocale,
   setProtocolDefaultLocale,
+  setProtocolFallbackLocale,
 } from '~/ducks/modules/activeProtocol';
 import {
   getLocaleRemovalImpact,
@@ -287,6 +288,17 @@ export const useLanguageActions = (
   );
 
   /**
+   * Names the protocol's fallback language. No text changes, so an open
+   * stage has nothing to follow.
+   */
+  const setFallbackLanguage = useCallback(
+    (locale: LocaleTag) => {
+      dispatch(setProtocolFallbackLocale({ locale }));
+    },
+    [dispatch],
+  );
+
+  /**
    * Records the text of `from` as another language: every translation, the
    * declaration and the default move together to the language chosen.
    */
@@ -385,5 +397,6 @@ export const useLanguageActions = (
     removeLanguage,
     removalImpact,
     setDefaultLanguage,
+    setFallbackLanguage,
   };
 };

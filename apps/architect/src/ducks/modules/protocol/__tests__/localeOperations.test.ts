@@ -27,6 +27,7 @@ import {
   removeLocale,
   rewriteLocalizedStrings,
   setDefaultLocale,
+  setFallbackLocale,
   movedLocale,
   setTranslation,
   withoutLocale,
@@ -546,6 +547,97 @@ describe('setDefaultLocale', () => {
       ok: false,
       reason: 'not-declared',
     });
+  });
+});
+
+// Swahili is a language Network Canvas has no wording in, so a protocol
+// whose default language it is names a fallback language.
+describe('the fallback language', () => {
+  const withSwahili = () => protocolOf(addLocales(bilingual(), ['sw']));
+  const swahiliDefault = () =>
+    protocolOf(setDefaultLocale(withSwahili(), 'sw'));
+  const fallingBackToSpanish = () =>
+    protocolOf(setFallbackLocale(swahiliDefault(), 'es'));
+
+  it('is not chosen for the researcher when the default language comes to need one', () => {
+    expect(swahiliDefault().localization).toEqual({
+      defaultLocale: 'sw',
+      locales: ['en', 'fr', 'sw'],
+    });
+  });
+
+  it('is named by the researcher, and need not be a language the protocol declares', () => {
+    expect(fallingBackToSpanish().localization).toEqual({
+      defaultLocale: 'sw',
+      locales: ['en', 'fr', 'sw'],
+      fallbackLocale: 'es',
+    });
+  });
+
+  it('can be changed to another language Network Canvas has wording in', () => {
+    expect(
+      protocolOf(setFallbackLocale(fallingBackToSpanish(), 'fr')).localization
+        .fallbackLocale,
+    ).toBe('fr');
+  });
+
+  it.each(['sw', 'es-MX', 'ja', ''])(
+    'is refused when it is not a language Network Canvas has wording in (%s)',
+    (locale) => {
+      expect(setFallbackLocale(swahiliDefault(), locale)).toEqual({
+        ok: false,
+        reason: 'not-fallback-choice',
+      });
+    },
+  );
+
+  it('is refused while the default language is one Network Canvas has wording in', () => {
+    expect(setFallbackLocale(withSwahili(), 'es')).toEqual({
+      ok: false,
+      reason: 'not-fallback-choice',
+    });
+  });
+
+  it('is kept when languages are added and removed', () => {
+    const added = protocolOf(addLocales(fallingBackToSpanish(), ['de']));
+    expect(added.localization.fallbackLocale).toBe('es');
+    expect(
+      protocolOf(removeLocale(added, 'de')).localization.fallbackLocale,
+    ).toBe('es');
+  });
+
+  it('is kept when another language Network Canvas has no wording in becomes the default', () => {
+    const withJapanese = protocolOf(addLocales(fallingBackToSpanish(), ['ja']));
+    expect(
+      protocolOf(setDefaultLocale(withJapanese, 'ja')).localization,
+    ).toEqual({
+      defaultLocale: 'ja',
+      locales: ['en', 'fr', 'sw', 'ja'],
+      fallbackLocale: 'es',
+    });
+  });
+
+  it('goes when a language Network Canvas has wording in becomes the default', async () => {
+    const english = protocolOf(setDefaultLocale(fallingBackToSpanish(), 'en'));
+    expect(english.localization).toEqual({
+      defaultLocale: 'en',
+      locales: ['en', 'fr', 'sw'],
+    });
+    expect((await validateProtocol(english, { draft: true })).success).toBe(
+      true,
+    );
+  });
+
+  it('goes when the default language is corrected to one Network Canvas has wording in', () => {
+    expect(
+      protocolOf(changeLocale(fallingBackToSpanish(), 'sw', 'de')).localization,
+    ).toEqual({ defaultLocale: 'de', locales: ['en', 'fr', 'de'] });
+  });
+
+  it('is not chosen when the default language is corrected to one Network Canvas has no wording in', () => {
+    expect(
+      protocolOf(changeLocale(bilingual(), 'en', 'en-GB')).localization,
+    ).toEqual({ defaultLocale: 'en-GB', locales: ['en-GB', 'fr'] });
   });
 });
 

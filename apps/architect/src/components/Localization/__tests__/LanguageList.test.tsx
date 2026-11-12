@@ -399,4 +399,107 @@ describe('LanguageList', () => {
       screen.getByRole('button', { name: 'Add languages' }),
     ).toBeInTheDocument();
   });
+
+  // Swahili is a language Network Canvas has no built-in wording in.
+  describe('the fallback language', () => {
+    const swahili: CurrentProtocol = {
+      ...trilingual,
+      localization: { defaultLocale: 'sw', locales: ['sw'] },
+      stages: [],
+    };
+    const fallbackSelect = () =>
+      screen.queryByRole('combobox', { name: /^Fallback language/ });
+    const REQUIRED =
+      'Choose a fallback language. The protocol can’t be downloaded until you do.';
+
+    it('is not asked for while the default language is one Network Canvas has wording in', () => {
+      renderLanguageList();
+
+      expect(fallbackSelect()).not.toBeInTheDocument();
+    });
+
+    it('is asked for in a protocol whose only language Network Canvas has no wording in, with nothing chosen', () => {
+      renderLanguageList(swahili);
+
+      const select = fallbackSelect();
+      expect(select).toBeRequired();
+      expect(select).toHaveValue('');
+      expect(select).toHaveAccessibleDescription(
+        expect.stringContaining(
+          'Network Canvas has no built-in wording in Swahili.',
+        ),
+      );
+      expect(screen.getByText(REQUIRED)).toBeInTheDocument();
+    });
+
+    it('offers every language Network Canvas has wording in, by name, whether or not the protocol declares it', () => {
+      renderLanguageList(swahili);
+
+      const select = fallbackSelect();
+      if (!select) throw new Error('No fallback language list');
+      expect(
+        within(select)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual([
+        'Choose a language…',
+        'Brazilian Portuguese',
+        'Dutch',
+        'English',
+        'French',
+        'German',
+        'Italian',
+        'Simplified Chinese',
+        'Spanish',
+        'Traditional Chinese',
+      ]);
+    });
+
+    it('is recorded in the protocol when chosen, and can then only be changed', async () => {
+      const user = userEvent.setup();
+      const { store } = renderLanguageList(swahili);
+
+      const select = fallbackSelect();
+      if (!select) throw new Error('No fallback language list');
+      await user.selectOptions(select, 'Spanish');
+
+      expect(getProtocol(store.getState())?.localization).toEqual({
+        defaultLocale: 'sw',
+        locales: ['sw'],
+        fallbackLocale: 'es',
+      });
+      expect(fallbackSelect()).toHaveValue('es');
+      expect(screen.queryByText(REQUIRED)).not.toBeInTheDocument();
+      expect(
+        within(select).queryByRole('option', { name: 'Choose a language…' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('appears when such a language becomes the default, and goes with its choice when one Network Canvas has wording in does', async () => {
+      const user = userEvent.setup();
+      const { store } = renderLanguageList({
+        ...trilingual,
+        localization: { defaultLocale: 'en', locales: ['en', 'fr', 'sw'] },
+      });
+      const defaultSelect = screen.getByRole('combobox', {
+        name: 'Default language',
+      });
+
+      await user.selectOptions(defaultSelect, 'Swahili');
+      const select = fallbackSelect();
+      if (!select) throw new Error('No fallback language list');
+      expect(select).toHaveValue('');
+      await user.selectOptions(select, 'French');
+      expect(getProtocol(store.getState())?.localization.fallbackLocale).toBe(
+        'fr',
+      );
+
+      await user.selectOptions(defaultSelect, 'English');
+      expect(fallbackSelect()).not.toBeInTheDocument();
+      expect(getProtocol(store.getState())?.localization).toEqual({
+        defaultLocale: 'en',
+        locales: ['en', 'fr', 'sw'],
+      });
+    });
+  });
 });
