@@ -136,6 +136,7 @@ describe('F: the preview shows every text change a fix makes', () => {
         after: 'New wording',
         locale: 'en',
         otherTranslations: ['fr'],
+        markdown: true,
       },
     ]);
   });
@@ -155,6 +156,7 @@ describe('F: the preview shows every text change a fix makes', () => {
         after: 'New wording',
         locale: 'en',
         otherTranslations: [],
+        markdown: true,
       },
       {
         path: '/stages/names/prompts/p1/text/fr',
@@ -162,6 +164,7 @@ describe('F: the preview shows every text change a fix makes', () => {
         after: 'Nouveau texte',
         locale: 'fr',
         otherTranslations: [],
+        markdown: true,
       },
     ]);
   });
@@ -180,6 +183,7 @@ describe('F: the preview shows every text change a fix makes', () => {
         after: 'Before you start',
         locale: 'en',
         otherTranslations: [],
+        markdown: false,
       },
     ]);
     const label = recordFix(protocol, [
@@ -194,6 +198,7 @@ describe('F: the preview shows every text change a fix makes', () => {
         after: 'Very often',
         locale: 'en',
         otherTranslations: ['fr'],
+        markdown: true,
       },
     ]);
   });

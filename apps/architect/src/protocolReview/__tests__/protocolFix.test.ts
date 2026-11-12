@@ -142,6 +142,7 @@ describe('describeFixTextEdits', () => {
         after: 'Name everyone',
         locale: 'en',
         otherTranslations: ['fr'],
+        markdown: true,
       },
       {
         path: '/codebook/node/person/name',
@@ -149,6 +150,7 @@ describe('describeFixTextEdits', () => {
         after: 'Friend',
         locale: null,
         otherTranslations: [],
+        markdown: false,
       },
       {
         path: '/stages/names/prompts/p1/id',
@@ -156,6 +158,7 @@ describe('describeFixTextEdits', () => {
         after: 'not text',
         locale: null,
         otherTranslations: [],
+        markdown: false,
       },
     ]);
   });
@@ -166,6 +169,20 @@ describe('describeFixTextEdits', () => {
       op('set', '/stages/welcome/title/en', "It''s '{'here'}'"),
     ]);
     expect(edit?.after).toBe("It's {here}");
+  });
+
+  it('marks text the protocol declares as markdown, and only that text', () => {
+    const protocol = makeProtocol();
+    const edits = describeFixTextEdits(protocol, [
+      op('set', '/stages/names/prompts/p1/text', { en: '**Name** people' }),
+      op('set', '/stages/welcome/title/en', 'Hi there'),
+      op('set', '/stages/welcome/items/intro/content/en', '*Hi*'),
+    ]);
+    expect(edits.map(({ path, markdown }) => [path, markdown])).toEqual([
+      ['/stages/names/prompts/p1/text/en', true],
+      ['/stages/welcome/title/en', false],
+      ['/stages/welcome/items/intro/content/en', true],
+    ]);
   });
 });
 

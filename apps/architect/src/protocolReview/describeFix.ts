@@ -1,10 +1,20 @@
 import type { Finding } from '@codaco/protocol-review-worker/contract';
-import { type CurrentProtocol, messageText } from '@codaco/protocol-validation';
+import {
+  collectLocalizedStrings,
+  type CurrentProtocol,
+  messageText,
+} from '@codaco/protocol-validation';
 import { codebookHref } from '~/components/Codebook/codebookLinks';
 import { localizedText } from '~/utils/localizedText';
 
 import type { StoredOperation } from './fixEngine';
-import { formatPath, parsePath, readPath } from './fixPath';
+import {
+  findArrayMember,
+  formatPath,
+  isJsonObject,
+  parsePath,
+  readPath,
+} from './fixPath';
 import { isLocalizedValue } from './protocolFix';
 
 /**
@@ -26,10 +36,38 @@ export type FixTextEdit = {
    * longer say the same thing.
    */
   otherTranslations: string[];
+  markdown: boolean;
 };
 
 const plainText = (value: string, isTranslation: boolean) =>
   isTranslation ? messageText(value) : value;
+
+const probeAt = (value: unknown, segments: readonly string[]): unknown => {
+  const [head, ...rest] = segments;
+  if (head === undefined) return {};
+  if (Array.isArray(value)) {
+    return [probeAt(value[findArrayMember(value, head)], rest)];
+  }
+  const literals = isJsonObject(value)
+    ? Object.fromEntries(
+        Object.entries(value).filter(
+          ([, field]) => typeof field !== 'object' || field === null,
+        ),
+      )
+    : {};
+  return {
+    ...literals,
+    [head]: probeAt(isJsonObject(value) ? value[head] : undefined, rest),
+  };
+};
+
+const isMarkdownAt = (
+  protocol: CurrentProtocol,
+  segments: readonly string[],
+): boolean =>
+  collectLocalizedStrings(probeAt(protocol, segments)).some(
+    (hit) => hit.format === 'markdown',
+  );
 
 const parsed = (value: string | null): unknown => {
   if (value === null) return undefined;
@@ -64,6 +102,7 @@ const describeSet = (
     const kept = Object.keys(before)
       .filter((locale) => !changed.includes(locale))
       .toSorted();
+    const markdown = isMarkdownAt(protocol, segments);
     return changed.map((locale) => {
       const now = before[locale];
       return {
@@ -72,6 +111,7 @@ const describeSet = (
         after: plainText(after[locale] ?? '', true),
         locale,
         otherTranslations: kept,
+        markdown,
       };
     });
   }
@@ -103,6 +143,7 @@ const describeSet = (
       after: plainText(after, isTranslation),
       locale: isTranslation ? last : null,
       otherTranslations,
+      markdown: isTranslation && isMarkdownAt(protocol, segments.slice(0, -1)),
     },
   ];
 };

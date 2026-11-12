@@ -410,6 +410,7 @@ describe('F: the preview shows every text change a fix makes', () => {
         after: 'New wording',
         locale: 'en',
         otherTranslations: ['fr'],
+        markdown: true,
       },
     ]);
   });

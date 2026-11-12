@@ -15,6 +15,7 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
+import Markdown from '~/components/Markdown';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import {
   type DecisionRefusal,
@@ -204,6 +205,12 @@ const nextUndecided = (
 };
 
 type Refusal = { findingId: string; reason: DecisionRefusal };
+const FixText = ({ text, markdown }: { text: string; markdown: boolean }) =>
+  markdown ? (
+    <Markdown label={text} className="wrap-break-word" />
+  ) : (
+    <span className="wrap-break-word whitespace-pre-wrap">{text}</span>
+  );
 
 const refusalMessages: Record<DecisionRefusal, MessageDescriptor> = {
   not_owned: messages.notOwned,
@@ -455,18 +462,14 @@ const ReviewProblemView = ({
                         <span className="text-sm font-bold">
                           {intl.formatMessage(messages.now)}
                         </span>
-                        <span className="wrap-break-word whitespace-pre-wrap">
-                          {edit.now}
-                        </span>
+                        <FixText text={edit.now} markdown={edit.markdown} />
                       </div>
                     )}
                     <div className="bg-surface border-primary flex flex-col gap-1 rounded border-2 p-3">
                       <span className="text-sm font-bold">
                         {intl.formatMessage(messages.afterFix)}
                       </span>
-                      <span className="wrap-break-word whitespace-pre-wrap">
-                        {edit.after}
-                      </span>
+                      <FixText text={edit.after} markdown={edit.markdown} />
                     </div>
                   </div>
                   {edit.otherTranslations.length > 0 && (
