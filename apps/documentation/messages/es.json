@@ -111,13 +111,13 @@
     "type": "Tipo",
     "creates": "Crea",
     "usesPrompts": "Usa preguntas",
-    "schema": "Versión del esquema",
-    "availableIn": "Disponible en",
     "requires": "Requiere",
     "yes": "Sí",
     "no": "No",
-    "configureIn": "Se configura en {app}",
-    "runIn": "Se ejecuta en {app}"
+    "configureIn": "Se configura en",
+    "runIn": "Se ejecuta en",
+    "notAvailable": "{app} (no disponible)",
+    "schemaRequirement": "Requiere la versión {version} o posterior del <link>esquema de protocolo</link>."
   },
   "InterfaceNames": {
     "AlterEdgeForm": "Formulario de vínculos por álter",
