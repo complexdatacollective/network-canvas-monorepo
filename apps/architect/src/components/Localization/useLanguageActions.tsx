@@ -126,6 +126,12 @@ export type OpenStageDraft = Readonly<{
   /** The stage's texts as the editor holds them, at the stage's own paths. */
   texts: readonly LocalizedStringHit[];
   /**
+   * The stage as the editor holds it, and where the protocol holds it or will
+   * once it is saved. Network Canvas's wording for the stage's texts is that
+   * of this stage: the protocol may hold no stage there yet.
+   */
+  stage?: Readonly<{ index: number; stage: unknown }>;
+  /**
    * Applies a change the protocol has just taken to the open stage: `rewrite`
    * moves or removes its translations, and `change` is the change to the
    * protocol's languages, which the wording Network Canvas supplies follows.
@@ -158,6 +164,7 @@ export const useLanguageActions = (
   const offerBaseLanguage = useBaseLanguageOffer();
   const declared = protocol?.localization.locales;
   const draftTexts = draft?.texts ?? NO_TEXTS;
+  const draftStage = draft?.stage;
   const rewriteDraft = draft?.rewrite;
 
   const protocolTexts = useMemo(
@@ -170,11 +177,16 @@ export const useLanguageActions = (
   );
 
   // Network Canvas's own wording for a place: a text it words is not left
-  // empty by removing the only language the researcher reworded it in.
-  const suppliedWording = useMemo(
-    () => (protocol ? suppliedWordingIn(protocol) : undefined),
-    [protocol],
-  );
+  // empty by removing the only language the researcher reworded it in. Read
+  // from the protocol with the open stage in its place, as the stage's texts
+  // are: a stage being created is not in the protocol yet.
+  const suppliedWording = useMemo(() => {
+    if (!protocol) return undefined;
+    if (draftStage === undefined) return suppliedWordingIn(protocol);
+    const stages: unknown[] = [...protocol.stages];
+    stages[draftStage.index] = draftStage.stage;
+    return suppliedWordingIn({ ...protocol, stages });
+  }, [draftStage, protocol]);
 
   /** What removing `locale` would delete, unsaved stage text included. */
   const removalImpact = useCallback(

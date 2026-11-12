@@ -113,8 +113,12 @@ export default function StageLanguagesSection() {
   );
 
   const draft = useMemo<OpenStageDraft>(
-    () => ({ texts, rewrite }),
-    [rewrite, texts],
+    () => ({
+      texts,
+      ...(stage === undefined ? {} : { stage: { index: stageIndex, stage } }),
+      rewrite,
+    }),
+    [rewrite, stage, stageIndex, texts],
   );
 
   return (

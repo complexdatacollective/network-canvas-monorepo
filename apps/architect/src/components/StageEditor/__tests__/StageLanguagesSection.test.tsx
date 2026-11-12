@@ -1,11 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useMemo } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
+import type { StageEditTarget } from '@codaco/protocol-builder/stageEdit';
 import StageEditor from '@codaco/protocol-builder/StageEditor';
 import {
   type CurrentProtocol,
@@ -83,43 +85,54 @@ const protocol: CurrentProtocol = {
   ],
 };
 
-const target = { sectionId: sectionId({ kind: 'stage', stageId: STAGE_ID }) };
+const savedTarget: StageEditTarget = {
+  sectionId: sectionId({ kind: 'stage', stageId: STAGE_ID }),
+};
 
-const renderHeader = () => <StageEditorHeader stageId={STAGE_ID} />;
+const chromeFor =
+  (stageId: string | null) =>
+  ({ formId, readOnly, sections, problems }: StageEditorActionContext) => (
+    <StageEditorChrome
+      formId={formId}
+      readOnly={readOnly}
+      sections={sections}
+      problems={problems}
+      outlineHost={null}
+      stageId={stageId}
+      onCancel={() => undefined}
+    />
+  );
 
-const renderChrome = ({
-  formId,
-  readOnly,
-  sections,
-  problems,
-}: StageEditorActionContext) => (
-  <StageEditorChrome
-    formId={formId}
-    readOnly={readOnly}
-    sections={sections}
-    problems={problems}
-    outlineHost={null}
-    stageId={STAGE_ID}
-    onCancel={() => undefined}
-  />
+const headerFor = (stageId: string | null) => () => (
+  <StageEditorHeader stageId={stageId} />
 );
 
-function Editor({ store }: Readonly<{ store: ArchitectStore }>) {
+/** The editor on the saved language chooser, or on `target` when given. */
+function Editor({
+  store,
+  target = savedTarget,
+}: Readonly<{ store: ArchitectStore; target?: StageEditTarget }>) {
   const { adapter } = useArchitectClient(store, 'Another tab');
+  const stageId = 'sectionId' in target ? STAGE_ID : null;
+  const actions = useMemo(() => chromeFor(stageId), [stageId]);
+  const header = useMemo(() => headerFor(stageId), [stageId]);
   return (
     <ProtocolBuilder adapter={adapter} protocolId={PROTOCOL_ID}>
       <StageEditor
         target={target}
         formId={FORM_ID}
-        actions={renderChrome}
-        header={renderHeader}
+        actions={actions}
+        header={header}
         registry={architectStageEditors}
       />
     </ProtocolBuilder>
   );
 }
 
-const openEditor = async (opened: CurrentProtocol = protocol) => {
+const mountEditor = async (
+  opened: CurrentProtocol,
+  target?: StageEditTarget,
+) => {
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
@@ -130,12 +143,17 @@ const openEditor = async (opened: CurrentProtocol = protocol) => {
   render(
     <Provider store={store}>
       <ActionToolbarProvider>
-        <Editor store={store} />
+        <Editor store={store} {...(target === undefined ? {} : { target })} />
       </ActionToolbarProvider>
     </Provider>,
   );
   const name = await screen.findByRole('textbox', { name: 'Stage name' });
   await waitFor(() => expect(name).not.toHaveAttribute('readonly'));
+  return { store, name };
+};
+
+const openEditor = async (opened: CurrentProtocol = protocol) => {
+  const { store, name } = await mountEditor(opened);
   const label = opened.stages.find((stage) => stage.id === STAGE_ID)?.label;
   await waitFor(() => expect(readStageDraft().stage?.label).toEqual(label));
   return { store, name };
@@ -381,5 +399,46 @@ describe('the language chooser’s languages in Architect', () => {
     );
     await userEvent.click(remove);
     expect(globalThis.__architectDialogMocks.confirm).not.toHaveBeenCalled();
+  });
+
+  it('lets a language go when a stage being created rewords Network Canvas’s heading only in it', async () => {
+    // No language chooser yet: the one being created is not in the protocol,
+    // so Network Canvas's English heading for it is known only from the open
+    // stage.
+    const { store } = await mountEditor(
+      {
+        ...protocol,
+        localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+        stages: protocol.stages.filter((stage) => stage.id !== STAGE_ID),
+      },
+      {
+        stageType: 'LanguageChooser',
+        position: 0,
+        fields: { title: { fr: 'Choisis ta langue' } },
+      },
+    );
+    await waitFor(() =>
+      expect(readStageDraft().stage).toMatchObject({
+        title: { fr: 'Choisis ta langue' },
+      }),
+    );
+
+    const remove = removeButton('French');
+    expect(remove).not.toHaveAttribute('aria-disabled');
+    await userEvent.click(remove);
+
+    await waitFor(() =>
+      expect(getProtocol(store.getState())?.localization.locales).toEqual([
+        'en',
+      ]),
+    );
+    // The heading reads as Network Canvas words it in English, which the
+    // stage does not hold.
+    await waitFor(() =>
+      expect(readStageDraft().stage).not.toHaveProperty('title'),
+    );
+    expect(screen.getByRole('textbox', { name: 'Heading' })).toHaveValue(
+      'Choose a language',
+    );
   });
 });
