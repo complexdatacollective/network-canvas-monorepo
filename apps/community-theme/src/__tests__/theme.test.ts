@@ -15,6 +15,7 @@ import {
   toDisplayColor,
 } from '@codaco/tailwind-config/theme-colors';
 
+import { menuStart } from '../../theme/javascripts/discourse/lib/menu-start.js';
 import { NETWORK_CANVAS } from '../../theme/javascripts/discourse/lib/site-links.js';
 import {
   SITE_LOCALES,
@@ -587,6 +588,21 @@ describe('the shared header', () => {
     // releases instead of staying on an older major.
     expect(current[0]).toBe(lowest[0]);
     expect(order(current, lowest)).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("the forum's menu", () => {
+  // Community spans 300–400 in a panel spanning 100–1000.
+  const community = { left: 300, right: 400 };
+  const panel = { left: 100, right: 1000 };
+
+  it('opens under Community, measured from the left in a left-to-right forum', () => {
+    expect(menuStart(community, panel, 'ltr')).toBe(200);
+  });
+
+  // The menu's start edge is its right edge there, so the offset is too.
+  it('opens under Community, measured from the right in a right-to-left forum', () => {
+    expect(menuStart(community, panel, 'rtl')).toBe(600);
   });
 });
 

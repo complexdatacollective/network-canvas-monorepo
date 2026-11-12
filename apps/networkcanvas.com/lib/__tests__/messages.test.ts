@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { supportedLocales } from '~/lib/i18n/locales';
 import { loadLocaleMessages } from '~/lib/i18n/messages';
+import ar from '~/messages/ar.json';
 import de from '~/messages/de.json';
 import enGB from '~/messages/en-GB.json';
 import en from '~/messages/en.json';
@@ -46,6 +47,7 @@ const translatedCatalogs = [
   ['Brazilian Portuguese', ptBR],
   ['Italian', italian],
   ['French', fr],
+  ['Arabic', ar],
 ] as const;
 
 describe('message catalogs', () => {

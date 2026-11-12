@@ -33,6 +33,7 @@ import {
 } from '~/lib/i18n/appLocales';
 import { getStaticLocaleParams } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
+import { websiteLocaleAlternates } from '~/lib/siteUrls';
 
 type LocaleLayoutProps = {
   children: ReactNode;
@@ -72,18 +73,7 @@ export async function generateMetadata({
     },
     alternates: {
       canonical,
-      languages: {
-        'en-US': 'https://networkcanvas.com/en-US',
-        'en-GB': 'https://networkcanvas.com/en-GB',
-        'es': 'https://networkcanvas.com/es',
-        'zh-Hans': 'https://networkcanvas.com/zh-Hans',
-        'zh-Hant': 'https://networkcanvas.com/zh-Hant',
-        'de': 'https://networkcanvas.com/de',
-        'nl': 'https://networkcanvas.com/nl',
-        'pt-BR': 'https://networkcanvas.com/pt-BR',
-        'it': 'https://networkcanvas.com/it',
-        'fr': 'https://networkcanvas.com/fr',
-      },
+      languages: websiteLocaleAlternates(),
     },
     openGraph: {
       title: t('siteTitle'),

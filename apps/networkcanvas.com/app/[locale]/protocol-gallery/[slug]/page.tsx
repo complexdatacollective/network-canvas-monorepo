@@ -121,7 +121,8 @@ export default async function ProtocolDetailPage({
                     variant="subtitle"
                     margin="none"
                     render={<p />}
-                    className="mt-3"
+                    dir="auto"
+                    className="text-match-parent mt-3"
                   >
                     {protocol.title}
                   </Heading>
@@ -129,7 +130,8 @@ export default async function ProtocolDetailPage({
                     margin="none"
                     intent="meta"
                     emphasis="muted"
-                    className="mt-3"
+                    dir="auto"
+                    className="text-match-parent mt-3"
                   >
                     {protocol.authors}
                   </Paragraph>
@@ -140,14 +142,22 @@ export default async function ProtocolDetailPage({
                       downloads={protocol.downloads}
                     />
                   </div>
-                  <Paragraph margin="none" className="mt-8">
+                  <Paragraph
+                    margin="none"
+                    dir="auto"
+                    className="text-match-parent mt-8"
+                  >
                     {protocol.summary}
                   </Paragraph>
                 </div>
 
                 <Surface noContainer spacing="lg" shadow="md">
                   <OverlineHeading>{t('detail.demonstrates')}</OverlineHeading>
-                  <Paragraph margin="none" className="mt-3">
+                  <Paragraph
+                    margin="none"
+                    dir="auto"
+                    className="text-match-parent mt-3"
+                  >
                     {protocol.description}
                   </Paragraph>
                 </Surface>

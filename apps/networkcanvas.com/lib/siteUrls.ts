@@ -1,5 +1,5 @@
 import { getLocalizedPathname } from '~/lib/i18n/clientLocale';
-import { isLocale, type Locale } from '~/lib/i18n/locales';
+import { isLocale, locales, type Locale } from '~/lib/i18n/locales';
 import {
   protocolGalleryOrigin,
   protocolGalleryPathPrefix,
@@ -59,6 +59,20 @@ function getProtocolGalleryRoot() {
 
 function isProtocolGalleryHosted() {
   return getProtocolGalleryRoot() !== undefined;
+}
+
+/**
+ * The address of one website page in every language the site offers, for the
+ * page's `alternates.languages`: `/updates` gives `https://networkcanvas.com/es/updates`
+ * for Spanish, and so on. The home page's path is empty.
+ */
+export function websiteLocaleAlternates(path = '') {
+  return Object.fromEntries(
+    locales.map((locale) => [
+      locale,
+      `${canonicalNetworkCanvasUrl}/${locale}${path}`,
+    ]),
+  );
 }
 
 export function documentationUrl(path = '/') {
