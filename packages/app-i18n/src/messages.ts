@@ -122,10 +122,15 @@ export function createAppIntl(options: {
   const direction = options.direction ?? textDirectionOf(options.locale);
   const intl = createReactIntl(options.locale, messages, options);
 
-  // A rewritten message is formatted by a formatter with no catalog: react-intl
-  // prefers `messages[id]` over any descriptor it is handed, so one holding
-  // the catalog would format the untouched translation instead.
-  let uncataloged: IntlShape | undefined;
+  // A rewritten message is formatted by a second formatter whose catalog
+  // holds, for the one call, the rewritten translation under the message's
+  // id. Its descriptor carries the rewritten default message. react-intl then
+  // does what it always does: formats the translation, and if that fails,
+  // reports it and falls back to the default. The catalog is cleared after
+  // each call (formatting is synchronous), so a translation never answers for
+  // a later message.
+  const isolatedCatalog: Record<string, MessageSource | undefined> = {};
+  let isolating: IntlShape | undefined;
   const rewritten = new Map<
     MessageSource,
     Map<string, MessageFormatElement[]>
@@ -163,23 +168,39 @@ export function createAppIntl(options: {
   ) => {
     const names = isolatedArgumentNames(values, direction);
     const id = descriptor.id;
-    const source =
-      (id === undefined ? undefined : messages[id]) ??
-      descriptor.defaultMessage;
-    if (names.size === 0 || id === undefined || source === undefined) {
+    const translation = id === undefined ? undefined : messages[id];
+    const fallback = descriptor.defaultMessage;
+    if (
+      names.size === 0 ||
+      id === undefined ||
+      (translation === undefined && fallback === undefined)
+    ) {
       return intl.formatMessage(descriptor, values, opts);
     }
-    let message: MessageFormatElement[];
+    let isolatedTranslation: MessageSource | undefined;
+    let isolatedFallback: MessageFormatElement[] | undefined;
     try {
-      message = isolatedMessage(source, names);
+      // An empty translation stays as it is: react-intl reads it as missing
+      // and falls back, which an empty parsed message would not do.
+      isolatedTranslation =
+        translation === undefined || translation === ''
+          ? translation
+          : isolatedMessage(translation, names);
+      isolatedFallback =
+        fallback === undefined ? undefined : isolatedMessage(fallback, names);
     } catch {
       // Unparseable ICU is react-intl's error to report, with the id and the
-      // message in hand.
+      // message in hand, and its fallback to make.
       return intl.formatMessage(descriptor, values, opts);
     }
-    uncataloged ??= createReactIntl(options.locale, {}, options);
-    const isolated = { ...descriptor, defaultMessage: message };
-    return uncataloged.formatMessage(isolated, values, opts);
+    isolating ??= createReactIntl(options.locale, isolatedCatalog, options);
+    isolatedCatalog[id] = isolatedTranslation;
+    try {
+      const isolated = { ...descriptor, defaultMessage: isolatedFallback };
+      return isolating.formatMessage(isolated, values, opts);
+    } finally {
+      isolatedCatalog[id] = undefined;
+    }
   }) as FormatMessage;
 
   return { ...intl, formatMessage, $t: formatMessage };
@@ -187,7 +208,9 @@ export function createAppIntl(options: {
 
 function createReactIntl(
   locale: string,
-  messages: CatalogMessages,
+  messages: Readonly<
+    Record<string, string | MessageFormatElement[] | undefined>
+  >,
   options: Readonly<{ onError?: AppIntlErrorHandler; timeZone?: string }>,
 ): IntlShape {
   return createIntl(

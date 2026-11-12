@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ecosystemLocales, pseudoAppLocales } from '../locales.ts';
 import {
@@ -108,6 +108,54 @@ describe('bidi isolation of interpolated values', () => {
       },
     });
     expect(chunksSeen.flat().join('')).toBe(isolated('team-b!'));
+  });
+
+  it('falls back to the English default when the translation fails to format', () => {
+    // The translation parses but needs a `b` tag the caller does not supply,
+    // so react-intl reports it and formats the English default instead. That
+    // fallback must survive the rewrite.
+    const message = {
+      id: 'demo.hello',
+      defaultMessage: 'Hello {name}',
+      description: 'Test message whose translation needs a tag.',
+    };
+    const onError = vi.fn();
+    const intl = createAppIntl({
+      locale: 'ar',
+      messages: { [message.id]: 'مرحبا <b>{name}</b>' },
+      onError,
+    });
+    expect(intl.formatMessage(message, { name: 'Ann!' })).toBe(
+      `Hello ${isolated('Ann!')}`,
+    );
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the English default for an empty translation', () => {
+    const intl = createAppIntl({
+      locale: 'ar',
+      messages: { [JOINED.id]: '' },
+    });
+    expect(intl.formatMessage(JOINED, { teamName: 'x', role: 'y' })).toBe(
+      `You joined ${isolated('x')} as ${isolated('y')}`,
+    );
+  });
+
+  it('keeps the catalog of one formatter out of the next message', () => {
+    // A translation used for one message must not answer for another id.
+    const intl = createAppIntl({
+      locale: 'ar',
+      messages: { [JOINED.id]: JOINED_AR },
+    });
+    intl.formatMessage(JOINED, { teamName: 'a', role: 'b' });
+    const other = {
+      id: 'demo.other',
+      defaultMessage: 'Other {name}',
+      description: 'Test message with no translation.',
+    };
+    expect(intl.formatMessage(other, { name: 'x' })).toBe(
+      `Other ${isolated('x')}`,
+    );
   });
 
   it('isolates values under the right-to-left pseudo-locale', () => {
