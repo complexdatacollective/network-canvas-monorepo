@@ -50,9 +50,20 @@ const problemRow = (popover: Locator, title: string) =>
 const rowButton = (popover: Locator, title: string) =>
   problemRow(popover, title).getByRole('button', { name: new RegExp(title) });
 
-/** The review panel while it shows one problem: named by the problem's title. */
+/**
+ * The review panel while it shows one problem: named by the problem's title,
+ * exactly. The toast that confirms a fix is a dialog too, and its name ends
+ * with the same title.
+ */
 const problemView = (page: Page, title: string) =>
-  page.getByRole('dialog', { name: title });
+  page.getByRole('dialog', { name: title, exact: true });
+
+/**
+ * Fix for me, by its exact name: a fix whose text can be adjusted first also
+ * offers "Fix for me, then edit it".
+ */
+const fixForMe = (view: Locator) =>
+  view.getByRole('button', { name: 'Fix for me', exact: true });
 
 const countName = (count: number) =>
   `Review protocol, ${count} ${count === 1 ? 'problem' : 'problems'} still to decide`;
@@ -790,7 +801,7 @@ test.describe('results', () => {
       ),
     ).toBeVisible();
 
-    await view.getByRole('button', { name: 'Fix for me' }).click();
+    await fixForMe(view).click();
     // On to the next problem, in the same panel.
     const nextView = problemView(page, next);
     await expect(nextView).toBeVisible();
@@ -825,11 +836,7 @@ test.describe('results', () => {
   }) => {
     const { popover } = await reviewedProtocol(page, seed, context);
     const title = 'The first prompt is vague';
-    await (
-      await openProblem(page, popover, title)
-    )
-      .getByRole('button', { name: 'Fix for me' })
-      .click();
+    await fixForMe(await openProblem(page, popover, title)).click();
     const second = problemView(
       page,
       'The second prompt has no limit on how many to name',
@@ -847,21 +854,17 @@ test.describe('results', () => {
         'This was fixed for you. Undo takes the change back out of your protocol.',
       ),
     ).toBeVisible();
-    await expect(view.getByRole('button', { name: 'Fix for me' })).toHaveCount(
-      0,
-    );
+    await expect(fixForMe(view)).toHaveCount(0);
     await view.getByRole('button', { name: 'Undo' }).click();
     await readProtocolJson(
       page,
       (protocol) => promptText(protocol, 'p1')?.en === OLD_P1_TEXT,
     );
     // Undone, it is undecided again and stays on screen to decide.
-    await expect(
-      view.getByRole('button', { name: 'Fix for me' }),
-    ).toBeVisible();
+    await expect(fixForMe(view)).toBeVisible();
     await expect(reviewButton(page)).toHaveAccessibleName(countName(4));
 
-    await view.getByRole('button', { name: 'Fix for me' }).click();
+    await fixForMe(view).click();
     await expect(second).toBeVisible();
     await backToList(
       page,
@@ -885,7 +888,7 @@ test.describe('results', () => {
     await expect(
       view.getByText('Stage 2 · Names: require at least two names'),
     ).toBeVisible();
-    await view.getByRole('button', { name: 'Fix for me' }).click();
+    await fixForMe(view).click();
 
     const fixed = await readProtocolJson(
       page,
@@ -926,7 +929,7 @@ test.describe('results', () => {
         'This fix cannot be made for you. Make the change yourself, using the description below.',
       ),
     ).toBeVisible();
-    const fix = view.getByRole('button', { name: 'Fix for me' });
+    const fix = fixForMe(view);
     await expect(fix).toBeDisabled();
     // I will fix this is still on offer.
     await expect(
@@ -1020,7 +1023,7 @@ test.describe('results', () => {
   }) => {
     const { popover } = await reviewedProtocol(page, seed, context);
     const view = await openProblem(page, popover, 'The first prompt is vague');
-    await view.getByRole('button', { name: 'Fix for me' }).click();
+    await fixForMe(view).click();
     await readProtocolJson(
       page,
       (protocol) => promptText(protocol, 'p1')?.en === NEW_P1_TEXT,
@@ -1056,7 +1059,7 @@ test.describe('results', () => {
   }) => {
     const { service, popover } = await reviewedProtocol(page, seed, context);
     const view = await openProblem(page, popover, 'The first prompt is vague');
-    await view.getByRole('button', { name: 'Fix for me' }).click();
+    await fixForMe(view).click();
     const second = 'The second prompt has no limit on how many to name';
     await backToList(page, problemView(page, second), second);
 
@@ -1077,14 +1080,19 @@ test.describe('results', () => {
     // And the same protocol can be reviewed again.
     await continueToModelStep(page);
     await pressStartReview(page);
+    // The stand-in service answers with the same problems, the first among
+    // them. The protocol already holds the change that problem asks for, so
+    // it shows as fixed and is not left to decide; the fix was the earlier
+    // review's, so this review offers no Undo for it.
     await expect(reviewButton(page)).toHaveAccessibleName(
-      countName(FINDINGS.length),
+      countName(FINDINGS.length - 1),
     );
     expect(service.bodies).toHaveLength(2);
-    await expect(
-      problemRow(popover, 'The first prompt is vague'),
-    ).toBeVisible();
-    await expect(popover.getByText('Fixed for you')).toHaveCount(0);
+    const first = problemRow(popover, 'The first prompt is vague');
+    await expect(first).toBeVisible();
+    await expect(first.getByText('Fixed for you')).toBeVisible();
+    await expect(first.getByRole('button', { name: 'Undo' })).toHaveCount(0);
+    await expect(popover.getByText('Fixed for you')).toHaveCount(1);
   });
 });
 
@@ -1386,7 +1394,7 @@ test.describe('persistence', () => {
   ) {
     const { popover } = await reviewedProtocol(page, seed, context);
     const view = await openProblem(page, popover, 'The first prompt is vague');
-    await view.getByRole('button', { name: 'Fix for me' }).click();
+    await fixForMe(view).click();
     await readProtocolJson(
       page,
       (protocol) => promptText(protocol, 'p1')?.en === NEW_P1_TEXT,
