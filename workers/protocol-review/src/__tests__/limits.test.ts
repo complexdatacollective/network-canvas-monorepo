@@ -160,8 +160,8 @@ describe('hourly limits', () => {
     expect(model.calls[0]?.signal.aborted).toBe(true);
     expect(countFor(harness.store, 'installation')).toBe(1);
     // Input is known; output was never reported, so the cap is charged.
-    expect(harness.store.spend.get(utcDay(START))).toBe(
-      costMicros({ ...USAGE, outputTokens: MAX_OUTPUT_TOKENS }),
+    expect(harness.store.spend.anthropic.get(utcDay(START))).toBe(
+      costMicros('anthropic', { ...USAGE, outputTokens: MAX_OUTPUT_TOKENS }),
     );
   });
 
@@ -178,7 +178,11 @@ describe('hourly limits', () => {
 });
 
 describe('the limiter on its own', () => {
-  const keys = { installationKey: 'i', addressKey: 'a' };
+  const keys = {
+    installationKey: 'i',
+    addressKey: 'a',
+    provider: 'anthropic' as const,
+  };
 
   it('refunds only the window the review was counted in', () => {
     const store = createMemoryStore();
@@ -206,6 +210,7 @@ describe('the limiter on its own', () => {
     admit(store, {
       installationKey: 'j',
       addressKey: 'b',
+      provider: 'anthropic',
       reservationMicros: 0,
       now: START + 2 * HOUR,
     });
@@ -218,14 +223,16 @@ describe('the daily spending ceiling', () => {
     const harness = createHarness(okModel());
     const { status } = await runReview(harness);
     expect(status).toBe(200);
-    expect(harness.store.spend.get(utcDay(START))).toBe(costMicros(USAGE));
+    expect(harness.store.spend.anthropic.get(utcDay(START))).toBe(
+      costMicros('anthropic', USAGE),
+    );
   });
 
   it('prices usage from the price table', () => {
     // 1,000 input at $4/M, 10,000 cache reads at $0.20/M, 2,000 output at $20/M.
-    expect(costMicros(USAGE)).toBe(4_000 + 2_000 + 40_000);
+    expect(costMicros('anthropic', USAGE)).toBe(4_000 + 2_000 + 40_000);
     expect(
-      costMicros({
+      costMicros('anthropic', {
         inputTokens: 0,
         cacheCreationInputTokens: 1_000_000,
         cacheReadInputTokens: 0,
@@ -237,7 +244,7 @@ describe('the daily spending ceiling', () => {
   it('refuses a review the day cannot cover, until the next UTC midnight', async () => {
     const harness = createHarness(okModel());
     const day = utcDay(START);
-    harness.store.spend.set(day, DAILY_CEILING_MICROS - 1);
+    harness.store.spend.anthropic.set(day, DAILY_CEILING_MICROS - 1);
     const refused = await runReview(harness);
     expect(refused.status).toBe(503);
     expect(refused.error).toEqual({
@@ -246,7 +253,9 @@ describe('the daily spending ceiling', () => {
     });
     // A refused review counts against nothing.
     expect(countFor(harness.store, 'installation')).toBe(0);
-    expect(harness.store.spend.get(day)).toBe(DAILY_CEILING_MICROS - 1);
+    expect(harness.store.spend.anthropic.get(day)).toBe(
+      DAILY_CEILING_MICROS - 1,
+    );
   });
 
   it('cannot be overshot by reviews running at the same time', () => {
@@ -255,12 +264,14 @@ describe('the daily spending ceiling', () => {
     const first = admit(store, {
       installationKey: 'i1',
       addressKey: 'a1',
+      provider: 'anthropic',
       reservationMicros: reservation,
       now: START,
     });
     const second = admit(store, {
       installationKey: 'i2',
       addressKey: 'a2',
+      provider: 'anthropic',
       reservationMicros: reservation,
       now: START,
     });
@@ -281,11 +292,14 @@ describe('the daily spending ceiling', () => {
     const third = admit(store, {
       installationKey: 'i3',
       addressKey: 'a3',
+      provider: 'anthropic',
       reservationMicros: reservation,
       now: START,
     });
     expect(third.ok).toBe(true);
-    expect(store.spend.get(utcDay(START))).toBe(100_000 + reservation);
+    expect(store.spend.anthropic.get(utcDay(START))).toBe(
+      100_000 + reservation,
+    );
   });
 
   it('settles a failed review to what it reported, and nothing when the provider refused it', async () => {
@@ -299,8 +313,8 @@ describe('the daily spending ceiling', () => {
       }),
     );
     await runReview(billed);
-    expect(billed.store.spend.get(utcDay(START))).toBe(
-      costMicros({ ...USAGE, outputTokens: MAX_OUTPUT_TOKENS }),
+    expect(billed.store.spend.anthropic.get(utcDay(START))).toBe(
+      costMicros('anthropic', { ...USAGE, outputTokens: MAX_OUTPUT_TOKENS }),
     );
 
     const unbilled = createHarness(
@@ -310,15 +324,15 @@ describe('the daily spending ceiling', () => {
       }),
     );
     await runReview(unbilled);
-    expect(unbilled.store.spend.get(utcDay(START))).toBe(0);
+    expect(unbilled.store.spend.anthropic.get(utcDay(START))).toBe(0);
   });
 
   it('reserves one token per UTF-8 byte of every text, plus the framing', () => {
     const texts = ['x'.repeat(100_000), '朋友😀'.repeat(1_000)];
     // 100,000 one-byte characters, then 1,000 × (3 + 3 + 4) bytes.
     const bytes = 100_000 + 10_000;
-    expect(reservationMicros(texts)).toBe(
-      costMicros({
+    expect(reservationMicros('anthropic', texts)).toBe(
+      costMicros('anthropic', {
         inputTokens: 0,
         cacheCreationInputTokens: bytes + RESERVATION_OVERHEAD_TOKENS,
         cacheReadInputTokens: 0,
@@ -338,6 +352,7 @@ describe('the monthly spending ceiling', () => {
     admit(store, {
       installationKey: `i${now}`,
       addressKey: `a${now}`,
+      provider: 'anthropic',
       reservationMicros: reservation,
       now,
     });
@@ -345,7 +360,7 @@ describe('the monthly spending ceiling', () => {
   it('refuses a review the month cannot cover, until the next UTC month', async () => {
     const harness = createHarness(okModel());
     // Spent on an earlier day of this month: today has spent nothing.
-    harness.store.spend.set('2026-11-03', MONTHLY_CEILING_MICROS - 1);
+    harness.store.spend.anthropic.set('2026-11-03', MONTHLY_CEILING_MICROS - 1);
     const refused = await runReview(harness);
     expect(refused.status).toBe(503);
     expect(refused.error).toEqual({
@@ -354,14 +369,14 @@ describe('the monthly spending ceiling', () => {
     });
     // A refused review counts against nothing.
     expect(countFor(harness.store, 'installation')).toBe(0);
-    expect(harness.store.spend.get(utcDay(START))).toBeUndefined();
+    expect(harness.store.spend.anthropic.get(utcDay(START))).toBeUndefined();
   });
 
   it('adds up every day of the month', () => {
     const store = createMemoryStore();
     const share = Math.floor(MONTHLY_CEILING_MICROS / 4);
     for (const day of ['2026-11-01', '2026-11-04', '2026-11-08']) {
-      store.spend.set(day, share);
+      store.spend.anthropic.set(day, share);
     }
     // Three quarters are spent: a review that fits the last quarter runs…
     expect(admitAt(store, START, 1_000_000).ok).toBe(true);
@@ -372,7 +387,7 @@ describe('the monthly spending ceiling', () => {
       error: 'monthly_limit',
       retryAt: '2026-12-01T00:00:00.000Z',
     });
-    expect([...store.spend.keys()].toSorted()).toEqual([
+    expect([...store.spend.anthropic.keys()].toSorted()).toEqual([
       '2026-11-01',
       '2026-11-04',
       '2026-11-08',
@@ -382,16 +397,16 @@ describe('the monthly spending ceiling', () => {
 
   it('starts again with the month, and forgets the month before', () => {
     const store = createMemoryStore();
-    store.spend.set('2026-11-15', 1);
+    store.spend.anthropic.set('2026-11-15', 1);
     // The last day alone spent the whole of November…
-    store.spend.set('2026-11-30', MONTHLY_CEILING_MICROS);
+    store.spend.anthropic.set('2026-11-30', MONTHLY_CEILING_MICROS);
     expect(admitAt(store, at('2026-11-30T23:00:00.000Z')).ok).toBe(false);
 
     // …and none of it counts in December, though that day is still stored.
     expect(admitAt(store, at('2026-12-01T00:30:00.000Z')).ok).toBe(true);
     // Yesterday is kept for reviews still settling against it; the rest of
     // last month is gone.
-    expect([...store.spend.keys()].toSorted()).toEqual([
+    expect([...store.spend.anthropic.keys()].toSorted()).toEqual([
       '2026-11-30',
       '2026-12-01',
     ]);
@@ -399,7 +414,7 @@ describe('the monthly spending ceiling', () => {
 
   it('says the next month when the year turns', () => {
     const store = createMemoryStore();
-    store.spend.set('2026-12-02', MONTHLY_CEILING_MICROS);
+    store.spend.anthropic.set('2026-12-02', MONTHLY_CEILING_MICROS);
     expect(admitAt(store, at('2026-12-15T12:00:00.000Z'))).toEqual({
       ok: false,
       error: 'monthly_limit',
@@ -409,11 +424,11 @@ describe('the monthly spending ceiling', () => {
 
   it('answers for the month when the day is spent too', () => {
     const store = createMemoryStore();
-    store.spend.set(
+    store.spend.anthropic.set(
       '2026-11-02',
       MONTHLY_CEILING_MICROS - DAILY_CEILING_MICROS,
     );
-    store.spend.set(utcDay(START), DAILY_CEILING_MICROS);
+    store.spend.anthropic.set(utcDay(START), DAILY_CEILING_MICROS);
     // Tomorrow would not help: the month decides when a review can run.
     expect(admitAt(store, START)).toMatchObject({ error: 'monthly_limit' });
   });
@@ -435,8 +450,8 @@ describe('the monthly spending ceiling', () => {
       actualMicros: 400_000,
       refundHourly: false,
     });
-    expect(store.spend.get('2026-11-30')).toBe(400_000);
+    expect(store.spend.anthropic.get('2026-11-30')).toBe(400_000);
     // None of it is charged to the new month.
-    expect(store.getCommittedSince('2026-12-01')).toBe(1);
+    expect(store.getCommittedSince('anthropic', '2026-12-01')).toBe(1);
   });
 });

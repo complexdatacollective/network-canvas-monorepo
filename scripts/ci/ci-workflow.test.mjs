@@ -3523,6 +3523,7 @@ test('the protocol review Worker deploys only from its own release lane', () => 
     'CLOUDFLARE_API_TOKEN',
     'CLOUDFLARE_ACCOUNT_ID',
     'ANTHROPIC_API_KEY',
+    'OPENAI_API_KEY',
   ];
   for (const [name, other] of Object.entries(parsedWorkflow.jobs)) {
     if (name === NAME) continue;
@@ -3547,6 +3548,38 @@ test('the protocol review Worker deploys only from its own release lane', () => 
   assert.deepEqual(stepsReading('CLOUDFLARE_API_TOKEN'), [DEPLOY]);
   assert.deepEqual(stepsReading('CLOUDFLARE_ACCOUNT_ID'), [DEPLOY]);
   assert.deepEqual(stepsReading('ANTHROPIC_API_KEY'), [WRITE]);
+  assert.deepEqual(stepsReading('OPENAI_API_KEY'), [WRITE]);
+
+  // Wrangler refuses to deploy a Worker without every secret it requires, so
+  // each one the Worker declares is checked for and written to the file.
+  const required = JSON.parse(
+    readFileSync(
+      new URL('../../workers/protocol-review/wrangler.jsonc', import.meta.url),
+      'utf8',
+    ).match(/"required":\s*(\[[^\]]*\])/)[1],
+  );
+  assert.deepEqual(required, ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY']);
+  const stepNamed = (name) => worker.steps.find((step) => step.name === name);
+  const credentialCheck = stepNamed(
+    'Check the deploy credentials are configured',
+  );
+  for (const secret of required) {
+    assert.ok(CREDENTIALS.includes(secret), `${secret} is pinned above`);
+    assert.equal(
+      credentialCheck.env[`${secret}_SET`],
+      `\${{ secrets.${secret} != '' }}`,
+    );
+    assert.ok(
+      credentialCheck.run.includes(
+        `[[ "$${secret}_SET" == "true" ]] || missing+=(${secret})`,
+      ),
+      `${secret} is named when it is missing`,
+    );
+    assert.ok(
+      stepNamed(WRITE).run.includes(`${secret}: process.env.${secret}`),
+      `${secret} is written to the secrets file`,
+    );
+  }
   // And never interpolated into a script, where the shell would parse it.
   for (const step of worker.steps) {
     assert.doesNotMatch(step.run ?? '', /\$\{\{\s*secrets\./, step.name);

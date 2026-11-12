@@ -184,8 +184,10 @@ describe('provider failures', () => {
         retryAt: null,
       });
       expect(countFor(harness.store, 'installation')).toBe(0);
-      expect(harness.logs).toEqual([{ reason, status }]);
-      expect(harness.notices).toEqual([{ reason, status }]);
+      expect(harness.logs).toEqual([{ reason, status, provider: 'anthropic' }]);
+      expect(harness.notices).toEqual([
+        { reason, status, provider: 'anthropic' },
+      ]);
     },
   );
 
@@ -218,7 +220,9 @@ describe('provider failures', () => {
         1,
       );
       expect(countFor(harness.store, 'installation')).toBe(0);
-      expect(harness.notices).toEqual([{ reason, status }]);
+      expect(harness.notices).toEqual([
+        { reason, status, provider: 'anthropic' },
+      ]);
     },
   );
 
@@ -253,7 +257,9 @@ describe('provider failures', () => {
         error: { error: 'service_unavailable', retryAt: null },
       });
       expect(countFor(harness.store, 'installation')).toBe(0);
-      expect(harness.notices).toEqual([{ reason, status: 200 }]);
+      expect(harness.notices).toEqual([
+        { reason, status: 200, provider: 'anthropic' },
+      ]);
     },
   );
 
@@ -273,7 +279,9 @@ describe('provider failures', () => {
     );
     await harness.settled();
     expect(events.at(-1)?.type).toBe('error');
-    expect(harness.notices).toEqual([{ reason: 'timeout', status: 0 }]);
+    expect(harness.notices).toEqual([
+      { reason: 'timeout', status: 0, provider: 'anthropic' },
+    ]);
     expect(countFor(harness.store, 'installation')).toBe(0);
   });
 
@@ -338,6 +346,8 @@ describe('sharing', () => {
     );
     expect(JSON.parse(record?.value ?? 'null')).toEqual({
       receivedAt: '2026-11-11T10:00:00.000Z',
+      provider: 'anthropic',
+      model: 'claude-opus-5-5',
       locale: 'de',
       studyContext: request.studyContext,
       protocol: request.protocol,
@@ -417,7 +427,7 @@ describe('what leaves the service', () => {
     }
 
     expect(lines).toEqual([
-      'protocol_review_failure reason=overloaded status=529',
+      'protocol_review_failure provider=anthropic reason=overloaded status=529',
     ]);
     expect(sent).toHaveLength(1);
     expect(sent[0]?.url).toBe('https://us.i.posthog.com/capture/');
@@ -430,7 +440,11 @@ describe('what leaves the service', () => {
     ]);
     expect(body.event).toBe(SERVICE_FAILURE_EVENT);
     expect(body.distinct_id).toBe(ANALYTICS_DISTINCT_ID);
-    expect(body.properties).toEqual({ reason: 'overloaded', status: 529 });
+    expect(body.properties).toEqual({
+      reason: 'overloaded',
+      status: 529,
+      provider: 'anthropic',
+    });
 
     const everything = JSON.stringify({ lines, sent });
     for (const secret of [
