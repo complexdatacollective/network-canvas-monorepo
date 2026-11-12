@@ -33,7 +33,44 @@ describe('origins and CORS', () => {
   });
 
   it.each([
+    'https://deploy-preview-2581--architect-dev.netlify.app',
+    'https://deploy-preview-7--architect-dev.netlify.app',
+  ])('answers a preview of an Architect pull request (%s)', async (origin) => {
+    const { deps } = createHarness(okModel());
+    const response = await handleRequest(
+      reviewRequest(validRequest(), { Origin: origin }),
+      deps,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(origin);
+    await response.text();
+  });
+
+  it.each([
     ['another site', { Origin: 'https://evil.example' }],
+    [
+      'a preview of another Netlify site',
+      { Origin: 'https://deploy-preview-2581--architect-dev-copy.netlify.app' },
+    ],
+    [
+      'a preview name on another host',
+      {
+        Origin:
+          'https://deploy-preview-2581--architect-dev.netlify.app.evil.example',
+      },
+    ],
+    [
+      'a branch deploy, which anyone who can push a branch names',
+      { Origin: 'https://some-branch--architect-dev.netlify.app' },
+    ],
+    [
+      'a preview with no number',
+      { Origin: 'https://deploy-preview---architect-dev.netlify.app' },
+    ],
+    [
+      'a preview over plain HTTP',
+      { Origin: 'http://deploy-preview-2581--architect-dev.netlify.app' },
+    ],
     [
       'a look-alike',
       { Origin: 'https://architect.networkcanvas.com.evil.example' },
@@ -91,7 +128,7 @@ describe('origins and CORS', () => {
     expect(response.status).toBe(204);
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
     expect(response.headers.get('Access-Control-Allow-Methods')).toBe(
-      'POST, OPTIONS',
+      'GET, POST, OPTIONS',
     );
     expect(response.headers.get('Access-Control-Allow-Headers')).toBe(
       'Content-Type',
@@ -112,7 +149,7 @@ describe('origins and CORS', () => {
     expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 
-  it('serves only /review, and only POST there', async () => {
+  it('serves no other path, and only POST at /review', async () => {
     const { deps } = createHarness(okModel());
     const elsewhere = await handleRequest(
       new Request('https://protocol-review.networkcanvas.com/other', {
