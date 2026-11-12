@@ -11,7 +11,11 @@ import {
   pseudoRtlAppLocale,
 } from '../locales.ts';
 import type { CatalogMessages, CatalogSource } from '../locales.ts';
-import { defineMessages } from '../messages.ts';
+import {
+  defineMessages,
+  FIRST_STRONG_ISOLATE as FSI,
+  POP_DIRECTIONAL_ISOLATE as PDI,
+} from '../messages.ts';
 import {
   AppDirectionOverride,
   AppI18nProvider,
@@ -392,10 +396,12 @@ describe('the right-to-left pseudo-locale', () => {
 
   it('runs a message’s own text right to left and leaves its values alone', () => {
     // The words are the message's, so they take the override; the name is the
-    // reader's data and keeps its own direction, as it would inside an Arabic
-    // sentence.
+    // reader's data and keeps its own direction, isolated as it is inside an
+    // Arabic sentence.
     const view = inPseudoRtl(<Greeting name="Ada" />);
-    expect(view.container.textContent).toBe(`${RLO}Hello ${PDF}Ada`);
+    expect(view.container.textContent).toBe(
+      `${RLO}Hello ${PDF}${FSI}Ada${PDI}`,
+    );
   });
 
   it('runs text inside rich-text tags right to left', () => {
@@ -611,7 +617,7 @@ describe('AppMessage', () => {
         {queued}
       </AppI18nProvider>,
     );
-    expect(view.container.textContent).toBe('مرحبا Ada');
+    expect(view.container.textContent).toBe(`مرحبا ${FSI}Ada${PDI}`);
   });
 });
 
