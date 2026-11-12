@@ -13,6 +13,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useResourceClient, type ResourceClient } from '../client.tsx';
+import { oversizeFileMessage } from '../resourceMessages.ts';
 import { readRosterFacts } from '../rosterFacts.ts';
 import {
   RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
@@ -26,7 +27,6 @@ import {
   acceptedExtensions,
   contentKindForFile,
   contentTypeForFile,
-  oversizeFileMessage,
   sourceFilename,
   unsupportedFileMessage,
   type ResourcePickerKind,

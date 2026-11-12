@@ -867,6 +867,38 @@
     "defaultMessage": "This screen has not been built yet. It is specified in {issue}.",
     "description": "Shown on every not-yet-built screen; {issue} is a GitHub issue reference like #1253."
   },
+  "studio.resourceFailure.emptyFile": {
+    "defaultMessage": "That file is empty. Choose a file with something in it.",
+    "description": "Shown in the protocol editor when a researcher imports a file with nothing in it."
+  },
+  "studio.resourceFailure.importEmpty": {
+    "defaultMessage": "That import holds no file. Import the file again.",
+    "description": "Shown in the protocol editor when a file a researcher imported has nothing stored for it, so it cannot be added to the protocol."
+  },
+  "studio.resourceFailure.importGone": {
+    "defaultMessage": "That import is no longer waiting to be added. Import the file again.",
+    "description": "Shown in the protocol editor when a researcher uses a file they imported earlier that has since been discarded, before it was added to the protocol."
+  },
+  "studio.resourceFailure.noCopy": {
+    "defaultMessage": "Studio has no copy of this file. Import it again to use it here.",
+    "description": "Shown in the protocol editor in place of a file (an image, audio, video or roster) the protocol names but whose contents Studio does not have."
+  },
+  "studio.resourceFailure.noStorage": {
+    "defaultMessage": "This Studio has no file storage set up, so files cannot be added or opened. Ask whoever runs it to set up storage.",
+    "description": "Shown in the protocol editor when the Studio installation has no storage configured for protocol files (images, audio, video, rosters). \"Whoever runs it\" is the person or team that installed this Studio."
+  },
+  "studio.resourceFailure.notInProtocol": {
+    "defaultMessage": "That file is not part of this protocol.",
+    "description": "Shown in the protocol editor when it asks for a file (an image, audio, video or roster) the protocol does not hold."
+  },
+  "studio.resourceFailure.notSaved": {
+    "defaultMessage": "The file could not be saved. Try again in a moment.",
+    "description": "Shown in the protocol editor when a file a researcher added could not be kept, for a reason that may pass."
+  },
+  "studio.resourceFailure.rosterCharacter": {
+    "defaultMessage": "The roster holds a character that an export cannot carry.",
+    "description": "Shown in the protocol editor when an imported roster (a file listing people for an interview) contains a character that exported data cannot represent. The editor usually names the character and where it is instead; this is what it says when it cannot."
+  },
   "studio.screens.accountIndexDescription": {
     "defaultMessage": "The researcher's own name, email address and everything else Studio holds about them as a person rather than as a member of a team.",
     "description": "What the Profile screen at /account will do, shown on it while it is not yet built."

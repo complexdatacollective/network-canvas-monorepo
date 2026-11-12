@@ -12,6 +12,7 @@ import {
 } from '@codaco/protocol-builder-core/contract/schemas';
 
 import { rosterRefusal } from '../protocol-builder/resources.ts';
+import { asTheEditorShowsIt } from './support/messages.ts';
 
 const BELL = String.fromCharCode(7);
 
@@ -68,6 +69,12 @@ describe('staging a roster', () => {
           detail: { code: 'roster-characters', problem, total },
         },
       });
+      // The editor names the character from `detail`; the message is for a
+      // client that cannot, and is in the reader's language too.
+      if (outcome?.status !== 'failed') return;
+      expect(asTheEditorShowsIt(outcome.failure.message)).toBe(
+        'The roster holds a character that an export cannot carry.',
+      );
     },
   );
 
@@ -106,37 +113,37 @@ describe('staging a roster the interview could not load', () => {
     [
       'two headings that are one name written two ways',
       roster('people.csv', 'caf\u00e9,cafe\u0301\nAda,36\n'),
-      'the roster\'s attribute names "caf\u00e9" and "cafe\u0301" are the same name written two ways',
+      'the "caf\u00e9" and "cafe\u0301" attributes are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other',
     ],
     [
       'a heading with a space at its end',
       roster('people.csv', '"name ",age\nAda,36\n'),
-      'the roster\'s attribute name "name " cannot be a variable name',
+      'the "name " attribute cannot be used as a variable name: a name cannot be empty, start or end with a space, or contain line breaks, tabs or other control characters',
     ],
     [
       'a row with more cells than its header',
       roster('people.csv', 'name,age\nAda,36\nGrace,45,extra\n'),
-      'row 3 of the roster has a different number of cells from its header',
+      'the selected file is not a readable network',
     ],
     [
       'a CSV header with no rows under it',
       roster('people.csv', 'name,age\n'),
-      'the roster holds no nodes',
+      'the selected file has no records in it, so a stage using it would have nobody to show',
     ],
     [
       'a JSON roster with edges but no nodes',
       roster('people.json', JSON.stringify({ nodes: [], edges: [{}] })),
-      'the roster holds no nodes',
+      'the selected file has no records in it, so a stage using it would have nobody to show',
     ],
     [
       'JSON that does not parse',
       roster('people.json', '{"nodes": ['),
-      'the roster cannot be read as JSON',
+      'the selected file is not a readable network',
     ],
     [
       'a JSON node that is not an object',
       roster('people.json', JSON.stringify({ nodes: ['Ada'] })),
-      'node 1 of the roster is not an object',
+      'the selected file is not a readable network: node 1 is not an object',
     ],
     [
       'a JSON attribute value no variable can hold',
@@ -146,7 +153,7 @@ describe('staging a roster the interview could not load', () => {
           nodes: [{ attributes: { name: { first: 'Ada' } } }],
         }),
       ),
-      'the "name" attribute of node 1 of the roster is not a value a variable can hold',
+      'the selected file is not a readable network: the "name" attribute of node 1 is not a value a variable can hold',
     ],
     [
       'two JSON attribute names that are one name written two ways',
@@ -159,15 +166,23 @@ describe('staging a roster the interview could not load', () => {
           ],
         }),
       ),
-      'the roster\'s attribute names "caf\u00e9" and "cafe\u0301" are the same name written two ways',
+      'the "caf\u00e9" and "cafe\u0301" attributes are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other',
     ],
   ])('refuses a roster with %s', async (_, request, message) => {
     const outcome = await rosterRefusal(request);
 
+    // In the protocol builder's words for the same refusal, encoded so the
+    // editor says it in the reader's language.
     expect(outcome).toEqual({
       status: 'failed',
-      failure: { reason: 'invalid-content', message, retryable: false },
+      failure: {
+        reason: 'invalid-content',
+        message: expect.any(String),
+        retryable: false,
+      },
     });
+    if (outcome?.status !== 'failed') return;
+    expect(asTheEditorShowsIt(outcome.failure.message)).toBe(message);
   });
 
   it('reads a file whose name says nothing by its media type', async () => {
@@ -177,10 +192,10 @@ describe('staging a roster the interview could not load', () => {
     });
 
     // The headings' refusal, which only a read of the file as CSV can give.
-    expect(outcome).toMatchObject({
-      status: 'failed',
-      failure: { message: expect.stringContaining('attribute names') },
-    });
+    if (outcome?.status !== 'failed') throw new Error('expected a refusal');
+    expect(asTheEditorShowsIt(outcome.failure.message)).toContain(
+      'are the same name written in two different ways',
+    );
   });
 
   it('accepts a roster whose headings are in any language, decomposed or not', async () => {

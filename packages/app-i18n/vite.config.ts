@@ -13,6 +13,7 @@ export default defineConfig({
     lib: {
       entry: {
         'messages': resolve(currentDir, 'src/messages.ts'),
+        'message-errors': resolve(currentDir, 'src/message-errors.ts'),
         'react': resolve(currentDir, 'src/react.tsx'),
         'negotiate': resolve(currentDir, 'src/negotiate.ts'),
         'locales': resolve(currentDir, 'src/locales.ts'),

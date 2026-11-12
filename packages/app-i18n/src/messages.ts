@@ -27,7 +27,7 @@ import type { CatalogMessages } from './locales.ts';
  * Re-typed, not wrapped: the bindings stay react-intl's own functions, so the
  * build transform and extraction see the same calls they always did.
  */
-type DefineMessages = <
+export type DefineMessages = <
   K extends PropertyKey,
   T = MessageDescriptor,
   U extends Record<K, T> = Record<K, T>,
