@@ -21,6 +21,7 @@ describe('site locales', () => {
       'pt-BR',
       'it',
       'fr',
+      'ar',
     ]);
     expect(supportedSiteLocales.map(({ locale }) => locale)).toEqual(
       siteLocales,

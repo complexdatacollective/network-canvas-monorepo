@@ -1,5 +1,5 @@
 import { assert, describe, layer } from '@effect/vitest';
-import { Cron, DateTime, Duration, Effect, Exit } from 'effect';
+import { Cron, DateTime, Duration, Effect, Exit, Fiber, Option } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { JOB_SCHEDULES } from '@codaco/studio-sync/jobs';
@@ -10,6 +10,7 @@ import { collectLeveledLogs } from '../../platform/__tests__/support/logs.ts';
 import { JobWorker } from '../worker.ts';
 import {
   asOwner,
+  awaitTrue,
   clearQueue,
   DELIVERY_ID,
   holding,
@@ -28,6 +29,8 @@ const HOURLY = '0 * * * *';
 const CHANGED = '30 4 * * *';
 
 const CRON_LOCK_CLASS = 402177;
+
+const TICK_BUDGET = Duration.seconds(2);
 
 const withExcessField = Object.assign(
   { deliveryId: DELIVERY_ID },
@@ -112,7 +115,76 @@ describe.skipIf(!db)('recurring work', () => {
       }).pipe(Effect.provide(jobsLayer)),
     );
 
+    // Starting both ticks together does not make them overlap: whichever reaches
+    // the lock second may find the first already committed. So the first tick is
+    // held inside its lock, waiting on a due row this case has locked, while the
+    // second one runs.
     it.effect('lets only one of two workers tick', () =>
+      Effect.gen(function* () {
+        yield* clear;
+        const { schema } = yield* QueueHarness;
+
+        const outcomes = yield* Effect.gen(function* () {
+          const first = yield* JobWorker;
+          yield* first.schedule(
+            'denied-attempts-summary',
+            EVERY_MINUTE,
+            'denied-attempts-summary',
+            {},
+          );
+          const [row] = yield* schedules();
+          yield* TestClock.setTime(row!.next_run_at.getTime());
+
+          return yield* Effect.gen(function* () {
+            const second = yield* JobWorker;
+            return yield* holding(db!.url, (holder) =>
+              Effect.gen(function* () {
+                yield* holder.query(
+                  `SELECT 1 FROM ${schema}.job_schedules WHERE name = $1 FOR UPDATE`,
+                  ['denied-attempts-summary'],
+                );
+
+                const ticking = yield* Effect.forkChild(first.tickSchedules);
+                const held = yield* TestClock.withLive(
+                  awaitTrue(
+                    Effect.map(holder.blockedByMe, (count) => count > 0),
+                    TICK_BUDGET,
+                  ),
+                );
+                assert.isTrue(
+                  Option.isSome(held),
+                  'the first tick never waited on the due row, so the ticks did not overlap',
+                );
+
+                const contending = yield* Effect.forkChild(
+                  second.tickSchedules,
+                );
+                const loser = yield* TestClock.withLive(
+                  Effect.timeoutOption(Fiber.join(contending), TICK_BUDGET),
+                );
+                assert.deepStrictEqual(
+                  loser,
+                  Option.some(false),
+                  'the second tick did not yield to the one holding the lock',
+                );
+
+                yield* holder.finish('ROLLBACK');
+                return { winner: yield* Fiber.join(ticking), loser };
+              }),
+            );
+          }).pipe(Effect.provide(layerWorker()));
+        }).pipe(Effect.provide(layerWorker()));
+
+        assert.isTrue(outcomes.winner);
+        const created = yield* readJobs('denied-attempts-summary');
+        assert.strictEqual(created.length, 1);
+      }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    // `tickSchedules` answers whether this worker took the lock, not whether it
+    // created anything: a tick after another worker's committed one still answers
+    // true, and finds nothing due.
+    it.effect('creates nothing on a tick after another worker’s', () =>
       Effect.gen(function* () {
         yield* clear;
 
@@ -129,17 +201,11 @@ describe.skipIf(!db)('recurring work', () => {
 
           return yield* Effect.gen(function* () {
             const second = yield* JobWorker;
-            return yield* Effect.all(
-              [first.tickSchedules, second.tickSchedules],
-              { concurrency: 2 },
-            );
+            return [yield* first.tickSchedules, yield* second.tickSchedules];
           }).pipe(Effect.provide(layerWorker()));
         }).pipe(Effect.provide(layerWorker()));
 
-        assert.deepStrictEqual(
-          outcomes.toSorted((a, b) => Number(a) - Number(b)),
-          [false, true],
-        );
+        assert.deepStrictEqual(outcomes, [true, true]);
         const created = yield* readJobs('denied-attempts-summary');
         assert.strictEqual(created.length, 1);
       }).pipe(Effect.provide(jobsLayer)),

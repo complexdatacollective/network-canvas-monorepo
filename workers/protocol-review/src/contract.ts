@@ -281,8 +281,12 @@ export type ProviderStatus = z.infer<typeof ProviderStatusSchema>;
  * An accepted review answers `200` with `Content-Type: text/event-stream`.
  * Each server-sent event is one `data:` line holding one of these as JSON.
  *
- * - `progress` arrives repeatedly while the model writes; `received` is how
- *   many characters of its answer have arrived so far, which only grows.
+ * - `progress` arrives repeatedly while the model works. `thinking` is how
+ *   many characters of the provider's summary of the model's thinking have
+ *   arrived, and `received` how many characters of its answer; the thinking
+ *   comes first, and both only grow. `thinking` stays at 0 for a provider
+ *   that gives no summary, and is absent from a service older than this
+ *   field.
  * - `result` arrives once, last, when the review succeeded.
  * - `error` arrives once, last, when it failed after the stream had begun.
  */
@@ -290,6 +294,7 @@ export const ReviewEventSchema = z.discriminatedUnion('type', [
   z.strictObject({
     type: z.literal('progress'),
     received: z.number().int().nonnegative(),
+    thinking: z.number().int().nonnegative().optional(),
   }),
   z.strictObject({ type: z.literal('result'), result: ReviewResultSchema }),
   z.strictObject({ type: z.literal('error'), error: ReviewErrorSchema }),

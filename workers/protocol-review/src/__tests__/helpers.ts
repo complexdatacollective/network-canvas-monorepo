@@ -159,6 +159,8 @@ export const USAGE = {
 type ScriptedModel = {
   /** Whether the provider starts answering (sends `message_start`). */
   start?: boolean;
+  /** Pieces of the summary of the model's thinking, sent before the answer. */
+  thinking?: string[];
   chunks?: string[];
   /** Called before each chunk, e.g. to move the clock on. */
   beforeChunk?: () => void;
@@ -179,6 +181,10 @@ export const scriptedModel = (
     // The answer arrives after the provider has started, as it does for real,
     // so the response is already streaming.
     await new Promise((resolve) => setTimeout(resolve, 0));
+    for (const chunk of script.thinking ?? []) {
+      script.beforeChunk?.();
+      input.onThinking(chunk);
+    }
     for (const chunk of script.chunks ?? []) {
       script.beforeChunk?.();
       input.onText(chunk);

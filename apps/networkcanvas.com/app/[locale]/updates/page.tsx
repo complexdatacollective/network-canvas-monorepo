@@ -11,6 +11,7 @@ import { PageIntro } from '~/components/ui/PageIntro';
 import { UpdatesList } from '~/components/updates/UpdatesList';
 import { routing } from '~/lib/i18n/routing';
 import { loadUpdates } from '~/lib/siteContent';
+import { websiteLocaleAlternates } from '~/lib/siteUrls';
 
 type UpdatesPageProps = {
   params: Promise<{ locale: string }>;
@@ -29,18 +30,7 @@ export async function generateMetadata({
     description: t('metadata.description'),
     alternates: {
       canonical: `https://networkcanvas.com/${locale}/updates`,
-      languages: {
-        'en-US': 'https://networkcanvas.com/en-US/updates',
-        'en-GB': 'https://networkcanvas.com/en-GB/updates',
-        'es': 'https://networkcanvas.com/es/updates',
-        'zh-Hans': 'https://networkcanvas.com/zh-Hans/updates',
-        'zh-Hant': 'https://networkcanvas.com/zh-Hant/updates',
-        'de': 'https://networkcanvas.com/de/updates',
-        'nl': 'https://networkcanvas.com/nl/updates',
-        'pt-BR': 'https://networkcanvas.com/pt-BR/updates',
-        'it': 'https://networkcanvas.com/it/updates',
-        'fr': 'https://networkcanvas.com/fr/updates',
-      },
+      languages: websiteLocaleAlternates('/updates'),
     },
   };
 }
