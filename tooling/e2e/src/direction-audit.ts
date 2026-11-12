@@ -49,9 +49,13 @@ export type SnapshotOptions = Readonly<{
 }>;
 
 /**
- * Records where every visible box sits inside its parent. Inline boxes are
- * left out: a run of text inside a line reorders with the text's own
- * direction, which is the bidi algorithm's job, not the layout's.
+ * Records where every visible box sits inside its parent. Plain inline boxes
+ * are left out: a run of text inside a line reorders with the text's own
+ * direction, which is the bidi algorithm's job, not the layout's. So is an
+ * atomic inline box (`inline-block`, `inline-flex`: a pill, a link styled as
+ * a button) that shares its line with text, which the bidi algorithm places
+ * among the words. One with no text beside it (a button on its own) sits at
+ * the start of its line and is recorded like a block.
  */
 export function snapshotLayout(options: SnapshotOptions = {}): LayoutSnapshot {
   const root = options.root
@@ -110,6 +114,23 @@ export function snapshotLayout(options: SnapshotOptions = {}): LayoutSnapshot {
     return `<${element.tagName.toLowerCase()}${id}${classes ? `.${classes}` : ''}>${text ? ` “${text}”` : ''}`;
   };
 
+  // Whether text outside `except` runs through the line boxes of
+  // `container`: its own text, or text in a plain inline or
+  // `display: contents` child.
+  const hasLooseText = (container: Node, except: Element): boolean =>
+    [...container.childNodes].some((node) => {
+      if (node === except) return false;
+      if (node.nodeType === Node.TEXT_NODE) {
+        return (node.textContent ?? '').trim() !== '';
+      }
+      if (!(node instanceof Element)) return false;
+      const display = getComputedStyle(node).display;
+      return (
+        (display === 'inline' || display === 'contents') &&
+        hasLooseText(node, except)
+      );
+    });
+
   const elements: PlacedElement[] = [];
   const directions: Record<string, string> = {};
   const visit = (element: Element, key: string) => {
@@ -128,7 +149,8 @@ export function snapshotLayout(options: SnapshotOptions = {}): LayoutSnapshot {
     if (
       parent &&
       style.display !== 'contents' &&
-      !style.display.startsWith('inline') &&
+      style.display !== 'inline' &&
+      !(style.display.startsWith('inline') && hasLooseText(parent, element)) &&
       style.visibility !== 'hidden'
     ) {
       const box = element.getBoundingClientRect();
