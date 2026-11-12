@@ -22,6 +22,45 @@ export const AUDIT_OUTCOMES = ['succeeded', 'denied', 'failed'] as const;
 export const AuditOutcome = Schema.Literals(AUDIT_OUTCOMES);
 export type AuditOutcome = (typeof AuditOutcome)['Type'];
 
+/**
+ * Every kind of action this build records, by its stable event type.
+ *
+ * The server's event registry is checked against this list in both
+ * directions, and the client names each one in the reader's language, so a
+ * new kind of action cannot reach the activity screen without a name of its
+ * own. History can still hold types a newer server appended, which is why an
+ * event's `eventType` stays a plain string.
+ */
+export const AUDIT_EVENT_TYPES = [
+  'audit.read_denied',
+  'team.created',
+  'team.member.role_changed',
+  'team.member.role_change_denied',
+  'team.member.role_change_failed',
+  'security.denied_attempts.rate_limited',
+  'team.invitation.created',
+  'team.invitation.creation_denied',
+  'team.invitation.cancelled',
+  'team.invitation.cancellation_denied',
+  'team.invitation.cancellation_failed',
+  'team.invitation.accepted',
+  'team.invitation.acceptance_denied',
+  'team.invitation.acceptance_failed',
+  'protocol.created',
+  'protocol.draft.committed',
+  'study.created',
+  'study.creation_denied',
+  'interview.started',
+  'interview.completed',
+] as const;
+export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
+
+const AUDIT_EVENT_TYPE_SET: ReadonlySet<string> = new Set(AUDIT_EVENT_TYPES);
+
+export function isAuditEventType(value: string): value is AuditEventType {
+  return AUDIT_EVENT_TYPE_SET.has(value);
+}
+
 export const AUDIT_ACTOR_KINDS = [
   'user',
   'api_token',
@@ -96,7 +135,6 @@ export const AuditEventSummary = Schema.Struct({
   actor: AuditActor,
   subject: Schema.NullOr(AuditEventReference),
   resource: Schema.NullOr(AuditEventReference),
-  title: Schema.String,
   rendered: Schema.Boolean,
 });
 export type AuditEventSummary = (typeof AuditEventSummary)['Type'];
@@ -109,9 +147,7 @@ export const AuditListOutput = Schema.Struct({
 export const AUDIT_FACET_LIMIT = 200;
 
 export const AuditFilterOptions = Schema.Struct({
-  actions: Schema.Array(
-    Schema.Struct({ eventType: Schema.String, title: Schema.String }),
-  ),
+  eventTypes: Schema.Array(Schema.String),
   actors: Schema.Array(
     Schema.Struct({ ...AuditActorFilter.fields, label: PrivateString }),
   ),

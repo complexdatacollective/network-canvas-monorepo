@@ -644,6 +644,29 @@ describe('opening a study by its URL', () => {
 });
 
 describe('Studio editor shell', () => {
+  it.each([
+    [
+      'its interface name',
+      'NameGeneratorQuickAdd',
+      'Name Generator (quick add)',
+    ],
+    ['an unknown screen', 'NoSuchInterface', 'Unknown screen'],
+  ])(
+    'names the kind of each screen in the outline by %s, never its type id',
+    async (_, type, kind) => {
+      await seedHost({
+        ...ENDS_AT_FINISH,
+        [`stage:${STAGE_B}`]: { ...DRAFT_SECTIONS[`stage:${STAGE_B}`], type },
+      });
+      renderEditor();
+
+      expect(
+        await screen.findByRole('button', { name: `Follow-up${kind}` }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(type)).toBeNull();
+    },
+  );
+
   it('provides the outline, editing canvas, inspector, and keyboard reorder actions', async () => {
     renderEditor();
 
@@ -1060,7 +1083,7 @@ describe('Studio editor shell', () => {
    * this tab what they did, so the outline they change is the one thing on
    * this screen that is READ back rather than subscribed to.
    */
-  it('shows the order a reorder of this researcher\u2019s left behind', async () => {
+  it('shows the order a reorder of this researcher’s left behind', async () => {
     moveStage.mockImplementation(() =>
       Effect.sync(() => {
         commandWrote.set(STAGE_ORDER, { stages: [STAGE_B, STAGE_A] });
@@ -1086,7 +1109,7 @@ describe('Studio editor shell', () => {
     );
   });
 
-  it('shows the screen an add of this researcher\u2019s left behind', async () => {
+  it('shows the screen an add of this researcher’s left behind', async () => {
     addInformationStage.mockImplementation(({ stageId }) =>
       Effect.sync(() => {
         commandWrote.set(sectionId({ kind: 'stage', stageId }), {
@@ -1445,7 +1468,7 @@ describe('what a collaborator changes', () => {
     await screen.findByRole('button', { name: 'Follow-upInformation' });
 
     expect(
-      await screen.findByText('stageOrder names missing stage no-such-stage'),
+      await screen.findByText('The protocol document could not be assembled.'),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: '1 validation problem' }),
@@ -2361,6 +2384,46 @@ describe('the validation problems', () => {
     );
   });
 
+  // The validator describes a shape, in English whatever the reader's
+  // language: "Invalid input: expected string, received undefined".
+  it.each([
+    ['has no heading at all', undefined],
+    ['has a blank heading', ''],
+  ])(
+    'say in the editor’s own words that a value is missing when a screen %s',
+    async (_, title) => {
+      const { title: _title, ...untitled } = DRAFT_SECTIONS[`stage:${STAGE_B}`];
+      await seedHost({
+        ...ENDS_AT_FINISH,
+        [`stage:${STAGE_B}`]:
+          title === undefined ? untitled : { ...untitled, title: enUS(title) },
+      });
+      renderEditor();
+
+      expect(
+        await (
+          await inspector()
+        ).findByRole('button', {
+          name: 'Something required is missing.Follow-up',
+        }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Invalid input|expected/)).toBeNull();
+    },
+  );
+
+  it('keep what the protocol’s own rules say about it', async () => {
+    renderEditor();
+
+    // No finish screen: a rule written about this protocol, not a shape.
+    expect(
+      await (
+        await inspector()
+      ).findByRole('button', {
+        name: /must end with a finish stage.*Follow-up$/,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('go to the outline when the problem is about the interview as a whole', async () => {
     await seedHost({
       ...ENDS_AT_FINISH,
@@ -2372,7 +2435,7 @@ describe('the validation problems', () => {
       await (
         await inspector()
       ).findByRole('button', {
-        name: 'stageOrder names missing stage no-such-stage',
+        name: 'The protocol document could not be assembled.',
       }),
     );
 
