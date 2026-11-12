@@ -1,6 +1,11 @@
 import type * as IntlMessageFormatModule from 'intl-messageformat';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  FIRST_STRONG_ISOLATE as FSI,
+  POP_DIRECTIONAL_ISOLATE as PDI,
+} from '@codaco/app-i18n/messages';
+
 import { createLocalizedMessageFormatter } from '../messageFormatter';
 
 const constructed = vi.hoisted((): { locales: unknown[] } => ({ locales: [] }));
@@ -75,5 +80,35 @@ describe('createLocalizedMessageFormatter', () => {
         count: 1,
       }),
     ).toBe('1 items');
+  });
+
+  it('isolates text values in a right-to-left message, and chooses a select by the value itself', () => {
+    const format = createLocalizedMessageFormatter();
+    const message =
+      '{isYou, select, true {أضف والديك} other {أضف والدًا لـ {name}}}';
+
+    expect(format('ar', message, { isYou: 'false', name: 'Rob (B).' })).toBe(
+      `أضف والدًا لـ ${FSI}Rob (B).${PDI}`,
+    );
+    expect(format('ar', message, { isYou: 'true', name: 'Rob (B).' })).toBe(
+      'أضف والديك',
+    );
+  });
+
+  it('leaves a left-to-right message with left-to-right values unchanged', () => {
+    const format = createLocalizedMessageFormatter();
+    expect(format('en', 'Add a parent for {name}', { name: 'Rob!' })).toBe(
+      'Add a parent for Rob!',
+    );
+  });
+
+  it('isolates a right-to-left value in a left-to-right message', () => {
+    const format = createLocalizedMessageFormatter();
+    expect(
+      format('en', 'Add a parent for {name} ({count})', {
+        name: 'أحمد',
+        count: 2,
+      }),
+    ).toBe(`Add a parent for ${FSI}أحمد${PDI} (2)`);
   });
 });
