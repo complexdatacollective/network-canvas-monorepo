@@ -165,8 +165,8 @@ the files together:
   `sessionFinish`, `sessionExported`, `APP_VERSION`, `COMMIT_HASH`, and
   `networkCanvasFinishOutcome`, followed by your ego variables. Session
   timestamps are ISO 8601 strings.
-- **Alter files** begin with `nodeID` (a sequential number unique within the
-  export), `networkCanvasEgoUUID` (the join key to the ego file), and
+- **Alter files** begin with `nodeID` (a number unique within the interview,
+  counting from 1 across all its node types), `networkCanvasEgoUUID` (the join key to the ego file), and
   `networkCanvasUUID` (the alter's permanent identifier).
 - **Edge files** begin with `edgeID`, `from`, `to` (which reference `nodeID`
   values in the alter files), `networkCanvasEgoUUID`, `networkCanvasUUID`, and

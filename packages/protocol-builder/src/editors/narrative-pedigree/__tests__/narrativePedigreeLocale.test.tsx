@@ -58,7 +58,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
       'Estados de riesgo',
       'Personalizar la redacción predeterminada',
       'Lógica de salto',
-      'Guía para quien realiza la entrevista',
+      'Guía para la persona entrevistadora',
     ]);
   });
 
