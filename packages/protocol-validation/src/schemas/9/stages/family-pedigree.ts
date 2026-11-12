@@ -19,10 +19,10 @@ import {
 } from '../family-pedigree-values.ts';
 import {
   localizedMessage,
+  type LocalizedString,
   localizedString,
   nonBlankText,
 } from '../localized-string.ts';
-import { asksGenderIdentity } from '../stage-wording/family-pedigree.ts';
 import { categoricalOptionValueSchema } from '../variables/variable.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -110,17 +110,21 @@ export const NodeConfigurationSchema = z.strictObject({
     requireType: ['text'],
   }),
   // The question asking that name, and the hint beneath it, worded like a
-  // form field's prompt and hint. Network Canvas supplies both.
-  nameField: z.strictObject({
-    prompt: localizedString(nonBlankText(), {
-      format: 'plain',
-      lines: 'single',
-    }),
-    hint: localizedString(nonBlankText(), {
-      format: 'markdown',
-      lines: 'single',
-    }).optional(),
-  }),
+  // form field's prompt and hint. Network Canvas supplies both; a stage that
+  // omits the prompt shows Network Canvas's wording, and one that omits the
+  // hint shows none.
+  nameField: z
+    .strictObject({
+      prompt: localizedString(nonBlankText(), {
+        format: 'plain',
+        lines: 'single',
+      }).optional(),
+      hint: localizedString(nonBlankText(), {
+        format: 'markdown',
+        lines: 'single',
+      }).optional(),
+    })
+    .optional(),
   // Optional: the gender identity question and the words it decides. See
   // `GenderIdentitySchema`.
   genderIdentity: GenderIdentitySchema.optional(),
@@ -220,32 +224,43 @@ export const PEDIGREE_PERSON_ARGUMENTS = {
 } as const satisfies MessageArguments;
 
 const personMessage = () =>
-  localizedMessage(nonBlankText(), { arguments: PEDIGREE_PERSON_ARGUMENTS });
+  localizedMessage(nonBlankText(), {
+    arguments: PEDIGREE_PERSON_ARGUMENTS,
+  }).optional();
 
 /**
  * The tracker's wording, by the kind of thing it says is missing
  * (`CompletenessItem.kind` in the interview): the entry in its list
  * (`listItem`), the button recording that a person has no siblings or
  * children (`noneButton`), and the side panel's question about them
- * (`question`). Network Canvas supplies all of it.
+ * (`question`). Network Canvas supplies all of it; the interview shows
+ * Network Canvas's wording for any of it a stage omits.
  */
 const CompletenessTextSchema = z.strictObject({
-  parents: z.strictObject({
-    listItem: personMessage(),
-  }),
-  siblings: z.strictObject({
-    listItem: personMessage(),
-    noneButton: personMessage(),
-    question: personMessage(),
-  }),
-  children: z.strictObject({
-    listItem: personMessage(),
-    noneButton: personMessage(),
-    question: personMessage(),
-  }),
-  details: z.strictObject({
-    listItem: personMessage(),
-  }),
+  parents: z
+    .strictObject({
+      listItem: personMessage(),
+    })
+    .optional(),
+  siblings: z
+    .strictObject({
+      listItem: personMessage(),
+      noneButton: personMessage(),
+      question: personMessage(),
+    })
+    .optional(),
+  children: z
+    .strictObject({
+      listItem: personMessage(),
+      noneButton: personMessage(),
+      question: personMessage(),
+    })
+    .optional(),
+  details: z
+    .strictObject({
+      listItem: personMessage(),
+    })
+    .optional(),
 });
 
 /**
@@ -269,13 +284,13 @@ export const CompletenessSchema = z.strictObject({
     },
     ownedOptions: 'pedigreeRelativesNotRecorded',
   }),
-  itemText: CompletenessTextSchema,
+  itemText: CompletenessTextSchema.optional(),
   // Shown under the tracker when the family is only recommended. Kept under
   // either enforcement, so switching between them loses no wording.
   recommendedNote: localizedString(nonBlankText(), {
     format: 'plain',
     lines: 'single',
-  }),
+  }).optional(),
 });
 
 /**
@@ -645,12 +660,15 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
 type WordingWithArguments = keyof typeof PEDIGREE_WORDING_ARGUMENTS;
 
 const plainWording = () =>
-  localizedString(nonBlankText(), { format: 'plain', lines: 'single' });
+  localizedString(nonBlankText(), {
+    format: 'plain',
+    lines: 'single',
+  }).optional();
 
 const argumentWording = (key: WordingWithArguments) =>
   localizedMessage(nonBlankText(), {
     arguments: PEDIGREE_WORDING_ARGUMENTS[key],
-  });
+  }).optional();
 
 /**
  * The words the interface shows a participant on this stage, which Network
@@ -658,12 +676,11 @@ const argumentWording = (key: WordingWithArguments) =>
  * the message's id in the interface's catalog, so the translations keep the
  * names their messages were written with. The tools, their hints and the
  * framing question, which every Family Pedigree shows alike, are interface
- * text (`interface-text-wording.ts`).
+ * text (`interface-text-wording.ts`). A stage that omits a key shows Network
+ * Canvas's wording for it.
  *
- * The gender identity question and the note on a question limited to one sex
- * at birth are shown only in some configurations: they are
- * optional here, and required by the stage while their configuration is on
- * (see `CONFIGURED_WORDING`).
+ * The gender identity question is shown only while the stage asks about
+ * gender identity.
  */
 export const FamilyPedigreeWordingSchema = z.strictObject({
   alsoParentOfLabel: plainWording(),
@@ -690,7 +707,7 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   disconnectConfirmTitle: argumentWording('disconnectConfirmTitle'),
   disconnectStandIn: argumentWording('disconnectStandIn'),
   disconnectWouldCutOff: argumentWording('disconnectWouldCutOff'),
-  genderIdentityLabel: plainWording().optional(),
+  genderIdentityLabel: plainWording(),
   generatedLabelOf: argumentWording('generatedLabelOf'),
   geneticParentReplaced: argumentWording('geneticParentReplaced'),
   identicalTwinSharesParents: argumentWording('identicalTwinSharesParents'),
@@ -750,24 +767,26 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
     nonBlankText(),
     { format: 'plain', lines: 'single' },
     { dynamicValues: 'stageText' },
-  ),
+  ).optional(),
 });
 
 export type FamilyPedigreeWording = z.infer<typeof FamilyPedigreeWordingSchema>;
 
 /**
- * The words that are required only while a configuration is on, with that
- * configuration. The stage refuses to hold one of them missing while the
- * configuration applies, and a researcher who switches the configuration off
- * keeps the words.
+ * The Family Pedigree's wording with a text for every key: what the
+ * interview shows, which is the stage's wording over Network Canvas's own.
  */
-const CONFIGURED_WORDING = [
-  {
-    key: 'genderIdentityLabel',
-    applies: asksGenderIdentity,
-    requiredWhen: 'the stage asks about gender identity',
-  },
-] as const;
+export type CompleteFamilyPedigreeWording = Readonly<{
+  [Key in keyof FamilyPedigreeWording]-?: LocalizedString;
+}>;
+
+/** Whether `wording` has a text for every key of the stage's wording. */
+export const isCompleteFamilyPedigreeWording = (
+  wording: Readonly<Record<string, LocalizedString>>,
+): wording is CompleteFamilyPedigreeWording =>
+  Object.keys(FamilyPedigreeWordingSchema.shape).every((key) =>
+    Object.hasOwn(wording, key),
+  );
 
 /**
  * The stage a participant draws their family on.
@@ -780,46 +799,34 @@ const CONFIGURED_WORDING = [
  * sex assigned at birth), how they are related to the person they are added
  * to, and then the researcher's `form` fields.
  */
-export const familyPedigreeStage = baseStageSchema
-  .extend({
-    type: z.literal('FamilyPedigree'),
-    subject: NodeStageSubjectSchema,
-    prompt: localizedString(
-      nonBlankText(),
-      { format: 'markdown', lines: 'single' },
-      {
-        dynamicValues: 'prompt',
-      },
-    ),
-    nodeConfiguration: NodeConfigurationSchema,
-    edgeConfiguration: EdgeConfigurationSchema,
-    // Which words describe family members, or `participantPreference` to let
-    // the participant choose. Absent: `gendered`.
-    framing: z.enum(FRAMING_SETTINGS).optional(),
-    // Absent: the participant may continue with any family they have drawn.
-    completeness: CompletenessSchema.optional(),
-    // Researcher-defined person fields, asked after the interface's own.
-    form: TitlelessFormSchema.optional(),
-    // Asked in turn once the family is drawn, each its own prompt.
-    nominationPrompts: z
-      .array(NominationPromptSchema)
-      .min(1)
-      .superRefine(duplicateIdRefinement('Nomination prompts'))
-      .optional(),
-    // The words the interface shows, which Network Canvas supplies.
-    wording: FamilyPedigreeWordingSchema,
-  })
-  .superRefine((stage, ctx) => {
-    for (const { key, applies, requiredWhen } of CONFIGURED_WORDING) {
-      if (applies(stage) && stage.wording[key] === undefined) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `The "${key}" wording is required when ${requiredWhen}.`,
-          path: ['wording', key],
-        });
-      }
-    }
-  });
+export const familyPedigreeStage = baseStageSchema.extend({
+  type: z.literal('FamilyPedigree'),
+  subject: NodeStageSubjectSchema,
+  prompt: localizedString(
+    nonBlankText(),
+    { format: 'markdown', lines: 'single' },
+    {
+      dynamicValues: 'prompt',
+    },
+  ),
+  nodeConfiguration: NodeConfigurationSchema,
+  edgeConfiguration: EdgeConfigurationSchema,
+  // Which words describe family members, or `participantPreference` to let
+  // the participant choose. Absent: `gendered`.
+  framing: z.enum(FRAMING_SETTINGS).optional(),
+  // Absent: the participant may continue with any family they have drawn.
+  completeness: CompletenessSchema.optional(),
+  // Researcher-defined person fields, asked after the interface's own.
+  form: TitlelessFormSchema.optional(),
+  // Asked in turn once the family is drawn, each its own prompt.
+  nominationPrompts: z
+    .array(NominationPromptSchema)
+    .min(1)
+    .superRefine(duplicateIdRefinement('Nomination prompts'))
+    .optional(),
+  // The words the interface shows, which Network Canvas supplies.
+  wording: FamilyPedigreeWordingSchema.optional(),
+});
 
 export type FamilyPedigreeStageDefinition = z.infer<typeof familyPedigreeStage>;
 export type FamilyPedigreeNodeConfiguration = z.infer<

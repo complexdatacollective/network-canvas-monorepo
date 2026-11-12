@@ -240,29 +240,32 @@ describe('importing a file below this app’s schema', () => {
     expect(saveProtocolMock).toHaveBeenCalledWith(schema8, result.hash, []);
   });
 
+  // A study that ends at once, written in one language.
+  const studyIn = (locale: string) => ({
+    schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    name: 'Current study',
+    description: '',
+    localization: { defaultLocale: locale, locales: [locale] },
+    stages: [
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        mode: 'confirmation',
+        label: { [locale]: 'Finish' },
+        content: { [locale]: '# Finish\n\nThank you.' },
+        finishedContent: { [locale]: '# Finished\n\nThank you.' },
+        finishLabel: { [locale]: 'Finish' },
+        finishConfirmation: { [locale]: 'Finish?' },
+        finishFailed: { [locale]: 'Not finished.' },
+        outcome: 'completed',
+      },
+    ],
+    codebook: { node: {}, edge: {}, ego: {} },
+    assetManifest: {},
+  });
+
   it('imports a file at this app’s schema as it is', async () => {
-    const current = withInterfaceText({
-      schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
-      name: 'Current study',
-      description: '',
-      localization: { defaultLocale: 'en', locales: ['en'] },
-      stages: [
-        {
-          id: 'finish',
-          type: 'FinishSession',
-          mode: 'confirmation',
-          label: { en: 'Finish' },
-          content: { en: '# Finish\n\nThank you.' },
-          finishedContent: { en: '# Finished\n\nThank you.' },
-          finishLabel: { en: 'Finish' },
-          finishConfirmation: { en: 'Finish?' },
-          finishFailed: { en: 'Not finished.' },
-          outcome: 'completed',
-        },
-      ],
-      codebook: { node: {}, edge: {}, ego: {} },
-      assetManifest: {},
-    });
+    const current = withInterfaceText(studyIn('en'));
     const bytes = await buildArchive({
       'protocol.json': JSON.stringify(current),
     });
@@ -275,22 +278,37 @@ describe('importing a file below this app’s schema', () => {
       COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     );
     expect(saveProtocolMock).toHaveBeenCalledTimes(1);
+  });
 
-    // Written by hand without the interview's own words, it is refused,
-    // naming each group it lacks.
-    saveProtocolMock.mockClear();
-    // JSON leaves out a property that is undefined.
-    const withoutText = { ...current, interfaceText: undefined };
-    const refused = await importProtocolFromFile(
+  // The interview shows Network Canvas's wording for the words a protocol
+  // does not hold, so a file without them is whole in a language Network
+  // Canvas has wording in, and nothing is written into it.
+  it('imports a file that holds none of the interview’s own words, as it is', async () => {
+    const result = await importProtocolFromFile(
       asFile(
-        await buildArchive({ 'protocol.json': JSON.stringify(withoutText) }),
+        await buildArchive({ 'protocol.json': JSON.stringify(studyIn('en')) }),
       ),
     );
+
+    expect(result).toMatchObject({ success: true });
+    expect(saveProtocolMock).toHaveBeenCalledTimes(1);
+    expect(saveProtocolMock.mock.calls[0]?.[0]).not.toHaveProperty(
+      'interfaceText',
+    );
+  });
+
+  it('refuses such a file in a language Network Canvas has no wording in, naming each text it lacks', async () => {
+    const refused = await importProtocolFromFile(
+      asFile(
+        await buildArchive({ 'protocol.json': JSON.stringify(studyIn('sw')) }),
+      ),
+    );
+
     expect(refused.success).toBe(false);
     if (refused.success) return;
     expect(refused.error).toBe('validation-failed');
     expect(refused.issues?.map(({ path }) => path)).toContain(
-      'interfaceText.navigation',
+      'interfaceText.navigation.back.sw',
     );
     expect(saveProtocolMock).not.toHaveBeenCalled();
   });

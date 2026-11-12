@@ -6,6 +6,8 @@ import {
   InterfaceTextSchema,
   interfaceTextAfterLanguageChange,
   interfaceTextFor,
+  interfaceTextShown,
+  interfaceTextShownBy,
   suppliedInterfaceText,
   withInterfaceText,
 } from '../interface-text.ts';
@@ -855,5 +857,95 @@ describe('interface text after a change to the languages', () => {
 
     expect(updates.length).toBeGreaterThan(0);
     for (const { value } of updates) expect(Object.keys(value)).toEqual(['en']);
+  });
+});
+
+describe('the interface text the interview shows', () => {
+  const locales = { defaultLocale: 'en', locales: ['en', 'es', 'sw'] };
+  const supplied = suppliedInterfaceText('navigation', 'back', locales);
+
+  it('is Network Canvas’s wording where the protocol holds none', () => {
+    expect(supplied).toEqual({ en: 'Back', es: expect.any(String) });
+    for (const held of [undefined, null, 'text', [], { navigation: 'text' }]) {
+      expect(interfaceTextShown(held, 'navigation', 'back', locales)).toEqual(
+        supplied,
+      );
+    }
+  });
+
+  it('is the protocol’s own translation where it holds one, and the rest from Network Canvas', () => {
+    const held = { navigation: { back: { en: 'Previous', sw: 'Rudi' } } };
+
+    expect(interfaceTextShown(held, 'navigation', 'back', locales)).toEqual({
+      en: 'Previous',
+      es: supplied?.es,
+      sw: 'Rudi',
+    });
+  });
+
+  it('is only what the protocol holds in a language Network Canvas has no wording in', () => {
+    const swahili = { defaultLocale: 'sw', locales: ['sw'] };
+
+    expect(interfaceTextShown({}, 'navigation', 'back', swahili)).toEqual({});
+    expect(
+      interfaceTextShown(
+        { navigation: { back: { sw: 'Rudi' } } },
+        'navigation',
+        'back',
+        swahili,
+      ),
+    ).toEqual({ sw: 'Rudi' });
+  });
+
+  it('reads an entry that is not text in each language as holding nothing', () => {
+    expect(
+      interfaceTextShown(
+        { navigation: { back: { en: 3 } } },
+        'navigation',
+        'back',
+        locales,
+      ),
+    ).toEqual(supplied);
+  });
+
+  it('is undefined for a group or an entry that does not exist', () => {
+    expect(interfaceTextShown({}, 'invented', 'back', locales)).toBeUndefined();
+    expect(
+      interfaceTextShown({}, 'navigation', 'invented', locales),
+    ).toBeUndefined();
+  });
+
+  it('lists only the entries the protocol shows', () => {
+    const plain = interfaceTextShownBy(protocolWith());
+    const keys = plain.map(({ group, key }) => `${group}.${key}`);
+
+    expect(keys).toContain('navigation.back');
+    expect(keys).not.toContain('passphrase.protectedAnswersLocked');
+
+    const encrypted = interfaceTextShownBy(
+      protocolWith({ codebook: ENCRYPTED_CODEBOOK }),
+    ).map(({ group, key }) => `${group}.${key}`);
+    expect(encrypted).toContain('passphrase.protectedAnswersLocked');
+  });
+
+  it('lists each with the text shown, the protocol’s over Network Canvas’s', () => {
+    const shown = interfaceTextShownBy(
+      protocolWith({
+        localization: ENGLISH_AND_FRENCH,
+        interfaceText: { navigation: { back: { fr: 'Précédent' } } },
+      }),
+    );
+    const back = shown.find(
+      ({ group, key }) => group === 'navigation' && key === 'back',
+    );
+
+    expect(back?.value).toEqual({ en: 'Back', fr: 'Précédent' });
+    for (const { group, key, value } of shown) {
+      expect(value).toEqual(
+        group === 'navigation' && key === 'back'
+          ? back?.value
+          : suppliedInterfaceText(group, key, ENGLISH_AND_FRENCH),
+      );
+    }
   });
 });

@@ -12,7 +12,7 @@ import {
  * Whether a bin stage keeps the participant on the stage until every node
  * is placed, which is when it shows the notice below.
  */
-export const requiresCompletePlacement = (stage: StageRecord): boolean =>
+const requiresCompletePlacement = (stage: StageRecord): boolean =>
   behaviourIsOn(stage, 'requireCompletePlacement');
 
 /**

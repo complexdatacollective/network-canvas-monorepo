@@ -51,7 +51,6 @@ import {
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
 } from './interface-owned-options.ts';
-import { missingInterfaceTextIssues } from './interface-text-issues.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { ProtocolStructureSchema } from './protocol-structure.ts';
 import { CATEGORICAL_BIN_MAX_BINS } from './stages/categorical-bin.ts';
@@ -674,12 +673,6 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
       message: 'Text must have at least one translation.',
       path: [...path],
     });
-  }
-
-  // The interview's own words come from the protocol: it must hold every
-  // interface text it shows (see `findMissingInterfaceText`).
-  for (const issue of missingInterfaceTextIssues(protocol)) {
-    ctx.addIssue({ code: 'custom' as const, ...issue });
   }
 
   if (localization) {

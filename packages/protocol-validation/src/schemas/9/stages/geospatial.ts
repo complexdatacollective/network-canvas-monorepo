@@ -62,7 +62,8 @@ export type MapOptions = z.infer<typeof mapOptions>;
 
 /**
  * The label of the map's choice for a place outside its selectable areas
- * (`stage-wording/geospatial.ts`), which each stage words for its own map.
+ * (`stage-wording/geospatial.ts`), which each stage may word for its own map;
+ * a stage that omits it shows Network Canvas's wording.
  * The notices every map shows alike are interface text
  * (`interface-text-wording.ts`).
  */
@@ -70,7 +71,7 @@ const geospatialWording = {
   outsideAreasLabel: localizedString(nonBlankText(), {
     format: 'plain',
     lines: 'single',
-  }),
+  }).optional(),
 };
 
 export const geospatialStage = baseStageSchema.extend({

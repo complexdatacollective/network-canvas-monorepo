@@ -232,7 +232,9 @@ export {
 // What the Family Pedigree's localized messages may use, for an editor of
 // them.
 export {
+  type CompleteFamilyPedigreeWording,
   type FamilyPedigreeWording,
+  isCompleteFamilyPedigreeWording,
   PEDIGREE_PERSON_ARGUMENTS,
   PEDIGREE_WORDING_ARGUMENTS,
 } from './schemas/9/stages/family-pedigree.ts';
@@ -279,10 +281,13 @@ export {
   SNAPSHOT_INHERITANCE_ARGUMENTS,
 } from './schemas/9/stages/narrative-pedigree.ts';
 // The stage settings whose wording Network Canvas supplies, written into a
-// stage by Architect when it is made and when a language is added.
+// stage by Architect when it is made and when a language is added, and the
+// text the interview shows for them.
 export {
   inapplicableStageSettings,
   missingSuppliedStageText,
+  type ShownStageText,
+  stageWordingShown,
   type SuppliedStageText,
   suppliedStageText,
   suppliedStageSettingApplies,
@@ -295,6 +300,8 @@ export {
   type InterfaceText,
   interfaceTextAfterLanguageChange,
   interfaceTextArguments,
+  interfaceTextShown,
+  interfaceTextShownBy,
   type InterfaceTextUpdate,
   interfaceTextWithUpdates,
   sharedStageInterfaceTextUsed,

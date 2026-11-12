@@ -37,8 +37,11 @@ Portuguese, and Simplified and Traditional Chinese):
   as the stage's `wording`, including the name question and the checklist of
   family members still needed.
 
-A setting shown only under some configuration, such as the layout tooltips
-while automatic layout is on, is held only while that configuration is on:
+A stage may omit any of these settings. For each one it does not hold in a
+language, the interview shows Network Canvas's wording, where Network Canvas
+has wording in that language (`stageWordingShown(stage, localization)`). A
+setting shown only under some configuration, such as the layout tooltips
+while automatic layout is on, is offered only while that configuration is on:
 Architect fills it in with the starting wording when the configuration is
 switched on and removes it when it is switched off, so a protocol never asks
 for text its participants cannot see to be translated. Upgrading a protocol

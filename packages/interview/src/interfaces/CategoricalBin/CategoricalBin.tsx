@@ -49,6 +49,7 @@ import {
   useResolveLocalizedString,
   useResolveLocalizedStringIn,
 } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -273,7 +274,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   useCompletePlacement({
     unplacedCount: uncategorisedNodes.length,
     required: stage.behaviours?.requireCompletePlacement,
-    notice: stage.unplacedNodesNotice,
+    notice: useStageWording(stage).shown('unplacedNodesNotice'),
   });
 
   // Reset expanded bin when prompt changes. Compared during render so the new

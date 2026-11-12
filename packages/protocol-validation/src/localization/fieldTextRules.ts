@@ -1,3 +1,4 @@
+import { interfaceTextShown } from '../schemas/9/interface-text.ts';
 import type { LocalizedString } from '../schemas/9/localized-string.ts';
 import type { CurrentProtocol } from '../schemas/index.ts';
 import { findLabelCollisions } from './labelCollisions.ts';
@@ -14,8 +15,8 @@ import type { LocaleTag } from './localeTag.ts';
  * None refuses a protocol being written. Two labels that read the same
  * (`findLabelCollisions`) are refused of a protocol handed over, and the
  * editors refuse to write one; the interview text's default language is
- * required of a protocol handed over only where Network Canvas has no
- * wording to supply.
+ * required of a protocol handed over only where neither the protocol nor
+ * Network Canvas's own wording has it.
  */
 
 /** A rule in this module, as `findFieldTextProblems` names it. */
@@ -24,7 +25,10 @@ export type FieldTextRule =
   | 'duplicateDiseaseLabel'
   /** Two options of one attribute a participant would read the same way. */
   | 'duplicateOptionLabel'
-  /** Interview text with no words in the protocol's default language. */
+  /**
+   * Interview text the interview shows with no words in the protocol's
+   * default language, counting Network Canvas's own wording.
+   */
   | 'interfaceTextWithoutDefaultLanguage';
 
 export type FieldTextProblem = Readonly<{
@@ -42,11 +46,11 @@ const isLocalizedString = (value: unknown): value is LocalizedString =>
   Object.values(value).every((text) => typeof text === 'string');
 
 /**
- * Whether interview text the protocol holds has no words in its default
- * language. Every one needs them while the protocol is being written, so the
- * interview's own words always have a text to fall back to. The schema allows
- * it of a protocol being written, and requires it only of one leaving its
- * editor where Network Canvas has no wording to supply.
+ * Whether a text has no words in the protocol's default language. Every text
+ * the interview shows needs them, so the interview's own words always have a
+ * text to fall back to; the schema allows a protocol being written to lack
+ * them, and requires them only of one leaving its editor (see
+ * `findBuiltInWordingProblems`).
  */
 export const lacksDefaultLanguageText = (
   value: LocalizedString,
@@ -76,9 +80,20 @@ export const findFieldTextProblems = (
 
   for (const [group, entries] of Object.entries(protocol.interfaceText ?? {})) {
     for (const [key, value] of Object.entries(entries ?? {})) {
+      // What the interview shows is the protocol's text over Network
+      // Canvas's own, so text held only in another language lacks nothing
+      // where Network Canvas has wording in the default language.
+      const shown = isLocalizedString(value)
+        ? (interfaceTextShown(
+            protocol.interfaceText,
+            group,
+            key,
+            localization,
+          ) ?? value)
+        : undefined;
       if (
-        isLocalizedString(value) &&
-        lacksDefaultLanguageText(value, localization.defaultLocale)
+        shown !== undefined &&
+        lacksDefaultLanguageText(shown, localization.defaultLocale)
       ) {
         problems.push({
           rule: 'interfaceTextWithoutDefaultLanguage',
