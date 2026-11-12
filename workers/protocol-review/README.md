@@ -114,44 +114,85 @@ counts can differ at the boundary by the cost of the reviews then running.
 - **Anthropic** receives the protocol and study details to write the review,
   under the organisation's API data-retention terms.
 
-## First deployment
+## Releasing
 
-You need a Cloudflare account with access to the `networkcanvas.com` zone, and
-an Anthropic API key for the project's organisation.
+The Worker has a release lane of its own. Nothing else deploys it: not the
+normal Changesets lane, and not a push that leaves its version alone.
+
+1. A pull request that changes the Worker adds a changeset naming
+   `@codaco/protocol-review-worker` and nothing else (`pnpm changeset`;
+   `pnpm check:changesets` refuses a changeset that mixes it with another
+   lane).
+2. Once that merges, CI opens or updates the **Release Protocol Review
+   Worker** pull request (`changeset-release/protocol-review`), which moves
+   the version and writes `CHANGELOG.md`.
+3. Merging the release pull request deploys. The `apps-release-protocol-review`
+   job in `.github/workflows/ci-and-release.yml` runs `wrangler deploy` with
+   the Anthropic API key, waits until the service answers at
+   `protocol-review.networkcanvas.com` (`pnpm check:deployment`), and tags the
+   commit `@codaco/protocol-review-worker@<version>`.
+
+If the deploy job fails, fix the cause and re-run the failed job. Later
+pushes to `main` do not retry it: only the push that moved the version
+deploys. A version is tagged only after the service has answered, so a deploy
+that never came up can always be re-run.
+
+A pull request never deploys, but it does bundle the Worker the way a deploy
+would (`pnpm bundle`, in the `quality-support` job), so a change that cannot
+be bundled fails before it merges.
+
+To take a bad release off production at once, roll back by hand
+(`pnpm wrangler rollback`, signed in to Cloudflare) and then release the fix.
+
+### Setting up the lane (once)
+
+The deploy job reads three secrets from a GitHub environment named
+`protocol-review-worker`. Create it under Settings → Environments, and limit
+its deployment branches to `main`, so that no other branch can run a job that
+reads them.
+
+| Secret                  | What it is                                                                                                                                                     |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | A Cloudflare API token made from the **Edit Cloudflare Workers** template, limited to the account and to the `networkcanvas.com` zone.                         |
+| `CLOUDFLARE_ACCOUNT_ID` | The id of the Cloudflare account that holds the `networkcanvas.com` zone.                                                                                      |
+| `ANTHROPIC_API_KEY`     | An Anthropic API key from a workspace whose monthly spend limit is US $200, the same as `MONTHLY_SPEND_CEILING_USD` (see "Limits"). Give the key no other use. |
 
 ```bash
-cd workers/protocol-review
-
-# 1. Sign in to Cloudflare.
-pnpm wrangler login
-
-# 2. Store the Anthropic API key as a secret (it is never in the repository).
-pnpm wrangler secret put ANTHROPIC_API_KEY
-
-# 3. Deploy. The first deploy creates the Durable Object (with its SQLite
-#    migration), creates the SHARED_REVIEWS KV namespace (the binding in
-#    wrangler.jsonc has no id, so Wrangler provisions one), and attaches the
-#    custom domain protocol-review.networkcanvas.com.
-pnpm run deploy
+gh secret set CLOUDFLARE_API_TOKEN --env protocol-review-worker
+gh secret set CLOUDFLARE_ACCOUNT_ID --env protocol-review-worker
+gh secret set ANTHROPIC_API_KEY --env protocol-review-worker
 ```
 
-If your Wrangler version does not provision the KV namespace by itself (the
-deploy fails asking for a namespace id), create it and add its id to the
-binding in `wrangler.jsonc`:
+Each command asks for the value, so it is never in your shell history. With
+any of the three missing, the deploy job stops before it reaches Cloudflare
+and says which.
+
+The first deploy creates everything the Worker needs: the `ReviewLimiter`
+Durable Object (with its SQLite migration), the `SHARED_REVIEWS` KV namespace
+(named `protocol-review-worker-shared-reviews`; the binding in
+`wrangler.jsonc` has no id, and later deploys find the namespace on the
+deployed Worker), and the custom domain `protocol-review.networkcanvas.com`
+with its DNS record and certificate. The zone must not already have a DNS
+record at that name. The domain takes a few minutes to answer the first time,
+which the job waits for.
+
+### Changing the Anthropic API key
+
+The key is uploaded with every deploy, from the environment secret. To change
+it, set the secret again (`gh secret set ANTHROPIC_API_KEY --env
+protocol-review-worker`); the next release carries the new key. For the new
+key to take effect before then, also give it to the deployed Worker by hand:
+`pnpm wrangler secret put ANTHROPIC_API_KEY`.
+
+### Checking a deployment
 
 ```bash
-pnpm wrangler kv namespace create SHARED_REVIEWS
-# then: "kv_namespaces": [{ "binding": "SHARED_REVIEWS", "id": "<the id printed>" }]
+pnpm check:deployment
 ```
 
-Check the deployment with a preflight request, which needs no key and spends
-nothing:
-
-```bash
-curl -i -X OPTIONS https://protocol-review.networkcanvas.com/review \
-  -H 'Origin: https://architect.networkcanvas.com'
-# Expect 204 with Access-Control-Allow-Origin: https://architect.networkcanvas.com
-```
+sends preflight requests to the deployed service and checks that it answers
+both Architect origins and refuses any other. Preflight requests need no key,
+count against no limit and spend nothing.
 
 Logs are in the Cloudflare dashboard (Workers → protocol-review-worker →
 Observability). Failures appear as `protocol_review_failure reason=… status=…`.
@@ -174,6 +215,7 @@ production.
 pnpm dev          # wrangler dev, with a local Durable Object and KV
 pnpm test         # the unit tests (no API calls, no Workers runtime)
 pnpm typecheck
+pnpm bundle       # what `wrangler deploy` would upload, without deploying
 pnpm cf-typegen   # after changing wrangler.jsonc
 ```
 
@@ -205,3 +247,4 @@ change, update both together.
 | `src/prompt/protocol-reference.ts`   | The schema 9 shapes and fix syntax the model writes fixes in.       |
 | `src/pricing.ts`, `src/constants.ts` | Prices, limits and the ceiling.                                     |
 | `src/contract.ts`                    | The wire contract shared with Architect.                            |
+| `src/deployment-check.ts`            | Whether the deployed service answers Architect and nobody else.     |

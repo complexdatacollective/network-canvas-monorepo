@@ -77,7 +77,7 @@ const nextUtcMidnight = (time: number): number =>
   Math.floor(time / DAY_MS) * DAY_MS + DAY_MS;
 
 /** The first day of the UTC calendar month `time` falls in (`YYYY-MM-01`). */
-export const utcMonthStart = (time: number): string =>
+const utcMonthStart = (time: number): string =>
   `${utcDay(time).slice(0, 7)}-01`;
 
 const nextUtcMonth = (time: number): number => {

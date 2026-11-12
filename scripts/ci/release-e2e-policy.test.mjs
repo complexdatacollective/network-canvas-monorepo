@@ -198,6 +198,7 @@ test('release lane suites match the workspace dependency graph', () => {
   const productLanes = {
     [NORMAL_RELEASE_REF]: ['@codaco/architect', '@codaco/interviewer'],
     'changeset-release/documentation': ['@codaco/documentation'],
+    'changeset-release/protocol-review': ['@codaco/protocol-review-worker'],
     'changeset-release/studio': [
       '@codaco/studio-web',
       '@codaco/studio-contract',
@@ -306,6 +307,7 @@ test('all release policies share the central snapshot PR target', () => {
     ['pull_request', 'changeset-release/main'],
     ['workflow_dispatch', NORMAL_RELEASE_REF],
     ['workflow_dispatch', 'changeset-release/documentation'],
+    ['workflow_dispatch', 'changeset-release/protocol-review'],
     ['workflow_dispatch', 'changeset-release/studio'],
     ['workflow_dispatch', 'changeset-release/website'],
   ]) {
