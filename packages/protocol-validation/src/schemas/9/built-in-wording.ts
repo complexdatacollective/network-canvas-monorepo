@@ -10,7 +10,12 @@ import {
 } from '../../utils/collectLocalizedStrings.ts';
 import { findInterfaceOwnedOptionBindings } from '../../utils/findExclusiveVariableConflicts.ts';
 import { isSuppliedOptionLabelSet } from './family-pedigree-option-labels.ts';
-import { suppliedStageSettingPaths } from './supplied-stage-text.ts';
+import { interfaceTextShownBy } from './interface-text.ts';
+import type { LocalizedString } from './localized-string.ts';
+import {
+  stageWordingShown,
+  suppliedStageSettingPaths,
+} from './supplied-stage-text.ts';
 
 type Path = readonly (string | number)[];
 
@@ -18,6 +23,46 @@ const keyOf = (path: Path): string => JSON.stringify(path);
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Where a protocol holds the labels of the Family Pedigree's answers: copied
+ * into the protocol's codebook, so they are held text, not text the interview
+ * supplies when the protocol omits it.
+ */
+const suppliedOptionLabelPaths = (
+  protocol: unknown,
+  references?: readonly EntityAttributeReferenceHit[],
+): ReadonlySet<string> => {
+  const paths = new Set<string>();
+  if (!isRecord(protocol)) return paths;
+  for (const binding of findInterfaceOwnedOptionBindings(
+    protocol,
+    references,
+  )) {
+    if (!isSuppliedOptionLabelSet(binding.optionSet)) continue;
+    const { entity, type } = binding.subject;
+    if (entity !== 'ego' && type === undefined) continue;
+    const variables = [
+      'codebook',
+      ...(entity === 'ego' ? ['ego'] : [entity, type ?? '']),
+      'variables',
+      binding.variableId,
+    ];
+    const variable = variables
+      .slice(1)
+      .reduce<unknown>(
+        (current, key) => (isRecord(current) ? current[key] : undefined),
+        protocol.codebook,
+      );
+    const options = isRecord(variable) ? variable.options : undefined;
+    if (!Array.isArray(options)) continue;
+    options.forEach((_option: unknown, index) => {
+      paths.add(keyOf([...variables, 'options', index, 'label']));
+    });
+  }
+
+  return paths;
+};
 
 /**
  * Where a protocol holds wording Network Canvas supplies: its interface text,
@@ -55,30 +100,8 @@ export const builtInWordingPaths = (
     });
   }
 
-  for (const binding of findInterfaceOwnedOptionBindings(
-    protocol,
-    references,
-  )) {
-    if (!isSuppliedOptionLabelSet(binding.optionSet)) continue;
-    const { entity, type } = binding.subject;
-    if (entity !== 'ego' && type === undefined) continue;
-    const variables = [
-      'codebook',
-      ...(entity === 'ego' ? ['ego'] : [entity, type ?? '']),
-      'variables',
-      binding.variableId,
-    ];
-    const variable = variables
-      .slice(1)
-      .reduce<unknown>(
-        (current, key) => (isRecord(current) ? current[key] : undefined),
-        protocol.codebook,
-      );
-    const options = isRecord(variable) ? variable.options : undefined;
-    if (!Array.isArray(options)) continue;
-    options.forEach((_option: unknown, index) => {
-      paths.add(keyOf([...variables, 'options', index, 'label']));
-    });
+  for (const path of suppliedOptionLabelPaths(protocol, references)) {
+    paths.add(path);
   }
 
   return paths;
@@ -112,12 +135,17 @@ export const findEmptyTextPaths = (
 };
 
 /**
- * Wording Network Canvas supplies that a protocol holds without text in its
- * default language: in a default language Network Canvas has no wording in,
- * every one, until the researcher writes them or makes a language it has
- * wording in the default. A protocol being written may hold these; one
- * leaving its editor may not, as participants reading the default language
- * would have no words there.
+ * Wording the protocol shows that has no text in its default language,
+ * counting Network Canvas's own wording for that language: every supplied
+ * text the protocol shows must have text there. In a default language
+ * Network Canvas has wording in (`en`, or `en-US`), the protocol needs to
+ * hold none; in one it has none in (Swahili), every text shown and not held
+ * in that language, until the researcher writes it or makes a language
+ * Network Canvas has wording in the default. The labels of the Family
+ * Pedigree's answers are copied into the codebook, so a held label without
+ * text in the default language is a problem too. A protocol being written
+ * may have these; one leaving its editor may not, as participants reading
+ * the default language would have no words there.
  */
 export type BuiltInWordingProblem = Readonly<{
   path: readonly (string | number)[];
@@ -125,18 +153,44 @@ export type BuiltInWordingProblem = Readonly<{
   locale: LocaleTag;
 }>;
 
+const lacksText = (value: LocalizedString, locale: LocaleTag): boolean => {
+  const text = Object.hasOwn(value, locale) ? value[locale] : undefined;
+  return text === undefined || isBlankMessage(text);
+};
+
 export const findBuiltInWordingProblems = (
-  protocol: Readonly<{ localization: LocalizationDeclaration }>,
+  protocol: Readonly<{
+    localization: LocalizationDeclaration;
+    codebook?: unknown;
+    stages?: readonly unknown[];
+    interfaceText?: unknown;
+  }>,
 ): readonly BuiltInWordingProblem[] => {
-  const locale = protocol.localization.defaultLocale;
-  const paths = builtInWordingPaths(protocol);
-  return collectLocalizedStrings(protocol).flatMap((hit) => {
-    if (!isBuiltInWordingPath(paths, hit.path)) return [];
-    const text = Object.hasOwn(hit.value, locale)
-      ? hit.value[locale]
-      : undefined;
-    return text === undefined || isBlankMessage(text)
-      ? [{ path: hit.path, locale }]
-      : [];
-  });
+  const { localization } = protocol;
+  const locale = localization.defaultLocale;
+  const problem = (path: Path): BuiltInWordingProblem => ({ path, locale });
+
+  const interfaceProblems = interfaceTextShownBy(protocol)
+    .filter(({ value }) => lacksText(value, locale))
+    .map(({ group, key }) => problem(['interfaceText', group, key]));
+
+  const stageProblems = (protocol.stages ?? []).flatMap(
+    (stage: unknown, index) =>
+      !isRecord(stage) || typeof stage.type !== 'string'
+        ? []
+        : stageWordingShown({ ...stage, type: stage.type }, localization)
+            .filter(({ shown, value }) => shown && lacksText(value, locale))
+            .map(({ path }) => problem(['stages', index, ...path])),
+  );
+
+  const optionPaths = suppliedOptionLabelPaths(protocol);
+  const optionProblems = collectLocalizedStrings(protocol)
+    .filter(
+      (hit) =>
+        isBuiltInWordingPath(optionPaths, hit.path) &&
+        lacksText(hit.value, locale),
+    )
+    .map((hit) => problem(hit.path));
+
+  return [...interfaceProblems, ...stageProblems, ...optionProblems];
 };

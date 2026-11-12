@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
+  interfaceTextShownBy,
 } from '@codaco/protocol-validation';
 
 import type { StoredAsset } from '../assetDB';
@@ -227,13 +228,22 @@ describe('the finish stage text guard', () => {
   const japanese = { defaultLocale: 'ja', locales: ['ja'] };
   // As Architect creates a protocol in a language Network Canvas supplies no
   // closing text for.
-  const japaneseProtocol = (): CurrentProtocol => ({
-    ...makeProtocol({ 'id-1': asset('image', 'photo.jpg', 'Photo') }),
-    localization: japanese,
-    stages: [
-      createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
-    ],
-  });
+  // The interview's shared words are written in Japanese, as a researcher
+  // would write them: Network Canvas has no wording there.
+  const japaneseProtocol = (): CurrentProtocol => {
+    const protocol = {
+      ...makeProtocol({ 'id-1': asset('image', 'photo.jpg', 'Photo') }),
+      localization: japanese,
+      stages: [
+        createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+      ],
+    };
+    const interfaceText: Record<string, Record<string, { ja: string }>> = {};
+    for (const { group, key } of interfaceTextShownBy(protocol)) {
+      (interfaceText[group] ??= {})[key] = { ja: '日本語' };
+    }
+    return { ...protocol, interfaceText };
+  };
 
   beforeEach(() => {
     getAssetById.mockReset();

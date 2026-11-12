@@ -25,13 +25,21 @@ import { useContentFormat } from '../../../localization/useContentFormat';
 import type { CompletenessItem, CompletenessProgress } from '../completeness';
 import { messages } from '../messages';
 import type { Family } from '../model';
-import { showPiped, usePedigreePiped } from '../pedigreeWords';
+import {
+  type CompletenessWording,
+  showPiped,
+  usePedigreePiped,
+} from '../pedigreeWords';
 
-/** The stage's completeness setting: its enforcement and its wording. */
+/**
+ * The stage's completeness setting: its enforcement, and its wording as the
+ * interview shows it.
+ */
 type TrackerCompleteness = Pick<
   NonNullable<FamilyPedigreeStageDefinition['completeness']>,
-  'enforcement' | 'itemText' | 'recommendedNote'
->;
+  'enforcement'
+> &
+  CompletenessWording;
 
 type CompletenessTrackerProps = {
   progress: CompletenessProgress;

@@ -2,7 +2,7 @@ import type {
   LocaleTag,
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
-import type { LocalizedString } from './localized-string.ts';
+import { heldTranslations, type LocalizedString } from './localized-string.ts';
 import { BIN_SUPPLIED_TEXT } from './stage-wording/bins.ts';
 import { FAMILY_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/family-pedigree.ts';
 import { FINISH_SESSION_SUPPLIED_TEXT } from './stage-wording/finish-session.ts';
@@ -22,10 +22,12 @@ import {
 
 /**
  * The stage settings whose wording Network Canvas supplies, by stage type.
- * Nothing reads these at interview time: the text is written into a stage
- * when it is made, then edited and translated like any protocol text, and
- * Architect fills it into a language added later wherever that language has
- * no translation of it.
+ * A stage may hold any of it, or none: for each text it does not hold in a
+ * language, the interview shows Network Canvas's own wording where Network
+ * Canvas has it in that language (`stageWordingShown`). Architect writes the
+ * text into a stage when it is made, then edits and translates it like any
+ * protocol text, and fills it into a language added later wherever that
+ * language has no translation of it.
  */
 const SUPPLIED_STAGE_TEXT: Readonly<
   Record<string, readonly SuppliedStageSetting[]>
@@ -59,9 +61,9 @@ export const suppliedStageSettingPaths = (
  * The message Network Canvas writes for a setting in a protocol language:
  * its wording in exactly that language, and none in any other. That is the
  * rule for all its wording (the interface text and the Family Pedigree's
- * option labels too). A setting with no wording in the default language must
- * be written there before the protocol leaves its editor
- * (`findBuiltInWordingProblems`).
+ * option labels too). A setting the stage shows with no text in the default
+ * language, counting Network Canvas's wording, must be written there before
+ * the protocol leaves its editor (`findBuiltInWordingProblems`).
  */
 const writtenIn = (
   setting: SuppliedStageSetting,
@@ -131,6 +133,48 @@ export const suppliedStageTextAfterLanguageChange = (
     ];
   });
 
+/** One supplied setting as the interview shows it for a stage. */
+export type ShownStageText = Readonly<{
+  path: readonly string[];
+  value: LocalizedString;
+  shown: boolean;
+}>;
+
+/**
+ * Every supplied setting of the stage's type, in table order, with the text
+ * the interview shows for it and whether it shows it. The text is Network
+ * Canvas's wording in every protocol language it writes one in (what
+ * `suppliedStageText` builds), with the translations the stage holds at the
+ * setting's path laid over it per language: a language the stage holds
+ * wins, a language it does not hold gets Network Canvas's wording, and a
+ * language Network Canvas has no wording in gets only what the stage holds.
+ * The interview shows the setting when the object it lives in (`within`), if
+ * it has one, exists on the stage, its `when`, if it has one, holds, and, for
+ * an optional setting, the stage holds a value at its path.
+ */
+export const stageWordingShown = (
+  stage: Readonly<{ type: string }> & Readonly<Record<string, unknown>>,
+  localization: LocalizationDeclaration,
+): readonly ShownStageText[] => {
+  const settings = settingsOf(stage.type);
+  return suppliedStageText(stage.type, localization).map(
+    ({ path, value }, index) => {
+      const setting = settings[index];
+      const shown =
+        setting !== undefined &&
+        (setting.within === undefined ||
+          valueAt(stage, setting.within) !== undefined) &&
+        (setting.when === undefined || setting.when(stage)) &&
+        (setting.optional !== true || valueAt(stage, path) !== undefined);
+      return {
+        path,
+        value: { ...value, ...heldTranslations(valueAt(stage, path)) },
+        shown,
+      };
+    },
+  );
+};
+
 /**
  * The supplied settings `stage` should gain, as a new stage starts with them
  * and the schema 8 to 9 migration adds them: each one it lacks, except one
@@ -165,24 +209,6 @@ export const missingSuppliedStageText = (
 };
 
 /**
- * The paths of the settings `stage` must hold but does not: each one shown
- * only under a configuration (its `when`) that is on. The interview shows
- * such a setting in place of its built-in wording, so a stage without it
- * would show nothing where the participant expects words.
- */
-export const missingRequiredStageSettings = (
-  stage: Readonly<{ type: string }>,
-): readonly (readonly string[])[] =>
-  settingsOf(stage.type)
-    .filter(
-      (setting) =>
-        setting.when !== undefined &&
-        setting.when(stage) &&
-        valueAt(stage, setting.path) === undefined,
-    )
-    .map((setting) => setting.path);
-
-/**
  * The paths of the settings `stage` holds but no longer shows: each one shown
  * only under a configuration (its `when`) that is off. A stage editor seeds
  * such a setting when its configuration is turned on, so it drops it when the
@@ -207,8 +233,7 @@ const samePath = (a: readonly string[], b: readonly string[]): boolean =>
 /**
  * Whether the stage's setting at `path` applies to the stage as it is
  * configured: true for a setting shown whatever the configuration, else what
- * its `when` says. A stage editor shows a wording field only when this holds,
- * so the field it shows is the one `missingRequiredStageSettings` requires.
+ * its `when` says. A stage editor shows a wording field only when this holds.
  * A path that is not a supplied setting of the stage's type does not apply.
  */
 export const suppliedStageSettingApplies = (

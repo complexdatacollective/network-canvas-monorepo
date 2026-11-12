@@ -19,6 +19,7 @@ import { createCanvasStore } from '../../canvas/useCanvasStore';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { useOptionalLocalizedText } from '../../localization/ProtocolLocalizationProvider';
+import { useStageWording } from '../../localization/useStageWording';
 import {
   getCategoricalOptions,
   getNetworkEdges,
@@ -38,11 +39,14 @@ const Narrative = ({ stage }: NarrativeProps) => {
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
 
-  // The stage's own words (`stage-wording/narrative.ts`).
+  // The stage's own words (`stage-wording/narrative.ts`), and Network
+  // Canvas's where the stage holds none. A heading is shown only while a
+  // preset has something to list under it.
+  const wording = useStageWording(stage);
   const headings = {
-    attributes: useOptionalLocalizedText(stage.attributesHeading),
-    links: useOptionalLocalizedText(stage.linksHeading),
-    groups: useOptionalLocalizedText(stage.groupsHeading),
+    attributes: useOptionalLocalizedText(wording.shown('attributesHeading')),
+    links: useOptionalLocalizedText(wording.shown('linksHeading')),
+    groups: useOptionalLocalizedText(wording.shown('groupsHeading')),
   };
   // The drawing tools, shown while the stage's drawing is on, are worded
   // alike on every Narrative (the protocol's interface text).

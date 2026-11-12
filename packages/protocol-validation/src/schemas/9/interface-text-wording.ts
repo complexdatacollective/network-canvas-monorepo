@@ -1,4 +1,7 @@
-import type { MessageArguments } from '../../localization/messageArguments.ts';
+import {
+  EVERY_VERSION,
+  type MessageArguments,
+} from '../../localization/messageArguments.ts';
 import type { LocalizedTextShape } from './localized-string.ts';
 import {
   CONNECT_HINT,
@@ -43,7 +46,8 @@ import type { SuppliedWording } from './supplied-stage-setting.ts';
 
 // The wording Network Canvas supplies for the interface text a protocol holds
 // (`interface-text.ts`), in every language Network Canvas supplies, with the
-// arguments the English message uses. Each entry's English is the English of
+// arguments its message may use and those it must show, which hold for any
+// rewording or translation of it too. Each entry's English is the English of
 // the message it stands in for, as the interview, fresco-ui and app-i18n word
 // it; the exceptions are the entries that merge several messages
 // (`buttons.yes`, `messages.error` and `search.searchLabel`, see their
@@ -823,6 +827,16 @@ export const FORMS_INTERFACE_TEXT = {
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
+/**
+ * What a message comparing an answer with an earlier one may use: whether the
+ * earlier question has a label, and that label, which the message must show
+ * when there is one.
+ */
+const COMPARED_ANSWER_ARGUMENTS = {
+  hasLabel: { kind: 'select', cases: ['true'] },
+  label: { kind: 'text', required: [{ hasLabel: 'true' }] },
+} as const satisfies MessageArguments;
+
 export const VALIDATION_INTERFACE_TEXT = {
   required: {
     ids: ['frescoUi.validation.required'],
@@ -840,7 +854,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minLength: {
     ids: ['frescoUi.validation.minLengthError'],
-    arguments: { min: { kind: 'plural' } },
+    arguments: { min: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}',
       'de': '{min, plural, one {Geben Sie mindestens # Zeichen ein.} other {Geben Sie mindestens # Zeichen ein.}}',
@@ -856,7 +870,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxLength: {
     ids: ['frescoUi.validation.maxLengthError'],
-    arguments: { max: { kind: 'plural' } },
+    arguments: { max: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}',
       'de': '{max, plural, one {Geben Sie höchstens # Zeichen ein.} other {Geben Sie höchstens # Zeichen ein.}}',
@@ -872,7 +886,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minValue: {
     ids: ['frescoUi.validation.minValueError'],
-    arguments: { min: { kind: 'text' } },
+    arguments: { min: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Enter a value greater than or equal to {min}.',
       'de': 'Geben Sie einen Wert größer oder gleich {min} ein.',
@@ -887,7 +901,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxValue: {
     ids: ['frescoUi.validation.maxValueError'],
-    arguments: { max: { kind: 'text' } },
+    arguments: { max: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Enter a value less than or equal to {max}.',
       'de': 'Geben Sie einen Wert kleiner oder gleich {max} ein.',
@@ -902,7 +916,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minDate: {
     ids: ['frescoUi.validation.minDate'],
-    arguments: { min: { kind: 'text' } },
+    arguments: { min: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Must be on or after {min}.',
       'de': 'Darf nicht früher als {min} sein.',
@@ -917,7 +931,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxDate: {
     ids: ['frescoUi.validation.maxDate'],
-    arguments: { max: { kind: 'text' } },
+    arguments: { max: { kind: 'text', required: EVERY_VERSION } },
     message: {
       'en': 'Must be on or before {max}.',
       'de': 'Darf nicht später als {max} sein.',
@@ -932,7 +946,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   minSelected: {
     ids: ['frescoUi.validation.minSelectedError'],
-    arguments: { count: { kind: 'plural' } },
+    arguments: { count: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{count, plural, one {Select at least # value.} other {Select at least # values.}}',
       'de': '{count, plural, one {Wählen Sie mindestens # Wert aus.} other {Wählen Sie mindestens # Werte aus.}}',
@@ -948,7 +962,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   maxSelected: {
     ids: ['frescoUi.validation.maxSelectedError'],
-    arguments: { count: { kind: 'plural' } },
+    arguments: { count: { kind: 'plural', required: EVERY_VERSION } },
     message: {
       'en': '{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}',
       'de': '{count, plural, one {Wählen Sie höchstens # Wert aus.} other {Wählen Sie höchstens # Werte aus.}}',
@@ -978,10 +992,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   differentFrom: {
     ids: ['frescoUi.validation.differentFromError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be different from your answer to ''{label}''.} other {Your answer must be different from your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss sich von Ihrer Antwort auf „{label}“ unterscheiden.} other {Ihre Antwort muss sich von Ihrer vorherigen Antwort unterscheiden.}}',
@@ -999,10 +1010,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   sameAs: {
     ids: ['frescoUi.validation.sameAsError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss mit Ihrer Antwort auf „{label}“ übereinstimmen.} other {Ihre Antwort muss mit Ihrer vorherigen Antwort übereinstimmen.}}',
@@ -1020,10 +1028,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   greaterThan: {
     ids: ['frescoUi.validation.greaterThanError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be greater than your answer to ''{label}''.} other {Your answer must be greater than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss größer sein als Ihre Antwort auf „{label}“.} other {Ihre Antwort muss größer sein als Ihre vorherige Antwort.}}',
@@ -1041,10 +1046,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   lessThan: {
     ids: ['frescoUi.validation.lessThanError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be less than your answer to ''{label}''.} other {Your answer must be less than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss kleiner sein als Ihre Antwort auf „{label}“.} other {Ihre Antwort muss kleiner sein als Ihre vorherige Antwort.}}',
@@ -1062,10 +1064,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   greaterThanOrEqual: {
     ids: ['frescoUi.validation.greaterThanOrEqualError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be the same as or greater than your answer to ''{label}''.} other {Your answer must be the same as or greater than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort muss mindestens so groß sein wie Ihre Antwort auf „{label}“.} other {Ihre Antwort muss mindestens so groß sein wie Ihre vorherige Antwort.}}',
@@ -1083,10 +1082,7 @@ export const VALIDATION_INTERFACE_TEXT = {
   },
   lessThanOrEqual: {
     ids: ['frescoUi.validation.lessThanOrEqualError'],
-    arguments: {
-      hasLabel: { kind: 'select', cases: ['true'] },
-      label: { kind: 'text' },
-    },
+    arguments: COMPARED_ANSWER_ARGUMENTS,
     message: {
       'en': "{hasLabel, select, true {Your answer must be the same as or less than your answer to ''{label}''.} other {Your answer must be the same as or less than your earlier answer.}}",
       'de': '{hasLabel, select, true {Ihre Antwort darf höchstens so groß sein wie Ihre Antwort auf „{label}“.} other {Ihre Antwort darf höchstens so groß sein wie Ihre vorherige Antwort.}}',

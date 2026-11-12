@@ -6,16 +6,33 @@ import { describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 
-import { createDefaultFinishSessionStage } from '@codaco/protocol-validation';
+import {
+  createDefaultFinishSessionStage,
+  interfaceTextShownBy,
+} from '@codaco/protocol-validation';
 
 import DefaultLanguageTextAlert from '../DefaultLanguageTextAlert';
 import { translationTableHref } from '../Localization/translationTableLinks';
 
 const japanese = { defaultLocale: 'ja', locales: ['ja'] };
 
+// The interview's shared words the protocol shows, written in Japanese as a
+// researcher would write them: Network Canvas has no wording there.
+const withJapaneseInterfaceText = <
+  Protocol extends Parameters<typeof interfaceTextShownBy>[0],
+>(
+  protocol: Protocol,
+) => {
+  const interfaceText: Record<string, Record<string, { ja: string }>> = {};
+  for (const { group, key } of interfaceTextShownBy(protocol)) {
+    (interfaceText[group] ??= {})[key] = { ja: '日本語' };
+  }
+  return { ...protocol, interfaceText };
+};
+
 // As Architect creates a protocol in a language Network Canvas supplies no
 // closing text for: the finish stage starts with none.
-const newJapaneseProtocol = {
+const newJapaneseProtocol = withJapaneseInterfaceText({
   name: 'Test protocol',
   schemaVersion: 9,
   localization: japanese,
@@ -23,7 +40,7 @@ const newJapaneseProtocol = {
   stages: [
     createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
   ],
-};
+});
 
 // Network Canvas has no built-in wording in Japanese, so the researcher writes
 // the finish stage's button and messages too.
