@@ -35,87 +35,96 @@ const messages = defineMessages({
   copyUsernameIsRequired: {
     id: 'fresco.SignUpForm.copyUsernameIsRequired',
     defaultMessage: 'Username is required',
-    description: 'Researcher-facing SignUpForm: Username is required',
+    description:
+      'Error shown above the first-account form of the setup wizard when the researcher chooses a passkey and submits without a username.',
   },
   copyFailedToStartPasskeyRegistration: {
     id: 'fresco.SignUpForm.copyFailedToStartPasskeyRegistration',
     defaultMessage: 'Failed to start passkey registration',
     description:
-      'Researcher-facing SignUpForm: Failed to start passkey registration',
+      'Error shown above the first-account form of the setup wizard when the server could not prepare the registration of a passkey.',
   },
   copyPasskeyRegistrationFailed: {
     id: 'fresco.SignUpForm.copyPasskeyRegistrationFailed',
     defaultMessage: 'Passkey registration failed',
-    description: 'Researcher-facing SignUpForm: Passkey registration failed',
+    description:
+      'Fallback error shown above the first-account form of the setup wizard when creating the passkey fails for a reason with no more specific message.',
   },
   username: {
     id: 'fresco.SignUpForm.username',
     defaultMessage: 'Username',
-    description: 'Researcher-facing SignUpForm: Username',
+    description:
+      'Label of the username field in the form that creates the first researcher account during setup.',
   },
   username2: {
     id: 'fresco.SignUpForm.username2',
     defaultMessage: 'username...',
-    description: 'Researcher-facing SignUpForm: username...',
+    description:
+      'Placeholder inside the empty username field of the first-account form in the setup wizard.',
   },
   yourUsernameShouldBeAtLeast4: {
     id: 'fresco.SignUpForm.yourUsernameShouldBeAtLeast4',
     defaultMessage:
       'Your username should be at least 4 characters, and must not contain any spaces.',
     description:
-      'Researcher-facing SignUpForm: Your username should be at least 4 characters, and must not contain any spaces.',
+      'Hint shown under the username field of the first-account form in the setup wizard, explaining the rules for a valid username.',
   },
   atLeast4CharactersNoSpaces: {
     id: 'fresco.SignUpForm.atLeast4CharactersNoSpaces',
     defaultMessage: 'At least 4 characters, no spaces',
     description:
-      'Researcher-facing SignUpForm: At least 4 characters, no spaces',
+      'Short validation hint for the username field of the first-account form in the setup wizard, stating the length and no-spaces rules.',
   },
   authenticationMethod: {
     id: 'fresco.SignUpForm.authenticationMethod',
     defaultMessage: 'Authentication method',
-    description: 'Researcher-facing SignUpForm: Authentication method',
+    description:
+      'Label of the choice between a passkey and a password for the first researcher account, in the setup wizard. Only shown when the browser supports passkeys.',
   },
   passkey: {
     id: 'fresco.SignUpForm.passkey',
     defaultMessage: 'Passkey',
-    description: 'Researcher-facing SignUpForm: Passkey',
+    description:
+      'Title of the passkey option in the authentication method choice of the first-account form in the setup wizard. A passkey is a sign-in credential stored on the device.',
   },
   passkeyDescription: {
     id: 'fresco.SignUpForm.useBiometricsOrYourDeviceSecurityTo',
     defaultMessage:
       'Use biometrics or your device security to sign in. No password to remember — the most secure option.',
     description:
-      'Researcher-facing SignUpForm: Use biometrics or your device security to sign in. No password to remember — the most secure option.',
+      'Description under the passkey option in the authentication method choice of the first-account form in the setup wizard.',
   },
   password: {
     id: 'fresco.SignUpForm.password',
     defaultMessage: 'Password',
-    description: 'Researcher-facing SignUpForm: Password',
+    description:
+      'Label of the password field, and title of the password option in the authentication method choice, in the first-account form of the setup wizard.',
   },
   traditionalUsernameAndPasswordRequiresAStrong: {
     id: 'fresco.SignUpForm.traditionalUsernameAndPasswordRequiresAStrong',
     defaultMessage:
       'Traditional username and password. Requires a strong password.',
     description:
-      'Researcher-facing SignUpForm: Traditional username and password. Requires a strong password.',
+      'Description under the password option in the authentication method choice of the first-account form in the setup wizard.',
   },
   atLeast8CharactersWithLowercaseUppercase: {
     id: 'fresco.SignUpForm.atLeast8CharactersWithLowercaseUppercase',
     defaultMessage:
       'At least 8 characters with lowercase, uppercase, number and symbol',
     description:
-      'Researcher-facing SignUpForm: At least 8 characters with lowercase, uppercase, number and symbol',
+      'Hint under the password field of the first-account form in the setup wizard, stating the rules for a valid password.',
   },
   confirmPassword: {
     id: 'fresco.SignUpForm.confirmPassword',
     defaultMessage: 'Confirm password',
-    description: 'Researcher-facing SignUpForm: Confirm password',
+    description:
+      'Label of the field where the password is typed a second time, in the first-account form of the setup wizard.',
   },
   createAccount: {
     id: 'fresco.SignUpForm.createAccount',
     defaultMessage: 'Create account',
-    description: 'Researcher-facing SignUpForm: Create account',
+    description:
+      'Text on the submit button of the first-account form in the setup wizard; creates the first researcher account.',
   },
 });
 

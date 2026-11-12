@@ -35,26 +35,27 @@ const messages = defineMessages({
   error: {
     id: 'fresco.interviews.GenerateInterviewURLs.error',
     defaultMessage: 'Error',
-    description: 'Researcher-facing interviews / GenerateInterviewURLs: Error',
+    description:
+      'Title of an error toast on the Interviews page, shown above the specific error message when the incomplete interview links of a protocol cannot be loaded.',
   },
   exportIncompleteInterviewURLs: {
     id: 'fresco.interviews.GenerateInterviewURLs.exportIncompleteInterviewURLs',
     defaultMessage: 'Export Incomplete Interview URLs',
     description:
-      'Researcher-facing interviews / GenerateInterviewURLs: Export Incomplete Interview URLs',
+      'Button on the Interviews page that opens a popover for exporting the links of unfinished interviews; also the accessible name of that popover.',
   },
   generateACSVThatContainsUniqueInterview: {
     id: 'fresco.interviews.GenerateInterviewURLs.generateACSVThatContainsUniqueInterview',
     defaultMessage:
       'Generate a CSV that contains unique interview URLs for all incomplete interviews by protocol.',
     description:
-      'Researcher-facing interviews / GenerateInterviewURLs: Generate a CSV that contains unique interview URLs for all incomplete interviews by protocol.',
+      "Explanation at the top of the popover for exporting incomplete interview links: the researcher picks a protocol and gets a CSV file with each unfinished interview's unique link.",
   },
   selectAProtocol: {
     id: 'fresco.interviews.GenerateInterviewURLs.selectAProtocol',
     defaultMessage: 'Select a Protocol...',
     description:
-      'Researcher-facing interviews / GenerateInterviewURLs: Select a Protocol...',
+      'Placeholder and accessible name of the dropdown, in the popover for exporting incomplete interview links, used to choose the protocol whose unfinished interviews are exported.',
   },
 });
 

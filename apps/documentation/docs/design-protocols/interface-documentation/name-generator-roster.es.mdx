@@ -1,0 +1,122 @@
+---
+title: Generador de nombres a partir de una lista
+navOrder: 4
+translatedFrom: 74011fd74a9fd084e5996b77ace40445f4a74f54
+---
+
+<InterfaceSummary type="NameGeneratorRoster">
+
+<InterfaceMeta type="Generador de nombres" creates="Crea nodos de un único tipo a partir de los datos de una lista predefinida" usesprompts="true" requires="Datos de una lista predefinida">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+Los generadores de nombres son uno de los componentes fundamentales de una entrevista de redes. Permiten a la persona participante crear álteres (cada persona a la que se nombra durante la entrevista) y describir así una de las dos entidades principales de las redes de tu estudio.
+
+Network Canvas incluye varias [interfaces](../key-concepts/interfaces) de generador de nombres que puedes añadir a tu estudio, y todas se pueden configurar en Architect.
+
+Cada una de estas interfaces está pensada para una forma concreta de obtener álteres, con sus propias ventajas e inconvenientes. Aunque tienen algunas opciones de configuración [comunes a todas las demás interfaces de Network Canvas](./shared), este artículo se centra en las opciones propias de la interfaz «Generador de nombres a partir de una lista».
+
+La interfaz «Generador de nombres a partir de una lista» es útil cuando tienes un conjunto conocido de miembros de la red entre los que quieres que la persona participante pueda nombrar. La interfaz admite listas predefinidas (listas que se importan como archivo de datos) de distintos tamaños, pero la forma de nombrar a un miembro de la lista cambia según su tamaño, para que a la persona participante le resulte fácil encontrarlo.
+
+## Definir la lista {#defining-a-roster}
+
+Esta interfaz necesita un archivo de datos que represente tu lista predefinida. Consulta nuestro artículo sobre cómo [trabajar con listas predefinidas](/es/design-protocols/tutorials/working-with-rosters) para obtener más información sobre cómo crear un archivo así. Ten preparado este archivo, o un archivo de prueba adecuado, antes de configurar esta interfaz.
+
+<KeyConcept title="Límites del tamaño de la lista">
+
+Hemos probado con éxito una lista predefinida de 60 000 nodos, pero las listas de
+este tamaño no están exentas de problemas. Si tu estudio necesita una lista así,
+ten en cuenta que la carga y la búsqueda pueden volverse bastante más lentas. El
+límite superior de esta interfaz depende en gran medida del dispositivo que uses
+y de tu umbral de usabilidad, así que puede que necesites un portátil potente,
+sobre todo con conjuntos de datos más grandes. Para obtener información sobre los
+dispositivos, consulta nuestro artículo sobre cómo [elegir un dispositivo para tu
+estudio](/es/collect-data/interviewer/choosing-hardware).
+
+</KeyConcept>
+
+## Nombrar álteres {#alter-nomination}
+
+La interfaz de la lista predefinida se divide en dos paneles. Un panel muestra «tarjetas» que representan cada elemento de tu lista. El otro panel representa los nodos de la entrevista y, al principio, está vacío. Para nombrar a un álter, la persona participante tiene que arrastrar una tarjeta desde el primer panel, a la izquierda, hasta el segundo panel, a la derecha. La tarjeta se quita entonces de la lista de tarjetas, y se crea un nodo que representa a ese miembro de la lista en la red de la entrevista.
+
+El panel de tarjetas tiene un título, que se establece en la sección **Panel de la lista** del editor de la etapa. Una etapa nueva empieza con «Disponibles para añadir» en cada uno de los idiomas de tu protocolo para los que Network Canvas tiene redacción, y puedes cambiarlo y traducirlo como cualquier otro texto. El título del panel es obligatorio, así que, si Network Canvas no tiene redacción en tu idioma predeterminado, la etapa empieza con el título en inglés, que puedes traducir. Cuando añades un idioma, Architect añade en ese idioma el título que aporta Network Canvas, aunque hayas cambiado el título en tus otros idiomas (consulta [Añadir idiomas](/es/design-protocols/translating-your-protocol#adding-languages)).
+
+Con una lista pequeña, de menos de 100 nodos, la interfaz muestra tarjetas de todos los miembros de la lista según las opciones de visualización y de ordenación que hayas configurado. Puedes definir tanto el orden predeterminado de las tarjetas como las propiedades que quienes participan pueden usar para ordenar la lista por su cuenta. Quienes participan pueden recorrer la lista que se muestra y seleccionar las tarjetas adecuadas para añadirlas a su red.
+
+Con una lista grande, de más de 100 nodos, quienes participan tienen que usar la búsqueda para que se muestre alguna tarjeta. Para nombrar a un álter de una lista grande, se sigue este proceso:
+
+1. La persona participante escribe en el cuadro de búsqueda para buscar miembros de la lista, según las opciones de búsqueda que hayas configurado.
+2. En cuanto la persona participante empieza a escribir, todos los datos de nodos que cumplen los criterios se muestran como tarjetas encima del cuadro de búsqueda.
+3. La persona participante arrastra una tarjeta que coincide hasta el panel de nodos para nombrar a ese miembro de la lista.
+4. A continuación, la persona participante puede volver a buscar y repetir este proceso hasta que haya nombrado a todos los miembros de la lista a los que se refiere la pregunta.
+
+De forma predeterminada, las tarjetas muestran como título el atributo **name** de los datos de la lista. Las opciones de visualización de estas tarjetas se pueden configurar por completo. Conviene mostrar todos los atributos que una persona participante podría necesitar para distinguir nodos de la lista con nombres parecidos.
+
+La búsqueda también es muy configurable: puedes elegir qué atributos de la lista se indexan, así como la precisión (o el grado de «aproximación») con que se buscan las coincidencias. Estas opciones son muy potentes y deben configurarse con cuidado. Cada atributo que se añade a la lista de propiedades en las que se puede buscar reduce el rendimiento de la búsqueda y puede hacer que las coincidencias sean menos exactas. Del mismo modo, una precisión de búsqueda demasiado estricta o demasiado laxa dificultará que quienes participan encuentren nodos en la lista.
+
+Como regla general, la precisión de la búsqueda debería aumentar a medida que aumenta el tamaño de la lista, y solo deberían indexarse los atributos que contienen términos por los que es probable que busquen quienes participan.
+
+![](/assets/img/interface-documentation/name-generators/architect-search.png)
+
+<AppOnly app="current">
+
+### Personalizar la redacción predeterminada {#customize-built-in-wording}
+
+La sección **Personalizar la redacción predeterminada** del editor de la etapa contiene las palabras que leen quienes participan en esta etapa. Network Canvas aporta una redacción inicial para cada una, en todos los idiomas para los que la tiene, y puedes cambiarla y traducirla como cualquier otro texto (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Un mensaje solo está en la sección mientras está configurada la parte de la etapa a la que pertenece.
+
+Cada mensaje puede mostrar el nombre del tipo de nodo de la etapa, tal como lo nombra el libro de códigos, y los avisos de límite también pueden mostrar su número. Cualquiera de los dos se inserta como una píldora con el botón de texto dinámico (piped text) del campo.
+
+- **Mínimo no alcanzado** se muestra cuando quienes participan intentan continuar antes de haber añadido el número mínimo de nodos que pide la etapa. Solo aparece cuando la etapa tiene un mínimo.
+- **Máximo alcanzado** se muestra cuando quienes participan han añadido el número máximo de nodos que permite la etapa. Solo aparece cuando la etapa tiene un máximo.
+- **Todo añadido** se muestra en la lista cuando ya se han añadido todas sus entradas, o cuando la lista no tiene entradas.
+- **Etiqueta de entradas sin nombre** es la etiqueta que se da a una entrada que se añade sin nombre. Muestra un número, para que se puedan distinguir las entradas sin nombre.
+
+El mensaje que se muestra cuando no se ha podido cargar el archivo de datos de la lista, así como el texto de ejemplo y el mensaje sin resultados de su búsqueda, son [texto de entrevista](/es/design-protocols/translating-your-protocol#interview-text), en **Mensajes** y **Búsqueda**.
+
+</AppOnly>
+
+### Buenas prácticas {#best-practices}
+
+<GoodPractice>
+
+Asegúrate de que el archivo de datos de la lista tenga un atributo `name` para no ver
+«No name variable!» en tus tarjetas. Consulta nuestro artículo sobre el [etiquetado
+de nodos](/es/design-protocols/key-concepts/node-labelling) para obtener más información sobre este tema.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Configura las opciones de visualización y de ordenación de las tarjetas para que a
+cada participante le resulte más fácil encontrar nodos en la lista.
+
+</GoodPractice>
+
+### Qué evitar {#try-to-avoid}
+
+<BadPractice>
+
+Evita usar esta interfaz con una lista grande (más de 100 nodos) en dispositivos con
+teclado en pantalla, sobre todo si además tienen una pantalla pequeña (menos de 9 pulgadas).
+El teclado en pantalla tapará buena parte de la pantalla y hará más tedioso el
+proceso de buscar y nombrar.
+
+</BadPractice>
+
+<BadPractice>
+
+Con una lista grande, evita que se pueda buscar en todas las propiedades. Esto
+ralentiza la búsqueda y hace que sus resultados sean menos exactos. Asegúrate de
+probar a fondo la búsqueda.
+
+</BadPractice>
+
+<BadPractice>
+
+Evita añadir atributos innecesarios a las opciones de ordenación. Esto confundirá a
+quienes participan y podría causar problemas de visualización en pantallas más
+pequeñas. Intenta que no haya más de 3 propiedades por las que ordenar.
+
+</BadPractice>

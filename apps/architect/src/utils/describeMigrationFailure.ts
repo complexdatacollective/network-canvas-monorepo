@@ -14,13 +14,15 @@ const utilityMessages = defineMessages({
   twoAttributesShareAName: {
     id: 'architect.utility.utils.describeMigrationFailure.twoAttributesShareAName',
     defaultMessage: 'Two attributes share a name',
-    description: 'The title text in utils / describeMigrationFailure.',
+    description:
+      'Title of the dialog shown when Architect cannot open a protocol made with an older version because two variables on the same node type, edge type or ego have the same name.',
   },
   thatWasAllowedWhen: {
     id: 'architect.utility.utils.describeMigrationFailure.thatWasAllowedWhen',
     defaultMessage:
       '{location, select, ego {Two attributes on the interviewee are both named "{name}".} named {Two attributes on "{ownerLabel}" are both named "{name}".} other {Two attributes are both named "{name}".}} That was allowed when this protocol was made, but they cannot both exist now — a researcher reading a dropdown could not tell them apart. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.',
-    description: 'The message text in utils / describeMigrationFailure.',
+    description:
+      "Body of the dialog shown when a protocol cannot be opened because two variables share a name. location is ego, named (a node or edge type) or unknown; ownerLabel is that type's name; name is the repeated variable name.",
   },
   twoOptionsHaveTheSameLabel: {
     id: 'architect.utility.utils.describeMigrationFailure.twoOptionsHaveTheSameLabel',
@@ -51,13 +53,15 @@ const utilityMessages = defineMessages({
   failedToOpenProtocol: {
     id: 'architect.utility.utils.describeMigrationFailure.failedToOpenProtocol',
     defaultMessage: 'Failed to Open Protocol',
-    description: 'The title text in utils / describeMigrationFailure.',
+    description:
+      'Title of the dialog shown when Architect cannot open a protocol made with an older version and the cause is not one of the specific known problems.',
   },
   thisProtocolCouldNotBeBrought: {
     id: 'architect.utility.utils.describeMigrationFailure.thisProtocolCouldNotBeBrought',
     defaultMessage:
       'This protocol could not be brought up to date. Open it in the version of Architect that created it, check its settings, and try again.',
-    description: 'The message text in utils / describeMigrationFailure.',
+    description:
+      'Body of the dialog shown when a protocol made with an older version cannot be brought up to date for a reason not covered by a more specific message.',
   },
 });
 

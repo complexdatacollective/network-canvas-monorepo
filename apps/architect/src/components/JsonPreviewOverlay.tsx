@@ -7,22 +7,26 @@ const messages = defineMessages({
   closePreview: {
     id: 'architect.jsonPreviewOverlay.closePreview',
     defaultMessage: 'Close preview',
-    description: 'The aria-label text in components / JsonPreviewOverlay.',
+    description:
+      'Accessible name of the full-screen backdrop button that closes the developer JSON preview overlay; read only by screen readers.',
   },
   altShiftJToClose: {
     id: 'architect.jsonPreviewOverlay.altShiftJToClose',
     defaultMessage: 'Alt+Shift+J to close',
-    description: 'Visible text in components / JsonPreviewOverlay.',
+    description:
+      'Hint in the header of the developer JSON preview overlay naming the keyboard shortcut that closes it.',
   },
   copied: {
     id: 'architect.jsonPreviewOverlay.copied',
     defaultMessage: 'Copied!',
-    description: 'Visible text in components / JsonPreviewOverlay.',
+    description:
+      'Text of the copy button in the developer JSON preview overlay for two seconds after the JSON was copied to the clipboard, confirming it worked.',
   },
   copy: {
     id: 'architect.jsonPreviewOverlay.copy',
     defaultMessage: 'Copy',
-    description: 'Visible text in components / JsonPreviewOverlay.',
+    description:
+      'Button in the developer JSON preview overlay that copies the displayed JSON to the clipboard.',
   },
 });
 

@@ -16,63 +16,65 @@ const messages = defineMessages({
     id: 'fresco.UploadThingModal.requiredEnvironmentVariableUpdate',
     defaultMessage: 'Required Environment Variable Update',
     description:
-      'Researcher-facing UploadThingModal: Required Environment Variable Update',
+      'Title of the dialog shown on the dashboard asking the researcher to supply a new UploadThing API key, which is stored as an environment variable.',
   },
   theFrescoUpdateYouInstalledRequiresA: {
     id: 'fresco.UploadThingModal.theFrescoUpdateYouInstalledRequiresA',
     defaultMessage:
       'The Fresco update you installed requires a new UploadThing API key. Until you add it, you will not be able to upload new protocols. Existing protocols will continue to function.',
     description:
-      'Researcher-facing UploadThingModal: The Fresco update you installed requires a new UploadThing API key. Until you add it, you will not be able',
+      'Explanatory text under the title of the UploadThing key dialog on the dashboard. Says why a new UploadThing API key is needed after a Fresco update and what stops working until it is added.',
   },
   updatingTheKeyShouldTakeAMatter: {
     id: 'fresco.UploadThingModal.updatingTheKeyShouldTakeAMatter',
     defaultMessage:
       'Updating the key should take a matter of minutes, and can be completed using the following steps:',
     description:
-      'Researcher-facing UploadThingModal: Updating the key should take a matter of minutes, and can be completed using the following steps:',
+      'Sentence introducing the numbered list of steps in the UploadThing key dialog for getting the new API key. The steps follow directly below it.',
   },
   visitTheUploadThingDashboard: {
     id: 'fresco.UploadThingModal.visitTheUploadThingDashboard',
     defaultMessage: 'Visit the <tag1> UploadThing dashboard </tag1>',
     description:
-      'Researcher-facing UploadThingModal: Visit the  UploadThing dashboard ',
+      "Step 1 in the UploadThing key dialog. The tag1 element is a link that opens the UploadThing website's dashboard in a new tab; keep the tags around the link text.",
   },
   selectYourProject: {
     id: 'fresco.UploadThingModal.selectYourProject',
     defaultMessage: 'Select your project.',
-    description: 'Researcher-facing UploadThingModal: Select your project.',
+    description:
+      "Step 2 in the UploadThing key dialog: choose the researcher's UploadThing project on the UploadThing website.",
   },
   selectTheAPIKeysTab: {
     id: 'fresco.UploadThingModal.selectTheAPIKeysTab',
     defaultMessage: 'Select the API Keys tab.',
-    description: 'Researcher-facing UploadThingModal: Select the API Keys tab.',
+    description:
+      'Step 3 in the UploadThing key dialog: open the tab named API Keys on the UploadThing website. API Keys is the name of that tab there.',
   },
   ensureYouHaveTheSDKV7Tab: {
     id: 'fresco.UploadThingModal.ensureYouHaveTheSDKV7Tab',
     defaultMessage: 'Ensure you have the <tag1>SDK v7+</tag1> tab selected.',
     description:
-      'Researcher-facing UploadThingModal: Ensure you have the SDK v7+ tab selected.',
+      'Step 4 in the UploadThing key dialog: make sure the tab named SDK v7+ is selected on the UploadThing website. The tag1 element makes the tab name bold.',
   },
   copyTheTokenByClickingTheCopy: {
     id: 'fresco.UploadThingModal.copyTheTokenByClickingTheCopy',
     defaultMessage:
       'Copy the token by clicking the Copy button (see screenshot below).',
     description:
-      'Researcher-facing UploadThingModal: Copy the token by clicking the Copy button (see screenshot below).',
+      'Step 5 in the UploadThing key dialog: use the Copy button on the UploadThing website to copy the API token. A screenshot of that page follows. Copy names a button there.',
   },
   uploadThingAPIKeyDashboard: {
     id: 'fresco.UploadThingModal.uploadThingAPIKeyDashboard',
     defaultMessage: 'UploadThing API key dashboard',
     description:
-      'Researcher-facing UploadThingModal: UploadThing API key dashboard',
+      'Alternative text of the screenshot in step 5 of the UploadThing key dialog, which shows the API keys page of the UploadThing website; read only by screen readers.',
   },
   pasteTheTokenIntoTheFieldBelow: {
     id: 'fresco.UploadThingModal.pasteTheTokenIntoTheFieldBelow',
     defaultMessage:
       'Paste the token into the field below and click "save and continue".',
     description:
-      'Researcher-facing UploadThingModal: Paste the token into the field below and click "save and continue".',
+      'Step 6 in the UploadThing key dialog: paste the copied token into the field below and submit. "save and continue" refers to the submit button, whose label is a separate message.',
   },
 });
 

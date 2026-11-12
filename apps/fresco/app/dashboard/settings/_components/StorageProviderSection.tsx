@@ -20,45 +20,46 @@ const messages = defineMessages({
     defaultMessage:
       'The API key used to communicate with UploadThing. See the <link>deployment documentation</link> for details.',
     description:
-      'Researcher-facing settings.storage: The API key used to communicate with UploadThing. See the <link>deployment documentation</link> for details.',
+      'Hint under the UploadThing API key field in the Storage card of Settings. The link tag wraps the words that link to the deployment documentation; keep the tag.',
   },
 
   storage: {
     id: 'fresco.settings.StorageProviderSection.storage',
     defaultMessage: 'Storage',
-    description: 'Researcher-facing settings / StorageProviderSection: Storage',
+    description:
+      'Title of the Storage card in Settings, where the researcher sees and edits where uploaded files are stored.',
   },
   storageProvider: {
     id: 'fresco.settings.StorageProviderSection.storageProvider',
     defaultMessage: 'Storage Provider',
     description:
-      'Researcher-facing settings / StorageProviderSection: Storage Provider',
+      'Label of the first field in the Storage card of Settings; names the service (S3-compatible storage or UploadThing) that stores uploaded files.',
   },
   filesAreStoredUsing: {
     id: 'fresco.settings.StorageProviderSection.filesAreStoredUsing',
     defaultMessage: 'Files are stored using {value1}.',
     description:
-      'Researcher-facing settings / StorageProviderSection: Files are stored using value.',
+      'Hint under the Storage Provider label in Settings. value1 is the name of the storage provider in use: S3-compatible storage or UploadThing.',
   },
   storageIsConfiguredViaEnvironmentVariablesAnd: {
     id: 'fresco.settings.StorageProviderSection.storageIsConfiguredViaEnvironmentVariablesAnd',
     defaultMessage:
       'Storage is configured via environment variables ( {value1}) and cannot be edited here. Remove these variables to manage storage from this dashboard.',
     description:
-      'Researcher-facing settings / StorageProviderSection: Storage is configured via environment variables ( value) and cannot be edited here. Remove these variables to manage sto',
+      'Info alert in the Storage card of Settings, shown when the storage is set by server environment variables. value1 is the list of those variable names. Removing them makes storage editable here.',
   },
   theStorageProviderTypeCannotBeChanged: {
     id: 'fresco.settings.StorageProviderSection.theStorageProviderTypeCannotBeChanged',
     defaultMessage:
       'The storage provider type cannot be changed once the application has been deployed. You can update the credentials below.',
     description:
-      'Researcher-facing settings / StorageProviderSection: The storage provider type cannot be changed once the application has been deployed. You can update the credentials below',
+      'Info alert in the Storage card of Settings: the choice of storage provider is fixed after deployment, but its credentials listed below can be edited.',
   },
   uploadThingAPIKey: {
     id: 'fresco.settings.StorageProviderSection.uploadThingAPIKey',
     defaultMessage: 'UploadThing API Key',
     description:
-      'Researcher-facing settings / StorageProviderSection: UploadThing API Key',
+      'Label and accessible name of the field in the Storage card of Settings for the secret token that authorises Fresco to use UploadThing. Not a passkey or a two-factor code.',
   },
 });
 

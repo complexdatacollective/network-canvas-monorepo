@@ -1,8 +1,8 @@
-import { ALLOWED_ORIGINS } from './contract.ts';
+import { ALLOWED_ORIGINS, PREVIEW_ORIGIN_PATTERN } from './contract.ts';
 
 /**
  * The origin the response may be read by, or `null` when the request did not
- * come from Architect. `devOrigin` is the one extra origin a local
+ * come from Architect or a preview of one of its pull requests. `devOrigin` is the one extra origin a local
  * development setup allows (`DEV_ALLOWED_ORIGIN` in `.dev.vars`); it is never
  * set in production.
  */
@@ -13,6 +13,7 @@ export const allowedOrigin = (
   const origin = request.headers.get('Origin');
   if (origin === null) return null;
   if ((ALLOWED_ORIGINS as readonly string[]).includes(origin)) return origin;
+  if (PREVIEW_ORIGIN_PATTERN.test(origin)) return origin;
   if (devOrigin !== undefined && devOrigin !== '' && origin === devOrigin) {
     return origin;
   }
@@ -28,7 +29,7 @@ export const corsHeaders = (origin: string): Record<string, string> => ({
 /** The answer to a preflight request from an allowed origin. */
 export const preflightHeaders = (origin: string): Record<string, string> => ({
   ...corsHeaders(origin),
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Max-Age': '86400',
 });

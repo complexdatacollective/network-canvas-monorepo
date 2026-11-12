@@ -24,18 +24,19 @@ const messages = defineMessages({
     id: 'fresco.ParticipantsTable.ActionsDropdown.openMenu',
     defaultMessage: 'Open menu',
     description:
-      'Researcher-facing ParticipantsTable / ActionsDropdown: Open menu',
+      "Accessible name of the icon-only button at the end of each row of the participants table that opens that participant's actions menu; read only by screen readers.",
   },
   actions: {
     id: 'fresco.ParticipantsTable.ActionsDropdown.actions',
     defaultMessage: 'Actions',
     description:
-      'Researcher-facing ParticipantsTable / ActionsDropdown: Actions',
+      'Heading at the top of the row actions menu in the participants table; a plural noun naming the group of menu items below it.',
   },
   edit: {
     id: 'fresco.ParticipantsTable.ActionsDropdown.edit',
     defaultMessage: 'Edit',
-    description: 'Researcher-facing ParticipantsTable / ActionsDropdown: Edit',
+    description:
+      'Menu item in the row actions menu of the participants table that opens the dialog for editing that participant. A verb.',
   },
 });
 

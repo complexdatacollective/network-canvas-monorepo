@@ -5,38 +5,84 @@
  * defend.
  */
 
+import type { ReviewProvider } from './contract.ts';
+
 /**
- * The most the service may spend on the model in one UTC day, in US dollars.
+ * The most the service may spend with one provider in one UTC calendar month,
+ * in US dollars. This is that provider's whole budget: the API key the
+ * service calls it with carries the same monthly limit, and the service must
+ * reach its own first, so that a researcher is told when reviews start again
+ * rather than that the service is unavailable. The providers' budgets are
+ * separate: one that is spent leaves the other available.
+ */
+export const MONTHLY_SPEND_CEILING_USD = 200;
+
+/**
+ * The most the service may spend with one provider in one UTC day, in US
+ * dollars: a tenth of the month. Without it, a script that forges Architect's
+ * origin could spend the whole month in an afternoon and close the provider
+ * until the next one. With it, the worst day costs a tenth, and the team has
+ * the days that follow to notice (see the README, "Changing the spending
+ * ceilings").
+ */
+export const DAILY_SPEND_CEILING_USD = 20;
+
+/** A model's prices, in US dollars per million tokens. */
+type ModelPrices = {
+  input: number;
+  output: number;
+  cacheWrite: number;
+  cacheRead: number;
+};
+
+type ProviderModel = {
+  /** The model that writes this provider's reviews. */
+  model: string;
+  prices: ModelPrices;
+  /**
+   * The prices of a whole request whose input is over `overInputTokens`, for
+   * a provider that charges more for a long one; null for one that does not.
+   */
+  longContext: ({ overInputTokens: number } & ModelPrices) | null;
+};
+
+/**
+ * Each provider's model and its first-party API prices.
  *
- * A typical review (a protocol of 50–150 KB and a full answer) costs roughly
- * $0.30–$0.80, so this allows on the order of 30–80 reviews a day, which is
- * well above what an experimental feature should see, while capping the
- * worst day at a sum nobody has to explain. Adjust it once real usage has
- * been measured (see the README, "Changing the daily ceiling").
+ * - Anthropic: Claude Opus 5.5. Cache writes use the five-minute lifetime,
+ *   which costs 1.25 times the input price. A typical review (a protocol of
+ *   50–150 KB and a full answer) costs roughly $0.30–$0.80, so the month
+ *   allows on the order of 250–650 reviews.
+ * - OpenAI: GPT-6.1 Sol, which OpenAI describes as near its flagship for
+ *   complex work at a fifth of the price. Cache writes use the 30-minute
+ *   lifetime, also 1.25 times the input price. At half Opus 5.5's prices the
+ *   month allows roughly twice as many reviews. A request with more than
+ *   272,000 input tokens is charged at the long-context prices throughout.
  */
-export const DAILY_SPEND_CEILING_USD = 25;
-
-/** The model that writes reviews (Claude Opus 5.5). */
-export const REVIEW_MODEL = 'claude-opus-5-5';
-
-/**
- * The model's prices, in US dollars per million tokens (Anthropic's
- * first-party API rates for Claude Opus 5.5). Cache writes use the
- * five-minute lifetime, which costs 1.25 times the input price; cache reads
- * cost $0.20.
- */
-export const MODEL_PRICES_USD_PER_MILLION_TOKENS = {
-  input: 4,
-  output: 20,
-  cacheWrite: 5,
-  cacheRead: 0.2,
-} as const;
+export const PROVIDER_MODELS = {
+  anthropic: {
+    model: 'claude-opus-5-5',
+    prices: { input: 4, output: 20, cacheWrite: 5, cacheRead: 0.2 },
+    longContext: null,
+  },
+  openai: {
+    model: 'gpt-6.1-sol',
+    prices: { input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.1 },
+    longContext: {
+      overInputTokens: 272_000,
+      input: 4,
+      output: 15,
+      cacheWrite: 5,
+      cacheRead: 0.2,
+    },
+  },
+} as const satisfies Record<ReviewProvider, ProviderModel>;
 
 /**
  * The most tokens one review may produce, thinking included. Twelve findings
  * with their fixes take roughly 10,000–20,000 tokens of answer; the rest is
- * room for the model to think. At $20 per million this caps one answer at
- * $0.80.
+ * room for the model to think. At Opus 5.5's $20 per million this caps one
+ * answer at $0.80.
  */
 export const MAX_OUTPUT_TOKENS = 40_000;
 

@@ -11,41 +11,45 @@ const messages = defineMessages({
   validation1: {
     id: 'fresco.validation.s3Settings.validation1',
     defaultMessage: 'Endpoint URL is required.',
-    description: 'Form validation for s3Settings: Endpoint URL is required.',
+    description:
+      'Validation error under the Endpoint URL field of the S3 storage form when it is left empty.',
   },
   validation2: {
     id: 'fresco.validation.s3Settings.validation2',
     defaultMessage:
       'Endpoint must be a valid http(s) URL and may not target a private, loopback, or link-local address.',
     description:
-      'Form validation for s3Settings: Endpoint must be a valid http(s) URL and may not target a private, loopback, or link-local address.',
+      'Validation error under the Endpoint URL field of the S3 storage form when the address is not an http or https URL, or points to an internal network address (private, loopback or link-local), which is blocked for security.',
   },
   validation3: {
     id: 'fresco.validation.s3Settings.validation3',
     defaultMessage: 'Public URL must be a valid URL.',
     description:
-      'Form validation for s3Settings: Public URL must be a valid URL.',
+      'Validation error under the Public URL field of the S3 storage form when the text is not a well-formed web address or is empty.',
   },
   validation4: {
     id: 'fresco.validation.s3Settings.validation4',
     defaultMessage: 'Bucket name is required.',
-    description: 'Form validation for s3Settings: Bucket name is required.',
+    description:
+      'Validation error under the Bucket Name field of the S3 storage form when it is left empty. A bucket is a named container for files in S3 storage.',
   },
   validation5: {
     id: 'fresco.validation.s3Settings.validation5',
     defaultMessage: 'Region is required.',
-    description: 'Form validation for s3Settings: Region is required.',
+    description:
+      'Validation error under the Region field of the S3 storage form when it is left empty. Region is the cloud data-centre region of the storage bucket.',
   },
   validation6: {
     id: 'fresco.validation.s3Settings.validation6',
     defaultMessage: 'Access Key ID is required.',
-    description: 'Form validation for s3Settings: Access Key ID is required.',
+    description:
+      'Validation error under the Access Key ID field of the S3 storage form when it is left empty. This is a storage service credential, not a passkey.',
   },
   validation7: {
     id: 'fresco.validation.s3Settings.validation7',
     defaultMessage: 'Secret Access Key is required.',
     description:
-      'Form validation for s3Settings: Secret Access Key is required.',
+      'Validation error under the Secret Access Key field of the S3 storage form when it is left empty. This is a storage service credential.',
   },
 });
 

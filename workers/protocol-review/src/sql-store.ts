@@ -13,9 +13,11 @@ CREATE TABLE IF NOT EXISTS hourly_windows (
   count INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS hourly_windows_end ON hourly_windows (window_end);
-CREATE TABLE IF NOT EXISTS daily_spend (
-  day TEXT PRIMARY KEY,
-  committed_micros INTEGER NOT NULL
+CREATE TABLE IF NOT EXISTS provider_spend (
+  provider TEXT NOT NULL,
+  day TEXT NOT NULL,
+  committed_micros INTEGER NOT NULL,
+  PRIMARY KEY (provider, day)
 );
 `;
 
@@ -64,25 +66,37 @@ export const createSqlStore = (sql: SqlStorage): LimiterStore => {
     deleteExpiredWindows(now) {
       sql.exec('DELETE FROM hourly_windows WHERE window_end <= ?', now);
     },
-    getCommitted(day) {
+    getCommitted(provider, day) {
       const [row] = sql
         .exec<SpendRow>(
-          'SELECT committed_micros FROM daily_spend WHERE day = ?',
+          'SELECT committed_micros FROM provider_spend WHERE provider = ? AND day = ?',
+          provider,
           day,
         )
         .toArray();
       return row?.committed_micros ?? 0;
     },
-    setCommitted(day, micros) {
+    setCommitted(provider, day, micros) {
       sql.exec(
-        `INSERT INTO daily_spend (day, committed_micros) VALUES (?, ?)
-         ON CONFLICT (day) DO UPDATE SET committed_micros = excluded.committed_micros`,
+        `INSERT INTO provider_spend (provider, day, committed_micros) VALUES (?, ?, ?)
+         ON CONFLICT (provider, day) DO UPDATE SET committed_micros = excluded.committed_micros`,
+        provider,
         day,
         micros,
       );
     },
+    getCommittedSince(provider, day) {
+      const [row] = sql
+        .exec<SpendRow>(
+          'SELECT COALESCE(SUM(committed_micros), 0) AS committed_micros FROM provider_spend WHERE provider = ? AND day >= ?',
+          provider,
+          day,
+        )
+        .toArray();
+      return row?.committed_micros ?? 0;
+    },
     deleteDaysBefore(day) {
-      sql.exec('DELETE FROM daily_spend WHERE day < ?', day);
+      sql.exec('DELETE FROM provider_spend WHERE day < ?', day);
     },
   };
 };

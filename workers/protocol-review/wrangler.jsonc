@@ -18,7 +18,7 @@
     },
   ],
   /**
-   * The hourly limits and the day's spending, held exactly in one SQLite
+   * The hourly limits and each provider's spending, held exactly in one SQLite
    * Durable Object instance.
    */
   "durable_objects": {
@@ -26,16 +26,17 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ReviewLimiter"] }],
   /**
-   * Reviews a researcher chose to share. No id: Wrangler creates the
-   * namespace on the first deploy and records it in the dashboard (see the
-   * README, "First deployment").
+   * Reviews a researcher chose to share. No id: the first deploy creates the
+   * namespace (`protocol-review-worker-shared-reviews`) and every later one
+   * finds it on the deployed Worker (see the README, "Releasing").
    */
   "kv_namespaces": [{ "binding": "SHARED_REVIEWS" }],
   /**
-   * `wrangler secret put ANTHROPIC_API_KEY`. Locally, `.dev.vars` holds it
-   * (and `DEV_ALLOWED_ORIGIN`, which is never set in production).
+   * Each provider's API key, uploaded with every deploy by the release job
+   * from the `protocol-review-worker` GitHub environment. Locally, `.dev.vars`
+   * holds them (and `DEV_ALLOWED_ORIGIN`, which is never set in production).
    */
   "secrets": {
-    "required": ["ANTHROPIC_API_KEY"],
+    "required": ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"],
   },
 }

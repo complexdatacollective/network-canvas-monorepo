@@ -129,7 +129,11 @@ describe('the rules for text marked as Arabic', () => {
 
   // Readex Pro lacks the letters Persian, Urdu and others add to the script.
   it('offer Readex Pro to no language but Arabic', () => {
-    const fontRules = rules.filter((rule) => /font/.test(rule.body));
+    // The rules that choose a typeface: a stack or a `font-family`. The rule
+    // that stops the browser slanting text names no face.
+    const fontRules = rules.filter((rule) =>
+      /-font:|font-family:/.test(rule.body),
+    );
     expect(fontRules.length).toBeGreaterThan(0);
     expect(
       new Set(
@@ -154,6 +158,19 @@ describe('the rules for text marked as Arabic', () => {
     ).toEqual(['ar', 'fa', 'ur', 'ps', 'ckb', 'sd', 'ug']);
   });
 
+  // No face here has an Arabic italic, so a browser would slant the letters
+  // itself; in a text box that cuts the top off the first one.
+  it('are never slanted by the browser in the languages written in the Arabic script', () => {
+    const rule = rules.find(
+      (candidate) => candidate.body === 'font-synthesis-style: none;',
+    );
+    expect(
+      [...(rule?.selector ?? '').matchAll(/:lang\(([^)]+)\)/g)].map(
+        ([, tag]) => tag,
+      ),
+    ).toEqual(['ar', 'fa', 'ur', 'ps', 'ckb', 'sd', 'ug']);
+  });
+
   it.each(['fresco', 'studio'])(
     'ship in the %s barrel, after the themes',
     (barrel) => {
@@ -164,4 +181,18 @@ describe('the rules for text marked as Arabic', () => {
       expect(imports).toContain('./themes/studio.css');
     },
   );
+});
+
+describe('text that takes its direction from its own content', () => {
+  const css = read('../fresco/utilities.css');
+  const rule = /@utility text-match-parent \{([^}]*)\}/.exec(css)?.[1] ?? '';
+
+  // Chrome knows only the prefixed keyword and Firefox only the standard one,
+  // so the utility needs both, with the standard one last for a browser that
+  // knows both.
+  it('stays on its container’s side in every browser', () => {
+    expect(
+      [...rule.matchAll(/text-align:\s*([^;]+);/g)].map(([, value]) => value),
+    ).toEqual(['-webkit-match-parent', 'match-parent']);
+  });
 });

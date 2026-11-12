@@ -96,6 +96,22 @@
   }
 }
 
+/*
+ * For text that takes its base direction from its own content (`dir="auto"`),
+ * such as a name a researcher wrote: the text still reads in its own
+ * direction, but stays on the side its container's text is on. Without this,
+ * `text-align: start` follows the element's own direction, so a Latin name in
+ * a right-to-left interface sits alone at the far left (and an Arabic name in
+ * a left-to-right one at the far right).
+ *
+ * Chrome accepts only the prefixed keyword and Firefox only the standard one;
+ * Safari accepts both. Each browser drops the declaration it does not know.
+ */
+@utility text-match-parent {
+  text-align: -webkit-match-parent;
+  text-align: match-parent;
+}
+
 /* Replacement for interview centering mixin — used by all interview stage components. */
 @utility interface {
   @apply relative flex min-h-0 w-full shrink grow basis-auto flex-col items-center justify-center;

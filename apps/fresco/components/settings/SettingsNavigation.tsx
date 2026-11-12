@@ -11,7 +11,7 @@ const messages = defineMessages({
     id: 'fresco.settings.SettingsNavigation.onThisPage',
     defaultMessage: 'On this page',
     description:
-      'Researcher-facing settings / SettingsNavigation: On this page',
+      'Heading of the side navigation on the Settings page that lists links jumping to each settings section on the page.',
   },
 });
 

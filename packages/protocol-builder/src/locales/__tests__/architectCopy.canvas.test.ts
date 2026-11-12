@@ -28,7 +28,16 @@ import { sourceFiles, sourcePath } from '../../__tests__/packageSource.ts';
 const localesDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const testDir = dirname(fileURLToPath(import.meta.url));
 
-type FixtureEntry = { en: string; es: string; from: string };
+// `esFrom`, when present, records a deliberate departure of the Spanish from
+// Architect 8.2.5: the `es` value was moved to the shared Spanish glossary and
+// verified by back-translation, and `esFrom` names the change that did it. The
+// English is never amended this way, so `en` still pins Architect's words.
+type FixtureEntry = {
+  en: string;
+  es: string;
+  from: string;
+  esFrom?: string;
+};
 
 const fixture = JSON.parse(
   readFileSync(join(testDir, 'architectCopy.canvas.fixture.json'), 'utf8'),

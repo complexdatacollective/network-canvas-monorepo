@@ -19,48 +19,52 @@ const messages = defineMessages({
   requiredRecovery: {
     id: 'fresco.TwoFactorVerify.requiredRecovery',
     defaultMessage: 'Recovery code is required',
-    description: 'Researcher-facing TwoFactorVerify: Recovery code is required',
+    description:
+      'Validation error under the recovery code field, in the Settings dialogs that ask the researcher to confirm with a two-factor code, when it is left empty.',
   },
 
   requiredCode: {
     id: 'fresco.TwoFactorVerify.requiredCode',
     defaultMessage: 'Code is required',
-    description: 'Researcher-facing TwoFactorVerify: Code is required',
+    description:
+      'Validation error under the 6-digit authenticator code field, in the Settings dialogs that ask the researcher to confirm with a two-factor code, when it is left empty.',
   },
 
   copyCodeIsRequired: {
     id: 'fresco.TwoFactorVerify.copyCodeIsRequired',
     defaultMessage: 'Code is required',
-    description: 'Researcher-facing TwoFactorVerify: Code is required',
+    description:
+      'Error shown on the code field of the two-factor confirmation dialogs in Settings when the form is submitted without a code, with either the authenticator app or recovery code variant.',
   },
   copyUseAuthenticatorAppInstead: {
     id: 'fresco.TwoFactorVerify.copyUseAuthenticatorAppInstead',
     defaultMessage: 'Use authenticator app instead',
     description:
-      'Researcher-facing TwoFactorVerify: Use authenticator app instead',
+      'Link-style button in the two-factor confirmation dialog, shown while asking for a recovery code; switches back to the 6-digit authenticator app code.',
   },
   copyUseARecoveryCodeInstead: {
     id: 'fresco.TwoFactorVerify.copyUseARecoveryCodeInstead',
     defaultMessage: 'Use a recovery code instead',
     description:
-      'Researcher-facing TwoFactorVerify: Use a recovery code instead',
+      'Link-style button in the two-factor confirmation dialog, shown while asking for an authenticator app code; switches to entering a recovery code. Only offered where recovery codes are accepted.',
   },
   enterOneOfYourRecoveryCodes: {
     id: 'fresco.TwoFactorVerify.enterOneOfYourRecoveryCodes',
     defaultMessage: 'Enter one of your recovery codes',
     description:
-      'Researcher-facing TwoFactorVerify: Enter one of your recovery codes',
+      'Label of the recovery code field in the two-factor confirmation dialog in Settings, shown when the researcher chose a recovery code.',
   },
   example0123456789abcdef0123: {
     id: 'fresco.TwoFactorVerify.0123456789abcdef0123',
     defaultMessage: '0123456789abcdef0123',
-    description: 'Researcher-facing TwoFactorVerify: 0123456789abcdef0123',
+    description:
+      'Example recovery code shown as the placeholder in the recovery code field: 20 hexadecimal characters. Not translatable text; keep as is.',
   },
   enterYour6DigitCodeFromYour: {
     id: 'fresco.TwoFactorVerify.enterYour6DigitCodeFromYour',
     defaultMessage: 'Enter your 6-digit code from your authenticator app',
     description:
-      'Researcher-facing TwoFactorVerify: Enter your 6-digit code from your authenticator app',
+      "Label of the six-box code field in the two-factor confirmation dialog in Settings, asking for the current code shown by the researcher's authenticator app.",
   },
 });
 

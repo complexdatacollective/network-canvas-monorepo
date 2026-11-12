@@ -22,38 +22,38 @@ const messages = defineMessages({
     id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.copyCopyingURLToClipboard',
     defaultMessage: 'Copying URL to clipboard...',
     description:
-      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Copying URL to clipboard...',
+      "Toast shown while the participant's unique interview link is being copied to the clipboard, after the researcher chose a protocol in the Participants table.",
   },
   copyURLCopiedToClipboard: {
     id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.copyURLCopiedToClipboard',
     defaultMessage: 'URL copied to clipboard!',
     description:
-      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: URL copied to clipboard!',
+      "Success toast shown after a participant's unique interview link has been copied to the clipboard from the Participants table.",
   },
   failedToCopyURLToClipboard: {
     id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.failedToCopyURLToClipboard',
     defaultMessage: 'Failed to copy URL to clipboard.',
     description:
-      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Failed to copy URL to clipboard.',
+      "Error toast shown when copying a participant's unique interview link to the clipboard failed.",
   },
   copyUniqueURL: {
     id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.copyUniqueURL',
     defaultMessage: 'Copy Unique URL',
     description:
-      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Copy Unique URL',
+      "Button in each row of the Participants table, also the accessible name of the popover it opens; copies that participant's personal interview link to the clipboard (verb).",
   },
   selectAProtocolAndTheURLWill: {
     id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.selectAProtocolAndTheURLWill',
     defaultMessage:
       'Select a protocol, and the URL will be copied to your clipboard.',
     description:
-      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Select a protocol, and the URL will be copied to your clipboard.',
+      "Hint at the top of the popover opened by the Copy Unique URL button in the Participants table; explains that choosing a protocol copies the participant's link for it.",
   },
   selectAProtocol: {
     id: 'fresco.ParticipantsTable.GenerateParticipantURLButton.selectAProtocol',
     defaultMessage: 'Select a Protocol...',
     description:
-      'Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Select a Protocol...',
+      'Placeholder and accessible name of the protocol dropdown in the Copy Unique URL popover of the Participants table. The researcher picks which protocol the link is for.',
   },
 });
 

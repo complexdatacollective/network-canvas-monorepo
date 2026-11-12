@@ -2,15 +2,19 @@ import { DurableObject } from 'cloudflare:workers';
 
 import { createAnthropicModel } from './anthropic-model.ts';
 import { LIMITER_INSTANCE_NAME } from './constants.ts';
+import type { ProviderAvailability } from './contract.ts';
 import {
   type AdmitRequest,
   type AdmitResult,
+  type AvailabilityRequest,
   admit,
+  availability,
   type LimiterStore,
   type SettleRequest,
   settle,
 } from './limiter.ts';
 import { createPostHogNotifier, logFailure } from './notify.ts';
+import { createOpenAIModel } from './openai-model.ts';
 import { handleRequest } from './review.ts';
 import { createSqlStore } from './sql-store.ts';
 
@@ -27,7 +31,7 @@ import { createSqlStore } from './sql-store.ts';
 type ReviewEnv = Env & { DEV_ALLOWED_ORIGIN?: string };
 
 /**
- * Every hourly window and the day's spending, in one SQLite-backed instance
+ * Every hourly window and each provider's daily spending, in one SQLite-backed instance
  * (`LIMITER_INSTANCE_NAME`). Its methods hold no awaits, so each runs to
  * completion before the next request's starts, and the counts stay exact.
  */
@@ -37,6 +41,10 @@ export class ReviewLimiter extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.store = createSqlStore(ctx.storage.sql);
+  }
+
+  availability(request: AvailabilityRequest): ProviderAvailability[] {
+    return availability(this.store, request);
   }
 
   admit(request: AdmitRequest): AdmitResult {
@@ -64,12 +72,17 @@ export default {
     return handleRequest(request, {
       devOrigin: env.DEV_ALLOWED_ORIGIN,
       limiter: {
+        availability: async (availabilityRequest) =>
+          limiter.availability(availabilityRequest),
         admit: async (admitRequest) => limiter.admit(admitRequest),
         settle: async (settleRequest) => {
           await limiter.settle(settleRequest);
         },
       },
-      model: createAnthropicModel(env.ANTHROPIC_API_KEY),
+      models: {
+        anthropic: createAnthropicModel(env.ANTHROPIC_API_KEY),
+        openai: createOpenAIModel(env.OPENAI_API_KEY),
+      },
       sharedReviews: {
         put: async (key, value, options) => {
           await env.SHARED_REVIEWS.put(key, value, options);

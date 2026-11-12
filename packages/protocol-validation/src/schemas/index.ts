@@ -17,7 +17,7 @@ export const SchemaVersionSchema = z.union([
 ]);
 
 export type SchemaVersion = z.infer<typeof SchemaVersionSchema>;
-export const CURRENT_SCHEMA_VERSION = 9 as const;
+export { CURRENT_SCHEMA_VERSION } from '../schemaVersion.ts';
 
 export const VersionedProtocolSchema = z.discriminatedUnion('schemaVersion', [
   ProtocolSchemaV7,

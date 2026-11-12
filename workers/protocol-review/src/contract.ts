@@ -18,19 +18,48 @@ import { StudyContextSchema } from '@codaco/shared-consts';
 export const PROTOCOL_REVIEW_SERVICE_URL =
   'https://protocol-review.networkcanvas.com';
 
-/** The one route: `POST` a `ReviewRequest`, receive a stream of `ReviewEvent`s. */
+/** `POST` a `ReviewRequest`, receive a stream of `ReviewEvent`s. */
 export const REVIEW_PATH = '/review';
+
+/** `GET` which providers can run a review now: a `ProviderStatus`. */
+export const PROVIDERS_PATH = '/providers';
+
+/**
+ * Whose model writes the review. The researcher chooses one for each review.
+ * Each has its own budget, so one running out leaves the other available.
+ */
+export const REVIEW_PROVIDERS = ['anthropic', 'openai'] as const;
+
+export type ReviewProvider = (typeof REVIEW_PROVIDERS)[number];
+
+/**
+ * What each provider and its model are called, for the choice Architect
+ * shows. They are names, and are not translated. The model the service really
+ * calls is `PROVIDER_MODELS` in `constants.ts`; a test keeps the two in step.
+ */
+export const REVIEW_PROVIDER_NAMES = {
+  anthropic: { company: 'Anthropic', model: 'Claude Opus 5.5' },
+  openai: { company: 'OpenAI', model: 'GPT-6.1 Sol' },
+} as const satisfies Record<ReviewProvider, { company: string; model: string }>;
 
 /**
  * The only origins the service answers. A browser cannot forge `Origin`, so
  * this stops any other website from spending the service's budget; it does
  * not stop a script that sets the header itself, which the limits below and
- * the daily spending ceiling are for.
+ * the daily and monthly spending ceilings are for.
  */
 export const ALLOWED_ORIGINS = [
   'https://architect.networkcanvas.com',
   'https://architect.networkcanvas.dev',
 ] as const;
+
+/**
+ * Also answered: Netlify's preview of a pull request to Architect, so a
+ * change to the review can be tried against the deployed service before it
+ * merges. The number is the pull request's.
+ */
+export const PREVIEW_ORIGIN_PATTERN =
+  /^https:\/\/deploy-preview-[1-9]\d*--architect-dev\.netlify\.app$/u;
 
 /**
  * Limits, fixed here rather than configured, so that the service and the app
@@ -60,6 +89,8 @@ export const ReviewRequestSchema = z.strictObject({
   locale: z.string().min(2).max(35),
   /** Whether the researcher chose to share this review with the Network Canvas team. */
   share: z.boolean(),
+  /** Whose model the researcher chose to write this review. */
+  provider: z.enum(REVIEW_PROVIDERS),
   studyContext: StudyContextSchema,
   /**
    * The protocol as Architect holds it (schema 9 JSON). The service checks
@@ -193,7 +224,8 @@ export type ReviewResult = z.infer<typeof ReviewResultSchema>;
  * | `invalid_request`     | 400    | The body is not a `ReviewRequest`.                             |
  * | `too_large`           | 413    | The body is over `REVIEW_LIMITS.maxRequestBytes`.              |
  * | `hourly_limit`        | 429    | This installation or address has used its reviews; `retryAt`.  |
- * | `daily_limit`         | 503    | The service has spent its budget for today; `retryAt`.         |
+ * | `daily_limit`         | 503    | The chosen provider's budget for today is spent; `retryAt`.    |
+ * | `monthly_limit`       | 503    | The chosen provider's budget for this month is spent; `retryAt`. |
  * | `service_unavailable` | 503    | The model provider failed, refused or is out of credit.        |
  *
  * A refused or failed review never counts against the hourly limit.
@@ -204,6 +236,7 @@ export const REVIEW_ERROR_CODES = [
   'too_large',
   'hourly_limit',
   'daily_limit',
+  'monthly_limit',
   'service_unavailable',
 ] as const;
 
@@ -217,6 +250,32 @@ export const ReviewErrorSchema = z.strictObject({
 });
 
 export type ReviewError = z.infer<typeof ReviewErrorSchema>;
+
+/** Which of a provider's budgets is spent. */
+export const PROVIDER_LIMIT_CODES = ['daily_limit', 'monthly_limit'] as const;
+
+/** Whether one provider can run a review now. */
+export const ProviderAvailabilitySchema = z.strictObject({
+  provider: z.enum(REVIEW_PROVIDERS),
+  /**
+   * Whether its budget has room for a review. A large protocol can still be
+   * refused when little is left; the refusal says so with the same code.
+   */
+  available: z.boolean(),
+  /** Which budget is spent; null while it is available. */
+  reason: z.enum(PROVIDER_LIMIT_CODES).nullable(),
+  /** When that budget starts again (ISO 8601); null while it is available. */
+  retryAt: z.iso.datetime().nullable(),
+});
+
+export type ProviderAvailability = z.infer<typeof ProviderAvailabilitySchema>;
+
+/** The answer to `GET` `PROVIDERS_PATH`: every provider, in `REVIEW_PROVIDERS` order. */
+export const ProviderStatusSchema = z.strictObject({
+  providers: z.array(ProviderAvailabilitySchema),
+});
+
+export type ProviderStatus = z.infer<typeof ProviderStatusSchema>;
 
 /**
  * An accepted review answers `200` with `Content-Type: text/event-stream`.

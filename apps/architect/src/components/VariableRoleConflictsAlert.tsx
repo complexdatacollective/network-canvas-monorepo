@@ -21,7 +21,8 @@ const messages = defineMessages({
   anAttributeIsWrittenBothWith: {
     id: 'architect.variableRoleConflictsAlert.anAttributeIsWrittenBothWith',
     defaultMessage: 'An attribute is written both with and without validation',
-    description: 'Visible text in components / VariableRoleConflictsAlert.',
+    description:
+      'Title of the warning on the timeline when exactly one attribute (codebook variable) is written by a form with validation and by another stage type without validation.',
   },
   attributesAreWrittenBothWith: {
     id: 'architect.variableRoleConflictsAlert.attributesAreWrittenBothWith',
@@ -34,13 +35,15 @@ const messages = defineMessages({
     id: 'architect.variableRoleConflictsAlert.valuesWrittenOutsideAFormBypass',
     defaultMessage:
       "Values written outside a form bypass the attribute's validation rules, so forms elsewhere can receive values they would reject. For each attribute below, remove it from either the form or the other stage.",
-    description: 'Visible text in components / VariableRoleConflictsAlert.',
+    description:
+      'Explanatory text in the timeline warning about attributes written both with and without validation. Tells the researcher to remove each listed attribute from either the form or the other stage.',
   },
   collectedByAForm: {
     id: 'architect.variableRoleConflictsAlert.collectedByAForm',
     defaultMessage:
       '<strong>{value1}</strong> — collected by a form in {value3}; written without validation in {value4}',
-    description: 'Visible text in components / VariableRoleConflictsAlert.',
+    description:
+      'One line in the timeline warning list for a conflicting attribute. value1 is the attribute name (shown bold), value3 is a list of stage names containing the form, value4 is a list of stages that write it without validation.',
   },
 });
 

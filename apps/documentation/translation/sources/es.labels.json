@@ -1,4 +1,12 @@
 {
+  "docs/analyze-data/metadata.json": "Analyze Data",
+  "docs/collect-data/fresco/metadata.json": "Fresco",
+  "docs/collect-data/interviewer/metadata.json": "Interviewer",
+  "docs/collect-data/metadata.json": "Collect Data",
+  "docs/design-protocols/interface-documentation/metadata.json": "Interface documentation",
+  "docs/design-protocols/key-concepts/metadata.json": "Key concepts",
+  "docs/design-protocols/metadata.json": "Design Protocols",
+  "docs/design-protocols/tutorials/metadata.json": "Tutorials",
   "docs/get-started/metadata.json": "Get Started",
   "docs/get-started/planning-a-study/metadata.json": "Planning a Study",
   "docs/get-started/project-information/metadata.json": "Project Information"

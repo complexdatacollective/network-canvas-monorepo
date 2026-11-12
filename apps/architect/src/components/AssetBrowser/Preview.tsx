@@ -20,24 +20,28 @@ const messages = defineMessages({
   closePreview: {
     id: 'architect.assetBrowser.preview.closePreview',
     defaultMessage: 'Close preview',
-    description: 'Visible text in components / AssetBrowser / Preview.',
+    description:
+      'Button in the footer of the resource preview dialog that closes the dialog.',
   },
   downloadAsset: {
     id: 'architect.assetBrowser.preview.downloadAsset',
     defaultMessage: 'Download asset',
-    description: 'Visible text in components / AssetBrowser / Preview.',
+    description:
+      'Button in the footer of the resource preview dialog that downloads the previewed resource file (image, video, audio, network data or GeoJSON). Download is a verb; asset means resource.',
   },
   copyAPIKey: {
     id: 'architect.assetBrowser.preview.copyAPIKey',
     defaultMessage: 'Copy API Key',
-    description: 'Visible text in components / AssetBrowser / Preview.',
+    description:
+      'Button in the footer of the preview dialog for an API key resource that copies the key to the clipboard. Replaces the download button for API keys.',
   },
 });
 const extraMessages = defineMessages({
   unavailable: {
     id: 'architect.assetBrowser.preview.unavailable',
     defaultMessage: 'No preview available.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Message shown in the resource preview dialog when the resource has a kind that cannot be previewed.',
   },
 });
 

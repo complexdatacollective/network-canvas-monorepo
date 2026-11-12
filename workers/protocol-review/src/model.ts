@@ -2,7 +2,8 @@ import type { TokenUsage } from './pricing.ts';
 
 /**
  * The model call as the review handler sees it, so the handler can be tested
- * with a fake and the real call (`anthropic-model.ts`) stays thin.
+ * with a fake and each provider's real call (`anthropic-model.ts`,
+ * `openai-model.ts`) stays thin.
  */
 
 /** Why the model call did not produce a review, as a fixed code. */
@@ -20,6 +21,20 @@ export type ModelFailureReason =
   | 'timeout'
   | 'cancelled'
   | 'unknown';
+
+/** The reason an HTTP error status from a provider stands for. */
+export const reasonByStatus = (status: number): ModelFailureReason => {
+  if (status === 401) return 'authentication';
+  if (status === 402) return 'billing';
+  if (status === 403) return 'permission';
+  if (status === 404) return 'not_found';
+  if (status === 413) return 'request_too_large';
+  if (status === 429) return 'rate_limited';
+  if (status === 529) return 'overloaded';
+  if (status === 400) return 'bad_request';
+  if (status >= 500) return 'provider_error';
+  return 'unknown';
+};
 
 /**
  * What the provider may have billed for a call that failed.
@@ -79,7 +94,11 @@ export type ModelRunInput = {
 export type ModelRunOutput = {
   /** The whole answer. */
   text: string;
-  /** Why the model stopped: `end_turn`, `max_tokens`, `refusal`, … */
+  /**
+   * Why the model stopped, in one vocabulary whichever provider answered:
+   * `end_turn`, `max_tokens` (the answer was cut off at the output cap),
+   * `refusal`, or whatever else the provider reported.
+   */
   stopReason: string | null;
   usage: TokenUsage;
 };

@@ -66,7 +66,7 @@ const rejectingFetch = (status: number, type: string) => {
 };
 
 const spentToday = (harness: ReturnType<typeof createHarness>) =>
-  harness.store.spend.get(utcDay(START)) ?? 0;
+  harness.store.spend.anthropic.get(utcDay(START)) ?? 0;
 
 describe('the reservation', () => {
   it('covers one token for every UTF-8 byte the request sends, however dense the text', async () => {
@@ -90,7 +90,7 @@ describe('the reservation', () => {
       byteLength(JSON.stringify(REVIEW_OUTPUT_SCHEMA));
     expect(reserved).toHaveLength(1);
     expect(reserved[0]).toBeGreaterThanOrEqual(
-      costMicros({
+      costMicros('anthropic', {
         inputTokens: 0,
         cacheCreationInputTokens: sentBytes,
         cacheReadInputTokens: 0,
@@ -187,7 +187,9 @@ describe('a failed call', () => {
 
     expect(response.status).toBe(503);
     expect(calls).toHaveLength(1);
-    expect(harness.notices).toEqual([{ reason: 'overloaded', status: 529 }]);
+    expect(harness.notices).toEqual([
+      { reason: 'overloaded', status: 529, provider: 'anthropic' },
+    ]);
   });
 });
 
