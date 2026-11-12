@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 
 import { type MetadataFile, MetadataFileSchema } from '~/app/types';
+import { headingIds } from '~/lib/headingIds';
 
 import { defaultLocale } from './locales';
 
@@ -259,9 +260,8 @@ export function findTranslationProblems(
         continue;
       }
 
-      const recorded = readTranslatedFrom(
-        readFileSync(translation.path, 'utf-8'),
-      );
+      const translatedContent = readFileSync(translation.path, 'utf-8');
+      const recorded = readTranslatedFrom(translatedContent);
       const current = gitBlobId(readFileSync(page.english));
       if (!recorded) {
         add(
@@ -274,6 +274,18 @@ export function findTranslationProblems(
           `is stale: the English changed since it was translated. See what changed with \`git diff ${recorded} ${rel(page.english)}\``,
         );
       }
+
+      // The same set of ids, in any order: a glossary may be alphabetized
+      // in the translation's language.
+      const englishIds = headingIds(readFileSync(page.english, 'utf-8'));
+      const translatedIds = headingIds(translatedContent);
+      if (
+        englishIds.toSorted().join('\n') !== translatedIds.toSorted().join('\n')
+      )
+        add(
+          translation.path,
+          `has headings that do not match the English page's. Give each heading the English heading's id, as in "## Título {#title}". English: ${englishIds.join(', ')}. Translation: ${translatedIds.join(', ')}`,
+        );
     }
 
     // Navigation labels and section index pages.

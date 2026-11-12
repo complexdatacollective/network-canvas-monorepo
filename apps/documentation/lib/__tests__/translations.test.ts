@@ -142,6 +142,31 @@ describe('findTranslationProblems', () => {
     ]);
   });
 
+  it('reports a translation whose headings do not keep the English ids', () => {
+    const page = '---\ntitle: Intro\n---\n\n## Getting started\n';
+    write('docs/start/intro.en.mdx', page);
+    write(
+      'docs/start/intro.es.mdx',
+      writeTranslatedFrom(
+        '---\ntitle: Intro\n---\n\n## Primeros pasos\n',
+        gitBlobId(page),
+      ),
+    );
+    expect(problems()).toEqual([
+      expect.stringMatching(
+        /^es docs\/start\/intro\.es\.mdx has headings that do not match.*English: getting-started\. Translation: primeros-pasos$/,
+      ),
+    ]);
+    write(
+      'docs/start/intro.es.mdx',
+      writeTranslatedFrom(
+        '---\ntitle: Intro\n---\n\n## Primeros pasos {#getting-started}\n',
+        gitBlobId(page),
+      ),
+    );
+    expect(problems()).toEqual([]);
+  });
+
   it('reports a translation with no English page', () => {
     write(
       'docs/start/gone.es.mdx',

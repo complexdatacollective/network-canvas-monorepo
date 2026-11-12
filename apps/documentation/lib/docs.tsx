@@ -82,6 +82,7 @@ import { ListItem } from '~/components/ui/typography/ListItem';
 import { toLocale } from '~/lib/i18n/locales';
 import { getCompatibility } from '~/lib/interfaceCompatibility';
 
+import { explicitHeadingIds } from './headingIds';
 import { DOCS_PATH, get } from './helper_functions';
 import processPreTags from './processPreTags';
 import processYamlMatter from './processYamlMatter';
@@ -434,6 +435,7 @@ export async function getDocumentForPath({
     .use(rehypeFigure)
     .use(rehypeRaw)
     .use(unwrapBlockComponents)
+    .use(explicitHeadingIds)
     .use(slug)
     .use(headingTree)
     .use(processPreTags)
