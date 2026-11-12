@@ -2,6 +2,7 @@ import type { Finding } from '@codaco/protocol-review-worker/contract';
 import {
   collectLocalizedStrings,
   type CurrentProtocol,
+  escapeMessageText,
   messageText,
 } from '@codaco/protocol-validation';
 import { codebookHref } from '~/components/Codebook/codebookLinks';
@@ -37,10 +38,17 @@ export type FixTextEdit = {
    */
   otherTranslations: string[];
   markdown: boolean;
+  kind: 'text' | 'number';
+  editable: boolean;
 };
+
+export type FixEdits = Readonly<Record<string, string>>;
 
 const plainText = (value: string, isTranslation: boolean) =>
   isTranslation ? messageText(value) : value;
+
+const isLiteralMessage = (value: string) =>
+  escapeMessageText(messageText(value)) === value;
 
 const probeAt = (value: unknown, segments: readonly string[]): unknown => {
   const [head, ...rest] = segments;
@@ -112,8 +120,28 @@ const describeSet = (
         locale,
         otherTranslations: kept,
         markdown,
+        kind: 'text',
+        editable: isLiteralMessage(after[locale] ?? ''),
       };
     });
+  }
+
+  if (typeof after === 'number') {
+    return [
+      {
+        path: operation.path,
+        now:
+          target.found && typeof target.value === 'number'
+            ? String(target.value)
+            : null,
+        after: String(after),
+        locale: null,
+        otherTranslations: [],
+        markdown: false,
+        kind: 'number',
+        editable: true,
+      },
+    ];
   }
 
   if (typeof after !== 'string') return [];
@@ -144,8 +172,81 @@ const describeSet = (
       locale: isTranslation ? last : null,
       otherTranslations,
       markdown: isTranslation && isMarkdownAt(protocol, segments.slice(0, -1)),
+      kind: 'text',
+      editable: isTranslation && isLiteralMessage(after),
     },
   ];
+};
+
+const describeSetSafely = (
+  protocol: CurrentProtocol,
+  operation: StoredOperation,
+): FixTextEdit[] => {
+  try {
+    return describeSet(protocol, operation);
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Whether every change a fix makes is a text or number the researcher can
+ * adjust in the review before the fix is made.
+ */
+export const fixEditableInPlace = (
+  protocol: CurrentProtocol,
+  operations: readonly StoredOperation[],
+): boolean =>
+  operations.length > 0 &&
+  operations.every((operation) => {
+    if (operation.op !== 'set') return false;
+    const edits = describeSetSafely(protocol, operation);
+    return edits.length > 0 && edits.every((edit) => edit.editable);
+  });
+
+const editedValue = (edit: FixTextEdit, input: string): unknown => {
+  if (edit.kind === 'text') return escapeMessageText(input);
+  const number = Number(input);
+  return input.trim() !== '' && Number.isFinite(number) ? number : undefined;
+};
+
+/**
+ * A fix's operations with the researcher's own values, keyed by edit path,
+ * in place of the suggested ones. Null when a value cannot be written, such
+ * as a number field that does not hold a number.
+ */
+export const applyFixEdits = (
+  protocol: CurrentProtocol,
+  operations: readonly StoredOperation[],
+  edits: FixEdits,
+): StoredOperation[] | null => {
+  const result: StoredOperation[] = [];
+  for (const operation of operations) {
+    if (operation.op !== 'set') {
+      result.push(operation);
+      continue;
+    }
+    let value = parsed(operation.value);
+    let changed = false;
+    for (const edit of describeSetSafely(protocol, operation)) {
+      const input = edits[edit.path];
+      if (input === undefined || !edit.editable) continue;
+      const next = editedValue(edit, input);
+      if (next === undefined) return null;
+      if (edit.path === operation.path) {
+        value = next;
+      } else if (edit.locale !== null && isJsonObject(value)) {
+        value = { ...value, [edit.locale]: next };
+      } else {
+        continue;
+      }
+      changed = true;
+    }
+    result.push(
+      changed ? { ...operation, value: JSON.stringify(value) } : operation,
+    );
+  }
+  return result;
 };
 
 /**
@@ -157,14 +258,9 @@ export const describeFixTextEdits = (
   protocol: CurrentProtocol,
   operations: readonly StoredOperation[],
 ): FixTextEdit[] =>
-  operations.flatMap((operation): FixTextEdit[] => {
-    if (operation.op !== 'set') return [];
-    try {
-      return describeSet(protocol, operation);
-    } catch {
-      return [];
-    }
-  });
+  operations.flatMap((operation): FixTextEdit[] =>
+    operation.op === 'set' ? describeSetSafely(protocol, operation) : [],
+  );
 
 /** Where a finding is, for display and for a link to it. */
 export type FindingLocation =

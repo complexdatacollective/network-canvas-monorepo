@@ -3011,6 +3011,18 @@
     "defaultMessage": "You dismissed this problem.",
     "description": "Notice on a problem the researcher already dismissed."
   },
+  "architect.protocolReview.problem.editValue": {
+    "defaultMessage": "Edit",
+    "description": "Button in the After the fix box that lets the researcher change the suggested text or number before the fix is made."
+  },
+  "architect.protocolReview.problem.editedInvalid": {
+    "defaultMessage": "Your changes would leave the protocol invalid. Change them, or use the suggestion.",
+    "description": "Notice when Fix for me is pressed with text or numbers the researcher changed, and the result would not be a valid protocol."
+  },
+  "architect.protocolReview.problem.fixAndEdit": {
+    "defaultMessage": "Fix for me, then edit it yourself",
+    "description": "Button under a suggested fix too large to change in the review. It makes the fix, then opens the place in the protocol where the problem is so the researcher can adjust it."
+  },
   "architect.protocolReview.problem.fixApplied": {
     "defaultMessage": "Fixed for you: {title}",
     "description": "Read by screen readers after Fix for me changed the protocol. {title} is the problem’s title, written by the review service."
@@ -3043,6 +3055,10 @@
     "defaultMessage": "Next problem",
     "description": "Button that moves on from a problem already fixed to the next problem still to decide."
   },
+  "architect.protocolReview.problem.notANumber": {
+    "defaultMessage": "Enter a number.",
+    "description": "Shown under a number the researcher is changing before the fix is made, when the field does not hold a number."
+  },
   "architect.protocolReview.problem.notOwned": {
     "defaultMessage": "This protocol is open for editing in another tab, so it cannot be changed here. Make the change in that tab.",
     "description": "Notice when Fix for me was refused because another browser tab holds this protocol for editing."
@@ -3074,6 +3090,10 @@
   "architect.protocolReview.problem.undoDismiss": {
     "defaultMessage": "Undo dismiss",
     "description": "Button on a problem the researcher dismissed that returns it to the problems still to decide."
+  },
+  "architect.protocolReview.problem.useSuggestion": {
+    "defaultMessage": "Use suggestion",
+    "description": "Button that puts back the suggested text or number after the researcher changed it, before the fix is made."
   },
   "architect.protocolReview.progressRing.label": {
     "defaultMessage": "Review progress",

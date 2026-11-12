@@ -1,3 +1,4 @@
+import { Toast } from '@base-ui/react/toast';
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -9,6 +10,7 @@ import { memoryLocation } from 'wouter/memory-location';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { ToolbarGroup } from '@codaco/fresco-ui/SegmentedToolbar';
+import { Toaster } from '@codaco/fresco-ui/Toast';
 import type {
   Finding,
   ReviewResult,
@@ -163,13 +165,16 @@ export const renderToolbar = (
     <Provider store={store}>
       <ArchitectI18nProvider>
         <Router hook={memoryLocation({ path }).hook}>
-          <DialogProvider>
-            <ActionToolbarProvider>
-              <Toolbar location={path} mode={mode} />
-              <LocationProbe />
-              {children}
-            </ActionToolbarProvider>
-          </DialogProvider>
+          <Toast.Provider>
+            <DialogProvider>
+              <ActionToolbarProvider>
+                <Toolbar location={path} mode={mode} />
+                <LocationProbe />
+                {children}
+              </ActionToolbarProvider>
+            </DialogProvider>
+            <Toaster />
+          </Toast.Provider>
         </Router>
       </ArchitectI18nProvider>
     </Provider>,

@@ -411,6 +411,8 @@ describe('F: the preview shows every text change a fix makes', () => {
         locale: 'en',
         otherTranslations: ['fr'],
         markdown: true,
+        kind: 'text',
+        editable: true,
       },
     ]);
   });

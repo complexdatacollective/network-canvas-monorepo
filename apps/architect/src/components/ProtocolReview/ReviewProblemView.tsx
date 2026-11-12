@@ -1,5 +1,6 @@
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
+import { useLocation } from 'wouter';
 
 import {
   defineMessages,
@@ -9,9 +10,12 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import Pips from '@codaco/fresco-ui/Pips';
 import { PopoverTitle } from '@codaco/fresco-ui/Popover';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
@@ -24,6 +28,7 @@ import {
   type ReviewFindingView,
   undoFix,
 } from '~/ducks/modules/protocolReview';
+import type { FixTextEdit } from '~/protocolReview/describeFix';
 import type { FindingDecision } from '~/protocolReview/reviewStore';
 
 import { GuardedButton, ProtocolPlaceLink } from './reviewControls';
@@ -138,6 +143,37 @@ const messages = defineMessages({
     description:
       'Button that keeps a problem on the researcher’s list, for them to fix themselves, and moves to the next problem.',
   },
+  editValue: {
+    id: 'architect.protocolReview.problem.editValue',
+    defaultMessage: 'Edit',
+    description:
+      'Button in the After the fix box that lets the researcher change the suggested text or number before the fix is made.',
+  },
+  useSuggestion: {
+    id: 'architect.protocolReview.problem.useSuggestion',
+    defaultMessage: 'Use suggestion',
+    description:
+      'Button that puts back the suggested text or number after the researcher changed it, before the fix is made.',
+  },
+  notANumber: {
+    id: 'architect.protocolReview.problem.notANumber',
+    defaultMessage: 'Enter a number.',
+    description:
+      'Shown under a number the researcher is changing before the fix is made, when the field does not hold a number.',
+  },
+  editedInvalid: {
+    id: 'architect.protocolReview.problem.editedInvalid',
+    defaultMessage:
+      'Your changes would leave the protocol invalid. Change them, or use the suggestion.',
+    description:
+      'Notice when Fix for me is pressed with text or numbers the researcher changed, and the result would not be a valid protocol.',
+  },
+  fixAndEdit: {
+    id: 'architect.protocolReview.problem.fixAndEdit',
+    defaultMessage: 'Fix for me, then edit it yourself',
+    description:
+      'Button under a suggested fix too large to change in the review. It makes the fix, then opens the place in the protocol where the problem is so the researcher can adjust it.',
+  },
   fixForMe: {
     id: 'architect.protocolReview.problem.fixForMe',
     defaultMessage: 'Fix for me',
@@ -210,13 +246,94 @@ const nextUndecided = (
   return null;
 };
 
-type Refusal = { findingId: string; reason: DecisionRefusal };
 const FixText = ({ text, markdown }: { text: string; markdown: boolean }) =>
   markdown ? (
     <Markdown label={text} className="wrap-break-word" />
   ) : (
     <span className="wrap-break-word whitespace-pre-wrap">{text}</span>
   );
+
+const AfterFixBox = ({
+  edit,
+  languageId,
+  label,
+  editLabel,
+  resetLabel,
+  notANumber,
+  editable,
+  value,
+  onChange,
+}: {
+  edit: FixTextEdit;
+  languageId?: string;
+  label: string;
+  editLabel: string;
+  resetLabel: string;
+  notANumber: string;
+  editable: boolean;
+  value: string | undefined;
+  onChange: (value: string | undefined) => void;
+}) => {
+  const labelId = useId();
+  const errorId = useId();
+  const editing = editable && value !== undefined;
+  const invalid = editing && !editIsValid(edit, value);
+  const labelledBy = languageId ? `${languageId} ${labelId}` : labelId;
+  return (
+    <div className="bg-surface border-primary flex flex-col gap-1 rounded border-2 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span id={labelId} className="text-sm font-bold">
+          {label}
+        </span>
+        {editable && (
+          <Button
+            size="sm"
+            variant="text"
+            onClick={() => onChange(editing ? undefined : edit.after)}
+          >
+            {editing ? resetLabel : editLabel}
+          </Button>
+        )}
+      </div>
+      {editing ? (
+        edit.kind === 'number' ? (
+          <InputField
+            type="number"
+            aria-labelledby={labelledBy}
+            aria-invalid={invalid || undefined}
+            aria-describedby={invalid ? errorId : undefined}
+            value={value}
+            onChange={(next) => onChange(next ?? '')}
+          />
+        ) : (
+          <TextAreaField
+            aria-labelledby={labelledBy}
+            className="[&>textarea]:field-sizing-content [&>textarea]:min-h-24"
+            value={value}
+            onChange={(next) => onChange(next ?? '')}
+          />
+        )
+      ) : (
+        <FixText text={edit.after} markdown={edit.markdown} />
+      )}
+      {invalid && (
+        <span id={errorId} className="text-destructive text-sm">
+          {notANumber}
+        </span>
+      )}
+    </div>
+  );
+};
+
+const editIsValid = (edit: FixTextEdit, value: string) =>
+  edit.kind === 'text' ||
+  (value.trim() !== '' && Number.isFinite(Number(value)));
+
+type Refusal = {
+  findingId: string;
+  reason: DecisionRefusal;
+  edited: boolean;
+};
 
 const refusalMessages: Record<DecisionRefusal, MessageDescriptor> = {
   not_owned: messages.notOwned,
@@ -261,6 +378,8 @@ const ReviewProblemView = ({
   const dispatch = useAppDispatch();
   const store = useAppStore();
   const languageName = useLanguageName();
+  const { add: addToast, close: closeToast } = useToast();
+  const [, navigate] = useLocation();
   const anotherUndecided = useAppSelector(
     (state) =>
       nextUndecided(getProtocolReviewFindings(state), index, current.id) !==
@@ -270,6 +389,11 @@ const ReviewProblemView = ({
 
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const [edits, setEdits] = useState<Readonly<Record<string, string>>>({});
+  const editsValid = current.textEdits.every((edit) => {
+    const value = edits[edit.path];
+    return value === undefined || editIsValid(edit, value);
+  });
 
   // Each problem takes focus at its title as it arrives (the panel mounts
   // this afresh for each one), so a keyboard or screen reader user starts
@@ -291,20 +415,59 @@ const ReviewProblemView = ({
     onBack();
   };
 
-  const decide = async (decision: FindingDecision) => {
+  const decide = async (decision: FindingDecision, openAfter?: string) => {
     if (busy) return;
     setBusy(true);
     setRefusal(null);
-    const result = await dispatch(decideFinding(current.id, decision));
+    const edited = decision === 'fix' && Object.keys(edits).length > 0;
+    const result = await dispatch(
+      decideFinding(current.id, decision, decision === 'fix' ? edits : {}),
+    );
     setBusy(false);
     if (!result.ok) {
-      setRefusal({ findingId: current.id, reason: result.reason });
+      setRefusal({ findingId: current.id, reason: result.reason, edited });
       return;
     }
     if (decision === 'fix') {
-      announce(
-        intl.formatMessage(messages.fixApplied, { title: current.title }),
-      );
+      const fixed = current;
+      const place = formatLocationLink(intl, fixed.location);
+      const toastId = addToast({
+        variant: 'success',
+        title: intl.formatMessage(messages.fixApplied, { title: fixed.title }),
+        description: (
+          <span className="flex flex-col items-start gap-1">
+            <span>{fixed.fixSummary}</span>
+            {place && (
+              <Button
+                size="sm"
+                variant="link"
+                onClick={() => {
+                  closeToast(toastId);
+                  onClose();
+                  navigate(place.href);
+                }}
+              >
+                {place.label}
+              </Button>
+            )}
+          </span>
+        ),
+        cancelLabel: intl.formatMessage(messages.undo),
+        onCancel: async () => {
+          closeToast(toastId);
+          const undone = await dispatch(undoFix(fixed.id));
+          if (undone.ok) {
+            announce(
+              intl.formatMessage(messages.fixUndone, { title: fixed.title }),
+            );
+          }
+        },
+      });
+      if (openAfter) {
+        onClose();
+        navigate(openAfter);
+        return;
+      }
     }
     if (decision === 'undecided') return;
     moveOn();
@@ -317,7 +480,11 @@ const ReviewProblemView = ({
     const result = await dispatch(undoFix(current.id));
     setBusy(false);
     if (!result.ok) {
-      setRefusal({ findingId: current.id, reason: result.reason });
+      setRefusal({
+        findingId: current.id,
+        reason: result.reason,
+        edited: false,
+      });
       return;
     }
     announce(intl.formatMessage(messages.fixUndone, { title: current.title }));
@@ -325,6 +492,12 @@ const ReviewProblemView = ({
 
   const shownRefusal =
     refusal?.findingId === current.id ? refusal.reason : null;
+  const refusalNotice =
+    shownRefusal === 'invalid' && refusal?.edited
+      ? messages.editedInvalid
+      : shownRefusal
+        ? refusalMessages[shownRefusal]
+        : null;
   const { status, availability } = current;
   const undecidedOrMine = status === 'undecided' || status === 'mine';
   const fixBlocked =
@@ -338,7 +511,7 @@ const ReviewProblemView = ({
         ? messages.cannotFix
         : null;
   const notices = [
-    ...(shownRefusal ? [refusalMessages[shownRefusal]] : []),
+    ...(refusalNotice ? [refusalNotice] : []),
     ...(availabilityNotice ? [availabilityNotice] : []),
   ].filter((notice, position, all) => all.indexOf(notice) === position);
   const stateNotice =
@@ -356,23 +529,24 @@ const ReviewProblemView = ({
   const location = formatLocation(intl, current.location);
   const link = formatLocationLink(intl, current.location);
   const fixPrimary = current.canFix || availability === 'checking';
+  const canChooseFix = undecidedOrMine || status === 'dismissed';
+  const canEditFix = canChooseFix && availability === 'available';
 
-  const fixButton =
-    undecidedOrMine || status === 'dismissed' ? (
-      <GuardedButton
-        color={fixPrimary ? 'primary' : 'default'}
-        unavailable={busy || availability !== 'available'}
-        aria-describedby={availability === 'checking' ? checkingId : undefined}
-        icon={
-          availability === 'checking' ? (
-            <Loader2 className="motion-safe:animate-spin" aria-hidden />
-          ) : undefined
-        }
-        onClick={() => void decide('fix')}
-      >
-        {intl.formatMessage(messages.fixForMe)}
-      </GuardedButton>
-    ) : null;
+  const fixButton = canChooseFix ? (
+    <GuardedButton
+      color={fixPrimary ? 'primary' : 'default'}
+      unavailable={busy || availability !== 'available' || !editsValid}
+      aria-describedby={availability === 'checking' ? checkingId : undefined}
+      icon={
+        availability === 'checking' ? (
+          <Loader2 className="motion-safe:animate-spin" aria-hidden />
+        ) : undefined
+      }
+      onClick={() => void decide('fix')}
+    >
+      {intl.formatMessage(messages.fixForMe)}
+    </GuardedButton>
+  ) : null;
 
   return (
     <>
@@ -458,7 +632,10 @@ const ReviewProblemView = ({
                   {edit.locale !== null &&
                     new Set(current.textEdits.map((other) => other.locale))
                       .size > 1 && (
-                      <span className="text-sm font-bold">
+                      <span
+                        id={`${current.id}${edit.path}-language`}
+                        className="text-sm font-bold"
+                      >
                         {languageName(edit.locale)}
                       </span>
                     )}
@@ -471,12 +648,31 @@ const ReviewProblemView = ({
                         <FixText text={edit.now} markdown={edit.markdown} />
                       </div>
                     )}
-                    <div className="bg-surface border-primary flex flex-col gap-1 rounded border-2 p-3">
-                      <span className="text-sm font-bold">
-                        {intl.formatMessage(messages.afterFix)}
-                      </span>
-                      <FixText text={edit.after} markdown={edit.markdown} />
-                    </div>
+                    <AfterFixBox
+                      edit={edit}
+                      languageId={
+                        edit.locale !== null &&
+                        new Set(current.textEdits.map((other) => other.locale))
+                          .size > 1
+                          ? `${current.id}${edit.path}-language`
+                          : undefined
+                      }
+                      label={intl.formatMessage(messages.afterFix)}
+                      editLabel={intl.formatMessage(messages.editValue)}
+                      resetLabel={intl.formatMessage(messages.useSuggestion)}
+                      notANumber={intl.formatMessage(messages.notANumber)}
+                      editable={canEditFix && edit.editable}
+                      value={edits[edit.path]}
+                      onChange={(value) =>
+                        setEdits((previous) => {
+                          if (value !== undefined) {
+                            return { ...previous, [edit.path]: value };
+                          }
+                          const { [edit.path]: _removed, ...rest } = previous;
+                          return rest;
+                        })
+                      }
+                    />
                   </div>
                   {edit.otherTranslations.length > 0 && (
                     <Paragraph intent="smallText" margin="none">
@@ -493,6 +689,17 @@ const ReviewProblemView = ({
                   )}
                 </div>
               ))}
+              {canEditFix && !current.editableInPlace && link && (
+                <GuardedButton
+                  size="sm"
+                  variant="link"
+                  className="self-start"
+                  unavailable={busy}
+                  onClick={() => void decide('fix', link.href)}
+                >
+                  {intl.formatMessage(messages.fixAndEdit)}
+                </GuardedButton>
+              )}
             </section>
             {availability === 'checking' && (
               <span id={checkingId} className="sr-only">

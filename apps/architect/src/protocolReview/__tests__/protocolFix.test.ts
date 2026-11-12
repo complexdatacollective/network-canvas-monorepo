@@ -5,7 +5,12 @@ import {
   validateProtocol,
 } from '@codaco/protocol-validation';
 
-import { describeFixTextEdits, resolveFindingLocation } from '../describeFix';
+import {
+  applyFixEdits,
+  describeFixTextEdits,
+  fixEditableInPlace,
+  resolveFindingLocation,
+} from '../describeFix';
 import { applyOperations } from '../fixEngine';
 import {
   editProtocol,
@@ -126,6 +131,58 @@ describe('protocolReplacement', () => {
   });
 });
 
+describe('applyFixEdits', () => {
+  it('writes the researcher’s text and number in place of the suggestion', () => {
+    const protocol = makeProtocol();
+    const operations = [
+      op('set', '/stages/names/prompts/p1/text', { en: 'Name people you see' }),
+      op('set', '/stages/names/behaviours/maxNodes', 20),
+    ];
+    const edited = applyFixEdits(protocol, operations, {
+      '/stages/names/prompts/p1/text/en': 'Name {everyone} you see',
+      '/stages/names/behaviours/maxNodes': '15',
+    });
+    expect(
+      edited?.map((operation) => JSON.parse(operation.value ?? '')),
+    ).toEqual([{ en: "Name '{'everyone'}' you see" }, 15]);
+  });
+
+  it('refuses a number field that holds no number', () => {
+    const protocol = makeProtocol();
+    const operations = [op('set', '/stages/names/behaviours/maxNodes', 20)];
+    expect(
+      applyFixEdits(protocol, operations, {
+        '/stages/names/behaviours/maxNodes': '',
+      }),
+    ).toBeNull();
+  });
+
+  it('leaves a text the researcher cannot change here as suggested', () => {
+    const protocol = makeProtocol();
+    const operations = [op('set', '/codebook/node/person/name', 'Friend')];
+    expect(
+      applyFixEdits(protocol, operations, {
+        '/codebook/node/person/name': 'Someone',
+      }),
+    ).toEqual(operations);
+  });
+});
+
+describe('fixEditableInPlace', () => {
+  it('holds for a fix that only sets texts and numbers, and not for one that removes', () => {
+    const protocol = makeProtocol();
+    expect(
+      fixEditableInPlace(protocol, [
+        op('set', '/stages/names/prompts/p1/text', { en: 'Name everyone' }),
+        op('set', '/stages/names/behaviours/maxNodes', 20),
+      ]),
+    ).toBe(true);
+    expect(
+      fixEditableInPlace(protocol, [op('remove', '/stages/welcome')]),
+    ).toBe(false);
+  });
+});
+
 describe('describeFixTextEdits', () => {
   it('gives the text now and after, its language, and the translations it leaves alone', () => {
     const protocol = makeProtocol();
@@ -143,6 +200,8 @@ describe('describeFixTextEdits', () => {
         locale: 'en',
         otherTranslations: ['fr'],
         markdown: true,
+        kind: 'text',
+        editable: true,
       },
       {
         path: '/codebook/node/person/name',
@@ -151,6 +210,8 @@ describe('describeFixTextEdits', () => {
         locale: null,
         otherTranslations: [],
         markdown: false,
+        kind: 'text',
+        editable: false,
       },
       {
         path: '/stages/names/prompts/p1/id',
@@ -159,6 +220,8 @@ describe('describeFixTextEdits', () => {
         locale: null,
         otherTranslations: [],
         markdown: false,
+        kind: 'text',
+        editable: false,
       },
     ]);
   });

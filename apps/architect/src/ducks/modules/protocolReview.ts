@@ -28,8 +28,11 @@ import {
   writeStoredQuota,
 } from '~/protocolReview/browserState';
 import {
+  applyFixEdits,
   describeFixTextEdits,
   type FindingLocation,
+  type FixEdits,
+  fixEditableInPlace,
   type FixTextEdit,
   resolveFindingLocation,
 } from '~/protocolReview/describeFix';
@@ -498,6 +501,7 @@ export type ReviewFindingView = {
   fixChanges: string[];
   /** Each text the fix rewrites, now and after. */
   textEdits: FixTextEdit[];
+  editableInPlace: boolean;
   decision: FindingDecision;
   /** `fixed` only while the researcher chose Fix for me AND the fix holds. */
   status: FindingDisplayStatus;
@@ -596,6 +600,10 @@ export const getProtocolReviewFindings = createSelector(
         fixSummary: current(finding.fix.summary),
         fixChanges: finding.fix.changes.map(current),
         textEdits: describeFixTextEdits(
+          protocolAsReviewed(protocol),
+          stored.operations,
+        ),
+        editableInPlace: fixEditableInPlace(
           protocolAsReviewed(protocol),
           stored.operations,
         ),
@@ -1091,6 +1099,7 @@ export const decideFinding =
   (
     findingId: string,
     decision: FindingDecision,
+    edits: FixEdits = {},
   ): Thunk<Promise<DecisionResult>> =>
   async (dispatch, getState) => {
     const found = findStored(getState, findingId);
@@ -1128,19 +1137,27 @@ export const decideFinding =
     ) {
       return refused('changed');
     }
-    const edit = await editProtocol(protocol, stored.operations);
+    const operations = applyFixEdits(
+      protocolAsReviewed(protocol),
+      stored.operations,
+      edits,
+    );
+    if (operations === null) return refused('invalid');
+    const edit = await editProtocol(protocol, operations);
     // Another protocol opened while the edit was worked out: nothing here is
     // about it, so nothing is dispatched or saved.
     if (!isStillActive(getState(), found.record.protocolId)) {
       return refused('no_review');
     }
     if (!edit.ok) {
-      dispatch(
-        actions.fixChecked({
-          findingId,
-          check: { protocol, kind: 'fix', valid: false },
-        }),
-      );
+      if (Object.keys(edits).length === 0) {
+        dispatch(
+          actions.fixChecked({
+            findingId,
+            check: { protocol, kind: 'fix', valid: false },
+          }),
+        );
+      }
       return refused(edit.reason);
     }
     const committed = commitProtocolEdit(
