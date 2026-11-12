@@ -10,6 +10,7 @@ import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
 import { getLatestClassicApps } from '~/lib/classicReleases';
 import { webApps } from '~/lib/getStarted';
 import { routing } from '~/lib/i18n/routing';
+import { websiteLocaleAlternates } from '~/lib/siteUrls';
 
 type GetStartedPageProps = {
   params: Promise<{ locale: string }>;
@@ -28,18 +29,7 @@ export async function generateMetadata({
     description: t('metadata.description'),
     alternates: {
       canonical: `https://networkcanvas.com/${locale}/get-started`,
-      languages: {
-        'en-US': 'https://networkcanvas.com/en-US/get-started',
-        'en-GB': 'https://networkcanvas.com/en-GB/get-started',
-        'es': 'https://networkcanvas.com/es/get-started',
-        'zh-Hans': 'https://networkcanvas.com/zh-Hans/get-started',
-        'zh-Hant': 'https://networkcanvas.com/zh-Hant/get-started',
-        'de': 'https://networkcanvas.com/de/get-started',
-        'nl': 'https://networkcanvas.com/nl/get-started',
-        'pt-BR': 'https://networkcanvas.com/pt-BR/get-started',
-        'it': 'https://networkcanvas.com/it/get-started',
-        'fr': 'https://networkcanvas.com/fr/get-started',
-      },
+      languages: websiteLocaleAlternates('/get-started'),
     },
   };
 }

@@ -82,13 +82,26 @@ export function ProtocolGalleryCard({
             variant="subtitle"
             margin="none"
             render={<p />}
+            dir="auto"
+            className="text-match-parent"
           >
             {protocol.title}
           </Heading>
-          <Paragraph margin="none" intent="meta" emphasis="muted">
+          <Paragraph
+            margin="none"
+            intent="meta"
+            emphasis="muted"
+            dir="auto"
+            className="text-match-parent"
+          >
             {protocol.authors}
           </Paragraph>
-          <Paragraph margin="none" intent="smallText">
+          <Paragraph
+            margin="none"
+            intent="smallText"
+            dir="auto"
+            className="text-match-parent"
+          >
             {protocol.description}
           </Paragraph>
         </div>

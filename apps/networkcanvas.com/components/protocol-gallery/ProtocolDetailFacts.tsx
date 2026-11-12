@@ -19,7 +19,9 @@ function DetailItem({
   return (
     <div className="border-outline min-w-0 border-b pb-4">
       <Eyebrow render={<dt />}>{label}</Eyebrow>
-      <dd className="mt-1.5">{children}</dd>
+      <dd dir="auto" className="text-match-parent mt-1.5">
+        {children}
+      </dd>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
 import { modifier } from "ember-modifier";
+import { menuStart } from "../lib/menu-start";
 import {
   loadSiteNavigation,
   siteNavigationLocale,
@@ -66,10 +67,12 @@ export default class SiteNavigation extends Component {
       const header = event.currentTarget.closest(".d-header");
       const panel = header?.querySelector(".contents > .panel");
       if (panel && event.detail?.anchor) {
-        header.style.setProperty(
-          "--nc-forum-menu-start",
-          `${event.detail.anchor.left - panel.getBoundingClientRect().left}px`
+        const start = menuStart(
+          event.detail.anchor,
+          panel.getBoundingClientRect(),
+          getComputedStyle(panel).direction
         );
+        header.style.setProperty("--nc-forum-menu-start", `${start}px`);
       }
       this.search.visible = false;
       this.header.userVisible = false;

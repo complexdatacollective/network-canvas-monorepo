@@ -343,11 +343,12 @@ function PublicationCard({
         <Heading
           level="h3"
           margin="none"
-          className="tablet-landscape:text-xl text-lg leading-snug font-bold"
+          dir="auto"
+          className="text-match-parent tablet-landscape:text-xl text-lg leading-snug font-bold"
         >
           {publication.title}
         </Heading>
-        <p className="text-text/80 mt-3 text-sm">
+        <p dir="auto" className="text-match-parent text-text/80 mt-3 text-sm">
           <svg
             aria-hidden
             viewBox="0 0 12 14"
@@ -360,7 +361,9 @@ function PublicationCard({
             {publication.year}
           </time>
         </p>
-        <p className="text-text/70 mt-2 text-sm">{publication.authors}</p>
+        <p dir="auto" className="text-match-parent text-text/70 mt-2 text-sm">
+          {publication.authors}
+        </p>
       </a>
       {/* The publications this one shares authors with can be opened from
           the network; these links put them in the keyboard order right

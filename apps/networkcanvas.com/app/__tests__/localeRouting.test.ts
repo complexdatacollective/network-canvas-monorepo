@@ -186,6 +186,21 @@ const negotiationCases: readonly NegotiationCase[] = [
     destination: 'http://localhost/fr/',
   },
   {
+    name: 'Egyptian Arabic browser language',
+    headers: { 'accept-language': 'ar-EG,ar;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/ar/',
+  },
+  {
+    name: 'Saudi Arabic browser language',
+    headers: { 'accept-language': 'ar-SA' },
+    destination: 'http://localhost/ar/',
+  },
+  {
+    name: 'bare Arabic browser language',
+    headers: { 'accept-language': 'ar' },
+    destination: 'http://localhost/ar/',
+  },
+  {
     name: 'US English fallback',
     headers: {},
     destination: 'http://localhost/en-US/',
@@ -247,7 +262,7 @@ describe('locale routing', () => {
     }
   });
 
-  it('generates US English, UK English, Spanish, Simplified Chinese, Traditional Chinese, German, Dutch, Brazilian Portuguese, Italian, and French static params', () => {
+  it('generates US English, UK English, Spanish, Simplified Chinese, Traditional Chinese, German, Dutch, Brazilian Portuguese, Italian, French, and Arabic static params', () => {
     expect(locales).toEqual([
       'en-US',
       'en-GB',
@@ -259,6 +274,7 @@ describe('locale routing', () => {
       'pt-BR',
       'it',
       'fr',
+      'ar',
     ]);
     expect(getStaticLocaleParams()).toEqual([
       { locale: 'en-US' },
@@ -271,6 +287,7 @@ describe('locale routing', () => {
       { locale: 'pt-BR' },
       { locale: 'it' },
       { locale: 'fr' },
+      { locale: 'ar' },
     ]);
   });
 
