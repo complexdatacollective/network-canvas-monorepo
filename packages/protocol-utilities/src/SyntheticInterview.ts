@@ -17,18 +17,18 @@ import {
   type FinishOutcome,
   type Experiments,
   type LocalizedString,
+  collectLocalizedStrings,
+  findBuiltInWordingProblems,
+  hasSuppliedWording,
+  type MessageArguments,
   messageText,
-  interfaceTextShownBy,
-  interfaceTextWithUpdates,
-  stageWithoutSuppliedText,
-  stageWordingShown,
-  suppliedInterfaceText,
-  suppliedStageText,
+  stageWithoutUnshownWording,
+  suppliedStageSettingPaths,
   type Stage,
   type StageType,
   type StructuralCodebook,
   type VariableType,
-  withInterfaceText,
+  withoutUnshownInterfaceText,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -381,6 +381,57 @@ const DEFAULT_LOCALIZATION: LocalizationInput = {
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
+
+/** The value at `path` inside `root`, through its groups and lists. */
+const getAtPath = (
+  root: unknown,
+  path: readonly (string | number)[],
+): unknown =>
+  path.reduce<unknown>(
+    (current, key) => (isObject(current) ? current[String(key)] : undefined),
+    root,
+  );
+
+/** Set `value` at `path` inside `root`, which the caller owns, making each
+ * group that is missing on the way. */
+function setDeep(
+  root: Record<string, unknown>,
+  path: readonly (string | number)[],
+  value: unknown,
+): void {
+  let container = root;
+  for (const key of path.slice(0, -1)) {
+    const child = container[String(key)];
+    if (isObject(child)) {
+      container = child;
+      continue;
+    }
+    const made: Record<string, unknown> = {};
+    container[String(key)] = made;
+    container = made;
+  }
+  const last = path.at(-1);
+  if (last !== undefined) container[String(last)] = value;
+}
+
+/**
+ * A stand-in for a text Network Canvas words, as a fixture's author writes it
+ * in a language Network Canvas has no wording in: the text's name, and each
+ * value its message must show.
+ */
+const standInText = (
+  name: string,
+  declared: MessageArguments | undefined,
+): string =>
+  [
+    name,
+    ...Object.entries(declared ?? {}).flatMap(
+      ([argument, { kind, ...rest }]) =>
+        kind !== 'select' && 'required' in rest && rest.required !== undefined
+          ? [`{${argument}}`]
+          : [],
+    ),
+  ].join(' ');
 
 /** Set `value` at `path` inside `config`, copying each group on the way so a
  * group shared with another stage is never changed. */
@@ -1866,13 +1917,14 @@ export class SyntheticInterview {
       stages.push(this.defaultFinishStage());
     }
 
-    // It holds none of the interview's shared words in a language Network
-    // Canvas has wording in, as a protocol Architect writes does not. In a
-    // default language Network Canvas has none in, the fixture's author
-    // writes them. Stored as every tool stores a protocol: a shared text
-    // nothing in the protocol shows is left out (`withInterfaceText`).
-    return withInterfaceText(
-      this.withDefaultLanguageInterfaceText({
+    // It holds none of the wording Network Canvas supplies in a language
+    // Network Canvas has wording in, as a protocol Architect writes does not.
+    // In a default language Network Canvas has none in, the fixture's author
+    // writes each text the protocol shows (`withDefaultLanguageWording`).
+    // Stored as every tool stores a protocol: a shared text nothing in the
+    // protocol shows is left out.
+    return withoutUnshownInterfaceText(
+      this.withDefaultLanguageWording({
         id: `protocol-${this.seed}`,
         schemaVersion: CURRENT_SCHEMA_VERSION,
         localization: {
@@ -2711,46 +2763,54 @@ export class SyntheticInterview {
   }
 
   /**
-   * `value` with Network Canvas's English wording written under the default
-   * language when it has nothing there. Network Canvas has wording only in
-   * the languages it supplies, and a protocol cannot leave its editor
-   * without wording in its default language; a fixture's author writes it
-   * there, as a researcher must, so the fixture stays valid whatever
-   * languages it declares.
+   * `document` with every text Network Canvas words that it shows, and has no
+   * words for in the default language, written there. Network Canvas has
+   * wording only in the languages it supplies, and a protocol cannot leave
+   * its editor without wording in its default language; a fixture's author
+   * writes it there, as a researcher must, so the fixture stays valid
+   * whatever languages it declares. The words are a stand-in naming the text
+   * (the interview holds Network Canvas's own, which this package cannot
+   * read), showing each value the text must show.
    */
-  private writtenInDefaultLanguage(
-    value: LocalizedString,
-    english: string | undefined,
-  ): LocalizedString {
-    const { defaultLocale } = this.localization;
-    return value[defaultLocale] !== undefined || english === undefined
-      ? value
-      : { ...value, [defaultLocale]: english };
-  }
-
-  private withDefaultLanguageInterfaceText<
-    Protocol extends Readonly<{
-      localization: Readonly<{ defaultLocale: string; locales: string[] }>;
+  private withDefaultLanguageWording<
+    Document extends Readonly<{
       codebook?: unknown;
       stages?: readonly unknown[];
-      interfaceText?: Record<string, unknown>;
+      interfaceText?: unknown;
     }>,
-  >(protocol: Protocol): Protocol {
-    const english = { defaultLocale: 'en', locales: ['en'] };
-    const updates = interfaceTextShownBy(protocol).flatMap(
-      ({ group, key, value }) => {
-        const written = this.writtenInDefaultLanguage(
-          value,
-          suppliedInterfaceText(group, key, english)?.en,
-        );
-        return written === value ? [] : [{ group, key, value: written }];
-      },
-    );
-    if (updates.length === 0) return protocol;
-    return {
-      ...protocol,
-      interfaceText: interfaceTextWithUpdates(protocol.interfaceText, updates),
+  >(document: Document): Document {
+    const { defaultLocale, locales } = this.localization;
+    if (hasSuppliedWording(defaultLocale)) return document;
+    const localization = { defaultLocale, locales: [...locales] };
+    const next: Record<string, unknown> = structuredClone({ ...document });
+    const missing = findBuiltInWordingProblems({ ...next, localization })
+      .map(({ path }) => path)
+      .filter((path) => path[0] === 'stages' || path[0] === 'interfaceText');
+    if (missing.length === 0) return document;
+    // Written once so that each text can be found with the arguments its
+    // field declares, then again showing those it must show.
+    const write = (path: readonly (string | number)[], text: string) => {
+      const held: unknown = getAtPath(next, path);
+      setDeep(next, path, {
+        ...(isObject(held) ? held : {}),
+        [defaultLocale]: text,
+      });
     };
+    for (const path of missing) write(path, 'text');
+    const declared = new Map(
+      collectLocalizedStrings(next).map((hit) => [
+        JSON.stringify(hit.path),
+        hit.arguments,
+      ]),
+    );
+    for (const path of missing) {
+      write(
+        path,
+        standInText(String(path.at(-1)), declared.get(JSON.stringify(path))),
+      );
+    }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `next` is a copy of `document` with text written at paths the schema gives a localized string, so it keeps Document's shape
+    return next as Document;
   }
 
   /**
@@ -2788,31 +2848,21 @@ export class SyntheticInterview {
   /**
    * `config` holding the wording a stage must hold for its settings Network
    * Canvas words: none in a language Network Canvas has wording in, as a
-   * stage Architect saves holds none, and Network Canvas's English under a
-   * default language it has no wording in, for each setting the stage shows,
-   * as a researcher writing in that language must write it.
+   * stage Architect saves holds none, and a stand-in under a default language
+   * it has no wording in, for each setting the stage shows, as a researcher
+   * writing in that language must write it (`withDefaultLanguageWording`).
    */
   private withSuppliedText(
     config: Record<string, unknown>,
     type: string,
   ): Record<string, unknown> {
-    const english = new Map(
-      suppliedStageText(type, { defaultLocale: 'en', locales: ['en'] }).map(
-        ({ path, value }) => [path.join('.'), value.en],
-      ),
-    );
-    for (const { path, value, shown } of stageWordingShown(
-      { ...config, type },
-      this.localization,
-    )) {
-      if (!shown) continue;
-      const written = this.writtenInDefaultLanguage(
-        value,
-        english.get(path.join('.')),
-      );
-      if (written !== value) setAtPath(config, path, written);
-    }
-    return stageWithoutSuppliedText({ ...config, type });
+    const [stage] =
+      this.withDefaultLanguageWording({ stages: [{ ...config, type }] })
+        .stages ?? [];
+    return stageWithoutUnshownWording({
+      ...(isObject(stage) ? stage : config),
+      type,
+    });
   }
 
   private buildStageConfig(stage: StageEntry): unknown {
@@ -3082,9 +3132,7 @@ export class SyntheticInterview {
     // and a name the stage keeps in its `wording` group (as the Family
     // Pedigree keeps `wording.panelTitle`) may leave the group out.
     const supplied = new Set(
-      suppliedStageText(stage.type, this.localization).map(({ path }) =>
-        path.join('.'),
-      ),
+      suppliedStageSettingPaths(stage.type).map((path) => path.join('.')),
     );
     for (const [setting, text] of Object.entries(stage.wording ?? {})) {
       const inWording =

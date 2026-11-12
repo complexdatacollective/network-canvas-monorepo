@@ -108,7 +108,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const shouldReduceMotion = usePrefersReducedMotion();
   const resolve = useResolveLocalizedString();
   // The words every Network Composer shows alike, which the protocol holds
-  // as interface text (`interface-text-wording.ts`).
+  // as interface text (`interface-text-entries.ts`).
   const toolWords: ComposerToolWords = {
     addNamePlaceholder: intl.formatMessage(
       interfaceMessages.addNamePlaceholder,

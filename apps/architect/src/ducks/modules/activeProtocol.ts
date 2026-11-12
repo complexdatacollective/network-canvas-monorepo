@@ -7,10 +7,10 @@ import {
 } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
 
+import { withoutSuppliedWording } from '@codaco/interview/supplied-wording';
 import {
   type CurrentProtocol,
   type LocalizedString,
-  withoutSuppliedWording,
 } from '@codaco/protocol-validation';
 import type { AppDispatch, RootState } from '~/ducks/store';
 import {

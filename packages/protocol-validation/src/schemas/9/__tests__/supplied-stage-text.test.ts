@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  familyPedigreeWordingIn,
+  stageWithSuppliedText,
+  stageWithoutSuppliedText,
+  stageWordingShown,
+  suppliedStageText,
+  withoutSuppliedWording,
+} from '../../../__tests__/suppliedWording.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
-import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
-  stageWithoutSuppliedText,
-  stageWithSuppliedText,
-  stageWordingShown,
   suppliedStageSettingApplies,
   suppliedStageSettingPaths,
-  suppliedStageText,
 } from '../supplied-stage-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
@@ -90,7 +93,10 @@ describe('migrating a roster stage to schema 9', () => {
 
   // Fresco's deploy normalization re-runs this migration over rows already
   // stored at schema 9.
-  it('keeps only the researcher’s own heading on a roster already in schema 9 form', () => {
+  // The migration has no catalogue to hand, so it cannot tell a copy of
+  // Network Canvas's wording from a rewording: it writes none, and keeps what
+  // the stage holds. The tool that next stores the protocol removes a copy.
+  it('writes no heading on a roster already in schema 9 form, and keeps the one it holds', () => {
     const document = {
       ...completeProtocol(),
       schemaVersion: 8,
@@ -112,7 +118,12 @@ describe('migrating a roster stage to schema 9', () => {
     Object.assign(rosterOf(partly)!, {
       panelTitle: { en: 'Available to add', de: 'Dienste' },
     });
-    expect(rosterOf(migrateProtocol(partly, 9))?.panelTitle).toEqual({
+    const migrated = migrateProtocol(partly, 9);
+    expect(rosterOf(migrated)?.panelTitle).toEqual({
+      en: 'Available to add',
+      de: 'Dienste',
+    });
+    expect(rosterOf(withoutSuppliedWording(migrated))?.panelTitle).toEqual({
       de: 'Dienste',
     });
   });

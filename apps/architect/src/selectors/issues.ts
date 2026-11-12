@@ -1,5 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit';
 
+import { suppliedWordingIn } from '@codaco/interview/supplied-wording';
 import {
   analyzeProtocolLocalization,
   collectLocalizedStringFields,
@@ -14,7 +15,6 @@ import {
   type LocalizedTextLines,
   type MessageArguments,
   type ProtocolLocalizationWarning,
-  suppliedWordingIn,
 } from '@codaco/protocol-validation';
 import {
   getMapboxTokenId,

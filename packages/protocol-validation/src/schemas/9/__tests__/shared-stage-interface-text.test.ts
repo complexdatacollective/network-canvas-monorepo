@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   interfaceTextAsShown,
   interfaceTextWithUpdates,
+} from '../../../__tests__/suppliedWording.ts';
+import {
   sharedStageInterfaceTextUsed,
   STAGE_TYPE_INTERFACE_TEXT,
 } from '../interface-text.ts';

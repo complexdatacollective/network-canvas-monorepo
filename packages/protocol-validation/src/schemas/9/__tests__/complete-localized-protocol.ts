@@ -1,3 +1,7 @@
+import {
+  familyPedigreeWordingIn,
+  interfaceTextAsShown,
+} from '../../../__tests__/suppliedWording.ts';
 import { localized, localizedOptions } from '../../../utils/test-utils.ts';
 import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
@@ -5,8 +9,6 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import { DEFAULT_FINISH_SESSION_TEXT } from '../finish-session-defaults.ts';
-import { interfaceTextAsShown } from '../interface-text.ts';
-import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   pedigreeCompletenessText,
   pedigreeNameField,

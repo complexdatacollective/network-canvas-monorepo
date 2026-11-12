@@ -676,7 +676,7 @@ const argumentWording = (key: WordingWithArguments) =>
  * the message's id in the interface's catalog, so the translations keep the
  * names their messages were written with. The tools, their hints and the
  * framing question, which every Family Pedigree shows alike, are interface
- * text (`interface-text-wording.ts`). A stage that omits a key shows Network
+ * text (`interface-text-entries.ts`). A stage that omits a key shows Network
  * Canvas's wording for it.
  *
  * The gender identity question is shown only while the stage asks about

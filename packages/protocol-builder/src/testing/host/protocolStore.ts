@@ -1,5 +1,6 @@
 import { Redacted } from 'effect';
 
+import { interfaceTextWithUpdates } from '@codaco/interview/supplied-wording';
 import type {
   CodebookSubject,
   Presence,
@@ -7,10 +8,7 @@ import type {
   Revision,
   SectionReference,
 } from '@codaco/protocol-builder-core/contract/schemas';
-import {
-  type InterfaceTextUpdate,
-  interfaceTextWithUpdates,
-} from '@codaco/protocol-validation';
+import { type InterfaceTextUpdate } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   validateSection,

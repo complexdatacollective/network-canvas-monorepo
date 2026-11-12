@@ -1,10 +1,10 @@
 import { get } from 'es-toolkit/compat';
 import { useMemo } from 'react';
 
+import { suppliedStageText } from '@codaco/interview/supplied-wording';
 import {
   type LocalizedString,
   type StageType,
-  suppliedStageText,
 } from '@codaco/protocol-validation';
 
 import { isLocalizedString } from '../../localization/localizedText.ts';

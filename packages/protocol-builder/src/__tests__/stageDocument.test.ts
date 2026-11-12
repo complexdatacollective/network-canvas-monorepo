@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { suppliedStageText } from '@codaco/protocol-validation';
+import { suppliedStageText } from '@codaco/interview/supplied-wording';
 
 import {
   savedStageFields,

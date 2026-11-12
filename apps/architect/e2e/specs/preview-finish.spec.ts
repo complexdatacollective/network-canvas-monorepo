@@ -1,9 +1,9 @@
 import type { Locator, Page } from '@playwright/test';
 
+import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   CurrentProtocolSchema,
   type CurrentProtocol,
-  withInterfaceText,
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';

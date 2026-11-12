@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
 import { analyzeProtocolLocalization } from '../../../localization/analyzeProtocolLocalization.ts';
 import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { resolveLocalizedString } from '../../../localization/resolveLocalizedString.ts';
@@ -19,7 +20,6 @@ import {
   localizedString,
 } from '../localized-string.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
-import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
 import {
   PEDIGREE_PERSON_ARGUMENTS,
