@@ -2,6 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { getCompatibility } from '~/lib/interfaceCompatibility';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
 
@@ -66,6 +67,33 @@ describe('InterfaceMeta', () => {
       }
     },
   );
+
+  it('lists apps an interface is unavailable in, by role', () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+        <InterfaceMeta
+          type="Geospatial"
+          creates="Nodes"
+          usesprompts="true"
+          compatibility={getCompatibility('geospatial')}
+        />
+      </NextIntlClientProvider>,
+    );
+
+    const configure = screen.getByText(
+      en.InterfaceSummary.configureIn,
+    ).nextElementSibling;
+    const run = screen.getByText(en.InterfaceSummary.runIn).nextElementSibling;
+
+    expect(configure).toHaveTextContent('Architect Classic (not available)');
+    expect(configure).toHaveTextContent(/Architect$/);
+    expect(run).toHaveTextContent('Interviewer Classic (not available)');
+    expect(run).not.toHaveTextContent('Fresco (not available)');
+    expect(run).toHaveTextContent('Fresco');
+    expect(
+      screen.getByRole('link', { name: 'protocol schema' }),
+    ).toHaveAttribute('href', '/en/get-started/protocol-schema-information');
+  });
 
   it('renders no icon for a requirement it does not recognise', () => {
     renderMeta('en', { creates: 'Nodes', requires: 'Patience' });
