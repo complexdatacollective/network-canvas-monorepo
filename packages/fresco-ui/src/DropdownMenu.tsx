@@ -171,14 +171,20 @@ const DropdownMenuContent = React.forwardRef<
             >
               <Menu.Popup
                 ref={ref}
-                render={<BaseUISharedPopoverContainer className={className} />}
+                render={
+                  <BaseUISharedPopoverContainer
+                    className={className}
+                    arrow={
+                      showArrow && (
+                        <Menu.Arrow className={POPOVER_ARROW_CLASS_NAME}>
+                          <ArrowSvg />
+                        </Menu.Arrow>
+                      )
+                    }
+                  />
+                }
                 {...props}
               >
-                {showArrow && (
-                  <Menu.Arrow className={POPOVER_ARROW_CLASS_NAME}>
-                    <ArrowSvg />
-                  </Menu.Arrow>
-                )}
                 {children}
               </Menu.Popup>
             </Menu.Positioner>

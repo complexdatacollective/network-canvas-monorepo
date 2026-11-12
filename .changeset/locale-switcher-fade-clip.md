@@ -5,4 +5,4 @@
 'fresco': patch
 ---
 
-The language picker's scroll fade no longer spills past the popup's rounded bottom corners when the list is scrolled.
+Popovers, menus, tooltips and the language picker keep their content inside their rounded corners, so a scroll fade or highlighted row no longer spills past the curve. The pointer on these popups is slimmer and joins the popup's border cleanly, including on tooltips shown beside their trigger.
