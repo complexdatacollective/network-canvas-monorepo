@@ -717,15 +717,33 @@ export type StartReviewResult =
 const HOUR_MS = 60 * 60 * 1000;
 
 /**
+ * What stands in for an API key in the protocol as sent. A key is the one
+ * resource whose content the protocol itself holds (a file's content is kept
+ * apart, and only its name is in the protocol), and it is a credential: it is
+ * never sent for review.
+ */
+export const WITHHELD_API_KEY = '[API key, not sent for review]';
+
+/**
  * The protocol as sent: as reviewed (`protocolAsReviewed`), without
- * `experiments`. The study details travel in the request's own
- * `studyContext`; fix targets are still recorded against the full protocol.
+ * `experiments` and with every API key's value withheld. The study details
+ * travel in the request's own `studyContext`; fix targets are still recorded
+ * against the full protocol.
  */
 const protocolForReview = (
   protocol: CurrentProtocol,
 ): Record<string, unknown> => {
   const { experiments: _experiments, ...rest } = protocol;
-  return { ...rest };
+  if (!rest.assetManifest) return { ...rest };
+  return {
+    ...rest,
+    assetManifest: Object.fromEntries(
+      Object.entries(rest.assetManifest).map(([id, asset]) => [
+        id,
+        asset.type === 'apikey' ? { ...asset, value: WITHHELD_API_KEY } : asset,
+      ]),
+    ),
+  };
 };
 
 const refuse = (reason: StartReviewRefusal): StartReviewResult => ({

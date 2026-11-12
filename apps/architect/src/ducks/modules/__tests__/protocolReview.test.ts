@@ -45,6 +45,7 @@ import {
   setShareReviews,
   startReview,
   undoFix,
+  WITHHELD_API_KEY,
 } from '~/ducks/modules/protocolReview';
 import { rootReducer } from '~/ducks/modules/root';
 import {
@@ -389,6 +390,59 @@ describe('a review run', () => {
     expect(
       JSON.parse(localStorage.getItem(PROTOCOL_REVIEW_QUOTA_KEY) ?? ''),
     ).toEqual(RESULT.quota);
+  });
+
+  it('withholds every API key from the protocol it sends, and sends the other resources as the protocol names them', async () => {
+    await open(
+      store,
+      makeProtocol({
+        assetManifest: {
+          map: {
+            id: 'map',
+            type: 'apikey',
+            name: 'Mapbox key',
+            value: 'pk.a-real-secret',
+          },
+          photo: {
+            id: 'photo',
+            type: 'image',
+            name: 'Campus',
+            source: 'campus.png',
+          },
+        },
+      }),
+    );
+    const answer = gatedAnswer();
+    vi.stubGlobal('fetch', answer.fetchImpl);
+    const run = store.dispatch(startReview());
+    await vi.waitFor(() => expect(answer.fetchImpl).toHaveBeenCalled());
+
+    const sent = answer.requestBody();
+    expect(JSON.stringify(sent)).not.toContain('pk.a-real-secret');
+    expect(sent).toMatchObject({
+      protocol: {
+        assetManifest: {
+          map: {
+            id: 'map',
+            type: 'apikey',
+            name: 'Mapbox key',
+            value: WITHHELD_API_KEY,
+          },
+          photo: {
+            id: 'photo',
+            type: 'image',
+            name: 'Campus',
+            source: 'campus.png',
+          },
+        },
+      },
+    });
+    // Only the copy that is sent: the protocol keeps its key.
+    expect(protocolOf(store).assetManifest?.map).toMatchObject({
+      value: 'pk.a-real-secret',
+    });
+    answer.finish();
+    await run;
   });
 
   it('records targets against the protocol sent, when the answer arrives after it changed', async () => {

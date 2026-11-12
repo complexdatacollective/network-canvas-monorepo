@@ -3243,6 +3243,10 @@
     "defaultMessage": "Protocol review runs on a Network Canvas service, which passes your protocol to the provider you choose for each review, Anthropic or OpenAI, to be read by its AI model.",
     "description": "Explanation under the heading of the last step of the study details dialog. A provider is the company whose AI model writes the review; the researcher chooses one each time they start a review. \"Network Canvas\", \"Anthropic\" and \"OpenAI\" are names and are not translated."
   },
+  "architect.protocolReview.wizard.sending.neverApiKeys": {
+    "defaultMessage": "API keys saved in your protocol",
+    "description": "Item in the list of what is never sent for review. An API key is a credential the researcher saved as a resource, for example a Mapbox key for a map stage."
+  },
   "architect.protocolReview.wizard.sending.neverInterviewData": {
     "defaultMessage": "Interview data. Architect never holds any.",
     "description": "Item in the list of what is never sent for review. \"Architect\" is the product name and is not translated."

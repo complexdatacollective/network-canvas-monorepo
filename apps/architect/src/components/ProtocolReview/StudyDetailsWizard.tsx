@@ -238,6 +238,12 @@ const messages = defineMessages({
     defaultMessage: 'Images, video, audio and other resources',
     description: 'Item in the list of what is never sent for review.',
   },
+  neverApiKeys: {
+    id: 'architect.protocolReview.wizard.sending.neverApiKeys',
+    defaultMessage: 'API keys saved in your protocol',
+    description:
+      'Item in the list of what is never sent for review. An API key is a credential the researcher saved as a resource, for example a Mapbox key for a map stage.',
+  },
   neverRosters: {
     id: 'architect.protocolReview.wizard.sending.neverRosters',
     defaultMessage: 'Roster data files',
@@ -578,6 +584,7 @@ function SendingStep() {
           </Heading>
           <ul className="m-0 flex list-disc flex-col gap-1 ps-6">
             <li>{intl.formatMessage(messages.neverResources)}</li>
+            <li>{intl.formatMessage(messages.neverApiKeys)}</li>
             <li>{intl.formatMessage(messages.neverRosters)}</li>
             <li>{intl.formatMessage(messages.neverInterviewData)}</li>
           </ul>
