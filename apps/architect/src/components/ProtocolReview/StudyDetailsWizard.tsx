@@ -10,6 +10,7 @@ import {
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import type { WizardStep } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -29,8 +30,9 @@ import {
   STUDY_CONTEXT_LIMITS,
   type StudyAdministrationMode,
 } from '@codaco/shared-consts';
-import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import { setProtocolReviewStudyContext } from '~/ducks/modules/activeProtocol';
+import { getProtocolLockState } from '~/ducks/modules/app';
 import {
   getShareProtocolReviews,
   setShareReviews,
@@ -40,6 +42,7 @@ import {
   type StudyDetailsDraft,
 } from '~/protocolReview/settings';
 import { getProtocolReviewStudyDetailsDraft } from '~/selectors/protocol';
+import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 
 const messages = defineMessages({
   wizardTitle: {
@@ -526,13 +529,38 @@ function SynopsisStep() {
 
 function SendingStep() {
   const intl = useAppIntl();
-  const { data } = useWizard();
+  const store = useAppStore();
+  const { data, setBeforeNext } = useWizard();
   const shared = useAppSelector(getShareProtocolReviews);
   const stored = data[SHARE];
+
+  // Completing the wizard writes the study details into the protocol, a write
+  // only the tab that owns the saved copy can keep. Another tab can take the
+  // protocol while the wizard sits open, so ownership is asked for at the
+  // moment the button is pressed. A refusal leaves the wizard open: what was
+  // typed lives in the wizard, and survives the saved copy being read back.
+  const lockState = useAppSelector(getProtocolLockState);
+  const [refused, setRefused] = useState(false);
+  useEffect(() => {
+    setBeforeNext(() => {
+      const owned = getProtocolLockState(store.getState()) === 'owned';
+      setRefused(!owned);
+      return owned;
+    });
+    return () => setBeforeNext(null);
+  }, [setBeforeNext, store]);
+  const refusal = refused
+    ? refusedCommitMessage(lockState, 'study-details', intl)
+    : null;
 
   return (
     <div className="flex flex-col gap-4">
       <StepIntro text={intl.formatMessage(messages.sendingDescription)} />
+      {refusal !== null && (
+        <Alert variant="warning" className="my-0">
+          <AlertDescription>{refusal}</AlertDescription>
+        </Alert>
+      )}
       <div className="grid gap-6 @min-[36rem]:grid-cols-2">
         <section>
           <Heading level="h3" margin="none" className="mb-2 text-lg">

@@ -931,6 +931,10 @@
     "defaultMessage": "This protocol is open in another tab, which holds the saved copy. Close the other tab to save these changes here.",
     "description": "Error in the stage editor when finishing editing is refused because the protocol is open in another tab that holds the saved copy. The researcher closes the other tab."
   },
+  "architect.constants.utils.protocollockmessages.openElsewhereMessages.studyDetails": {
+    "defaultMessage": "This protocol is open in another tab, which holds the saved copy. What you have entered here is kept. Close the other tab, then try again.",
+    "description": "Error on the last step of the study details dialog for the automated protocol review, when saving is refused because the protocol is open in another tab that holds the saved copy. The dialog stays open with what the researcher entered; they close the other tab and press the button again."
+  },
   "architect.constants.utils.protocollockmessages.reclaimBlockedMessages.apiKey": {
     "defaultMessage": "These changes cannot be saved over the version the other tab saved. Cancel this form to let the saved copy be read back, then create the key again.",
     "description": "Error in the form for adding a Mapbox API key when creating the key is refused: the other tab saved the protocol meanwhile. The researcher cancels the form and creates the key again."
@@ -950,6 +954,10 @@
   "architect.constants.utils.protocollockmessages.reclaimBlockedMessages.stage": {
     "defaultMessage": "These changes cannot be saved over the version the other tab saved. Choose whether to keep them or discard them first.",
     "description": "Error in the stage editor when finishing editing is refused: the other tab saved the protocol meanwhile and this tab has unsaved stage changes. The researcher must choose to keep or discard them first."
+  },
+  "architect.constants.utils.protocollockmessages.reclaimBlockedMessages.studyDetails": {
+    "defaultMessage": "These changes cannot be saved over the version the other tab saved. What you have entered here is kept. Deal with the other unsaved changes in this tab first, then try again.",
+    "description": "Error on the last step of the study details dialog for the automated protocol review, when saving is refused: the other tab saved the protocol meanwhile and this tab has other unsaved changes waiting for a decision. The dialog stays open with what the researcher entered."
   },
   "architect.defaults.components.ProjectNav.ActionToolbar.ariaLabel": {
     "defaultMessage": "Page actions",

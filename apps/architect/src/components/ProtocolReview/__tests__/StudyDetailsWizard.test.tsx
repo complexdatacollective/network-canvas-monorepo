@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setProtocolTranslation } from '~/ducks/modules/activeProtocol';
+import { setProtocolLockState } from '~/ducks/modules/app';
 import {
   cancelReview,
   getProtocolReviewRun,
@@ -243,6 +244,56 @@ describe('study details wizard, first use', () => {
         name: 'Reviewing 3 stages against your study details',
       }),
     ).toBeVisible();
+  });
+
+  it('saves nothing while another tab holds the protocol, keeps what was entered, and saves once this tab owns it again', async () => {
+    await openWizard();
+    await userEvent.type(question(1), 'Who helps whom?');
+    await next();
+    await stepHeading('Who takes part, and how?');
+    await userEvent.type(
+      wizard().getByRole('textbox', { name: 'Research population' }),
+      'Carers of older adults',
+    );
+    await userEvent.click(
+      wizard().getByRole('option', { name: /Self-administered/ }),
+    );
+    await next();
+    await stepHeading('Describe the study');
+    await next();
+    await stepHeading('Before your protocol is sent');
+    const before = store.getState().activeProtocol.present;
+
+    // Another tab takes the protocol while the wizard sits open.
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    await next('Start review');
+
+    expect(
+      await wizard().findByText(
+        'This protocol is open in another tab, which holds the saved copy. What you have entered here is kept. Close the other tab, then try again.',
+      ),
+    ).toBeVisible();
+    expect(
+      wizard().getByRole('heading', { name: 'Before your protocol is sent' }),
+    ).toBeVisible();
+    expect(store.getState().activeProtocol.present).toBe(before);
+    expect(client.requestReview).not.toHaveBeenCalled();
+
+    // The other tab closes, and this one owns the saved copy again.
+    store.dispatch(setProtocolLockState('owned'));
+    await waitFor(() =>
+      expect(wizard().queryByText(/open in another tab/)).toBeNull(),
+    );
+    client.requestReview.mockReturnValueOnce(gatedOutcome().promise);
+    await next('Start review');
+
+    await waitFor(() =>
+      expect(getProtocolReviewStudyContext(store.getState())).toEqual({
+        researchQuestions: ['Who helps whom?'],
+        population: 'Carers of older adults',
+        administration: 'self_administered',
+      }),
+    );
   });
 });
 

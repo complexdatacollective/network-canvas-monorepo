@@ -263,13 +263,15 @@ describe('rule G', () => {
     await vi.waitFor(() =>
       expect(gates.edits.waiting.length).toBeGreaterThan(0),
     );
-    const other = otherProtocol();
-    switchTo(store, other);
+    switchTo(store, otherProtocol());
+    // What the store holds for the other protocol: opening one drops the
+    // wording Network Canvas supplies, so it is not the object passed in.
+    const other = protocolOf(store);
     const afterSwitch = log.length;
     release(gates.edits);
 
     expect(await decision).toEqual({ ok: false, reason: 'no_review' });
-    expect(protocolOf(store)).toEqual(other);
+    expect(protocolOf(store)).toBe(other);
     expect(
       log
         .slice(afterSwitch)
@@ -295,13 +297,15 @@ describe('rule G', () => {
     await vi.waitFor(() =>
       expect(gates.edits.waiting.length).toBeGreaterThan(0),
     );
-    const other = otherProtocol();
-    switchTo(store, other);
+    switchTo(store, otherProtocol());
+    // What the store holds for the other protocol: opening one drops the
+    // wording Network Canvas supplies, so it is not the object passed in.
+    const other = protocolOf(store);
     const afterSwitch = log.length;
     release(gates.edits);
 
     expect(await undo).toEqual({ ok: false, reason: 'no_review' });
-    expect(protocolOf(store)).toEqual(other);
+    expect(protocolOf(store)).toBe(other);
     expect(
       log
         .slice(afterSwitch)
