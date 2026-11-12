@@ -15,12 +15,13 @@ const messages = defineMessages({
     id: 'interviewer.appErrorBoundary.theAppHitAnUnexpectedErrorYour',
     defaultMessage:
       'The app hit an unexpected error. Your collected data is saved on this device and is not affected. Try reloading to continue.',
-    description: 'The description label in Interviewer App Error Boundary.',
+    description:
+      'Body of the full-screen error dialog shown when the app crashes; reassures that collected data is safe on the device and asks to reload. Anyone holding the device may see it, including a participant.',
   },
   reload: {
     id: 'interviewer.appErrorBoundary.reload',
     defaultMessage: 'Reload',
-    description: 'Visible copy in Interviewer App Error Boundary.',
+    description: 'Button in the app crash dialog; reloads the page.',
   },
 });
 

@@ -178,9 +178,14 @@ const review = async (
     now: receivedAt,
   });
   if (!admitted.ok) {
-    return admitted.error === 'hourly_limit'
-      ? errorResponse(429, 'hourly_limit', admitted.retryAt, cors)
-      : errorResponse(503, 'daily_limit', admitted.retryAt, cors);
+    // The researcher's own limit is theirs to wait out (429); a spent budget
+    // is the service's condition (503).
+    return errorResponse(
+      admitted.error === 'hourly_limit' ? 429 : 503,
+      admitted.error,
+      admitted.retryAt,
+      cors,
+    );
   }
   const { admission, quota } = admitted;
 

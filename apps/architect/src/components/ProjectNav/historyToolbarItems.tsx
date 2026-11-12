@@ -14,19 +14,19 @@ const messages = defineMessages({
     id: 'architect.projectNav.historyToolbarItems.historyControls',
     defaultMessage: 'History controls',
     description:
-      'The aria-label text in components / ProjectNav / historyToolbarItems.',
+      'Accessible name of the group of Undo and Redo buttons in the toolbar; read only by screen readers.',
   },
   undo: {
     id: 'architect.projectNav.historyToolbarItems.undo',
     defaultMessage: 'Undo',
     description:
-      'The aria-label text in components / ProjectNav / historyToolbarItems.',
+      'Accessible name of the icon button that undoes the last change to the protocol; read only by screen readers.',
   },
   redo: {
     id: 'architect.projectNav.historyToolbarItems.redo',
     defaultMessage: 'Redo',
     description:
-      'The aria-label text in components / ProjectNav / historyToolbarItems.',
+      'Accessible name of the icon button that redoes the change to the protocol that was last undone; read only by screen readers.',
   },
 });
 

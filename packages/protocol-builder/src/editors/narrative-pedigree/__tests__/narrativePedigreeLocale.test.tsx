@@ -41,7 +41,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Define las enfermedades que se visualizarán en la genealogía. Cada enfermedad se asocia a un atributo booleano de nodo de la etapa de genealogía familiar de origen.',
+        'Define las enfermedades que se visualizarán en la genealogía. Cada enfermedad se asocia a un atributo booleano de nodo de la etapa «Genealogía familiar» de origen.',
       ),
     ).toBeInTheDocument();
     // The outline reads its headings out of the same catalog, so a section
@@ -78,7 +78,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
 
     expect(
       await screen.findByText(
-        'La etapa de genealogía familiar que lee esta ya no forma parte de la entrevista. Elige otra, o restáurala, antes de poder guardar esta etapa.',
+        'La etapa «Genealogía familiar» de la que esta etapa toma los datos ya no forma parte de la entrevista. Elige otra o restáurala para poder guardar esta etapa.',
       ),
     ).toBeInTheDocument();
     expect(

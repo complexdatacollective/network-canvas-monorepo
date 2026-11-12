@@ -78,37 +78,44 @@ const extraMessages = defineMessages({
   failed: {
     id: 'architect.protocolActions.failed',
     defaultMessage: 'Failed to Open Protocol',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Title of the error dialog shown when a protocol file could not be opened (wrong file type, too large, damaged, or failed the upgrade).',
   },
   unsupported: {
     id: 'architect.protocolActions.unsupported',
     defaultMessage: 'Unsupported file type. Please open a .netcanvas file.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Body of the error dialog shown when the researcher tries to open a file whose name does not end in .netcanvas, the protocol file extension, which stays as written.',
   },
   migrationFailed: {
     id: 'architect.protocolActions.migrationFailed',
     defaultMessage: 'Protocol migration failed.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Body of the error dialog shown when upgrading an older protocol to the current schema failed.',
   },
   importError: {
     id: 'architect.protocolActions.importError',
     defaultMessage: 'Protocol Import Error',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Title of the error dialog shown when importing a protocol that was already in memory (not from a file the researcher chose) failed.',
   },
   notFound: {
     id: 'architect.protocolActions.notFound',
     defaultMessage: 'Protocol Not Found',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Title of the error dialog shown when the protocol the researcher chose from the start screen library no longer exists.',
   },
   missing: {
     id: 'architect.protocolActions.missing',
     defaultMessage: 'This protocol could not be found in your library.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Body of the error dialog shown when a protocol chosen from the start screen library cannot be found there.',
   },
   openError: {
     id: 'architect.protocolActions.openError',
     defaultMessage: 'Protocol Open Error',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Title of the error dialog shown when opening a protocol from the library (or copying one from the previous version of Architect) failed.',
   },
 });
 

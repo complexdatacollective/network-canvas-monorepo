@@ -41,13 +41,15 @@
   },
   "protocolBuilder.cardDisplay.description": {
     "en": "Configure how roster cards are displayed to participants.",
-    "es": "Configura cómo se muestran las tarjetas de la lista a los participantes.",
-    "from": "74a07e626 architect.sections.cardDisplayOptions.cardDisplayOptions.configureHowRosterCardsAreDisplayed"
+    "es": "Configura cómo se muestran las tarjetas de la lista a quienes participan.",
+    "from": "74a07e626 architect.sections.cardDisplayOptions.cardDisplayOptions.configureHowRosterCardsAreDisplayed",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.cardDisplay.fieldHint": {
     "en": "Choose any additional roster attributes that will help participants recognize an alter.",
-    "es": "Elige los atributos adicionales de la lista que ayuden a los participantes a reconocer a un álter.",
-    "from": "74a07e626 architect.sections.cardDisplayOptions.cardDisplayOptions.chooseAnyAdditionalRosterAttributesThat"
+    "es": "Elige los atributos adicionales de la lista que ayuden a quienes participan a reconocer a un álter.",
+    "from": "74a07e626 architect.sections.cardDisplayOptions.cardDisplayOptions.chooseAnyAdditionalRosterAttributesThat",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.cardDisplay.fieldLabel": {
     "en": "Additional display properties",
@@ -81,8 +83,9 @@
   },
   "protocolBuilder.censusPrompts.categoricalBinOtherAttributeHint": {
     "en": "Select a text attribute to store the value entered by the participant when they drop a node in the 'other' option.",
-    "es": "Selecciona un atributo de texto para guardar el valor que introduce el participante al colocar un nodo en la opción «Otro».",
-    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.selectATextAttributeToStore"
+    "es": "Selecciona un atributo de texto para guardar el valor que introduce la persona participante al colocar un nodo en la opción «Otro».",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.selectATextAttributeToStore",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.categoricalBinOtherAttributeLabel": {
     "en": "Other attribute",
@@ -91,8 +94,9 @@
   },
   "protocolBuilder.censusPrompts.categoricalBinOtherBinHint": {
     "en": "Enter a label for the 'other' bin that will be shown to participants. This label should indicate that the participant can drop a node in this bin to provide a value not listed above.",
-    "es": "Introduce una etiqueta para el contenedor «Otro» que se mostrará a los participantes. Debe indicar que pueden colocar un nodo en ese contenedor para proporcionar un valor que no aparezca arriba.",
-    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.enterALabelForTheOther"
+    "es": "Introduce una etiqueta para el contenedor «Otro» que se mostrará a quienes participan. Debe indicar que pueden colocar un nodo en ese contenedor para proporcionar un valor que no aparezca arriba.",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.enterALabelForTheOther",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.categoricalBinOtherBinLabel": {
     "en": "Other bin label",
@@ -106,8 +110,9 @@
   },
   "protocolBuilder.censusPrompts.categoricalBinOtherDescription": {
     "en": "Collect a participant-entered value when a node is placed in an other bin.",
-    "es": "Recoge un valor introducido por el participante cuando se coloca un nodo en el contenedor «Otro».",
-    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.collectAParticipantEnteredValueWhenA; es revised in the 2026-09-17 Spanish translation pass"
+    "es": "Recoge un valor introducido por la persona participante cuando se coloca un nodo en el contenedor «Otro».",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.collectAParticipantEnteredValueWhenA; es revised in the 2026-09-17 Spanish translation pass",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.categoricalBinOtherPromptHint": {
     "en": "Enter a question prompt to show when the other option is triggered.",
@@ -141,8 +146,9 @@
   },
   "protocolBuilder.censusPrompts.dyadPromptTextDescription": {
     "en": "Write the participant prompt and select the edge type created by an affirmative response.",
-    "es": "Escribe la pregunta para el participante y selecciona el tipo de vínculo que se creará con una respuesta afirmativa.",
-    "from": "74a07e626 architect.sections.dyadCensusPrompts.promptFields.writeTheParticipantPromptAndSelect"
+    "es": "Escribe la pregunta para la persona participante y selecciona el tipo de vínculo que se creará con una respuesta afirmativa.",
+    "from": "74a07e626 architect.sections.dyadCensusPrompts.promptFields.writeTheParticipantPromptAndSelect",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.edgeLabel": {
     "en": "Created edge type",
@@ -166,8 +172,9 @@
   },
   "protocolBuilder.censusPrompts.oneToManyPromptTextDescription": {
     "en": "Write the participant prompt and select the edge type created for chosen nodes.",
-    "es": "Escribe la pregunta para el participante y selecciona el tipo de vínculo que se creará para los nodos elegidos.",
-    "from": "74a07e626 architect.sections.oneToManyDyadCensus.promptFields.writeTheParticipantPromptAndSelect"
+    "es": "Escribe la pregunta para la persona participante y selecciona el tipo de vínculo que se creará para los nodos elegidos.",
+    "from": "74a07e626 architect.sections.oneToManyDyadCensus.promptFields.writeTheParticipantPromptAndSelect",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.ordinalBinColorDescription": {
     "en": "Choose the gradient used to distinguish ordinal options.",
@@ -211,8 +218,9 @@
   },
   "protocolBuilder.censusPrompts.promptTextDescription": {
     "en": "Write the instruction or question participants see for this task.",
-    "es": "Escribe la instrucción o pregunta que ven los participantes para esta tarea.",
-    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants"
+    "es": "Escribe, para esta tarea, la pregunta o instrucción que ven quienes participan.",
+    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.promptTextLabel": {
     "en": "Prompt text",
@@ -221,8 +229,9 @@
   },
   "protocolBuilder.censusPrompts.promptTextTitle": {
     "en": "Participant prompt",
-    "es": "Pregunta para el participante",
-    "from": "74a07e626 architect.sections.promptText.participantPrompt"
+    "es": "Pregunta para la persona participante",
+    "from": "74a07e626 architect.sections.promptText.participantPrompt",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.scaleTitle": {
     "en": "Ordinal response",
@@ -231,8 +240,9 @@
   },
   "protocolBuilder.censusPrompts.tieStrengthDeclineDescription": {
     "en": "Set the option participants use to decline edge creation.",
-    "es": "Establece la opción que usan los participantes para rechazar la creación del vínculo.",
-    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.setTheOptionParticipantsUseTo"
+    "es": "Establece la opción que usan quienes participan para rechazar la creación del vínculo.",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.setTheOptionParticipantsUseTo",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.tieStrengthDeclineHint": {
     "en": "This option appears on the far right of the screen.",
@@ -281,8 +291,9 @@
   },
   "protocolBuilder.censusPrompts.tieStrengthPromptTextDescription": {
     "en": "Explain the relationship participants should evaluate for each pair.",
-    "es": "Explica la relación que deben evaluar los participantes en cada par.",
-    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.explainTheRelationshipParticipantsShouldEvaluate"
+    "es": "Explica la relación que deben evaluar quienes participan en cada par.",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.explainTheRelationshipParticipantsShouldEvaluate",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.tieStrengthResponseDescription": {
     "en": "Configure the edge and ordinal value created by an affirmative response.",
@@ -291,13 +302,15 @@
   },
   "protocolBuilder.censusPrompts.tieStrengthResponseTitle": {
     "en": "Tie-strength response",
-    "es": "Respuesta de intensidad del vínculo",
-    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.tieStrengthResponse"
+    "es": "Respuesta de fuerza del vínculo",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.tieStrengthResponse",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.tieStrengthScaleDescription": {
     "en": "Choose the ordinal attribute whose options participants use to rate the relationship.",
-    "es": "Elige el atributo ordinal cuyas opciones usan los participantes para valorar la relación.",
-    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.chooseTheOrdinalAttributeWhoseOptions"
+    "es": "Elige el atributo ordinal cuyas opciones usan quienes participan para valorar la relación.",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.chooseTheOrdinalAttributeWhoseOptions",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.censusPrompts.tieStrengthScaleLabel": {
     "en": "Ordinal attribute",
@@ -331,8 +344,9 @@
   },
   "protocolBuilder.introduction.description": {
     "en": "Introduce the task before participants complete its forms.",
-    "es": "Presenta la tarea antes de que los participantes completen sus formularios.",
-    "from": "74a07e626 architect.sections.introductionPanel.introduceTheTaskBeforeParticipantsComplete"
+    "es": "Presenta la tarea antes de que quienes participan completen sus formularios.",
+    "from": "74a07e626 architect.sections.introductionPanel.introduceTheTaskBeforeParticipantsComplete",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.introduction.headingLabel": {
     "en": "Title",
@@ -371,13 +385,15 @@
   },
   "protocolBuilder.nameGeneratorPrompts.promptGroupDescription": {
     "en": "Write the instruction or question participants see for this task.",
-    "es": "Escribe la instrucción o pregunta que ven los participantes para esta tarea.",
-    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants"
+    "es": "Escribe, para esta tarea, la pregunta o instrucción que ven quienes participan.",
+    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.nameGeneratorPrompts.promptGroupTitle": {
     "en": "Participant prompt",
-    "es": "Pregunta para el participante",
-    "from": "74a07e626 architect.sections.promptText.participantPrompt"
+    "es": "Pregunta para la persona participante",
+    "from": "74a07e626 architect.sections.promptText.participantPrompt",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.nameGeneratorPrompts.textLabel": {
     "en": "Prompt text",
@@ -411,8 +427,9 @@
   },
   "protocolBuilder.nodePanels.filterGroupDescription": {
     "en": "Filter the nodes and edges displayed to participants in this panel.",
-    "es": "Filtra los nodos y vínculos que se muestran a los participantes en este panel.",
-    "from": "74a07e626 architect.sections.fields.networkFilter.filterTheNodesAndEdgesDisplayed; es revised in the 2026-09-17 Spanish translation pass"
+    "es": "Filtra los nodos y vínculos que se muestran en este panel a quienes participan.",
+    "from": "74a07e626 architect.sections.fields.networkFilter.filterTheNodesAndEdgesDisplayed; es revised in the 2026-09-17 Spanish translation pass",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.nodePanels.filterGroupTitle": {
     "en": "Panel filter",
@@ -436,8 +453,9 @@
   },
   "protocolBuilder.nodePanels.panelTitleLabel": {
     "en": "Panel title",
-    "es": "Título del panel",
-    "from": "74a07e626 architect.sections.nodePanels.nodePanel.panelTitle"
+    "es": "Título del panel lateral",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanel.panelTitle",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.nodePanels.sourceHint": {
     "en": "Choose where this panel’s data comes from: the in-progress interview session (“People you have already named”), or a network data file you have added to this protocol.",
@@ -506,8 +524,9 @@
   },
   "protocolBuilder.searchOptions.description": {
     "en": "Configure how participants find and select nodes from the roster.",
-    "es": "Configura cómo encuentran y seleccionan los participantes los nodos de la lista.",
-    "from": "74a07e626 architect.sections.searchOptionsForExternalData.configureHowParticipantsFindAndSelect"
+    "es": "Configura cómo quienes participan encuentran y seleccionan los nodos de la lista.",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.configureHowParticipantsFindAndSelect",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.searchOptions.matchHint": {
     "en": "You can configure which attributes are considered when matching roster nodes to the user's query.",
@@ -521,8 +540,9 @@
   },
   "protocolBuilder.searchOptions.matchToleranceDescription": {
     "en": "Choose how closely a participant's search must match roster text.",
-    "es": "Elige cuánto debe coincidir la búsqueda del participante con el texto de la lista.",
-    "from": "74a07e626 architect.sections.searchOptionsForExternalData.chooseHowCloselyAParticipantSSearch"
+    "es": "Elige cuánto debe coincidir la búsqueda de la persona participante con el texto de la lista.",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.chooseHowCloselyAParticipantSSearch",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.searchOptions.matchToleranceTitle": {
     "en": "Match tolerance",
@@ -531,8 +551,9 @@
   },
   "protocolBuilder.searchOptions.searchMatchingDescription": {
     "en": "Choose the roster attributes considered when matching a participant's search.",
-    "es": "Elige los atributos de la lista que se consideran al buscar coincidencias con la búsqueda del participante.",
-    "from": "74a07e626 architect.sections.searchOptionsForExternalData.chooseTheRosterAttributesConsideredWhen"
+    "es": "Elige los atributos de la lista que se consideran al buscar coincidencias con la búsqueda de la persona participante.",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.chooseTheRosterAttributesConsideredWhen",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.searchOptions.searchMatchingTitle": {
     "en": "Search matching",
@@ -556,8 +577,9 @@
   },
   "protocolBuilder.searchOptions.toleranceHint": {
     "en": "Search accuracy determines how closely the text the participant types must be to an attribute for it to be considered a match.",
-    "es": "La precisión de búsqueda determina cuánto debe coincidir el texto introducido por el participante con un atributo para considerarlo una coincidencia.",
-    "from": "74a07e626 architect.sections.searchOptionsForExternalData.searchAccuracyDeterminesHowCloselyThe"
+    "es": "La precisión de búsqueda determina cuánto debe coincidir el texto introducido por la persona participante con un atributo para considerarlo una coincidencia.",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.searchAccuracyDeterminesHowCloselyThe",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.searchOptions.toleranceLabel": {
     "en": "Search accuracy",
@@ -586,8 +608,9 @@
   },
   "protocolBuilder.sortOptions.description": {
     "en": "Configure the initial card order and the attributes participants can sort by.",
-    "es": "Configura el orden inicial de las tarjetas y los atributos por los que los participantes pueden ordenar.",
-    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.configureTheInitialCardOrderAnd"
+    "es": "Configura el orden inicial de las tarjetas y los atributos por los que quienes participan pueden ordenar.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.configureTheInitialCardOrderAnd",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.sortOptions.orderAddLabel": {
     "en": "Add new sort rule",
@@ -611,8 +634,9 @@
   },
   "protocolBuilder.sortOptions.sortableHint": {
     "en": "Select attributes that help participants locate a specific roster member.",
-    "es": "Selecciona atributos que ayuden a los participantes a encontrar a un miembro específico de la lista.",
-    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.selectAttributesThatHelpParticipantsLocate"
+    "es": "Selecciona atributos que ayuden a quienes participan a encontrar a un miembro específico de la lista.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.selectAttributesThatHelpParticipantsLocate",
+    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
   },
   "protocolBuilder.sortOptions.sortableLabel": {
     "en": "Sortable properties",

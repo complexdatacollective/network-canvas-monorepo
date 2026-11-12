@@ -22,37 +22,37 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.contents.contents',
     defaultMessage: 'Contents',
     description:
-      'Visible text in lib / ProtocolSummary / components / Contents.',
+      'Heading of the table of contents at the start of the printable protocol summary.',
   },
   stages: {
     id: 'architect.protocolSummary.contents.stages',
     defaultMessage: 'Stages',
     description:
-      'Visible text in lib / ProtocolSummary / components / Contents.',
+      "Group heading in the table of contents of the printable protocol summary, above the list of the protocol's timeline stages.",
   },
   codebook: {
     id: 'architect.protocolSummary.contents.codebook',
     defaultMessage: 'Codebook',
     description:
-      'Visible text in lib / ProtocolSummary / components / Contents.',
+      'Group heading in the table of contents of the printable protocol summary, above the links to the ego, node types and edge types of the codebook.',
   },
   ego: {
     id: 'architect.protocolSummary.contents.ego',
     defaultMessage: 'Ego',
     description:
-      'Visible text in lib / ProtocolSummary / components / Contents.',
+      'Entry in the table of contents of the printable protocol summary that links to the ego, the codebook entry for the interviewee, with its variables.',
   },
   nodeTypes: {
     id: 'architect.protocolSummary.contents.nodeTypes',
     defaultMessage: 'Node types',
     description:
-      'Visible text in lib / ProtocolSummary / components / Contents.',
+      "Sub-heading in the table of contents of the printable protocol summary, above the list of the codebook's node types.",
   },
   edgeTypes: {
     id: 'architect.protocolSummary.contents.edgeTypes',
     defaultMessage: 'Edge types',
     description:
-      'Visible text in lib / ProtocolSummary / components / Contents.',
+      "Sub-heading in the table of contents of the printable protocol summary, above the list of the codebook's edge types. Shown only when the protocol has edge types.",
   },
   interfaceText: {
     id: 'architect.protocolSummary.contents.interfaceText',
@@ -64,7 +64,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.contents.assets',
     defaultMessage: 'Assets',
     description:
-      'Visible text in lib / ProtocolSummary / components / Contents.',
+      'Group heading in the table of contents of the printable protocol summary, above the list of uploaded resources grouped by kind. Shown only when the protocol has resources.',
   },
 });
 

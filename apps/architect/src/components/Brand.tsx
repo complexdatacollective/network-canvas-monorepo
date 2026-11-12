@@ -7,7 +7,8 @@ const messages = defineMessages({
   returnToStartScreen: {
     id: 'architect.brand.returnToStartScreen',
     defaultMessage: 'Return to start screen',
-    description: 'The aria-label text in components / Brand.',
+    description:
+      'Accessible name of the Architect logo button in the app header; read only by screen readers. Activating it closes the current protocol and returns to the start screen.',
   },
 });
 

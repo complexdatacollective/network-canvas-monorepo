@@ -8,7 +8,8 @@ const messages = defineMessages({
   pIN: {
     id: 'interviewer.pinUnlockField.pIN',
     defaultMessage: 'PIN',
-    description: 'The label label in Interviewer Pin Unlock Field.',
+    description:
+      'Field label for the 8-digit PIN entry in the unlock dialog. PIN is a personal identification number.',
   },
 });
 

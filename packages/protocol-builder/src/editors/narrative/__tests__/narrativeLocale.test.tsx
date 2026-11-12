@@ -49,7 +49,7 @@ describe('the narrative sections, read in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Crea visualizaciones entre las que los investigadores puedan alternar durante la entrevista.',
+        'Crea visualizaciones para que quienes investigan puedan alternar entre ellas durante la entrevista.',
       ),
     ).toBeInTheDocument();
   });

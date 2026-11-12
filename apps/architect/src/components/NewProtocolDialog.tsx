@@ -107,19 +107,22 @@ const remainingMessages = defineMessages({
   protocolNameIsRequired: {
     id: 'architect.remaining.newProtocolDialog.protocolNameIsRequired',
     defaultMessage: 'Protocol name is required',
-    description: 'The required text in components / NewProtocolDialog.',
+    description:
+      'Validation error below the protocol name field of the Create New Protocol dialog when the field is left empty.',
   },
 });
 const messages = defineMessages({
   createProtocol: {
     id: 'architect.newProtocolDialog.createProtocol',
     defaultMessage: 'Create Protocol',
-    description: 'Visible text in components / NewProtocolDialog.',
+    description:
+      'Submit button of the Create New Protocol dialog; creates the protocol with the entered name.',
   },
   protocolName: {
     id: 'architect.newProtocolDialog.protocolName',
     defaultMessage: 'Protocol Name',
-    description: 'The label text in components / NewProtocolDialog.',
+    description:
+      'Label of the text field for the name of the new protocol in the Create New Protocol dialog.',
   },
   optionUseAShortRecognizableNameOf: {
     id: 'architect.newProtocolDialog.useAShortRecognizableNameOf',
@@ -131,21 +134,24 @@ const messages = defineMessages({
   enterANameForYourProtocol: {
     id: 'architect.newProtocolDialog.enterANameForYourProtocol',
     defaultMessage: 'Enter a name for your protocol...',
-    description: 'The placeholder text in components / NewProtocolDialog.',
+    description:
+      'Placeholder inside the empty protocol name field of the Create New Protocol dialog.',
   },
 });
 const extraMessages = defineMessages({
   title: {
     id: 'architect.newProtocolDialog.title',
     defaultMessage: 'Create New Protocol',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Default title of the dialog for creating a protocol; callers may supply another title.',
   },
 });
 const finalMessages = defineMessages({
   required: {
     id: 'architect.final.components.NewProtocolDialog.required',
     defaultMessage: 'Protocol name is required',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      'Validation error below the protocol name field when the dialog is submitted with a blank or whitespace-only name.',
   },
 });
 const languageMessages = defineMessages({
@@ -351,6 +357,7 @@ const NewProtocolDialog = ({
             )}
             custom={nameLengthValidation.custom}
             dir="auto"
+            inputClassName="text-match-parent"
             autoFocus
             {...selectProposedName}
           />

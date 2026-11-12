@@ -60,7 +60,7 @@ describe('participant form localized errors', () => {
       await screen.findByText('El identificador no puede estar vacío'),
     ).toBeVisible();
     expect(
-      screen.getByRole('textbox', { name: 'Identificador del participante' }),
+      screen.getByRole('textbox', { name: 'Identificador de participante' }),
     ).toHaveAttribute('aria-invalid', 'true');
     expect(createParticipant).not.toHaveBeenCalled();
     expect(
@@ -85,7 +85,7 @@ describe('participant form localized errors', () => {
     expect(refresh).not.toHaveBeenCalled();
     rerender(view('es', true));
     expect(
-      screen.getByText('No se pudo actualizar el participante'),
+      screen.getByText('No se pudo actualizar el registro de participante'),
     ).toBeVisible();
     expect(screen.getByRole('textbox', { name: 'Etiqueta' })).toHaveValue(
       'Edited',

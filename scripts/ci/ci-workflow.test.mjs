@@ -143,6 +143,7 @@ test('release, publish, deploy and mirror jobs never run for an integration base
     ['apps-release-fresco', 'apps-release-detect'],
     ['apps-release-documentation', 'apps-release-detect'],
     ['apps-release-website', 'apps-release-detect'],
+    ['apps-release-protocol-review', 'apps-release-detect'],
     ['interviewer-release-build', 'legacy-release-detect'],
     ['architect-release-build', 'legacy-release-detect'],
     ['interviewer-mirror', 'legacy-release-detect'],
@@ -3491,3 +3492,157 @@ for (const { app, label, envName } of [
     }
   });
 }
+
+// The protocol review Worker spends money every time it is called, so what
+// deploys it, and what can read its credentials, are pinned here.
+test('the protocol review Worker deploys only from its own release lane', () => {
+  const NAME = 'apps-release-protocol-review';
+  const worker = parsedWorkflow.jobs[NAME];
+  assert.ok(worker, `${NAME} exists`);
+
+  // Diff-driven: only the push that moves the Worker's version deploys it.
+  assert.match(
+    job('apps-release-detect'),
+    /PKG_JSON: workers\/protocol-review\/package\.json\n\s+PKG_NAME: '@codaco\/protocol-review-worker'\n\s+RELEASE_CHANNEL: stable\n/,
+  );
+  assert.equal(
+    worker.if,
+    "needs.apps-release-detect.outputs.protocol_review_released == 'true'",
+  );
+
+  // One deploy at a time whatever the version, never cancelled mid-deploy.
+  assert.deepEqual(worker.concurrency, {
+    'group': 'apps-release-@codaco/protocol-review-worker',
+    'cancel-in-progress': false,
+  });
+  assert.deepEqual(worker.permissions, { contents: 'write' });
+
+  // Its credentials are environment secrets, and no other job names them.
+  assert.equal(worker.environment, 'protocol-review-worker');
+  const CREDENTIALS = [
+    'CLOUDFLARE_API_TOKEN',
+    'CLOUDFLARE_ACCOUNT_ID',
+    'ANTHROPIC_API_KEY',
+  ];
+  for (const [name, other] of Object.entries(parsedWorkflow.jobs)) {
+    if (name === NAME) continue;
+    for (const credential of CREDENTIALS) {
+      assert.ok(
+        !JSON.stringify(other).includes(`secrets.${credential}`),
+        `${name} must not read ${credential}`,
+      );
+    }
+  }
+
+  // No credential at job level: each reaches exactly the steps that use it.
+  assert.equal(worker.env, undefined);
+  const stepsReading = (credential) =>
+    worker.steps
+      .filter((step) =>
+        Object.values(step.env ?? {}).includes(`\${{ secrets.${credential} }}`),
+      )
+      .map((step) => step.name);
+  const DEPLOY = 'Deploy the Worker to Cloudflare';
+  const WRITE = "Write the Worker's secrets file";
+  assert.deepEqual(stepsReading('CLOUDFLARE_API_TOKEN'), [DEPLOY]);
+  assert.deepEqual(stepsReading('CLOUDFLARE_ACCOUNT_ID'), [DEPLOY]);
+  assert.deepEqual(stepsReading('ANTHROPIC_API_KEY'), [WRITE]);
+  // And never interpolated into a script, where the shell would parse it.
+  for (const step of worker.steps) {
+    assert.doesNotMatch(step.run ?? '', /\$\{\{\s*secrets\./, step.name);
+  }
+
+  const index = (name) => {
+    const found = worker.steps.findIndex((step) => step.name === name);
+    assert.notEqual(found, -1, `${NAME} has a "${name}" step`);
+    return found;
+  };
+  const guard = index('Skip if this version should not be deployed');
+  const check = index('Check the deploy credentials are configured');
+  const write = index(WRITE);
+  const deploy = index(DEPLOY);
+  const remove = index("Remove the Worker's secrets file");
+  const answers = index('Check the deployed service answers');
+  const tag = index('Tag the deployed version');
+
+  // The guard needs tags and full history, and runs before anything else.
+  const checkout = worker.steps[0];
+  assert.equal(checkout.with['fetch-depth'], 0);
+  assert.equal(checkout.with['fetch-tags'], true);
+  assert.equal(checkout.with['persist-credentials'], false);
+  assert.equal(guard, 1);
+  assert.equal(
+    worker.steps[guard].run,
+    'bash .github/scripts/app-release-guard.sh',
+  );
+  assert.equal(
+    worker.steps[guard].env.PKG_NAME,
+    '@codaco/protocol-review-worker',
+  );
+
+  // Everything after the guard is skipped with it — except removing the
+  // secrets file, which must happen whatever came before.
+  for (const [position, step] of worker.steps.entries()) {
+    if (position <= guard) continue;
+    assert.equal(
+      step.if,
+      position === remove ? 'always()' : "steps.guard.outputs.skip != 'true'",
+      `"${step.name ?? step.uses ?? step.run}" follows the guard`,
+    );
+  }
+
+  assert.ok(check < write && write < deploy, 'credentials are checked first');
+  assert.equal(
+    remove,
+    deploy + 1,
+    'the secrets file is removed straight after the deploy',
+  );
+  assert.ok(
+    deploy < answers && answers < tag,
+    'the tag follows a deploy that answers',
+  );
+
+  // The key reaches Cloudflare with the deploy itself: Wrangler will not
+  // create a Worker whose required secrets are missing.
+  assert.equal(
+    worker.steps[deploy]['working-directory'],
+    'workers/protocol-review',
+  );
+  assert.match(
+    worker.steps[deploy].run,
+    /pnpm exec wrangler deploy \\\n\s+--secrets-file "\$SECRETS_FILE"/,
+  );
+  for (const position of [write, deploy, remove]) {
+    assert.equal(
+      worker.steps[position].env.SECRETS_FILE,
+      '${{ runner.temp }}/protocol-review-secrets.json',
+    );
+  }
+  assert.match(worker.steps[write].run, /^umask 077\n/);
+  assert.equal(
+    worker.steps[answers].run,
+    'pnpm --filter=@codaco/protocol-review-worker check:deployment',
+  );
+  assert.equal(
+    worker.steps[tag].env.TAG,
+    '@codaco/protocol-review-worker@${{ needs.apps-release-detect.outputs.protocol_review_version }}',
+  );
+
+  // Wrangler bundles the Worker only when it deploys, so the same bundle is
+  // built before merge, without credentials.
+  assert.match(
+    job('quality-support'),
+    /pnpm --filter=@codaco\/protocol-review-worker bundle/,
+  );
+  const manifest = JSON.parse(
+    readFileSync(
+      new URL('../../workers/protocol-review/package.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  assert.match(manifest.scripts.bundle, /^wrangler deploy --dry-run /);
+  assert.equal(
+    manifest.scripts['check:deployment'],
+    'node scripts/check-deployment.mjs',
+  );
+});

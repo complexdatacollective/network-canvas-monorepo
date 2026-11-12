@@ -59,6 +59,11 @@ export const createMemoryStore = (): LimiterStore & {
     setCommitted: (day, micros) => {
       spend.set(day, micros);
     },
+    getCommittedSince: (day) =>
+      [...spend].reduce(
+        (total, [key, micros]) => (key >= day ? total + micros : total),
+        0,
+      ),
     deleteDaysBefore: (day) => {
       for (const key of spend.keys()) if (key < day) spend.delete(key);
     },

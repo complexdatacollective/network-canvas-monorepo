@@ -1,0 +1,67 @@
+---
+title: Realizar un estudio piloto
+date: 22nd July 2026
+navOrder: 3
+toc: true
+translatedFrom: 6d0077aed52e1ef9dfd6f764351be41637eebcd9
+---
+
+<Paragraph variant="lead">
+  Antes de entrevistar a la primera persona participante real, prueba tu
+  estudio de principio a fin sin participantes. Las herramientas de Network
+  Canvas ofrecen varias formas complementarias de ensayar (la vista previa
+  de las etapas en Architect, las sesiones de entrevista sintéticas en Interviewer
+  y Fresco, y el entorno de pruebas compartido de Fresco) que, en conjunto,
+  te permiten probar tu protocolo, tu flujo de trabajo de entrevista y tu
+  proceso de exportación antes de empezar.
+</Paragraph>
+
+## ¿Por qué hacer un estudio piloto? {#why-pilot}
+
+Un protocolo que parece correcto en el editor puede darte sorpresas sobre el terreno: una regla de validación que impide a quienes participan enviar un formulario, un recorrido de la lógica de salto que oculta una etapa que esperabas ver o una exportación que no contiene lo que necesita tu análisis. Detectar cualquiera de estos problemas en un ensayo cuesta mucho menos que hacerlo durante la recopilación de datos.
+
+El estudio piloto también es el momento idóneo para formar a tu equipo. Las pantallas de la entrevista son deliberadamente minimalistas, así que muchas de las funciones que necesita el equipo de investigación están menos a la vista que las tareas de quienes participan: prevé dedicar tiempo a aprender y a formar a las personas entrevistadoras para que manejen el software con seguridad (consulta [Usar Interviewer](/es/collect-data/interviewer/using-interviewer)).
+
+El resto de esta página recorre las fases de un estudio piloto, desde la vista previa de etapas sueltas hasta una lista de comprobación previa al lanzamiento.
+
+## Previsualizar las etapas mientras diseñas {#preview-stages-as-you-design}
+
+Tu primera línea de defensa está en el propio Architect. Mientras creas el protocolo, puedes [previsualizar cualquier etapa](/es/design-protocols/preview-mode) para ver cómo la verá cada participante, de modo que puedes comprobar los cambios al momento en lugar de esperar a publicar o distribuir el protocolo. Las vistas previas pueden empezar con datos de ejemplo generados automáticamente, para que las etapas que necesitan nodos ya creados, como las de tipo «Sociograma», «Clasificación por categorías» o «Clasificación ordinal», tengan algo que mostrar. La lógica de salto está desactivada por defecto para que puedas revisar todas las pantallas de tu protocolo; activa **Respetar la lógica de salto** cuando quieras probar los recorridos que seguirá cada participante. Nada de lo que introduzcas en una vista previa se guarda.
+
+La vista previa detecta problemas en etapas concretas, pero es solo la primera parte de un ensayo completo: no pone a prueba tu flujo de trabajo de entrevista en el dispositivo que usarás sobre el terreno ni tu proceso de exportación. Para eso sirven los pasos siguientes.
+
+## Ensayar la entrevista completa {#rehearse-the-full-interview}
+
+A continuación, ejecuta tu protocolo en [Interviewer](/es/collect-data/interviewer/using-interviewer) exactamente como lo harías en una entrevista real: importa el protocolo, inicia una nueva entrevista, introduce un ID del caso y recorre todas las etapas como lo haría una persona participante. Plantéate dar a las sesiones piloto un ID del caso que las identifique claramente como pruebas: el ID del caso aparece en todas las listas de sesiones, lo que facilita encontrar y eliminar después las sesiones de prueba.
+
+Sobre la marcha, avanza y retrocede por las etapas que usan [lógica de salto](/es/design-protocols/key-concepts/skip-logic) o [filtrado de la red](/es/design-protocols/key-concepts/network-filtering), y cambia tus respuestas anteriores para confirmar que cada recorrido muestra y oculta las etapas que pretendías.
+
+## Validar tu proceso de exportación con datos sintéticos {#validate-your-export-pipeline-with-synthetic-data}
+
+Unas pocas entrevistas piloto introducidas a mano no te dirán si tu flujo de trabajo de exportación y análisis resiste un conjunto de datos realista. Para eso, Interviewer (la versión para navegador) puede generar sesiones de entrevista ficticias: abre **Configuración → Datos sintéticos**, elige un protocolo e indica cuántas sesiones quieres crear (de 1 a 1000). Si quieres, puedes simular el abandono de participantes (dejar algunas sesiones incompletas para que se parezcan a los datos reales) y hacer que la generación respete la lógica de salto y los filtros de tu protocolo. Las sesiones generadas aparecen en la vista **Datos** y se exportan exactamente igual que las reales, y **Eliminar todo** borra todas las sesiones sintéticas de una vez. Consulta el apartado «Configuración» de [Usar Interviewer](/es/collect-data/interviewer/using-interviewer#settings) para ver los detalles.
+
+Exporta tus sesiones sintéticas y abre los archivos resultantes en el software con el que piensas hacer el análisis. La [guía de exportación de datos](/es/analyze-data/data-export) explica qué contienen los archivos CSV y GraphML y cómo los relacionan los identificadores, para que puedas confirmar que las variables que necesita tu análisis están realmente en los archivos exportados.
+
+## Ensayar la recopilación a distancia {#rehearse-remote-collection}
+
+Si piensas recopilar datos a distancia con Fresco, puedes ensayar sin implementar nada: el [entorno de pruebas de Fresco](/es/collect-data/fresco/sandbox) es una instancia de ejemplo compartida para explorar la plataforma sin configurar tu propia instancia. Fresco también tiene su propio [generador de datos de prueba sintéticos](/es/collect-data/fresco/using-fresco#generating-synthetic-test-data), así que también puedes probar de principio a fin el flujo de exportación a distancia.
+
+<TipBox danger>
+
+El entorno de pruebas es compartido: los protocolos que subes son visibles para todo el mundo, y la base de datos se restablece periódicamente. No subas nunca datos reales de un estudio ni de participantes. Consulta la [página del entorno de pruebas](/es/collect-data/fresco/sandbox) para ver los detalles.
+
+</TipBox>
+
+## Lista de comprobación previa al lanzamiento {#pre-launch-checklist}
+
+Antes de entrevistar a la primera persona participante real, repasa esta lista:
+
+- **Previsualiza todas las etapas en Architect**: primero con la lógica de salto desactivada, para poder revisar todas las pantallas, y después con **Respetar la lógica de salto** activado, para probar los recorridos que seguirá cada participante. Consulta los [ajustes de la vista previa](/es/design-protocols/preview-mode) para ver los detalles.
+- **Busca los puntos débiles de tus reglas de validación.** Prueba casos límite y haz pruebas con participantes piloto; la [guía de validación de campos](/es/design-protocols/key-concepts/field-validation) explica qué buscar, como campos obligatorios que no se pueden responder o rangos que excluyen respuestas legítimas.
+- **Realiza una entrevista completa en el dispositivo que usarás sobre el terreno.** El rendimiento, la introducción de texto y el tamaño de la pantalla influyen en la experiencia de cada participante. Consulta [Elegir un dispositivo](/es/collect-data/interviewer/choosing-hardware).
+- **Comprueba los requisitos de conexión.** Los protocolos que usan interfaces que necesitan internet, como la [interfaz geoespacial](/es/design-protocols/interface-documentation/geospatial), muestran el indicador **Requiere internet** en su tarjeta de protocolo, y necesitan una conexión fiable allí donde se vayan a realizar las entrevistas.
+- **Exporta datos de prueba y abre los archivos** en tu software de análisis, y revísalos siguiendo la [guía de exportación de datos](/es/analyze-data/data-export).
+- **Revisa tu configuración de seguridad.** Si quienes participan van a manejar el dispositivo, configura Interviewer para que vuelva a pedir la autenticación al empezar y al terminar cada entrevista, de modo que salir de una entrevista no deje al descubierto los datos de otras personas participantes (consulta [Seguridad y bloqueo](/es/collect-data/interviewer/using-interviewer#security-and-locking)).
+- **Elimina las sesiones sintéticas y piloto** antes de que empiece la recopilación real, para que los datos de prueba nunca se mezclen con los del estudio.
+
+Cuando todo esté en orden, ya puedes pasar a recopilar datos: el tutorial [Flujos de trabajo de protocolos y datos](/es/collect-data/protocol-and-data-workflows) explica las prácticas de implementación, exportación y copia de seguridad para cada forma de realizar un estudio.

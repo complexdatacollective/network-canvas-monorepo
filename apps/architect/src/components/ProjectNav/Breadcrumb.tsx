@@ -8,7 +8,8 @@ const messages = defineMessages({
   breadcrumb: {
     id: 'architect.projectNav.breadcrumb.breadcrumb',
     defaultMessage: 'Breadcrumb',
-    description: 'The aria-label text in components / ProjectNav / Breadcrumb.',
+    description:
+      'Accessible name of the breadcrumb navigation in the top bar, which shows the name of the open protocol; read only by screen readers.',
   },
 });
 

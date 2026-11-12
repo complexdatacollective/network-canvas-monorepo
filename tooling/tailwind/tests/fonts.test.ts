@@ -96,16 +96,29 @@ describe('the rules for text marked as Arabic', () => {
       body: body.replace(/\s+/g, ' ').trim(),
     }),
   );
-  const withReadex =
-    "--heading-font: var(--heading-face), 'Readex Pro Variable', sans-serif; --body-font: var(--body-face), 'Readex Pro Variable', sans-serif;";
+  // The monospace stack every theme shares, as theme.css declares it.
+  const monospace = /--font-monospace:\s*var\(\s*--monospace-font,([^)]+)\)/
+    .exec(read('../fresco/theme.css'))?.[1]
+    ?.replace(/\s+/g, ' ')
+    .trim();
+  const withReadex = `--heading-font: var(--heading-face), 'Readex Pro Variable', sans-serif; --body-font: var(--body-face), 'Readex Pro Variable', sans-serif; --monospace-font: 'Readex Pro Variable', ${monospace};`;
   const plain =
-    '--heading-font: var(--heading-face), sans-serif; --body-font: var(--body-face), sans-serif;';
+    '--heading-font: var(--heading-face), sans-serif; --body-font: var(--body-face), sans-serif; --monospace-font: initial;';
 
-  it('add Readex Pro to both stacks inside Arabic text and nowhere else', () => {
+  it('add Readex Pro to every stack inside Arabic text and nowhere else', () => {
     expect(rules.find((rule) => rule.body === withReadex)?.selector).toBe(
       ':lang(ar)',
     );
-    expect(css.match(/Readex Pro Variable/g)).toHaveLength(2);
+    expect(css.match(/Readex Pro Variable/g)).toHaveLength(3);
+  });
+
+  // A utility inlines the theme value, so Arabic text can change the stack
+  // only through a variable the value reads. Safari draws Arabic from the
+  // system monospace face's own fallbacks, so Readex Pro has to come first.
+  it('put Readex Pro before the monospace stack the theme falls back to', () => {
+    expect(monospace).toBe(
+      "ui-monospace, Menlo, Monaco, 'Fira Code', monospace",
+    );
   });
 
   it('put the plain stacks back for another language inside Arabic text', () => {
@@ -114,10 +127,31 @@ describe('the rules for text marked as Arabic', () => {
     );
   });
 
-  it('name no language but Arabic', () => {
+  // Readex Pro lacks the letters Persian, Urdu and others add to the script.
+  it('offer Readex Pro to no language but Arabic', () => {
+    const fontRules = rules.filter((rule) => /font/.test(rule.body));
+    expect(fontRules.length).toBeGreaterThan(0);
     expect(
-      new Set([...css.matchAll(/:lang\(([^)]+)\)/g)].map(([, tag]) => tag)),
+      new Set(
+        fontRules.flatMap((rule) =>
+          [...rule.selector.matchAll(/:lang\(([^)]+)\)/g)].map(
+            ([, tag]) => tag,
+          ),
+        ),
+      ),
     ).toEqual(new Set(['ar']));
+  });
+
+  // Safari spaces every pair of letters, which pulls joined script apart.
+  it('take letter-spacing off text in the languages written in the Arabic script', () => {
+    const rule = rules.find(
+      (candidate) => candidate.body === 'letter-spacing: 0 !important;',
+    );
+    expect(
+      [...(rule?.selector ?? '').matchAll(/:lang\(([^)]+)\)/g)].map(
+        ([, tag]) => tag,
+      ),
+    ).toEqual(['ar', 'fa', 'ur', 'ps', 'ckb', 'sd', 'ug']);
   });
 
   it.each(['fresco', 'studio'])(
@@ -130,4 +164,18 @@ describe('the rules for text marked as Arabic', () => {
       expect(imports).toContain('./themes/studio.css');
     },
   );
+});
+
+describe('text that takes its direction from its own content', () => {
+  const css = read('../fresco/utilities.css');
+  const rule = /@utility text-match-parent \{([^}]*)\}/.exec(css)?.[1] ?? '';
+
+  // Chrome knows only the prefixed keyword and Firefox only the standard one,
+  // so the utility needs both, with the standard one last for a browser that
+  // knows both.
+  it('stays on its container’s side in every browser', () => {
+    expect(
+      [...rule.matchAll(/text-align:\s*([^;]+);/g)].map(([, value]) => value),
+    ).toEqual(['-webkit-match-parent', 'match-parent']);
+  });
 });

@@ -18,52 +18,55 @@ const chromeMessages = defineMessages({
     defaultMessage:
       'The other tab has been closed, but an editor is still open here. Nothing can be saved or loaded in this tab until you finish or cancel that editor.',
     description:
-      'Researcher-facing explanatory text in components / ProtocolLockBanner.',
+      'Text of the banner across the protocol editor. The other browser tab that held this protocol has closed, but an editor (such as a dialog opened from a stage) is still open in this tab and must be finished or cancelled before anything can be saved.',
   },
   theOtherTabHasBeenClosed6c9ac: {
     id: 'architect.chrome.protocolLockBanner.theOtherTabHasBeenClosed6c9ac',
     defaultMessage:
       'The other tab has been closed, but your unsaved changes to this stage cannot be combined with the version it saved. Nothing can be saved here until you decide which to keep.',
     description:
-      'Researcher-facing explanatory text in components / ProtocolLockBanner.',
+      "Text of the banner across the protocol editor. The other browser tab has closed, but the researcher's unsaved changes to the open stage cannot be combined with what that tab saved. The researcher must choose which version to keep.",
   },
   thisProtocolIsOpenInAnother: {
     id: 'architect.chrome.protocolLockBanner.thisProtocolIsOpenInAnother',
     defaultMessage:
       'This protocol is open in another tab, which holds the saved copy, so it is read-only here. You can look through every page, but nothing can be changed. Close the other tab to edit it in this one.',
     description:
-      'Researcher-facing explanatory text in components / ProtocolLockBanner.',
+      'Text of the informational banner across the protocol editor when another browser tab holds the saved copy of the protocol. This tab can only be browsed, not edited, until the other tab is closed.',
   },
   thisProtocolHasBeenOpenedIn: {
     id: 'architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn',
     defaultMessage:
       'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes in the editor you have open. Close the other tab to carry on editing here, or close that editor to keep looking through the protocol read-only.',
     description:
-      'Researcher-facing explanatory text in components / ProtocolLockBanner.',
+      'Text of the warning banner when the protocol was opened in another browser tab while an editor (such as a dialog opened from a stage) was open in this tab. Changes made here cannot be saved.',
   },
   thisProtocolHasBeenOpenedIn6aa3d: {
     id: 'architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn6aa3d',
     defaultMessage:
       'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to keep looking through the protocol read-only.',
     description:
-      'Researcher-facing explanatory text in components / ProtocolLockBanner.',
+      'Text of the warning banner when the protocol was opened in another browser tab while a stage editor was open in this tab. Changes to the stage cannot be saved; the Discard Changes button leaves the editor.',
   },
 });
 const messages = defineMessages({
   showMeWhatToDo: {
     id: 'architect.protocolLockBanner.showMeWhatToDo',
     defaultMessage: 'Show Me What to Do',
-    description: 'The label text in components / ProtocolLockBanner.',
+    description:
+      'Button in the banner shown when an editor is still open after the other browser tab closed. Pressing it brings back the prompt explaining what must be done with that editor.',
   },
   chooseWhatToKeep: {
     id: 'architect.protocolLockBanner.chooseWhatToKeep',
     defaultMessage: 'Choose What to Keep',
-    description: 'The label text in components / ProtocolLockBanner.',
+    description:
+      'Button in the banner shown when the other browser tab closed and the unsaved stage changes conflict with its saved version. Pressing it brings back the dialog asking whether to download a copy or discard the changes.',
   },
   discardChanges: {
     id: 'architect.protocolLockBanner.discardChanges',
     defaultMessage: 'Discard Changes',
-    description: 'The label text in components / ProtocolLockBanner.',
+    description:
+      'Button in the banner shown while another browser tab holds the protocol and a stage editor is open here. Pressing it leaves the stage editor, throwing away its unsaved changes, and returns to browsing the protocol read-only.',
   },
 });
 

@@ -16,7 +16,8 @@ const remainingMessages = defineMessages({
   selectShape: {
     id: 'architect.remaining.typeEditor.shapePicker.selectShape',
     defaultMessage: 'Select shape {value1}',
-    description: 'The ariaLabel text in components / TypeEditor / ShapePicker.',
+    description:
+      'Accessible name of one option in the node shape picker; read only by screen readers. value1 is the name of the shape, such as Circle, Square or Diamond.',
   },
 });
 const configMessages = defineMessages({
@@ -24,19 +25,19 @@ const configMessages = defineMessages({
     id: 'architect.typeEditor.shapePicker.config.circle',
     defaultMessage: 'Circle',
     description:
-      'Presentation label or description in components/TypeEditor/ShapePicker.tsx. Identifiers are not translated.',
+      'Name of the circle node shape, shown under its swatch in the shape picker of the node type editor.',
   },
   square: {
     id: 'architect.typeEditor.shapePicker.config.square',
     defaultMessage: 'Square',
     description:
-      'Presentation label or description in components/TypeEditor/ShapePicker.tsx. Identifiers are not translated.',
+      'Name of the square node shape, shown under its swatch in the shape picker of the node type editor.',
   },
   diamond: {
     id: 'architect.typeEditor.shapePicker.config.diamond',
     defaultMessage: 'Diamond',
     description:
-      'Presentation label or description in components/TypeEditor/ShapePicker.tsx. Identifiers are not translated.',
+      'Name of the diamond node shape, shown under its swatch in the shape picker of the node type editor.',
   },
 });
 

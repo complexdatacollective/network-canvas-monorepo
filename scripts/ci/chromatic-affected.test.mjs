@@ -409,9 +409,10 @@ test('adds dependency-aware library seeds in the normal Changesets lane', () => 
   );
 });
 
-test('does not seed documentation, website, and studio release lanes', () => {
+test('does not seed documentation, website, protocol review, and studio release lanes', () => {
   for (const releaseRef of [
     'changeset-release/documentation',
+    'changeset-release/protocol-review',
     'changeset-release/studio',
     'changeset-release/website',
   ]) {

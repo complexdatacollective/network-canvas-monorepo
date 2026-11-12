@@ -21,32 +21,32 @@ const messages = defineMessages({
     id: 'architect.protocolValidationDialogReporter.misconfiguredProtocol',
     defaultMessage: 'Misconfigured Protocol',
     description:
-      'The title text in components / ProtocolValidationDialogReporter.',
+      'Title of the dialog shown when the latest change left the open protocol invalid and editing cannot continue.',
   },
   theLatestChangeMadeThisProtocol: {
     id: 'architect.protocolValidationDialogReporter.theLatestChangeMadeThisProtocol',
     defaultMessage:
       'The latest change made this protocol invalid. Revert to the last valid state to continue editing, or return to the start screen.',
     description:
-      'The description text in components / ProtocolValidationDialogReporter.',
+      'Body of the dialog titled Misconfigured Protocol. It offers two buttons: one reverts the protocol to its last valid state, the other returns to the start screen.',
   },
   revertToLastValidState: {
     id: 'architect.protocolValidationDialogReporter.revertToLastValidState',
     defaultMessage: 'Revert to Last Valid State',
     description:
-      'Visible text in components / ProtocolValidationDialogReporter.',
+      'Button in the Misconfigured Protocol dialog. Pressing it undoes the latest change by restoring the last valid state of the protocol so editing can continue.',
   },
   theProtocolContainsValidationErrors: {
     id: 'architect.protocolValidationDialogReporter.theProtocolContainsValidationErrors',
     defaultMessage: 'Technical details (English):',
     description:
-      'Visible text in components / ProtocolValidationDialogReporter.',
+      'Label above the box of technical validation errors in the Misconfigured Protocol dialog. The error text itself is always shown in English, which is what the word in brackets tells the reader.',
   },
   protocolValidationErrors: {
     id: 'architect.protocolValidationDialogReporter.protocolValidationErrors',
     defaultMessage: 'Protocol validation errors',
     description:
-      'The aria-label text in components / ProtocolValidationDialogReporter.',
+      'Accessible name of the scrollable box that lists the technical validation errors in the Misconfigured Protocol dialog; read only by screen readers.',
   },
 });
 

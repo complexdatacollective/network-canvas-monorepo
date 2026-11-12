@@ -156,7 +156,16 @@
     'Oxygen',
     sans-serif
   );
-  --font-monospace: ui-monospace, Menlo, Monaco, 'Fira Code', monospace;
+  /* arabic-text.css sets --monospace-font for Arabic text. A utility inlines
+     this value, so only a variable inside it can change per element. */
+  --font-monospace: var(
+    --monospace-font,
+    ui-monospace,
+    Menlo,
+    Monaco,
+    'Fira Code',
+    monospace
+  );
 
   /*****************************************************************************
   *                               CONTAINER WIDTHS

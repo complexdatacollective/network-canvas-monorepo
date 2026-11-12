@@ -21,7 +21,8 @@ const messages = defineMessages({
   resizeFormAndPreviewPanes: {
     id: 'architect.dialogForm.dialogForm.resizeFormAndPreviewPanes',
     defaultMessage: 'Resize form and preview panes',
-    description: 'The aria-label text in components / DialogForm / DialogForm.',
+    description:
+      'Accessible name of the draggable divider between the form and the preview beside it in an editor dialog; read only by screen readers. Dragging it changes how much width each side gets.',
   },
 });
 

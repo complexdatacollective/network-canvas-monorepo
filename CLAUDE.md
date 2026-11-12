@@ -168,9 +168,15 @@ edge.
   Interviewer and Fresco release notes for users with the
   `simplifying-release-notes` skill; the same job refuses a head whose
   bumped apps still carry generated notes.
-- **Separately gated products** are Documentation, networkcanvas.com, and
-  Studio. Documentation and Website keep independent stable-semver release PRs,
-  production deploys, and Git tags. The Studio lane covers all four Studio
+- **Separately gated products** are Documentation, networkcanvas.com, the
+  protocol review Worker, and Studio. Documentation and Website keep
+  independent stable-semver release PRs, production deploys, and Git tags. The
+  protocol review Worker (`@codaco/protocol-review-worker`, the service behind
+  Architect's automated protocol review) does the same: merging its "Release
+  Protocol Review Worker" PR deploys it to Cloudflare with Wrangler
+  (`apps-release-protocol-review`) and tags the version. Nothing else deploys
+  it, and its credentials live in the `protocol-review-worker` GitHub
+  environment; see `workers/protocol-review/README.md`, "Releasing". The Studio lane covers all four Studio
   workspace packages (`@codaco/studio-web`, `@codaco/studio-api`,
   `@codaco/studio-contract`, `@codaco/studio-sync`). Merging its release PR
   publishes a release named by `@codaco/studio-api`'s version: signed images
@@ -182,7 +188,8 @@ edge.
 - **One release lane per changeset.** A normal-lane changeset may combine
   libraries, Architect, Background Creator, Interviewer, and Fresco. A Studio
   changeset may combine the Studio packages. Never mix Documentation, Website,
-  or Studio with the normal lane or with another gated lane; the
+  the protocol review Worker, or Studio with the normal lane or with another
+  gated lane; the
   `pnpm check:changesets` guard rejects it.
 - See the `creating-a-changeset` skill.
 

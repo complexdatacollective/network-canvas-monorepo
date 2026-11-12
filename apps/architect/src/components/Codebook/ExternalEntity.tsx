@@ -13,22 +13,26 @@ const messages = defineMessages({
   networkResource: {
     id: 'architect.codebook.externalEntity.networkResource',
     defaultMessage: 'Network resource: {name}',
-    description: 'The title text in components / Codebook / ExternalEntity.',
+    description:
+      'Heading of a section on the Codebook page for one network resource (an uploaded file of nodes or edges). name is the resource name.',
   },
   preview: {
     id: 'architect.codebook.externalEntity.preview',
     defaultMessage: 'Preview',
-    description: 'Visible text in components / Codebook / ExternalEntity.',
+    description:
+      'Button on a network resource section of the Codebook page that opens a preview of the resource file. Preview is a verb.',
   },
   download: {
     id: 'architect.codebook.externalEntity.download',
     defaultMessage: 'Download',
-    description: 'Visible text in components / Codebook / ExternalEntity.',
+    description:
+      'Button on a network resource section of the Codebook page that downloads the resource file. Download is a verb.',
   },
   attributes: {
     id: 'architect.codebook.externalEntity.attributes',
     defaultMessage: 'Attributes:',
-    description: 'Visible text in components / Codebook / ExternalEntity.',
+    description:
+      'Heading above the list of attributes (variable names found as columns in the file) of a network resource on the Codebook page.',
   },
 });
 

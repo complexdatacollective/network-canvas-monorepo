@@ -22,33 +22,38 @@ const messages = defineMessages({
     id: 'architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn',
     defaultMessage:
       "This protocol isn't being saved on this device — local app storage is unavailable, which is common in private browsing. Download a copy to keep your work.",
-    description: 'Visible text in components / StorageUnavailableBanner.',
+    description:
+      "Warning banner across the protocol editor, shown when the browser's local storage is unavailable (common in private browsing) so the open protocol is held only in memory. Its button downloads a copy.",
   },
   downloadNetcanvas: {
     id: 'architect.storageUnavailableBanner.downloadNetcanvas',
     defaultMessage: 'Download .netcanvas',
-    description: 'Visible text in components / StorageUnavailableBanner.',
+    description:
+      'Button in the storage-unavailable banner. Downloads the protocol as a .netcanvas file so work is not lost. The extension .netcanvas is the file format name and stays as it is.',
   },
   someAssetsCouldNotBeExported: {
     id: 'architect.storageUnavailableBanner.someAssetsCouldNotBeExported',
     defaultMessage: 'Some resources could not be read',
-    description: 'The title text in components / StorageUnavailableBanner.',
+    description:
+      'Title of the dialog shown when downloading the protocol was stopped because some resources (uploaded files such as images, video or audio) could not be read.',
   },
   oK: {
     id: 'architect.storageUnavailableBanner.oK',
     defaultMessage: 'OK',
-    description: 'The label text in components / StorageUnavailableBanner.',
+    description:
+      'Button that dismisses the dialogs shown after a failed attempt to download the protocol from the storage-unavailable banner.',
   },
   downloadFailed: {
     id: 'architect.storageUnavailableBanner.downloadFailed',
     defaultMessage: 'Download failed',
-    description: 'The title text in components / StorageUnavailableBanner.',
+    description:
+      'Title of the error dialog shown when downloading the protocol from the storage-unavailable banner failed unexpectedly.',
   },
   yourProtocolCouldnTBeDownloadedPlease: {
     id: 'architect.storageUnavailableBanner.yourProtocolCouldnTBeDownloadedPlease',
     defaultMessage: "Your protocol couldn't be downloaded. Please try again.",
     description:
-      'The description text in components / StorageUnavailableBanner.',
+      'Body of the Download failed dialog, shown when downloading the protocol failed unexpectedly. Asks the researcher to try again.',
   },
 });
 const finalMessages = defineMessages({
@@ -56,7 +61,8 @@ const finalMessages = defineMessages({
     id: 'architect.final.components.StorageUnavailableBanner.skippedAssets',
     defaultMessage:
       'These resources could not be read, so your protocol was not downloaded: {assetList}. Add the files again in Resources, then download it.',
-    description: 'Researcher-facing Architect control or feedback.',
+    description:
+      "Body of the dialog shown when a protocol download was stopped because resources (uploaded files) could not be read. assetList is the list of those resources' names. Resources is the name of the screen where files are added.",
   },
 });
 
