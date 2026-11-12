@@ -1,5 +1,12 @@
 # @codaco/protocol-review-worker
 
+## 0.2.0
+
+### Minor Changes
+
+- A review no longer needs research questions. They are recommended, and without them the model reviews the protocol against the study synopsis, which is now required.
+- Reviews by OpenAI's model now use medium reasoning effort, so they finish well inside the time a review is allowed. Progress events now also count the model's thinking (`thinking`, alongside `received`), so a review can be seen to move before the answer begins.
+
 ## 0.1.0
 
 ### Minor Changes
