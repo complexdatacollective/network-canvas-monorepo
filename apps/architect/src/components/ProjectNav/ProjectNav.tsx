@@ -188,7 +188,7 @@ const ProjectNav = () => {
             {warning && (
               <AlertTriangle
                 aria-hidden
-                className="fill-warning absolute -top-1.5 -right-1.5 size-3 text-white drop-shadow-sm"
+                className="fill-warning absolute -inset-e-1.5 -top-1.5 size-3 text-white drop-shadow-sm"
               />
             )}
           </span>

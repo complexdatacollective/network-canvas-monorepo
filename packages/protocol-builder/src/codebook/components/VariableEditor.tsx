@@ -937,7 +937,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               {refusals.length === 1 ? (
                 (formatMessageError(refusals[0] ?? '', intl) ?? refusals[0])
               ) : (
-                <ul className="list-disc pl-5">
+                <ul className="list-disc ps-5">
                   {refusals.map((message) => (
                     <li key={message}>
                       {formatMessageError(message, intl) ?? message}
@@ -1166,7 +1166,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               {optionErrors.length > 0 && (
                 <ul
                   id={`${statusId}-option-errors`}
-                  className="text-destructive-ink mt-3 list-disc pl-5"
+                  className="text-destructive-ink mt-3 list-disc ps-5"
                 >
                   {/* An option issue's message is a plain string carrying either
                       this package's own encoded descriptor or a wording the
@@ -1235,7 +1235,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               {blockParameterErrors.length > 0 && (
                 <ul
                   id={`${statusId}-parameter-errors`}
-                  className="text-destructive-ink mb-3 list-disc pl-5"
+                  className="text-destructive-ink mb-3 list-disc ps-5"
                 >
                   {/* Decoded here for the reason the option list above is: a
                       refusal about the whole block is held as an encoded
@@ -1652,11 +1652,11 @@ function LockedOptions({
   const localize = useLocalizedText();
   return (
     <div className="bg-surface-2 text-surface-2-contrast relative rounded p-4">
-      <Lock aria-hidden="true" className="absolute top-4 right-4 size-4" />
+      <Lock aria-hidden="true" className="absolute inset-e-4 top-4 size-4" />
       <table className="w-full text-sm">
-        <caption className="pr-8 pb-2 text-left">{caption}</caption>
+        <caption className="pe-8 pb-2 text-start">{caption}</caption>
         <thead>
-          <tr className="text-left">
+          <tr className="text-start">
             <th className="pb-2 font-bold">
               {intl.formatMessage(messages.lockedOptionLabelHeader)}
             </th>

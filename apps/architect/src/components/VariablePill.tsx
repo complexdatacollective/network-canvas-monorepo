@@ -205,7 +205,7 @@ const getVariablePillClassName = ({
     animated ? 'variable-pill-effect-border' : 'bg-(--variable-pill-accent)',
     !interactive && 'cursor-default',
     interactive &&
-      'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-left transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5',
+      'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-start transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5',
     className,
   );
 
@@ -233,7 +233,7 @@ function VariablePillContents({
           : 'grid-cols-[3rem_minmax(0,auto)]',
       )}
     >
-      <span className="flex items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
+      <span className="flex items-center justify-center border-e border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
         <img
           // oxlint-disable-next-line tailwindcss/no-unknown-classes -- icon selector hook for the parent
           className="icon opacity-80"
@@ -539,7 +539,7 @@ export const VariablePill = ({
                   aria-label={intl.formatMessage(messages.attributeName)}
                   aria-invalid={validation ? true : undefined}
                   aria-describedby={validation ? validationId : undefined}
-                  className="h-full w-full rounded-l-none! outline-none!"
+                  className="h-full w-full rounded-s-none! outline-none!"
                   placeholder={intl.formatMessage(
                     messages.enterAnAttributeName,
                   )}

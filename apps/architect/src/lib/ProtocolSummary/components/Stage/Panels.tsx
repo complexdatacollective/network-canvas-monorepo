@@ -36,7 +36,7 @@ const Panels = ({ panels = null }: PanelsProps) => {
     <SectionFrame title={intl.formatMessage(messages.panels)}>
       <ol className="m-0 ps-10">
         {panels.map((panel) => (
-          <li className="my-5 pl-5" key={panel.id}>
+          <li className="my-5 ps-5" key={panel.id}>
             <MiniTable
               rotated
               rows={[

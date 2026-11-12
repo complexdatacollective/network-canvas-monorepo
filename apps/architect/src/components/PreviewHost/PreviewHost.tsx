@@ -421,7 +421,7 @@ export function PreviewHost() {
         <Paragraph margin="none" className="max-w-xl">
           {intl.formatMessage(messages.syntheticDataCouldnTBeGeneratedBecause)}
         </Paragraph>
-        <div className="flex w-full max-w-xl flex-col gap-3 text-left">
+        <div className="flex w-full max-w-xl flex-col gap-3 text-start">
           {failure.conflicts.map((conflict, index) => (
             <Alert
               key={`${conflict.entity}-${conflict.variableIds.join(',')}-${index}`}

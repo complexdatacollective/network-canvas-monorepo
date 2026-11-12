@@ -596,7 +596,7 @@ const PanelRow = ({
       {...itemProps}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className="group focusable hover:bg-surface-1 data-focused:bg-surface-1 flex w-full shrink-0 cursor-pointer items-center gap-2.5 rounded px-5 py-2.5 text-left transition-colors"
+      className="group focusable hover:bg-surface-1 data-focused:bg-surface-1 flex w-full shrink-0 cursor-pointer items-center gap-2.5 rounded px-5 py-2.5 text-start transition-colors"
     >
       <div className="flex shrink-0 items-center justify-center">
         <img
@@ -778,7 +778,7 @@ const GalleryCard = () => {
         color="dynamic"
         size="sm"
         aria-label={intl.formatMessage(messages.dismiss)}
-        className="absolute top-1 right-2"
+        className="absolute inset-e-2 top-1"
         onClick={handleDismiss}
         icon={<X />}
       />
