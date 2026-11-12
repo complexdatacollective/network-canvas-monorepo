@@ -14,6 +14,7 @@
   "type": "module",
   "exports": {
     "./messages": "./src/messages.ts",
+    "./message-errors": "./src/message-errors.ts",
     "./react": "./src/react.tsx",
     "./negotiate": "./src/negotiate.ts",
     "./locales": "./src/locales.ts",
@@ -27,6 +28,10 @@
       "./messages": {
         "types": "./dist/messages.d.ts",
         "default": "./dist/messages.js"
+      },
+      "./message-errors": {
+        "types": "./dist/message-errors.d.ts",
+        "default": "./dist/message-errors.js"
       },
       "./react": {
         "types": "./dist/react.d.ts",

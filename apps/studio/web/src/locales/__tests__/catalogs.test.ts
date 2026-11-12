@@ -8,7 +8,6 @@ import {
   checkCatalogFreshness,
   checkCatalogLoaders,
   checkOverrideLocale,
-  collectSourceFiles,
   extractMessages,
   readTranslationSources,
 } from '@codaco/app-i18n/catalog-guards';
@@ -16,6 +15,7 @@ import type { ExtractedCatalog } from '@codaco/app-i18n/catalog-guards';
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 
+import { studioCatalogSourceFiles } from '../../../scripts/catalog-sources.ts';
 import { studioCatalogLoaders, studioCatalogSource } from '../catalogs.ts';
 
 /**
@@ -35,7 +35,7 @@ const committedEn = JSON.parse(
 
 describe('the Studio client message catalogs', () => {
   it('keeps src/locales/en.json fresh (regenerate with pnpm i18n:extract)', async () => {
-    const extracted = await extractMessages(collectSourceFiles(srcDir));
+    const extracted = await extractMessages(studioCatalogSourceFiles());
     expect(checkCatalogFreshness(committedEn, extracted)).toEqual([]);
   });
 
