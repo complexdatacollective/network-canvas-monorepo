@@ -572,7 +572,7 @@ export default function VariableValidationEditor({
         >
           <legend
             className={cx(
-              'bg-input absolute -top-4 left-6 z-10 rounded px-4 py-1',
+              'bg-input absolute inset-s-6 -top-4 z-10 rounded px-4 py-1',
               "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:rounded-t before:border-x-2 before:border-t-2 before:content-['']",
             )}
           >

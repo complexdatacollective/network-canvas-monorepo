@@ -529,7 +529,7 @@ function DialogFormBody({
                 aria-label={intl.formatMessage(
                   dialogMessages.configurationPane,
                 )}
-                className="min-w-0 @min-[60rem]:pr-4"
+                className="min-w-0 @min-[60rem]:pe-4"
               >
                 {fields}
               </FormWithoutProvider>
@@ -538,7 +538,7 @@ function DialogFormBody({
                   inside the dialog's. What the aside contains names itself —
                   the preview is its own labelled region — so the wrapper has
                   nothing left to announce. */}
-              <div className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+              <div className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:ps-4">
                 {aside}
               </div>
             </ResizableFlexPanel>

@@ -1078,7 +1078,7 @@ export function MessageNodesSummary({
               <span
                 className={
                   wholeSwitch(version.nodes)
-                    ? 'border-l border-current/20 pl-3'
+                    ? 'border-s border-current/20 ps-3'
                     : undefined
                 }
               >

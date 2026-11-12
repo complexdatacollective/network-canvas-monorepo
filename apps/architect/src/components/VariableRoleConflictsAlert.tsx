@@ -96,7 +96,7 @@ const VariableRoleConflictsAlert = () => {
         <span className="block">
           {intl.formatMessage(messages.valuesWrittenOutsideAFormBypass)}
         </span>
-        <ul className="mt-2 list-disc pl-5">
+        <ul className="mt-2 list-disc ps-5">
           {conflicts.map((conflict) => (
             <li
               key={`${conflict.subject.entity}:${conflict.subject.type ?? ''}:${conflict.variableId}`}

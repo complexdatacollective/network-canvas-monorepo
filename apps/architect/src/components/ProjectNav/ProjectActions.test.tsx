@@ -150,4 +150,14 @@ describe('ProjectActions', () => {
 
     expect(mockedDownload).toHaveBeenCalledTimes(2);
   });
+
+  // The arrow on the button that leaves the project points back the way the
+  // page was read, which is to the right in a right-to-left language. Whether
+  // the turn is drawn is a stylesheet's business, checked where a browser
+  // renders one: this holds the icon to asking for it.
+  it('turns the arrow on the button that leaves the project round in a right-to-left language', async () => {
+    await renderActions();
+    const leave = screen.getByRole('button', { name: /^Return to/ });
+    expect(leave.querySelector('svg')).toHaveClass('rtl:rotate-180');
+  });
 });

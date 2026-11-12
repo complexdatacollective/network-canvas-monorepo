@@ -1,0 +1,28 @@
+{
+  "name": "@codaco/protocol-review-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contract": "./src/contract.ts"
+  },
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "cf-typegen": "wrangler types",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.1.0",
+    "@codaco/shared-consts": "workspace:^",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:^",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

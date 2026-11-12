@@ -53,6 +53,7 @@ import type { AttributePatch } from '../../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
 import { useProtectedFormValues } from '../../Anonymisation/useProtectedFormValues';
+import AddCornerShade from './AddCornerShade';
 
 type NodeFormProps = {
   selectedNode: NcNode | null;
@@ -230,11 +231,11 @@ const NodeForm = (props: NodeFormProps) => {
 
   return (
     <>
-      <div className="pointer-events-none absolute right-0 bottom-0 z-10 h-48 w-xl bg-[radial-gradient(ellipse_at_bottom_right,oklch(from_var(--background)_calc(l-0.1)_c_h),transparent_70%)]" />
+      <AddCornerShade />
       <AnimatePresence>
         <motion.div
           key="add-button"
-          className="absolute right-12 bottom-4 z-20"
+          className="absolute inset-e-12 bottom-4 z-20"
           variants={variants}
         >
           <button

@@ -1,0 +1,5 @@
+{
+  "extends": ["../../.oxlintrc.json"],
+  "env": { "worker": true, "node": false, "browser": false },
+  "rules": { "no-console": "off" }
+}

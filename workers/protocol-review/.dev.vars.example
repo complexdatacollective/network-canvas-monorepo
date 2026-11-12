@@ -1,0 +1,5 @@
+# Copy to .dev.vars for `pnpm dev`. Never commit .dev.vars.
+ANTHROPIC_API_KEY=sk-ant-...
+# The origin of your local Architect, so it may call this Worker. Local
+# development only: never set this in production.
+DEV_ALLOWED_ORIGIN=http://localhost:5173

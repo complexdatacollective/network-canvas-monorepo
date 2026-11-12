@@ -21,7 +21,7 @@ export const actionCircleVariants = cva({
 export const actionIconClass = 'h-full w-auto';
 
 export const actionPlusBadgeVariants = cva({
-  base: 'bg-platinum text-charcoal absolute -top-2 -right-4 flex size-10 items-center justify-center rounded-full shadow-lg',
+  base: 'bg-platinum text-charcoal absolute -inset-e-4 -top-2 flex size-10 items-center justify-center rounded-full shadow-lg',
 });
 
 export const actionPlusIconClass = 'size-6';

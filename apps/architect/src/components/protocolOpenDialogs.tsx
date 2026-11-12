@@ -269,7 +269,7 @@ export const showProtocolOpenResultDialog = async ({
                   message: additionalMessages.upgradeChangesList,
                 })}
               </Paragraph>
-              <div className="bg-surface-2 max-h-72 overflow-y-auto rounded-sm px-4 py-2 [&_li]:mb-2 [&_li]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5">
+              <div className="bg-surface-2 max-h-72 overflow-y-auto rounded-sm px-4 py-2 [&_li]:mb-2 [&_li]:leading-relaxed [&_ul]:list-disc [&_ul]:ps-5">
                 {result.migrationNotes.map(({ version, notes }) => (
                   <div key={version}>
                     <Heading level="h4">

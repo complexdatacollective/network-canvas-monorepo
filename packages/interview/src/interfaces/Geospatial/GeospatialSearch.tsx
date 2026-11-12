@@ -469,7 +469,7 @@ export default function GeospatialSearch({
                   spacing="none"
                   shadow="none"
                   floating
-                  className="absolute left-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
+                  className="absolute inset-s-0 mt-2 flex max-h-64 w-sm flex-col shadow-xl"
                   initial={{ opacity: 0, y: '-0.5rem' }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: '-0.5rem' }}
