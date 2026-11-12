@@ -10,6 +10,7 @@ import { ModelCallError, REJECTED, reported } from '../model.ts';
 import {
   costMicros,
   DAILY_CEILING_MICROS,
+  MONTHLY_CEILING_MICROS,
   reservationMicros,
 } from '../pricing.ts';
 import { handleRequest } from '../review.ts';
@@ -324,5 +325,118 @@ describe('the daily spending ceiling', () => {
         outputTokens: MAX_OUTPUT_TOKENS,
       }),
     );
+  });
+});
+
+describe('the monthly spending ceiling', () => {
+  const at = (iso: string) => Date.parse(iso);
+  const admitAt = (
+    store: ReturnType<typeof createMemoryStore>,
+    now: number,
+    reservation = 1,
+  ) =>
+    admit(store, {
+      installationKey: `i${now}`,
+      addressKey: `a${now}`,
+      reservationMicros: reservation,
+      now,
+    });
+
+  it('refuses a review the month cannot cover, until the next UTC month', async () => {
+    const harness = createHarness(okModel());
+    // Spent on an earlier day of this month: today has spent nothing.
+    harness.store.spend.set('2026-11-03', MONTHLY_CEILING_MICROS - 1);
+    const refused = await runReview(harness);
+    expect(refused.status).toBe(503);
+    expect(refused.error).toEqual({
+      error: 'monthly_limit',
+      retryAt: '2026-12-01T00:00:00.000Z',
+    });
+    // A refused review counts against nothing.
+    expect(countFor(harness.store, 'installation')).toBe(0);
+    expect(harness.store.spend.get(utcDay(START))).toBeUndefined();
+  });
+
+  it('adds up every day of the month', () => {
+    const store = createMemoryStore();
+    const share = Math.floor(MONTHLY_CEILING_MICROS / 4);
+    for (const day of ['2026-11-01', '2026-11-04', '2026-11-08']) {
+      store.spend.set(day, share);
+    }
+    // Three quarters are spent: a review that fits the last quarter runs…
+    expect(admitAt(store, START, 1_000_000).ok).toBe(true);
+    // …and one that does not is refused, though no single day is near its
+    // own ceiling.
+    expect(admitAt(store, START + 1, share)).toEqual({
+      ok: false,
+      error: 'monthly_limit',
+      retryAt: '2026-12-01T00:00:00.000Z',
+    });
+    expect([...store.spend.keys()].toSorted()).toEqual([
+      '2026-11-01',
+      '2026-11-04',
+      '2026-11-08',
+      '2026-11-11',
+    ]);
+  });
+
+  it('starts again with the month, and forgets the month before', () => {
+    const store = createMemoryStore();
+    store.spend.set('2026-11-15', 1);
+    // The last day alone spent the whole of November…
+    store.spend.set('2026-11-30', MONTHLY_CEILING_MICROS);
+    expect(admitAt(store, at('2026-11-30T23:00:00.000Z')).ok).toBe(false);
+
+    // …and none of it counts in December, though that day is still stored.
+    expect(admitAt(store, at('2026-12-01T00:30:00.000Z')).ok).toBe(true);
+    // Yesterday is kept for reviews still settling against it; the rest of
+    // last month is gone.
+    expect([...store.spend.keys()].toSorted()).toEqual([
+      '2026-11-30',
+      '2026-12-01',
+    ]);
+  });
+
+  it('says the next month when the year turns', () => {
+    const store = createMemoryStore();
+    store.spend.set('2026-12-02', MONTHLY_CEILING_MICROS);
+    expect(admitAt(store, at('2026-12-15T12:00:00.000Z'))).toEqual({
+      ok: false,
+      error: 'monthly_limit',
+      retryAt: '2027-01-01T00:00:00.000Z',
+    });
+  });
+
+  it('answers for the month when the day is spent too', () => {
+    const store = createMemoryStore();
+    store.spend.set(
+      '2026-11-02',
+      MONTHLY_CEILING_MICROS - DAILY_CEILING_MICROS,
+    );
+    store.spend.set(utcDay(START), DAILY_CEILING_MICROS);
+    // Tomorrow would not help: the month decides when a review can run.
+    expect(admitAt(store, START)).toMatchObject({ error: 'monthly_limit' });
+  });
+
+  it('settles a review admitted before the month turned against its own day', () => {
+    const store = createMemoryStore();
+    const reservation = 3_000_000;
+    const lastNight = admitAt(
+      store,
+      at('2026-11-30T23:59:00.000Z'),
+      reservation,
+    );
+    if (!lastNight.ok) throw new Error('Expected admission.');
+    // A review in the new month runs the store's housekeeping first.
+    expect(admitAt(store, at('2026-12-01T00:01:00.000Z'), 1).ok).toBe(true);
+
+    settle(store, {
+      admission: lastNight.admission,
+      actualMicros: 400_000,
+      refundHourly: false,
+    });
+    expect(store.spend.get('2026-11-30')).toBe(400_000);
+    // None of it is charged to the new month.
+    expect(store.getCommittedSince('2026-12-01')).toBe(1);
   });
 });

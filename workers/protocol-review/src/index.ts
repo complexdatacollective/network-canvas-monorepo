@@ -27,7 +27,7 @@ import { createSqlStore } from './sql-store.ts';
 type ReviewEnv = Env & { DEV_ALLOWED_ORIGIN?: string };
 
 /**
- * Every hourly window and the day's spending, in one SQLite-backed instance
+ * Every hourly window and each day's spending, in one SQLite-backed instance
  * (`LIMITER_INSTANCE_NAME`). Its methods hold no awaits, so each runs to
  * completion before the next request's starts, and the counts stay exact.
  */

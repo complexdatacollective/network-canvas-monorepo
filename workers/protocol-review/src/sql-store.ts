@@ -81,6 +81,15 @@ export const createSqlStore = (sql: SqlStorage): LimiterStore => {
         micros,
       );
     },
+    getCommittedSince(day) {
+      const [row] = sql
+        .exec<SpendRow>(
+          'SELECT COALESCE(SUM(committed_micros), 0) AS committed_micros FROM daily_spend WHERE day >= ?',
+          day,
+        )
+        .toArray();
+      return row?.committed_micros ?? 0;
+    },
     deleteDaysBefore(day) {
       sql.exec('DELETE FROM daily_spend WHERE day < ?', day);
     },
