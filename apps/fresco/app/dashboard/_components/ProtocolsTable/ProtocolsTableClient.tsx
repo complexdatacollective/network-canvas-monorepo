@@ -33,13 +33,13 @@ const messages = defineMessages({
     id: 'fresco.ProtocolsTable.ProtocolsTableClient.byName',
     defaultMessage: 'by name',
     description:
-      'Researcher-facing ProtocolsTable / ProtocolsTableClient: by name',
+      'Name of the only field the search box above the Protocols table searches; it completes a phrase such as Search by name and refers to the protocol name.',
   },
   deleteSelected: {
     id: 'fresco.ProtocolsTable.ProtocolsTableClient.deleteSelected',
     defaultMessage: 'Delete Selected',
     description:
-      'Researcher-facing ProtocolsTable / ProtocolsTableClient: Delete Selected',
+      'Button in the floating bar that appears when protocols are selected in the Protocols table. It opens a confirmation to delete the selected protocols.',
   },
 });
 

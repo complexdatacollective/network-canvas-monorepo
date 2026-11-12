@@ -11,7 +11,7 @@ const messages = defineMessages({
     id: 'fresco.settings.UpdateUploadThingToken.savedTokenIsHidden',
     defaultMessage: '•••••••• (saved token is hidden)',
     description:
-      'Researcher-facing settings / UpdateUploadThingToken: •••••••• (saved token is hidden)',
+      'Placeholder of the empty UploadThing API token field in Settings; the dots stand for the saved token, which is never shown. Keep the dots.',
   },
 });
 

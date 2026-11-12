@@ -31,73 +31,74 @@ const messages = defineMessages({
     id: 'fresco.participants.ImportParticipants.copyDropFileHere',
     defaultMessage: 'Drop file here',
     description:
-      'Researcher-facing participants / ImportParticipants: Drop file here',
+      'Heading of the participant import drop area on the Participants page, shown while a file is being dragged over it. Prompts the researcher to release the file.',
   },
   copyImportParticipants: {
     id: 'fresco.participants.ImportParticipants.copyImportParticipants',
     defaultMessage: 'Import participants',
     description:
-      'Researcher-facing participants / ImportParticipants: Import participants',
+      'Heading of the participant import drop area on the Participants page when no file is being dragged. Import is an action: adding participants from a file.',
   },
   error: {
     id: 'fresco.participants.ImportParticipants.error',
     defaultMessage: 'Error',
-    description: 'Researcher-facing participants / ImportParticipants: Error',
+    description:
+      'Title of the error toast on the Participants page when importing participants from a file fails; the toast body gives the reason.',
   },
   fileMustBeAValidCSVWith: {
     id: 'fresco.participants.ImportParticipants.fileMustBeAValidCSVWith',
     defaultMessage: 'File must be a valid CSV with label or identifier columns',
     description:
-      'Researcher-facing participants / ImportParticipants: File must be a valid CSV with label or identifier columns',
+      'Body of the error toast when the file chosen for participant import is not a usable CSV (spreadsheet) file. It needs a column named label or identifier; those are column names.',
   },
   importCompletedWithCollisions: {
     id: 'fresco.participants.ImportParticipants.importCompletedWithCollisions',
     defaultMessage: 'Import completed with collisions',
     description:
-      'Researcher-facing participants / ImportParticipants: Import completed with collisions',
+      'Title of a warning toast after a participant import in which some rows were skipped because their identifiers already belong to existing participants. Collision means a duplicate identifier.',
   },
   yourParticipantsWereImportedSuccessfullyButSome: {
     id: 'fresco.participants.ImportParticipants.yourParticipantsWereImportedSuccessfullyButSome',
     defaultMessage:
       'Your participants were imported successfully, but some identifiers collided with existing participants and were not imported.',
     description:
-      'Researcher-facing participants / ImportParticipants: Your participants were imported successfully, but some identifiers collided with existing participants and were not impo',
+      'Body of the warning toast after a participant import where some identifiers matched existing participants and those rows were not imported. A list of the clashing identifiers may follow.',
   },
   participantsImported: {
     id: 'fresco.participants.ImportParticipants.participantsImported',
     defaultMessage: 'Participants imported',
     description:
-      'Researcher-facing participants / ImportParticipants: Participants imported',
+      'Title of the success toast on the Participants page after participants were imported from a file. Imported is a completed action.',
   },
   participantsHaveBeenImportedSuccessfully: {
     id: 'fresco.participants.ImportParticipants.participantsHaveBeenImportedSuccessfully',
     defaultMessage: 'Participants have been imported successfully',
     description:
-      'Researcher-facing participants / ImportParticipants: Participants have been imported successfully',
+      'Body of the success toast on the Participants page after every participant in the chosen file was imported.',
   },
   anErrorOccurredWhileImportingParticipants: {
     id: 'fresco.participants.ImportParticipants.anErrorOccurredWhileImportingParticipants',
     defaultMessage: 'An error occurred while importing participants',
     description:
-      'Researcher-facing participants / ImportParticipants: An error occurred while importing participants',
+      'Body of the error toast on the Participants page when reading or importing the chosen participant file failed unexpectedly.',
   },
   importParticipants: {
     id: 'fresco.participants.ImportParticipants.importParticipants',
     defaultMessage: 'Import Participants',
     description:
-      'Researcher-facing participants / ImportParticipants: Import Participants',
+      "Button on the Participants page that opens the participant import panel; also the panel's accessible name read by screen readers. Import is an action: adding participants from a CSV file.",
   },
   dragDropACsvFileHere: {
     id: 'fresco.participants.ImportParticipants.dragDropACsvFileHere',
     defaultMessage: 'Drag & drop a <tag1>.csv</tag1> file here',
     description:
-      'Researcher-facing participants / ImportParticipants: Drag & drop a .csv file here',
+      'Instruction line in the participant import drop area. tag1 wraps the file extension .csv, shown in code style; keep the extension untranslated.',
   },
   browseFiles: {
     id: 'fresco.participants.ImportParticipants.browseFiles',
     defaultMessage: 'Browse files',
     description:
-      'Researcher-facing participants / ImportParticipants: Browse files',
+      "Button in the participant import drop area that opens the computer's file picker, as an alternative to dragging a file.",
   },
 });
 

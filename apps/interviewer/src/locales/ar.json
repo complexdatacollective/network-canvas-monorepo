@@ -106,7 +106,7 @@
   "interviewer.home.deleteThisProtocol": "حذف هذا البروتوكول؟",
   "interviewer.home.protocolDeleted": "تم حذف البروتوكول",
   "interviewer.importTriggerCard.authoring": "تُصمَّم البروتوكولات في <link>Architect</link>.",
-  "interviewer.importTriggerCard.chooseANetcanvasProtocolFile": "اختيار ملف بروتوكول .netcanvas",
+  "interviewer.importTriggerCard.chooseANetcanvasProtocolFile": "اختيار ملف بروتوكول ‎.netcanvas",
   "interviewer.importTriggerCard.drop": "أفلِت ملف <extension>.netcanvas</extension>، أو انقر لاستعراض الملفات",
   "interviewer.importTriggerCard.importAProtocol": "استيراد بروتوكول",
   "interviewer.installBanner.chromiumManual": "نادرًا ما يزيل المتصفح {browserName} بيانات Network Canvas تلقائيًا، لكن بقاء بيانات المقابلات المخزّنة في علامة تبويب المتصفح غير مضمون. قبل جمع البيانات، استخدم أيقونة التثبيت في شريط العناوين بالمتصفح لتثبيت Interviewer وحماية بيانات المقابلات من الحذف.",

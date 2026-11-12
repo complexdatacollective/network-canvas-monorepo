@@ -10,28 +10,28 @@ const messages = defineMessages({
     defaultMessage:
       'Passkey sign-in did not complete. If you cancelled, try again. If your passkey cannot confirm who you are with a PIN, fingerprint, or face, use a different passkey or ask another administrator to reset your authentication.',
     description:
-      'Researcher-facing sign-in: the browser closed the passkey prompt without a credential (cancelled, timed out, or no authenticator could verify the user); names the two ways back in.',
+      'Error on the sign-in page when the browser closed the passkey prompt without a passkey being used: cancelled, timed out, or the passkey could not verify the person. Suggests the two ways forward.',
   },
   reauthDidNotComplete: {
     id: 'fresco.passkeyCeremony.reauthDidNotComplete',
     defaultMessage:
       'Passkey check did not complete. If you cancelled, try again. If your passkey cannot confirm who you are with a PIN, fingerprint, or face, add a passkey that can and use that one.',
     description:
-      'Researcher-facing settings: the browser closed the passkey prompt without a credential while a signed-in researcher re-authenticated before switching to a password.',
+      "Error in the Switch to Password Authentication dialog in Settings when the browser closed the passkey prompt used to confirm the researcher's identity: cancelled, timed out, or could not verify the person.",
   },
   registrationDidNotComplete: {
     id: 'fresco.passkeyCeremony.registrationDidNotComplete',
     defaultMessage:
       'Passkey creation did not complete. If you cancelled, try again. If your device or security key cannot confirm who you are with a PIN, fingerprint, or face, choose a different one.',
     description:
-      'Researcher-facing setup and settings: the browser closed the passkey creation prompt without a credential.',
+      'Error shown when creating a new passkey, in the setup wizard or in Settings, and the browser closed the creation prompt without a passkey being made: cancelled, timed out, or the device could not verify the person.',
   },
   registrationUnsupported: {
     id: 'fresco.passkeyCeremony.registrationUnsupported',
     defaultMessage:
       'This device or security key cannot create a Fresco passkey. Fresco needs a passkey that is stored on the device and confirms who you are with a PIN, fingerprint, or face. Choose a different one.',
     description:
-      'Researcher-facing setup and settings: the browser reported that the chosen authenticator cannot make a discoverable, user-verifying passkey.',
+      'Error shown when creating a new passkey, in the setup wizard or in Settings, and the chosen device or security key cannot make the kind of passkey Fresco requires (stored on the device, verified by PIN, fingerprint or face).',
   },
 });
 

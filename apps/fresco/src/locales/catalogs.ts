@@ -24,6 +24,7 @@ export const frescoCatalogLoaders: CatalogLoaders = {
   'pt-BR': () => import('~/src/locales/pt-BR.json'),
   'it': () => import('~/src/locales/it.json'),
   'fr': () => import('~/src/locales/fr.json'),
+  'ar': () => import('~/src/locales/ar.json'),
 };
 
 /**

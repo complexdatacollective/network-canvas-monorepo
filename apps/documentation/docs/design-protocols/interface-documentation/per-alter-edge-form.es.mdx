@@ -1,0 +1,59 @@
+---
+title: Formulario de vínculos por álter
+navOrder: 15
+translatedFrom: 8cf1a6cee7e4cfdcf5800af0a3d7481cebf5348b
+---
+
+<InterfaceSummary type="AlterEdgeForm">
+
+<InterfaceMeta type="Intérprete de vínculos" creates="Datos de atributos sobre un único tipo de vínculo" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+La interfaz «Formulario de vínculos por álter» (un formulario para cada vínculo entre dos álteres) es una interfaz de tipo _intérprete de vínculos_ que recoge datos de atributos sobre los vínculos, o relaciones, entre los nodos de la red de una persona participante. En una etapa «Formulario de vínculos por álter», quienes participan rellenan un [formulario](../key-concepts/forms) por cada vínculo que hayan definido antes entre pares de álteres (cada persona a la que se nombra durante la entrevista) de su red. Estos formularios se pueden personalizar y pueden incluir uno o varios campos para recoger datos concretos de los atributos de los vínculos.
+
+## Configurar la etapa «Formulario de vínculos por álter» {#configuring-per-alter-edge-form}
+
+En cada pantalla se puede seleccionar un único tipo de vínculo. Esta pantalla admite el [filtrado](../key-concepts/network-filtering) de los vínculos que coinciden con el tipo indicado.
+
+![](/assets/img/interface-documentation/per-edge-form/architect-edge-type.png)
+
+A cada vínculo se le asignarán variables mediante un [formulario](../key-concepts/forms) configurable.
+
+![Los campos del formulario se pueden reordenar arrastrándolos y eliminar haciendo clic en la «x» de la derecha](/assets/img/interface-documentation/per-edge-form/architect-form.png)
+
+### Buenas prácticas {#best-practices}
+
+<GoodPractice>
+
+Usa esta interfaz como una forma sencilla de recoger datos sobre los vínculos de manera sistemática.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Coloca una etapa [«Información»](../interface-documentation/information) antes de esta interfaz para explicar a quienes participan las tareas del formulario que rellenarán para cada vínculo.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Plantéate incluir campos de formulario para recoger datos temporales que usen [controles de entrada](../key-concepts/input-controls) como el [Selector de fecha](../key-concepts/input-controls/#date-picker).
+
+</GoodPractice>
+
+### Qué evitar {#try-to-avoid}
+
+<BadPractice>
+
+Evita sobrecargar esta interfaz con demasiados campos o con preguntas con mucho texto.
+
+</BadPractice>
+
+<BadPractice>
+
+No uses esta interfaz en lugar de un censo de díadas, ya que solo se pedirá a quienes participan que aporten datos sobre los vínculos que ya existen entre álteres, y no sobre todas las combinaciones posibles de álteres. Si tu estudio requiere una etapa [«Censo de díadas»](../interface-documentation/dyad-census), puedes añadir y configurar esa interfaz en Architect.
+
+</BadPractice>

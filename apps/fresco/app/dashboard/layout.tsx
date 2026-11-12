@@ -53,13 +53,14 @@ const messages = defineMessages({
   pageDescription: {
     id: 'fresco.dashboard.metadata.pageDescription',
     defaultMessage: 'Fresco.',
-    description: 'Researcher-facing dashboard.metadata: Fresco.',
+    description:
+      'Short page description (meta description) of the researcher dashboard pages, used by browsers and search engines.',
   },
 
   pageTitle: {
     id: 'fresco.dashboard.metadata.pageTitle',
     defaultMessage: 'Network Canvas Fresco - Dashboard',
     description:
-      'Researcher-facing dashboard.metadata: Network Canvas Fresco - Dashboard',
+      'Browser tab title of the researcher dashboard pages. Network Canvas Fresco is the product name.',
   },
 });

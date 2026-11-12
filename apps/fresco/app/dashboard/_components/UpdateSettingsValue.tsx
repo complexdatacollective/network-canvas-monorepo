@@ -23,24 +23,27 @@ const messages = defineMessages({
   invalid: {
     id: 'fresco.UpdateSettingsValue.invalid',
     defaultMessage: 'Invalid: {details}',
-    description: 'Researcher-facing UpdateSettingsValue: Invalid: details',
+    description:
+      'Validation error shown under a text setting in Settings when the entered value is not acceptable. details is a list of the specific reasons, already translated.',
   },
 
   copyFailedToSaveSetting: {
     id: 'fresco.UpdateSettingsValue.copyFailedToSaveSetting',
     defaultMessage: 'Failed to save setting',
     description:
-      'Researcher-facing UpdateSettingsValue: Failed to save setting',
+      'Error shown under a text setting in Settings when saving the changed value to the server failed.',
   },
   copySaving: {
     id: 'fresco.UpdateSettingsValue.copySaving',
     defaultMessage: 'Saving...',
-    description: 'Researcher-facing UpdateSettingsValue: Saving...',
+    description:
+      'Label of the save button under a text setting in Settings while the changed value is being saved.',
   },
   reset: {
     id: 'fresco.UpdateSettingsValue.reset',
     defaultMessage: 'Reset',
-    description: 'Researcher-facing UpdateSettingsValue: Reset',
+    description:
+      'Button under a text setting in Settings that discards the unsaved edit and restores the previously saved value. A verb.',
   },
 });
 

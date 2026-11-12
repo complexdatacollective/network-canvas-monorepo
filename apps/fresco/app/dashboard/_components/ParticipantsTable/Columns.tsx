@@ -26,34 +26,39 @@ const messages = defineMessages({
   selectRow: {
     id: 'fresco.ParticipantsTable.Columns.selectRow',
     defaultMessage: 'Select row',
-    description: 'Researcher-facing ParticipantsTable / Columns: Select row',
+    description:
+      'Accessible name of the checkbox at the start of each participants table row that selects the row; read only by screen readers.',
   },
   identifier: {
     id: 'fresco.ParticipantsTable.Columns.identifier',
     defaultMessage: 'Identifier',
-    description: 'Researcher-facing ParticipantsTable / Columns: Identifier',
+    description:
+      'Column heading in the participants table for the participant identifier, the unique code that identifies a study participant.',
   },
   protocolIcon: {
     id: 'fresco.ParticipantsTable.Columns.protocolIcon',
     defaultMessage: 'Protocol icon',
-    description: 'Researcher-facing ParticipantsTable / Columns: Protocol icon',
+    description:
+      'Alternative text of the small participant picture shown beside each identifier in the participants table; read only by screen readers.',
   },
   label: {
     id: 'fresco.ParticipantsTable.Columns.label',
     defaultMessage: 'Label',
-    description: 'Researcher-facing ParticipantsTable / Columns: Label',
+    description:
+      'Column heading in the participants table for the optional human-readable label (for example a name) a researcher gave a participant. A noun.',
   },
   interviews: {
     id: 'fresco.ParticipantsTable.Columns.interviews',
     defaultMessage: 'Interviews',
-    description: 'Researcher-facing ParticipantsTable / Columns: Interviews',
+    description:
+      'Column heading in the participants table for the number of interviews each participant has, with how many are completed.',
   },
 
   uniqueParticipantURL: {
     id: 'fresco.ParticipantsTable.Columns.uniqueParticipantURL',
     defaultMessage: 'Unique Participant URL',
     description:
-      'Researcher-facing ParticipantsTable / Columns: Unique Participant URL',
+      "Column heading in the participants table above the buttons that generate or copy each participant's personal interview link (URL).",
   },
 });
 
@@ -101,7 +106,7 @@ export function getParticipantColumns(
               height={24}
             />
             <Badge appearance="outline">
-              <span className="max-w-56 truncate">
+              <span dir="auto" className="text-match-parent max-w-56 truncate">
                 {row.original.identifier}
               </span>
             </Badge>
@@ -121,7 +126,11 @@ export function getParticipantColumns(
         );
       },
       cell: ({ row }) => {
-        return <span className="truncate">{row.original.label}</span>;
+        return (
+          <span dir="auto" className="text-match-parent truncate">
+            {row.original.label}
+          </span>
+        );
       },
     },
     {
