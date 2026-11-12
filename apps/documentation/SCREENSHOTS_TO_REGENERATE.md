@@ -63,6 +63,26 @@ The Per Alter Form and Per Alter Edge Form interface pages no longer show
 `interface-documentation/per-alter-form/architect-intro.png` and
 `interface-documentation/per-edge-form/architect-intro.png`.
 
+## Interface documentation (Architect and interview captures)
+
+In November 2026 every Architect Classic stage-editor capture on the
+interface documentation pages was recaptured from Architect (schema 9),
+keeping the same file names and the same example content (stage names,
+prompts, fields, the census-tract GeoJSON and the Mapbox key):
+`shared/shared-configuration.png` (re-annotated), `ego-form/architect-ego-form.png`,
+`information/architect-items.png`, `name-generators/add-screen.png`,
+`name-generators/side-panel.png`, `name-generators/architect-search.png`,
+`ordinal-bin/architect_1.png`, `ordinal-bin/architect_2.png`,
+`per-alter-form/add-screen.png`, `per-alter-form/architect-node-type.png`,
+`per-alter-form/architect-form.png`, `per-edge-form/architect-edge-type.png`,
+`per-edge-form/architect-form.png`, `geospatial/geojson.png`,
+`geospatial/selection-property.png` and `geospatial/upload-api-key.png`.
+
+The Interviewer 6.x interview captures on the name generator pages were
+recaptured from the current interview runtime in the same pass, with the same
+prompts, names and form fields: `name-generators/preview.png` (re-annotated),
+`name-generators/ng-form.png` and `name-generators/ng-quick.png`.
+
 ## Using Interviewer (Interviewer screenshots)
 
 Source: `docs/collect-data/interviewer/using-interviewer.en.mdx`
