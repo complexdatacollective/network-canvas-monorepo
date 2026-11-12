@@ -23,7 +23,7 @@ Because this interface loads maps from Mapbox, it **requires an internet connect
 ## Mapbox Configuration
 
 This interface uses a third-party service called [Mapbox](https://www.mapbox.com/) to provide map functionality.
-To use this service, you need to create an account with Mapbox and retrieve an API key for communication with Architect, Interviewer, and Fresco.
+To use this service, you need to create an account with Mapbox and retrieve an API key that Architect, Interviewer, and Fresco use to communicate with Mapbox.
 
 <TipBox>
 
@@ -41,7 +41,7 @@ To create a Mapbox account and retrieve an API Key:
 
 ![Mapbox Token](/assets/img/interface-documentation/geospatial/mapbox-token.png)
 
-Once you have copied your API token from Mapbox, you can add it to your protocol in the API Key section of the interface configuration.
+Once you have copied your API token from Mapbox, you can add it to your protocol in the **Mapbox API Key** field, in the **Map access** section of the stage editor.
 Tokens can be reused across interfaces. They are accessible via the Resource Library and can be copied, deleted, or replaced if needed.
 
 ![Enter your API Key and select it](/assets/img/interface-documentation/geospatial/upload-api-key.png)
@@ -60,7 +60,7 @@ For example, a GeoJSON file might contain areas representing census tracts, with
 
 ![Upload a GeoJSON file](/assets/img/interface-documentation/geospatial/geojson.png)
 
-After uploading a GeoJSON file in the Data Source for Map Layers section, select a property (e.g., census tract or zip code) to define the selectable areas on the map. The values of this property will be used to assign variables for the prompts.
+After choosing a GeoJSON file in the **Layer data source** field of the **Map layers** section, select a property (e.g., census tract or zip code) in **Map selection property** to define the selectable areas on the map. The values of this property will be used to assign variables for the prompts.
 
 For example, if your GeoJSON file contains a `TRACTID` property, selecting an area on the map will assign the `TRACTID` value to the prompt variable.
 
@@ -73,7 +73,7 @@ You can customize the map's appearance by choosing from a variety of standard or
 Additionally, you can enable the following options:
 
 - **Show public transit**: Displays transit routes and stations on the map, which can help participants orient themselves when selecting areas.
-- **Allow search**: Enables a search box that allows participants to search for addresses, neighborhoods, and points of interest. This can help participants quickly navigate to familiar locations on the map. Note that enabling this feature uses the Mapbox Search API, which may incur additional costs depending on your usage. See the [Mapbox pricing page](https://www.mapbox.com/pricing#search) for details.
+- **Allow location search**: Enables a search box that allows participants to search for addresses, neighborhoods, and points of interest. This can help participants quickly navigate to familiar locations on the map. Note that enabling this feature uses the Mapbox Search API, which may incur additional costs depending on your usage. See the [Mapbox pricing page](https://www.mapbox.com/pricing#search) for details.
 
 ## Configuring Initial Map View
 
@@ -99,13 +99,13 @@ The messages shown when the map can't be used as usual are the same on every Geo
 
 - **Offline message** is shown while the participant's device is offline, because the map can't load without a connection.
 - **Map unavailable message** is shown in place of the map when their device can't draw it, and says what to try.
-- **Search failed message** is shown when a search could not run. The protocol holds it only while a Geospatial stage has **Allow search** switched on. The placeholder of the search box and the message shown when a search matches nothing are [interview text](/en/design-protocols/translating-your-protocol#interview-text), under **Search**.
+- **Search failed message** is shown when a search could not run. The protocol holds it only while a Geospatial stage has **Allow location search** switched on. The placeholder of the search box and the message shown when a search matches nothing are [interview text](/en/design-protocols/translating-your-protocol#interview-text), under **Search**.
 
 </AppOnly>
 
 ## Prompts
 
-The Geospatial Interface can include multiple [prompts](/en/design-protocols/key-concepts/prompts), each corresponding to a single text variable.
+The Geospatial Interface can include multiple [prompts](/en/design-protocols/key-concepts/prompts), each corresponding to a single location variable.
 The value of each variable is determined by the property of the selected map area from the GeoJSON file.
 
 If a response is made outside the selectable areas on the map, the variable will be assigned `outside-selectable-areas`.
