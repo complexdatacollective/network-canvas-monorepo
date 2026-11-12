@@ -96,7 +96,7 @@ interview is "القائم بالمقابلة".
 | English                     | Arabic                          | Notes                                                                                                                                                                                                                                    |
 | --------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | alter (alters)              | طرف آخر (الأطراف الأخرى)          | The people or things a participant names. Indefinite "طرف آخر", definite "الطرف الآخر". _Gloss_: "الأطراف الأخرى (كل من يسمّيهم المشارك في أثناء المقابلة)". Never "الآخرون" alone, which reads as "the others".                              |
-| annotation                  | تعليق توضيحي                    | Freehand drawing on the Narrative canvas: "رسم توضيحي" for the drawing itself.                                                                                                                                                           |
+| annotation                  | تعليق توضيحي                    | Freehand drawing on the Narrative canvas: "رسم توضيحي" for one drawing, "الرسومات" for the drawings (see "Interview terms").                                                                                                             |
 | answer options              | خيارات الإجابة                   | Plain "خيارات" also means settings; write "خيارات الإجابة" unless the context settles it.                                                                                                                                                 |
 | attribute                   | سمة (سمات)                      | What the editors call a codebook variable. Never "خاصية", which is kept for a property of the interface.                                                                                                                                 |
 | bin (in the bin interfaces) | خانة (خانات)                    | The zone a node is dropped into. A trash bin is "سلة المحذوفات".                                                                                                                                                                         |
@@ -246,6 +246,52 @@ use the forms below where the English has none.
 | intersex                                 | ثنائي الجنس                                               | The sex-at-birth answer. Never for bisexual, which is "مزدوج الميل الجنسي".                                                                                                                                                                                                                                                                                      |
 | key (the legend of a pedigree's symbols) | مفتاح الرموز                                              | "مفتاح شجرة النسب" where the tree is named. Never bare "المفتاح", which reads as a key.                                                                                                                                                                                                                                                                          |
 | pedigree nomenclature                    | نظام الرموز المعياري لشجرة النسب                          | The published convention for drawing a pedigree. Never "تسميات" alone, which is labels.                                                                                                                                                                                                                                                                          |
+
+### One relative, in text the participant reads
+
+The Family Pedigree names a relative with its neutral words (Parent, Child,
+Sibling, Partner, Grandparent, Relative…) whenever their gender identity is not
+woman or man, non-binary relatives included, and always under the egg and
+sperm parent framing. Arabic has no neutral singular for most of them. By
+Josh's ruling of 12 November 2026, the wording the participant reads names
+such a relative with "one of the" and the plural, which Arabic uses for a
+group of men and women:
+
+| English                  | Arabic       |
+| ------------------------ | ------------ |
+| parent                   | أحد الوالدين |
+| child                    | أحد الأبناء   |
+| sibling                  | أحد الإخوة    |
+| grandparent              | أحد الأجداد   |
+| grandchild               | أحد الأحفاد   |
+| relative                 | أحد الأقارب   |
+| partner (no plural form) | شريك الحياة  |
+
+Qualified kinds take the same form ("أحد الوالدين بالتبنّي", "أحد الإخوة غير
+الأشقاء"). "أحد" is grammatically masculine but is the usual word for a
+mother as well. Partner has no such plural and stays the masculine generic.
+The "X or Y" pairs in the table above would name a non-binary relative as one
+of two sexes, and in a tree label they grow long (a cousin's runs to six
+words). Architect's text keeps those pairs, because there the researcher reads
+about a role, not about one person.
+
+A relative the English calls "they" is "هذا الشخص" (this person), or their
+`{name}` repeated, never the pronoun "هو". "شخص" is grammatically masculine,
+so verbs and adjectives agree with it in the masculine, but its meaning has no
+gender. Verbs, adjectives and attached pronouns that refer back to "هذا
+الشخص" or to "أحد …" agree with that word in the masculine ("تفاصيله",
+"أحد والدَيه"): that is agreement with the word, not "هو" standing for the
+relative. A parent of unknown gender is never the bare singular "والد" or
+"الوالد" here, which reads as "father": "مَن الآخر من والدَي هذا الشخص؟", "لا
+يوجد أحد آخر من الوالدين", and the stand-in parent is "أحد الوالدين غير
+المسمَّين". Two people who may be twins are "من التوائم المتطابقة" (of the
+identical twins), not the masculine dual "توأمان متطابقان", which names the
+pair as men; one twin is "توأم", which serves for a woman as well. Step-relatives are named through a parent's or grandparent's
+partner ("زوجة أحد الوالدين", "ابن شريك حياة أحد الوالدين", "أحد أبناء شريك
+حياة أحد الوالدين"): "من زواج أحد الوالدين" reads as a half-sibling born of
+that marriage, and "زوجة الأب" says which parent, which the English does not. Sentences that address the participant need no such rule: "أنت", the
+suffix "ك" and past-tense verbs ("حملت") are spelled the same for a man and a
+woman, and passive sentences cover the rest.
 
 ## Gender
 
@@ -524,6 +570,20 @@ community forum and the news posts.
 | Terms of Use / Privacy Policy                 | شروط الاستخدام / سياسة الخصوصية                          |                                                                                                                                                                                                                                                                                    |
 | citation                                      | بيانات الاستشهاد المرجعي                                 |                                                                                                                                                                                                                                                                                    |
 | Scientific Advisors / Core Team               | المستشارون العلميون / الفريق الأساسي                     |                                                                                                                                                                                                                                                                                    |
+
+## Interview terms
+
+The wording Network Canvas supplies inside an interview, which the participant
+reads.
+
+| English                          | Arabic                                | Notes                                                                                                                                                                                                                                                          |
+| -------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| study organizer                  | القائمون على الدراسة                  | Plural, so it names no gender: "يُرجى التواصل مع القائمين على الدراسة".                                                                                                                                                                                         |
+| the next arrow / the next button | سهم «التالي» / زر «التالي»            | The control that moves to the next screen. Never "السهم الأيمن": the layout is mirrored.                                                                                                                                                                        |
+| annotations (Narrative drawing)  | الرسومات                              | The participant's freehand drawings: "إعادة تعيين الرسومات". "الرسوم التوضيحية" reads as illustrations.                                                                                                                                                        |
+| triplets, multiple births        | التوائم الثلاثية، الولادات المتعددة     |                                                                                                                                                                                                                                                                |
+| half-brothers and half-sisters   | الإخوة غير الأشقاء والأخوات غير الشقيقات |                                                                                                                                                                                                                                                                |
+| key row (a pedigree legend line) | a verbal noun or a status noun        | A legend line describes any relative, so no verb or adjective takes a gender: "الإصابة بهذه الحالة الصحية" (has), "حامل لهذه الحالة الصحية" (carries, the carrier noun: the verbal noun "حمل" is spelled as "pregnancy"), "حالة الإصابة غير معروفة" (not known). |
 
 ## Common controls
 

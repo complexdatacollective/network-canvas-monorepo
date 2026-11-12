@@ -14,6 +14,7 @@ import type { LocalizedString } from './localized-string.ts';
  */
 export const SUPPLIED_LANGUAGES: readonly LocaleTag[] = [
   'en',
+  'ar',
   'de',
   'es',
   'fr',

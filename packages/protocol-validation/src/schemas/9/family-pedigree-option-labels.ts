@@ -57,6 +57,26 @@ export const SUPPLIED_PEDIGREE_OPTION_LABELS = {
     ),
     pedigreeRelationship: englishLabels(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
   },
+  'ar': {
+    pedigreeSexAssignedAtBirth: {
+      female: 'أنثى',
+      male: 'ذكر',
+      intersex: 'ثنائي الجنس',
+      unknown: 'لا أعرف',
+      preferNotToSay: 'أفضّل عدم الإفصاح',
+    },
+    pedigreeRelationship: {
+      partner: 'شريك الحياة',
+      biological: 'أحد الوالدين البيولوجيين',
+      adoptive: 'أحد الوالدين بالتبنّي',
+      social: 'أحد الوالدين بالزواج أو بالتربية',
+      donor: 'متبرّع بالبويضة أو بالحيوانات المنوية',
+      surrogate: 'حاملة بديلة',
+      identicalTwin: 'توأم متطابق',
+      fraternalTwin: 'توأم غير متطابق',
+      unknownZygosityTwin: 'توأم، لا يُعرف إن كان متطابقًا',
+    },
+  },
   'de': {
     pedigreeSexAssignedAtBirth: {
       female: 'Weiblich',
