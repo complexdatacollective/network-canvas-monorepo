@@ -642,6 +642,7 @@ export default function Node(props: UINodeProps) {
         // takes the direction of its own text, so a Latin name ending in
         // punctuation ("team-b!") keeps it at the end in a right-to-left
         // interview. The label is centred, so its side does not change.
+        // oxlint-disable-next-line direction/typed-text-matches-parent -- labelVariants centre the label (text-center), so it has no side to keep
         <span
           ref={labelRef}
           dir="auto"
