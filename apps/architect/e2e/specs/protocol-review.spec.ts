@@ -184,6 +184,31 @@ async function openProblem(page: Page, popover: Locator, title: string) {
   return view;
 }
 
+type Box = { x: number; y: number; width: number; height: number };
+
+/**
+ * The box of `locator` once it has stopped moving: the same on two reads in
+ * a row, with the element fully opaque (a panel arrives with a fade and rise).
+ */
+async function settledBox(locator: Locator): Promise<Box> {
+  let previous = '';
+  let box: Box | null = null;
+  await expect
+    .poll(async () => {
+      box = await locator.boundingBox();
+      const opacity = await locator.evaluate(
+        (element) => getComputedStyle(element).opacity,
+      );
+      const key = JSON.stringify(box);
+      const settled = box !== null && key === previous && opacity === '1';
+      previous = key;
+      return settled;
+    })
+    .toBe(true);
+  if (!box) throw new Error('the element has no box');
+  return box;
+}
+
 /** Back from one problem to the list, whose row for it takes focus. */
 async function backToList(page: Page, view: Locator, title: string) {
   await view.getByRole('button', { name: 'Back' }).click();
@@ -715,8 +740,16 @@ test.describe('results', () => {
   }) => {
     const { popover } = await reviewedProtocol(page, seed, context);
     const title = 'The second prompt has no limit on how many to name';
+    const listBox = await settledBox(popover);
+    const buttonBox = await settledBox(reviewButton(page));
 
     const view = await openProblem(page, popover, title);
+    // The taller problem view stays where the list was: the same left edge,
+    // still above the button and on screen, not moved to another side of it.
+    const viewBox = await settledBox(view);
+    expect(Math.round(viewBox.x)).toBe(Math.round(listBox.x));
+    expect(viewBox.y).toBeGreaterThanOrEqual(0);
+    expect(viewBox.y + viewBox.height).toBeLessThanOrEqual(buttonBox.y);
     // The panel shows the problem in the list's place: no second dialog.
     await expect(page.getByRole('dialog')).toHaveCount(1);
     await expect(problemList(page.getByRole('dialog'))).toHaveCount(0);
@@ -1176,7 +1209,7 @@ test.describe('when a review cannot run', () => {
     });
   }
 
-  test('every provider’s budget spent holds reviews until the first starts again', async ({
+  test('every provider’s budget spent: the first press opens the panel, which holds reviews until the first budget starts again', async ({
     architectPage: page,
     context,
     seed,
@@ -1198,27 +1231,20 @@ test.describe('when a review cannot run', () => {
       },
     ]);
     await seed(reviewProtocolWithDetails());
+    // The Stages screen asks which providers have budget as soon as the
+    // button is there, before anything is pressed.
+    const answered = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/providers' &&
+        response.request().method() === 'GET',
+    );
     await gotoProtocol(page);
+    await expect(reviewButton(page)).toBeVisible();
+    await answered;
+    expect(service.providerRequests()).toBeGreaterThan(0);
 
-    // The app learns that every budget is spent when it first asks, which is
-    // on the dialog's last step: Start review cannot be pressed there.
-    await reviewButton(page).click();
-    await continueToModelStep(page);
-    const model = wizardStep(page, STEP.model);
-    await expect(
-      model.getByText(
-        /Every provider’s budget has been spent, so a review cannot start for now\./,
-      ),
-    ).toBeVisible();
-    await expect(modelOption(page, 'Claude Opus 5.5')).toBeDisabled();
-    await expect(modelOption(page, 'GPT-6.1 Sol')).toBeDisabled();
-    await expect(
-      model.getByRole('button', { name: 'Start review' }),
-    ).toBeDisabled();
-    await model.getByRole('button', { name: 'Cancel' }).click();
-    await expect(model).toBeHidden();
-
-    // Known now, so the button opens the panel, which says why and when.
+    // So the first press opens the panel, which says why and when, and not
+    // the dialog.
     await reviewButton(page).click();
     const popover = popoverOf(page);
     await expect(
@@ -1240,7 +1266,46 @@ test.describe('when a review cannot run', () => {
     ).toBeVisible();
     await expect(wizardStep(page, STEP.before)).toHaveCount(0);
     expect(service.bodies).toHaveLength(0);
-    expect(service.providerRequests()).toBeGreaterThan(0);
+  });
+
+  test('budgets spent while the dialog is open: the last step says so and Start review cannot be pressed', async ({
+    architectPage: page,
+    context,
+    seed,
+  }) => {
+    const service = await mockReviewService(context, RESULT_REVIEW);
+    await seed(reviewProtocolWithDetails());
+    await gotoProtocol(page);
+    await reviewButton(page).click();
+    await expect(wizardStep(page, STEP.before)).toBeVisible();
+    // The last step asks again as it opens.
+    service.providers([
+      {
+        provider: 'anthropic',
+        available: false,
+        reason: 'monthly_limit',
+        retryAt: null,
+      },
+      {
+        provider: 'openai',
+        available: false,
+        reason: 'daily_limit',
+        retryAt: null,
+      },
+    ]);
+    await continueToModelStep(page);
+    const model = wizardStep(page, STEP.model);
+    await expect(
+      model.getByText(
+        /Every provider’s budget has been spent, so a review cannot start for now\./,
+      ),
+    ).toBeVisible();
+    await expect(modelOption(page, 'Claude Opus 5.5')).toBeDisabled();
+    await expect(modelOption(page, 'GPT-6.1 Sol')).toBeDisabled();
+    await expect(
+      model.getByRole('button', { name: 'Start review' }),
+    ).toBeDisabled();
+    expect(service.bodies).toHaveLength(0);
   });
 
   test('503 service unavailable offers Try again, which sends the review again without the dialog', async ({

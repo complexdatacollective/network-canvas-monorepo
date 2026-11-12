@@ -356,6 +356,7 @@ describe('asking again, for a protocol that has study details', () => {
     await openProtocol(store);
     renderToolbar(store);
     const before = store.getState().activeProtocol.present;
+    const pastSteps = store.getState().activeProtocol.past.length;
 
     await openRequestDialogAt('Describe your study');
     expect(synopsis()).toHaveValue(STUDY_CONTEXT.synopsis);
@@ -375,7 +376,9 @@ describe('asking again, for a protocol that has study details', () => {
     await waitFor(() =>
       expect(getProtocolReviewRun(store.getState()).status).toBe('running'),
     );
+    // Nothing to undo: asking for a review left no step in the history.
     expect(store.getState().activeProtocol.present).toBe(before);
+    expect(store.getState().activeProtocol.past).toHaveLength(pastSteps);
     expect(lastRequest()).toMatchObject({
       request: { studyContext: STUDY_CONTEXT },
     });
@@ -384,6 +387,7 @@ describe('asking again, for a protocol that has study details', () => {
   it('saves details the researcher changes on the way, and reviews with them', async () => {
     await openProtocol(store);
     renderToolbar(store);
+    const pastSteps = store.getState().activeProtocol.past.length;
 
     await openRequestDialogAt('Who takes part, and how?');
     await userEvent.clear(population());
@@ -403,6 +407,8 @@ describe('asking again, for a protocol that has study details', () => {
     await waitFor(() =>
       expect(getProtocolReviewStudyContext(store.getState())).toEqual(changed),
     );
+    // One change to the protocol, which Undo takes back.
+    expect(store.getState().activeProtocol.past).toHaveLength(pastSteps + 1);
     expect(lastRequest()).toMatchObject({ request: { studyContext: changed } });
   });
 

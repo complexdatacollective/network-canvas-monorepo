@@ -82,16 +82,6 @@ export const completeStudyContext = (
   return result.success ? result.data : undefined;
 };
 
-/** Whether two sets of study details say the same thing. */
-export const sameStudyContext = (a: StudyContext, b: StudyContext): boolean =>
-  a.synopsis === b.synopsis &&
-  a.population === b.population &&
-  a.administration === b.administration &&
-  a.researchQuestions.length === b.researchQuestions.length &&
-  a.researchQuestions.every(
-    (question, index) => question === b.researchQuestions[index],
-  );
-
 /** What is written under `protocolReview` for these study details. */
 export const serializeProtocolReviewSettings = (
   studyContext: StudyContext,

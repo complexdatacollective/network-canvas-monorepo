@@ -55,13 +55,9 @@ import {
 } from '~/ducks/modules/protocolReview';
 import {
   completeStudyContext,
-  sameStudyContext,
   type StudyDetailsDraft,
 } from '~/protocolReview/settings';
-import {
-  getProtocolReviewStudyContext,
-  getProtocolReviewStudyDetailsDraft,
-} from '~/selectors/protocol';
+import { getProtocolReviewStudyDetailsDraft } from '~/selectors/protocol';
 import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 
 import { formatWhen } from './reviewText';
@@ -845,7 +841,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * to change or leave), and which model writes the review.
  *
  * Nothing is written until it is completed. Then the study details go into
- * the protocol as one change (only when they differ from what it holds), the
+ * the protocol as one change (none, when they are as the protocol holds them), the
  * sharing choice into the protocol's review record, and the model into this
  * browser's choice. Resolves true when it was completed, false when it was
  * cancelled; the caller starts the review.
@@ -854,7 +850,6 @@ export const useStartReviewWizard = () => {
   const intl = useAppIntl();
   const { openDialog } = useDialog();
   const dispatch = useAppDispatch();
-  const store = useAppStore();
 
   return useCallback(
     async (finalFocus?: FinalFocusTarget): Promise<boolean> => {
@@ -894,15 +889,13 @@ export const useStartReviewWizard = () => {
       // Every step validated what it holds, so this is complete; a draft that
       // is not would be a fault in the steps, and writes nothing.
       if (!studyContext) return false;
-      // Details left as they were are not a change to the protocol.
-      const saved = getProtocolReviewStudyContext(store.getState());
-      if (!saved || !sameStudyContext(saved, studyContext)) {
-        dispatch(setProtocolReviewStudyContext(studyContext));
-      }
+      // Details left as they were are not a change to the protocol: the
+      // protocol's history keeps no step for a write that changes nothing.
+      dispatch(setProtocolReviewStudyContext(studyContext));
       await dispatch(setShareReviews(share));
       if (provider !== null) dispatch(chooseReviewProvider(provider));
       return true;
     },
-    [dispatch, intl, openDialog, store],
+    [dispatch, intl, openDialog],
   );
 };
