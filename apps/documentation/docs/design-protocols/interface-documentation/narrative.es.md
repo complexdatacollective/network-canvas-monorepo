@@ -1,7 +1,7 @@
 ---
 title: Narrativa
 navOrder: 10
-translatedFrom: c26b480d91ad408e681c566aff99a67114e6222a
+translatedFrom: a21c6fb487cacde6abc161d81dd344278b8ee53a
 ---
 
 <InterfaceSummary type="Narrative">

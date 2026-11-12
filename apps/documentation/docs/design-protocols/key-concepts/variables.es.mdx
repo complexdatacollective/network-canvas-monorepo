@@ -2,7 +2,7 @@
 title: Variables
 navOrder: 4
 date: 5th October 2026
-translatedFrom: 7c4b41dcc6a284e31be1f4c0f77a1c1210420ca2
+translatedFrom: 6a5fb1eb94dfec0dc4ec2f2b4f18585451c40fbb
 ---
 
 <Definition>
@@ -309,28 +309,28 @@ Solo puedes eliminar las variables que no se usan:
 
 ### Estructura de la exportación CSV {#csv-export-structure}
 
-Las variables aparecen como columnas en los archivos CSV:
+Cada archivo CSV empieza con columnas de identificadores que relacionan los archivos entre sí, seguidas de una o varias columnas por cada variable. La mayoría de las variables ocupan una sola columna. Una variable categórica ocupa una columna por cada opción, cada una con un nombre de la forma `variable_opción` y con el valor `true` o `false`, así que la variable `gender` del ejemplo siguiente se convierte en tres columnas.
 
-**Archivo de ego:** las variables de ego, como columnas
+**Archivo de ego:** una fila por entrevista, con los datos de la sesión y después las variables de ego
 
 ```csv
-ego_id,networkCanvasEgoUUID,age,gender
-1,abc123,34,Male
+networkCanvasEgoUUID,networkCanvasCaseID,networkCanvasSessionID,networkCanvasProtocolName,sessionStart,sessionFinish,sessionExported,APP_VERSION,COMMIT_HASH,networkCanvasFinishOutcome,age,gender_female,gender_male,gender_non_binary
+abc123,case_001,sess456,My Study,2025-01-15T10:30:00.000Z,2025-01-15T11:15:00.000Z,2025-01-16T09:00:00.000Z,9.0.0,1a2b3c4,completed,34,false,true,false
 ```
 
-**Archivos de álteres:** las variables de los álteres, como columnas
+**Archivos de álteres:** una fila por álter, con sus variables de álter
 
 ```csv
-ego_id,alter_id,networkCanvasUUID,name,age,close_friend
-1,1,xyz789,John,32,true
-1,2,uvw456,Sarah,29,false
+nodeID,networkCanvasEgoUUID,networkCanvasUUID,name,age,close_friend
+1,abc123,xyz789,John,32,true
+2,abc123,uvw456,Sarah,29,false
 ```
 
-**Archivos de vínculos:** las variables de vínculo, como columnas
+**Archivos de vínculos:** una fila por vínculo, con sus variables de vínculo. `from` y `to` contienen el `nodeID` de los dos álteres que conecta.
 
 ```csv
-ego_id,edge_id,from,to,relationship_strength,frequency
-1,1,1,2,strong,weekly
+edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID,relationship_strength,frequency
+1,1,2,abc123,edg001,xyz789,uvw456,strong,weekly
 ```
 
 Si quieres una referencia completa que relacione cada tipo de variable con sus columnas CSV y sus atributos de GraphML exportados, junto con consejos para analizar cada tipo, consulta el [Diccionario de datos de exportación](/es/analyze-data/data-dictionary).

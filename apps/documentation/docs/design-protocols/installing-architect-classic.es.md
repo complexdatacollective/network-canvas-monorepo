@@ -2,12 +2,12 @@
 title: Instalar Architect Classic
 navOrder: 11
 toc: true
-translatedFrom: 665c9b789128633d75dea11ae0e8c1ed9b16c8ff
+translatedFrom: 5024489847fc3506097126a01ad7b13ce5bfc198
 ---
 
 ¿No sabes si de verdad necesitas Architect Classic? Consulta [Elegir Architect o Architect Classic](/es/design-protocols/choosing-architect).
 
-Para todos los estudios nuevos, te recomendamos usar [Architect](/es/design-protocols/getting-started), que funciona completamente en tu navegador sin necesidad de descargar ni instalar nada (y que se puede instalar como aplicación web progresiva para usarlo sin conexión). Crea protocolos del esquema 9, que se pueden usar en [Fresco](/es/collect-data/fresco) y en [Interviewer](/es/collect-data/interviewer).
+Para todos los estudios nuevos, te recomendamos usar [Architect](/es/design-protocols/getting-started), que funciona completamente en tu navegador sin necesidad de descargar ni instalar nada (y que se puede instalar como aplicación web progresiva para usarlo sin conexión). Crea protocolos del esquema 9, que se pueden usar en [Fresco](/es/collect-data/fresco/about) y en [Interviewer](/es/collect-data/interviewer/about).
 
 No obstante, si necesitas crear un protocolo del esquema 7, puedes usar **Architect Classic**. Se puede descargar e instalar por separado desde la [página de descarga](https://networkcanvas.com/es/get-started): para usarlo no necesitas instalar ninguna de las otras aplicaciones de Network Canvas.
 

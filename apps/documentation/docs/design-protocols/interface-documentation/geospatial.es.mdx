@@ -1,7 +1,7 @@
 ---
 title: Geoespacial
 navOrder: 20
-translatedFrom: 070a46e3808e37f3a8b9f46be1d873c027ab3ba8
+translatedFrom: 40516bb531b1c3e7cc0810b8c6a6418a7b991ac2
 ---
 
 <InterfaceSummary type="Geospatial">
@@ -24,7 +24,7 @@ Como esta interfaz carga los mapas desde Mapbox, **necesita conexión a internet
 ## Configuración de Mapbox {#mapbox-configuration}
 
 Esta interfaz usa un servicio de terceros llamado [Mapbox](https://www.mapbox.com/) (en inglés) para ofrecer las funciones de mapa.
-Para usar este servicio, tienes que crear una cuenta en Mapbox y obtener una clave de API para la comunicación con Architect, Interviewer y Fresco.
+Para usar este servicio, tienes que crear una cuenta en Mapbox y obtener una clave de API que Architect, Interviewer y Fresco usan para comunicarse con Mapbox.
 
 <TipBox>
 
@@ -42,7 +42,7 @@ Para crear una cuenta de Mapbox y obtener una clave de API:
 
 ![Token de Mapbox](/assets/img/interface-documentation/geospatial/mapbox-token.png)
 
-Cuando hayas copiado tu token de API de Mapbox, puedes añadirlo a tu protocolo en la sección de la clave de API de la configuración de la interfaz.
+Cuando hayas copiado tu token de API de Mapbox, puedes añadirlo a tu protocolo en el campo **Clave de API de Mapbox**, en la sección **Acceso al mapa** del editor de la etapa.
 Los tokens se pueden reutilizar en distintas interfaces. Puedes acceder a ellos desde la «Biblioteca de recursos», donde se pueden copiar, eliminar o sustituir si es necesario.
 
 ![Introduce tu clave de API y selecciónala](/assets/img/interface-documentation/geospatial/upload-api-key.png)
@@ -61,7 +61,7 @@ Por ejemplo, un archivo GeoJSON podría contener áreas que representan seccione
 
 ![Sube un archivo GeoJSON](/assets/img/interface-documentation/geospatial/geojson.png)
 
-Después de subir un archivo GeoJSON en la sección de la fuente de datos de las capas del mapa, selecciona una propiedad (por ejemplo, la sección censal o el código postal) para definir las áreas seleccionables del mapa. Los valores de esta propiedad se usarán para asignar valores a los atributos de las preguntas.
+Después de elegir un archivo GeoJSON en el campo **Fuente de datos de la capa** de la sección **Capas del mapa**, selecciona una propiedad (por ejemplo, la sección censal o el código postal) en **Propiedad de selección del mapa** para definir las áreas seleccionables del mapa. Los valores de esta propiedad se usarán para asignar valores a los atributos de las preguntas.
 
 Por ejemplo, si tu archivo GeoJSON contiene una propiedad `TRACTID`, al seleccionar un área en el mapa se asignará el valor de `TRACTID` al atributo de la pregunta.
 
@@ -106,7 +106,7 @@ Los mensajes que se muestran cuando el mapa no se puede usar con normalidad son 
 
 ## Preguntas {#prompts}
 
-La interfaz geoespacial puede incluir varias [preguntas](/es/design-protocols/key-concepts/prompts), cada una asociada a un único atributo de texto.
+La interfaz geoespacial puede incluir varias [preguntas](/es/design-protocols/key-concepts/prompts), cada una asociada a un único atributo de ubicación.
 El valor de cada atributo lo determina la propiedad del área del mapa seleccionada en el archivo GeoJSON.
 
 Si se da una respuesta fuera de las áreas seleccionables del mapa, se asignará al atributo el valor `outside-selectable-areas`.
