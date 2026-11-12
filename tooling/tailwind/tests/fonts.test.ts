@@ -165,3 +165,17 @@ describe('the rules for text marked as Arabic', () => {
     },
   );
 });
+
+describe('text that takes its direction from its own content', () => {
+  const css = read('../fresco/utilities.css');
+  const rule = /@utility text-match-parent \{([^}]*)\}/.exec(css)?.[1] ?? '';
+
+  // Chrome knows only the prefixed keyword and Firefox only the standard one,
+  // so the utility needs both, with the standard one last for a browser that
+  // knows both.
+  it('stays on its container’s side in every browser', () => {
+    expect(
+      [...rule.matchAll(/text-align:\s*([^;]+);/g)].map(([, value]) => value),
+    ).toEqual(['-webkit-match-parent', 'match-parent']);
+  });
+});

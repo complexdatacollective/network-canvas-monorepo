@@ -309,7 +309,11 @@ describe('<LibraryPanel /> protocol row name', () => {
     renderPanel();
 
     const label = screen.getByTitle(longRtlName);
-    expect(label).toHaveClass('line-clamp-2', 'wrap-anywhere');
+    expect(label).toHaveClass(
+      'line-clamp-2',
+      'wrap-anywhere',
+      'text-match-parent',
+    );
     expect(label).toHaveAttribute('dir', 'auto');
     expect(label).toHaveTextContent(longRtlName);
   });

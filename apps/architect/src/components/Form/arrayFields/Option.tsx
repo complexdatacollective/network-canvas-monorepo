@@ -269,7 +269,7 @@ const Option = ({
             })}
           />
         )}
-        <div className="min-w-0 flex-1 truncate">
+        <div dir="auto" className="text-match-parent min-w-0 flex-1 truncate">
           {hasLabel ? (
             <OptionLabel label={localizedText(item.label, localization)} />
           ) : (

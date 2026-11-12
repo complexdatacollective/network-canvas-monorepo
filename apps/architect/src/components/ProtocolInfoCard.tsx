@@ -477,7 +477,9 @@ const ProtocolInfoCard = () => {
               tier, and it applies to values the cap never saw (imported or
               pre-cap names), which is what makes legacy protocols safe on load.
               `dir="auto"` gives an RTL name an RTL base direction so it reads
-              and truncates from the correct end. */}
+              and truncates from the correct end, and `text-align: match-parent`
+              keeps the name on the side the rest of the card is on whichever
+              way it reads. */}
           <textarea
             rows={1}
             dir="auto"
@@ -487,7 +489,7 @@ const ProtocolInfoCard = () => {
               margin: 'none',
               className: cx(
                 'text-navy-taupe placeholder:text-navy-taupe/50 focus-visible:ring-sea-green field-sizing-content w-full resize-none rounded-sm border-none bg-transparent p-0 font-black outline-none focus-visible:ring-2 focus-visible:outline-none',
-                'max-h-[3lh] overflow-hidden wrap-break-word',
+                'text-match-parent max-h-[3lh] overflow-hidden wrap-break-word',
                 // WebKit on iOS greys a disabled field's text through this
                 // property rather than `color`, which would fade the title.
                 'disabled:[-webkit-text-fill-color:currentColor]',

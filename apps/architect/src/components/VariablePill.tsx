@@ -457,7 +457,10 @@ export const VariablePill = ({
         style={style}
       >
         <VariablePillContents type={type}>
-          <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
+          <span
+            dir="auto"
+            className="text-match-parent m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
+          >
             {label}
           </span>
         </VariablePillContents>
@@ -486,7 +489,10 @@ export const VariablePill = ({
               onClick={handleStartEditing}
             >
               <VariablePillContents type={type}>
-                <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
+                <span
+                  dir="auto"
+                  className="text-match-parent m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
+                >
                   {label}
                 </span>
               </VariablePillContents>

@@ -94,7 +94,7 @@ const ProtocolCard = ({
           dir="auto"
           title={name}
           className={cx(
-            'wrap-break-word hyphens-auto',
+            'text-match-parent wrap-break-word hyphens-auto',
             countGraphemes(name) > PROTOCOL_NAME_MAX_LENGTH && 'line-clamp-3',
           )}
         >
@@ -102,7 +102,9 @@ const ProtocolCard = ({
         </Heading>
 
         {description && (
-          <div className="text-sm wrap-break-word">{description}</div>
+          <div dir="auto" className="text-match-parent text-sm wrap-break-word">
+            {description}
+          </div>
         )}
 
         <div className="text-navy-taupe/70 font-monospace mt-2.5 flex flex-col gap-1 text-xs tracking-widest uppercase">

@@ -449,7 +449,8 @@ const AssetCard = ({
           <Heading
             level="h4"
             margin="none"
-            className="line-clamp-2 text-lg leading-tight wrap-anywhere"
+            dir="auto"
+            className="text-match-parent line-clamp-2 text-lg leading-tight wrap-anywhere"
             title={name}
           >
             {name}

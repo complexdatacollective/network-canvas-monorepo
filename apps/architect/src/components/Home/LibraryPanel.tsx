@@ -652,15 +652,19 @@ const PanelRow = ({
         />
       </div>
       <div className="w-full min-w-0 flex-1 gap-2">
-        {/* Already height-bounded by `line-clamp-2`; `dir="auto"` is the RTL
-            half — without it the row's LTR base direction reorders an RTL name
-            so the clamp's ellipsis lands on the wrong end. */}
+        {/* Already height-bounded by `line-clamp-2`. A name and description
+            are written by a researcher in a language of their own, so each
+            takes its base direction from its own text (`dir="auto"`): without
+            it the interface's direction reorders the text, and the clamp's
+            ellipsis lands on the wrong end. `text-align: match-parent` then
+            keeps both on the side the rest of the row is on, so a Latin name
+            in a right-to-left interface does not sit alone at the far left. */}
         <Heading
           level="label"
           variant="subtitle"
           title={name}
           dir="auto"
-          className="line-clamp-2 wrap-anywhere"
+          className="text-match-parent line-clamp-2 wrap-anywhere"
           margin="none"
         >
           {name}
@@ -677,7 +681,10 @@ const PanelRow = ({
         {meta && <span className="text-sm text-current/70">{meta}</span>}
 
         {description && (
-          <span className="line-clamp-3 text-sm text-current/70">
+          <span
+            dir="auto"
+            className="text-match-parent line-clamp-3 text-sm text-current/70"
+          >
             {description}
           </span>
         )}

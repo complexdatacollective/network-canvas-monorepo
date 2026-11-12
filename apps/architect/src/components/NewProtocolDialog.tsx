@@ -357,6 +357,7 @@ const NewProtocolDialog = ({
             )}
             custom={nameLengthValidation.custom}
             dir="auto"
+            inputClassName="text-match-parent"
             autoFocus
             {...selectProposedName}
           />
