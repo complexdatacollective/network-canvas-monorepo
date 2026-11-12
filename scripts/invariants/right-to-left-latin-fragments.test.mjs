@@ -18,8 +18,8 @@ import { describe, expect, it } from 'vitest';
  * right-to-left string that breaks that rule.
  *
  * It lives at the repository root so that a change to any catalog re-runs it:
- * the `//#test:invariants` turbo task lists `packages/**` and `apps/**` as its
- * inputs.
+ * the `//#test:invariants` turbo task lists the catalogs and posts under
+ * `packages/**` and `apps/**` among its inputs. Keep the two in step.
  */
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const SCANNED_ROOTS = ['packages', 'apps'];
@@ -73,6 +73,10 @@ const bareLeadingDots = (text) => {
 // Markdown file named for its locale (`fresco-1.ar.md`). English sources and
 // the recorded English beside each translation are skipped: they hold no
 // right-to-left text, and reading them would only slow the scan.
+// Paths are matched and reported with forward slashes, which is not what
+// `join` gives on Windows.
+const portable = (path) => path.split('\\').join('/');
+
 const isCatalog = (path) =>
   /\/(?:locales|messages)\/[^/]+\.json$/.test(path) &&
   !path.endsWith('.source.json');
@@ -88,7 +92,9 @@ const files = (directory) =>
     }
     if (!entry.isFile()) return [];
     const path = join(directory, entry.name);
-    return isCatalog(path) || isTranslatedPost(path) ? [path] : [];
+    return isCatalog(portable(path)) || isTranslatedPost(portable(path))
+      ? [path]
+      : [];
   });
 
 const scanned = SCANNED_ROOTS.flatMap((root) => files(join(REPO_ROOT, root)));
@@ -102,7 +108,7 @@ describe('dot-leading Latin fragments in right-to-left text', () => {
   it('finds the Arabic catalogs and posts to scan', () => {
     // Without this, a bad REPO_ROOT or file filter would make the scan below
     // vacuous.
-    const paths = scanned.map((path) => relative(REPO_ROOT, path));
+    const paths = scanned.map((path) => portable(relative(REPO_ROOT, path)));
     expect(paths).toContain('apps/architect/src/locales/ar.json');
     expect(paths).toContain('packages/app-i18n/src/locales/ar.json');
     expect(paths).toContain('apps/networkcanvas.com/messages/ar.json');
@@ -116,7 +122,9 @@ describe('dot-leading Latin fragments in right-to-left text', () => {
     const offenders = scanned.flatMap((path) =>
       textsIn(path)
         .flatMap(bareLeadingDots)
-        .map((context) => `${relative(REPO_ROOT, path)}: …${context}…`),
+        .map(
+          (context) => `${portable(relative(REPO_ROOT, path))}: …${context}…`,
+        ),
     );
     expect(offenders).toEqual([]);
   });
