@@ -3,7 +3,7 @@ title: Elegir un dispositivo para Interviewer
 navOrder: 3
 wip: false
 toc: true
-translatedFrom: 666b39bd21d3655ad54f3a5b828f8c6aa55c480c
+translatedFrom: e172569169a1662f0d42f1623b4f90ac38be9f52
 ---
 
 Elegir el dispositivo en el que vas a ejecutar Interviewer es un paso importante para optimizar la calidad de los datos que recopilas, así como el flujo de trabajo general de un estudio con Network Canvas.
