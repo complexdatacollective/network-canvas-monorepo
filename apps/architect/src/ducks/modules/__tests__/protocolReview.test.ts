@@ -7,7 +7,9 @@ import {
   FINDING_CATEGORIES,
   FINDING_SEVERITIES,
   type Finding,
+  type ProviderAvailability,
   REVIEW_ERROR_CODES,
+  REVIEW_PROVIDERS,
   type ReviewEvent,
   type ReviewResult,
 } from '@codaco/protocol-review-worker/contract';
@@ -23,14 +25,20 @@ import { setActiveProtocolId, setProtocolLockState } from '~/ducks/modules/app';
 import {
   cancelReview,
   checkFixAvailability,
+  chooseReviewProvider,
   decideFinding,
   getProtocolReviewCounts,
   getProtocolReviewFindings,
   getProtocolReviewProgress,
   getProtocolReviewRun,
   getProtocolReviewStartBlock,
+  getProtocolReviewWriter,
   getShareProtocolReviews,
+  refreshProtocolReviewRecord,
+  refreshReviewProviders,
   reviewProgressFraction,
+  reviewProviderChoices,
+  reviewProviderFor,
   setShareReviews,
   startReview,
   undoFix,
@@ -46,8 +54,12 @@ import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListe
 import {
   FINDING_DECISIONS,
   readReviewRecord,
+  writeReviewRecord,
 } from '~/protocolReview/reviewStore';
-import { PROTOCOL_REVIEW_QUOTA_KEY } from '~/utils/storageNames';
+import {
+  PROTOCOL_REVIEW_PROVIDER_KEY,
+  PROTOCOL_REVIEW_QUOTA_KEY,
+} from '~/utils/storageNames';
 
 vi.mock('~/analytics', () => ({ posthog: { capture: vi.fn() } }));
 
@@ -320,6 +332,7 @@ describe('a review run', () => {
 
     expect(answer.requestBody()).toEqual({
       installationId: expect.stringMatching(/^[0-9a-f-]{36}$/u),
+      provider: 'anthropic',
       locale: 'en',
       share: false,
       studyContext: STUDY_CONTEXT,
@@ -350,6 +363,7 @@ describe('a review run', () => {
       'advice',
     ]);
     expect(stored.review?.locale).toBe('en');
+    expect(stored.review?.provider).toBe('anthropic');
     expect(getProtocolReviewCounts(store.getState())).toEqual({
       total: 4,
       undecided: 4,
@@ -437,6 +451,7 @@ describe('a review run', () => {
       status: 'failed',
       code: 'hourly_limit',
       retryAt,
+      provider: 'anthropic',
     });
     expect(getProtocolReviewStartBlock(store.getState())).toEqual({
       code: 'hourly_limit',
@@ -444,6 +459,7 @@ describe('a review run', () => {
     });
     expect(posthog.capture).toHaveBeenCalledWith('protocol_review_failed', {
       error_code: 'hourly_limit',
+      provider: 'anthropic',
     });
   });
 
@@ -693,12 +709,14 @@ describe('analytics', () => {
       'protocol_review_decision',
       'protocol_review_decision',
     ]);
+    expect(calls[0]?.[1]).toEqual({ share: false, provider: 'anthropic' });
     expect(calls[1]?.[1]).toEqual({
       finding_count: 4,
       serious_count: 1,
       worth_fixing_count: 2,
       suggestion_count: 1,
       duration_ms: expect.any(Number),
+      provider: 'anthropic',
     });
 
     const allowed = new Set<string>([
@@ -706,6 +724,7 @@ describe('analytics', () => {
       ...FINDING_CATEGORIES,
       ...FINDING_DECISIONS,
       ...REVIEW_ERROR_CODES,
+      ...REVIEW_PROVIDERS,
     ]);
     for (const [, properties] of calls) {
       for (const value of Object.values(properties ?? {})) {
@@ -713,5 +732,367 @@ describe('analytics', () => {
         else expect(['number', 'boolean']).toContain(typeof value);
       }
     }
+  });
+});
+
+describe('providers', () => {
+  const NOW = Date.parse('2026-11-12T12:00:00.000Z');
+  const LATER = '2026-11-13T00:00:00.000Z';
+  const MUCH_LATER = '2026-12-01T00:00:00.000Z';
+  const idle = { status: 'idle' } as const;
+  const refused = (
+    provider: 'anthropic' | 'openai',
+    code: 'daily_limit' | 'monthly_limit' | 'too_large',
+    retryAt: string | null,
+  ) => ({ status: 'failed', code, retryAt, provider }) as const;
+
+  /**
+   * A stand-in for the service: `status` answers which providers have budget
+   * left, and `review` every review. Records what each review asked for.
+   */
+  const service = ({
+    status,
+    review,
+  }: {
+    status?: ProviderAvailability[] | 'down';
+    review?: () => Response;
+  }) => {
+    const reviews: { provider?: string }[] = [];
+    let statusRequests = 0;
+    const fetchImpl = vi.fn<typeof fetch>(async (url, init) => {
+      const href =
+        typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+      if (href.endsWith('/providers')) {
+        statusRequests += 1;
+        if (status === undefined || status === 'down') {
+          throw new TypeError('Failed to fetch');
+        }
+        return new Response(JSON.stringify({ providers: status }));
+      }
+      reviews.push(
+        typeof init?.body === 'string'
+          ? (JSON.parse(init.body) as { provider?: string })
+          : {},
+      );
+      if (review) return review();
+      return answering({
+        ...RESULT,
+        reviewId: crypto.randomUUID(),
+      }).fetchImpl(url, init);
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+    return { reviews, statusRequests: () => statusRequests };
+  };
+
+  const spent = (
+    provider: 'anthropic' | 'openai',
+    retryAt: string | null,
+  ): ProviderAvailability => ({
+    provider,
+    available: false,
+    reason: 'daily_limit',
+    retryAt,
+  });
+  const open_ = (provider: 'anthropic' | 'openai'): ProviderAvailability => ({
+    provider,
+    available: true,
+    reason: null,
+    retryAt: null,
+  });
+
+  it('takes every provider to have budget until the service says otherwise', () => {
+    expect(reviewProviderChoices({ spent: {}, run: idle }, NOW)).toEqual([
+      { provider: 'anthropic', available: true, retryAt: null },
+      { provider: 'openai', available: true, retryAt: null },
+    ]);
+  });
+
+  it('holds a provider the service said is spent until the time it gave', () => {
+    const state = { spent: { openai: { retryAt: LATER } }, run: idle };
+    expect(reviewProviderChoices(state, NOW)[1]).toEqual({
+      provider: 'openai',
+      available: false,
+      retryAt: Date.parse(LATER),
+    });
+    expect(
+      reviewProviderChoices(state, Date.parse(LATER) - 1)[1],
+    ).toMatchObject({ available: false });
+    expect(reviewProviderChoices(state, Date.parse(LATER))[1]).toEqual({
+      provider: 'openai',
+      available: true,
+      retryAt: null,
+    });
+    expect(reviewProviderChoices(state, NOW)[0]).toMatchObject({
+      available: true,
+    });
+  });
+
+  it('holds a provider given no time until the service is asked again', () => {
+    expect(
+      reviewProviderChoices(
+        { spent: { anthropic: { retryAt: null } }, run: idle },
+        Date.parse(MUCH_LATER),
+      )[0],
+    ).toEqual({ provider: 'anthropic', available: false, retryAt: null });
+  });
+
+  it.each(['daily_limit', 'monthly_limit'] as const)(
+    'holds the provider a review was refused for (%s), though the service has not said it is spent',
+    (code) => {
+      const state = { spent: {}, run: refused('openai', code, LATER) };
+      expect(reviewProviderChoices(state, NOW)).toEqual([
+        { provider: 'anthropic', available: true, retryAt: null },
+        { provider: 'openai', available: false, retryAt: Date.parse(LATER) },
+      ]);
+      expect(reviewProviderChoices(state, Date.parse(LATER))[1]).toMatchObject({
+        available: true,
+      });
+      expect(
+        reviewProviderChoices(
+          { spent: {}, run: refused('openai', code, null) },
+          Date.parse(MUCH_LATER),
+        )[1],
+      ).toEqual({ provider: 'openai', available: false, retryAt: null });
+    },
+  );
+
+  it('does not hold a provider for a failure that is not about its budget', () => {
+    expect(
+      reviewProviderChoices(
+        { spent: {}, run: refused('openai', 'too_large', LATER) },
+        NOW,
+      )[1],
+    ).toMatchObject({ available: true });
+  });
+
+  it('holds a provider until the later of two times it was given', () => {
+    expect(
+      reviewProviderChoices(
+        {
+          spent: { openai: { retryAt: LATER } },
+          run: refused('openai', 'monthly_limit', MUCH_LATER),
+        },
+        NOW,
+      )[1],
+    ).toEqual({
+      provider: 'openai',
+      available: false,
+      retryAt: Date.parse(MUCH_LATER),
+    });
+  });
+
+  it('asks the chosen provider, or the first with budget while the chosen one has none', () => {
+    const choices = (anthropic: boolean, openai: boolean) => [
+      { provider: 'anthropic' as const, available: anthropic, retryAt: null },
+      { provider: 'openai' as const, available: openai, retryAt: null },
+    ];
+    expect(reviewProviderFor('openai', choices(true, true))).toBe('openai');
+    expect(reviewProviderFor('openai', choices(true, false))).toBe('anthropic');
+    expect(reviewProviderFor('anthropic', choices(false, true))).toBe('openai');
+    expect(reviewProviderFor('openai', choices(false, false))).toBe('openai');
+  });
+
+  it('names the chosen provider in the request, records it with the review, and remembers the choice', async () => {
+    const { reviews } = service({});
+    const id = await open(store);
+    store.dispatch(chooseReviewProvider('openai'));
+    expect(localStorage.getItem(PROTOCOL_REVIEW_PROVIDER_KEY)).toBe('openai');
+    expect(await store.dispatch(startReview())).toMatchObject({
+      status: 'completed',
+    });
+    expect(reviews).toEqual([expect.objectContaining({ provider: 'openai' })]);
+    expect((await readReviewRecord(id)).review?.provider).toBe('openai');
+    expect(getProtocolReviewWriter(store.getState())).toBe('openai');
+    expect(posthog.capture).toHaveBeenCalledWith('protocol_review_started', {
+      share: false,
+      provider: 'openai',
+    });
+
+    // A new session in this browser starts from the same choice.
+    const next = makeStore();
+    await open(next);
+    expect(next.getState().protocolReview.provider).toBe('openai');
+    next.dispatch(cancelReview());
+  });
+
+  it('reads a review saved before there was a choice as Anthropic’s', async () => {
+    await reviewed(store);
+    const record = store.getState().protocolReview.record;
+    if (!record?.review) throw new Error('No review');
+    const { provider: _provider, ...review } = record.review;
+    const id = await open(store);
+    await writeReviewRecord({ ...record, protocolId: id, review });
+    await store.dispatch(refreshProtocolReviewRecord());
+    expect(store.getState().protocolReview.record?.review).not.toHaveProperty(
+      'provider',
+    );
+    expect(getProtocolReviewWriter(store.getState())).toBe('anthropic');
+  });
+
+  it('lets the other provider review a protocol that has not changed', async () => {
+    const { reviews } = service({});
+    await open(store);
+    await store.dispatch(startReview());
+    expect(getProtocolReviewStartBlock(store.getState())).toEqual({
+      code: 'unchanged',
+    });
+
+    store.dispatch(chooseReviewProvider('openai'));
+    expect(getProtocolReviewStartBlock(store.getState())).toBeNull();
+    expect(await store.dispatch(startReview())).toMatchObject({
+      status: 'completed',
+    });
+    expect(reviews.map((review) => review.provider)).toEqual([
+      'anthropic',
+      'openai',
+    ]);
+    // The same provider would now be asked the same question again.
+    expect(getProtocolReviewStartBlock(store.getState())).toEqual({
+      code: 'unchanged',
+    });
+  });
+
+  it.each(['daily_limit', 'monthly_limit'] as const)(
+    'after a %s refusal asks the service about the others, and sends the next review to one with budget',
+    async (code) => {
+      let refuse = true;
+      const { reviews, statusRequests } = service({
+        status: [spent('anthropic', MUCH_LATER), open_('openai')],
+        review: () => {
+          if (!refuse) {
+            return new Response(
+              `data: ${JSON.stringify({ type: 'result', result: RESULT })}\n\n`,
+              { headers: { 'Content-Type': 'text/event-stream' } },
+            );
+          }
+          refuse = false;
+          return new Response(
+            JSON.stringify({ error: code, retryAt: MUCH_LATER }),
+            { status: 503 },
+          );
+        },
+      });
+      await open(store);
+      expect(await store.dispatch(startReview())).toEqual({
+        status: 'failed',
+        code,
+        retryAt: MUCH_LATER,
+      });
+      expect(getProtocolReviewRun(store.getState())).toEqual({
+        status: 'failed',
+        code,
+        retryAt: MUCH_LATER,
+        provider: 'anthropic',
+      });
+      await vi.waitFor(() => expect(statusRequests()).toBe(1));
+
+      expect(getProtocolReviewStartBlock(store.getState())).toBeNull();
+      expect(await store.dispatch(startReview())).toMatchObject({
+        status: 'completed',
+      });
+      expect(reviews.map((review) => review.provider)).toEqual([
+        'anthropic',
+        'openai',
+      ]);
+      expect(
+        (
+          await readReviewRecord(
+            store.getState().protocolReview.record?.protocolId ?? '',
+          )
+        ).review?.provider,
+      ).toBe('openai');
+      // The choice itself stands, for when its budget starts again.
+      expect(store.getState().protocolReview.provider).toBe('anthropic');
+      expect(localStorage.getItem(PROTOCOL_REVIEW_PROVIDER_KEY)).toBeNull();
+    },
+  );
+
+  it('starts nothing while every provider’s budget is spent, and starts again when one does', async () => {
+    const { reviews } = service({
+      status: [spent('anthropic', MUCH_LATER), spent('openai', LATER)],
+    });
+    await open(store);
+    await store.dispatch(refreshReviewProviders());
+
+    expect(getProtocolReviewStartBlock(store.getState(), NOW)).toEqual({
+      code: 'budget_spent',
+    });
+    vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
+    expect(await store.dispatch(startReview())).toEqual({
+      status: 'refused',
+      reason: 'budget_spent',
+    });
+    expect(reviews).toEqual([]);
+
+    vi.setSystemTime(Date.parse(LATER));
+    expect(getProtocolReviewStartBlock(store.getState())).toBeNull();
+    expect(await store.dispatch(startReview())).toMatchObject({
+      status: 'completed',
+    });
+    expect(reviews.map((review) => review.provider)).toEqual(['openai']);
+    vi.useRealTimers();
+  });
+
+  it('replaces what it knew with each answer, and keeps it when no answer comes', async () => {
+    const first = service({
+      status: [open_('anthropic'), spent('openai', LATER)],
+    });
+    await store.dispatch(refreshReviewProviders());
+    expect(first.statusRequests()).toBe(1);
+    expect(store.getState().protocolReview.spent).toEqual({
+      openai: { retryAt: LATER },
+    });
+
+    service({ status: 'down' });
+    await store.dispatch(refreshReviewProviders());
+    expect(store.getState().protocolReview.spent).toEqual({
+      openai: { retryAt: LATER },
+    });
+
+    service({ status: [spent('anthropic', null), open_('openai')] });
+    await store.dispatch(refreshReviewProviders());
+    expect(store.getState().protocolReview.spent).toEqual({
+      anthropic: { retryAt: null },
+    });
+  });
+
+  it('keeps the choice and what the service said when another protocol opens', async () => {
+    service({ status: [open_('anthropic'), spent('openai', LATER)] });
+    await open(store);
+    store.dispatch(chooseReviewProvider('openai'));
+    await store.dispatch(refreshReviewProviders());
+    await open(store);
+    expect(store.getState().protocolReview.provider).toBe('openai');
+    expect(store.getState().protocolReview.spent).toEqual({
+      openai: { retryAt: LATER },
+    });
+  });
+
+  it('asks the service once while an answer is awaited', async () => {
+    let release: (response: Response) => void = () => undefined;
+    const fetchImpl = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+    );
+    vi.stubGlobal('fetch', fetchImpl);
+    const both = Promise.all([
+      store.dispatch(refreshReviewProviders()),
+      store.dispatch(refreshReviewProviders()),
+    ]);
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalled());
+    release(
+      new Response(
+        JSON.stringify({
+          providers: [spent('anthropic', LATER), open_('openai')],
+        }),
+      ),
+    );
+    await both;
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(store.getState().protocolReview.spent).toEqual({
+      anthropic: { retryAt: LATER },
+    });
   });
 });

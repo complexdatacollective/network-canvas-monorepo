@@ -7,6 +7,7 @@ import {
   PROTOCOL_DB_NAME,
   PROTOCOL_REVIEW_DB_NAME,
   PROTOCOL_REVIEW_INSTALLATION_ID_KEY,
+  PROTOCOL_REVIEW_PROVIDER_KEY,
   PROTOCOL_REVIEW_QUOTA_KEY,
   SESSION_PREFIX,
   TAB_LOCK_CHANNEL,
@@ -38,6 +39,9 @@ describe('storage names', () => {
     );
     expect(PROTOCOL_REVIEW_QUOTA_KEY).toBe(
       'architect-v9-protocol-review-quota',
+    );
+    expect(PROTOCOL_REVIEW_PROVIDER_KEY).toBe(
+      'architect-v9-protocol-review-provider',
     );
     // Never the analytics installation id (src/analytics.ts).
     expect(PROTOCOL_REVIEW_INSTALLATION_ID_KEY).not.toBe(

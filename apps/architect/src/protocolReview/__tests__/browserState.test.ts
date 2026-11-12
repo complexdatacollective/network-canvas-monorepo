@@ -2,13 +2,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   PROTOCOL_REVIEW_INSTALLATION_ID_KEY,
+  PROTOCOL_REVIEW_PROVIDER_KEY,
   PROTOCOL_REVIEW_QUOTA_KEY,
 } from '~/utils/storageNames';
 
 import {
   effectiveQuota,
   getReviewInstallationId,
+  readStoredProvider,
   readStoredQuota,
+  writeStoredProvider,
   writeStoredQuota,
 } from '../browserState';
 
@@ -76,5 +79,30 @@ describe('quota', () => {
       remaining: 5,
     });
     expect(effectiveQuota(null, before)).toBeNull();
+  });
+});
+
+describe('provider', () => {
+  it('is Anthropic until this browser chooses, and remembered once it has', () => {
+    expect(readStoredProvider()).toBe('anthropic');
+    writeStoredProvider('openai');
+    expect(localStorage.getItem(PROTOCOL_REVIEW_PROVIDER_KEY)).toBe('openai');
+    expect(readStoredProvider()).toBe('openai');
+  });
+
+  it('ignores a stored value that is not a provider', () => {
+    localStorage.setItem(PROTOCOL_REVIEW_PROVIDER_KEY, 'someone-else');
+    expect(readStoredProvider()).toBe('anthropic');
+  });
+
+  it('still answers when localStorage refuses', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('denied', 'SecurityError');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('denied', 'SecurityError');
+    });
+    expect(() => writeStoredProvider('openai')).not.toThrow();
+    expect(readStoredProvider()).toBe('anthropic');
   });
 });

@@ -213,6 +213,7 @@ export const FINDINGS: MockFinding[] = [
 
 type ReviewBody = {
   installationId: string;
+  provider: string;
   locale: string;
   share: boolean;
   studyContext: {
@@ -223,6 +224,19 @@ type ReviewBody = {
   };
   protocol: Record<string, unknown>;
 };
+
+/** One provider's line in the answer to `GET /providers`. */
+export type MockProviderStatus = {
+  provider: 'anthropic' | 'openai';
+  available: boolean;
+  reason: 'daily_limit' | 'monthly_limit' | null;
+  retryAt: string | null;
+};
+
+const EVERY_PROVIDER_AVAILABLE: MockProviderStatus[] = [
+  { provider: 'anthropic', available: true, reason: null, retryAt: null },
+  { provider: 'openai', available: true, reason: null, retryAt: null },
+];
 
 export type ReviewReply =
   | { kind: 'result'; findings: MockFinding[]; delayMs?: number }
@@ -253,17 +267,21 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 /**
  * Stands in for the review service on `context`, answering the CORS
- * preflight and then each `POST /review` with `reply` (read afresh for every
- * request, so a spec can change it between reviews). Every body the app sent
- * is recorded, and nothing is sent anywhere real.
+ * preflight, each `GET /providers` with `providers`, and each `POST /review`
+ * with `reply` (both read afresh for every request, so a spec can change them
+ * as it goes). Every body the app sent is recorded, and nothing is sent
+ * anywhere real.
  */
 export async function mockReviewService(
   context: BrowserContext,
   initial: ReviewReply,
+  initialProviders: MockProviderStatus[] = EVERY_PROVIDER_AVAILABLE,
 ) {
   let reply = initial;
+  let providers = initialProviders;
   const bodies: ReviewBody[] = [];
   let preflights = 0;
+  let providerRequests = 0;
 
   await context.route(`${REVIEW_SERVICE_ORIGIN}/**`, async (route: Route) => {
     const request = route.request();
@@ -278,10 +296,30 @@ export async function mockReviewService(
         status: 204,
         headers: {
           ...cors,
-          'access-control-allow-methods': 'POST, OPTIONS',
+          'access-control-allow-methods': 'GET, POST, OPTIONS',
           'access-control-allow-headers': 'content-type, accept',
           'access-control-max-age': '0',
         },
+      });
+      return;
+    }
+    if (request.method() === 'GET') {
+      if (new URL(request.url()).pathname !== '/providers') {
+        throw new Error(`unexpected GET ${request.url()}`);
+      }
+      // The app must send nothing about the researcher with this question.
+      if (request.postData() !== null) {
+        throw new Error('the provider question carried a body');
+      }
+      providerRequests += 1;
+      await route.fulfill({
+        status: 200,
+        headers: {
+          ...cors,
+          'content-type': 'application/json',
+          'cache-control': 'no-store',
+        },
+        body: JSON.stringify({ providers }),
       });
       return;
     }
@@ -315,8 +353,12 @@ export async function mockReviewService(
   return {
     bodies,
     preflights: () => preflights,
+    providerRequests: () => providerRequests,
     reply(next: ReviewReply) {
       reply = next;
+    },
+    providers(next: MockProviderStatus[]) {
+      providers = next;
     },
   };
 }

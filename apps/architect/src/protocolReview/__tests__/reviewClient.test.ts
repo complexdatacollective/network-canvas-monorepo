@@ -9,6 +9,7 @@ import {
 
 import {
   createEventStreamParser,
+  requestProviderStatus,
   requestReview,
   reviewServiceUrl,
 } from '../reviewClient';
@@ -16,6 +17,7 @@ import { makeFinding, STUDY_CONTEXT } from './fixtures';
 
 const REQUEST: ReviewRequest = {
   installationId: '6a1f0e1c-2c1e-4c55-9e0a-6d3f4f2b9a10',
+  provider: 'openai',
   locale: 'en',
   share: false,
   studyContext: STUDY_CONTEXT,
@@ -70,6 +72,12 @@ describe('reviewServiceUrl', () => {
     expect(reviewServiceUrl()).toBe(`${PROTOCOL_REVIEW_SERVICE_URL}/review`);
     vi.stubEnv('VITE_PROTOCOL_REVIEW_URL', 'http://localhost:8787');
     expect(reviewServiceUrl()).toBe('http://localhost:8787/review');
+  });
+
+  it('addresses the service’s other paths the same way', () => {
+    expect(reviewServiceUrl('/providers')).toBe(
+      `${PROTOCOL_REVIEW_SERVICE_URL}/providers`,
+    );
   });
 });
 
@@ -216,5 +224,69 @@ describe('requestReview', () => {
     });
     controller.abort();
     expect(await pending).toEqual({ kind: 'aborted' });
+  });
+});
+
+describe('requestProviderStatus', () => {
+  const STATUS = {
+    providers: [
+      { provider: 'anthropic', available: true, reason: null, retryAt: null },
+      {
+        provider: 'openai',
+        available: false,
+        reason: 'monthly_limit',
+        retryAt: '2026-12-01T00:00:00.000Z',
+      },
+    ],
+  };
+  const answering = (body: unknown, status = 200) =>
+    vi.fn<typeof fetch>(
+      async () => new Response(JSON.stringify(body), { status }),
+    );
+
+  it('asks the service with a plain GET that sends nothing about the researcher', async () => {
+    const fetchImpl = answering(STATUS);
+    vi.stubGlobal('fetch', fetchImpl);
+    expect(await requestProviderStatus()).toEqual(STATUS.providers);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0] ?? [];
+    expect(url).toBe(`${PROTOCOL_REVIEW_SERVICE_URL}/providers`);
+    expect(init).toEqual({
+      method: 'GET',
+      // Safelisted, so the browser sends no preflight.
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ['an error status', answering(STATUS, 503)],
+    ['an answer that is not the contract’s', answering({ providers: 'all' })],
+    [
+      'a provider it does not know',
+      answering({
+        providers: [
+          { provider: 'other', available: true, reason: null, retryAt: null },
+        ],
+      }),
+    ],
+    [
+      'an answer that is not JSON',
+      vi.fn<typeof fetch>(async () => new Response('<html>', { status: 200 })),
+    ],
+    [
+      'a network failure',
+      vi.fn<typeof fetch>(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    ],
+  ])('answers null for %s', async (_name, fetchImpl) => {
+    expect(
+      await requestProviderStatus({
+        url: 'https://review.test/providers',
+        fetchImpl,
+      }),
+    ).toBeNull();
   });
 });

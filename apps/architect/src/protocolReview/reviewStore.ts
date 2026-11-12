@@ -1,6 +1,9 @@
 import { Dexie, type EntityTable } from 'dexie';
 
-import type { Finding } from '@codaco/protocol-review-worker/contract';
+import type {
+  Finding,
+  ReviewProvider,
+} from '@codaco/protocol-review-worker/contract';
 import { reportError } from '~/utils/reportError';
 import { isStorageUnavailableError } from '~/utils/storageErrors';
 import { PROTOCOL_REVIEW_DB_NAME } from '~/utils/storageNames';
@@ -53,8 +56,17 @@ export type StoredReview = {
   locale: string;
   /** The reviewed protocol and study details (`reviewFingerprint`). */
   fingerprint: string;
+  /**
+   * Who wrote it. Absent from reviews saved before there was a choice, all
+   * of which Anthropic wrote (`reviewProviderOf`).
+   */
+  provider?: ReviewProvider;
   findings: StoredFinding[];
 };
+
+/** Who wrote a stored review. */
+export const reviewProviderOf = (review: StoredReview): ReviewProvider =>
+  review.provider ?? 'anthropic';
 
 export type StoredReviewRecord = {
   protocolId: string;

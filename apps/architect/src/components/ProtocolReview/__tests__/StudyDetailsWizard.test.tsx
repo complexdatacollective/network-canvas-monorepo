@@ -30,10 +30,17 @@ import {
 vi.unmock('@codaco/fresco-ui/dialogs/useDialog');
 vi.mock('~/analytics', () => ({ posthog: { capture: vi.fn() } }));
 
-const client = vi.hoisted(() => ({ requestReview: vi.fn() }));
+// Neither request may reach a network: the review, and the question of which
+// providers have budget left that the popover asks when it opens. Unless a
+// test says otherwise, that question gets no answer.
+const client = vi.hoisted(() => ({
+  requestReview: vi.fn(),
+  requestProviderStatus: vi.fn(),
+}));
 vi.mock('~/protocolReview/reviewClient', async (importOriginal) => ({
   ...(await importOriginal<typeof import('~/protocolReview/reviewClient')>()),
   requestReview: client.requestReview,
+  requestProviderStatus: client.requestProviderStatus,
 }));
 
 const NO_DETAILS = makeProtocol({ experiments: { protocolReview: {} } });
@@ -60,6 +67,8 @@ beforeEach(() => {
   store = makeStore();
   localStorage.clear();
   client.requestReview.mockReset();
+  client.requestProviderStatus.mockReset();
+  client.requestProviderStatus.mockResolvedValue(null);
 });
 
 afterEach(() => {

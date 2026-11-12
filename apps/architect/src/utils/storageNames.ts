@@ -28,6 +28,8 @@ export const PROTOCOL_REVIEW_DB_NAME = 'ArchitectProtocolReviewDB-v9';
 export const PROTOCOL_REVIEW_INSTALLATION_ID_KEY =
   'architect-v9-protocol-review-installation-id';
 export const PROTOCOL_REVIEW_QUOTA_KEY = 'architect-v9-protocol-review-quota';
+export const PROTOCOL_REVIEW_PROVIDER_KEY =
+  'architect-v9-protocol-review-provider';
 
 /**
  * redux-remember's key prefix. Its default, `@@remember-`, is what Architect 8

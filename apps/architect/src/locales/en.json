@@ -2713,7 +2713,7 @@
   },
   "architect.protocolReview.availability.availableAgainAt": {
     "defaultMessage": "Available again {when}",
-    "description": "Why Review again is unavailable: the service’s shared budget for the day or the month is spent. {when} is a moment such as \"tomorrow at 01:00\" or \"1 Dec 2026 at 01:00\"."
+    "description": "Why Review again is unavailable: the budget of every provider that could write the review is spent, for the day or the month. {when} is the moment the first of them starts again, such as \"tomorrow at 01:00\" or \"1 Dec 2026 at 01:00\"."
   },
   "architect.protocolReview.availability.nextReviewAt": {
     "defaultMessage": "Next review {when}",
@@ -2911,17 +2911,21 @@
     "defaultMessage": "Stage {position, number} · {label}",
     "description": "Where in the protocol a problem found by the automated protocol review is: one stage. {position} is the stage’s number on the Stages screen; {label} is the stage’s name as the researcher wrote it. The dot is a separator."
   },
-  "architect.protocolReview.notice.dailyBody": {
-    "defaultMessage": "This is a free experimental service with a fixed daily budget shared by everyone who uses it, and today’s has been spent. Nothing in your protocol was changed.",
-    "description": "Text of the daily limit notice when the service did not say when it restarts."
+  "architect.protocolReview.notice.allSpentBody": {
+    "defaultMessage": "This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. Every provider’s budget has been spent.",
+    "description": "Text of the notice shown when the budget of every provider is spent. A provider is the company whose AI model writes the review (Anthropic or OpenAI)."
   },
-  "architect.protocolReview.notice.dailyBodyWithTime": {
-    "defaultMessage": "This is a free experimental service with a fixed daily budget shared by everyone who uses it, and today’s has been spent. It starts again {when}. Nothing in your protocol was changed.",
-    "description": "Text of the daily limit notice when the service said when it restarts. {when} is a moment such as \"tomorrow at 01:00\"."
+  "architect.protocolReview.notice.allSpentTitle": {
+    "defaultMessage": "Protocol review has reached its limit",
+    "description": "Title of the notice shown when the budget of every provider is spent, so no review can start for now."
   },
-  "architect.protocolReview.notice.dailyTitle": {
-    "defaultMessage": "Protocol review has reached its limit for today",
-    "description": "Title of the notice shown when the service’s shared daily budget is spent."
+  "architect.protocolReview.notice.budgetBody": {
+    "defaultMessage": "This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. You can choose another provider for this review. Nothing in your protocol was changed.",
+    "description": "Text of the notice shown when the chosen provider’s budget is spent and another provider still has budget. A provider is the company whose AI model writes the review (Anthropic or OpenAI); the researcher chooses one in the same panel."
+  },
+  "architect.protocolReview.notice.budgetTitle": {
+    "defaultMessage": "The budget for {company} has been spent",
+    "description": "Title of the notice shown when a review could not start because the budget of the provider chosen to write it is spent. {company} is the provider’s name, \"Anthropic\" or \"OpenAI\", and is not translated."
   },
   "architect.protocolReview.notice.dismiss": {
     "defaultMessage": "Dismiss",
@@ -2934,18 +2938,6 @@
   "architect.protocolReview.notice.hourlyTitle": {
     "defaultMessage": "You have used your {limit, plural, one {# review} other {# reviews}} for this hour",
     "description": "Title of the notice shown when the researcher has started as many reviews as are allowed in an hour. {limit} is that number."
-  },
-  "architect.protocolReview.notice.monthlyBody": {
-    "defaultMessage": "This is a free experimental service with a fixed monthly budget shared by everyone who uses it, and this month’s has been spent. Nothing in your protocol was changed.",
-    "description": "Text of the monthly limit notice when the service did not say when it restarts."
-  },
-  "architect.protocolReview.notice.monthlyBodyWithTime": {
-    "defaultMessage": "This is a free experimental service with a fixed monthly budget shared by everyone who uses it, and this month’s has been spent. It starts again {when}. Nothing in your protocol was changed.",
-    "description": "Text of the monthly limit notice when the service said when it restarts. {when} is a moment such as \"1 Dec 2026 at 01:00\"."
-  },
-  "architect.protocolReview.notice.monthlyTitle": {
-    "defaultMessage": "Protocol review has reached its limit for this month",
-    "description": "Title of the notice shown when the service’s shared monthly budget is spent."
   },
   "architect.protocolReview.notice.offlineBody": {
     "defaultMessage": "Protocol review needs an internet connection. Your last review is still here, and you can keep working through it.",
@@ -3083,9 +3075,25 @@
     "defaultMessage": "Undo",
     "description": "Button beside \"Fixed for you\" that takes the fix back out of the protocol."
   },
+  "architect.protocolReview.popover.writtenBy": {
+    "defaultMessage": "Written by {model} ({company})",
+    "description": "Line under the Protocol review heading saying which AI model wrote the review shown. {model} is the model’s name, such as \"Claude Opus 5.5\", and {company} is who makes it, such as \"Anthropic\"; neither is translated."
+  },
   "architect.protocolReview.progressRing.label": {
     "defaultMessage": "Review progress",
     "description": "Accessible name, read by screen readers, of the small circular progress indicator on the Review protocol toolbar button while an automated protocol review runs."
+  },
+  "architect.protocolReview.provider.label": {
+    "defaultMessage": "Provider for the next review",
+    "description": "Label of the choice between the companies whose AI model can write the next review of the protocol (Anthropic or OpenAI)."
+  },
+  "architect.protocolReview.provider.spent": {
+    "defaultMessage": "The budget for {company} has been spent.",
+    "description": "Why a provider cannot be chosen to write the next review, when the service did not say when its budget starts again. {company} is the provider’s name, \"Anthropic\" or \"OpenAI\", and is not translated."
+  },
+  "architect.protocolReview.provider.spentUntil": {
+    "defaultMessage": "The budget for {company} has been spent. It starts again {when}.",
+    "description": "Why a provider cannot be chosen to write the next review. {company} is the provider’s name, \"Anthropic\" or \"OpenAI\", and is not translated; {when} is a moment such as \"tomorrow at 01:00\" or \"1 Dec 2026 at 01:00\"."
   },
   "architect.protocolReview.severity.serious": {
     "defaultMessage": "Serious",
@@ -3224,8 +3232,8 @@
     "description": "Last button of the study details dialog when it was opened to edit details already saved: saves them without starting a review."
   },
   "architect.protocolReview.wizard.sending.description": {
-    "defaultMessage": "Protocol review runs on a Network Canvas service, which passes your protocol to Anthropic’s Claude model to be read.",
-    "description": "Explanation under the heading of the last step of the study details dialog. \"Network Canvas\", \"Anthropic\" and \"Claude\" are names and are not translated."
+    "defaultMessage": "Protocol review runs on a Network Canvas service, which passes your protocol to the provider you choose for each review, Anthropic or OpenAI, to be read by its AI model.",
+    "description": "Explanation under the heading of the last step of the study details dialog. A provider is the company whose AI model writes the review; the researcher chooses one each time they start a review. \"Network Canvas\", \"Anthropic\" and \"OpenAI\" are names and are not translated."
   },
   "architect.protocolReview.wizard.sending.neverInterviewData": {
     "defaultMessage": "Interview data. Architect never holds any.",

@@ -4,6 +4,7 @@ import {
   type FindingCategory,
   type FindingSeverity,
   type ReviewErrorCode,
+  type ReviewProvider,
 } from '@codaco/protocol-review-worker/contract';
 import { posthog } from '~/analytics';
 
@@ -55,18 +56,24 @@ export const decisionPayload = (
   category: finding.category,
 });
 
-type StartedPayload = { share: boolean };
+type StartedPayload = { share: boolean; provider: ReviewProvider };
 
 export const captureReviewStarted = (payload: StartedPayload) => {
   posthog.capture('protocol_review_started', payload);
 };
 
-export const captureReviewCompleted = (payload: CompletedPayload) => {
-  posthog.capture('protocol_review_completed', payload);
+export const captureReviewCompleted = (
+  payload: CompletedPayload,
+  provider: ReviewProvider,
+) => {
+  posthog.capture('protocol_review_completed', { ...payload, provider });
 };
 
-export const captureReviewFailed = (code: ReviewErrorCode) => {
-  posthog.capture('protocol_review_failed', { error_code: code });
+export const captureReviewFailed = (
+  code: ReviewErrorCode,
+  provider: ReviewProvider,
+) => {
+  posthog.capture('protocol_review_failed', { error_code: code, provider });
 };
 
 export const captureReviewDecision = (payload: DecisionPayload) => {

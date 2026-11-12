@@ -8,17 +8,23 @@ import {
   type Finding,
   type FindingCategory,
   type FindingSeverity,
+  type ProviderAvailability,
   REVIEW_LIMITS,
+  REVIEW_PROVIDERS,
   type ReviewErrorCode,
+  type ReviewProvider,
   type ReviewQuota,
 } from '@codaco/protocol-review-worker/contract';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { AppDispatch } from '~/ducks/store';
 import { getArchitectIntl } from '~/i18n/imperative';
 import {
+  DEFAULT_REVIEW_PROVIDER,
   effectiveQuota,
   getReviewInstallationId,
+  readStoredProvider,
   readStoredQuota,
+  writeStoredProvider,
   writeStoredQuota,
 } from '~/protocolReview/browserState';
 import {
@@ -46,10 +52,14 @@ import {
   completedPayload,
   decisionPayload,
 } from '~/protocolReview/reviewAnalytics';
-import { requestReview } from '~/protocolReview/reviewClient';
+import {
+  requestProviderStatus,
+  requestReview,
+} from '~/protocolReview/reviewClient';
 import {
   type FindingDecision,
   readReviewRecord,
+  reviewProviderOf,
   type StoredFinding,
   type StoredReviewRecord,
   writeReviewRecord,
@@ -96,7 +106,19 @@ export type ReviewRun =
       /** Characters of the model's answer received so far. */
       received: number;
     }
-  | { status: 'failed'; code: ReviewErrorCode; retryAt: string | null };
+  | {
+      status: 'failed';
+      code: ReviewErrorCode;
+      retryAt: string | null;
+      /** Who was asked to write the review that failed. */
+      provider: ReviewProvider;
+    };
+
+/**
+ * A provider whose budget the service said is spent, and when it starts
+ * again, if it said.
+ */
+type SpentProvider = { retryAt: string | null };
 
 /**
  * Whether applying a finding's edits (`fix`) or its inverse (`undo`) to
@@ -115,6 +137,14 @@ type ProtocolReviewState = {
   run: ReviewRun;
   /** As last reported by the service (see `getProtocolReviewQuota`). */
   quota: ReviewQuota | null;
+  /** The provider the researcher chose in this browser. */
+  provider: ReviewProvider;
+  /**
+   * The providers the service last said have no budget left. One it has not
+   * named, or has not been asked about, is taken to have some (see
+   * `reviewProviderChoices`).
+   */
+  spent: Partial<Record<ReviewProvider, SpentProvider>>;
   checks: Record<string, FixCheck>;
 };
 
@@ -122,6 +152,8 @@ const initialState: ProtocolReviewState = {
   record: null,
   run: { status: 'idle' },
   quota: null,
+  provider: DEFAULT_REVIEW_PROVIDER,
+  spent: {},
   checks: {},
 };
 
@@ -141,7 +173,13 @@ const protocolReviewSlice = createSlice({
       }
       state.record = action.payload;
     },
-    reviewCleared: (state) => ({ ...initialState, quota: state.quota }),
+    // What is this browser's rather than the protocol's stays.
+    reviewCleared: (state) => ({
+      ...initialState,
+      quota: state.quota,
+      provider: state.provider,
+      spent: state.spent,
+    }),
     runStarted: (
       state,
       action: PayloadAction<{ runId: number; startedAt: number }>,
@@ -175,17 +213,30 @@ const protocolReviewSlice = createSlice({
         runId: number;
         code: ReviewErrorCode;
         retryAt: string | null;
+        provider: ReviewProvider;
       }>,
     ) => {
-      const { runId, code, retryAt } = action.payload;
+      const { runId, code, retryAt, provider } = action.payload;
       if (!isRun(state.run, runId)) return;
-      state.run = { status: 'failed', code, retryAt };
+      state.run = { status: 'failed', code, retryAt, provider };
     },
     failureDismissed: (state) => {
       if (state.run.status === 'failed') state.run = { status: 'idle' };
     },
     quotaUpdated: (state, action: PayloadAction<ReviewQuota | null>) => {
       state.quota = action.payload;
+    },
+    providerChosen: (state, action: PayloadAction<ReviewProvider>) => {
+      state.provider = action.payload;
+    },
+    providersReported: (
+      state,
+      action: PayloadAction<ProviderAvailability[]>,
+    ) => {
+      state.spent = {};
+      for (const { provider, available, retryAt } of action.payload) {
+        if (!available) state.spent[provider] = { retryAt };
+      }
     },
     fixChecked: (
       state,
@@ -247,6 +298,89 @@ export const getProtocolReviewQuota = (
   now: number = Date.now(),
 ): ReviewQuota | null => effectiveQuota(selectReview(state).quota, now);
 
+/** A provider, and whether a review can be asked of it now. */
+export type ReviewProviderChoice = {
+  provider: ReviewProvider;
+  available: boolean;
+  /** Epoch milliseconds its budget starts again, when the service said. */
+  retryAt: number | null;
+};
+
+const isBudgetCode = (code: ReviewErrorCode) =>
+  code === 'daily_limit' || code === 'monthly_limit';
+
+/**
+ * Every provider at `now`, in the service's order. A provider is unavailable
+ * while its budget is spent: the service said so when asked, or refused a
+ * review for it. Either lasts until the time the service gave; with no time,
+ * until the service is asked again or the refusal is dismissed. The refusal
+ * counts by itself because the service answers "has room" for the smallest
+ * review, and a large protocol can be refused while a small one would run.
+ */
+export const reviewProviderChoices = (
+  { spent, run }: Pick<ProtocolReviewState, 'spent' | 'run'>,
+  now: number,
+): ReviewProviderChoice[] =>
+  REVIEW_PROVIDERS.map((provider) => {
+    const marks: (string | null)[] = [];
+    const reported = spent[provider];
+    if (reported) marks.push(reported.retryAt);
+    if (
+      run.status === 'failed' &&
+      run.provider === provider &&
+      isBudgetCode(run.code)
+    ) {
+      marks.push(run.retryAt);
+    }
+    const until = marks.map((mark) =>
+      mark === null ? null : Date.parse(mark),
+    );
+    const standing = until.filter((time) => time === null || time > now);
+    if (standing.length === 0) {
+      return { provider, available: true, retryAt: null };
+    }
+    const times = standing.filter((time) => time !== null);
+    return {
+      provider,
+      available: false,
+      retryAt: times.length === 0 ? null : Math.max(...times),
+    };
+  });
+
+/**
+ * The provider a review started now would be asked of: the researcher's
+ * choice, or the first with budget left while the chosen one has none. The
+ * choice itself is kept, and is used again once its budget starts again.
+ */
+export const reviewProviderFor = (
+  chosen: ReviewProvider,
+  choices: readonly ReviewProviderChoice[],
+): ReviewProvider => {
+  const available = choices.filter((choice) => choice.available);
+  return (
+    available.find((choice) => choice.provider === chosen)?.provider ??
+    available[0]?.provider ??
+    chosen
+  );
+};
+
+/** The provider a review started at `now` would be asked of. */
+const getProtocolReviewProvider = (
+  state: RootState,
+  now: number = Date.now(),
+): ReviewProvider => {
+  const review = selectReview(state);
+  return reviewProviderFor(review.provider, reviewProviderChoices(review, now));
+};
+
+/** Who wrote the stored review of the active protocol; null when none is. */
+export const getProtocolReviewWriter = (
+  state: RootState,
+): ReviewProvider | null => {
+  const review = selectRecord(state)?.review;
+  return review ? reviewProviderOf(review) : null;
+};
+
 // The study details come only through the app's selector, which reads the
 // experiment's opaque settings tolerantly; undefined means missing or
 // incomplete.
@@ -261,6 +395,8 @@ export type ReviewStartBlock =
   | { code: 'experiment_off' }
   | { code: 'missing_study_context' }
   | { code: 'running' }
+  /** Every provider's budget is spent. */
+  | { code: 'budget_spent' }
   | { code: 'unchanged' }
   | { code: 'hourly_limit'; resetsAt: string };
 
@@ -280,11 +416,20 @@ export const getProtocolReviewStartBlock = (
   if (!getProtocolReviewStudyContext(state)) {
     return { code: 'missing_study_context' };
   }
-  if (selectReview(state).run.status === 'running') return { code: 'running' };
+  const review = selectReview(state);
+  if (review.run.status === 'running') return { code: 'running' };
+  const choices = reviewProviderChoices(review, now);
+  if (!choices.some((choice) => choice.available)) {
+    return { code: 'budget_spent' };
+  }
+  // Another review of the same protocol and details is only the same
+  // question when the same provider would answer it.
   const fingerprint = getCurrentFingerprint(state);
+  const stored = selectRecord(state)?.review;
   if (
     fingerprint !== null &&
-    selectRecord(state)?.review?.fingerprint === fingerprint
+    stored?.fingerprint === fingerprint &&
+    reviewProviderOf(stored) === reviewProviderFor(review.provider, choices)
   ) {
     return { code: 'unchanged' };
   }
@@ -478,6 +623,7 @@ export const syncProtocolReview =
     }
     dispatch(actions.reviewCleared());
     dispatch(actions.quotaUpdated(readStoredQuota()));
+    dispatch(actions.providerChosen(readStoredProvider()));
     if (protocolId === null) return;
     const record = await readReviewRecord(protocolId);
     if (getActiveProtocolId(getState()) === protocolId) {
@@ -548,6 +694,7 @@ export type StartReviewRefusal =
   | 'experiment_off'
   | 'missing_study_context'
   | 'running'
+  | 'budget_spent'
   | 'unchanged'
   | 'hourly_limit';
 
@@ -632,12 +779,14 @@ export const startReview =
     const startedAt = Date.now();
     const fingerprint = reviewFingerprint(protocol, studyContext);
     const locale = getArchitectIntl().locale;
+    const provider = getProtocolReviewProvider(state);
     dispatch(actions.runStarted({ runId, startedAt }));
-    captureReviewStarted({ share: record.shareReviews });
+    captureReviewStarted({ share: record.shareReviews, provider });
 
     const outcome = await requestReview({
       request: {
         installationId: getReviewInstallationId(),
+        provider,
         locale,
         share: record.shareReviews,
         studyContext,
@@ -680,9 +829,13 @@ export const startReview =
           runId,
           code: outcome.code,
           retryAt: outcome.retryAt,
+          provider,
         }),
       );
-      captureReviewFailed(outcome.code);
+      captureReviewFailed(outcome.code, provider);
+      // One provider's budget is spent: ask about the others, so the
+      // researcher sees which they can choose instead.
+      if (isBudgetCode(outcome.code)) void dispatch(refreshReviewProviders());
       return { status: 'failed', code: outcome.code, retryAt: outcome.retryAt };
     }
 
@@ -712,6 +865,7 @@ export const startReview =
         createdAt: Date.now(),
         locale,
         fingerprint,
+        provider,
         findings,
       },
     });
@@ -719,8 +873,40 @@ export const startReview =
     void dispatch(checkFixAvailability());
     captureReviewCompleted(
       completedPayload(result.findings, Date.now() - startedAt),
+      provider,
     );
     return { status: 'completed', findingCount: findings.length };
+  };
+
+/**
+ * Chooses who writes this browser's reviews from now on. A review already
+ * running is not affected: its provider was named when it was sent.
+ */
+export const chooseReviewProvider =
+  (provider: ReviewProvider): Thunk<void> =>
+  (dispatch) => {
+    writeStoredProvider(provider);
+    dispatch(actions.providerChosen(provider));
+  };
+
+let providerStatus: Promise<void> | null = null;
+
+/**
+ * Asks the service which providers have budget left, and keeps its answer.
+ * An answer that does not come leaves what is known as it is. Asking again
+ * while an answer is awaited waits for that one.
+ */
+export const refreshReviewProviders =
+  (): Thunk<Promise<void>> => async (dispatch) => {
+    providerStatus ??= (async () => {
+      try {
+        const reported = await requestProviderStatus();
+        if (reported !== null) dispatch(actions.providersReported(reported));
+      } finally {
+        providerStatus = null;
+      }
+    })();
+    await providerStatus;
   };
 
 /** Stops the review in flight. Nothing is saved and nothing is counted. */

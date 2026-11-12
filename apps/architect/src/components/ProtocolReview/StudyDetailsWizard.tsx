@@ -196,9 +196,9 @@ const messages = defineMessages({
   sendingDescription: {
     id: 'architect.protocolReview.wizard.sending.description',
     defaultMessage:
-      'Protocol review runs on a Network Canvas service, which passes your protocol to Anthropic’s Claude model to be read.',
+      'Protocol review runs on a Network Canvas service, which passes your protocol to the provider you choose for each review, Anthropic or OpenAI, to be read by its AI model.',
     description:
-      'Explanation under the heading of the last step of the study details dialog. "Network Canvas", "Anthropic" and "Claude" are names and are not translated.',
+      'Explanation under the heading of the last step of the study details dialog. A provider is the company whose AI model writes the review; the researcher chooses one each time they start a review. "Network Canvas", "Anthropic" and "OpenAI" are names and are not translated.',
   },
   whatIsSent: {
     id: 'architect.protocolReview.wizard.sending.whatIsSent',

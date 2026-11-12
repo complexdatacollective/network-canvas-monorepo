@@ -358,6 +358,7 @@ test.describe('first use', () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
     );
     expect(body.share).toBe(false);
+    expect(body.provider).toBe('anthropic');
     expect(body.locale).toBe('en');
     expect(body.studyContext).toMatchObject({
       researchQuestions: questions,
@@ -693,64 +694,115 @@ test.describe('when a review cannot run', () => {
     await expect(popover.getByText('Try again')).toHaveCount(0);
   });
 
-  test('503 daily limit says when the service starts again', async ({
-    architectPage: page,
-    context,
-    seed,
-  }) => {
-    const at = retryAt();
-    const { popover } = await refused(page, context, seed, {
-      kind: 'error',
-      status: 503,
-      error: 'daily_limit',
-      retryAt: at,
-    });
-    await expect(
-      popover.getByText('Protocol review has reached its limit for today'),
-    ).toBeVisible();
-    const time = await timeOf(page, at);
-    await expect(
-      popover.getByText(
-        new RegExp(
-          `It starts again (today|tomorrow) at ${time}\\. Nothing in your protocol`,
-        ),
-      ),
-    ).toBeVisible();
-  });
+  const anthropicOption = (popover: Locator) =>
+    popover.getByRole('radio', { name: 'Anthropic Claude Opus 5.5' });
+  const openaiOption = (popover: Locator) =>
+    popover.getByRole('radio', { name: 'OpenAI GPT-6.1 Sol' });
 
-  test('503 monthly limit says when the service starts again', async ({
+  for (const error of ['daily_limit', 'monthly_limit'] as const) {
+    test(`503 ${error} greys out that provider, and the other writes the review`, async ({
+      architectPage: page,
+      context,
+      seed,
+    }) => {
+      const at = retryAt();
+      const { service, popover } = await refused(page, context, seed, {
+        kind: 'error',
+        status: 503,
+        error,
+        retryAt: at,
+      });
+      await expect(
+        popover.getByText('The budget for Anthropic has been spent', {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        popover.getByText(
+          'You can choose another provider for this review. Nothing in your protocol was changed.',
+        ),
+      ).toBeVisible();
+      expect(service.bodies.map((body) => body.provider)).toEqual([
+        'anthropic',
+      ]);
+
+      const time = await timeOf(page, at);
+      const reason = new RegExp(
+        `^The budget for Anthropic has been spent\\. It starts again (today|tomorrow) at ${time}\\.$`,
+      );
+      await expect(anthropicOption(popover)).toBeDisabled();
+      await expect(anthropicOption(popover)).toHaveAccessibleDescription(
+        reason,
+      );
+      // Said in sight as well as to a screen reader.
+      await expect(
+        popover.locator('[aria-hidden="true"]').getByText(reason),
+      ).toBeVisible();
+      await expect(openaiOption(popover)).toBeEnabled();
+      await expect(openaiOption(popover)).toBeChecked();
+
+      // Nothing reviewed yet, so the button is still Start review, and it
+      // now sends the review to the provider that has budget.
+      service.reply(RESULT_REVIEW);
+      await popover.getByRole('button', { name: 'Start review' }).click();
+      await expect(
+        popover.getByText('Written by GPT-6.1 Sol (OpenAI)'),
+      ).toBeVisible();
+      expect(service.bodies.map((body) => body.provider)).toEqual([
+        'anthropic',
+        'openai',
+      ]);
+      await expect(
+        popover.getByText('The budget for Anthropic has been spent', {
+          exact: true,
+        }),
+      ).toHaveCount(0);
+    });
+  }
+
+  test('every provider’s budget spent holds reviews until the first starts again', async ({
     architectPage: page,
     context,
     seed,
   }) => {
-    const at = retryAt();
-    const { popover } = await refused(page, context, seed, {
-      kind: 'error',
-      status: 503,
-      error: 'monthly_limit',
-      retryAt: at,
-    });
+    const soon = retryAt();
+    const later = new Date(Date.now() + 20 * 24 * 3_600_000).toISOString();
+    const service = await mockReviewService(context, RESULT_REVIEW, [
+      {
+        provider: 'anthropic',
+        available: false,
+        reason: 'monthly_limit',
+        retryAt: later,
+      },
+      {
+        provider: 'openai',
+        available: false,
+        reason: 'daily_limit',
+        retryAt: soon,
+      },
+    ]);
+    await seed(reviewProtocolWithDetails());
+    await gotoProtocol(page);
+    await reviewButton(page).click();
+    const popover = popoverOf(page);
+
     await expect(
-      popover.getByText('Protocol review has reached its limit for this month'),
+      popover.getByText('Protocol review has reached its limit'),
     ).toBeVisible();
-    const time = await timeOf(page, at);
     await expect(
-      popover.getByText(
-        new RegExp(
-          `this month’s has been spent\\. It starts again (today|tomorrow) at ${time}\\. Nothing in your protocol`,
-        ),
-      ),
+      popover.getByText('Every provider’s budget has been spent.'),
     ).toBeVisible();
-    // Nothing reviewed yet, so the button is still Start review; it is held
-    // until the service says it starts again.
-    await expect(
-      popover.getByRole('button', { name: 'Start review' }),
-    ).toHaveAttribute('aria-disabled', 'true');
-    await expect(
-      popover.getByText(
-        new RegExp(`^Available again (today|tomorrow) at ${time}`),
-      ),
-    ).toBeVisible();
+    await expect(anthropicOption(popover)).toBeDisabled();
+    await expect(openaiOption(popover)).toBeDisabled();
+    const start = popover.getByRole('button', { name: 'Start review' });
+    await expect(start).toHaveAttribute('aria-disabled', 'true');
+    const time = await timeOf(page, soon);
+    await expect(start).toHaveAccessibleDescription(
+      new RegExp(`^Available again (today|tomorrow) at ${time}`),
+    );
+    await start.click({ force: true });
+    expect(service.bodies).toHaveLength(0);
+    expect(service.providerRequests()).toBeGreaterThan(0);
   });
 
   test('503 service unavailable offers Try again, which runs the review', async ({
@@ -855,6 +907,46 @@ test.describe('persistence', () => {
         'Fixed for you',
       ),
     ).toBeVisible();
+  });
+
+  test('the provider chosen is remembered across a reload, and writes the next review', async ({
+    architectPage: page,
+    context,
+    seed,
+  }) => {
+    const service = await mockReviewService(context, RESULT_REVIEW);
+    await seed(reviewProtocolWithDetails());
+    await gotoProtocol(page);
+    await reviewButton(page).click();
+    const provider = popoverOf(page).getByRole('radiogroup', {
+      name: 'Provider for the next review',
+    });
+    await expect(
+      provider.getByRole('radio', { name: 'Anthropic Claude Opus 5.5' }),
+    ).toBeChecked();
+    await provider.getByRole('radio', { name: 'OpenAI GPT-6.1 Sol' }).click();
+    await expect(
+      provider.getByRole('radio', { name: 'OpenAI GPT-6.1 Sol' }),
+    ).toBeChecked();
+
+    await gotoProtocol(page);
+    const popover = await startReview(page);
+    await expect(
+      popover.getByRole('radio', { name: 'OpenAI GPT-6.1 Sol' }),
+    ).toBeChecked();
+    await expect(
+      popover.getByText('Written by GPT-6.1 Sol (OpenAI)'),
+    ).toBeVisible();
+    expect(service.bodies.map((body) => body.provider)).toEqual(['openai']);
+
+    // The same protocol again is the same question to OpenAI, and a new one
+    // to Anthropic.
+    const again = popover.getByRole('button', { name: 'Review again' });
+    await expect(again).toHaveAttribute('aria-disabled', 'true');
+    await popover
+      .getByRole('radio', { name: 'Anthropic Claude Opus 5.5' })
+      .click();
+    await expect(again).not.toHaveAttribute('aria-disabled', 'true');
   });
 
   test('the review is kept in the browser and is not in the downloaded protocol', async ({

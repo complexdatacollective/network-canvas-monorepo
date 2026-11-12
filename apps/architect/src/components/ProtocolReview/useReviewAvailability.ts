@@ -1,13 +1,20 @@
+import { useMemo } from 'react';
 import { shallowEqual } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { REVIEW_LIMITS } from '@codaco/protocol-review-worker/contract';
+import {
+  REVIEW_LIMITS,
+  type ReviewProvider,
+} from '@codaco/protocol-review-worker/contract';
 import { useAppSelector } from '~/ducks/hooks';
 import {
   getProtocolReviewQuota,
   getProtocolReviewRun,
   getProtocolReviewStartBlock,
+  type ReviewProviderChoice,
+  reviewProviderChoices,
+  reviewProviderFor,
 } from '~/ducks/modules/protocolReview';
 
 import { formatWhen } from './reviewText';
@@ -36,7 +43,7 @@ const messages = defineMessages({
     id: 'architect.protocolReview.availability.availableAgainAt',
     defaultMessage: 'Available again {when}',
     description:
-      'Why Review again is unavailable: the service’s shared budget for the day or the month is spent. {when} is a moment such as "tomorrow at 01:00" or "1 Dec 2026 at 01:00".',
+      'Why Review again is unavailable: the budget of every provider that could write the review is spent, for the day or the month. {when} is the moment the first of them starts again, such as "tomorrow at 01:00" or "1 Dec 2026 at 01:00".',
   },
 });
 
@@ -46,8 +53,10 @@ export type ReviewAvailability = {
   online: boolean;
   limit: number;
   remaining: number;
-  /** Epoch milliseconds a failed run said to try again at; null when none. */
-  retryAt: number | null;
+  /** Every provider, and whether a review can be asked of it now. */
+  providers: ReviewProviderChoice[];
+  /** The provider a review started now would be asked of. */
+  provider: ReviewProvider;
   /** When the hourly limit lifts, while it is reached; otherwise null. */
   hourlyResetsAt: number | null;
   /** Whether a new review can be started now. */
@@ -57,15 +66,17 @@ export type ReviewAvailability = {
 };
 
 /**
- * Whether a new review can start, and why not: the engine's start block,
- * being offline, and a spent daily or monthly budget that the service said
- * when it restarts. Moves on by itself when a limit lifts.
+ * Whether a new review can start, who would write it, and why not: the
+ * engine's start block and being offline. Moves on by itself when a limit
+ * lifts or a provider's budget starts again.
  */
 export const useReviewAvailability = (): ReviewAvailability => {
   const intl = useAppIntl();
   const online = useOnline();
   const run = useAppSelector(getProtocolReviewRun);
   const storedQuota = useAppSelector((state) => state.protocolReview.quota);
+  const spent = useAppSelector((state) => state.protocolReview.spent);
+  const chosen = useAppSelector((state) => state.protocolReview.provider);
   const retryAt =
     run.status === 'failed' && run.retryAt !== null
       ? Date.parse(run.retryAt)
@@ -73,7 +84,14 @@ export const useReviewAvailability = (): ReviewAvailability => {
   const now = useNowUntil([
     storedQuota ? Date.parse(storedQuota.resetsAt) : null,
     retryAt,
+    ...Object.values(spent).map((provider) =>
+      provider.retryAt === null ? null : Date.parse(provider.retryAt),
+    ),
   ]);
+  const providers = useMemo(
+    () => reviewProviderChoices({ spent, run }, now),
+    [spent, run, now],
+  );
   const quota = useAppSelector(
     (state) => getProtocolReviewQuota(state, now),
     shallowEqual,
@@ -91,11 +109,18 @@ export const useReviewAvailability = (): ReviewAvailability => {
       : run.status === 'failed' && run.code === 'hourly_limit'
         ? (retryAt ?? (quota ? Date.parse(quota.resetsAt) : null))
         : null;
-  const budgetSpent =
-    run.status === 'failed' &&
-    (run.code === 'daily_limit' || run.code === 'monthly_limit') &&
-    retryAt !== null &&
-    retryAt > now;
+  // Every provider's budget is spent: the first to start again is when a
+  // review can.
+  const budgetStartsAt =
+    block?.code === 'budget_spent'
+      ? providers.reduce<number | null>(
+          (soonest, { retryAt: startsAt }) =>
+            startsAt !== null && (soonest === null || startsAt < soonest)
+              ? startsAt
+              : soonest,
+          null,
+        )
+      : null;
 
   let reason: string | null = null;
   if (!online) {
@@ -106,9 +131,9 @@ export const useReviewAvailability = (): ReviewAvailability => {
     reason = intl.formatMessage(messages.nextReviewAt, {
       when: formatWhen(intl, Date.parse(block.resetsAt), now),
     });
-  } else if (budgetSpent) {
+  } else if (budgetStartsAt !== null) {
     reason = intl.formatMessage(messages.availableAgainAt, {
-      when: formatWhen(intl, retryAt, now),
+      when: formatWhen(intl, budgetStartsAt, now),
     });
   }
 
@@ -117,9 +142,10 @@ export const useReviewAvailability = (): ReviewAvailability => {
     online,
     limit,
     remaining,
-    retryAt,
+    providers,
+    provider: reviewProviderFor(chosen, providers),
     hourlyResetsAt,
-    canStart: online && block === null && !budgetSpent,
+    canStart: online && block === null,
     reason,
   };
 };

@@ -1,5 +1,8 @@
 import {
   PROTOCOL_REVIEW_SERVICE_URL,
+  type ProviderAvailability,
+  PROVIDERS_PATH,
+  ProviderStatusSchema,
   REVIEW_PATH,
   type ReviewErrorCode,
   ReviewErrorSchema,
@@ -10,18 +13,19 @@ import {
 } from '@codaco/protocol-review-worker/contract';
 
 /**
- * Talks to the protocol review service: one `POST`, answered with a stream of
- * server-sent events (`ReviewEvent`), or with a JSON error.
+ * Talks to the protocol review service. A review is one `POST`, answered with
+ * a stream of server-sent events (`ReviewEvent`) or with a JSON error; which
+ * providers have budget left is one `GET`.
  */
 
-/** Where reviews are requested: the build's override, else the service. */
-export const reviewServiceUrl = (): string => {
+/** Where the service is asked: the build's override, else the service. */
+export const reviewServiceUrl = (path: string = REVIEW_PATH): string => {
   const override = import.meta.env.VITE_PROTOCOL_REVIEW_URL;
   const base =
     typeof override === 'string' && override !== ''
       ? override
       : PROTOCOL_REVIEW_SERVICE_URL;
-  return new URL(REVIEW_PATH, base).toString();
+  return new URL(path, base).toString();
 };
 
 export type ReviewOutcome =
@@ -197,4 +201,36 @@ export const requestReview = async ({
   if (signal.aborted) return { kind: 'aborted' };
   if (malformed) return UNAVAILABLE;
   return outcome ?? UNAVAILABLE;
+};
+
+type RequestProviderStatusOptions = {
+  url?: string;
+  fetchImpl?: typeof fetch;
+};
+
+/**
+ * Asks which providers have budget left for a review. Never throws: null
+ * when the service could not be asked or its answer is not the contract's,
+ * which says nothing either way about any provider. It sends nothing about
+ * the researcher or the protocol, and no header that needs a preflight.
+ */
+export const requestProviderStatus = async ({
+  url = reviewServiceUrl(PROVIDERS_PATH),
+  fetchImpl = fetch,
+}: RequestProviderStatusOptions = {}): Promise<
+  ProviderAvailability[] | null
+> => {
+  try {
+    const response = await fetchImpl(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    const body: unknown = await response.json();
+    const parsed = ProviderStatusSchema.safeParse(body);
+    return parsed.success ? parsed.data.providers : null;
+  } catch {
+    return null;
+  }
 };

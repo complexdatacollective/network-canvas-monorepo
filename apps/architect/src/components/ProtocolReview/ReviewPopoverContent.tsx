@@ -1,5 +1,5 @@
 import { ArrowRight, CircleCheck, PenLine, RefreshCw, X } from 'lucide-react';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useEffect, useId } from 'react';
 
 import {
   defineMessages,
@@ -9,15 +9,21 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { PopoverTitle } from '@codaco/fresco-ui/Popover';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { ReviewErrorCode } from '@codaco/protocol-review-worker/contract';
+import {
+  REVIEW_PROVIDER_NAMES,
+  REVIEW_PROVIDERS,
+  type ReviewErrorCode,
+} from '@codaco/protocol-review-worker/contract';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   cancelReview,
+  chooseReviewProvider,
   decideFinding,
   dismissReviewFailure,
   getProtocolReviewCounts,
@@ -25,6 +31,8 @@ import {
   getProtocolReviewProgress,
   getProtocolReviewRun,
   getProtocolReviewSummary,
+  getProtocolReviewWriter,
+  refreshReviewProviders,
   type ReviewFindingView,
   type ReviewRun,
   undoFix,
@@ -242,45 +250,31 @@ const messages = defineMessages({
     description:
       'Text of the hourly limit notice. {when} is a moment such as "today at 15:32".',
   },
-  dailyTitle: {
-    id: 'architect.protocolReview.notice.dailyTitle',
-    defaultMessage: 'Protocol review has reached its limit for today',
+  budgetTitle: {
+    id: 'architect.protocolReview.notice.budgetTitle',
+    defaultMessage: 'The budget for {company} has been spent',
     description:
-      'Title of the notice shown when the service’s shared daily budget is spent.',
+      'Title of the notice shown when a review could not start because the budget of the provider chosen to write it is spent. {company} is the provider’s name, "Anthropic" or "OpenAI", and is not translated.',
   },
-  dailyBodyWithTime: {
-    id: 'architect.protocolReview.notice.dailyBodyWithTime',
+  budgetBody: {
+    id: 'architect.protocolReview.notice.budgetBody',
     defaultMessage:
-      'This is a free experimental service with a fixed daily budget shared by everyone who uses it, and today’s has been spent. It starts again {when}. Nothing in your protocol was changed.',
+      'This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. You can choose another provider for this review. Nothing in your protocol was changed.',
     description:
-      'Text of the daily limit notice when the service said when it restarts. {when} is a moment such as "tomorrow at 01:00".',
+      'Text of the notice shown when the chosen provider’s budget is spent and another provider still has budget. A provider is the company whose AI model writes the review (Anthropic or OpenAI); the researcher chooses one in the same panel.',
   },
-  dailyBody: {
-    id: 'architect.protocolReview.notice.dailyBody',
+  allSpentTitle: {
+    id: 'architect.protocolReview.notice.allSpentTitle',
+    defaultMessage: 'Protocol review has reached its limit',
+    description:
+      'Title of the notice shown when the budget of every provider is spent, so no review can start for now.',
+  },
+  allSpentBody: {
+    id: 'architect.protocolReview.notice.allSpentBody',
     defaultMessage:
-      'This is a free experimental service with a fixed daily budget shared by everyone who uses it, and today’s has been spent. Nothing in your protocol was changed.',
+      'This is a free experimental service with a fixed budget for each provider, shared by everyone who uses it. Every provider’s budget has been spent.',
     description:
-      'Text of the daily limit notice when the service did not say when it restarts.',
-  },
-  monthlyTitle: {
-    id: 'architect.protocolReview.notice.monthlyTitle',
-    defaultMessage: 'Protocol review has reached its limit for this month',
-    description:
-      'Title of the notice shown when the service’s shared monthly budget is spent.',
-  },
-  monthlyBodyWithTime: {
-    id: 'architect.protocolReview.notice.monthlyBodyWithTime',
-    defaultMessage:
-      'This is a free experimental service with a fixed monthly budget shared by everyone who uses it, and this month’s has been spent. It starts again {when}. Nothing in your protocol was changed.',
-    description:
-      'Text of the monthly limit notice when the service said when it restarts. {when} is a moment such as "1 Dec 2026 at 01:00".',
-  },
-  monthlyBody: {
-    id: 'architect.protocolReview.notice.monthlyBody',
-    defaultMessage:
-      'This is a free experimental service with a fixed monthly budget shared by everyone who uses it, and this month’s has been spent. Nothing in your protocol was changed.',
-    description:
-      'Text of the monthly limit notice when the service did not say when it restarts.',
+      'Text of the notice shown when the budget of every provider is spent. A provider is the company whose AI model writes the review (Anthropic or OpenAI).',
   },
   unavailableTitle: {
     id: 'architect.protocolReview.notice.unavailableTitle',
@@ -307,6 +301,31 @@ const messages = defineMessages({
       'The review service only accepts protocols up to a fixed size, and this one is larger. Nothing in your protocol was changed, and this attempt did not count towards your limit.',
     description: 'Text of the too-large notice.',
   },
+  writtenBy: {
+    id: 'architect.protocolReview.popover.writtenBy',
+    defaultMessage: 'Written by {model} ({company})',
+    description:
+      'Line under the Protocol review heading saying which AI model wrote the review shown. {model} is the model’s name, such as "Claude Opus 5.5", and {company} is who makes it, such as "Anthropic"; neither is translated.',
+  },
+  providerLabel: {
+    id: 'architect.protocolReview.provider.label',
+    defaultMessage: 'Provider for the next review',
+    description:
+      'Label of the choice between the companies whose AI model can write the next review of the protocol (Anthropic or OpenAI).',
+  },
+  providerSpentUntil: {
+    id: 'architect.protocolReview.provider.spentUntil',
+    defaultMessage:
+      'The budget for {company} has been spent. It starts again {when}.',
+    description:
+      'Why a provider cannot be chosen to write the next review. {company} is the provider’s name, "Anthropic" or "OpenAI", and is not translated; {when} is a moment such as "tomorrow at 01:00" or "1 Dec 2026 at 01:00".',
+  },
+  providerSpent: {
+    id: 'architect.protocolReview.provider.spent',
+    defaultMessage: 'The budget for {company} has been spent.',
+    description:
+      'Why a provider cannot be chosen to write the next review, when the service did not say when its budget starts again. {company} is the provider’s name, "Anthropic" or "OpenAI", and is not translated.',
+  },
   dismissNotice: {
     id: 'architect.protocolReview.notice.dismiss',
     defaultMessage: 'Dismiss',
@@ -318,15 +337,17 @@ const messages = defineMessages({
 type NoticeKind =
   | 'offline'
   | 'hourly'
-  | 'daily'
-  | 'monthly'
+  | 'budget'
+  | 'all_spent'
   | 'unavailable'
   | 'too_large';
 
 const failureNotices: Record<ReviewErrorCode, NoticeKind> = {
   hourly_limit: 'hourly',
-  daily_limit: 'daily',
-  monthly_limit: 'monthly',
+  // Which of a provider's budgets is spent changes only when it starts
+  // again, which the provider's own line in the footer says.
+  daily_limit: 'budget',
+  monthly_limit: 'budget',
   too_large: 'too_large',
   service_unavailable: 'unavailable',
   // Neither is the researcher's to fix: the service refused a request this
@@ -339,9 +360,14 @@ const noticeOf = (
   online: boolean,
   run: ReviewRun,
   hourlyLimitReached: boolean,
+  anyProviderAvailable: boolean,
 ): NoticeKind | null => {
   if (!online) return 'offline';
-  if (run.status === 'failed') return failureNotices[run.code];
+  if (run.status === 'failed') {
+    const notice = failureNotices[run.code];
+    return notice === 'budget' && !anyProviderAvailable ? 'all_spent' : notice;
+  }
+  if (!anyProviderAvailable) return 'all_spent';
   if (hourlyLimitReached) return 'hourly';
   return null;
 };
@@ -383,19 +409,33 @@ const ReviewPopoverContent = ({
   const counts = useAppSelector(getProtocolReviewCounts);
   const progress = useAppSelector(getProtocolReviewProgress);
   const protocol = useAppSelector(getProtocol);
+  const writer = useAppSelector(getProtocolReviewWriter);
   const {
     now,
     online,
     limit,
     remaining,
-    retryAt,
+    providers,
+    provider,
     hourlyResetsAt,
     canStart,
     reason: blockedReason,
   } = useReviewAvailability();
   const captionId = useId();
+  const providerLabelId = useId();
 
-  const notice = noticeOf(online, run, hourlyResetsAt !== null);
+  // Which providers have budget left is the service's to say, so it is asked
+  // each time this opens, and again when the connection comes back.
+  useEffect(() => {
+    if (online) void dispatch(refreshReviewProviders());
+  }, [dispatch, online]);
+
+  const notice = noticeOf(
+    online,
+    run,
+    hourlyResetsAt !== null,
+    providers.some((choice) => choice.available),
+  );
   const running = run.status === 'running';
 
   const subline = (() => {
@@ -447,23 +487,18 @@ const ReviewPopoverContent = ({
                   when: formatWhen(intl, hourlyResetsAt, now),
                 }),
         },
-        daily: {
-          title: intl.formatMessage(messages.dailyTitle),
-          body:
-            retryAt === null
-              ? intl.formatMessage(messages.dailyBody)
-              : intl.formatMessage(messages.dailyBodyWithTime, {
-                  when: formatWhen(intl, retryAt, now),
-                }),
+        budget: {
+          title: intl.formatMessage(messages.budgetTitle, {
+            company:
+              REVIEW_PROVIDER_NAMES[
+                run.status === 'failed' ? run.provider : provider
+              ].company,
+          }),
+          body: intl.formatMessage(messages.budgetBody),
         },
-        monthly: {
-          title: intl.formatMessage(messages.monthlyTitle),
-          body:
-            retryAt === null
-              ? intl.formatMessage(messages.monthlyBody)
-              : intl.formatMessage(messages.monthlyBodyWithTime, {
-                  when: formatWhen(intl, retryAt, now),
-                }),
+        all_spent: {
+          title: intl.formatMessage(messages.allSpentTitle),
+          body: intl.formatMessage(messages.allSpentBody),
         },
         unavailable: {
           title: intl.formatMessage(messages.unavailableTitle),
@@ -621,6 +656,25 @@ const ReviewPopoverContent = ({
     </ScrollArea>
   );
 
+  // Why each provider that cannot be chosen cannot, once for the option
+  // (read with it by a screen reader) and once in sight under the choice.
+  const spentReasons = new Map(
+    providers
+      .filter((choice) => !choice.available)
+      .map((choice) => {
+        const { company } = REVIEW_PROVIDER_NAMES[choice.provider];
+        return [
+          choice.provider,
+          choice.retryAt === null
+            ? intl.formatMessage(messages.providerSpent, { company })
+            : intl.formatMessage(messages.providerSpentUntil, {
+                company,
+                when: formatWhen(intl, choice.retryAt, now),
+              }),
+        ] as const;
+      }),
+  );
+
   const caption = running
     ? intl.formatMessage(messages.runningCaption, {
         current: Math.min(limit, limit - remaining + 1),
@@ -639,12 +693,56 @@ const ReviewPopoverContent = ({
             {intl.formatMessage(messages.title)}
           </PopoverTitle>
           <span className="text-sm text-current/70">{subline}</span>
+          {!running && writer !== null && (
+            <span className="text-sm text-current/70">
+              {intl.formatMessage(messages.writtenBy, {
+                model: REVIEW_PROVIDER_NAMES[writer].model,
+                company: REVIEW_PROVIDER_NAMES[writer].company,
+              })}
+            </span>
+          )}
         </div>
         <CloseButton onClick={onClose} />
       </div>
       {renderNotice()}
       {body}
       <div className="border-outline flex flex-col gap-3 border-t px-6 py-4">
+        <div className="flex flex-col gap-1">
+          <span id={providerLabelId} className="text-sm font-bold">
+            {intl.formatMessage(messages.providerLabel)}
+          </span>
+          <RadioGroupField
+            aria-labelledby={providerLabelId}
+            orientation="horizontal"
+            size="sm"
+            disabled={running}
+            value={provider}
+            onChange={(next) => {
+              const chosen = REVIEW_PROVIDERS.find((name) => name === next);
+              if (chosen) dispatch(chooseReviewProvider(chosen));
+            }}
+            options={providers.map((choice) => {
+              const { company, model } = REVIEW_PROVIDER_NAMES[choice.provider];
+              return {
+                value: choice.provider,
+                label: (
+                  <>
+                    <span className="font-bold">{company}</span>{' '}
+                    <span>{model}</span>
+                  </>
+                ),
+                disabled: !choice.available,
+                description: spentReasons.get(choice.provider),
+              };
+            })}
+          />
+          {/* Each option carries its own reason for a screen reader. */}
+          {[...spentReasons].map(([name, reason]) => (
+            <span key={name} aria-hidden className="text-sm text-current/70">
+              {reason}
+            </span>
+          ))}
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {running ? (
             <Button onClick={() => dispatch(cancelReview())}>

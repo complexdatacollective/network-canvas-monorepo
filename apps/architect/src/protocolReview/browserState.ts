@@ -1,9 +1,12 @@
 import {
+  REVIEW_PROVIDERS,
+  type ReviewProvider,
   type ReviewQuota,
   ReviewQuotaSchema,
 } from '@codaco/protocol-review-worker/contract';
 import {
   PROTOCOL_REVIEW_INSTALLATION_ID_KEY,
+  PROTOCOL_REVIEW_PROVIDER_KEY,
   PROTOCOL_REVIEW_QUOTA_KEY,
 } from '~/utils/storageNames';
 
@@ -64,4 +67,28 @@ export const effectiveQuota = (
   return Date.parse(quota.resetsAt) <= now
     ? { ...quota, remaining: quota.limit }
     : quota;
+};
+
+/** The provider chosen until the researcher chooses another. */
+export const DEFAULT_REVIEW_PROVIDER: ReviewProvider = REVIEW_PROVIDERS[0];
+
+/** The provider this browser last chose to write its reviews. */
+export const readStoredProvider = (): ReviewProvider => {
+  try {
+    const raw = localStorage.getItem(PROTOCOL_REVIEW_PROVIDER_KEY);
+    return (
+      REVIEW_PROVIDERS.find((provider) => provider === raw) ??
+      DEFAULT_REVIEW_PROVIDER
+    );
+  } catch {
+    return DEFAULT_REVIEW_PROVIDER;
+  }
+};
+
+export const writeStoredProvider = (provider: ReviewProvider): void => {
+  try {
+    localStorage.setItem(PROTOCOL_REVIEW_PROVIDER_KEY, provider);
+  } catch {
+    // A choice that is not remembered lasts for this session only.
+  }
 };
