@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path d="M89 11 L74 29" fill="none" stroke="var(--node-color-dark, #c22f63)" stroke-width="12" stroke-linecap="round"/>
+  <path d="M74 29 L69 35" fill="none" stroke="var(--node-color, #e0457b)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M68 32 C60 34 55 42 57 50 C65 50 72 44 73 36 Z" fill="var(--node-color-dark, #c22f63)"/>
+  <circle cx="44" cy="59" r="35" fill="var(--node-color-dark, #c22f63)" stroke="var(--background, #2d2955)" stroke-width="6" paint-order="stroke"/>
+  <path d="M44 24 C66 40 66 78 44 94 C22 78 22 40 44 24 Z" fill="var(--node-color, #e0457b)"/>
+  <rect id="label-area" x="16" y="45" width="56" height="28" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g fill="#ffffff" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round">
+    <circle cx="38" cy="39" r="23"/>
+    <path d="M86 11 L66 42" fill="none" stroke-width="20"/>
+    <path d="M66 42 C58 46 56 56 60 60 C66 58 72 52 70 45 Z"/>
+  </g>
+  <g stroke="#2b2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M86 11 L69 37" fill="none" stroke-width="11"/>
+    <path d="M86 11 L69 37" fill="none" stroke="#c98b55" stroke-width="5"/>
+    <path d="M71 34 L65 43" fill="none" stroke-width="13"/>
+    <path d="M71 34 L65 43" fill="none" stroke="#c4c9d9" stroke-width="7"/>
+    <path d="M65 42 C58 46 56 56 60 60 C66 58 72 52 70 45 Z" fill="#9b7ae0"/>
+    <circle cx="38" cy="39" r="23" fill="#ffffff"/>
+    <path d="M38 16 C29 24 29 54 38 62 A23 23 0 0 1 38 16 Z" fill="#e4572e"/>
+    <path d="M38 16 C47 24 47 54 38 62 A23 23 0 0 0 38 16 Z" fill="#3d8bd8"/>
+    <path d="M38 16 C42 26 42 52 38 62 C34 52 34 26 38 16 Z" fill="#ffd23f" stroke-width="2"/>
+  </g>
+  <circle cx="45" cy="27" r="3" fill="#ffffff" fill-opacity="0.8"/>
+  <rect x="10" y="62" width="80" height="32" rx="9" fill="#ffffff" stroke="#2b2340" stroke-width="3"/>
+  <rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/>
+</svg>

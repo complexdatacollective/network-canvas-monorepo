@@ -1,6 +1,7 @@
 import { get } from 'es-toolkit/compat';
 import { useContext } from 'react';
 
+import { resolveNodeShapeReference } from '@codaco/fresco-ui/Node';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import EntityIcon from '~/components/Codebook/EntityIcon';
 
@@ -27,7 +28,11 @@ const EntityBadge = ({
   } = useContext(SummaryContext);
   const color = get(codebook, [entity, type, 'color']);
   const name = get(codebook, [entity, type, 'name']);
-  const shape = get(codebook, [entity, type, 'shape', 'default']);
+  const nodeType = entity === 'node' ? codebook.node?.[type] : undefined;
+  const shape = resolveNodeShapeReference(
+    nodeType?.shape?.default,
+    nodeType?.customShapes,
+  );
   const size = iconSize ?? (tiny ? 'tiny' : small ? 'small' : 'default');
   const label = small || tiny ? name : <Heading level="h2">{name}</Heading>;
   const badge = (

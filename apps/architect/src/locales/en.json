@@ -3123,10 +3123,6 @@
     "defaultMessage": "Protocol name is required",
     "description": "Validation error below the protocol name field of the Create New Protocol dialog when the field is left empty."
   },
-  "architect.remaining.typeEditor.shapePicker.selectShape": {
-    "defaultMessage": "Select shape {value1}",
-    "description": "Accessible name of one option in the node shape picker; read only by screen readers. value1 is the name of the shape, such as Circle, Square or Diamond."
-  },
   "architect.resource.genericImportFailure": {
     "defaultMessage": "Check that it is a supported file type, and try again.",
     "description": "Advice shown in the import error dialog when a file fails to import for an unexpected reason: the file may not be a supported type."
@@ -3763,18 +3759,6 @@
     "defaultMessage": "Has skip logic",
     "description": "Alternative text and tooltip of a small icon on a timeline stage, shown when the stage has skip logic set."
   },
-  "architect.typeEditor.shapePicker.config.circle": {
-    "defaultMessage": "Circle",
-    "description": "Name of the circle node shape, shown under its swatch in the shape picker of the node type editor."
-  },
-  "architect.typeEditor.shapePicker.config.diamond": {
-    "defaultMessage": "Diamond",
-    "description": "Name of the diamond node shape, shown under its swatch in the shape picker of the node type editor."
-  },
-  "architect.typeEditor.shapePicker.config.square": {
-    "defaultMessage": "Square",
-    "description": "Name of the square node shape, shown under its swatch in the shape picker of the node type editor."
-  },
   "architect.typeEditor.shapeVariableMapping.attribute": {
     "defaultMessage": "Attribute",
     "description": "Label of the dropdown in the node type editor's shape mapping that chooses which variable of the node type decides the node's shape. Attribute means a codebook variable."
@@ -3862,6 +3846,10 @@
   "architect.typeEditor.typeEditor.color": {
     "defaultMessage": "Color",
     "description": "Label of the colour picker field in the node or edge type editor."
+  },
+  "architect.typeEditor.typeEditor.customShapes": {
+    "defaultMessage": "Custom shapes",
+    "description": "Label of the part of the node type editor where the researcher adds their own shapes for the node type from SVG image files."
   },
   "architect.typeEditor.typeEditor.enterANameForThisType": {
     "defaultMessage": "Enter a name for this {entity, select, node {node} edge {edge} other {ego}} type...",

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect x="8" y="42" width="84" height="52" rx="5" fill="var(--node-color, #e0457b)"/>
+  <path d="M8 46 V34 C8 18 22 10 36 10 H64 C78 10 92 18 92 34 V46 Z" fill="var(--node-color-dark, #c22f63)"/>
+  <rect x="10" y="46" width="6" height="46" fill="var(--node-color-dark, #c22f63)"/>
+  <rect x="84" y="46" width="6" height="46" fill="var(--node-color-dark, #c22f63)"/>
+  <polygon points="50.0,15.0 52.9,22.0 60.5,22.6 54.8,27.5 56.5,34.9 50.0,31.0 43.5,34.9 45.2,27.5 39.5,22.6 47.1,22.0" fill="var(--surface, #3a3566)" stroke="var(--surface, #3a3566)" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="44" y="40" width="12" height="11" rx="3" fill="var(--surface, #3a3566)"/>
+  <rect id="label-area" x="20" y="56" width="60" height="32" fill="#ffffff"/>
+</svg>

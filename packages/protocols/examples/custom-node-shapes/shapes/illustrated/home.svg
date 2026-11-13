@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g fill="#ffffff" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="64" y="12" width="12" height="20"/>
+    <rect x="18" y="32" width="64" height="34"/>
+    <path d="M8 37 L50 8 L92 37 Z"/>
+  </g>
+  <g stroke="#2b2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="64" y="12" width="12" height="20" fill="#b5452a"/>
+    <rect x="18" y="32" width="64" height="34" fill="#ffe2b0"/>
+    <path d="M8 37 L50 8 L92 37 Z" fill="#e4572e"/>
+    <circle cx="50" cy="25" r="4.5" fill="#ffd23f"/>
+    <rect x="24" y="42" width="13" height="12" rx="2" fill="#a7d8f0"/>
+    <rect x="63" y="42" width="13" height="12" rx="2" fill="#a7d8f0"/>
+    <path d="M43 66 V50 C43 46 46 44 50 44 C54 44 57 46 57 50 V66 Z" fill="#3d8bd8"/>
+  </g>
+  <circle cx="53.5" cy="56" r="1.6" fill="#ffd23f"/>
+  <rect x="10" y="62" width="80" height="32" rx="9" fill="#ffffff" stroke="#2b2340" stroke-width="3"/>
+  <rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/>
+</svg>

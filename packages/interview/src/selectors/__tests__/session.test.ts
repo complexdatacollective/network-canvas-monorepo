@@ -85,7 +85,9 @@ describe('resolveNodeShape', () => {
       },
     };
 
-    expect(resolveNodeShape(shape, { ethnicity: ['asian'] })).toBe('square');
+    expect(resolveNodeShape({ shape: shape }, { ethnicity: ['asian'] })).toBe(
+      'square',
+    );
   });
 
   it('matches a scalar-valued attribute against a discrete map entry', () => {
@@ -98,7 +100,9 @@ describe('resolveNodeShape', () => {
       },
     };
 
-    expect(resolveNodeShape(shape, { role: 'lead' })).toBe('diamond');
+    expect(resolveNodeShape({ shape: shape }, { role: 'lead' })).toBe(
+      'diamond',
+    );
   });
 
   /**
@@ -124,14 +128,20 @@ describe('resolveNodeShape', () => {
     it('treats a threshold as an inclusive lower bound', () => {
       const definition = shape([{ value: 18, shape: 'square' }]);
 
-      expect(resolveNodeShape(definition, { age: 18 })).toBe('square');
-      expect(resolveNodeShape(definition, { age: 19 })).toBe('square');
+      expect(resolveNodeShape({ shape: definition }, { age: 18 })).toBe(
+        'square',
+      );
+      expect(resolveNodeShape({ shape: definition }, { age: 19 })).toBe(
+        'square',
+      );
     });
 
     it('falls back to the default below the lowest threshold', () => {
       const definition = shape([{ value: 18, shape: 'square' }]);
 
-      expect(resolveNodeShape(definition, { age: 17 })).toBe('circle');
+      expect(resolveNodeShape({ shape: definition }, { age: 17 })).toBe(
+        'circle',
+      );
     });
 
     it('gives two thresholds three bands', () => {
@@ -140,11 +150,21 @@ describe('resolveNodeShape', () => {
         { value: 65, shape: 'diamond' },
       ]);
 
-      expect(resolveNodeShape(definition, { age: 0 })).toBe('circle');
-      expect(resolveNodeShape(definition, { age: 18 })).toBe('square');
-      expect(resolveNodeShape(definition, { age: 64 })).toBe('square');
-      expect(resolveNodeShape(definition, { age: 65 })).toBe('diamond');
-      expect(resolveNodeShape(definition, { age: 120 })).toBe('diamond');
+      expect(resolveNodeShape({ shape: definition }, { age: 0 })).toBe(
+        'circle',
+      );
+      expect(resolveNodeShape({ shape: definition }, { age: 18 })).toBe(
+        'square',
+      );
+      expect(resolveNodeShape({ shape: definition }, { age: 64 })).toBe(
+        'square',
+      );
+      expect(resolveNodeShape({ shape: definition }, { age: 65 })).toBe(
+        'diamond',
+      );
+      expect(resolveNodeShape({ shape: definition }, { age: 120 })).toBe(
+        'diamond',
+      );
     });
 
     it('falls back to the default for an answer that is not a number', () => {
@@ -153,9 +173,13 @@ describe('resolveNodeShape', () => {
       // Including the string form of a number the threshold would otherwise
       // meet: the comparison is numeric, and a coerced string would make a
       // text answer silently change a node's shape.
-      expect(resolveNodeShape(definition, { age: '20' })).toBe('circle');
-      expect(resolveNodeShape(definition, { age: null })).toBe('circle');
-      expect(resolveNodeShape(definition, {})).toBe('circle');
+      expect(resolveNodeShape({ shape: definition }, { age: '20' })).toBe(
+        'circle',
+      );
+      expect(resolveNodeShape({ shape: definition }, { age: null })).toBe(
+        'circle',
+      );
+      expect(resolveNodeShape({ shape: definition }, {})).toBe('circle');
     });
   });
 
@@ -169,9 +193,94 @@ describe('resolveNodeShape', () => {
       },
     };
 
-    expect(resolveNodeShape(shape, { is_person: true })).toBe('circle');
-    expect(resolveNodeShape(shape, { is_person: false })).toBe('square');
-    expect(resolveNodeShape(shape, {})).toBe('square');
-    expect(resolveNodeShape(shape, { is_person: null })).toBe('square');
+    expect(resolveNodeShape({ shape: shape }, { is_person: true })).toBe(
+      'circle',
+    );
+    expect(resolveNodeShape({ shape: shape }, { is_person: false })).toBe(
+      'square',
+    );
+    expect(resolveNodeShape({ shape: shape }, {})).toBe('square');
+    expect(resolveNodeShape({ shape: shape }, { is_person: null })).toBe(
+      'square',
+    );
+  });
+});
+
+describe('resolveNodeShape with custom shapes', () => {
+  const homeSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10 50 L50 10 L90 50 Z" fill="var(--node-color)"/></svg>';
+  const treeSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="40" r="30" fill="#2e7d32"/></svg>';
+  const customShapes: NodeDefinition['customShapes'] = {
+    home: { name: 'Home', svg: homeSvg },
+    tree: { name: 'Tree', svg: treeSvg },
+  };
+
+  it('resolves a custom default to that shape’s svg', () => {
+    expect(
+      resolveNodeShape({ shape: { default: 'custom:home' }, customShapes }, {}),
+    ).toMatchObject({ svg: homeSvg });
+  });
+
+  it('resolves a custom shape from a discrete map entry', () => {
+    const definition: Pick<NodeDefinition, 'shape' | 'customShapes'> = {
+      customShapes,
+      shape: {
+        default: 'circle',
+        dynamic: {
+          variable: asEntityAttributeReference('kind'),
+          type: 'discrete',
+          map: [
+            { value: 'home', shape: 'custom:home' },
+            { value: 'park', shape: 'custom:tree' },
+          ],
+        },
+      },
+    };
+
+    expect(resolveNodeShape(definition, { kind: 'home' })).toMatchObject({
+      svg: homeSvg,
+    });
+    expect(resolveNodeShape(definition, { kind: 'park' })).toMatchObject({
+      svg: treeSvg,
+    });
+    expect(resolveNodeShape(definition, { kind: 'other' })).toBe('circle');
+  });
+
+  it('resolves a custom shape from a breakpoint threshold', () => {
+    const definition: Pick<NodeDefinition, 'shape' | 'customShapes'> = {
+      customShapes,
+      shape: {
+        default: 'custom:home',
+        dynamic: {
+          variable: asEntityAttributeReference('age'),
+          type: 'breakpoints',
+          thresholds: [
+            { value: 18, shape: 'custom:tree' },
+            { value: 65, shape: 'diamond' },
+          ],
+        },
+      },
+    };
+
+    expect(resolveNodeShape(definition, { age: 10 })).toMatchObject({
+      svg: homeSvg,
+    });
+    expect(resolveNodeShape(definition, { age: 30 })).toMatchObject({
+      svg: treeSvg,
+    });
+    expect(resolveNodeShape(definition, { age: 70 })).toBe('diamond');
+  });
+
+  it('falls back to a circle for a reference the node type does not define', () => {
+    expect(
+      resolveNodeShape(
+        { shape: { default: 'custom:missing' }, customShapes },
+        {},
+      ),
+    ).toBe('circle');
+    expect(resolveNodeShape({ shape: { default: 'custom:home' } }, {})).toBe(
+      'circle',
+    );
   });
 });

@@ -7,6 +7,10 @@ import {
 import { Redacted } from 'effect';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import {
+  type NodeShapeProp,
+  resolveNodeShapeReference,
+} from '@codaco/fresco-ui/Node';
 import type {
   Presence,
   ResourceDescriptor,
@@ -25,6 +29,10 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import {
+  isNodeShapeReference,
+  readCustomShapes,
+} from '../codebook/customShapes.ts';
 import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { attempt } from './attempt.ts';
 import {
@@ -93,7 +101,7 @@ export type EntityTypeSummary = Readonly<{
   name: string;
   color?: string;
   /** How a node of this type is drawn. Node types only; edges have no shape. */
-  shape?: string;
+  shape?: NodeShapeProp;
 }>;
 
 /** Every node or edge type in the codebook, for a picker's options. */
@@ -542,15 +550,21 @@ function entityTypeSummary(
       ? ref.typeId
       : id;
   const shape = document.shape;
-  const defaultShape =
+  const storedDefault =
     shape !== null && typeof shape === 'object' && 'default' in shape
       ? shape.default
       : undefined;
+  const defaultShape = isNodeShapeReference(storedDefault)
+    ? resolveNodeShapeReference(
+        storedDefault,
+        readCustomShapes(document.customShapes),
+      )
+    : undefined;
   return {
     id: typeId,
     name: typeof document.name === 'string' ? document.name : typeId,
     ...(typeof document.color === 'string' ? { color: document.color } : {}),
-    ...(typeof defaultShape === 'string' ? { shape: defaultShape } : {}),
+    ...(defaultShape === undefined ? {} : { shape: defaultShape }),
   };
 }
 

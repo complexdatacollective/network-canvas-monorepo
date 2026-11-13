@@ -1,7 +1,7 @@
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, {
   type NodeColorSequence,
-  type NodeShape,
+  type NodeShapeProp,
 } from '@codaco/fresco-ui/Node';
 import type { ColorReference } from '@codaco/protocol-validation';
 import { cva } from '~/utils/cva';
@@ -12,7 +12,7 @@ type EntityIconSize = 'default' | 'small' | 'tiny';
 type EntityIconProps = {
   entity: string;
   color?: ColorReference;
-  shape?: NodeShape;
+  shape?: NodeShapeProp;
   label?: React.ReactNode;
   size?: EntityIconSize;
 };
@@ -51,7 +51,7 @@ const edgeIconStyle = (
 const renderIcon = (
   entity: string,
   color?: ColorReference,
-  shape: NodeShape = 'circle',
+  shape: NodeShapeProp = 'circle',
   size: EntityIconSize = 'default',
 ) => {
   switch (entity) {

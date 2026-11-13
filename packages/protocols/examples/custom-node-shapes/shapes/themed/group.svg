@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g fill="var(--node-color-dark, #c22f63)">
+    <circle cx="21" cy="30" r="12"/>
+    <circle cx="79" cy="30" r="12"/>
+    <path d="M4 96 V62 C4 51 12 44 22 44 H40 V96 Z"/>
+    <path d="M96 96 V62 C96 51 88 44 78 44 H60 V96 Z"/>
+  </g>
+  <g fill="var(--surface, #3a3566)">
+    <circle cx="17" cy="29" r="2"/>
+    <circle cx="83" cy="29" r="2"/>
+  </g>
+  <g fill="var(--node-color, #e0457b)" stroke="var(--background, #2d2955)" stroke-width="6" paint-order="stroke">
+    <circle cx="50" cy="23" r="16"/>
+    <path d="M18 96 V68 C18 55 27 44 40 44 H60 C73 44 82 55 82 68 V96 Z"/>
+  </g>
+  <circle cx="44" cy="21" r="2.6" fill="var(--surface, #3a3566)"/>
+  <circle cx="56" cy="21" r="2.6" fill="var(--surface, #3a3566)"/>
+  <path d="M43.5 27.5 Q50 33 56.5 27.5" fill="none" stroke="var(--surface, #3a3566)" stroke-width="3" stroke-linecap="round"/>
+  <rect id="label-area" x="22" y="58" width="56" height="32" fill="#ffffff"/>
+</svg>

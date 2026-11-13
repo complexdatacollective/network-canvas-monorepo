@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path d="M4 96 C14 78 86 78 96 96 Z" fill="var(--node-color-dark, #c22f63)"/>
+  <path d="M50 88 C40 77 12 59 12 39 C12 18 29 4 50 4 C71 4 88 18 88 39 C88 59 60 77 50 88 Z" fill="var(--node-color, #e0457b)" stroke="var(--background, #2d2955)" stroke-width="5" paint-order="stroke"/>
+  <circle cx="50" cy="19" r="7.5" fill="var(--surface, #3a3566)"/>
+  <rect id="label-area" x="22" y="30" width="56" height="28" fill="#ffffff"/>
+</svg>

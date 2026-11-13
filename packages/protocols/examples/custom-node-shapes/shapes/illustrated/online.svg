@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g fill="#ffffff" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="12" y="10" width="40" height="56" rx="7"/>
+    <path d="M54 14 H86 C88.8 14 91 16.2 91 19 V37 C91 39.8 88.8 42 86 42 H70 L60 50 V42 H54 C51.2 42 49 39.8 49 37 V19 C49 16.2 51.2 14 54 14 Z"/>
+  </g>
+  <g stroke="#2b2340" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="12" y="10" width="40" height="56" rx="7" fill="#3d8bd8"/>
+    <rect x="17" y="17" width="30" height="40" rx="2" fill="#a7d8f0" stroke-width="2.2"/>
+    <path d="M54 14 H86 C88.8 14 91 16.2 91 19 V37 C91 39.8 88.8 42 86 42 H70 L60 50 V42 H54 C51.2 42 49 39.8 49 37 V19 C49 16.2 51.2 14 54 14 Z" fill="#f28fa6"/>
+  </g>
+  <circle cx="32" cy="61.5" r="2" fill="#ffffff"/>
+  <g fill="#ffffff">
+    <rect x="21" y="23" width="16" height="6" rx="3"/>
+    <rect x="27" y="33" width="16" height="6" rx="3"/>
+    <rect x="21" y="43" width="12" height="6" rx="3"/>
+  </g>
+  <path d="M70 37 C61 31 62.5 22.5 67 22.5 C68.7 22.5 69.6 23.6 70 24.8 C70.4 23.6 71.3 22.5 73 22.5 C77.5 22.5 79 31 70 37 Z" fill="#ffffff"/>
+  <rect x="10" y="62" width="80" height="32" rx="9" fill="#ffffff" stroke="#2b2340" stroke-width="3"/>
+  <rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/>
+</svg>

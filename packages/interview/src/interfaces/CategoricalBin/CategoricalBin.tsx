@@ -450,7 +450,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
             shape={
               nodeTypeDefinition
                 ? resolveNodeShape(
-                    nodeTypeDefinition.shape,
+                    nodeTypeDefinition,
                     node[entityAttributesProperty],
                   )
                 : undefined

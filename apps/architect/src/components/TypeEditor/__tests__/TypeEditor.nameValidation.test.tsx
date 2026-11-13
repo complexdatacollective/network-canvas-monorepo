@@ -12,7 +12,9 @@ vi.mock('~/components/Form/Fields/ColorPicker', () => ({
 vi.mock('@codaco/fresco-ui/form/fields/IconPicker', () => ({
   default: () => null,
 }));
-vi.mock('../ShapePicker', () => ({ ShapePickerControl: () => null }));
+vi.mock('@codaco/protocol-builder/fields/ShapePickerField', () => ({
+  default: () => null,
+}));
 vi.mock('../ShapeVariableMapping', () => ({ default: () => null }));
 
 const existingCodebook = vi.hoisted(

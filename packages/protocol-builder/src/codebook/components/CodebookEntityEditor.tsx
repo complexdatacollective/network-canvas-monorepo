@@ -26,11 +26,11 @@ import IconPicker from '@codaco/fresco-ui/form/fields/IconPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
 import {
   EdgeColorSequence,
   NodeColorSequence,
+  type NodeShapeReference,
 } from '@codaco/protocol-validation';
 import {
   CodebookNameSchema,
@@ -44,6 +44,14 @@ import type { CodebookSubject } from '../../protocol-context.ts';
 import { codebookEditingMessages } from '../codebookMessages.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
+  customShapesIssue,
+  customShapeUsage,
+  defaultShapeIssue,
+  isNodeShapeReference,
+  mappedShapesIssue,
+  readCustomShapes,
+} from '../customShapes.ts';
+import {
   documentForNewEntity,
   documentWithEntityProperties,
   draftRefusalMessage,
@@ -51,13 +59,15 @@ import {
   type CodebookEntityDraft,
 } from '../editing.ts';
 import {
-  isNodeShape,
   shapeMappingDraft,
   shapeMappingIssue,
   shapeMappingVariables,
   type ShapeMappingDraft,
 } from '../shapeMapping.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
+import CustomShapesField, {
+  customShapesGuidance,
+} from './CustomShapesField.tsx';
 import NodeShapeMappingFields from './NodeShapeMappingFields.tsx';
 
 export const codebookEntityMessages = defineMessages({
@@ -162,6 +172,12 @@ export const codebookEntityMessages = defineMessages({
     defaultMessage: 'Choose a default shape for this node type.',
     description:
       'Guidance under the shape field. A node is a member of the interview network.',
+  },
+  customShapesLabel: {
+    id: 'protocolBuilder.codebookEntity.customShapesLabel',
+    defaultMessage: 'Custom shapes',
+    description:
+      'Label of the part of the node type editor where the researcher adds their own shapes for the node type from SVG image files.',
   },
   iconLabel: {
     id: 'protocolBuilder.codebookEntity.iconLabel',
@@ -284,14 +300,17 @@ const colorOptions = (
  * renders them, so they follow the formatter while they wait.
  */
 type EntityFieldErrors = Readonly<
-  Partial<Record<'name' | 'color' | 'shape' | 'shape.dynamic' | 'icon', string>>
+  Partial<
+    Record<
+      'name' | 'color' | 'customShapes' | 'shape' | 'shape.dynamic' | 'icon',
+      string
+    >
+  >
 >;
 
 /** The default shape a type holds, where it holds one this picker knows. */
-const asNodeShape = (value: unknown): NodeShape | undefined =>
-  value === 'circle' || value === 'square' || value === 'diamond'
-    ? value
-    : undefined;
+const asShapeReference = (value: unknown): NodeShapeReference | undefined =>
+  isNodeShapeReference(value) ? value : undefined;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -373,16 +392,21 @@ const validateFields = (
   }
   if (subject.entity === 'node') {
     const shape = isRecord(draft.shape) ? stringValue(draft.shape.default) : '';
+    const customShapes = readCustomShapes(draft.customShapes);
+    const shapesIssue = customShapesIssue(customShapes);
+    if (shapesIssue !== undefined) errors.customShapes = shapesIssue;
+    const missingDefault = defaultShapeIssue(shape, customShapes);
     if (shape === '')
       errors.shape = createMessageError(codebookEntityMessages.shapeRequired);
+    else if (missingDefault !== undefined) errors.shape = missingDefault;
     const mapping = isRecord(draft.shape) ? draft.shape.dynamic : undefined;
     const mappingIssue =
       mapping === undefined
         ? undefined
-        : shapeMappingIssue(
+        : (shapeMappingIssue(
             shapeMappingDraft(mapping),
             shapeMappingVariables(draft.variables),
-          );
+          ) ?? mappedShapesIssue(shapeMappingDraft(mapping), customShapes));
     if (mappingIssue !== undefined) errors['shape.dynamic'] = mappingIssue;
     const icon = stringValue(draft.icon);
     if (icon === '')
@@ -424,13 +448,12 @@ export function CodebookEntityFields({
 
   const storedShape = isRecord(draft.shape) ? draft.shape : {};
   const storedDefaultShape = storedShape.default;
-  const currentDefaultShape = isNodeShape(storedDefaultShape)
-    ? storedDefaultShape
-    : undefined;
+  const currentDefaultShape = asShapeReference(storedDefaultShape);
   const currentMapping =
     storedShape.dynamic === undefined
       ? undefined
       : shapeMappingDraft(storedShape.dynamic);
+  const customShapes = readCustomShapes(draft.customShapes);
 
   const currentColor = stringValue(draft.color);
   const colors =
@@ -507,16 +530,35 @@ export function CodebookEntityFields({
             )}
           >
             <UnconnectedField
+              name="customShapes"
+              label={intl.formatMessage(
+                codebookEntityMessages.customShapesLabel,
+              )}
+              hint={customShapesGuidance(intl)}
+              component={CustomShapesField}
+              nodeColor={currentColor}
+              usage={customShapeUsage(currentDefaultShape, currentMapping)}
+              value={customShapes}
+              onChange={(value) =>
+                onChange(replaceDraftProperty(draft, 'customShapes', value))
+              }
+              disabled={disabled}
+              errors={
+                errors.customShapes === undefined
+                  ? undefined
+                  : [errors.customShapes]
+              }
+              showErrors
+            />
+
+            <UnconnectedField
               name="shape"
               label={intl.formatMessage(codebookEntityMessages.shapeLabel)}
               hint={intl.formatMessage(codebookEntityMessages.shapeHint)}
               component={ShapePickerField}
               nodeColor={currentColor}
-              value={
-                isRecord(draft.shape)
-                  ? asNodeShape(draft.shape.default)
-                  : undefined
-              }
+              customShapes={customShapes}
+              value={currentDefaultShape}
               onChange={(value) =>
                 onChange(replaceDefaultShape(draft, String(value)))
               }
@@ -528,6 +570,7 @@ export function CodebookEntityFields({
 
             <NodeShapeMappingFields
               nodeColor={currentColor}
+              customShapes={customShapes}
               variables={shapeMappingVariables(draft.variables)}
               {...(currentDefaultShape === undefined
                 ? {}
@@ -710,6 +753,11 @@ export default function CodebookEntityEditor({
               subject,
               authoritativeDocument: modeProps.authoritativeDocument,
               draft,
+              // Removing every custom shape leaves the draft without the key,
+              // which would otherwise keep the stored shapes.
+              ...(Object.hasOwn(draft, 'customShapes')
+                ? {}
+                : { unsetProperties: ['customShapes'] }),
             });
     } catch (error: unknown) {
       // Everything the entity schema refuses past `validateFields` is written

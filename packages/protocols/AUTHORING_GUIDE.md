@@ -119,7 +119,8 @@ All three are optional, but you must define any type a stage references.
     "person": {                       // key = node-type id (slug, used as stage subject.type)
       "name": "Person",               // REQUIRED name (spaces allowed here); participants never see it
       "color": "node-color-seq-1",    // REQUIRED: node-color-seq-1 … node-color-seq-8
-      "shape": { "default": "circle" }, // REQUIRED: default ∈ circle|square|diamond
+      "shape": { "default": "circle" }, // REQUIRED: default ∈ circle|square|diamond|custom:<id>
+      "customShapes": { /* optional, see §3.1 */ },
       "icon": "add-a-person",          // optional
       "variables": { /* see §4 */ }
     }
@@ -134,6 +135,46 @@ All three are optional, but you must define any type a stage references.
   "ego": { "variables": { /* see §4 — but ego vars may NOT use 'unique' validation */ } }
 }
 ```
+
+### 3.1 Custom node shapes
+
+A node type can define its own shapes as inline SVG and use them wherever a shape is chosen:
+`shape.default`, `shape.dynamic.map[].shape` and `shape.dynamic.thresholds[].shape`. Refer to one
+as `"custom:<id>"`, where `<id>` is a key of the same node type's `customShapes`; a reference to a
+missing id, or to another node type's shape, fails validation.
+
+```jsonc
+"customShapes": {                      // key = shape id: letters, digits, '-' and '_' only
+  "home": {
+    "name": "Home",                    // REQUIRED, not blank, unique (ignoring case) in this node type
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><path d=\"M10 50 50 10 90 50V90H10Z\" fill=\"var(--node-color)\"/><rect id=\"label-area\" x=\"20\" y=\"55\" width=\"60\" height=\"30\" fill=\"var(--text)\"/></svg>"
+  }
+},
+"shape": { "default": "custom:home" }
+```
+
+The `svg` string (at most 50 000 characters) must be a clean node shape SVG; validation names the
+first problem it finds.
+
+- **Root**: one `<svg>` with a `viewBox` of four numbers and a positive width and height (or numeric
+  `width` and `height`). The picture is centred in the node's square, keeping its aspect ratio.
+- **Elements**: `g`, `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon`, `text`,
+  `tspan`, `defs`, `linearGradient`, `radialGradient`, `stop`, `clipPath`, `mask`, `symbol`, `use`.
+  `title`, `desc`, `metadata` and comments are ignored. Anything else (`script`, `style`, `image`,
+  `foreignObject`, `a`, filters, animations, editor elements such as `sodipodi:*`) is rejected.
+- **Attributes**: geometry, transforms, fill/stroke/opacity, gradient, clip/mask and font
+  presentation attributes, plus `id`. `href` (or `xlink:href`) only on `use` and gradients, and
+  only as `#<id>`. `url(...)` only as `url(#<id>)` in `fill`, `stroke`, `clip-path` and `mask`.
+  A `style` attribute may hold only those same properties. Event handlers, editor attributes
+  (`inkscape:*`) and external references are rejected.
+- **Colours**: `fill`, `stroke`, `stop-color` and `color` may use theme tokens as
+  `var(--<token>)` or `var(--<token>, <fallback>)`. Tokens: `node-color`, `node-color-dark`,
+  `node-color-seq-1` … `node-color-seq-8`, `text`, `background`, `surface`, `primary`, `accent`,
+  `selected`. `currentColor` means `node-color`.
+- **Label area**: an optional `<rect id="label-area" x y width height>` (viewBox units, no
+  `transform` on it or any ancestor, not inside `defs`/`clipPath`/`mask`/`symbol`, at most one)
+  marks where the node's label goes. It is never drawn; its `fill` sets the label colour. Without
+  one, the label sits in the central 80% × 60% of the node in the theme's `text` colour.
 
 ## 4. Variable definitions (strict per type)
 

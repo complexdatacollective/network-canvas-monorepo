@@ -883,6 +883,10 @@
     "defaultMessage": "Create node type",
     "description": "Button that adds a new node type to the codebook. A node is a member of the interview network."
   },
+  "protocolBuilder.codebookEntity.customShapesLabel": {
+    "defaultMessage": "Custom shapes",
+    "description": "Label of the part of the node type editor where the researcher adds their own shapes for the node type from SVG image files."
+  },
   "protocolBuilder.codebookEntity.edgeTypesHeading": {
     "defaultMessage": "Edge types",
     "description": "Heading over the codebook’s edge types. An edge is a relationship between two network members."
@@ -1478,6 +1482,86 @@
   "protocolBuilder.contentBlock.videoRequired": {
     "defaultMessage": "Choose the video this block plays.",
     "description": "Refusal shown under the file picker of a video block when nothing has been chosen."
+  },
+  "protocolBuilder.customShapes.addShapes": {
+    "defaultMessage": "Add shapes from SVG files",
+    "description": "Button that opens a file chooser for adding custom node shapes. Several SVG files can be chosen at once. SVG is a file format name and is not translated."
+  },
+  "protocolBuilder.customShapes.addedAnnouncement": {
+    "defaultMessage": "{count, plural, one {Added # shape.} other {Added # shapes.}}",
+    "description": "Screen reader announcement after custom node shapes were added from SVG files. count is how many were added."
+  },
+  "protocolBuilder.customShapes.centredLabel": {
+    "defaultMessage": "This file has no label area, so the label will be placed in the center of the shape.",
+    "description": "Notice shown under a custom node shape whose SVG file does not say where the node’s label goes."
+  },
+  "protocolBuilder.customShapes.guidance": {
+    "defaultMessage": "Add your own shapes for this node type from SVG files. To choose where the label goes, draw a rectangle with the id {labelAreaId}; its fill sets the color of the label. To draw part of a shape in this node type’s color, use {nodeColorToken} as its fill or stroke.",
+    "description": "Guidance under the custom shapes heading in the node type editor. labelAreaId is the literal text label-area and nodeColorToken is the literal text var(--node-color), both shown as code and never translated. SVG is a file format name and is not translated."
+  },
+  "protocolBuilder.customShapes.inUse": {
+    "defaultMessage": "{usage, select, default {Used as the default shape. Choose another default shape to remove it.} mapping {Used in the shape mapping. Choose other shapes there to remove it.} other {Used as the default shape and in the shape mapping. Choose other shapes in both places to remove it.}}",
+    "description": "Shown beside a custom node shape that cannot be removed because the node type uses it. usage says where: as the default shape, in the mapping from an attribute to shapes, or both."
+  },
+  "protocolBuilder.customShapes.missingDefaultShape": {
+    "defaultMessage": "The chosen shape is no longer available. Choose another default shape.",
+    "description": "Refusal shown under the default shape picker of the node type editor when the shape it names is a custom shape the node type no longer has."
+  },
+  "protocolBuilder.customShapes.missingMappedShape": {
+    "defaultMessage": "The shape mapping uses a shape that is no longer available. Choose another shape for each value that uses it.",
+    "description": "Refusal shown under the shape mapping of the node type editor when one of its rows names a custom shape the node type no longer has."
+  },
+  "protocolBuilder.customShapes.nameLabel": {
+    "defaultMessage": "Shape name",
+    "description": "Label of the name field of one custom node shape. A custom shape is an SVG image the researcher added to draw nodes of this type; the name identifies it in the shape pickers."
+  },
+  "protocolBuilder.customShapes.nameRequired": {
+    "defaultMessage": "Enter a name for this shape.",
+    "description": "Refusal shown under the name field of one custom node shape when the researcher has left it empty. A custom shape is an SVG image the researcher added to draw nodes of this type."
+  },
+  "protocolBuilder.customShapes.nameTaken": {
+    "defaultMessage": "Another shape of this node type is already named \"{name}\".",
+    "description": "Refusal shown under the name field of one custom node shape when another custom shape of the same node type has the same name, ignoring case. name is what the researcher typed."
+  },
+  "protocolBuilder.customShapes.namesIncomplete": {
+    "defaultMessage": "Give every custom shape a name that no other shape of this node type uses.",
+    "description": "Refusal shown for the list of custom node shapes when the researcher tries to save while one of them has no name or shares a name with another."
+  },
+  "protocolBuilder.customShapes.noViewBox": {
+    "defaultMessage": "\"{file}\" has no viewBox, so its size cannot be worked out. Add a viewBox to the svg element, or a numeric width and height, and choose it again.",
+    "description": "Shown when an SVG file chosen as a custom node shape does not say how large its drawing is. file is the name of the file. viewBox, width and height are SVG attribute names and svg is an element name: none of them is translated."
+  },
+  "protocolBuilder.customShapes.notSvg": {
+    "defaultMessage": "\"{file}\" is not an SVG image.",
+    "description": "Shown when a file the researcher chose as a custom node shape cannot be read as an SVG image. file is the name of the file. SVG is a file format name and is not translated."
+  },
+  "protocolBuilder.customShapes.nothingToDraw": {
+    "defaultMessage": "\"{file}\" has nothing that can be drawn once unsupported content is removed.",
+    "description": "Shown when an SVG file chosen as a custom node shape contains no drawing that a node shape can use. file is the name of the file."
+  },
+  "protocolBuilder.customShapes.previewLabel": {
+    "defaultMessage": "Label",
+    "description": "Sample text drawn inside the preview of a custom node shape, to show where and in what color a node’s label will appear. Keep it short."
+  },
+  "protocolBuilder.customShapes.remove": {
+    "defaultMessage": "Remove shape {name}",
+    "description": "Accessible name of the button that removes one custom node shape from the node type. name is the shape’s name."
+  },
+  "protocolBuilder.customShapes.removedContent": {
+    "defaultMessage": "Some content in this file cannot be used in a node shape and was left out: {removed}.",
+    "description": "Notice shown under a custom node shape that was added from an SVG file after unsupported content was removed from it. removed is a list of the kinds of content, such as \"scripts, embedded images and filters\"."
+  },
+  "protocolBuilder.customShapes.removedKind": {
+    "defaultMessage": "{kind, select, scripts {scripts} images {embedded images} styles {style sheets and styles} filters {filters} animations {animations} links {links and references to other files} colors {unrecognized color variables} labelArea {an unusable label area} other {other unsupported content}}",
+    "description": "Name of one kind of content removed from an SVG file added as a custom node shape. Used as one item of a list in the removedContent notice, so write it as a phrase that fits there."
+  },
+  "protocolBuilder.customShapes.tooLarge": {
+    "defaultMessage": "\"{file}\" is too large. A shape can be at most {limit, number} characters long.",
+    "description": "Shown when an SVG file chosen as a custom node shape is longer than the limit. file is the name of the file; limit is the largest number of characters a shape may have."
+  },
+  "protocolBuilder.customShapes.unreadable": {
+    "defaultMessage": "\"{file}\" could not be read. Choose it again.",
+    "description": "Shown when the browser could not read a file the researcher chose as a custom node shape. file is the name of the file."
   },
   "protocolBuilder.dialogForm.configurationPane": {
     "defaultMessage": "Configuration",
@@ -7570,6 +7654,10 @@
   "protocolBuilder.shapePicker.selectShape": {
     "defaultMessage": "Select shape {value1}",
     "description": "Accessible name of one swatch of the node-shape picker, where {value1} is the shape’s own name — “Select shape Circle”. A node is a member of the interview network."
+  },
+  "protocolBuilder.shapePicker.unnamedShape": {
+    "defaultMessage": "Custom shape {position, number}",
+    "description": "Name used for a custom node shape the researcher has not named yet, in the node-shape picker. position counts the custom shapes from 1. A custom shape is an SVG image the researcher added to draw nodes of this type."
   },
   "protocolBuilder.shell.formUnavailableRefusal": {
     "defaultMessage": "This stage could not be saved because its form is no longer available. Reopen the stage and try again.",

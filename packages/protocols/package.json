@@ -12,6 +12,7 @@
     "development",
     "e2e",
     "documentation",
+    "examples",
     "AUTHORING_GUIDE.md"
   ],
   "type": "module",
@@ -25,6 +26,9 @@
     "./development-files/*": "./development/*",
     "./e2e/*": "./e2e/*",
     "./documentation/*": "./documentation/*"
+  },
+  "scripts": {
+    "build:custom-node-shapes-example": "node scripts/build-custom-node-shapes-example.mjs"
   },
   "engines": {
     "node": ">=20.0.0"

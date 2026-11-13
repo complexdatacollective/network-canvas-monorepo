@@ -58,6 +58,7 @@
     "csvtojson": "catalog:",
     "jszip": "catalog:",
     "ohash": "^2.0.12",
+    "saxes": "^6.0.0",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -38,8 +38,7 @@ const makeSelectNodeMeta = (
     if (!nodeTypeDefinition || !node) return null;
 
     const color = nodeTypeDefinition.color ?? 'node-color-seq-1';
-    const shapeDef = nodeTypeDefinition.shape;
-    return { shapeDef, color, node };
+    return { nodeTypeDefinition, color, node };
   });
 
 export default function ConnectedNode({
@@ -61,7 +60,10 @@ export default function ConnectedNode({
   const shape = useMemo(
     () =>
       node
-        ? resolveNodeShape(nodeMeta.shapeDef, node[entityAttributesProperty])
+        ? resolveNodeShape(
+            nodeMeta.nodeTypeDefinition,
+            node[entityAttributesProperty],
+          )
         : undefined,
     [nodeMeta, node],
   );
