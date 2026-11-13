@@ -1,6 +1,14 @@
 {
   "type": "section",
   "slug": "collect-data",
-  "localeLabels": { "en": "Collect Data", "es": "Recopilar datos" },
-  "localeIndexFiles": { "en": "index.en.mdx", "es": "index.es.mdx" }
+  "localeLabels": {
+    "en": "Collect Data",
+    "es": "Recopilar datos",
+    "fr": "Collecter des données"
+  },
+  "localeIndexFiles": {
+    "en": "index.en.mdx",
+    "es": "index.es.mdx",
+    "fr": "index.fr.mdx"
+  }
 }

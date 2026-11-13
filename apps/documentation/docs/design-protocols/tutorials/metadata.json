@@ -2,7 +2,8 @@
   "type": "folder",
   "localeLabels": {
     "en": "Tutorials",
-    "es": "Tutoriales"
+    "es": "Tutoriales",
+    "fr": "Tutoriels"
   },
   "isExpanded": true,
   "navOrder": 2,

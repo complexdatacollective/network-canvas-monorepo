@@ -1,0 +1,43 @@
+---
+title: Consignes
+navOrder: 3
+translatedFrom: 00e485ad558729fd429eeb50e6b4babc3a064a08
+---
+
+<Definition>
+  Les consignes sont des questions ou des instructions adressées à la personne
+  participante, qui expliquent quelles données fournir ou comment accomplir la
+  tâche d’une étape donnée.
+</Definition>
+
+## Détails {#details}
+
+La plupart des étapes s’appuient sur la notion de consigne, qui définit les questions posées à la personne participante pendant l’entretien. Vous pouvez les présenter à la personne participante de la façon la plus pertinente pour votre étude.
+
+Une même étape peut contenir plusieurs consignes ou une seule, selon les besoins de l’entretien. Vous pouvez regrouper les consignes par thème et prévoir une étape par thème. Par exemple, une étape « Générateur de noms (famille) » pourrait contenir des consignes sur les alters de la famille (alter : chaque personne que la personne participante cite pendant l’entretien), et une étape « Générateur de noms (collègues) » des consignes sur les alters du milieu professionnel.
+
+![Plusieurs consignes sur une étape « Générateur de noms » dans Architect.](/assets/img/key-concepts/prompts/multiple-prompts.png)
+
+## Créer des consignes {#creating-prompts}
+
+Lorsque vous créez des consignes, vous devez indiquer le texte des instructions. Les consignes peuvent contenir une mise en forme, comme du texte en gras ou en italique, pour mettre certains mots en valeur et rythmer le texte. Pour appliquer cette mise en forme, utilisez la syntaxe markdown.
+
+![Modification d’une consigne dans Architect](/assets/img/key-concepts/prompts/edit-prompt.png)
+
+Les consignes peuvent aussi contenir du [texte dynamique](/fr/design-protocols/piped-text) (piped text : des réponses ou des informations de l’entretien insérées automatiquement dans un texte), comme le nom de la personne participante, le libellé d’un nœud sur lequel porte la consigne ou la date du jour. Cliquez sur le bouton en forme de seringue dans la barre d’outils de la consigne, ou saisissez `{`.
+
+Vous pouvez également configurer les consignes pour qu’elles affectent automatiquement la valeur **Vrai** ou **Faux** à des [attributs supplémentaires](/fr/design-protocols/key-concepts/additional-variables), afin de garder une trace de l’endroit de l’entretien où une entité a été ajoutée ou d’ajouter des métadonnées à une entité.
+
+## Les consignes dans Interviewer {#prompts-in-interviewer}
+
+La plupart des étapes utilisent des **points de progression** pour indiquer l’avancement dans les consignes, et la barre de progression avance par paliers à mesure que l’entretien passe d’une consigne à l’autre.
+
+![Les points de progression au-dessus de la question d’une consigne dans Interviewer indiquent l’avancement dans l’étape](/assets/img/key-concepts/prompts/nc-prompts.png)
+
+## Concepts associés {#related-concepts}
+
+- [Interfaces](/fr/design-protocols/key-concepts/interfaces) : découvrir quelles interfaces prennent en charge plusieurs consignes
+- [Attributs supplémentaires](/fr/design-protocols/key-concepts/additional-variables) : affecter automatiquement des attributs en fonction des consignes
+- [Formulaires](/fr/design-protocols/key-concepts/forms) : utiliser des consignes comme questions dans les champs de formulaire
+- [Filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering) : filtrer les réseaux affichés dans les différentes consignes
+- [Texte dynamique](/fr/design-protocols/piped-text) : afficher des réponses et la date du jour dans une consigne

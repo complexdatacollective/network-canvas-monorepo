@@ -81,6 +81,14 @@ describe('documentation locale edge function', () => {
     expect(detectLocale(request({ 'accept-language': header }))).toBe('es');
   });
 
+  it.each([
+    ['a French browser that also reads English', 'fr-FR,fr;q=0.9,en;q=0.8'],
+    ['a Canadian French browser', 'fr-CA'],
+    ['a German browser that also reads French', 'de-DE,fr;q=0.5'],
+  ])('sends %s to French', (_, header) => {
+    expect(detectLocale(request({ 'accept-language': header }))).toBe('fr');
+  });
+
   it('prefers the language chosen on a website to the browser languages', () => {
     expect(
       detectLocale(
@@ -108,7 +116,7 @@ describe('documentation locale edge function', () => {
       detectLocale(
         request({
           'cookie': `${siteLocalePreferenceCookie.name}=zh-Hant`,
-          'accept-language': 'fr-FR,en;q=0.5',
+          'accept-language': 'de-DE,en;q=0.5',
         }),
       ),
     ).toBe('en');

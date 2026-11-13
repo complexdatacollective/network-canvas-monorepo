@@ -1,0 +1,108 @@
+---
+title: Compositeur de réseau
+navOrder: 8
+translatedFrom: cb7bedac6d7f999dc617be857ac33de8be584fba
+---
+
+<InterfaceSummary type="NetworkComposer">
+
+<InterfaceMeta type="Construction libre de réseau" creates="Des nœuds d’un seul type, des liens de plusieurs types, et des données d’attributs de nœuds et de liens" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+L’interface « Compositeur de réseau » est une interface libre, sur un seul écran, qui permet de construire tout un réseau personnel au même endroit. Là où la plupart des interfaces de Network Canvas font réaliser une tâche après l’autre (citer les alters, les décrire, puis tracer les liens), l’interface « Compositeur de réseau » réunit ces tâches sur un seul canevas : vous pouvez créer des alters (chaque personne que la personne participante cite pendant l’entretien), enregistrer leurs attributs, tracer des relations de plusieurs types et tout repositionner à mesure que l’image se précise.
+
+Il vaut mieux la considérer comme un « bloc-notes » de réseau. Comme elle est dense et rapide (avec une palette d’outils, un inspecteur, des raccourcis clavier et la possibilité d’annuler et de rétablir), elle est conçue pour être utilisée par l’équipe de recherche ou par la personne qui mène l’entretien, soit aux côtés d’une personne participante, soit sans personne participante, pour esquisser, tester dans une étude pilote ou modéliser un réseau, plutôt que pour être confiée à une personne participante sans accompagnement.
+
+![L’interface « Compositeur de réseau », avec sa palette d’outils flottante à côté d’un réseau dessiné sur un arrière-plan de cercles concentriques](/assets/img/interface-documentation/network-composer/network-composer-example.png)
+
+## Fonctionnement {#how-it-works}
+
+L’interface présente un seul canevas avec une palette d’outils flottante. Chaque outil reste actif jusqu’à ce que vous passiez à un autre, ce qui permet de répéter une action sans la sélectionner de nouveau :
+
+- **Sélectionner / Déplacer** sélectionne les alters et les liens, et repositionne les alters par glisser-déposer. Sélectionner un élément ouvre l’inspecteur, où vous pouvez renseigner ses attributs ; cliquer sur une partie vide du canevas annule la sélection.
+- **Ajouter un nœud** ouvre un champ de nom à côté de la palette. Saisissez un nom et appuyez sur Entrée pour ajouter l’alter (il est placé sur le prochain emplacement libre d’une grille, ou disposé par la disposition automatique lorsqu’elle est activée) ; le champ reste ouvert, pour que vous puissiez en ajouter plusieurs à la suite.
+- **Tracer un lien** trace des relations. Un seul bouton ouvre un menu des types de liens de l’étape ; choisissez-en un (le bouton prend la couleur de ce type tant qu’il est actif), puis touchez un alter, puis un autre, pour les relier. Toucher de nouveau la même paire supprime ce lien, et toucher une seconde fois le premier alter annule un lien à moitié tracé. Les liens sont tracés dans la couleur de leur type, et l’outil n’est affiché que lorsque l’étape définit au moins un type de lien.
+- **Disposition automatique** est un interrupteur qui active ou désactive, à tout moment de l’entretien, une disposition par forces du réseau. Son état de départ est une valeur par défaut que vous définissez dans Architect (contrairement à l’interface « Sociogramme », le mode n’est pas figé lors de la conception), et quel que soit le sens dans lequel il est basculé, ce choix est mémorisé pour l’étape.
+- **Groupes** signale les alters qui partagent une valeur d’un même attribut catégoriel (choisi dans Architect) par des enveloppes convexes colorées placées derrière eux, ce qui rend faciles à voir des regroupements comme « foyer » ou « cercle amical ». Les enveloppes sont toujours visibles une fois l’attribut configuré, et la disposition automatique rapproche légèrement les membres d’un même groupe. L’outil liste les groupes avec leurs couleurs ; choisissez-en un (le bouton prend la couleur de ce groupe tant qu’il est actif), puis touchez un alter pour l’ajouter au groupe ou l’en retirer.
+- **Annuler / Rétablir** annulent et rétablissent n’importe quelle modification (ajout ou suppression d’alters et de liens, modification d’attributs, appartenance à un groupe et repositionnement), et sont aussi accessibles avec les raccourcis clavier habituels.
+
+Pour attribuer rapidement des groupes, vous pouvez sélectionner plusieurs alters à la fois (en cliquant dessus avec la touche Maj enfoncée, ou en traçant un lasso à main levée autour d’eux), puis ajouter toute la sélection à un groupe en une seule opération, avec les boutons de couleur qui apparaissent sous le canevas. La même sélection multiple peut aussi être supprimée d’un seul coup.
+
+## Configuration {#configuring}
+
+Tout ce sur quoi agissent les outils se configure dans Architect lorsque vous créez l’étape :
+
+### L’attribut de nom {#the-name-variable}
+
+Le champ de l’outil **Ajouter un nœud** remplit un attribut de texte que vous choisissez, selon le même mécanisme d’ajout rapide que l’interface [« Générateur de noms (ajout rapide) »](/fr/design-protocols/interface-documentation/name-generator-using-quick-add).
+
+### L’attribut de disposition {#the-layout-variable}
+
+La position de chaque alter sur le canevas est stockée sous forme de coordonnées normalisées dans un attribut de disposition, exactement comme les stocke l’interface [« Sociogramme »](/fr/design-protocols/interface-documentation/sociogram).
+
+### Formulaires d’attributs {#attribute-forms}
+
+L’inspecteur affiche un formulaire d’attributs facultatif pour les alters, et un pour chaque type de lien. Chaque champ associe un attribut du livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête) à la commande de saisie (le type de champ avec lequel un attribut est recueilli : zone de texte, curseur, cases à cocher…) utilisée pour le recueillir, ainsi qu’à un libellé et à une indication facultative qui accompagnent le champ. Chaque champ doit avoir un libellé. Lorsque vous choisissez l’attribut, Architect remplit le libellé avec le nom de l’attribut : remplacez-le donc par les mots que les personnes participantes doivent lire. Le libellé peut être traduit. Contrairement aux autres interfaces à formulaires, la commande de saisie est choisie **dans l’étape** et non dans l’attribut du livre de codes : un même attribut peut donc être recueilli avec des commandes différentes dans des étapes différentes. Une étape dont le formulaire n’a aucun champ indique simplement qu’il n’y a aucun attribut à modifier.
+
+### Types de liens {#edge-types}
+
+Chaque type de relation que l’outil **Tracer un lien** peut créer est ajouté à l’étape avec un libellé, et chaque type peut, si vous le souhaitez, avoir son propre formulaire d’attributs. Les personnes participantes choisissent le type par son libellé dans le menu **Tracer un lien**, et le libellé sert de titre à son formulaire. Il est au départ le nom du type de lien, et vous pouvez le traduire comme n’importe quel autre texte (voir [Traduire votre protocole](/fr/design-protocols/translating-your-protocol#labels-for-network-composer-edge-types)). L’outil n’apparaît que lorsque l’étape définit au moins un type de lien, et chaque type de lien ne peut être ajouté qu’une fois.
+
+### Groupes {#groups}
+
+Un attribut catégoriel facultatif est représenté par les enveloppes convexes de l’outil **Groupes**. L’outil ajoute un alter à un groupe ou l’en retire (c’est-à-dire lui attribue ou lui retire une valeur de cet attribut), et la disposition automatique rapproche légèrement les membres d’un même groupe.
+
+### Arrière-plan {#background}
+
+L’arrière-plan du canevas est soit des cercles concentriques, soit une image personnalisée, comme dans les interfaces [« Sociogramme »](/fr/design-protocols/interface-documentation/sociogram) et [« Narration »](/fr/design-protocols/interface-documentation/narrative) ; consultez [Arrière-plans SVG adaptatifs](/fr/design-protocols/responsive-svg-backgrounds) pour produire des images qui s’adaptent correctement à tous les appareils.
+
+### Disposition automatique {#automatic-layout}
+
+Le réglage défini lors de la conception ne choisit que l’état **de départ** : contrairement à l’interface « Sociogramme », la disposition par forces peut être activée et désactivée pendant l’entretien, et le choix fait en cours d’entretien est mémorisé pour l’étape.
+
+### Personnaliser la formulation intégrée {#customize-built-in-wording}
+
+La section **Personnaliser la formulation intégrée** de l’éditeur d’étape contient les textes que la personne qui mène l’entretien lit sur le canevas. Toutes les étapes « Compositeur de réseau » affichent les mêmes textes : ils sont donc communs à toutes les étapes de ce type, et une modification de l’un d’eux s’applique à toutes les étapes « Compositeur de réseau » du protocole et est enregistrée dès que vous quittez le champ. Chacun commence par la formulation de Network Canvas, dans chaque langue pour laquelle Network Canvas en fournit une, et vous pouvez le modifier et le traduire comme n’importe quel autre texte. Votre protocole ne conserve que les formulations que vous modifiez (voir [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+- **Texte indicatif de la zone de nom** est l’indication affichée dans le champ de nom de l’outil **Ajouter un nœud**.
+- **Avertissement sur une modification écrasée** s’affiche dans la boîte de dialogue qui demande s’il faut abandonner les modifications, lorsqu’une annulation ou un rétablissement a changé une réponse pendant que la personne qui mène l’entretien la modifiait, si bien que sa modification n’a pas été enregistrée. Le protocole ne le contient que tant qu’une étape « Compositeur de réseau » a un formulaire pour les nœuds, ou pour un type de lien qu’elle trace.
+- **Bouton de l’outil des groupes** est le nom de l’outil qui place les nœuds dans des groupes, affiché dans son info-bulle. Le protocole ne le contient que tant qu’une étape « Compositeur de réseau » regroupe les alters selon un attribut.
+- **Info-bulle d’ajout de nœud**, **Info-bulle de la disposition automatique** et **Info-bulle de tracé de lien** nomment les outils du canevas. Le protocole ne contient l’info-bulle de **Tracer un lien** que tant qu’une étape « Compositeur de réseau » a au moins un type de lien. Les outils sont des icônes : c’est donc par l’info-bulle que la personne qui mène l’entretien apprend ce que fait chacun d’eux. Les outils de sélection, d’annulation et de rétablissement n’ont pas d’info-bulle, car leurs icônes sont familières.
+- **Libellé de lien sans type** est le nom que l’inspecteur donne à un lien d’un type que l’étape ne trace pas, comme un lien créé dans une autre étape. Le protocole ne le contient que tant que le livre de codes comporte un type de lien qu’une étape « Compositeur de réseau » ne trace pas.
+
+### Bonnes pratiques {#best-practices}
+
+<GoodPractice>
+
+Utilisez l’interface « Compositeur de réseau » lorsque vous voulez construire et modifier un réseau entier depuis un seul écran : par exemple, lorsque la personne qui mène l’entretien parcourt le réseau d’une personne participante au fil de la conversation, ou lorsqu’un membre de l’équipe de recherche esquisse un réseau pendant l’étude pilote.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Une image à l’écran qui regroupe les nœuds peut influencer ce que les personnes déclarent, et tend à détourner l’attention des alters isolés (qui n’ont aucun lien). Demandez explicitement à la personne participante de citer les alters qui n’ont aucun lien avec les autres, afin que les membres isolés du réseau ne soient pas oubliés.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Personnalisez l’arrière-plan (cercles concentriques ou image) pour orienter le placement, par exemple en utilisant des anneaux pour suggérer la proximité. La position n’est stockée que sous forme de simples coordonnées : traitez donc toute signification spatiale comme un point de départ pour la discussion plutôt que comme une mesure.
+
+</GoodPractice>
+
+### À éviter {#try-to-avoid}
+
+<BadPractice>
+
+Évitez de confier l’interface « Compositeur de réseau » à une personne participante sans accompagnement. C’est un outil dense et puissant, destiné à être utilisé par l’équipe de recherche ou par la personne qui mène l’entretien, et non une tâche guidée, étape par étape, pour les personnes participantes.
+
+</BadPractice>
+
+<BadPractice>
+
+Évitez de traiter l’emplacement des alters comme une donnée mesurée. La position à l’écran est approximative et chaque personne l’interprète différemment. Si l’appartenance à un anneau ou à une zone compte pour votre analyse, recueillez-la sous forme d’attribut explicite au lieu de la déduire des coordonnées.
+
+</BadPractice>

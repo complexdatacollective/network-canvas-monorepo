@@ -1,0 +1,393 @@
+---
+title: Utiliser Fresco
+date: 7th October 2026
+navOrder: 2
+translatedFrom: d7569224c77d1baab3fd4c3b72135dd40f45f668
+---
+
+Ce guide vous présente pas à pas le flux de travail de base pour mener votre étude avec Fresco.
+
+Fresco est conçu pour être utilisé avec Architect, qui sert à concevoir les protocoles d’entretien. Si ce n’est pas encore fait, [concevez votre protocole dans Architect](/fr/design-protocols/getting-started) avant de continuer.
+
+## Flux de travail de base {#basic-workflow}
+
+Utiliser Fresco vous semblera familier si vous avez déjà utilisé les applications de bureau, avec un avantage important : vous pouvez désormais gérer l’ensemble des protocoles, des personnes participantes et des données depuis un tableau de bord web.
+
+Le flux de travail de base avec Fresco est le suivant :
+
+1. **Déployer Fresco** : déployez votre propre instance de Fresco (pour en savoir plus, consultez le [guide de déploiement](/fr/collect-data/fresco/guide)).
+2. **Téléverser des protocoles** : téléversez (envoyez vers le serveur) dans Fresco un ou plusieurs protocoles Network Canvas créés dans Architect.
+3. **Ajouter des personnes participantes** : ajoutez des personnes participantes à votre étude, une par une ou de façon groupée. Vous pouvez aussi utiliser la fonctionnalité de recrutement anonyme pour permettre aux personnes participantes de s’inscrire d’elles-mêmes à l’étude.
+4. **Mener les entretiens** : partagez avec les personnes participantes l’URL unique de chacune ou l’URL de recrutement anonyme, pour qu’elles puissent réaliser l’entretien sur leur propre appareil.
+5. **Suivre l’avancement** : suivez l’avancement de votre étude depuis le tableau de bord.
+6. **Exporter les données** : exportez les données depuis la page des entretiens une fois la collecte des données terminée.
+
+Nous allons maintenant passer en revue chacune de ces étapes plus en détail.
+
+## Déploiement {#deployment}
+
+Fresco est conçu pour être déployé sur vos propres serveurs et votre propre infrastructure. Vous gardez ainsi un contrôle total sur les données recueillies dans votre étude et pouvez respecter la réglementation applicable en matière de protection des données ou les exigences de votre comité d’éthique (IRB).
+
+Pour de nombreuses équipes de recherche, suivre notre [guide de déploiement de base](/fr/collect-data/fresco/guide) pour déployer Fresco sur l’offre gratuite de Netlify suffira. Toutefois, si vous avez des exigences particulières en matière de sécurité des données, de confidentialité ou de conformité, vous devrez peut-être déployer Fresco sur votre propre serveur ou auprès de services spécialisés.
+
+Si vous ne pouvez pas déployer Fresco vous-même, votre université pourra peut-être héberger pour vous une version conforme de Fresco. Contactez votre service informatique ou votre service d’appui à la recherche pour en savoir plus, et orientez-les vers notre [guide de déploiement avancé](/fr/collect-data/fresco/advanced), qui détaille les exigences pour héberger Fresco.
+
+## Téléverser des protocoles {#uploading-protocols}
+
+Une fois Fresco déployé et votre tableau de bord accessible, vous pouvez commencer par téléverser un ou plusieurs protocoles pour votre étude.
+
+<TipBox>
+
+Si vous n’avez pas encore conçu votre protocole dans Architect, faites-le avant de continuer. Vous trouverez un guide pour concevoir un protocole dans Architect [ici](/fr/design-protocols/getting-started).
+
+</TipBox>
+
+Dans Fresco, vous pouvez téléverser autant de protocoles que vous le souhaitez (dans les limites des ressources de votre hébergement). Vous pouvez ainsi avoir plusieurs protocoles pour différentes études, ou plusieurs versions du même protocole pour différents groupes de personnes participantes.
+
+Chaque fichier de protocole `.netcanvas` peut peser jusqu’à **256 Mo**. Cette limite s’applique à tous les fournisseurs de stockage : elle vaut donc quelle que soit la configuration de l’hébergement de Fresco. Si votre protocole dépasse cette limite, c’est généralement en raison de ressources volumineuses qu’il contient (comme des images haute résolution ou des vidéos) ; pensez à les compresser ou à les réduire dans Architect avant de le téléverser.
+
+Nous recommandons toutefois de **ne pas** héberger des études différentes sur la même instance de Fresco, car cela peut prêter à confusion et entraîner des fuites de données. Si vous menez plusieurs études, nous vous suggérons de déployer une instance distincte de Fresco pour chacune.
+
+### Pour téléverser un protocole {#to-upload-a-protocol}
+
+1. Rendez-vous sur la page des protocoles du tableau de bord.
+2. Cliquez sur le bouton **Téléverser un protocole**.
+3. Sélectionnez le fichier `.netcanvas` que vous avez exporté depuis Architect.
+4. Cliquez sur **Téléverser**.
+
+![La page des protocoles du tableau de bord.](/assets/img/fresco-images/protocols-page.png)
+
+Fresco valide alors votre protocole et le téléverse. S’il contient des ressources (images, sons, vidéos ou fichiers de réseau), Fresco les téléverse vers le fournisseur de stockage que vous avez configuré et les associe à votre protocole.
+
+<TipBox>
+
+Fresco refuse un fichier de protocole auquel il manque l’une de ses ressources, car une ressource qui ne se charge jamais n’apparaîtrait comme manquante qu’en plein entretien, devant une personne participante. Le message indique la ressource manquante sous le nom qu’elle porte dans Architect. Un fichier de protocole dont le contenu est endommagé est signalé comme endommagé. Pour corriger un protocole auquel il manque une ressource, ouvrez-le dans Architect, ajoutez de nouveau le fichier manquant depuis **Ressources**, puis téléchargez de nouveau le protocole depuis Architect avant de le téléverser dans Fresco. Consultez [Ressources](/fr/design-protocols/key-concepts/resources) pour savoir comment Architect gère les fichiers de ressources.
+
+</TipBox>
+
+Une fois l’opération terminée, votre protocole apparaît dans la liste de la page des protocoles. Vous pouvez cliquer sur le protocole pour afficher ses détails et l’URL unique que vous partagerez avec les personnes participantes pour mener les entretiens.
+
+### Protocoles créés pour des versions antérieures du schéma {#protocols-made-for-earlier-schema-versions}
+
+Fresco accepte les protocoles créés pour des [versions antérieures du schéma](/fr/get-started/protocol-schema-information) ainsi que les protocoles en schéma 9, et ne les met jamais à niveau. Un protocole en schéma 8 est stocké tel quel, et ses entretiens s’exécutent dans le moteur d’entretien du schéma 8 intégré à Fresco : les personnes participantes voient donc exactement ce que le protocole a été conçu pour afficher. Un protocole en schéma 7 créé dans Architect Classic est automatiquement migré vers le schéma 8 lorsque vous le téléversez, puis s’exécute en schéma 8. Ces protocoles portent le badge **Schéma 8** sur la page des protocoles. Pour utiliser les fonctionnalités du schéma 9 dans l’un d’eux, mettez-le à niveau dans [Architect](/fr/design-protocols/getting-started) et téléversez la copie mise à niveau, que Fresco traite comme un protocole distinct.
+
+## Générer des données de test synthétiques {#generating-synthetic-test-data}
+
+Avant de recruter de vraies personnes participantes, vous pouvez remplir votre étude avec des entretiens fictifs pour vérifier qu’un protocole se comporte comme prévu, prévisualiser l’affichage des réponses sur la page des entretiens et tester votre procédure d’exportation de bout en bout. Depuis la page des paramètres, Fresco peut générer des **données d’entretien synthétiques** pour n’importe quel protocole téléversé.
+
+![Le panneau « Données d’entretien synthétiques » de la page des paramètres.](/assets/img/fresco-images/synthetic-interview-data.png)
+
+Pour générer des entretiens synthétiques :
+
+1. Rendez-vous sur la page des paramètres du tableau de bord.
+2. Dans le panneau **Données d’entretien synthétiques**, sélectionnez un protocole dans la liste déroulante.
+3. Choisissez le nombre d’entretiens à créer (entre 1 et 1 000).
+4. Si vous le souhaitez, configurez les options de génération décrites ci-dessous.
+5. Cliquez sur **Générer**.
+
+Vous pouvez ajuster la façon dont les entretiens synthétiques sont générés à l’aide de deux options :
+
+- **Simuler l’abandon de personnes participantes** : lorsque cette option est activée, les personnes participantes générées ont, à chaque étape, une probabilité croissante d’abandonner l’entretien, ce qui produit un mélange réaliste d’entretiens complets et incomplets plutôt que des entretiens uniquement terminés.
+- **Respecter la logique de saut et le filtrage** : lorsque cette option est activée, la génération évalue la logique de saut et les filtres de réseau des étapes de votre protocole. Des étapes sont sautées, ou des nœuds filtrés, selon l’état du réseau à ce moment-là, de sorte que les données obtenues reflètent les parcours que suivraient réellement les personnes participantes.
+
+Tous les entretiens et toutes les personnes participantes créés de cette manière sont marqués comme synthétiques dans la base de données. C’est ce marquage qui permet à Fresco de les supprimer en bloc sans toucher à vos données réelles. Notez que les entretiens et les personnes participantes synthétiques ne portent **aucun** badge visuel dans les tableaux des entretiens et des personnes participantes : ils apparaissent donc aux côtés des données réelles dans ces listes.
+
+Pour supprimer les données synthétiques, utilisez le bouton **Tout supprimer** du même panneau. Le panneau indique combien d’entretiens synthétiques et de personnes participantes de test existent actuellement, et les supprime tous en une seule fois. Seules les données marquées comme synthétiques sont concernées ; vos entretiens et vos personnes participantes réels restent intacts.
+
+## Personnes participantes {#participants}
+
+Pour mener votre étude, vous devrez choisir une stratégie de recrutement et définir qui est autorisé à participer. Fresco prend en charge deux approches :
+
+1. Ajouter des personnes participantes connues, une par une ou de façon groupée.
+2. Permettre aux personnes participantes de s’inscrire d’elles-mêmes de façon anonyme.
+
+Ces approches ne s’excluent pas et peuvent être combinées. Par exemple, vous pourriez avoir une première « vague » de personnes participantes connues que vous ajoutez manuellement dans Fresco, puis demander à ces personnes de partager l’URL de recrutement anonyme avec toute autre personne susceptible d’être intéressée par l’étude.
+
+L’approche que vous choisirez dépendra des particularités de votre étude et des ressources dont vous disposez pour le recrutement.
+
+Quelle que soit l’approche, Fresco définit chaque personne participante par son identifiant de personne participante et un libellé facultatif. Pour les personnes participantes connues, vous pouvez fournir vous-même l’identifiant de la personne participante (ce qui est utile pour relier les réponses à des sources de données externes), ou laisser Fresco en générer un au hasard. Si vous activez le recrutement anonyme, Fresco attribue un identifiant aléatoire aux personnes participantes lorsqu’elles commencent un entretien.
+
+Les _libellés_ des personnes participantes sont un champ facultatif qui permet de donner à chaque personne participante un libellé lisible. Ce champ n’est pas visible par les personnes participantes et peut contenir un nom ou un libellé interne au projet.
+
+<TipBox danger>
+
+Fresco s’appuie sur les identifiants des personnes participantes pour inscrire celles-ci à l’étude. **Les identifiants des personnes participantes apparaissent dans leurs URL et sont visibles par les personnes participantes elles-mêmes.** C’est pourquoi vous ne devez jamais utiliser comme identifiants des informations sensibles ni des suites ou des motifs prévisibles (comme des numéros consécutifs du type 001, 002, 003, ou des chaînes faciles à deviner).
+
+Les identifiants des personnes participantes doivent être uniques au sein de l’étude. Si vous essayez d’ajouter une personne participante avec un identifiant déjà utilisé, vous recevrez un message d’erreur.
+
+</TipBox>
+
+### Ajouter des personnes participantes manuellement {#adding-participants-manually}
+
+La méthode la plus simple pour ajouter une ou plusieurs « personnes participantes connues » consiste à les ajouter manuellement depuis le tableau de bord. Cette approche est utile lorsque vous avez peu de personnes participantes.
+
+Pour ajouter une personne participante manuellement :
+
+1. Rendez-vous sur la page des personnes participantes du tableau de bord.
+   ![La page des personnes participantes du tableau de bord.](/assets/img/fresco-images/participants-page.png)
+2. Cliquez sur le bouton **Ajouter une personne participante**.
+   ![Ajouter une seule personne participante](/assets/img/fresco-images/participants-add-single.png)
+3. Saisissez l’identifiant de la personne participante, ou cliquez sur le bouton **Générer** pour qu’un identifiant soit généré au hasard.
+4. Si vous le souhaitez, saisissez un libellé pour la personne participante.
+5. Cliquez sur **Valider**.
+
+La personne participante apparaît immédiatement dans la liste des personnes participantes.
+
+### Ajouter des personnes participantes de façon groupée par importation d’un fichier CSV {#adding-participants-in-bulk-via-csv-import}
+
+L’ajout groupé est utile lorsque vous avez un grand nombre de personnes participantes à ajouter à l’étude. Pour cela, téléversez un fichier CSV contenant les données des personnes participantes.
+
+<TipBox>
+
+Votre fichier CSV peut contenir les colonnes suivantes :
+
+- identifier - doit être une chaîne unique, et **ne doit pas** être facile à deviner ! Il sert à générer l’URL d’inscription, ce qui permet l’intégration avec d’autres outils d’enquête.
+- label - peut être n’importe quel texte ou nombre. Sert à donner à la personne participante un libellé lisible.
+
+Une colonne identifier **ou** une colonne label **doit être renseignée** pour chaque personne participante.
+
+Les en-têtes des colonnes identifier et label doivent être en minuscules.
+
+Vous pouvez télécharger <DownloadLink href="/assets/participants-template.csv">ici</DownloadLink> un modèle de fichier CSV pour vous aider à mettre correctement en forme vos données.
+
+</TipBox>
+
+Une fois votre fichier CSV créé, vous pouvez le téléverser dans Fresco comme suit :
+
+1. Rendez-vous sur la page des personnes participantes du tableau de bord.
+2. Cliquez sur le bouton **Importer des personnes participantes**.
+   ![La boîte de dialogue d’importation CSV](/assets/img/fresco-images/csv-import.png)
+3. Téléversez votre fichier CSV.
+4. Cliquez sur **Valider**.
+
+Vos personnes participantes apparaissent immédiatement dans la liste des personnes participantes.
+
+### Recrutement anonyme {#anonymous-recruitment}
+
+Le mode de recrutement anonyme permet aux personnes participantes de s’inscrire d’elles-mêmes à l’étude à l’aide d’une URL propre au protocole. Vous pouvez générer cette URL pour chaque protocole et la partager avec les personnes participantes. Lorsqu’une personne se rend à cette URL, Fresco lui attribue un identifiant de personne participante aléatoire et lui permet de réaliser un entretien. Cette méthode est utile lorsque vous n’avez pas de liste de personnes participantes connues, ou lorsque vous souhaitez permettre aux personnes participantes de faire connaître l’étude autour d’elles.
+
+#### Activer le recrutement anonyme {#enabling-anonymous-recruitment}
+
+1. Rendez-vous sur la page des paramètres du tableau de bord.
+2. Activez l’interrupteur **Recrutement anonyme**.
+
+![La page des paramètres du tableau de bord.](/assets/img/fresco-images/settings-page.png)
+
+Une fois cette option activée, un message d’avertissement s’affiche sur la page principale du tableau de bord pour vous rappeler que le recrutement anonyme est actif.
+
+## Mener les entretiens {#conducting-interviews}
+
+Une fois votre protocole téléversé et, éventuellement, des personnes participantes ajoutées à l’étude, vous pouvez commencer à mener les entretiens.
+
+Dans Fresco, les entretiens sont réalisés par les personnes participantes sur leurs propres appareils. Elles peuvent commencer un entretien en suivant une URL que vous leur fournissez.
+
+<KeyConcept title="URL des personnes participantes">
+
+Dans Fresco, vous pouvez partager deux types d’URL avec les personnes participantes : les **URL uniques des personnes participantes** et les **URL de participation anonyme**.
+
+- Les **URL uniques des personnes participantes** sont propres à chaque combinaison de personne participante et de protocole (ainsi, « James » et « Étude A » auraient une URL différente de celle de « James » et « Étude B »). Vous pouvez partager ces URL avec les personnes participantes pour leur permettre de réaliser un entretien. À chaque visite, ces URL créent un nouvel entretien avec le protocole indiqué et y redirigent immédiatement la personne participante. Fresco associe cet entretien et toutes les données de réponse à l’identifiant de la personne participante.
+
+- Les **URL de participation anonyme** ne sont pas propres à une personne participante, mais _restent_ liées au protocole. Vous pouvez partager la même URL avec plusieurs personnes participantes pour leur permettre de réaliser un entretien sans avoir à les ajouter manuellement à l’étude. Lorsqu’une personne suit le lien, Fresco crée une personne participante anonyme avec un identifiant généré au hasard et lance l’entretien normalement.
+
+</KeyConcept>
+
+### URL uniques des personnes participantes {#unique-participant-urls}
+
+Les URL uniques des personnes participantes sont des URL uniques que vous pouvez générer pour chaque personne participante et chaque protocole, et partager avec la personne participante pour lui permettre de réaliser un entretien. Ces URL mènent directement la personne participante à l’entretien du protocole indiqué et associent ses réponses à l’identifiant de la personne participante.
+
+Pour partager les URL uniques avec les personnes participantes, vous pouvez soit copier chaque URL individuellement, soit exporter un fichier CSV contenant les URL de vos personnes participantes.
+
+#### Copier manuellement une URL unique de personne participante {#manually-copying-a-unique-participant-url}
+
+1. Rendez-vous sur la page des personnes participantes du tableau de bord.
+2. Cliquez sur le bouton **Copier l’URL unique** de la personne participante pour laquelle vous souhaitez générer une URL.
+3. Dans la liste déroulante, sélectionnez le protocole avec lequel vous souhaitez mener l’entretien.
+4. L’URL est copiée dans le presse-papiers. Vous pouvez maintenant la partager avec la personne participante.
+
+#### Exporter un fichier CSV des URL uniques des personnes participantes {#exporting-a-csv-of-unique-participant-urls}
+
+1. Rendez-vous sur la page des personnes participantes du tableau de bord.
+2. Cliquez sur le bouton **Exporter les personnes participantes** pour exporter toutes les personnes participantes de la liste (si vous avez saisi du texte dans le champ de filtre, seulement celles qui y correspondent), ou cochez les cases des personnes participantes voulues et cliquez sur **Exporter la sélection**.
+3. Votre navigateur télécharge un fichier nommé `participants.csv`.
+
+Le fichier CSV contient une ligne par personne participante, avec des colonnes pour l’identifiant interne (ID), l’identifiant de la personne participante et le libellé, suivies d’une colonne `interview_url_<protocol name>` (où `<protocol name>` est le nom du protocole) pour chaque protocole installé, qui contient l’URL unique de cette personne participante pour ce protocole. Vous pouvez utiliser ce fichier pour transmettre les URL aux personnes participantes par e-mail, par SMS ou par d’autres moyens.
+
+### URL de participation anonyme {#anonymous-participant-urls}
+
+Si vous activez le recrutement anonyme, les personnes participantes peuvent s’inscrire d’elles-mêmes à l’étude à l’aide d’une URL de participation anonyme. Cette URL n’est pas propre à une personne participante. Vous pouvez partager la même URL avec _plusieurs_ personnes participantes pour leur permettre de réaliser un entretien sans avoir à les ajouter manuellement à l’étude.
+
+#### Pour générer une URL de participation anonyme : {#to-generate-an-anonymous-participant-url}
+
+1. Rendez-vous sur la page des protocoles du tableau de bord.
+2. Dans la colonne **URL de participation anonyme**, qui apparaît une fois le recrutement anonyme activé, cliquez sur le bouton du protocole pour lequel vous souhaitez recruter des personnes participantes.
+3. L’URL est copiée dans le presse-papiers et se présente sous la forme suivante :
+
+```bash
+https://yourstudy.com/onboard/{protocolUniqueID}
+```
+
+Vous pouvez maintenant partager cette URL avec les personnes participantes pour leur permettre de s’inscrire d’elles-mêmes à l’étude.
+
+### Limiter les entretiens {#limit-interviews}
+
+Vous souhaiterez peut-être limiter le nombre d’entretiens qu’une personne participante peut réaliser pour un protocole donné. C’est pourquoi Fresco propose cette option, que vous pouvez activer sur la page des paramètres.
+
+Si vous activez cette option, chaque personne participante ne pourra envoyer qu’un seul entretien terminé par protocole (elle peut toutefois avoir plusieurs entretiens inachevés). Une fois qu’une personne participante a terminé un entretien, toute tentative de commencer un nouvel entretien ou de reprendre un autre entretien en cours affiche à la place l’écran de l’entretien terminé, avec le « Texte après la fin de l’entretien » de l’étape « [Écran de fin](/fr/design-protocols/interface-documentation/finish-screen) » à laquelle cet entretien s’est terminé. Cela s’applique aussi bien aux URL uniques des personnes participantes qu’aux URL de participation anonyme.
+
+Pour activer cette fonctionnalité :
+
+1. Rendez-vous sur la page des paramètres du tableau de bord.
+2. Activez l’interrupteur **Limiter les entretiens**.
+
+<TipBox danger>
+
+Nous avons donné la priorité à la confidentialité et à la sécurité lors de la conception de cette fonctionnalité : nous n’utilisons donc pas de dispositif élaboré de suivi des personnes participantes. Nous utilisons plutôt l’identifiant de la personne participante (s’il est disponible) et un cookie pour savoir quand une personne participante a envoyé un entretien. Le cookie contient l’identifiant de l’entretien terminé, et les scripts exécutés dans la page ne peuvent pas le lire. Une personne participante dont le cookie désigne un entretien terminé du même protocole est renvoyée à l’écran de cet entretien terminé.
+
+Cela signifie que, si vous activez le recrutement anonyme et qu’une personne participante efface ses cookies, elle pourra envoyer un autre entretien.
+
+Si vous avez besoin d’un suivi plus fiable, envisagez d’utiliser des URL uniques des personnes participantes plutôt que des URL de participation anonyme.
+
+</TipBox>
+
+### Figer les entretiens terminés {#freeze-completed-interviews}
+
+Par défaut, Fresco fige les entretiens terminés : une fois qu’une personne participante a terminé un entretien, les données envoyées ne peuvent plus être modifiées. Une personne participante qui revient à l’URL d’un entretien qu’elle a déjà terminé voit l’écran de cet entretien terminé : le « Texte après la fin de l’entretien » de l’étape « Écran de fin » à laquelle cet entretien s’est terminé. Il n’est pas possible de parcourir l’entretien à partir de là, et aucun bouton n’est proposé : il ne reste plus aux personnes participantes qu’à fermer la fenêtre. Toute modification qui serait malgré tout envoyée est rejetée sans avertissement, ce qui protège vos données d’entretiens terminés contre les modifications accidentelles ou intentionnelles après leur envoi.
+
+Si vous préférez qu’un entretien rouvert continue de synchroniser les modifications ultérieures avec vos données, vous pouvez désactiver ce paramètre.
+
+Pour désactiver cette fonctionnalité :
+
+1. Rendez-vous sur la page des paramètres du tableau de bord.
+2. Désactivez l’interrupteur **Figer les entretiens terminés**.
+
+<TipBox>
+
+Ce paramètre est distinct de [Limiter les entretiens](#limit-interviews). Limiter les entretiens empêche une personne participante de commencer un _nouvel_ entretien une fois qu’elle en a terminé un, tandis que figer les entretiens terminés empêche l’enregistrement des modifications apportées à un entretien qu’elle a _déjà_ terminé. Selon les besoins de votre étude, vous pouvez activer l’un des deux, les deux ou aucun.
+
+</TipBox>
+
+### Désactiver l’avertissement pour les petits écrans {#disable-small-screen-warning}
+
+Les entretiens Network Canvas sont conçus pour être réalisés sur un appareil doté d’un écran assez grand, comme un ordinateur portable, un ordinateur de bureau ou une tablette. Lorsqu’une personne participante ouvre un entretien sur un petit écran (par exemple, un téléphone mobile en mode portrait), Fresco affiche un avertissement indiquant que l’écran est peut-être trop petit pour que l’entretien se déroule dans de bonnes conditions.
+
+Si vous ne souhaitez pas que les personnes participantes voient cet avertissement, vous pouvez le désactiver.
+
+Pour désactiver l’avertissement :
+
+1. Rendez-vous sur la page des paramètres du tableau de bord.
+2. Activez l’interrupteur **Désactiver l’avertissement pour les petits écrans**.
+
+## Suivre l’avancement {#monitoring-progress}
+
+Une fois les URL envoyées aux personnes participantes et les premiers entretiens commencés, vous pouvez suivre l’avancement de ces entretiens depuis la page des entretiens du tableau de bord et le journal d’activité de la page principale du tableau de bord.
+
+La **page des entretiens** donne une vue d’ensemble de tous les entretiens de l’étude. Chaque ligne correspond à un entretien, avec des colonnes pour l’**Identifiant de la personne participante**, le **Nom du protocole**, la date de début (**Commencé**), la date de mise à jour (**Mis à jour**), la **Progression**, le **Réseau** (le nombre de nœuds et de liens recueillis jusqu’ici) et le **Statut d’exportation**. Depuis cette page, vous pouvez aussi exporter les données des entretiens.
+
+La **Progression** correspond à l’étape que la personne participante a atteinte par rapport au nombre total d’étapes du protocole. L’étape « [Écran de fin](/fr/design-protocols/interface-documentation/finish-screen) » de votre protocole compte comme une étape : une personne participante n’atteint donc 100 % qu’une fois l’entretien terminé.
+
+### Rechercher et filtrer les entretiens {#finding-and-filtering-interviews}
+
+Pour les études de plus grande taille, il est possible d’effectuer des recherches dans le tableau des entretiens, de le trier et de le filtrer afin de trouver les entretiens qui vous intéressent. Point important : tout ce travail s’effectue **côté serveur, sur l’ensemble des données**, et pas seulement sur les lignes actuellement affichées à l’écran. Le décompte du tableau, le tri et le filtrage reflètent donc toujours tous les entretiens correspondants, même lorsque les résultats s’étendent sur de nombreuses pages.
+
+![Filtrer et trier le tableau des entretiens.](/assets/img/fresco-images/interviews-filtering.png)
+
+- **Rechercher par identifiant de la personne participante.** Le champ **Filtrer par identifiant…** en haut du tableau recherche, sans tenir compte de la casse, le texte saisi à l’intérieur des identifiants des personnes participantes.
+- **Trier par colonne.** Ouvrez le menu de l’en-tête de n’importe quelle colonne triable pour choisir **Trier par ordre croissant**, **Trier par ordre décroissant** ou **Effacer le tri**.
+- **Filtrer par colonne.** La plupart des en-têtes de colonne proposent aussi une option **Filtrer**, qui ouvre une fenêtre contextuelle avec les actions **Appliquer** et **Effacer**. Les filtres disponibles sont les suivants :
+  - **Nom du protocole** — une liste à sélection multiple de vos protocoles téléversés.
+  - **Commencé** et **Mis à jour** — une plage de dates avec des raccourcis (**Aujourd’hui**, **7 derniers jours**, **30 derniers jours**, **90 derniers jours**), ainsi que des sélecteurs de date de début (_du_) et de fin (_au_).
+  - **Progression** — une plage de 0 à 100 % avec les raccourcis **Non commencé**, **En cours** et **Terminé**.
+  - **Réseau** — un générateur de conditions. Vous choisissez un type de nœud ou de lien, un opérateur (**est égal à (=)**, **est supérieur à (>)**, **est inférieur à (<)**, **est au moins égal à (≥)** ou **est au plus égal à (≤)**) et un nombre. Vous pouvez cumuler plusieurs conditions, et un entretien doit _toutes_ les remplir pour apparaître dans les résultats.
+  - **Statut d’exportation** — **Exporté** ou **Non exporté**.
+- **Effacer tous les filtres.** La commande **Effacer les filtres** réinitialise la recherche et tous les filtres actifs en une seule fois.
+
+Comme le filtrage et le décompte portent sur l’ensemble des données, les outils de sélection et d’exportation tiennent compte eux aussi des filtres actuellement actifs. Lorsqu’une ligne est sélectionnée, une option **Tout sélectionner (_N_)** apparaît et sélectionne tous les entretiens correspondant aux filtres actuels (et pas seulement ceux de la page affichée). De même, les options du bouton **Exporter les données d’entretien** décrites dans [Exporter les données](#exporting-data) — exporter tous les entretiens, tous les entretiens terminés ou tous les entretiens non exportés — s’appliquent aux entretiens correspondant aux filtres actuellement actifs.
+
+### Le journal d’activité du tableau de bord {#the-dashboard-activity-feed}
+
+Le **journal d’activité du tableau de bord** fournit une piste d’audit de l’activité dans Fresco. Il s’agit d’un tableau unique, avec des colonnes pour l’**Heure**, le **Type** et les **Détails** de chaque événement, paginé pour que vous puissiez remonter page par page l’historique de votre étude.
+
+La plupart des entrées indiquent quel membre de l’équipe de recherche a effectué l’action — par exemple, _alice a installé le protocole « X »_ — avec le nom d’utilisateur intégré au texte du message. (Les événements déclenchés par les personnes participantes, comme le début ou la fin d’un entretien, indiquent plutôt la personne participante.) Le journal est un registre unique et global, affiché à toutes les personnes administratrices ; il n’est pas cloisonné par compte et montre donc toujours l’activité de toutes les personnes qui ont accès à l’instance.
+
+Le journal couvre un large éventail de types d’événements, bien au-delà de la seule progression des entretiens. Outre les protocoles installés, les personnes participantes ajoutées et retirées, les entretiens commencés et terminés et les exportations de données, il consigne l’activité liée à l’authentification et aux comptes (comme les connexions, les modifications de l’authentification à deux facteurs, l’enregistrement de clés d’accès, la gestion des jetons d’API et la création ou la suppression de comptes), les modifications des paramètres, ainsi que la génération et la suppression de données synthétiques.
+
+Vous pouvez effectuer des recherches dans le journal et le filtrer :
+
+- Le champ **Filtrer par détails de l’activité…** recherche dans le texte des détails de chaque entrée.
+- Le filtre **Type** vous permet de limiter le journal à un ou plusieurs types d’événements.
+- La commande **Effacer les filtres** réinitialise la recherche et le filtre par type.
+
+![Le journal d’activité du tableau de bord.](/assets/img/fresco-images/activity-feed.png)
+
+#### Exporter le journal d’activité {#exporting-the-activity-feed}
+
+Vous pouvez télécharger l’intégralité du journal d’activité sous forme de fichier CSV pour vos archives :
+
+1. Sur le tableau de bord, repérez le journal d’activité.
+2. Cliquez sur le bouton **Exporter en CSV**.
+3. Votre navigateur télécharge un fichier nommé `activity-feed.csv`, avec les colonnes `timestamp`, `type` et `details`.
+
+L’exportation contient toujours l’intégralité du journal, quels que soient la recherche ou les filtres appliqués au journal affiché à l’écran.
+
+### Générer un fichier CSV des URL des entretiens inachevés {#generate-a-csv-of-incomplete-urls}
+
+Vous pouvez générer en une seule fois un fichier CSV des URL des entretiens inachevés de plusieurs personnes participantes, par protocole. Cela peut être utile pour envoyer des rappels aux personnes participantes qui n’ont pas encore terminé leur entretien.
+
+1. Rendez-vous sur la page des entretiens du tableau de bord.
+2. Cliquez sur le bouton **Exporter les URL des entretiens inachevés**.
+3. Dans la liste déroulante, sélectionnez le protocole pour lequel vous souhaitez générer les URL.
+4. Cliquez sur le bouton **Exporter**.
+
+## Exporter les données {#exporting-data}
+
+Une fois que des personnes participantes ont terminé leurs entretiens, vous pouvez exporter les données depuis la page des entretiens pour les analyser dans le logiciel externe de votre choix. Cette page vous permet aussi de voir le statut d’exportation de chaque entretien.
+
+### Pour exporter les entretiens sélectionnés : {#to-export-selected-interviews}
+
+1. Rendez-vous sur la page des entretiens du tableau de bord.
+2. Cochez les cases des entretiens que vous souhaitez exporter.
+3. Cliquez sur le bouton **Exporter la sélection** en bas du tableau.
+4. Confirmez les [types de fichiers et options d’exportation](/fr/analyze-data/data-export) que vous souhaitez utiliser.
+5. Cliquez sur **Lancer l’exportation**.
+
+### Pour exporter tous les entretiens : {#to-export-all-interviews}
+
+1. Rendez-vous sur la page des entretiens du tableau de bord.
+2. Cliquez sur le bouton **Exporter les données d’entretien**.
+3. Dans la liste déroulante, sélectionnez **Exporter tous les entretiens**.
+4. Confirmez les [types de fichiers et options d’exportation](/fr/analyze-data/data-export) que vous souhaitez utiliser.
+5. Cliquez sur **Lancer l’exportation**.
+
+### Pour exporter tous les entretiens _non exportés_ : {#to-export-all-unexported-interviews}
+
+1. Rendez-vous sur la page des entretiens du tableau de bord.
+2. Cliquez sur le bouton **Exporter les données d’entretien**.
+3. Dans la liste déroulante, sélectionnez **Exporter tous les entretiens non exportés**.
+4. Confirmez les [types de fichiers et options d’exportation](/fr/analyze-data/data-export) que vous souhaitez utiliser.
+5. Cliquez sur **Lancer l’exportation**.
+
+### Types de fichiers et options d’exportation {#file-types-and-export-options}
+
+Avant le début d’une exportation, Fresco vous invite à choisir les types de fichiers (CSV, GraphML ou les deux) et les options d’exportation que vous souhaitez utiliser. Pour savoir ce que contiennent les fichiers exportés — les fichiers de chaque entité et leurs colonnes, les identifiants qui permettent de les relier et l’effet de chaque option d’exportation —, consultez le [guide d’exportation des données](/fr/analyze-data/data-export).
+
+Si vous préférez récupérer automatiquement les données d’entretien plutôt que de télécharger manuellement des fichiers depuis le tableau de bord, Fresco propose aussi une [API de Fresco](/fr/analyze-data/fresco-api) en lecture seule.
+
+## Changer la langue de l’interface {#changing-the-interface-language}
+
+Les écrans de Fresco destinés à l’équipe de recherche sont disponibles en **English** (anglais), **English (UK)** (anglais du Royaume-Uni), **Español** (espagnol), **Deutsch** (allemand), **Français**, **Italiano** (italien), **Nederlands** (néerlandais), **Português (Brasil)** (portugais du Brésil), **简体中文** (chinois simplifié) et **繁體中文** (chinois traditionnel). Vous pouvez aussi choisir **Automatique**, qui suit les préférences de langue définies dans votre navigateur et utilise l’anglais lorsqu’aucune d’elles n’est disponible. L’option Automatique s’affiche avec la langue qu’elle applique actuellement, par exemple **Automatique (English)**.
+
+Pour changer de langue, cliquez sur le bouton en forme de globe de la barre supérieure du tableau de bord et choisissez une langue dans la liste. Sur les petits écrans, ouvrez plutôt le menu de navigation et utilisez l’entrée de langue qui s’y trouve. Le même bouton en forme de globe apparaît dans l’en-tête des écrans de connexion et de configuration, pour que vous puissiez choisir une langue avant de vous connecter.
+
+La nouvelle langue s’applique immédiatement. Si vous choisissez la langue une fois votre session ouverte, ce choix est enregistré dans votre compte : il vous suit donc lorsque vous vous connectez sur un autre appareil. Une langue choisie sur l’écran de connexion n’est mémorisée que dans ce navigateur : elle n’est pas copiée dans votre compte lorsque vous vous connectez et, une fois la session ouverte, la langue enregistrée dans votre compte la remplace. Une langue choisie pendant la configuration fait exception, car elle est reprise dans le compte créé par l’assistant de configuration. Si Fresco ne parvient pas à enregistrer votre choix, la langue reste appliquée pendant le reste de votre visite, et la liste des langues propose de réessayer de l’enregistrer.
+
+Changer la langue de l’interface traduit l’interface propre à Fresco, y compris les messages, les boîtes de dialogue et les messages de validation. Cela ne traduit rien de ce qui est rédigé dans votre protocole, comme les consignes, les noms des étapes et les options de réponse, et ne modifie pas les données d’entretien recueillies. Cela ne change pas non plus la langue des entretiens.
+
+### La langue des entretiens {#language-in-interviews}
+
+La langue d’un entretien dépend du navigateur de la personne participante, et non du tableau de bord de Fresco. À son ouverture, un entretien utilise la première des langues préférées du navigateur dans laquelle votre protocole est rédigé (une variante régionale proche compte : un navigateur réglé sur l’espagnol du Mexique affiche ainsi la version espagnole de votre protocole), ou à défaut la langue par défaut de votre protocole. Un texte qui n’est pas traduit dans cette langue s’affiche dans la meilleure autre traduction disponible : dans une autre des langues préférées du navigateur qui le propose, à défaut dans la langue par défaut, ou à défaut dans n’importe quelle langue de votre protocole qui le propose. Consultez [La langue par défaut et la traduction que voient les personnes participantes](/fr/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see). Une langue choisie dans le tableau de bord ou sur l’écran de connexion, ou la langue d’un membre de l’équipe de recherche connecté au tableau de bord, n’a aucune incidence sur la langue de l’entretien.
+
+Tout ce qu’affiche un entretien, y compris ses boutons et ses messages, comme « Retour », « Continuer » et les messages de validation, s’affiche dans la langue de l’entretien : avec la formulation de votre protocole là où vous l’avez modifiée, et avec celle de Network Canvas ailleurs (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)). La langue du tableau de bord n’a aucune incidence sur cet affichage.
+
+Le seul moyen pour une personne participante de changer de langue pendant un entretien est une étape « [Choix de la langue](/fr/design-protocols/interface-documentation/language-chooser) » dans votre protocole. Son choix est conservé jusqu’à la fermeture de l’onglet du navigateur : il est donc réutilisé si la personne participante recharge la page. Il n’est pas enregistré avec l’entretien ni inclus dans les données exportées : un entretien repris dans un autre onglet ou sur un autre appareil repart des langues de ce navigateur. Il ne modifie la préférence de langue d’aucun compte de l’équipe de recherche, et ne modifie pas les réponses déjà données.
+
+Pour rédiger un protocole dans plusieurs langues, consultez [Traduire votre protocole](/fr/design-protocols/translating-your-protocol).

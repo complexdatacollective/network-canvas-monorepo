@@ -1,0 +1,732 @@
+---
+title: Exportation des données
+navOrder: 1
+date: 5th October 2026
+translatedFrom: 225a5b04a481d67a40784e4499576258a137cff8
+---
+
+<Definition>
+  L’exportation des données vous permet d’extraire les données d’entretien
+  d’Interviewer ou de Fresco dans des formats standardisés, adaptés à l’analyse
+  dans des outils externes.
+</Definition>
+
+## Vue d’ensemble {#overview}
+
+Après avoir mené des entretiens avec Interviewer ou Fresco, vous devez exporter les données pour les analyser. Network Canvas propose des options d’exportation souples qui vous permettent d’exporter les données dans des formats compatibles avec les logiciels de statistiques, les programmes d’analyse de réseaux et les tableurs.
+
+Le processus d’exportation transforme vos données d’entretien (attributs d’ego, attributs des alters et données des liens) en fichiers structurés que vous pouvez importer dans des outils d’analyse comme R, Python, SPSS, UCINET, Gephi et bien d’autres. L’ego est la personne participante, au centre de son réseau ; un alter est l’une des personnes que la personne participante cite pendant l’entretien.
+
+## Depuis quelle application exporter {#where-to-export-from}
+
+Cette page décrit le contenu des exportations de Network Canvas, quelle que soit l’application qui les a produites. La procédure à suivre pour lancer une exportation varie selon l’application : Interviewer et Interviewer Classic stockent les données sur l’appareil et les exportent sous forme de fichiers que vous conservez, tandis que Fresco stocke les données de manière centralisée et les exporte depuis son tableau de bord. Le guide de chaque application décrit pas à pas sa procédure d’exportation :
+
+- **Interviewer** — voir [Utiliser Interviewer](/fr/collect-data/interviewer/using-interviewer#resuming-exporting-and-managing-interview-sessions)
+- **Interviewer Classic** — voir [Flux de travail en ligne et hors ligne d’Interviewer](/fr/collect-data/interviewer-online-and-offline-workflows#exporting-data-to-a-cloud-file-sharing-service)
+- **Fresco** — voir [Utiliser Fresco](/fr/collect-data/fresco/using-fresco#exporting-data)
+
+Certains détails de cette page ne s’appliquent qu’aux exportations d’Interviewer et de Fresco : la façon dont les fichiers et les attributs GraphML sont nommés, et les avertissements affichés lorsque des caractères sont supprimés ou que des colonnes sont renommées. Interviewer Classic utilise une version antérieure du code d’exportation et n’exécute que des protocoles en schéma 7, où les noms de variables et de types acceptent moins de caractères.
+
+## Types de fichiers {#file-types}
+
+Network Canvas prend en charge deux formats de fichiers pour l’exportation des données. Choisissez celui qui convient le mieux à vos besoins d’analyse.
+
+### Format CSV {#csv-format}
+
+**De quoi s’agit-il :** les fichiers CSV (Comma-Separated Values, valeurs séparées par des virgules) sont des fichiers de texte brut qui représentent des données tabulaires. L’exportation CSV crée plusieurs fichiers, un pour chaque type d’entité de vos données de réseau, et suit le format attendu par le package `egor`.
+
+**Idéal pour :**
+
+- L’analyse statistique dans R, Python, SPSS, Stata, SAS
+- Les tableurs (Excel, Google Sheets, LibreOffice Calc)
+- Le package R [egor](https://cran.r-project.org/package=egor) (en anglais)
+- Les procédures personnalisées de traitement des données
+
+**Ce que vous obtenez :**
+
+L’exportation CSV crée un fichier distinct pour chaque type d’entité de votre protocole :
+
+#### Liste des attributs d’ego {#ego-attribute-list}
+
+- **Une ligne** pour l’ego (la personne participante) de l’entretien
+- **Format du nom de fichier :** `caseID_sessionUUID_ego.csv` (voir [Comment les fichiers d’exportation sont nommés](#how-export-files-are-named))
+- **Contenu :**
+  - Les variables d’ego que vous avez recueillies
+  - Les métadonnées de la session d’entretien (heure de début, heure de fin, nom du protocole, etc.)
+  - La façon dont l’entretien s’est terminé (voir [Comment l’entretien s’est terminé](#how-the-interview-ended))
+  - Les identifiants Network Canvas (UUID de l’ego, identifiant de cas, identifiant de session)
+
+**Exemple de structure :**
+
+```csv
+networkCanvasEgoUUID,networkCanvasCaseID,networkCanvasSessionID,networkCanvasProtocolName,sessionStart,sessionFinish,sessionExported,APP_VERSION,COMMIT_HASH,networkCanvasFinishOutcome,age,gender_female,gender_male,gender_non_binary
+abc123,case_001,sess456,My Study,2025-01-15T10:30:00.000Z,2025-01-15T11:15:00.000Z,2025-01-16T09:00:00.000Z,9.0.0,1a2b3c4,completed,34,false,true,false
+```
+
+Les colonnes d’identifiants et de session viennent toujours en premier, dans cet ordre, suivies de vos variables d’ego. Une variable catégorielle comme `gender` devient une colonne par option, contenant `true` ou `false` (voir le [Dictionnaire des données exportées](/fr/analyze-data/data-dictionary)).
+
+#### Liste des attributs des alters {#alter-attribute-list}
+
+- **Une ligne par alter** (nœud cité)
+- **Format du nom de fichier :** `caseID_sessionUUID_attributeList_nodeType.csv`, où `nodeType` est le nom du type de nœud, dans n’importe quelle langue, tel qu’il est écrit dans votre livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête)
+- **Contenu :**
+  - Tous les attributs des alters que vous avez recueillis
+  - Les identifiants Network Canvas (UUID de l’alter, UUID de l’ego)
+  - Un numéro `nodeID` qui n’identifie l’alter qu’au sein de cet entretien
+
+**Exemple de structure :**
+
+```csv
+nodeID,networkCanvasEgoUUID,networkCanvasUUID,name,age,close_friend,contact_frequency
+1,abc123,xyz789,John,32,true,Daily
+2,abc123,uvw456,Sarah,29,true,Weekly
+```
+
+**Remarques importantes :**
+
+- Si votre protocole définit plusieurs types de nœuds (par exemple `Person` et `Organization`), vous recevez un fichier distinct pour chaque type
+- Le `nodeID` est numéroté à partir de 1 dans chaque entretien, sur l’ensemble de ses types de nœuds : le fichier d’un type de nœud peut donc sauter des numéros. Le même `nodeID` correspond à un alter différent dans chaque entretien
+- Le `networkCanvasUUID` est l’identifiant unique et permanent de chaque alter
+
+#### Liste des attributs des liens {#edge-attribute-list}
+
+- **Une ligne par lien** (relation entre alters)
+- **Format du nom de fichier :** `caseID_sessionUUID_edgeList_edgeType.csv`, où `edgeType` est le nom du type de lien tel qu’il est écrit dans votre livre de codes
+- **Contenu :**
+  - Les attributs des liens que vous avez recueillis
+  - Les identifiants de la source et de la cible (à la fois l’UUID et l’identifiant d’exportation)
+  - Le rattachement au réseau de l’ego (`networkCanvasEgoUUID`)
+
+**Exemple de structure :**
+
+```csv
+edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID,relationship_strength,frequency
+1,1,2,abc123,edg001,xyz789,uvw456,strong,high
+```
+
+**Remarques importantes :**
+
+- Les colonnes `from` et `to` contiennent le `nodeID` des deux alters que le lien relie. `networkCanvasSourceUUID` et `networkCanvasTargetUUID` contiennent leur `networkCanvasUUID`
+- Chaque type de lien a son propre fichier. Le type de lien figure dans le nom du fichier, pas dans une colonne
+- Si l’entretien ne comporte aucun lien, l’exportation écrit tout de même un fichier de liens, `caseID_sessionUUID_edgeList.csv`, qui ne contient que la ligne d’en-tête
+
+#### Pourquoi certaines valeurs commencent par une apostrophe {#why-some-values-start-with-an-apostrophe}
+
+Les tableurs traitent une cellule qui commence par `=`, `+`, `-` ou `@` comme une formule, et peuvent l’exécuter à l’ouverture du fichier. Pour protéger toute personne qui ouvre vos données dans un tableur, l’exportation CSV ajoute une apostrophe (`'`) au début de toute valeur de texte, comme une réponse ou un identifiant de cas, qui commence par `=`, `+`, `-`, `@`, une tabulation ou un retour chariot. Par exemple, la réponse `-5 degrees` est écrite `'-5 degrees`. Les en-têtes de colonnes reçoivent la même apostrophe : une variable nommée `=total` a donc l’en-tête `'=total`. Les nombres et les valeurs `true`/`false` ne reçoivent jamais d’apostrophe, pas plus qu’aucune valeur des fichiers GraphML.
+
+Les logiciels d’analyse lisent l’apostrophe comme faisant partie du texte. Pour la retirer d’une colonne de texte ou de vos en-têtes de colonnes, supprimez une apostrophe initiale uniquement lorsqu’elle est suivie de l’un de ces caractères :
+
+```r
+# R
+alters$notes <- sub("^'([=+@\t\r-])", "\\1", alters$notes)
+names(alters) <- sub("^'([=+@\t\r-])", "\\1", names(alters))
+```
+
+```python
+# Python (pandas)
+alters["notes"] = alters["notes"].str.replace(r"^'(?=[=+\-@\t\r])", "", regex=True)
+alters.columns = alters.columns.str.replace(r"^'(?=[=+\-@\t\r])", "", regex=True)
+```
+
+Cela supprime aussi une apostrophe que la personne participante aurait elle-même tapée devant l’un de ces caractères, ce qui est rare.
+
+### Format GraphML {#graphml-format}
+
+**De quoi s’agit-il :** GraphML est un standard ouvert fondé sur XML pour représenter des données de graphes. Il stocke la structure complète du réseau dans un seul fichier.
+
+**Idéal pour :**
+
+- Les logiciels de visualisation de réseaux (Gephi, NodeXL, Visone)
+- Les programmes d’analyse de réseaux (UCINET, Pajek, ORA)
+- Les bases de données de graphes et les outils qui manipulent des structures de graphes
+- La conservation de la structure complète du réseau dans un seul fichier
+
+**Ce que vous obtenez :**
+
+- **Un fichier par session d’entretien**
+- **Format du nom de fichier :** `caseID_sessionUUID.graphml` (voir [Comment les fichiers d’exportation sont nommés](#how-export-files-are-named))
+- **Contenu :**
+  - La structure complète du réseau (nœuds et liens)
+  - Tous les attributs des nœuds et des liens
+  - Les attributs d’ego (stockés comme attributs du graphe lui-même)
+
+**Exemple de structure :**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <graph id="G" edgedefault="undirected">
+    <node id="alter_1">
+      <data key="name">John</data>
+      <data key="age">32</data>
+    </node>
+    <node id="alter_2">
+      <data key="name">Sarah</data>
+      <data key="age">29</data>
+    </node>
+    <edge source="alter_1" target="alter_2">
+      <data key="relationship_strength">strong</data>
+    </edge>
+  </graph>
+</graphml>
+```
+
+#### Extensions GraphML de Network Canvas {#network-canvas-graphml-extensions}
+
+Les fichiers GraphML exportés comportent un petit ensemble d’extensions Network Canvas afin que les métadonnées de l’entretien (comme le protocole utilisé, l’identifiant de cas et les identifiants de session) accompagnent les données de réseau. Ces extensions sont conçues pour l’interopérabilité : les analyseurs syntaxiques GraphML qui ne les reconnaissent pas les ignorent tout simplement.
+
+**Métadonnées de la session d’entretien :** des attributs `nc:` dotés d’un espace de noms, placés sur l’élément `<graph>`, stockent les métadonnées de la session :
+
+- `nc:caseId`
+- `nc:sessionUUID`
+- `nc:protocolName`
+- `nc:protocolUID`
+- `nc:codebookHash`
+- `nc:sessionExportTime`
+- `nc:sessionStartTime`
+- `nc:sessionFinishTime`
+
+Le schéma XML `nc-types.xsd` définit ces attributs, et `graphml+netcanvas.xsd` étend l’élément `<graph>` pour les inclure.
+
+L’élément `<graph>` porte aussi un attribut `nc:finishOutcome`, qui enregistre la façon dont l’entretien s’est terminé. Cet attribut est omis lorsqu’aucun résultat n’a été enregistré. Voir [Comment l’entretien s’est terminé](#how-the-interview-ended).
+
+**Attributs d’ego :** les données d’ego sont stockées au moyen du mécanisme standard de GraphML qui permet d’associer des données au graphe lui-même : aucune extension de schéma n’est donc nécessaire. Chaque attribut d’ego est déclaré par un élément `<key>` dont l’attribut `for` a la valeur `graph`, et non `node` ou `edge` :
+
+```xml
+<key id="ego_attribute" attr.name="ego_attribute" attr.type="string" for="graph" />
+```
+
+Notez que l’élément `<key>` doit se trouver en dehors de l’élément `<graph>`. L’attribut reçoit ensuite une valeur n’importe où à l’intérieur de l’élément `<graph>` :
+
+```xml
+<graph>
+  <data key="ego_attribute">Jimbo</data>
+</graph>
+```
+
+Comme ce mécanisme utilise le schéma GraphML existant, les autres analyseurs syntaxiques ignorent les données d’ego ou les affichent correctement comme un ou plusieurs attributs du graphe lui-même. Les analyseurs syntaxiques de Network Canvas considèrent que tous les éléments `<key>` et `<data>` de niveau graphe décrivent l’ego.
+
+#### Noms des attributs GraphML {#graphml-attribute-names}
+
+GraphML exige que chaque nom d’attribut (`attr.name`) soit un jeton de nom XML valide : lettres de toute langue, chiffres et symboles `.`, `-`, `_` et `:`. Dans Network Canvas, les noms de variables peuvent aussi contenir des espaces et d’autres signes de ponctuation : l’exportation GraphML remplace donc chaque caractère non autorisé par `_`, et inscrit le nom d’origine, tel que vous l’avez écrit, dans l’élément `<desc>` de la clé :
+
+```xml
+<key id="…" attr.name="contact_frequency__per_week_" attr.type="string" for="node">
+  <desc>contact frequency (per week)</desc>
+</key>
+```
+
+Les noms déjà valides, comme `close_friend` ou `género`, sont écrits sans modification, sans élément `<desc>`. Ce remplacement de caractères ne donne lieu à aucun avertissement. Architect refuse deux noms qui deviendraient identiques après ce remplacement, comme ce serait le cas de `close friend` et `close_friend`. Si un protocole créé avant cette vérification contient de tels noms, le nom qui était déjà valide reste inchangé, l’autre reçoit le suffixe `_2`, et l’exportation affiche un avertissement. Voir [Noms de colonnes en conflit](#column-names-that-clash).
+
+#### Caractères supprimés des fichiers GraphML {#characters-removed-from-graphml-files}
+
+Le XML, format sur lequel repose GraphML, ne peut pas stocker certains caractères de contrôle invisibles, comme le caractère nul. Les tabulations et les sauts de ligne ne posent pas de problème. Ces caractères de contrôle peuvent se retrouver dans une réponse lorsqu’une personne participante colle du texte copié depuis un autre logiciel. L’exportation GraphML les supprime et affiche un avertissement (voir [Avertissements d’exportation](#export-warnings)) :
+
+- Lorsqu’une réponse en contient un, l’avertissement s’intitule « Des caractères ont été supprimés des fichiers GraphML ». Il liste chaque entretien concerné, désigné par son identifiant de cas (ou par son identifiant de session s’il n’a pas d’identifiant de cas), avec les variables dont les réponses ont perdu des caractères. La liste comprend « Identifiant de cas » si l’identifiant de cas lui-même contenait un tel caractère.
+- Lorsque le texte du protocole lui-même en contient un, dans le nom du protocole, dans le nom d’un type de nœud ou de lien, ou dans un nom de colonne comme le nom d’une variable, l’avertissement s’intitule « Des caractères ont été supprimés du texte du protocole dans les fichiers GraphML ». Comme ces caractères sont invisibles, il désigne chacun par son point de code Unicode, par exemple U+0007.
+
+Les fichiers CSV conservent chaque réponse exactement telle qu’elle a été saisie : utilisez donc l’exportation CSV si vous avez besoin du texte d’origine.
+
+### Choisir entre CSV et GraphML {#choosing-between-csv-and-graphml}
+
+| Critère                       | CSV                                                     | GraphML                                                      |
+| ----------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
+| **Type d’analyse**            | Analyse statistique, indicateurs des réseaux personnels | Visualisation de réseaux, analyse de graphes                 |
+| **Nombre de fichiers**        | Plusieurs fichiers (un par type d’entité)               | Un seul fichier par session                                  |
+| **Lisibilité**                | Lisible par une personne, s’ouvre dans Excel            | Format XML, nécessite un logiciel spécialisé                 |
+| **Compatibilité avec R**      | Prise en charge native, fonctionne avec egor            | Nécessite des packages de graphes (igraph, network)          |
+| **Structure des données**     | Relationnelle (tables séparées)                         | Graphe (nœuds et liens)                                      |
+| **Idéal pour débuter**        | ✓ Format plus familier                                  | Peut demander un temps d’apprentissage                       |
+
+**Notre recommandation :** exportez les données dans **les deux formats** lorsque vous commencez à travailler avec des données Network Canvas. Vous pourrez ainsi faire des essais et déterminer quel format convient le mieux à votre procédure d’analyse.
+
+### Comment l’entretien s’est terminé {#how-the-interview-ended}
+
+Chaque exportation enregistre la façon dont chaque entretien s’est terminé : le résultat que vous avez choisi (réglage « Résultat ») dans l’étape [« Écran de fin »](/fr/design-protocols/interface-documentation/finish-screen) à laquelle l’entretien s’est terminé. Les personnes participantes ne le voient jamais.
+
+- **CSV :** le fichier d’ego comporte une colonne `networkCanvasFinishOutcome`. Elle vient après `APP_VERSION` et `COMMIT_HASH`, et avant vos variables d’ego.
+- **GraphML :** l’élément `<graph>` porte un attribut `nc:finishOutcome`.
+
+La valeur est l’une des suivantes :
+
+| Valeur       | Signification                                                                                                                                                                       |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `completed`  | La personne participante a atteint la fin normale de l’entretien.                                                                                                                 |
+| `ineligible` | La personne participante ne remplissait pas les critères de l’étude.                                                                                                                |
+| `terminated` | L’entretien a pris fin prématurément pour une autre raison, par exemple un arrêt en cas de détresse ou pour des raisons de sécurité. C’est le choix **Arrêté prématurément** dans Architect. |
+
+La cellule CSV est vide, et l’attribut GraphML est omis, lorsqu’aucun résultat n’a été enregistré. C’est le cas des entretiens terminés avec une version antérieure de l’application, qui n’enregistrait pas encore le résultat, et des entretiens qui ne sont pas terminés. La colonne CSV est toujours présente, même lorsque toutes ses cellules sont vides.
+
+Comme l’exportation écrit elle-même cette colonne, Architect ne permet pas de nommer une variable d’ego `networkCanvasFinishOutcome`. Si un protocole plus ancien en contient déjà une, l’exportation écrit cette variable sous le nom `networkCanvasFinishOutcome_2` et affiche l’avertissement « Certaines colonnes ont été renommées ». Une variable nommée `finishOutcome` est exportée sans modification.
+
+### Comment les fichiers d’exportation sont nommés {#how-export-files-are-named}
+
+Chaque nom de fichier commence par l’identifiant de cas et l’identifiant de session de l’entretien. Les noms des fichiers CSV indiquent aussi ce que contient le fichier :
+
+| Fichier                                                    | Nom                                             |
+| ---------------------------------------------------------- | ----------------------------------------------- |
+| GraphML                                                    | `caseID_sessionUUID.graphml`                    |
+| Liste des attributs d’ego (CSV)                            | `caseID_sessionUUID_ego.csv`                    |
+| Liste des attributs des alters, par type de nœud (CSV)     | `caseID_sessionUUID_attributeList_nodeType.csv` |
+| Liste des attributs des liens, par type de lien (CSV)      | `caseID_sessionUUID_edgeList_edgeType.csv`      |
+
+Les noms des types de nœuds et de liens sont utilisés tels qu’ils sont écrits dans votre livre de codes, dans n’importe quelle langue : un type de nœud nommé `友人` donne ainsi un fichier se terminant par `_attributeList_友人.csv`. Quelques modifications garantissent que les noms fonctionnent sur tous les ordinateurs :
+
+- Les caractères que les systèmes de fichiers n’autorisent pas dans les noms de fichiers, `\ / : * ? " < > |` et les caractères de contrôle invisibles, sont supprimés, de même que les points et les espaces à la fin d’un nom de type.
+- Un nom de type réservé par Windows, comme `CON`, `PRN`, `AUX`, `NUL`, `COM1` ou `LPT1`, est précédé d’un tiret bas.
+- Un nom de fichier peut comporter au maximum 255 octets. S’il devait être plus long, c’est d’abord le nom du type qui est raccourci. Les lettres hors de l’alphabet latin occupent chacune de deux à quatre octets : les noms écrits dans ces systèmes d’écriture atteignent donc la limite plus tôt.
+- Si deux fichiers devaient porter le même nom, l’identifiant du type de nœud ou de lien issu du livre de codes est ajouté après le nom du type : `caseID_sessionUUID_attributeList_Friend_typeID.csv`. Cela se produit lorsque deux noms de types ne diffèrent que par la casse (`Friend` et `friend`, que certains ordinateurs considèrent comme le même nom de fichier), et lorsqu’un nom de type a dû être raccourci ou qu’il n’en restait rien après la suppression des caractères non sûrs. L’identifiant appartient au type : le même type reçoit donc le même nom de fichier à chaque exportation. Un identifiant très long est remplacé par un code plus court calculé à partir de lui, qui reste lui aussi identique à chaque fois.
+
+### Noms de colonnes en conflit {#column-names-that-clash}
+
+Architect refuse les noms qui donneraient la même colonne à deux variables dans les données exportées, y compris les noms qui ne deviennent identiques qu’une fois écrits par une exportation (voir [Noms qui entreraient en conflit dans les données exportées](/fr/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data)). Les protocoles créés avant qu’Architect n’effectue cette vérification peuvent encore contenir de tels noms : par exemple une variable nommée `support_emotional` à côté d’une variable catégorielle `support` ayant l’option `emotional`, ou des variables nommées `close friend` et `close_friend`, qui deviennent identiques dans les fichiers GraphML une fois les espaces et la ponctuation remplacés (voir [Noms des attributs GraphML](#graphml-attribute-names)). Une colonne d’un fichier de liste (la liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit) qui ne correspond à aucune variable de votre livre de codes peut aussi porter le même nom que la colonne d’une variable.
+
+L’exportation ne fusionne jamais deux colonnes en une seule. Lorsque deux colonnes d’un même fichier devraient porter le même nom :
+
+- les colonnes intégrées, comme `nodeID` ou `networkCanvasUUID`, gardent toujours leur nom
+- la variable qui vient en premier dans votre livre de codes garde le nom
+- chaque colonne suivante est renommée avec le premier suffixe libre parmi `_2`, `_3`, etc., par exemple `support_emotional_2`
+
+Les noms qui ne diffèrent que par la casse, comme `Age` et `age`, ne sont pas renommés. Lorsque l’exportation renomme une colonne, elle affiche un avertissement intitulé « Certaines colonnes ont été renommées », qui liste chaque colonne renommée, le format de fichier et le nom sous lequel elle a été écrite (voir [Avertissements d’exportation](#export-warnings)).
+
+### Avertissements d’exportation {#export-warnings}
+
+Une exportation peut se terminer par des avertissements sur des modifications qu’elle a apportées à vos données. L’exportation réussit malgré tout. Il existe trois types d’avertissements, chacun avec son propre titre :
+
+| Avertissement                                                                         | Ce qui s’est passé                                                                                                                                                          |
+| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| « Des caractères ont été supprimés des fichiers GraphML »                             | Certaines réponses contenaient des caractères que GraphML ne peut pas stocker. Voir [Caractères supprimés des fichiers GraphML](#characters-removed-from-graphml-files). |
+| « Des caractères ont été supprimés du texte du protocole dans les fichiers GraphML »  | Le texte du protocole lui-même, comme son nom ou le nom d’un type de nœud, contenait de tels caractères.                                                                   |
+| « Certaines colonnes ont été renommées »                                              | Deux colonnes d’un même fichier auraient porté le même nom. Voir [Noms de colonnes en conflit](#column-names-that-clash).                                                   |
+
+Chaque avertissement indique précisément ce qui a été touché. L’endroit où les avertissements apparaissent dépend de l’application :
+
+- **Fresco** affiche chaque type d’avertissement dans sa propre notification, qui reste à l’écran jusqu’à ce que vous la fermiez.
+- **Interviewer** affiche les avertissements dans la boîte de dialogue d’exportation, lorsque le fichier est prêt à être enregistré. Une fois le fichier enregistré, il les affiche à nouveau dans des notifications qui restent à l’écran jusqu’à ce que vous les fermiez.
+
+## Options d’exportation {#export-options}
+
+Network Canvas propose plusieurs options d’exportation spécialisées qui modifient la mise en forme de vos données. Vous pouvez généralement les laisser à leurs valeurs par défaut, sauf si vous avez des besoins particuliers.
+
+### Fusionner les sessions par protocole {#merge-sessions-by-protocol}
+
+Cette option regroupe toutes les sessions d’entretien menées avec le même protocole dans un seul fichier (ou un seul ensemble de fichiers pour le format CSV).
+
+**Disponibilité :** cette option n’est disponible que dans Interviewer Classic, jusqu’à la version 6.5 ; elle a été supprimée dans la version 6.6. Interviewer et Fresco exportent toujours chaque session dans des fichiers distincts ; Interviewer les regroupe dans une seule archive `.zip` à télécharger.
+
+Lorsqu’elle est activée, l’option crée un fichier combiné par protocole contenant tous les entretiens. Pour les exportations CSV, vous obtenez un seul fichier d’ego, un seul fichier d’alters par type et un seul fichier de liens par type. Pour les exportations GraphML, vous obtenez un seul fichier contenant un élément `<graph>` distinct pour chaque session ; notez que la plupart des logiciels autres que Network Canvas ne prennent pas en charge les fichiers GraphML contenant plusieurs graphes. Lorsqu’elle est désactivée, l’exportation crée des fichiers distincts pour chaque session d’entretien.
+
+Activez cette option si vous voulez rassembler toutes vos données en un même endroit pour l’analyse, ou si vous les importez dans un logiciel de statistiques qui fonctionne mieux avec des jeux de données combinés. Désactivez-la si vous voulez analyser les entretiens séparément, ou si vous effectuez des contrôles de qualité entretien par entretien.
+
+Si votre application ne propose pas cette option, vous pouvez plutôt combiner les fichiers CSV de chaque session au moment de l’analyse, par exemple avec `dplyr::bind_rows` dans R.
+
+Même fusionnés, les réseaux personnels restent distincts : les données sont regroupées dans des fichiers communs, mais les frontières de chaque réseau sont préservées grâce aux identifiants d’ego.
+
+### Utiliser les coordonnées de la disposition d’écran {#use-screen-layout-coordinates}
+
+Cette option ajoute des coordonnées en pixels propres à un écran à côté des positions normalisées des nœuds enregistrées par les interfaces « Sociogramme ».
+
+Network Canvas stocke les positions des nœuds issues des variables de disposition des étapes « Sociogramme » sous forme de coordonnées x/y normalisées (valeurs comprises entre 0 et 1), l’origine étant en haut à gauche. Cette normalisation permet d’afficher les dispositions sur des écrans de tailles différentes tout en conservant les positions relatives.
+
+Une variable de disposition est exportée sous forme de deux colonnes CSV portant le nom de la variable, avec les suffixes `_x` et `_y` : une variable de disposition nommée `layout` produit des colonnes `layout_x` et `layout_y` contenant les valeurs normalisées. Lorsque cette option est activée, l’exportation conserve ces colonnes normalisées et **ajoute** deux autres colonnes, `layout_screenSpaceX` et `layout_screenSpaceY`, contenant des valeurs en pixels (arrondies à deux décimales) calculées à partir d’une taille d’écran. Dans Interviewer, elle utilise la largeur et la hauteur de la disposition d’écran que vous définissez dans **Paramètres → Exportation des données** (1 920 × 1 080 pixels par défaut). Dans Interviewer Classic, elle utilise les dimensions d’écran configurées dans ses réglages d’exportation, qui reprennent par défaut la résolution de l’appareil lui-même, et que vous pouvez réinitialiser à cette résolution. Dans Fresco, elle utilise une taille fixe de 1 920 × 1 080 pixels. Lorsque l’option est désactivée (par défaut), seules les colonnes normalisées de 0 à 1 sont exportées. Notez que la valeur Y d’écran est calculée comme (1 − y) × hauteur de l’écran : elle se mesure donc depuis le bas de l’écran, conformément à la convention de coordonnées de la plupart des logiciels de visualisation, tandis que la colonne normalisée `_y` se mesure depuis le haut.
+
+Activez cette option si vous voulez recréer exactement la disposition visuelle telle qu’elle apparaissait pendant l’entretien, si vous importez les données dans un logiciel de visualisation qui attend des coordonnées en pixels, ou si vous avez besoin de coordonnées correspondant à des dimensions d’écran précises. Désactivez-la si vous voulez des coordonnées indépendantes de l’appareil, valables pour un canevas de n’importe quelle taille, si vous comparez des dispositions créées sur des écrans de tailles différentes, ou si vous voulez un maximum de souplesse pour la visualisation.
+
+<TipBox>
+
+Si une étape « Sociogramme » utilise un arrière-plan adaptatif avec des quadrants
+ou d’autres zones, laissez l’option **Utiliser les coordonnées de la disposition
+d’écran** désactivée. Vous pouvez comparer directement les colonnes normalisées
+`_x` et `_y` de la variable de disposition avec les limites exprimées en
+pourcentage dans l’image. Voir
+[Classer les nœuds d’après leurs
+coordonnées](/fr/design-protocols/responsive-svg-backgrounds#classify-nodes-from-their-coordinates)
+pour les règles des quadrants, le traitement des limites et un exemple en R.
+
+</TipBox>
+
+**Exemple :**
+
+**Valeurs normalisées (par défaut), pour une variable de disposition nommée `layout` :**
+
+```csv
+nodeID,name,layout_x,layout_y
+1,John,0.25,0.33
+2,Sarah,0.75,0.67
+```
+
+**Avec les coordonnées de la disposition d’écran activées (1 920 × 1 080) :**
+
+```csv
+nodeID,name,layout_x,layout_y,layout_screenSpaceX,layout_screenSpaceY
+1,John,0.25,0.33,480.00,723.60
+2,Sarah,0.75,0.67,1440.00,356.40
+```
+
+Si vous avez dessiné votre arrière-plan dans [Background
+Creator](/fr/design-protocols/responsive-svg-backgrounds#use-the-background-creator)
+et que vous y avez défini des zones, laissez l’option **Utiliser les coordonnées
+de la disposition d’écran** désactivée. Le script Python ou R d’attribution des
+zones exporté par Background Creator lit les colonnes normalisées
+`<layoutVariable>_x` / `<layoutVariable>_y`, exportées par
+défaut, et ajoute une variable catégorielle indiquant la zone dans laquelle se
+trouve chaque nœud ; vous n’avez donc pas à écrire ce classement vous-même.
+
+### Autres points à prendre en compte pour l’exportation {#additional-export-considerations}
+
+**Identifiants uniques :** Network Canvas génère des identifiants uniques (UUID) pour toutes les entités :
+
+- `networkCanvasEgoUUID` - Identifiant de l’ego, unique parmi toutes les sessions
+- `networkCanvasUUID` - Identifiant unique de l’alter
+- `networkCanvasCaseID` - Identifiant de cas, saisi par vous ou généré automatiquement
+- `networkCanvasSessionID` - Identifiant unique de la session
+
+Ces identifiants vous permettent de :
+
+- Fusionner les données de plusieurs exportations
+- Relier les données à des sources externes
+- Suivre une personne participante sur plusieurs sessions d’entretien (le cas échéant)
+
+**Métadonnées de la session :** les fichiers d’ego comportent des métadonnées utiles :
+
+- `sessionStart` - Horodatage du début de l’entretien
+- `sessionFinish` - Horodatage de la fin de l’entretien
+- `sessionExported` - Horodatage de l’exportation
+- `networkCanvasProtocolName` - Protocole utilisé
+- `networkCanvasFinishOutcome` - Façon dont l’entretien s’est terminé (voir [Comment l’entretien s’est terminé](#how-the-interview-ended))
+
+## Détails de la structure des données {#data-structure-details}
+
+Pour une référence complète de la façon dont chaque type de variable est encodé
+dans ces fichiers (noms des colonnes, formats des valeurs et traitement des
+valeurs manquantes), voir le
+[Dictionnaire des données exportées](/fr/analyze-data/data-dictionary).
+
+### Comprendre la structure ego-alter-lien {#understanding-the-ego-alter-edge-structure}
+
+Network Canvas organise les données de réseau personnel selon une structure standard de réseau personnel :
+
+```
+Ego (participant)
+├── Alter 1 (network member)
+├── Alter 2 (network member)
+├── Alter 3 (network member)
+└── Edges (relationships between alters)
+    ├── Alter 1 → Alter 2
+    └── Alter 2 → Alter 3
+```
+
+**Niveau de l’ego :** une ligne par personne participante, contenant :
+
+- Les caractéristiques sociodémographiques de la personne participante
+- Les mesures de réseau agrégées (si elles ont été calculées)
+- Les métadonnées de la session
+
+**Niveau des alters :** plusieurs lignes par personne participante (une par alter cité), contenant :
+
+- Les attributs des alters
+- Les attributs de la relation entre l’ego et l’alter
+- Le rattachement à l’ego (`networkCanvasEgoUUID`)
+
+**Niveau des liens :** les relations entre alters au sein de chaque réseau personnel, contenant :
+
+- Les attributs des liens
+- Les références aux alters source et cible
+- Le rattachement au réseau de l’ego
+
+### Travailler avec plusieurs types d’entités {#working-with-multiple-entity-types}
+
+Si votre protocole définit plusieurs types de nœuds (par exemple `Person` et `Place`), la structure de l’exportation en tient compte :
+
+**Exportation CSV :**
+
+- Des fichiers d’alters distincts : `case_001_session_123_attributeList_Person.csv` et `case_001_session_123_attributeList_Place.csv`
+- Chaque fichier ne contient que les alters de ce type
+- Les liens entre types différents apparaissent dans les fichiers de liens avec les indicateurs de type correspondants
+
+**Exportation GraphML :**
+
+- Tous les types de nœuds dans un seul fichier
+- Le type de nœud est identifié par un attribut
+
+### Traitement des données manquantes {#handling-missing-data}
+
+Network Canvas traite les données manquantes de la façon suivante :
+
+**Format CSV :**
+
+- Champs facultatifs laissés vides : cellule vide
+- Variables booléennes sans réponse : cellule vide
+- Cases à cocher à choix multiples non sélectionnées : FALSE ou vide
+
+**Format GraphML :**
+
+- Attributs facultatifs sans valeur : balise de l’attribut omise
+- Attributs obligatoires : chaîne vide
+
+**Bonne pratique :** documentez quels champs de votre protocole sont obligatoires et lesquels sont facultatifs, pour savoir quelles valeurs manquantes sont attendues.
+
+## Utiliser les données exportées {#using-exported-data}
+
+### Ouvrir les fichiers CSV {#opening-csv-files}
+
+Network Canvas écrit les fichiers CSV en UTF-8 sans indicateur d’ordre des octets (BOM), la forme qu’attendent la plupart des logiciels d’analyse. Les fichiers peuvent contenir des noms et des réponses dans n’importe quelle langue.
+
+**Microsoft Excel :** lorsque vous double-cliquez sur un fichier CSV, Excel ne le lit en UTF-8 que s’il commence par un indicateur d’ordre des octets. Sinon, les lettres accentuées et les autres systèmes d’écriture s’affichent de façon illisible, par exemple `gÃ©nero` au lieu de `género`. Les données du fichier sont intactes. Importez le fichier au lieu de double-cliquer dessus ([conseils de Microsoft](https://support.microsoft.com/en-us/excel/opening-csv-utf-8-files-correctly-in-excel), en anglais) :
+
+- **Excel pour Windows :** dans l’onglet **Données**, dans le groupe **Récupérer et transformer des données**, choisissez **À partir d’un fichier texte/CSV**. Sélectionnez le fichier et choisissez **Importer**. Dans l’aperçu, réglez **Origine du fichier** sur **65001 : Unicode (UTF-8)**, puis choisissez **Charger**.
+- **Excel pour Microsoft 365 pour Mac :** dans l’onglet **Données**, choisissez **À partir du texte (hérité)**, puis sélectionnez le fichier et ouvrez-le. Sur la première page de l’Assistant Importation de texte, réglez **Origine du fichier** sur UTF-8, puis suivez les étapes restantes.
+
+**LibreOffice Calc :** lorsque vous ouvrez un fichier CSV, LibreOffice affiche une boîte de dialogue Import de texte. Choisissez **Unicode (UTF-8)** comme **Jeu de caractères**.
+
+**R :** la fonction `read.csv` de R de base lit correctement les fichiers lorsque R s’exécute avec des paramètres régionaux UTF-8, ce qui est le cas par défaut sous macOS et Linux, et sous Windows à partir de R 4.2. Sinon, ajoutez `encoding = "UTF-8"`. Deux autres points comptent :
+
+- Par défaut, `read.csv` modifie les noms de colonnes qui ne sont pas des noms R valides : `close friend` devient `close.friend` et, hors de paramètres régionaux UTF-8, `género` peut devenir `g..nero`. Ajoutez `check.names = FALSE` pour conserver les noms tels qu’ils sont écrits, et placez-les entre accents graves, comme dans `` alters$`close friend` ``.
+- R de base lit `true` et `false` comme du texte. Convertissez une colonne avec `as.logical()`, comme dans `alters$close_friend <- as.logical(alters$close_friend)`.
+
+```r
+alters <- read.csv("case_001_session_123_attributeList_Person.csv",
+                   check.names = FALSE, encoding = "UTF-8")
+```
+
+`readr::read_csv()` et `data.table::fread()` lisent eux aussi les fichiers en UTF-8, conservent les noms de colonnes tels qu’ils sont écrits et lisent `true` et `false` comme des valeurs logiques.
+
+**Python :** pandas lit directement les fichiers. `pd.read_csv()` utilise UTF-8 par défaut, conserve les noms de colonnes tels qu’ils sont écrits et lit `true` et `false` comme des booléens.
+
+### Dans R (analyse statistique) {#in-r-statistical-analysis}
+
+Les exportations CSV de Network Canvas sont conçues pour fonctionner sans difficulté avec R, en particulier avec le [package egor](https://cran.r-project.org/package=egor) (en anglais) :
+
+```r
+library(egor)
+
+# Read the exported CSV files
+# (check.names = FALSE keeps column names exactly as they are in your codebook)
+egos <- read.csv("path/to/ego.csv", check.names = FALSE)
+alters <- read.csv("path/to/alters_Person.csv", check.names = FALSE)
+edges <- read.csv("path/to/edges_friendship.csv", check.names = FALSE)
+
+# Combine them into an egor object, linking the files
+# through the Network Canvas identifiers
+ego_data <- threefiles_to_egor(
+  egos = egos,
+  alters.df = alters,
+  edges = edges,
+  ID.vars = list(
+    ego = "networkCanvasEgoUUID",
+    alter = "networkCanvasUUID",
+    source = "networkCanvasSourceUUID",
+    target = "networkCanvasTargetUUID"
+  )
+)
+
+# Or use the ideanet package, which reads an export folder directly (see tutorial)
+library(ideanet)
+nc_data <- nc_read(
+  path = "path/to/export/folder",
+  protocol = "path/to/protocol.netcanvas"
+)
+```
+
+Si vous avez exporté les sessions dans des fichiers distincts, combinez les fichiers correspondants de chaque session (par exemple avec `dplyr::bind_rows`) avant de construire l’objet egor, pour que chaque data frame couvre tous les entretiens.
+
+**Voir aussi :** [Travailler avec les données Network Canvas dans R](/fr/analyze-data/working-with-data)
+
+### Dans Python {#in-python}
+
+Les exportations CSV de Network Canvas se chargent directement dans [pandas](https://pandas.pydata.org) (en anglais),
+et les colonnes d’identifiants de chaque fichier fournissent tout ce qu’il faut pour joindre les fichiers
+d’entités et construire des graphes avec [networkx](https://networkx.org) (en anglais) :
+
+```python
+import pandas as pd
+import networkx as nx
+
+# Read the entity CSVs. Alter and edge rows carry a networkCanvasEgoUUID
+# column that links them to their ego's row in the ego file.
+egos = pd.read_csv("case_001_session_123_ego.csv")
+alters = pd.read_csv("case_001_session_123_attributeList_Person.csv")
+edges = pd.read_csv("case_001_session_123_edgeList_Friend.csv")
+
+# A flat analysis table: each alter alongside its ego's attributes
+alters_with_ego = alters.merge(egos, on="networkCanvasEgoUUID")
+
+# Build one networkx graph per ego network from the CSV files,
+# using the permanent UUID columns as node identifiers
+graphs = {}
+for ego_uuid, ego_alters in alters.groupby("networkCanvasEgoUUID"):
+    G = nx.Graph()
+    for _, alter in ego_alters.iterrows():
+        G.add_node(alter["networkCanvasUUID"], **alter.to_dict())
+    ego_edges = edges[edges["networkCanvasEgoUUID"] == ego_uuid]
+    for _, edge in ego_edges.iterrows():
+        G.add_edge(
+            edge["networkCanvasSourceUUID"],
+            edge["networkCanvasTargetUUID"],
+            **edge.to_dict(),
+        )
+    graphs[ego_uuid] = G
+```
+
+Comme chaque session exporte son propre ensemble de fichiers, les fichiers d’une
+seule session contiennent exactement un réseau personnel ; le regroupement
+ci-dessus devient utile une fois que vous concaténez les fichiers correspondants
+de chaque session (par exemple avec `pd.concat`) en data frames couvrant toute
+l’étude.
+
+Vous pouvez aussi lire le fichier GraphML, qui contient le réseau personnel
+complet d’une session dans un seul graphe. Les attributs d’ego sont stockés au
+niveau du graphe (déclarés avec `for="graph"`) : networkx les expose donc dans
+le dictionnaire d’attributs du graphe lui-même :
+
+```python
+G = nx.read_graphml("case_001_session_123.graphml")
+
+G.graph              # ego attributes, e.g. {'egoName': 'Enzo', 'egoAge': 40}
+G.nodes(data=True)   # alters with their attributes
+G.edges(data=True)   # edges with their attributes
+```
+
+### Dans les logiciels de visualisation de réseaux {#in-network-visualization-software}
+
+**Gephi :**
+
+1. Ouvrez Gephi
+2. Fichier → Ouvrir → Sélectionnez le fichier GraphML
+3. Le graphe s’affiche avec tous les attributs disponibles
+
+**UCINET :**
+
+1. Importez le fichier GraphML ou CSV
+2. Convertissez-le au format UCINET si nécessaire
+3. Lancez les procédures d’analyse de réseaux
+
+### Dans les tableurs {#in-spreadsheet-software}
+
+**Excel, Google Sheets, LibreOffice Calc :**
+
+1. Importez chaque fichier CSV en UTF-8 (voir [Ouvrir les fichiers CSV](#opening-csv-files))
+2. Chaque fichier s’ouvre dans une feuille de calcul distincte
+3. Utilisez `networkCanvasEgoUUID` pour relier les fichiers entre eux
+4. Les tableaux croisés dynamiques et les formules fonctionnent avec les données
+
+## Bonnes pratiques {#best-practices}
+
+### Pendant la collecte des données {#during-data-collection}
+
+1. **Exportez souvent :** n’attendez pas que tous les entretiens soient terminés
+2. **Testez les exportations tôt :** exportez des données de test pour vérifier que le format répond à vos besoins
+3. **Vérifiez la structure des données :** contrôlez que toutes les variables attendues apparaissent dans les exportations
+4. **Documentez votre protocole :** prenez des notes sur les noms des variables et leur signification
+
+### Organisation des fichiers {#file-organization}
+
+1. **Créez des dossiers dédiés :** classez les exportations par étude, par date ou par vague
+2. **Nommez de façon cohérente :** établissez une convention de nommage pour les dossiers d’exportation
+3. **Gestion des versions :** notez quelle version du protocole a produit quelles exportations
+4. **Sauvegardez régulièrement :** conservez les exportations à plusieurs endroits (en local et dans le cloud)
+
+### Intégrité des données {#data-integrity}
+
+1. **Vérifiez les effectifs :** contrôlez que le nombre de personnes participantes correspond à ce qui est attendu
+2. **Recherchez les doublons :** assurez-vous que les identifiants de cas sont uniques si tel est le but
+3. **Validez les plages de valeurs :** vérifiez sur quelques cas (contrôles ponctuels) que les valeurs des variables se situent dans les plages attendues
+4. **Examinez les métadonnées :** les horaires des sessions peuvent aider à repérer les entretiens problématiques
+
+### Préparer l’analyse {#preparing-for-analysis}
+
+1. **Exportez d’abord dans les deux formats :** déterminez celui qui convient le mieux à votre procédure
+2. **Documentez les transformations :** notez tout nettoyage ou recodage des données
+3. **Conservez les exportations brutes :** gardez les exportations d’origine avant toute modification
+4. **Rédigez un dictionnaire des codes de vos données :** documentez la signification des variables, en particulier des valeurs catégorielles
+
+## Résolution des problèmes {#troubleshooting}
+
+### Problèmes d’exportation courants {#common-export-issues}
+
+**Problème : le bouton d’exportation est grisé**
+
+- **Cause :** aucune session n’est sélectionnée
+- **Solution :** sélectionnez au moins une session d’entretien
+
+**Problème : les fichiers exportés sont vides**
+
+- **Cause :** aucune donnée n’a été recueillie pour ce type d’entité
+- **Solution :** vérifiez que votre protocole a bien recueilli les données attendues et que les entretiens ont été menés à terme
+
+**Problème : impossible de trouver les fichiers exportés**
+
+- **Cause :** l’emplacement d’enregistrement n’est pas clair
+- **Solution (Interviewer) :** regardez dans le dossier Documents par défaut ou dans les téléchargements récents
+- **Solution (Fresco) :** regardez dans le dossier de téléchargement du navigateur
+
+**Problème : les lettres accentuées ou les autres systèmes d’écriture s’affichent de façon illisible dans Excel**
+
+- **Cause :** Excel n’a pas lu le fichier en UTF-8, ce qui se produit lorsque vous double-cliquez sur un fichier CSV
+- **Solution :** importez le fichier en choisissant UTF-8 comme origine du fichier au lieu de double-cliquer dessus. Voir [Ouvrir les fichiers CSV](#opening-csv-files)
+
+**Problème : certaines valeurs de texte commencent par une apostrophe**
+
+- **Cause :** l’exportation CSV ajoute `'` devant le texte qui commence par `=`, `+`, `-`, `@`, une tabulation ou un retour chariot, pour que les tableurs ne le traitent pas comme une formule
+- **Solution :** voir [Pourquoi certaines valeurs commencent par une apostrophe](#why-some-values-start-with-an-apostrophe) pour la supprimer dans R ou Python
+
+**Problème : un avertissement indique que des caractères ont été supprimés des fichiers GraphML**
+
+- **Cause :** certaines réponses, ou le texte du protocole lui-même, contenaient des caractères de contrôle invisibles que GraphML ne peut pas stocker
+- **Solution :** les fichiers CSV conservent ces réponses sans modification. Voir [Caractères supprimés des fichiers GraphML](#characters-removed-from-graphml-files)
+
+**Problème : un avertissement indique que certaines colonnes ont été renommées**
+
+- **Cause :** deux colonnes d’un même fichier auraient porté le même nom ; l’exportation a donc renommé l’une d’elles avec un suffixe comme `_2`. Cela peut se produire avec les noms de variables d’un protocole plus ancien, y compris des noms qui ne deviennent identiques dans les fichiers GraphML qu’une fois les espaces et la ponctuation remplacés, ou avec une colonne d’un fichier de liste qui ne correspond à aucune variable
+- **Solution :** voir [Noms de colonnes en conflit](#column-names-that-clash)
+
+**Problème : des variables manquent dans l’exportation**
+
+- **Cause :** des variables sont définies mais ne sont utilisées dans aucune étape, ou la validation a empêché de terminer un formulaire
+- **Solution :** vérifiez que les variables sont effectivement utilisées dans le protocole et que les formulaires ont été remplis
+
+**Problème : les identifiants des alters ne correspondent pas d’un fichier à l’autre**
+
+- **Cause :** utilisation de `nodeID` au lieu de `networkCanvasUUID`. `nodeID` est numéroté à partir de 1 dans chaque entretien : le même numéro correspond donc à un alter différent dans chacun d’eux
+- **Solution :** utilisez `networkCanvasUUID` pour distinguer les alters lorsque vous combinez des fichiers issus de plusieurs entretiens ou de plusieurs exportations. N’utilisez `nodeID` qu’au sein des fichiers d’un même entretien, par exemple pour faire correspondre les colonnes `from` et `to` de ses fichiers de liens à ses alters
+
+### Contrôles de la qualité des données {#data-quality-checks}
+
+Après l’exportation, vérifiez les points suivants :
+
+1. **Les effectifs correspondent à ce qui est attendu**
+   - Nombre de lignes d’ego = nombre d’entretiens menés à terme
+   - Le nombre d’alters semble raisonnable
+   - Le nombre de liens est cohérent avec la taille du réseau
+
+2. **Les variables sont complètes**
+   - Les champs obligatoires sont renseignés
+   - Les valeurs manquantes des champs facultatifs sont conformes à ce qui est attendu
+   - Aucune configuration inattendue de données manquantes
+
+3. **Les plages de valeurs sont plausibles**
+   - Les variables catégorielles utilisent les catégories attendues
+   - Les valeurs numériques se situent dans des plages réalistes
+   - Les dates sont vraisemblables
+
+4. **Les identifiants sont cohérents**
+   - Les identifiants de cas sont uniques (sauf si des entretiens répétés sont prévus)
+   - Toutes les entités ont un UUID
+   - Les rattachements entre ego, alters et liens sont valides
+
+## Concepts associés {#related-concepts}
+
+- [Flux de travail des protocoles et des données](/fr/collect-data/protocol-and-data-workflows) - Comment les protocoles et les données circulent selon chaque façon de mener une étude
+- [Flux de travail en ligne et hors ligne d’Interviewer](/fr/collect-data/interviewer-online-and-offline-workflows) - Déployer des protocoles sur des appareils et recueillir leurs données, avec ou sans connexion Internet
+- [Utiliser Fresco](/fr/collect-data/fresco/using-fresco) - Exporter les données des études menées avec Fresco
+- [Travailler avec les données dans R](/fr/analyze-data/working-with-data) - Tutoriel détaillé sur l’analyse des données Network Canvas dans R
+- [Variables](/fr/design-protocols/key-concepts/variables) - Comprendre les variables que vous verrez dans les exportations
+
+## Pour aller plus loin {#next-steps}
+
+Maintenant que vous connaissez l’exportation des données, vous pouvez :
+
+1. Exporter des données de test issues d’un entretien d’exemple pour vérifier le format
+2. Vous exercer à importer les données exportées dans votre logiciel d’analyse
+3. Consulter le [tutoriel « Travailler avec les données »](/fr/analyze-data/working-with-data) pour les procédures d’analyse dans R
+4. Planifier l’organisation des données de votre étude

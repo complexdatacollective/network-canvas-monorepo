@@ -1,0 +1,111 @@
+---
+title: Interface d’anonymisation
+navOrder: 21
+translatedFrom: ff6380cc419ea6fdb09f0bc57c1890710d7876bb
+---
+
+<InterfaceSummary type="Anonymisation">
+
+<InterfaceMeta type="Utilitaire" creates="Une phrase secrète qui chiffre les attributs que vous choisissez" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+Cette interface permet de chiffrer les données de la personne participante sur son appareil, de manière à empêcher toute personne autre que la personne participante, y compris l’équipe de recherche, d’y accéder.
+
+Ajouter cette interface à votre protocole vous permet de choisir les attributs de nœuds qui sont chiffrés. En arrivant à cette étape, les personnes participantes sont invitées à choisir une phrase secrète, puis à la saisir une seconde fois pour la confirmer. C’est la phrase secrète qui protège leurs données. Chaque attribut que vous marquez comme chiffré est chiffré pendant les entretiens.
+
+Dans la section **Explication de la tâche** de l’éditeur d’étape, rédigez ce que les personnes participantes lisent avant de choisir une phrase secrète. Il s’agit d’un seul texte. Pour donner un titre à l’écran, commencez le texte par un titre, à l’aide de **Titre 1** dans la barre d’outils.
+
+Dans la section **Attributs chiffrés** de l’éditeur d’étape, chaque type de nœud de votre protocole a son propre interrupteur. Activez l’interrupteur d’un type, puis cochez les attributs texte de ce type qui doivent être chiffrés. Seuls les attributs texte peuvent être chiffrés, et les attributs de liens ne sont pas proposés. Désactiver l’interrupteur d’un type met fin d’un seul coup au chiffrement de tous les attributs de ce type ; Architect vous demande de confirmer avant de les désélectionner.
+
+### Attributs chiffrés dans la logique de saut, les filtres et le tri {#encrypted-attributes-in-skip-logic-filters-and-sorting}
+
+La logique de saut et les filtres sont évalués sans la phrase secrète de la personne participante : ils ne peuvent donc pas lire les réponses à un attribut chiffré. Cela signifie qu’une règle ne peut pas comparer ces réponses, par exemple pour vérifier si un nom est « Alice ». Une règle peut en revanche vérifier si un attribut chiffré a reçu une réponse. Lorsque vous construisez une règle sur un attribut chiffré, Architect ne propose que **existe** et **n’existe pas**.
+
+Architect ne vous laisse pas chiffrer un attribut tant qu’une règle compare ses réponses. Supprimez d’abord cette règle, ou modifiez-la pour qu’elle vérifie seulement si l’attribut a reçu une réponse.
+
+Il y a une exception. Un panneau latéral qui liste des personnes issues d’un fichier de données externes peut, lui, comparer les réponses d’un attribut chiffré, car les données de ce fichier ne sont pas chiffrées.
+
+Si vous mettez à niveau un protocole en schéma 8 qui chiffre des attributs, toute règle de logique de saut ou de filtre qui comparait les réponses à l’un d’eux est supprimée. En schéma 8, ces règles ne comparaient jamais que le texte chiffré, jamais la réponse elle-même. Les règles qui vérifient seulement si un attribut chiffré a reçu une réponse continuent de fonctionner : elles sont donc conservées.
+
+Une logique de saut qui se retrouve sans règle est supprimée : son étape est donc désormais toujours affichée. Si une étape était configurée pour ne s’afficher que lorsqu’une règle supprimée était satisfaite, il se peut qu’elle ne soit jamais apparue auparavant : elle peut donc maintenant apparaître pour la première fois. Un filtre qui se retrouve sans règle est lui aussi supprimé : il ne limite donc plus ce qu’affiche son étape ou son panneau latéral.
+
+Vérifiez les étapes qui utilisaient les règles supprimées, car les règles restantes peuvent désormais être satisfaites différemment. Si toutes les règles devaient être satisfaites, les règles restantes le sont au moins aussi souvent qu’avant. S’il suffisait qu’une seule règle soit satisfaite, elles le sont au plus aussi souvent.
+
+Vous pouvez néanmoins trier une liste selon un attribut chiffré, comme un nom. Une fois que la personne participante a saisi sa phrase secrète, la liste est triée selon ses réponses. D’ici là, ou si une réponse ne peut pas être lue, la liste ignore cette règle de tri, de sorte que son ordre ne laisse jamais deviner le contenu des réponses.
+
+### Longueur de la phrase secrète {#passphrase-length}
+
+Par défaut, la personne participante doit choisir une phrase secrète d’au moins 8 caractères.
+
+Pour fixer vos propres limites, utilisez la section **Validation de la phrase secrète** de l’éditeur d’étape. Activez **Longueur de texte minimale** pour fixer la phrase secrète la plus courte que vous autorisez, et **Longueur de texte maximale** pour fixer la plus longue. Un minimum que vous fixez remplace toujours la valeur par défaut de 8, même s’il est inférieur à 8. Le minimum ne peut pas être supérieur au maximum.
+
+Si vous fixez un maximum inférieur à 8 et aucun minimum, le minimum par défaut est abaissé à votre maximum, pour que les personnes participantes puissent toujours choisir une phrase secrète. L’éditeur d’étape affiche le minimum qui s’applique.
+
+Les règles de longueur s’appliquent lorsque la personne participante choisit sa phrase secrète pour la première fois, ce qui comprend le moment où elle la confirme en la saisissant une seconde fois. Lorsqu’elle revient plus tard à l’entretien, il lui suffit de saisir à nouveau la même phrase secrète.
+
+### Formulations autour de la phrase secrète {#passphrase-wording}
+
+Les formulations qui entourent la phrase secrète font partie des [textes de l’entretien](/fr/design-protocols/translating-your-protocol#interview-text) de votre protocole, et non de cette étape, car toute étape ultérieure qui affiche une réponse chiffrée demande elle aussi la phrase secrète. Elles comprennent les libellés des champs de la phrase secrète et de sa confirmation, l’explication de ce que protège la phrase secrète, le message affiché lorsqu’une phrase secrète ne correspond pas à celle choisie auparavant, le message affiché lorsqu’elle est acceptée, et les avis affichés à la place des réponses verrouillées ou qui ne peuvent pas être affichées. Network Canvas les fournit dans chaque langue pour laquelle il dispose de formulations. Votre protocole ne les contient que tant qu’il chiffre un attribut ou comporte une étape d’anonymisation, et vous pouvez les reformuler et les traduire dans le tableau des traductions.
+
+### Comment les réponses sont protégées {#how-answers-are-protected}
+
+La protection a lieu sur l’appareil même de la personne participante, à l’aide de la [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) (en anglais). Les réponses sont chiffrées avant d’être stockées : les données d’entretien ne les contiennent donc jamais sous une forme lisible.
+
+- **Une clé par entretien.** Lorsqu’une personne participante choisit une phrase secrète, l’entretien en dérive une clé de chiffrement unique. La clé est dérivée avec PBKDF2-SHA256, avec 600 000 itérations et un sel dérivé de l’identifiant de l’entretien lui-même : la même phrase secrète donne donc une clé différente dans chaque entretien. Ce calcul est volontairement lent, ce qui rend coûteuse toute tentative de deviner une phrase secrète.
+- **Un chiffrement robuste pour chaque réponse.** Chaque réponse chiffrée est chiffrée avec cette clé au moyen d’AES-256-GCM, avec une nouvelle valeur aléatoire pour chaque réponse.
+- **Les réponses sont liées à leur place.** Chaque réponse est rattachée à la personne et à la question auxquelles elle appartient : une réponse chiffrée copiée vers une autre personne ou une autre question ne peut donc pas être lue.
+- **Les réponses sont complétées jusqu’à une taille fixe (remplissage).** Chaque réponse est complétée jusqu’à une taille de bloc fixe avant d’être chiffrée, de sorte que la longueur d’une réponse chiffrée en révèle moins sur son contenu.
+- **La phrase secrète est vérifiée, pas stockée.** Lorsqu’une personne participante saisit à nouveau sa phrase secrète, l’entretien en dérive la clé et tente de déchiffrer l’une des réponses déjà protégées. Seule la bonne phrase secrète y parvient : une phrase mal saisie est donc refusée. Aucune information sur la phrase secrète ou sur la clé n’est stockée pour effectuer cette vérification. Tant que la première réponse n’a pas été protégée, il n’existe rien sur quoi vérifier une phrase secrète : la phrase saisie à ce moment-là devient donc celle de l’entretien.
+
+La phrase secrète n’est jamais stockée. La clé n’est conservée qu’en mémoire, dans le navigateur ou l’application qui exécute l’entretien, et n’est jamais enregistrée. Ainsi, actualiser la page, fermer l’onglet ou ouvrir l’entretien depuis un autre navigateur ou un autre appareil obligera la personne participante à saisir de nouveau sa phrase secrète. Les réponses chiffrées sont stockées avec le reste de l’entretien et ne peuvent être lues que par une personne qui connaît la phrase secrète.
+
+### Si une personne participante oublie sa phrase secrète {#if-a-participant-forgets-their-passphrase}
+
+<TipBox danger>
+
+Une phrase secrète oubliée ne peut être récupérée par personne, ni par vous, ni par la personne participante, ni par l’équipe Network Canvas. Les réponses qu’elle protège restent illisibles.
+
+</TipBox>
+
+Assurez-vous que les personnes participantes le comprennent avant de choisir une phrase secrète. C’est dans la section **Explication de la tâche** de l’éditeur d’étape qu’il faut le leur dire. Une phrase secrète plus longue est plus difficile à deviner, mais aussi plus difficile à retenir.
+
+### Exporter les réponses protégées {#exporting-protected-answers}
+
+Lors de l’exportation de ces données, les attributs chiffrés ne figurent pas sous forme lisible dans le fichier d’exportation. Chaque réponse chiffrée est remplacée par la chaîne `ENCRYPTED`. Une valeur qui n’était pas chiffrée au moment où elle a été enregistrée est exportée telle qu’elle a été enregistrée.
+
+### Réponses protégées par la version expérimentale {#answers-protected-by-the-experimental-version}
+
+Dans les protocoles en schéma 8, l’interface d’anonymisation était une fonctionnalité expérimentale, et elle protégeait les réponses dans un format plus ancien. Fresco et Interviewer ne mettent jamais un protocole à niveau vers le schéma 9 : un protocole en schéma 8 et ses entretiens continuent donc de s’exécuter en schéma 8, et les réponses protégées de cette manière peuvent toujours y être lues avec la bonne phrase secrète.
+
+Mettre un protocole à niveau vers le schéma 9 dans Architect crée un nouveau protocole. Les entretiens que vous avez recueillis avec le protocole en schéma 8 restent associés à celui-ci, et le protocole mis à niveau protège les nouvelles réponses de la manière décrite sur cette page. Consultez [Schéma version 9](/fr/get-started/protocol-schema-information#schema-version-9) pour savoir ce qui change d’autre lorsque vous migrez un protocole.
+
+### Bonnes pratiques {#best-practices}
+
+<GoodPractice>
+
+Veillez à ce que la phrase secrète soit robuste et unique, afin d’empêcher tout accès non autorisé aux données chiffrées, mais trouvez un équilibre avec la nécessité, pour les personnes participantes, de la retenir facilement.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Utilisez cette fonctionnalité pour favoriser la divulgation d’informations sensibles, comme des noms, d’une manière qui donne aux personnes participantes le sentiment que leur vie privée est protégée. Cela peut conduire à des réponses plus sincères et plus complètes pendant les entretiens.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Lorsque vous utilisez l’interface d’anonymisation, expliquez clairement aux personnes participantes comment leurs données seront utilisées et l’importance de la phrase secrète pour accéder à leurs données chiffrées, y compris le fait qu’une phrase secrète oubliée ne peut pas être récupérée. Cette transparence instaure la confiance et favorise la participation.
+
+</GoodPractice>
+
+### À éviter {#try-to-avoid}
+
+<BadPractice>
+
+N’utilisez pas l’interface d’anonymisation pour des données qui ne sont pas sensibles ou qui ne nécessitent pas de chiffrement. Cette interface est destinée aux données sensibles, pour lesquelles la confidentialité et la sécurité sont primordiales.
+
+</BadPractice>

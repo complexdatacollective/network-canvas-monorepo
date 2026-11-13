@@ -1,0 +1,162 @@
+---
+title: Écran de fin
+navOrder: 24
+date: 8th October 2026
+translatedFrom: c38f739aa2a73d879429cca8e7ff062b61fee4a4
+---
+
+<InterfaceSummary type="FinishSession">
+
+<InterfaceMeta type="Utilitaire" creates="Ne crée pas d’entités" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+L’étape « Écran de fin » est le dernier écran d’un entretien. Elle termine l’entretien et fige les réponses de la personne participante, soit lorsque celle-ci confirme qu’elle a terminé, soit dès qu’elle atteint cet écran. Tout protocole se termine par une étape de ce type, qui enregistre aussi la manière dont l’entretien s’est terminé, afin que vous puissiez distinguer les entretiens dans vos données. Un protocole peut se terminer par plusieurs étapes « Écran de fin », par exemple pour proposer une fin distincte aux personnes participantes qui ne sont pas éligibles (consultez [Plusieurs étapes « Écran de fin »](#more-than-one-finish-screen)).
+
+Un nouveau protocole commence avec une étape « Écran de fin » déjà en place. Les protocoles créés avant l’existence de l’étape « Écran de fin » en reçoivent une lorsqu’ils sont mis à niveau vers le schéma 9 (consultez [Version 9 du schéma](/fr/get-started/protocol-schema-information#schema-version-9)).
+
+## Ce que voient les personnes participantes {#what-participants-see}
+
+Ce que voient les personnes participantes dépend de la manière dont vous choisissez qu’elles terminent l’entretien (consultez [Comment les personnes participantes terminent l’entretien](#how-participants-finish)).
+
+Lorsque **les personnes participantes confirment**, elles voient l’écran de clôture : le texte de clôture que vous avez rédigé et un bouton **Terminer**. Elles appuient sur **Terminer** et doivent alors confirmer, car leurs réponses ne peuvent plus être modifiées une fois l’entretien terminé. Tant qu’elles n’ont pas confirmé, elles peuvent revenir en arrière et modifier leurs réponses. Si l’entretien ne peut pas être terminé, elles restent sur l’écran de clôture, voient un message qui l’indique et peuvent réessayer.
+
+Lorsque l’entretien **se termine automatiquement**, il se termine dès que la personne participante atteint l’étape « Écran de fin ». Il n’y a ni écran de clôture, ni bouton, ni question, et la personne participante ne peut pas revenir en arrière depuis l’étape « Écran de fin ». Si l’entretien ne peut pas être terminé, elle voit un message qui l’indique et un bouton **Terminer** pour réessayer.
+
+Une fois l’entretien terminé, celui-ci affiche son **écran après la fin de l’entretien** :
+
+- le texte après la fin de l’entretien que vous avez rédigé.
+- aucun moyen de se déplacer dans l’entretien. Il n’y a pas de boutons de navigation ni de moyen de revenir à un écran précédent.
+
+Si l’on rouvre un entretien terminé, c’est à nouveau l’écran après la fin de l’entretien qui s’affiche, et non l’entretien depuis le début.
+
+L’application qui fait passer l’entretien peut ajouter une action à l’écran après la fin de l’entretien :
+
+| Application          | Action ajoutée à l’écran après la fin de l’entretien |
+| -------------------- | ---------------------------------------------------- |
+| Interviewer          | **Quitter**, qui ramène au tableau de bord            |
+| Architect (aperçu)   | **Relancer l’aperçu**                                 |
+| Fresco               | Aucune. Les personnes participantes ferment la fenêtre |
+
+Dans Interviewer, lorsque vous consultez un entretien terminé, ses étapes s’affichent en lecture seule. L’étape « Écran de fin » n’est pas affichée lors de cette consultation et n’apparaît pas dans le menu des étapes.
+
+## Configurer l’étape « Écran de fin » {#configuring-the-finish-screen}
+
+L’éditeur d’étape comporte les sections suivantes :
+
+- **Nom de l’étape** est le nom que vous voyez dans la chronologie et dans le menu des étapes. Il n’est pas présenté aux personnes participantes comme titre de l’écran.
+- **Comment les personnes participantes terminent l’entretien** détermine si les personnes participantes voient un écran de clôture (consultez [Comment les personnes participantes terminent l’entretien](#how-participants-finish)).
+- **Écran de clôture** contient ce que lisent les personnes participantes avant de terminer. Il ne s’affiche que si vous avez choisi **Les personnes participantes confirment**. **Texte de clôture** est un champ de texte unique dont la première ligne est le titre de l’écran. Vous pouvez le mettre en forme avec Markdown : titres, paragraphes, listes et liens, par exemple.
+- **Écran après la fin de l’entretien** contient ce que lisent les personnes participantes une fois l’entretien terminé. **Texte après la fin de l’entretien** fonctionne comme le texte de clôture : sa première ligne est le titre, et vous pouvez mettre en forme le reste avec Markdown.
+- **Personnaliser la formulation intégrée** contient les textes que lisent les personnes participantes pendant qu’elles terminent l’entretien (consultez [Textes affichés au moment de terminer l’entretien](#finishing-the-interview)).
+- **Résultat** comporte le choix **Comment l’entretien s’est terminé**. Les personnes participantes ne le voient jamais. Il est enregistré avec l’entretien et inclus dans vos données exportées (consultez [Données](#data)). Les choix possibles sont :
+  - **Terminé** : la personne participante a atteint la fin normale de l’entretien.
+  - **Non éligible** : la personne participante ne remplissait pas les conditions pour participer à l’étude.
+  - **Arrêté prématurément** : l’entretien s’est terminé plus tôt pour une autre raison, par exemple un arrêt en raison de la détresse de la personne participante ou pour des raisons de sécurité.
+- La section **Guide d’entretien** (les indications destinées à la personne qui mène l’entretien) fonctionne comme dans les autres étapes.
+
+Une étape « Écran de fin » ne peut pas avoir de logique de saut, car tous les parcours de l’entretien se terminent par une étape de ce type.
+
+### Comment les personnes participantes terminent l’entretien {#how-participants-finish}
+
+**Comment les personnes participantes terminent l’entretien** propose deux choix :
+
+- **Les personnes participantes confirment** affiche l’écran de clôture. Les personnes participantes appuient sur **Terminer** et confirment lorsque la question leur est posée. Jusque-là, elles peuvent revenir en arrière et modifier leurs réponses. C’est le choix appliqué à une nouvelle étape « Écran de fin », ainsi qu’à celle qui est ajoutée lorsqu’un protocole est mis à niveau vers le schéma 9.
+- **Terminer automatiquement** termine l’entretien dès que la personne participante atteint l’étape « Écran de fin », et elle ne peut plus revenir en arrière. Il n’y a pas d’écran de clôture : l’éditeur d’étape masque donc la section **Écran de clôture** et la question de confirmation.
+
+Quel que soit votre choix, les personnes participantes voient l’écran après la fin de l’entretien une fois l’entretien terminé.
+
+### Textes affichés au moment de terminer l’entretien {#finishing-the-interview}
+
+La section **Personnaliser la formulation intégrée** contient les textes que lisent les personnes participantes pendant qu’elles terminent l’entretien, en dehors du texte de clôture et du texte après la fin de l’entretien :
+
+- **Bouton pour terminer** est le libellé du bouton qui termine l’entretien. Lorsque l’entretien se termine automatiquement, les personnes participantes ne voient ce bouton que si l’entretien n’a pas pu être terminé, afin de pouvoir réessayer.
+- **Question de confirmation** est la question posée aux personnes participantes après qu’elles ont appuyé sur le bouton, avant la fin de l’entretien. Elle ne leur est posée que lorsque le choix **Les personnes participantes confirment** est sélectionné ; l’éditeur d’étape ne l’affiche donc que dans ce cas.
+- **Si l’entretien ne peut pas être terminé** est le message que voient les personnes participantes lorsque l’entretien n’a pas pu être terminé.
+
+Network Canvas fournit chacun de ces textes dans chaque langue pour laquelle il dispose de formulations : une nouvelle étape « Écran de fin » est donc prête à l’emploi. Comme le reste de votre protocole, ce sont des textes que vous pouvez modifier. Lorsque votre protocole comporte plusieurs langues, traduisez-les avec le texte de clôture et le texte après la fin de l’entretien (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+### Texte de départ {#starting-text}
+
+Un nouveau protocole rédigé en français commence avec une étape « Écran de fin » dont le nom d’étape est « Terminer l’entretien ». Son texte de clôture a pour titre « Terminer l’entretien » et indique : « Vous avez atteint la fin de l’entretien. Si les informations que vous avez saisies vous conviennent, vous pouvez maintenant terminer l’entretien. » Son texte après la fin de l’entretien a pour titre « Entretien terminé » et indique : « Merci de votre participation ! » Dans un protocole rédigé en anglais, ces textes sont en anglais : le nom d’étape et le titre du texte de clôture sont « Finish Interview », et le texte après la fin de l’entretien a pour titre « Interview Finished » et indique « Thank you for participating! ». Une étape « Écran de fin » que vous ajoutez vous-même commence avec le même texte de clôture et le même texte après la fin de l’entretien. Network Canvas fournit ce texte dans chaque langue de votre protocole pour laquelle il en dispose. Vous pouvez tout modifier. Il en va de même pour les textes de **Personnaliser la formulation intégrée**.
+
+Lorsque vous ajoutez une langue à votre protocole, Architect ajoute aussi le texte fourni dans cette langue : le texte de clôture, le texte après la fin de l’entretien, le nom de l’étape et chacun des textes de **Personnaliser la formulation intégrée** reçoivent la formulation de Network Canvas dans la nouvelle langue partout où ils n’ont pas de traduction dans celle-ci, même si vous les avez modifiés dans vos autres langues. Vérifiez donc que la nouvelle langue dit bien ce que dit votre propre texte. Consultez [Ajouter des langues](/fr/design-protocols/translating-your-protocol#adding-languages). Lorsque vous [changez la langue dans laquelle votre texte est enregistré](/fr/design-protocols/translating-your-protocol#changing-the-language-your-text-is-recorded-as), le texte fourni que vous n’avez pas modifié devient le texte fourni dans la langue choisie, ou est supprimé si Network Canvas n’en dispose pas dans cette langue, et le texte que vous avez modifié conserve votre formulation. Traduisez votre propre texte comme le reste de votre protocole (consultez [Traduire votre protocole](/fr/design-protocols/translating-your-protocol)).
+
+### Texte nécessaire avant le téléchargement {#text-needed-before-downloading}
+
+Network Canvas ne fournit pas de texte de clôture ni de texte après la fin de l’entretien dans toutes les langues. Si la langue par défaut de votre protocole est une langue pour laquelle il n’a pas de texte, ou si vous effacez le texte, une étape « Écran de fin » peut se retrouver sans un texte dont elle a besoin. Architect ne vous laisse alors pas télécharger le protocole tant que vous n’avez pas ajouté ce texte dans votre langue par défaut :
+
+- une étape « Écran de fin » où les personnes participantes confirment a besoin d’un texte de clôture et d’un texte après la fin de l’entretien.
+- une étape « Écran de fin » qui se termine automatiquement a besoin d’un texte après la fin de l’entretien.
+
+Tant qu’un texte manque, la liste des étapes affiche un avertissement avec un lien vers l’étape « Écran de fin » qui en a besoin. Vous pouvez toujours modifier, enregistrer et prévisualiser le protocole.
+
+### Plusieurs étapes « Écran de fin » {#more-than-one-finish-screen}
+
+Un protocole peut se terminer par plusieurs étapes « Écran de fin », chacune terminant l’entretien à sa manière. Par exemple, vous pouvez ajouter une deuxième étape « Écran de fin » pour les personnes participantes qui ne sont pas éligibles, avec son propre texte de clôture, son propre texte après la fin de l’entretien et le résultat **Non éligible**. Choisissez un résultat différent pour chaque étape « Écran de fin », afin de pouvoir distinguer dans vos données où chaque entretien s’est terminé.
+
+Pour ajouter une étape « Écran de fin », choisissez **Écran de fin** sous **Utilitaires** dans l’écran **Nouvelle étape**.
+
+Les étapes « Écran de fin » restent regroupées à la fin du protocole :
+
+- Le protocole doit se terminer par une étape « Écran de fin ». Vous ne pouvez pas supprimer la dernière qui reste. Si vous essayez, la chronologie explique pourquoi et la laisse en place.
+- Vous pouvez réordonner les étapes « Écran de fin » entre elles, mais la chronologie ne vous permet pas de placer une autre étape après elles, ni de placer une étape « Écran de fin » au-dessus d’une étape d’un autre type.
+- **Ajouter une nouvelle étape** place les autres étapes avant les étapes « Écran de fin ».
+
+Par défaut, l’entretien aboutit à la première étape « Écran de fin ». Les personnes participantes atteignent les suivantes au moyen de la logique de saut (consultez [Logique de saut qui termine l’entretien](#skip-logic-that-ends-the-interview)). Aucune étape « Écran de fin » ne mène à une autre.
+
+### Prévisualiser {#previewing}
+
+Dans Architect, l’aperçu se termine sur l’écran après la fin de l’entretien propre à l’étape « Écran de fin », avec l’action **Relancer l’aperçu**, pour que vous puissiez voir ce que voient les personnes participantes une fois l’entretien terminé. L’aperçu n’enregistre rien : le résultat de l’entretien n’est donc pas consigné.
+
+### Logique de saut qui termine l’entretien {#skip-logic-that-ends-the-interview}
+
+Dans n’importe quelle autre étape, vous pouvez choisir **Terminer l’entretien** comme destination lorsque cette étape est sautée. L’entretien passe alors à la première étape « Écran de fin » située après l’étape qui porte la règle. Pour terminer l’entretien sur une étape « Écran de fin » ultérieure, par exemple celle destinée aux personnes participantes qui ne sont pas éligibles, choisissez plutôt cette étape « Écran de fin » par son nom. Consultez [Choisir où reprendre](/fr/design-protocols/key-concepts/skip-logic#choosing-where-to-continue).
+
+## Données {#data}
+
+L’étape « Écran de fin » ne crée ni nœuds ni liens, et n’ajoute rien au réseau de la personne participante. Le résultat que vous avez choisi est enregistré avec chaque entretien qui s’y termine et figure dans vos données exportées : le fichier CSV d’ego (l’ego : la personne participante, au centre de son réseau) comporte une colonne `networkCanvasFinishOutcome`, et les fichiers GraphML un attribut `nc:finishOutcome`. La valeur est `completed`, `ineligible` ou `terminated`. Consultez [Comment l’entretien s’est terminé](/fr/analyze-data/data-export#how-the-interview-ended).
+
+Le résultat est vide pour les entretiens terminés avec une version de votre application qui n’enregistrait pas encore ce résultat, ainsi que pour les entretiens qui n’ont pas été terminés.
+
+### Bonnes pratiques {#best-practices}
+
+<GoodPractice>
+
+Rédigez un texte après la fin de l’entretien qui indique aux personnes participantes ce qui se passe ensuite : que leurs réponses ont été enregistrées, si elles peuvent fermer la fenêtre et, le cas échéant, comment elles recevront un éventuel dédommagement ou un suivi.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Vérifiez le texte de clôture, le texte après la fin de l’entretien et les textes de **Personnaliser la formulation intégrée** dans chaque langue de votre protocole. Si vous avez ajouté des langues après avoir modifié le texte, traduisez-le dans chacune d’elles (consultez [Repérer les traductions manquantes](/fr/design-protocols/translating-your-protocol#finding-missing-translations)).
+
+</GoodPractice>
+
+<GoodPractice>
+
+Laissez le résultat de l’étape « Écran de fin » qui termine un entretien normal sur **Terminé**. Chaque entretien terminé sur une étape « Écran de fin » est enregistré avec le résultat que vous y choisissez : choisissez donc **Non éligible** ou **Arrêté prématurément** pour une étape « Écran de fin » distincte, que seuls atteignent les entretiens qui se terminent de cette façon, par exemple celle vers laquelle la logique de saut envoie les personnes participantes qui ne remplissaient pas les conditions.
+
+</GoodPractice>
+
+### À éviter {#try-to-avoid}
+
+<BadPractice>
+
+Évitez de demander d’autres informations aux personnes participantes dans l’étape « Écran de fin ». Terminer l’entretien fige leurs réponses, et l’écran après la fin de l’entretien ne permet plus aucune saisie : toute question doit donc figurer dans une étape antérieure.
+
+</BadPractice>
+
+<BadPractice>
+
+Évitez de rédiger un texte après la fin de l’entretien qui invite les personnes participantes à revenir en arrière pour vérifier leurs réponses. Une fois l’entretien terminé, elles ne peuvent plus revenir en arrière : invitez-les donc à le faire dans le texte de clôture, avant de terminer, ou n’en parlez pas. Lorsque l’entretien se termine automatiquement, il n’y a pas de texte de clôture : invitez-les donc à le faire dans une étape antérieure.
+
+</BadPractice>
+
+<BadPractice>
+
+Évitez d’inviter, dans le texte, les personnes participantes à appuyer sur un bouton **Quitter** ou **Fermer**. L’action éventuellement proposée par l’écran après la fin de l’entretien dépend de l’application qui fait passer l’entretien (consultez [Ce que voient les personnes participantes](#what-participants-see)), et Fresco n’en propose aucune.
+
+</BadPractice>

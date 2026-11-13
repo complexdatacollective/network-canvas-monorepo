@@ -1,0 +1,87 @@
+---
+title: Mettre à jour Fresco
+date: 5th October 2026
+navOrder: 10
+wip: false
+translatedFrom: 2844df3d8aed33238fcf766c1a32f7eada89b0cd
+---
+
+Fresco est amélioré en continu. À mesure que nous publions de nouvelles versions de Fresco, vous pouvez mettre à jour votre instance déployée en suivant ce guide.
+
+## Quand mettre à jour {#when-to-upgrade}
+
+C’est à vous qu’il revient de mettre à jour votre propre instance de Fresco. Nous vous recommandons de mettre à jour votre instance de Fresco dès qu’une nouvelle version est publiée. Vous disposerez ainsi des dernières fonctionnalités et corrections de bugs. Vous pouvez suivre les nouvelles versions aux endroits suivants :
+
+- **Communauté Network Canvas** : nous annonçons les nouvelles versions sur notre [forum de la communauté](https://community.networkcanvas.com/) (en anglais).
+- **Votre dépôt GitHub** : vous pouvez vérifier la présence de nouvelles versions dans votre dépôt GitHub. Si une nouvelle version est disponible, un message en haut de votre dépôt indique le nombre de commits de retard de votre branche.
+- **Paramètres** : vous pouvez vérifier la présence de nouvelles versions sur la page « Paramètres » de votre tableau de bord Fresco.
+
+## Procédure de mise à jour {#upgrade-process}
+
+Cette procédure s’applique si vous avez déployé Fresco en créant un fork du dépôt et en le connectant à Netlify, comme décrit dans le [guide de déploiement](./guide). Pour mettre à jour votre version de Fresco, vous devez synchroniser votre fork avec la dernière version du dépôt de Fresco. Cette opération récupère les dernières modifications et mises à jour du dépôt principal de Fresco.
+
+Dans votre dépôt GitHub, cliquez sur **« Sync Fork »** (synchroniser le fork) et sélectionnez **« Update Branch »** (mettre à jour la branche).
+
+![Synchroniser le fork](/assets/img/fresco-images/sync-fork.png)
+
+Netlify commence automatiquement à redéployer votre instance de Fresco. Cette opération prend quelques minutes.
+
+Pour en savoir plus sur la synchronisation de votre fork, consultez la [documentation de GitHub](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/syncing-a-fork) (en anglais).
+
+## Mettre à jour un déploiement Docker {#upgrading-a-docker-deployment}
+
+Si vous avez déployé Fresco avec Docker plutôt qu’en créant un fork du dépôt, il n’y a aucun fork à synchroniser. Récupérez plutôt la dernière image de conteneur et recréez l’ensemble des conteneurs : les commandes figurent dans la section [Mettre à jour Fresco](./advanced#updating-fresco) du guide « Déploiement avancé ». Si vous avez fixé une version précise de l’image, modifiez d’abord l’étiquette (tag) dans votre fichier Compose.
+
+## Gestion des versions {#versioning}
+
+Fresco utilise la [gestion sémantique de version](https://semver.org/) (en anglais) pour ses versions : chaque version est désignée par trois nombres séparés par des points. Ces nombres sont classés par ordre d’importance : le premier correspond à la version majeure, le deuxième à la version mineure et le troisième à la version corrective (patch). En général, une version majeure n’est pas rétrocompatible avec la précédente (la 3.x.x n’est donc pas compatible avec la 2.x.x). Les versions mineures servent à ajouter de nouvelles fonctionnalités de manière rétrocompatible (par exemple, la 2.2.x peut introduire une nouvelle fonctionnalité compatible avec la 2.x.x). Les versions correctives servent à corriger des bugs ou d’autres problèmes, sans modifier le comportement ni les fonctionnalités du logiciel.
+
+Vous devriez donc toujours pouvoir savoir clairement si une nouvelle version de Fresco peut être installée sans risque pendant votre collecte de données, ou s’il vaut mieux attendre.
+
+Ces informations de version sont disponibles à plusieurs endroits :
+
+- **Paramètres** : le numéro de version de votre instance de Fresco figure dans la section **Détails de l’application** de la page **Paramètres** de votre tableau de bord, qui vous indique aussi si une version plus récente est disponible.
+- **GitHub** : la version de votre instance de Fresco figure dans votre dépôt GitHub, dans le fichier `package.json`.
+- **Données exportées** : le numéro de version de votre instance de Fresco est inclus dans les données exportées, dans le fichier de l’ego (l’ego étant la personne participante, au centre de son réseau). Cette information permet de savoir quelle version de Fresco a servi à collecter les données.
+
+Le point de terminaison de vérification d’état, `/api/health`, n’indique pas la version. Si vous suiviez la version de votre instance grâce à lui, utilisez plutôt la page **Paramètres**.
+
+## Passer à la version 5.0.0 {#upgrading-to-500}
+
+Fresco 5.0.0 prend en charge le schéma de protocole 9, qui permet de rédiger les protocoles dans plusieurs langues et de nommer les variables, les types de nœuds et de liens et les options de réponse dans n’importe quelle langue. Vérifiez les points suivants avant de mettre à jour.
+
+- **Si vous utilisez une version plus ancienne, passez d’abord à la dernière version 4.x.** Les versions de Fresco antérieures à la 4.0 stockaient des protocoles en schéma 7. Un déploiement qui exécute encore l’une d’elles doit passer à la dernière version 4.x avant de passer à la 5.0.0.
+- **Mettez à jour lorsqu’aucun entretien n’est en cours.** Un entretien ouvert dans le navigateur d’une personne participante pendant la mise à jour continue d’exécuter l’ancienne version, et les réponses données après la mise à jour risquent de ne pas être enregistrées. Les réponses enregistrées avant la mise à jour sont conservées, et l’entretien reprend normalement une fois que la personne participante a rechargé la page. Choisissez un moment où aucune personne participante ne passe d’entretien, ou demandez aux personnes encore en cours d’entretien de recharger la page une fois la mise à jour terminée.
+- **Mettez à jour Fresco avant de téléverser (envoyer vers le serveur) un protocole en schéma 9.** Architect 9.0 et les versions ultérieures enregistrent les protocoles nouveaux et mis à niveau en schéma 9, et Fresco 4.x ne peut pas les ouvrir. Consultez [Version 9 du schéma](/fr/get-started/protocol-schema-information#schema-version-9).
+- **Vos protocoles ne sont pas mis à niveau.** Fresco ne met jamais un protocole à niveau vers le schéma 9. Les protocoles en schéma 8 que vous avez déjà téléversés restent en schéma 8, et leurs entretiens, y compris ceux qui sont en cours, continuent de s’exécuter dans le moteur d’entretien en schéma 8 intégré à Fresco, conformément à la conception du protocole. Un protocole en schéma 7 que vous téléversez est migré automatiquement vers le schéma 8, comme dans les versions précédentes, car c’est ainsi que les protocoles des applications Classic passent à Fresco. Pour utiliser les fonctionnalités du schéma 9, mettez le protocole à niveau dans Architect et téléversez la copie mise à niveau comme un nouveau protocole. Consultez [Migrer un protocole](/fr/get-started/protocol-schema-information#migrating-a-protocol).
+- **Les entretiens en schéma 9 suivent le navigateur de la personne participante.** Un entretien d’un protocole en schéma 9 n’utilise plus la langue du tableau de bord, et son menu de paramètres ne propose plus d’option de langue. Il utilise la première des langues du navigateur dans laquelle le protocole est rédigé, et les personnes participantes ne peuvent changer de langue que dans une étape « [Choix de la langue](/fr/design-protocols/interface-documentation/language-chooser) ». Consultez [La langue des entretiens](/fr/collect-data/fresco/using-fresco#language-in-interviews). Les entretiens des protocoles en schéma 8 conservent l’option de langue dans leur menu de paramètres.
+- **Les noms des fichiers exportés peuvent changer pour les protocoles en schéma 9.** Les noms de fichiers conservent désormais le nom d’un type de nœud ou de lien tel que vous l’avez écrit, y compris les traits d’union, les points, les espaces et les lettres de n’importe quelle langue. Un type nommé « Close-Friend » est désormais exporté dans un fichier qui se termine par `_Close-Friend.csv` au lieu de `_CloseFriend.csv`. Si vos scripts d’analyse repèrent les fichiers exportés par leur nom, vérifiez-les. Consultez [Exportation des données](/fr/analyze-data/data-export).
+- **Tout protocole en schéma 9 se termine par une étape « Écran de fin ».** L’écran qui termine un entretien est désormais une étape « [Écran de fin](/fr/design-protocols/interface-documentation/finish-screen) » placée à la fin du protocole. Les protocoles en schéma 8 conservent leur ancienne fin. Dans un protocole en schéma 9, une personne participante qui termine un entretien voit le « Texte après la fin de l’entretien » de l’étape « Écran de fin » à la place de l’ancienne page de fin d’entretien, qui n’existe plus. La page n’affiche aucun bouton : les personnes participantes ferment donc la fenêtre. Rouvrir l’URL d’un entretien terminé affiche de nouveau le même écran, et les favoris ou liens vers `/interview/finished` ne fonctionnent plus. La colonne **Progression** du tableau des entretiens compte désormais l’étape « Écran de fin » comme une étape : un entretien en attente sur son étape « Écran de fin » affiche donc moins de 100 % jusqu’à ce qu’il soit terminé.
+- **Les entretiens en schéma 9 enregistrent la façon dont ils se sont terminés.** Chaque entretien d’un protocole en schéma 9 enregistre quelle étape « Écran de fin » l’a terminé et son issue (`completed`, `ineligible` ou `terminated`). Les entretiens des protocoles en schéma 8, ainsi que les entretiens terminés avant la mise à jour, n’ont pas d’issue. Les exportations l’incluent dans la colonne `networkCanvasFinishOutcome` et l’attribut `nc:finishOutcome` (consultez [Comment l’entretien s’est terminé](/fr/analyze-data/data-export#how-the-interview-ended)), et l’[API Interview Data](/fr/analyze-data/fresco-api) la renvoie sous la forme `finishOutcome`.
+- **Le cookie de l’option « Limiter les entretiens » a changé.** Il contient désormais l’identifiant de l’entretien terminé de la personne participante et ne peut pas être lu par les scripts de la page. Une personne participante dont le cookie désigne un entretien terminé du même protocole est renvoyée vers l’écran de fin de cet entretien. Les cookies définis par les versions antérieures sont ignorés : une personne participante qui a terminé un entretien avant la mise à jour pourra donc peut-être en commencer un autre dans le même navigateur. Consultez [Limiter les entretiens](/fr/collect-data/fresco/using-fresco#limit-interviews).
+- **Les exportations peuvent afficher des avertissements.** Si une exportation doit renommer une colonne ou supprimer des caractères que GraphML ne peut pas stocker, Fresco vous en informe dans une notification qui reste affichée jusqu’à ce que vous la fermiez. Consultez [Avertissements d’exportation](/fr/analyze-data/data-export#export-warnings).
+
+## Passer à la version 4.2.0 {#upgrading-to-420}
+
+La plupart des changements de Fresco 4.2.0 ne demandent aucune action de votre part, mais vérifiez les points suivants avant de mettre à jour.
+
+- **Les clés d’accès doivent vérifier votre identité.** Fresco exige désormais que chaque clé d’accès (passkey) confirme votre identité par un code PIN, une empreinte digitale ou la reconnaissance faciale, à la fois lors de son enregistrement et à chaque connexion. Une clé d’accès enregistrée sur une clé de sécurité physique sans code PIN ne permettra plus de se connecter après la mise à jour. Avant de mettre à jour, chaque personne administratrice qui se connecte avec une clé d’accès doit utiliser **Ajouter une clé d’accès** dans **Paramètres → Gestion des comptes** pour enregistrer une clé d’accès capable de vérifier son identité, ou s’assurer qu’une autre personne administratrice pourra utiliser **Réinitialiser l’authentification** sur le compte concerné. Consultez [Clés d’accès](/fr/collect-data/fresco/accounts#passkeys).
+- **La vérification d’état n’indique plus la version ni la durée de fonctionnement.** `/api/health` répond toujours aux sondes de vivacité (liveness probes) en indiquant l’état du service, si bien que les vérifications d’état des conteneurs et les répartiteurs de charge continuent de fonctionner, mais sa réponse n’inclut plus la version de Fresco en cours d’exécution ni la durée de fonctionnement du processus. Mettez à jour tout outil de surveillance qui lisait l’une ou l’autre de ces valeurs. Consultez [Vérifications d’état](/fr/collect-data/fresco/advanced#health-checks).
+- **Vous pouvez exiger l’authentification à deux facteurs.** Une nouvelle variable d’environnement facultative, `REQUIRE_TWO_FACTOR`, rend l’authentification à deux facteurs obligatoire pour tous les comptes qui se connectent avec un mot de passe. Rien ne change tant que vous ne la définissez pas. Consultez [Exiger l’authentification à deux facteurs pour tous les comptes](/fr/collect-data/fresco/accounts#requiring-two-factor-authentication-for-everyone).
+- **L’importation de protocoles explique ce qui ne va pas.** Un fichier de protocole auquel il manque l’une de ses ressources est refusé, comme auparavant, mais le message nomme désormais la ressource manquante, et un fichier de protocole dont le contenu est endommagé est signalé comme endommagé. Les protocoles que vous avez déjà téléversés ne sont pas concernés. Consultez [Téléverser des protocoles](/fr/collect-data/fresco/using-fresco#uploading-protocols) pour savoir comment corriger un protocole refusé.
+
+## Mise à jour de la variable UploadThing (uniquement lors d’une mise à jour depuis une version antérieure à 2.0.0) {#uploadthing-variable-update-pre-200-upgrades-only}
+
+Cette section ne s’applique que si vous effectuez une mise à jour depuis une version de Fresco antérieure à 2.0.0, qui utilisait un ancien format de variable d’environnement UploadThing. Une fois la procédure de mise à jour terminée, mettez à jour la variable comme suit :
+
+1. Rendez-vous sur votre tableau de bord UploadThing.
+2. Ouvrez la section **API Keys** (clés d’API) depuis la barre latérale et copiez votre variable d’environnement à l’aide du bouton de copie. Elle devrait ressembler à ceci :
+
+   ```bash
+   UPLOADTHING_TOKEN='abCdefGHiJkLmNopQrsTuvWxYz.......'
+   ```
+
+3. Rendez-vous sur votre tableau de bord Fresco. Un message s’affiche pour vous informer que votre variable d’environnement UploadThing n’est plus à jour.
+4. Collez votre nouvelle variable d’environnement dans le champ **UPLOADTHING_TOKEN** du formulaire.
+
+![Collez votre nouvelle variable d’environnement dans le formulaire](/assets/img/fresco-images/upgrade.png)

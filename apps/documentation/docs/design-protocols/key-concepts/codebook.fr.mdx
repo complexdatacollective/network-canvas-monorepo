@@ -1,0 +1,109 @@
+---
+title: Livre de codes
+navOrder: 5
+translatedFrom: af7d2a61b6a7e2d42c3fb57b78ba2ad55fe4c44b
+---
+
+<Definition>
+  Le livre de codes (la définition des types de nœuds, de liens et de leurs
+  attributs, comme le dictionnaire des codes d’une enquête) est une vue
+  centralisée d’Architect qui affiche tous les types d’entités et tous les
+  attributs définis dans votre protocole ; il vous aide à garantir la cohérence
+  et à planifier l’analyse de vos données.
+</Definition>
+
+## Détails {#details}
+
+Le livre de codes du protocole donne une vue d’ensemble de toutes les entités et de tous les attributs définis dans votre protocole. Cette vue centralisée vous aide à garantir la cohérence entre les étapes et facilite la planification de l’analyse de vos données avant le déploiement de votre entretien.
+
+Architect construit automatiquement le livre de codes à mesure que vous créez des attributs dans votre protocole. La façon de l’ouvrir dépend de la version d’Architect que vous utilisez :
+
+- Dans **Architect Classic**, cliquez sur le bouton **Manage codebook** (gérer le livre de codes) en haut d’un fichier de protocole.
+- Dans **Architect**, ouvrez la page **Livre de codes** depuis la barre de navigation en haut de l’éditeur.
+
+![Cliquer sur le bouton Manage codebook dans Architect Classic ouvre la vue du livre de codes](/assets/img/key-concepts/codebook/manage-codebook.png)
+
+![Dans Architect, le livre de codes est une page à part entière, qui s’ouvre depuis le lien Livre de codes de la barre de navigation supérieure](/assets/img/architect/codebook-web.png)
+
+## Types d’entités {#entity-types}
+
+Le livre de codes classe les entités par type d’entité, à savoir l’ego (la personne participante, au centre de son réseau), les nœuds et les liens, et classe les attributs par entité. Vous pouvez modifier les types de nœuds et de liens depuis le livre de codes avec le bouton **Modifier l’entité**. Chaque type de nœud et de lien indique les étapes où il est utilisé, et vous pouvez vous rendre à l’une de ces étapes en cliquant sur son nom sous « Utilisé dans ».
+
+![Une vue du livre de codes dans Architect](/assets/img/key-concepts/codebook/codebook.png)
+
+Dans les deux versions d’Architect, vous pouvez personnaliser le nom et la couleur d’un type d’entité. Pour les types de nœuds, Architect va plus loin : il vous permet aussi de définir la forme et l’icône qui représentent le nœud dans toutes les interfaces.
+
+Dans Architect, un nouveau type de nœud ou de lien reçoit la couleur suivante de la palette, de sorte que chaque type que vous ajoutez se distingue du précédent. L’icône d’un type de nœud se choisit dans une liste, avec un champ de recherche, qui présente d’abord les icônes de Network Canvas puis le jeu d’icônes Lucide : saisissez quelques lettres du nom d’une icône (par exemple « user plus ») et choisissez-la parmi les icônes affichées.
+
+### Forme par défaut des nœuds {#default-node-shape}
+
+![Modification d’un type de nœud dans Architect, où vous pouvez définir sa forme et son icône en plus de son nom et de sa couleur](/assets/img/architect/edit-node-type-web.png)
+
+Chaque type de nœud a une forme par défaut : cercle, carré ou losange. Quand aucune association n’est configurée, tous les nœuds de ce type utilisent la forme par défaut.
+
+### Associer un attribut de nœud à une forme {#mapping-a-node-variable-to-shape}
+
+Dans Architect, vous pouvez aussi rendre la forme d’un type de nœud **dynamique**, afin que les nœuds d’un même type changent de forme selon la valeur d’un attribut. Architect appelle **attribut** chaque définition du livre de codes (cette documentation l’appelle souvent variable), et ce qui est enregistré sur un nœud donné est la valeur de cet attribut.
+
+Pour configurer une association :
+
+1. Modifiez le type de nœud et choisissez sa forme par défaut.
+2. Activez **Associer un attribut à une forme**.
+3. Sélectionnez l’un des attributs du type de nœud.
+4. Attribuez des formes aux valeurs qui doivent remplacer la forme par défaut.
+
+La forme d’un type de nœud ne peut être associée qu’à un seul attribut à la fois. Selon l’attribut choisi, l’association fonctionne de l’une de ces deux façons :
+
+- Pour les attributs **catégoriels**, **ordinaux** ou **booléens**, vous attribuez une forme à chaque valeur discrète. Toute valeur que vous laissez sans forme associée utilise la forme par défaut.
+- Pour les attributs de type **nombre** ou **scalaire**, vous définissez jusqu’à deux **seuils** numériques. Les valeurs inférieures au premier seuil utilisent la forme par défaut, et chaque seuil définit la forme utilisée pour les valeurs égales ou supérieures à ce seuil.
+
+Les formes disponibles sont les mêmes que pour la forme par défaut : cercle, carré et losange. Vous choisissez chacune d’elles, y compris la forme par défaut, en cliquant sur sa pastille, dessinée dans la couleur du type de nœud. Architect signale les valeurs qui n’ont encore aucune forme associée et utiliseront la forme par défaut, et n’enregistre pas d’association pour un attribut de type nombre ou scalaire tant que vous n’avez pas ajouté au moins un seuil.
+
+#### Exemple booléen : des personnes et des lieux {#boolean-example-people-and-places}
+
+Supposons qu’un type de nœud contienne à la fois des personnes et des lieux, distingués par un attribut booléen nommé `is_person`. Pour afficher les personnes sous forme de cercles et les lieux sous forme de carrés :
+
+1. Choisissez **Carré** comme forme par défaut.
+2. Activez **Associer un attribut à une forme** et sélectionnez `is_person`.
+3. Attribuez **Cercle** à **Vrai**.
+4. Laissez **Faux** sans forme associée, pour qu’il utilise le carré par défaut.
+
+| Valeur de `is_person` | Forme obtenue        |
+| --------------------- | -------------------- |
+| `true`                | Cercle               |
+| `false`               | Carré (par défaut)   |
+| Non enregistrée       | Carré (par défaut)   |
+
+<TipBox>
+
+La forme par défaut est aussi utilisée quand l’attribut sélectionné n’a pas été enregistré. Si une valeur inconnue doit se distinguer d’un lieu, choisissez Losange comme forme par défaut, puis associez explicitement Cercle à Vrai et Carré à Faux.
+
+</TipBox>
+
+![L’association de formes de is_person attribue Cercle à Vrai et laisse Faux sans forme associée, pour qu’il utilise la forme par défaut](/assets/img/architect/node-shape-variable-mapping.jpg)
+
+## Attributs {#variables}
+
+Chaque attribut indique son nom, son type, sa [commande de saisie](/fr/design-protocols/key-concepts/input-controls) (le type de champ avec lequel un attribut est recueilli : zone de texte, curseur, cases à cocher…) et les endroits où il est utilisé. Comme pour les types d’entités, vous pouvez vous rendre à n’importe quelle étape où un attribut est utilisé en cliquant sur le nom de cette étape sous « Utilisé dans ».
+
+![Les types d’entités comme les attributs indiquent les étapes où ils sont utilisés.](/assets/img/key-concepts/codebook/used-in.png)
+
+Dans Architect, les modifications que vous apportez au livre de codes depuis l’éditeur d’une étape (créer un attribut, le renommer ou modifier ses options de réponse ou ses règles de validation, par exemple) sont enregistrées immédiatement dans le livre de codes. Si vous annulez vos modifications de l’étape, ces changements du livre de codes sont conservés, car un attribut appartient à toutes les étapes qui l’utilisent.
+
+Si un attribut a été défini mais n’est plus utilisé, il apparaît dans le livre de codes comme attribut inutilisé, avec la mention **non utilisé**. Seuls les attributs inutilisés peuvent être supprimés du livre de codes. De même, un type d’entité ne peut être supprimé que s’il n’est utilisé nulle part dans le protocole.
+
+![Les attributs portant la mention « non utilisé » et les types d’entités inutilisés peuvent être supprimés dans la vue du livre de codes.](/assets/img/key-concepts/codebook/unused-variables.png)
+
+## Ressources de réseau {#network-assets}
+
+Le livre de codes contient aussi un résumé des ressources de réseau lorsque des [données de réseau externes](/fr/design-protocols/key-concepts/resources/#network) ont été incluses dans un protocole. La ligne d’en-tête des données de réseau sert à définir les noms des variables, et le livre de codes liste ces noms de variables sous forme de résumé pour chaque ressource de réseau externe.
+
+![Un résumé des variables d’un fichier de réseau externe.](/assets/img/key-concepts/codebook/network-data.png)
+
+## Concepts associés {#related-concepts}
+
+- [Variables](/fr/design-protocols/key-concepts/variables) : comprendre les types de variables et leur configuration
+- [Commandes de saisie](/fr/design-protocols/key-concepts/input-controls) : choisir les commandes adaptées à vos variables
+- [Ressources](/fr/design-protocols/key-concepts/resources) : importer des fichiers de données externes, y compris des listes prédéfinies de données de réseau (dans lesquelles la personne participante choisit)
+- [Formulaires](/fr/design-protocols/key-concepts/forms) : créer des formulaires à partir des attributs de votre livre de codes
+- [Interfaces](/fr/design-protocols/key-concepts/interfaces) : découvrir les interfaces qui utilisent les attributs du livre de codes

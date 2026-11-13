@@ -1,0 +1,68 @@
+---
+title: Mener une étude pilote
+date: 22nd July 2026
+navOrder: 3
+toc: true
+translatedFrom: 6d0077aed52e1ef9dfd6f764351be41637eebcd9
+---
+
+<Paragraph variant="lead">
+  Avant d’accueillir une vraie personne participante, faites tourner
+  votre étude de bout en bout sans elle. Les outils Network
+  Canvas offrent plusieurs moyens complémentaires de faire une répétition
+  (l’aperçu des étapes dans Architect, les sessions d’entretien synthétiques
+  dans Interviewer et Fresco, et un déploiement Fresco partagé servant de bac à
+  sable) qui, ensemble, vous permettent de tester votre protocole, le
+  déroulement de vos entretiens et votre chaîne d’exportation avant le
+  lancement.
+</Paragraph>
+
+## Pourquoi mener une étude pilote ? {#why-pilot}
+
+Un protocole qui semble correct dans l’éditeur peut encore vous réserver des surprises sur le terrain : une règle de validation qui empêche les personnes participantes d’envoyer un formulaire, un parcours de la logique de saut qui masque une étape que vous vous attendiez à voir, ou une exportation qui ne contient pas ce dont votre analyse a besoin. Il coûte beaucoup moins cher de découvrir chacun de ces problèmes lors d’une répétition que pendant la collecte des données.
+
+L’étude pilote est aussi le moment idéal pour former votre équipe. L’écran d’entretien est volontairement minimaliste, et une grande partie des fonctions dont l’équipe de recherche a besoin est moins facile à découvrir que les tâches des personnes participantes : prévoyez du temps pour apprendre et pour former les personnes qui mènent les entretiens, afin qu’elles puissent utiliser le logiciel avec assurance (voir [Utiliser Interviewer](/fr/collect-data/interviewer/using-interviewer)).
+
+La suite de cette page présente le déroulement d’une étude pilote, de l’aperçu d’étapes isolées jusqu’à une liste de contrôle avant le lancement.
+
+## Prévisualiser les étapes pendant la conception {#preview-stages-as-you-design}
+
+Votre première ligne de défense se trouve dans Architect lui-même. Au fil de la construction, vous pouvez [prévisualiser n’importe quelle étape](/fr/design-protocols/preview-mode) pour voir comment elle apparaîtra aux personnes participantes, ce qui vous permet de vérifier vos modifications immédiatement plutôt que d’attendre le déploiement. Les aperçus peuvent démarrer avec des données d’exemple générées automatiquement, afin que les étapes qui s’appuient sur des nœuds déjà créés, comme les étapes « Sociogramme » et les étapes de classement (« Classement par catégories », « Classement ordinal »), aient quelque chose à afficher. La logique de saut est désactivée par défaut pour que vous puissiez vérifier chaque écran de votre protocole ; activez **Respecter la logique de saut** lorsque vous voulez tester les parcours que suivront les personnes participantes. Rien de ce que vous saisissez dans un aperçu n’est enregistré.
+
+L’aperçu permet de repérer les problèmes propres à chaque étape, mais ce n’est que la première partie d’une répétition complète : il ne met à l’épreuve ni le déroulement de vos entretiens sur l’appareil que vous utiliserez sur le terrain, ni votre chaîne d’exportation. C’est à cela que servent les phases suivantes.
+
+## Faire une répétition complète de l’entretien {#rehearse-the-full-interview}
+
+Ensuite, exécutez votre protocole dans [Interviewer](/fr/collect-data/interviewer/using-interviewer) exactement comme pour un vrai entretien : importez le protocole, démarrez un nouvel entretien, saisissez un identifiant de cas et parcourez chaque étape comme le ferait une personne participante. Pensez à donner aux sessions pilotes un identifiant de cas qui les signale clairement comme des tests : l’identifiant de cas apparaît partout où les sessions sont listées, ce qui permet de retrouver et de supprimer facilement les sessions de test par la suite.
+
+Au fil du parcours, passez plusieurs fois, en avant et en arrière, par les étapes qui utilisent la [logique de saut](/fr/design-protocols/key-concepts/skip-logic) ou le [filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering), en modifiant vos réponses précédentes pour confirmer que chaque parcours affiche et masque les étapes prévues.
+
+## Valider votre chaîne d’exportation avec des données synthétiques {#validate-your-export-pipeline-with-synthetic-data}
+
+Quelques entretiens pilotes saisis à la main ne vous diront pas si votre processus d’exportation et d’analyse tient face à un jeu de données réaliste. Pour cela, Interviewer (l’application web) peut générer pour vous des sessions d’entretien fictives : ouvrez **Paramètres → Données synthétiques**, choisissez un protocole et indiquez le nombre de sessions à créer (de 1 à 1 000). Vous pouvez, si vous le souhaitez, simuler l’abandon de personnes participantes (en laissant certaines sessions incomplètes, à l’image des données réelles) et faire en sorte que la génération respecte la logique de saut et le filtrage de votre protocole. Les sessions générées apparaissent dans votre vue **Données** et s’exportent exactement comme des sessions réelles, et **Tout supprimer** supprime toutes les sessions synthétiques en une seule opération. Voir la [section « Paramètres » de la page Utiliser Interviewer](/fr/collect-data/interviewer/using-interviewer#settings) pour plus de détails.
+
+Exportez vos sessions synthétiques, puis ouvrez les fichiers obtenus dans le logiciel avec lequel vous comptez faire l’analyse. Le [guide d’exportation des données](/fr/analyze-data/data-export) explique ce que contiennent les fichiers CSV et GraphML et comment les identifiants les relient, pour que vous puissiez vérifier que les variables dont votre analyse a besoin figurent bien dans les fichiers exportés.
+
+## Faire une répétition de la collecte à distance {#rehearse-remote-collection}
+
+Si vous prévoyez de collecter des données à distance avec Fresco, vous pouvez faire une répétition sans rien déployer : le [bac à sable Fresco](/fr/collect-data/fresco/sandbox) est un déploiement d’exemple partagé qui permet d’explorer la plateforme sans installer votre propre instance. Fresco dispose en outre de son propre [générateur de données de test synthétiques](/fr/collect-data/fresco/using-fresco#generating-synthetic-test-data), ce qui vous permet de tester aussi de bout en bout l’exportation des données recueillies à distance.
+
+<TipBox danger>
+
+Le bac à sable est un environnement partagé : les protocoles que vous téléversez (envoyez vers le serveur) sont visibles par toutes les personnes qui l’utilisent, et la base de données est réinitialisée périodiquement. Ne téléversez jamais de données réelles d’étude ou de personnes participantes : voir la [page du bac à sable](/fr/collect-data/fresco/sandbox) pour plus de détails.
+
+</TipBox>
+
+## Liste de contrôle avant le lancement {#pre-launch-checklist}
+
+Avant votre première personne participante réelle, passez en revue cette liste :
+
+- **Prévisualisez chaque étape dans Architect**, d’abord avec la logique de saut désactivée pour pouvoir examiner chaque écran, puis avec **Respecter la logique de saut** activé pour tester les parcours que suivront les personnes participantes. Voir les [paramètres de l’aperçu](/fr/design-protocols/preview-mode) pour plus de détails.
+- **Essayez de mettre en défaut vos règles de validation.** Testez des cas limites, et faites des tests avec des personnes participantes de l’étude pilote ; le [guide de validation des champs](/fr/design-protocols/key-concepts/field-validation) explique ce qu’il faut rechercher, par exemple des champs obligatoires auxquels il est impossible de répondre ou des plages de valeurs qui excluent des réponses légitimes.
+- **Menez un entretien complet sur l’appareil que vous utiliserez sur le terrain.** Les performances, la saisie de texte et la taille de l’écran influent toutes sur l’expérience des personnes participantes : voir [Choisir un appareil](/fr/collect-data/interviewer/choosing-hardware).
+- **Vérifiez les besoins en connectivité.** Les protocoles qui utilisent des interfaces dépendantes d’Internet, comme l’[interface géospatiale](/fr/design-protocols/interface-documentation/geospatial), affichent l’indicateur **Connexion Internet requise** sur leur carte de protocole, et nécessitent une connexion fiable partout où les entretiens auront lieu.
+- **Exportez des données de test et ouvrez les fichiers** dans votre logiciel d’analyse, en les vérifiant à l’aide du [guide d’exportation des données](/fr/analyze-data/data-export).
+- **Vérifiez votre configuration de sécurité.** Si les personnes participantes doivent manipuler l’appareil, configurez Interviewer pour qu’il redemande l’authentification à l’ouverture et à la sortie des entretiens, afin que quitter un entretien ne puisse pas exposer les données d’autres personnes participantes (voir [Sécurité et verrouillage](/fr/collect-data/interviewer/using-interviewer#security-and-locking)).
+- **Supprimez les sessions synthétiques et pilotes** avant le début de la collecte réelle, afin que les données de test ne se mêlent jamais aux données de l’étude.
+
+Une fois que tout est validé, vous pouvez passer à la collecte des données : le tutoriel [Flux de travail des protocoles et des données](/fr/collect-data/protocol-and-data-workflows) présente les pratiques de déploiement, d’exportation et de sauvegarde pour chaque manière de mener une étude.

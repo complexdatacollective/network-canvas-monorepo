@@ -1,0 +1,832 @@
+---
+navOrder: 1
+title: Construire un protocole
+toc: true
+translatedFrom: 102c233ac36703e7e203ef75c3418fc8ef503fec
+---
+
+<SummaryCard duration="2 heures">
+<SummarySection>
+
+Ce tutoriel vous guide dans la création d’un
+protocole Network Canvas avec Architect. Nous allons reconstruire le protocole
+d’exemple que l’on peut installer dans Interviewer et dans Fresco, et qui a été présenté
+en détail dans le tutoriel [Utiliser Interviewer](/fr/collect-data/interviewer/using-interviewer).
+
+<AppOnly app="current">
+
+Si vous souhaitez télécharger et ouvrir le protocole terminé, vous pouvez le faire <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">depuis
+cette page</DownloadLink>.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Si vous souhaitez télécharger et ouvrir le protocole terminé, vous pouvez le faire <DownloadLink href="/protocols/Sample Protocol v4.netcanvas">depuis
+cette page</DownloadLink>.
+
+</AppOnly>
+
+</SummarySection>
+<PrerequisitesSection>
+
+Ce tutoriel suppose que vous connaissez les concepts généraux du logiciel Network Canvas, que vous avez lu la [présentation du projet](/fr/get-started/project-information/project-overview) et que vous avez lu le tutoriel [Utiliser Interviewer](/fr/collect-data/interviewer/using-interviewer).
+
+Nous vous recommandons de suivre le tutoriel sur votre propre ordinateur. Avant de commencer, lisez [Prise en main](/fr/design-protocols/getting-started) pour préparer votre outil et créer un protocole.
+
+</PrerequisitesSection>
+</SummaryCard>
+
+Cet article présente la marche à suivre pour construire un protocole, de l’ajout de votre première étape jusqu’à la finalisation. Cette marche à suivre est en grande partie identique dans Architect et dans Architect Classic. Choisissez ci-dessous la version que vous utilisez pour voir les captures d’écran correspondantes et quelques remarques propres à chaque version.
+
+<AppSwitch>
+  <AppOption label="Architect" icon="globe"></AppOption>
+  <AppOption label="Architect Classic" icon="desktop"></AppOption>
+</AppSwitch>
+
+## Ajouter une étape {#adding-a-stage}
+
+Vous allez commencer par configurer une interface « Information ».
+
+Cliquez sur le bouton **Ajouter une nouvelle étape**. Un écran s’affiche avec un menu de toutes les interfaces disponibles dans l’application. Les interfaces sont regroupées par type ; l’exemple ci-dessous montre tous les générateurs de noms disponibles.
+
+<Screenshot axis="architect" name="add-a-stage"></Screenshot>
+
+Chaque interface est conçue pour une tâche précise au sein d’un entretien de réseau. Pour l’instant, faites défiler la liste vers le bas et sélectionnez l’interface **Information** dans la section **Utilitaires**. Vous pouvez aussi trouver l’interface « Information » en la recherchant ou en sélectionnant le filtre **Afficher des données**.
+
+<Screenshot axis="architect" name="information-interface"></Screenshot>
+
+Sélectionner une interface ouvre l’éditeur d’étape, dans lequel se fait la configuration de l’interface.
+
+### Définir le nom de l’étape {#setting-the-stage-name}
+
+Toutes les étapes ont un nom, qui apparaît à côté de l’icône de l’étape dans la chronologie et vous aide à distinguer rapidement les étapes d’un même type. Saisissez « Welcome » (bienvenue) dans **Nom de l’étape**. Lorsque vous créez vos propres protocoles, utilisez un système cohérent pour nommer vos étapes.
+
+### Titre de la page {#page-heading}
+
+Le titre de la page vous permet de personnaliser un grand titre qui s’affiche en haut de votre interface « Information ». Saisissez « Welcome to the Sample Protocol » (bienvenue dans le protocole d’exemple) comme titre. Ajoutez ensuite les informations que vous souhaitez afficher à l’écran.
+
+### Éléments {#items}
+
+Le panneau des éléments vous permet d’ajouter différents types de contenus multimédias à l’écran. Vous pouvez ajouter des images, des vidéos, de l’audio ou du texte. Chaque ressource apparaît dans des blocs verticaux, dans l’ordre où vous les ajoutez. Vous pouvez aussi réorganiser les blocs de contenu en les faisant glisser.
+
+Pour ajouter une ressource à cet écran, cliquez sur le bouton **Créer un élément de contenu** en bas du panneau. Un nouvel écran s’ouvre, dans lequel vous pouvez choisir parmi les types de médias disponibles. Vous pouvez ajouter du texte directement en markdown. Pour ajouter des fichiers image, audio et vidéo, sélectionnez le type, puis parcourez vos fichiers, soit à un emplacement de votre appareil, soit dans la [bibliothèque de ressources](/fr/design-protocols/key-concepts/resources).
+
+<Screenshot axis="architect" name="edit-item"></Screenshot>
+
+Ce tutoriel ne détaille pas la configuration de chacune des interfaces « Information » du protocole d’exemple. Vous pouvez utiliser des interfaces « Information » aussi souvent que nécessaire dans votre protocole pour décrire une tâche à venir, préparer la personne participante à une série de consignes ou lui présenter une ressource à examiner.
+
+<AppOnly app="current">
+
+Lorsque vous avez ajouté toutes les ressources de cette étape, cliquez sur **Modification terminée**. Votre étape est enregistrée et vous revenez à la vue de la chronologie, où l’étape que vous venez de configurer est désormais visible.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Lorsque vous avez ajouté toutes les ressources de cette étape, cliquez sur le bouton **Save and Return** (enregistrer et revenir), en bas à droite. Votre étape est enregistrée et vous revenez à la vue de la chronologie, où l’étape que vous venez de configurer est désormais visible.
+
+</AppOnly>
+
+<Screenshot axis="architect" name="completed-stage"></Screenshot>
+
+## Créer des générateurs de noms {#creating-name-generators}
+
+Vous allez maintenant créer trois étapes de générateur de noms distinctes, qui correspondent aux étapes 4, 6 et 8 du protocole d’exemple. La première utilise un générateur de noms avec ajout rapide, la deuxième un générateur avec un panneau latéral, et la dernière un générateur de noms qui utilise des formulaires.
+
+## Générateur de noms avec ajout rapide {#name-generator-using-quick-add}
+
+Tout d’abord, dans la vue de la chronologie, cliquez sur le bouton **Ajouter une nouvelle étape**. Dans le menu des interfaces, sélectionnez l’interface **Générateur de noms (ajout rapide)**. Lorsque la nouvelle étape s’ouvre, donnez-lui un nom comme pour l’étape précédente.
+
+### Créer un type de nœud {#creating-a-new-node-type}
+
+Avant de pouvoir continuer, vous devez indiquer à Architect quel type de nœud cette interface va créer. Comme il s’agit de votre premier générateur de noms, vous n’avez encore défini aucun type de nœud. <AppOnly app="current">Cliquez sur **Créer un type de nœud**, sous le sélecteur de type de nœud, pour commencer à en créer un.</AppOnly><AppOnly app="classic">Cliquez sur le bouton **Create New Node Type** (créer un type de nœud) pour commencer à en créer un.</AppOnly>
+
+<KeyConcept title="Concept clé : les « types » de nœuds et de liens">
+
+La flexibilité ontologique de la suite Network Canvas tient notamment à la possibilité
+de modéliser un nombre illimité de types de nœuds et de liens. Ces types sont des catégories
+de premier niveau qui distinguent les nœuds et les liens les uns des autres. Des types de nœuds
+courants pourraient être « personne », « lieu » ou « organisation », mais c’est entièrement à vous
+de décider de ces catégories.
+
+</KeyConcept>
+
+<AppOnly app="current">
+
+Votre générateur de noms portera sur des personnes : nommez donc le type de nœud « Person » (personne). Chaque nouveau type de nœud reçoit la couleur suivante de la palette d’Architect, si bien que les types que vous créez l’un après l’autre se distinguent automatiquement. Vous pouvez choisir une autre couleur si vous le souhaitez, mais pour ce tutoriel, gardez celle qu’Architect a choisie.
+
+Enfin, vérifiez l’icône de ce type de nœud. Les nouveaux types de nœuds reçoivent par défaut l’icône « ajouter une personne » de Network Canvas, qui convient à ce type de nœud : vous pouvez donc la conserver. Pour en choisir une autre, ouvrez le sélecteur d’icônes : il présente les icônes de Network Canvas, puis le jeu d’icônes Lucide, et permet d’y faire une recherche. Saisissez quelques lettres d’un nom (par exemple « building ») et choisissez parmi les icônes affichées. Cette icône apparaît dans l’entretien partout où la personne participante a la possibilité de créer un nouveau nœud de ce type.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Votre générateur de noms portera sur des personnes : nommez donc le type de nœud « Person » (personne). Vous pouvez choisir une couleur pour distinguer ce type de nœud des autres, mais dans ce cas, laissez sélectionnée la couleur corail par défaut.
+
+Enfin, sélectionnez l’icône de personne pour ce type de nœud. Cette icône apparaît dans Interviewer partout où la personne participante a la possibilité de créer un nouveau nœud de ce type.
+
+</AppOnly>
+
+<Screenshot axis="architect" name="node-type"></Screenshot>
+
+<AppOnly app="current">
+
+Dans Architect, vous pouvez aussi choisir une **forme** pour le type de nœud ; elle s’utilise avec la couleur et l’icône pour représenter le nœud dans toutes les interfaces.
+
+![Le sélecteur Forme d’Architect, qui propose Cercle, Carré et Losange.](/assets/img/architect-guide/node-type-shape.png)
+
+Pour faire varier la forme des nœuds au sein d’un même type, consultez [Associer un attribut de nœud à une forme](/fr/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape).
+
+Cliquez sur **Enregistrer l’entité** pour créer le type de nœud et revenir à l’écran de modification du générateur de noms.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Cliquez sur **Save and Return** (enregistrer et revenir) pour créer le type de nœud et revenir à l’écran de modification du générateur de noms.
+
+</AppOnly>
+
+### Créer un attribut d’ajout rapide {#creating-a-quick-add-variable}
+
+<AppOnly app="current">
+
+Créez ensuite un attribut d’ajout rapide, qui enregistrera les données saisies pour chaque alter (chaque personne que la personne participante cite pendant l’entretien). Sauf si vous avez une bonne raison de faire autrement, cet attribut devrait s’appeler « name ». Interviewer utilisera cet attribut comme libellé de chaque nœud créé dans cette étape.
+
+Pour le créer, cliquez sur le bouton **Sélectionner un attribut**, sous l’intitulé **Sélectionnez un attribut**. Une fenêtre s’ouvre, avec un champ de recherche, **Rechercher ou créer un attribut**, au-dessus de la liste des attributs que ce type de nœud possède déjà. Saisissez le nom de votre attribut (par exemple « name »). Comme rien ne correspond encore, la première ligne propose **Créer un nouvel attribut nommé « name ».** Choisissez-la : le nouvel attribut est créé et sélectionné comme attribut d’ajout rapide.
+
+Ce que la personne participante saisit dans le champ d’ajout rapide est la seule information qu’elle fournit pour chaque nœud ; un attribut créé ici est donc **obligatoire** par défaut. Si vous souhaitez permettre aux personnes participantes de laisser le champ vide, désactivez **Réponse obligatoire** dans la section **Validation**, sous le sélecteur.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Créez ensuite une variable d’ajout rapide, qui enregistrera les données saisies pour chaque alter (chaque personne que la personne participante cite pendant l’entretien). Sauf si vous avez une bonne raison de faire autrement, cette variable devrait s’appeler « name ». Interviewer utilisera cette variable comme libellé de chaque nœud créé dans cette étape. Pour créer une variable, ouvrez le menu déroulant et cliquez sur **create new** (créer), puis saisissez le nom de votre variable (par exemple « name »). Cliquez sur le bouton **Create** (créer) : le nom de la nouvelle variable apparaît sélectionné comme variable d’ajout rapide.
+
+</AppOnly>
+
+### Créer des consignes {#creating-prompts}
+
+Rédigez ensuite quelques questions qui inviteront la personne participante à ajouter des alters pendant l’entretien.
+
+La plupart des étapes reposent sur la notion de « consignes », qui vous permet de définir les questions posées à la personne participante pendant l’entretien. Vous pouvez lui expliquer la tâche de la manière la plus pertinente pour votre étude.
+
+Vous pouvez avoir plusieurs consignes dans une même étape, ou une seule consigne par étape. Envisagez de regrouper les consignes par thème et de créer une étape pour chaque thème. Par exemple, une étape « Name Generator (family) » (générateur de noms : famille) pourrait contenir des consignes sur les alters de la famille, et une étape « Name Generator (colleagues) » (générateur de noms : collègues) des consignes sur les alters du milieu professionnel.
+
+<KeyConcept title="Concept clé : les consignes">
+
+Les consignes peuvent comporter une mise en forme, comme du texte en gras ou en italique, pour créer
+de l’emphase et du rythme. Pour appliquer cette mise en forme, utilisez la syntaxe markdown.
+
+</KeyConcept>
+
+Cliquez sur <AppOnly app="current">**Créer une consigne**</AppOnly><AppOnly app="classic">le bouton **Create New** (créer)</AppOnly> dans la section des consignes pour ouvrir le formulaire de modification de la nouvelle consigne.
+
+<Screenshot axis="architect" name="edit-prompt"></Screenshot>
+
+Votre première consigne demandera à la personne participante de citer les personnes dont elle s’est sentie proche ou avec lesquelles elle a parlé de sujets importants. Saisissez le texte « Within the past 6 months, who have you felt close to, or discussed important personal matters with? » (au cours des 6 derniers mois, pour quelles personnes avez-vous éprouvé un sentiment de proximité, ou avec qui avez-vous parlé de sujets personnels importants ?) et cliquez sur <AppOnly app="current">**Ajouter**</AppOnly><AppOnly app="classic">**Save and Close** (enregistrer et fermer)</AppOnly>.
+
+Cliquez sur <AppOnly app="current">**Modification terminée**</AppOnly><AppOnly app="classic">**Save and Return** (enregistrer et revenir)</AppOnly> dans l’éditeur d’étape pour revenir à la vue de la chronologie, où votre nouvelle étape est visible.
+
+## Ajout rapide avec un panneau latéral {#quick-add-with-a-side-panel}
+
+Configurez ensuite une autre interface « Générateur de noms (ajout rapide) », mais cette fois avec un panneau latéral.
+
+Commencez par donner un nom à l’étape, sélectionnez le type de nœud « Person » (que vous avez créé plus tôt), choisissez « name » comme attribut d’ajout rapide et créez une consigne. La consigne de cette étape sera « Within the **past 6 months,** who have you discussed **social networks research** with? » (au cours des **6 derniers mois,** avec qui avez-vous parlé de **recherche sur les réseaux sociaux** ?).
+
+Ajoutez maintenant le panneau latéral. Cliquez sur **Ajouter un panneau** et donnez au panneau le titre « People you have previously mentioned. » (personnes que vous avez déjà citées). Ce titre s’affichera en haut du panneau latéral et donnera un contexte aux nœuds présentés à la personne participante.
+
+Choisissez ensuite une source de données pour ce panneau latéral. Deux options s’offrent à vous : utiliser le réseau construit pendant l’entretien, ou importer un fichier de données externes (par exemple une liste, c’est-à-dire une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit) qui alimentera le panneau latéral. Dans cet exemple, choisissez d’utiliser le réseau de l’entretien en cours.
+
+<Screenshot axis="architect" name="side-panel"></Screenshot>
+
+Vous pouvez, si vous le souhaitez, prévisualiser l’interface à ce stade, pour vérifier que les consignes et le formulaire s’affichent et fonctionnent comme prévu. Lorsque le résultat vous convient, cliquez sur continuer pour ajouter votre étape.
+
+<AppOnly app="current">
+
+<TipBox>
+
+Architect enregistre votre travail automatiquement au fur et à mesure : il n’y a pas de bouton Enregistrer. Consultez [Enregistrement et sauvegarde](/fr/design-protocols/saving-and-backing-up) pour savoir comment vos protocoles sont stockés et comment les sauvegarder.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+<TipBox>
+
+À tout moment pendant ce tutoriel, vous pouvez cliquer sur le bouton **Save Changes** (enregistrer les modifications) dans la barre inférieure lorsque vous êtes dans la vue de la chronologie, ou sélectionner **File → Save** (Fichier → Enregistrer) dans le menu.
+
+</TipBox>
+
+</AppOnly>
+
+## Générateur de noms avec formulaires {#name-generator-using-forms}
+
+Vous allez maintenant créer une nouvelle étape de générateur de noms qui utilise un formulaire pour recueillir des données sur les alters cités. Comme précédemment, ajoutez une nouvelle étape (en sélectionnant « Générateur de noms (avec formulaires) » dans le menu des interfaces) et donnez-lui un nom. Créez ensuite dans cette étape un nouveau type de nœud « Clinic » (établissement de santé), car la consigne portera sur des établissements de santé plutôt que sur des personnes. Une fois le type de nœud « Clinic » créé, passez à la modification du formulaire.
+
+### Formulaire {#form}
+
+Cette section vous permet de définir les champs qui s’afficheront dans le formulaire lorsque la personne participante crée un nœud dans ce générateur de noms.
+
+Les champs recueillent des données sur les alters ou sur l’ego (la personne participante, au centre de son réseau), et c’est dans ces champs que l’on définit chacun des attributs recueillis.
+
+Commencez par créer un titre pour le formulaire, afin d’indiquer à la personne participante quelles informations vous souhaitez recueillir. Saisissez le titre « Add a Clinic or Health Care Provider. » (ajoutez un établissement ou un professionnel de santé).
+
+<AppOnly app="current">
+
+Définissez ensuite les champs du formulaire. Cliquez sur **Créer un champ de formulaire** dans la section **Champs du formulaire**. Une boîte de dialogue s’ouvre, avec à gauche les paramètres du champ : vous y choisissez un attribut pour le champ, rédigez la question, choisissez une commande de saisie (le type de champ avec lequel un attribut est recueilli : zone de texte, curseur, cases à cocher…) et définissez la validation que vous souhaitez inclure. À droite figure un aperçu en direct de la question telle que la personne participante la verra, qui se met à jour pendant que vous travaillez. Sur un écran étroit, l’aperçu s’affiche plutôt sous les paramètres.
+
+Pour le premier champ, vous voulez connaître le nom de l’établissement de santé que la personne participante cite. Sous **Sélection de l’attribut**, cliquez sur **Sélectionner un attribut** et choisissez « name » dans la liste ou, si le type de nœud « Clinic » n’a pas encore d’attribut « name », saisissez « name » et choisissez **Créer un nouvel attribut nommé « name ».** Ensuite, sous **Configuration du champ**, saisissez le **Texte de la question**. Dans cet exemple, utilisez la question « What is the name of this clinic? » (comment s’appelle cet établissement de santé ?).
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Définissez ensuite les champs du formulaire. Lorsque vous cliquez sur **Create New** (créer) dans le panneau des champs, un nouvel écran s’ouvre et vous demande de définir une variable pour le champ, le texte de la question et une commande de saisie (le type de champ avec lequel un attribut est recueilli : zone de texte, curseur, cases à cocher…), et de sélectionner la validation que vous souhaitez inclure.
+
+Pour le premier champ, vous voulez connaître le nom de l’établissement de santé que la personne participante cite : utilisez donc la variable « name » que vous avez créée plus tôt, en cliquant sur **Select Variable** (sélectionner une variable) puis en la sélectionnant dans la liste. Saisissez ensuite le texte du libellé de ce champ. Dans cet exemple, utilisez la question « What is the name of this clinic? » (comment s’appelle cet établissement de santé ?).
+
+</AppOnly>
+
+<Screenshot axis="architect" name="form-fields"></Screenshot>
+
+<AppOnly app="current">
+
+Dans Architect, chaque champ de formulaire peut comporter une **indication** facultative : une courte note, mise en forme en markdown, affichée sous la question pour guider la personne participante dans sa réponse.
+
+</AppOnly>
+
+<AppOnly app="current">
+
+<TipBox>
+
+De nombreux écrans d’Architect vous permettent soit de créer un nouvel attribut, soit d’en sélectionner un existant. Ils utilisent tous la même fenêtre d’attributs : cliquez sur **Sélectionner un attribut**, puis saisissez du texte dans le champ de recherche. Là où vous pouvez créer un attribut, le champ de recherche s’intitule **Rechercher ou créer un attribut**, et saisir un nom qui n’existe pas encore fait apparaître **Créer un nouvel attribut nommé « … ».** sur la première ligne. Là où vous pouvez seulement choisir un attribut existant, le champ s’intitule **Rechercher un attribut**.
+
+Sinon, choisissez un attribut existant dans la liste. Vous pouvez utiliser les touches fléchées et la touche Entrée au lieu de la souris.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+<TipBox>
+
+De nombreux écrans d’Architect vous permettent soit de créer une nouvelle variable, soit de sélectionner une variable existante. Dans ce cas, le texte à côté du champ vous l’indique généralement.
+
+Lorsque vous voulez créer une variable, cliquez sur « Select Variable » (sélectionner une variable), saisissez le nom de la nouvelle variable et sélectionnez « Create new variable » (créer une variable) ou appuyez sur Entrée.
+
+Sinon, cliquez sur une variable existante dans la liste.
+
+</TipBox>
+
+</AppOnly>
+
+Enfin, choisissez la commande de saisie qui s’affichera pour recueillir cet attribut.
+
+<KeyConcept title="Concept clé : les commandes de saisie">
+
+Architect et Interviewer proposent de nombreux types de commandes de saisie (Saisie de texte, Saisie numérique, Groupe de cases à cocher, Interrupteur, Groupe de boutons radio, Groupe de boutons bascules, Sélecteur de date, Échelle de Likert, Échelle visuelle analogique).
+
+La commande de saisie la plus adaptée à un attribut dépend de la nature précise de cet attribut, et pas seulement de son type de données. Par exemple, pour recueillir un attribut ordinal qui représente une échelle de Likert, vous préférerez peut-être une Échelle visuelle analogique ou un Groupe de boutons radio. Pour en savoir plus, consultez le [guide des commandes de saisie](/fr/design-protocols/key-concepts/input-controls).
+
+</KeyConcept>
+
+Comme vous demandez le nom de l’établissement de santé (un simple attribut de texte), une Saisie de texte est l’option la plus adaptée.
+
+<AppOnly app="current">
+
+![Le sélecteur Commande de saisie et l’aperçu en direct dans Architect.](/assets/img/architect-guide/input-control.png)
+
+</AppOnly>
+
+Enfin, définissez les exigences de validation de ce champ. Indiquez que ce champ de texte est obligatoire. Les options de validation disponibles varient selon le type d’attribut. Si vous ajoutez une validation « obligatoire », la personne participante doit renseigner ce champ avant de pouvoir continuer. Pour en savoir plus, consultez le [guide de validation des champs](/fr/design-protocols/key-concepts/field-validation).
+
+<Screenshot axis="architect" name="validation"></Screenshot>
+
+<AppOnly app="current">
+
+Architect propose aussi l’option **Afficher les indications de validation**. Lorsqu’elle est activée, elle montre automatiquement aux personnes participantes une indication tirée des règles de validation du champ, pour qu’elles comprennent ce qui est attendu de leur réponse.
+
+Pour essayer le champ, répondez à la question dans l’aperçu et cliquez sur **Vérifier la réponse**. L’aperçu applique les règles que l’attribut porte déjà dans le livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête) et vous montre ce qui serait indiqué à une personne participante. Répondre dans l’aperçu ne modifie pas votre protocole. Tant qu’un champ crée un nouvel attribut, comme c’est le cas ici, les règles que vous définissez en même temps ne figurent pas encore dans le livre de codes : **Vérifier la réponse** accepte donc n’importe quelle réponse jusqu’à ce que vous cliquiez sur **Ajouter** ; rouvrez ensuite le champ pour essayer ces règles.
+
+</AppOnly>
+
+Cliquez sur <AppOnly app="current">**Ajouter**</AppOnly><AppOnly app="classic">**Save and Close** (enregistrer et fermer)</AppOnly> pour créer votre premier champ de formulaire.
+
+En suivant la procédure que vous venez d’apprendre, créez maintenant les deux autres champs de ce formulaire.
+
+Créez les champs suivants, avec les commandes de saisie, les questions et les options adaptées :
+
+- Un attribut `last_visit`, avec la commande de saisie Sélecteur de date, la question « When was your visit? » (quand a eu lieu votre visite ?) et un début de plage adapté
+- Un attribut `visit_purpose`, avec la commande de saisie Zone de texte et la question « In your own words, what was the purpose of your visit? » (avec vos propres mots, quel était le motif de votre visite ?)
+
+Une fois le formulaire terminé, configurez la consigne de l’étape. Cliquez sur <AppOnly app="current">**Créer une consigne**</AppOnly><AppOnly app="classic">**Create New** (créer)</AppOnly> dans la section des consignes et saisissez le texte « Within **the past 12 months,** which **clinics** or **healthcare providers** have you visited? » (au cours **des 12 derniers mois,** quels **établissements** ou **professionnels de santé** avez-vous consultés ?).
+
+<Screenshot axis="architect" name="fields-inputs-prompts"></Screenshot>
+
+## Générateur de noms à partir d’une liste {#name-generator-for-roster-data}
+
+Nous allons maintenant développer un générateur de noms qui utilise une liste importée sous forme de fichier de données externes.
+
+Comme pour les générateurs de noms précédents, nous allons d’abord sélectionner l’interface à configurer (« Générateur de noms à partir d’une liste »), donner un nom à l’étape et créer un nouveau type de nœud « Classmate » (camarade de promotion).
+
+Nous allons ensuite sélectionner la source de données externes à importer dans le protocole, qui alimentera les nœuds de la liste. Pour cet exemple, nous avons utilisé une liste fictive des membres d’une promotion. Pour utiliser la même liste que le protocole d’exemple, <DownloadLink href="/assets/class-roster.csv">cliquez ici</DownloadLink> pour télécharger notre fichier CSV. Vous pouvez aussi utiliser toute autre liste dont vous disposez.
+
+Comme pour l’ajout de ressources à l’interface « Information » plus haut, vous allez parcourir la bibliothèque de ressources du protocole pour trouver votre source de données externes si vous l’y avez enregistrée, ou sinon un autre emplacement de votre appareil.
+
+Nous allons ensuite définir les propriétés d’affichage qui permettent d’identifier les nœuds de la liste tels que la personne participante les voit. Nous sélectionnons d’abord la variable définie dans le fichier de données externes, ici « first_name ». Nous définissons ensuite comment cette variable doit apparaître pour la personne participante dans la liste : dans cet exemple, nous saisissons « First Name » (prénom). Nous répétons la même procédure pour la variable last_name.
+
+<Screenshot axis="architect" name="adding-roster"></Screenshot>
+
+Nous pouvons, si nous le souhaitons, ajouter des commandes de tri. Les commandes de tri sont particulièrement utiles lorsqu’une liste est assez longue pour qu’il soit difficile d’y trouver quelqu’un au premier coup d’œil. Dans cet exemple, nous choisissons de mettre en place un ordre de tri initial qui utilise la variable « first_name » pour trier les cartes de la liste par ordre croissant.
+
+Par défaut, les cartes de la liste utilisent l’attribut « name » de votre fichier de données externes comme titre principal de la carte.
+
+<Screenshot axis="architect" name="roster-sort"></Screenshot>
+
+Nous allons ensuite configurer la façon dont la personne participante peut faire des recherches dans le fichier de la liste. Cette interface permet notamment aux personnes participantes de rechercher des attributs précis dans la base de données, afin de trouver les alters qu’elles veulent sélectionner.
+
+Les options de recherche proposées dépendent des variables décrites dans votre fichier de données. Ici, nous pouvons sélectionner « name », « first_name », « last_name » et « first_language », et nous choisissons d’inclure les quatre.
+
+Nous pouvons aussi restreindre les options présentées à une personne participante lorsqu’elle fait une recherche dans l’étape, en sélectionnant « Exacte » ou « Précision élevée ». Ici, nous sélectionnons « Précision élevée ».
+
+<Screenshot axis="architect" name="roster-search"></Screenshot>
+
+<TipBox>
+
+Consultez notre documentation des interfaces pour des instructions plus détaillées, notamment
+des conseils utiles sur ce qu’il faut faire et ne pas faire avec les [données de
+liste](/fr/design-protocols/interface-documentation/name-generator-roster).
+
+</TipBox>
+
+Enfin, nous ajoutons une consigne à l’étape, selon la même procédure que dans les étapes précédentes. Nous saisissons la consigne, qui explique comment désigner un nœud de la liste : « Please select any members of your degree class that you spend time with **other than when studying**. Tap a card to select, and press the **down arrow** when you are finished. » (veuillez sélectionner les membres de votre promotion avec qui vous passez du temps **en dehors des études**. Touchez une carte pour la sélectionner, et appuyez sur la **flèche vers le bas** lorsque vous avez terminé).
+
+### Répéter la procédure pour une liste d’universités {#repeating-the-process-for-a-university-roster}
+
+Dans le protocole d’exemple, cette étape est suivie d’une deuxième étape « Générateur de noms à partir d’une liste », qui utilise cette fois une liste d’universités. Répétez la procédure que vous venez de suivre : créez une nouvelle étape « Générateur de noms à partir d’une liste », donnez-lui un nom et créez un nouveau type de nœud « University » (université). Comme source de données externes, nous utilisons une liste d’universités du monde entier ; pour utiliser le même fichier, <DownloadLink href="/assets/world-universities.csv">cliquez ici</DownloadLink> pour télécharger le fichier CSV. Il contient les variables « name », « country » et « website », que vous pouvez utiliser pour configurer les options d’affichage et de recherche comme vous l’avez fait plus haut. Enfin, ajoutez la consigne « Which universities have you either **visited** or **studied at**? » (quelles universités avez-vous **visitées** ou dans lesquelles avez-vous **étudié** ?).
+
+Nous recueillerons des données sur chacune de ces universités à l’aide du type de nœud « University » dans une étape ultérieure.
+
+## Créer une étape « Formulaire ego » {#creating-an-ego-form}
+
+L’étape suivante de ce protocole d’exemple utilise l’interface « Formulaire ego ». Nous créons l’étape « Formulaire ego » et lui donnons un nom, comme pour les interfaces précédentes.
+
+### Panneau d’introduction {#introduction-panel}
+
+Le panneau d’introduction est une fonctionnalité de l’interface « Formulaire ego » qui vous permet de présenter le formulaire à la personne participante. Vous pouvez l’utiliser pour expliquer quelles données vous demandez, et pourquoi. Dans notre cas, nous expliquons à quoi sert l’interface « Formulaire ego ».
+
+<Screenshot axis="architect" name="ego-form"></Screenshot>
+
+Créons maintenant une série de champs pour notre formulaire ego, comme nous l’avons fait en configurant le générateur de noms avec formulaires. Si vous ne vous souvenez plus de la procédure, reportez-vous à la section correspondante plus haut.
+
+Nous allons ensuite créer les champs suivants, avec leurs attributs, questions, commandes de saisie et validations (le cas échéant) :
+
+- first_name, « What is your first name? » (quel est votre prénom ?), Zone de texte, validation « obligatoire »
+- last_name, « What is your last name? » (quel est votre nom de famille ?), Zone de texte, validation « obligatoire »
+- dob, « What is your date of birth? » (quelle est votre date de naissance ?), Sélecteur de date avec une fin de plage au 1er janvier 2002
+- languages_spoken, « Which of the following languages do you speak fluently? » (parmi les langues suivantes, lesquelles parlez-vous couramment ?), Groupe de boutons bascules avec les options English, Mandarin Chinese, Hindi, Spanish, French, Arabic, Bengali et Russian (anglais, chinois mandarin, hindi, espagnol, français, arabe, bengali, russe)
+- existing_software, « Overall, how satisfied are you with existing social network analysis software? » (dans l’ensemble, quel est votre degré de satisfaction à l’égard des logiciels d’analyse des réseaux sociaux existants ?), Groupe de boutons radio avec les options Very Satisfied, Somewhat Satisfied, Neither Satisfied nor Dissatisfied, Somewhat Dissatisfied et Very Dissatisfied (très satisfait, plutôt satisfait, ni satisfait ni insatisfait, plutôt insatisfait, très insatisfait)
+- research_support, « How satisfied are you with the level of support you receive? » (quel est votre degré de satisfaction à l’égard du niveau d’assistance que vous recevez ?), Échelle de Likert avec Very Satisfied, Somewhat Satisfied, Neither Satisfied nor Dissatisfied, Somewhat Dissatisfied et Very Dissatisfied (mêmes traductions que ci-dessus)
+- operation_pain, « Thinking back to your last medical procedure, how much pain do you feel you experienced? » (en repensant à votre dernière intervention médicale, quelle douleur estimez-vous avoir ressentie ?), Échelle visuelle analogique avec No Pain et Unbearable Pain (aucune douleur, douleur insupportable) comme libellés du minimum et du maximum
+- prefered_contact_method, « How would you prefer to be contacted about your next interview? » (comment préférez-vous qu’on vous contacte au sujet de votre prochain entretien ?), Groupe de cases à cocher avec les options Email, Post, SMS et Phone Call (e-mail, courrier, SMS, appel téléphonique)
+- other_info, « Is there any other information you would like to provide at this time? » (y a-t-il d’autres informations que vous souhaitez fournir pour l’instant ?), Zone de texte
+
+<Screenshot axis="architect" name="ego-form-fields"></Screenshot>
+
+Pour montrer l’éventail des commandes de saisie, cet exemple comporte bien plus de champs que ce que recommanderaient habituellement les bonnes pratiques pour un formulaire d’entretien. Pour en savoir plus, consultez le [guide des commandes de saisie](/fr/design-protocols/key-concepts/input-controls).
+
+Cliquez sur <AppOnly app="current">**Modification terminée**</AppOnly><AppOnly app="classic">**Save and Return** (enregistrer et revenir)</AppOnly> pour revenir à la vue de la chronologie et mettre en place l’étape suivante.
+
+## Créer une étape « Formulaire par alter » {#creating-a-per-alter-form}
+
+Répétez ensuite cette procédure, mais créez cette fois un formulaire qui recueillera des données sur les alters, dans l’interface « Formulaire par alter » (un formulaire pour chaque alter). Créez une nouvelle étape avec l’interface « Formulaire par alter » et donnez-lui un nom. Sélectionnez ensuite le type de nœud « University ».
+
+<AppOnly app="current">
+
+Pour expliquer la tâche à la personne participante, ajoutez juste avant l’étape « Formulaire par alter » une étape [« Information »](/fr/design-protocols/interface-documentation/information) qui indique, par exemple, que les écrans suivants présentent un formulaire pour chaque université qu’elle a citée.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Faites ensuite défiler la page vers le bas pour configurer le panneau d’introduction.
+
+<Screenshot axis="architect" name="per-alter-form"></Screenshot>
+
+</AppOnly>
+
+Ajoutez seulement deux champs à ce formulaire. Voici les informations dont vous avez besoin, en suivant la même procédure que plus haut :
+
+- Un attribut nommé `visit_or_study`, avec la question « Did you visit this university, or study there? » (avez-vous visité cette université, ou y avez-vous étudié ?), la commande de saisie Groupe de boutons radio avec les options « Visited » (je l’ai visitée) et « Studied » (j’y ai étudié), et une validation « obligatoire »
+- Un attribut nommé `overall_review`, avec la question « Overall, how would you describe your experience at this university? » (dans l’ensemble, comment décririez-vous votre expérience dans cette université ?) et la commande de saisie Échelle de Likert avec les options « Excellent », « Above Average », « Average », « Below Average » et « Poor » (excellente, supérieure à la moyenne, dans la moyenne, inférieure à la moyenne, mauvaise)
+
+<AppOnly app="current">
+
+### Nommer l’université dans la question {#naming-the-university-in-the-question}
+
+Les deux questions parlent de « this university » (cette université). La personne participante voit un formulaire pour chaque université qu’elle a sélectionnée : la question peut donc plutôt nommer l’université sur laquelle porte le formulaire. Architect le fait en insérant le libellé du nœud dans le texte de la question, une technique appelée texte dynamique (piped text : des réponses ou des informations de l’entretien insérées automatiquement dans un texte).
+
+Rouvrez le champ `visit_or_study`. Remplacez le texte de la question par « Did you visit » (suivi d’une espace), puis cliquez sur le bouton en forme de seringue dans la barre d’outils du **Texte de la question**, ou saisissez `{`. Un menu liste les valeurs que cette question peut afficher. Choisissez **Libellé du nœud**, la première entrée sous **Attributs contextuels**, et complétez la question avec « or study there? » (précédé d’une espace). La valeur apparaît dans la question sous la forme d’une pastille **Libellé du nœud**, et l’aperçu interactif affiche la question avec la même pastille. La question `overall_review` peut nommer l’université de la même façon.
+
+![L’éditeur « Texte de la question », qui affiche « Did you visit [Libellé du nœud] or study there? » (avez-vous visité [Libellé du nœud] ou y avez-vous étudié ?), à côté de l’aperçu interactif du champ.](/assets/img/piped-text/value-in-question.png)
+
+Pendant l’entretien, la pastille est remplacée par le texte affiché sur chaque nœud d’université, qui, pour cette liste, est le nom de l’université : « Did you visit Universidad Francisco Marroquín or study there? ». Le protocole d’exemple à télécharger nomme ainsi l’université dans les deux questions.
+
+<KeyConcept title="Concept clé : le texte dynamique">
+
+Le texte dynamique insère des informations déjà enregistrées pendant l’entretien dans le
+texte que lit une personne participante : le libellé d’un nœud, un attribut du nœud ou du lien sur
+lequel porte une question, un attribut de la personne participante ou la date du jour. Le libellé d’un
+nœud ne manque jamais : il peut donc être inséré seul. N’importe quel attribut peut être
+manquant au moment où la question s’affiche : Architect demande donc deux versions du
+texte qui l’entoure, l’une pour le cas où la valeur est connue, l’autre pour le cas où elle ne l’est pas.
+Pour une présentation complète, consultez [Texte dynamique](/fr/design-protocols/piped-text).
+
+</KeyConcept>
+
+</AppOnly>
+
+Lorsque vous avez terminé, enregistrez et revenez à l’écran de vue d’ensemble de votre protocole.
+
+## Créer des sociogrammes {#creating-sociograms}
+
+Pour l’étape suivante, utilisez l’interface « Sociogramme ». Cette interface est conçue pour permettre aux personnes participantes d’interagir avec les alters produits dans les étapes de générateur de noms, de trois façons principales :
+
+1. La disposition : la personne participante organise les nœuds dans l’espace
+2. La création de liens : la personne participante peut créer des liens entre alters
+3. Le basculement d’attribut : la personne participante peut désigner les alters qui possèdent un attribut booléen donné
+
+Créez l’étape, donnez-lui un nom et sélectionnez le type de nœud « Person ».
+
+### Positionnement des nœuds {#node-positioning}
+
+Nous devons ensuite choisir une image d’arrière-plan pour le sociogramme. Nous pouvons choisir entre un arrière-plan par défaut à cercles concentriques et notre propre fichier image, ajouté depuis la bibliothèque de ressources ou depuis un autre emplacement de notre appareil. Pour ce premier exemple, nous choisissons l’option par défaut, avec 3 cercles, et activons « Agrandir les cercles intérieurs » pour que le centre soit proportionnellement plus grand.
+
+Interviewer propose deux modes pour positionner les nœuds sur le sociogramme : « Mode manuel » et « Mode automatique ».
+
+- Le **mode automatique** positionne les nœuds lorsque l’étape s’affiche pour la première fois, en simulant des forces physiques comme l’attraction et la répulsion. Cette simulation peut être mise en pause et reprise pendant l’entretien. Lorsqu’elle est en pause, la position des nœuds peut être ajustée manuellement.
+- Le **mode manuel** place d’abord tous les nœuds dans une « réserve » en bas de l’écran, d’où la personne participante peut les faire glisser jusqu’à la position souhaitée.
+
+Pour cet exemple, nous choisissons le mode manuel.
+
+<Screenshot axis="architect" name="sociogram-background"></Screenshot>
+
+Nous ajoutons pour l’étape une consigne dont le texte est : « Please position the people you have named amongst the concentric circles. Place people who know each other together, and put people you are closer to towards the center of the circles. » (veuillez placer les personnes que vous avez citées parmi les cercles concentriques. Placez ensemble les personnes qui se connaissent, et rapprochez du centre des cercles les personnes dont vous êtes le plus proche).
+
+Vous verrez que, lorsque vous créez une consigne dans le sociogramme, vous avez la possibilité de définir un attribut de disposition.
+
+L’attribut de disposition sert à enregistrer les coordonnées X/Y des nœuds lorsque la personne participante les positionne à l’écran. Si votre sociogramme comporte plusieurs consignes, vous pouvez utiliser le même attribut de disposition pour chacune (les nœuds restent alors à la position où la personne participante les a placés au départ) ou créer un nouvel attribut de disposition pour chaque consigne (la personne participante devra alors repositionner les nœuds à chaque fois). Dans cet exemple, nous créons un attribut « sociogram_layout » pour cette étape.
+
+<Screenshot axis="architect" name="sociogram-layout"></Screenshot>
+
+Pour finir, nous cliquons sur <AppOnly app="current">**Ajouter**</AppOnly><AppOnly app="classic">« Save and Close » (enregistrer et fermer)</AppOnly> pour fermer l’éditeur de consigne, puis sur <AppOnly app="current">**Modification terminée**</AppOnly><AppOnly app="classic">« Save and Return » (enregistrer et revenir)</AppOnly> pour enregistrer l’étape.
+
+## Images d’arrière-plan {#background-images}
+
+Nous allons maintenant configurer un autre sociogramme, mais cette fois en important une image qui servira d’arrière-plan. Suivez toute la procédure précédente, mais choisissez cette fois une image comme type d’arrière-plan au lieu des cercles concentriques. Si un fichier image est enregistré dans votre bibliothèque de ressources, vous pouvez l’y chercher ; sinon, vous pouvez ajouter un fichier image enregistré ailleurs sur votre appareil. Dans ce cas, nous avons conçu une image divisée en quadrants, dans laquelle nous demanderons à la personne participante de faire glisser ses alters selon le contexte de la relation.
+
+<TipBox danger>
+
+Réfléchissez bien à la manière dont vos choix concernant
+l’arrière-plan influenceront la façon dont les personnes participantes positionnent leurs nœuds.
+
+Si l’arrière-plan définit des quadrants, des axes ou d’autres zones, consultez [Arrière-plans SVG
+adaptatifs](/fr/design-protocols/responsive-svg-backgrounds).
+Ce guide explique comment adapter les zones aux écrans en orientation portrait et paysage,
+et comment déduire la zone d’un nœud à partir des coordonnées normalisées enregistrées
+dans son attribut de disposition.
+
+</TipBox>
+
+Comme précédemment, nous saisissons une consigne sans attribuer de tâche à l’étape. Le texte de la consigne est : « Please position the people you have named in the boxes according to which group you feel they most belong to. » (veuillez placer les personnes que vous avez citées dans les cadres, selon le groupe auquel elles appartiennent le plus à vos yeux). Nous enregistrons l’étape et passons à la suivante.
+
+## Création de liens {#edge-creation}
+
+Nous allons créer une autre étape « Sociogramme » pour tester la création de liens. Pour cette étape, nous utilisons le type de nœud « Person » et l’arrière-plan à 3 cercles concentriques, avec « Agrandir les cercles intérieurs » activé.
+
+Nous créons notre première consigne, « Please connect any two people who might spend time together without you being there » (veuillez relier toutes les paires de personnes qui pourraient passer du temps ensemble en votre absence), et nous utilisons l’attribut sociogram_layout que nous avons déjà créé.
+
+Nous allons maintenant activer la création de liens dans une consigne du sociogramme : nous activons l’interrupteur « Interaction avec les nœuds » et, sous « Type d’interaction », sélectionnons « Création du lien »<AppOnly app="classic"> (dans Architect Classic : l’interrupteur « Interaction Behavior » (comportement d’interaction) et l’option « Edge Creation » (création de liens), dans la section « Edge Display and Creation » (affichage et création des liens))</AppOnly>.
+
+Le sociogramme est le principal endroit de l’entretien où les liens sont créés. Une consigne de sociogramme ne peut créer qu’un seul type de lien à la fois, mais notez qu’elle peut en afficher plusieurs.
+
+Lorsque plusieurs types de liens sont affichés et que la personne participante crée un nouveau lien là où un lien existe déjà, le fonctionnement est simple : le lien existant est remplacé visuellement par le nouveau type de lien. Les deux liens restent enregistrés dans le réseau de l’entretien. Supprimer ce nouveau lien rétablit l’affichage du type de lien visible auparavant (un seul type de lien peut être créé ou supprimé dans une consigne).
+
+Vous pouvez envisager d’utiliser cette fonctionnalité pour construire un réseau progressivement, en permettant à la personne participante de s’appuyer sur l’« échafaudage » visuel des liens existants pour repérer rapidement où en créer de nouveaux.
+
+Dans le champ suivant, nous allons soit créer un nouveau type de lien, soit en sélectionner un existant. Comme nous n’avons encore créé aucun type de lien, nous créons un nouveau type appelé « know » (se connaissent), qui correspond à la consigne.
+
+Nous cliquons sur <AppOnly app="current">**Ajouter**</AppOnly><AppOnly app="classic">« Save and Close » (enregistrer et fermer)</AppOnly> pour revenir à l’éditeur du sociogramme.
+
+<Screenshot axis="architect" name="edge-creation"></Screenshot>
+
+Nous ajoutons ensuite une autre consigne, « Please connect any two people who have conflict, or who don’t get on well with each other » (veuillez relier toutes les paires de personnes qui sont en conflit, ou qui ne s’entendent pas bien), et utilisons le même attribut sociogram_layout.
+
+Nous choisissons aussi la création de liens comme tâche de l’étape, mais créons un nouveau type de lien « conflict » (conflit), car nous allons maintenant recueillir des liens conflictuels entre alters.
+
+## Mettre en place le recensement des dyades {#implementing-the-dyad-census}
+
+Vous devriez maintenant avoir une bonne idée de la procédure de configuration d’une étape dans Architect. Nous continuons en ajoutant à notre entretien une étape « Recensement des dyades », qui s’appuie sur de nombreuses notions déjà abordées.
+
+Dans la vue d’ensemble de la chronologie, cliquez sur le bouton « Ajouter une nouvelle étape » et sélectionnez l’interface « Recensement des dyades ». Là encore, nous donnons un nom à l’étape et, cette fois, nous sélectionnons le type de nœud « Classmate ».
+
+Nous allons ensuite mettre en place une logique de saut, pour que l’étape ne s’affiche que pour les personnes participantes qui citent au moins deux camarades dans l’étape de la liste de la promotion mise en place plus haut. Pour cela, nous activons l’interrupteur de la logique de saut de l’étape, nous sélectionnons « Sauter cette étape », puis nous définissons une règle portant sur les alters en cliquant sur le bouton « Ajouter une règle de logique de saut » pour définir la condition.
+
+Nous définissons la règle en sélectionnant le type de nœud d’alter « Classmate », puis le type de règle « Présence », et enfin « n’existe pas ».
+
+<Screenshot axis="architect" name="dyad-skip"></Screenshot>
+
+<AppOnly app="current">
+
+Comme pour l’étape « Formulaire par alter », vous pouvez expliquer la tâche avec une étape [« Information »](/fr/design-protocols/interface-documentation/information) placée juste avant l’étape « Recensement des dyades ». Donnez-lui la même logique de saut, pour que l’explication soit sautée chaque fois que l’étape « Recensement des dyades » l’est.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Comme dans les autres interfaces de type interpréteur de noms (une question posée sur chaque alter déjà cité), nous configurons aussi le panneau d’introduction.
+
+</AppOnly>
+
+Nous définissons ensuite une consigne. Pour cette étape, nous saisissons la consigne « To the best of your knowledge, do these two people spend time together outside of class? » (à votre connaissance, ces deux personnes passent-elles du temps ensemble en dehors des cours ?).
+Nous avons créé plus tôt, dans le sociogramme, deux types de liens que nous pouvons utiliser dans cette consigne. Nous sélectionnons le type de lien « know », puisque nous demandons à la personne participante si deux camarades se connaissent.
+
+<Screenshot axis="architect" name="dyad-prompt"></Screenshot>
+
+<AppOnly app="current">
+
+Comme dans l’étape « Formulaire par alter », le texte dynamique permet à cette question de nommer les deux camarades sur lesquels elle porte. Écrivez « To the best of your knowledge, do » (suivi d’une espace), puis ouvrez le menu de la seringue et choisissez **Premier nœud : libellé**. Saisissez « and » (entouré d’espaces), choisissez **Second nœud : libellé**, et terminez par « spend time together outside of class? » (précédé d’une espace). Pour chaque paire, la personne participante lit alors une question comme « To the best of your knowledge, do Corbett and Rebecka spend time together outside of class? », avec les noms affichés sur les deux nœuds.
+
+![Le texte de la consigne de l’étape « Recensement des dyades », dont le texte est « To the best of your knowledge, do [Premier nœud : libellé] and [Second nœud : libellé] spend time together outside of class? » (à votre connaissance, est-ce que [Premier nœud : libellé] et [Second nœud : libellé] passent du temps ensemble en dehors des cours ?)](/assets/img/piped-text/pair-prompt.png)
+
+</AppOnly>
+
+## Sociogramme : basculer un attribut {#sociogram-toggling-an-attribute}
+
+Dans la dernière étape « Sociogramme » de ce protocole, nous allons mettre en place le basculement d’attribut, c’est-à-dire l’action qui permet à une personne participante de faire passer un attribut booléen à « true » (vrai) ou à « false » (faux) en touchant un nœud.
+
+Une fois encore, nous créons l’étape, lui donnons un nom, sélectionnons le type de nœud « Person » et utilisons l’arrière-plan à 3 cercles concentriques, avec « Agrandir les cercles intérieurs » activé.
+
+Nous créons ensuite une nouvelle consigne, avec le texte « Please select anyone who you have asked for advice within the previous 6 months » (veuillez sélectionner les personnes à qui vous avez demandé conseil au cours des 6 derniers mois). Réutilisez l’attribut de disposition (« sociogram_layout ») que nous avons créé plus tôt.
+
+Nous ne voulons pas activer la création de liens dans cette consigne, car cela désactiverait la fonction de basculement d’attribut (les deux modes s’excluent mutuellement). Nous pouvons toutefois afficher des liens pour aider la personne participante à repérer les nœuds.
+
+Pour cela, sélectionnez « Know » et « Conflict » sous « Liens affichés ».
+
+<Screenshot axis="architect" name="variable-toggling"></Screenshot>
+
+Configurer la consigne du sociogramme pour activer le basculement d’attribut se fait en trois temps : (1) activer
+« Interaction avec les nœuds », (2) sélectionner « Basculement d’attribut » sous « Type d’interaction »<AppOnly app="classic"> (dans Architect Classic : activer « Interaction Behavior » (comportement d’interaction) et sélectionner « Attribute Toggling » (basculement d’attribut))</AppOnly> et (3) créer (ou sélectionner) un attribut booléen à attribuer, dans le champ qui apparaît en dessous.
+
+Pour cette consigne, avec les techniques que nous avons déjà vues, créez un attribut appelé « provides_advice » et appuyez sur <AppOnly app="current">**Ajouter**</AppOnly><AppOnly app="classic">« Save and Close » (enregistrer et fermer)</AppOnly>.
+
+Nous allons maintenant suivre exactement la même procédure pour la deuxième consigne, dont le texte est : « Please select anyone who has supported you financially within the previous 6 months. » (veuillez sélectionner les personnes qui vous ont apporté une aide financière au cours des 6 derniers mois). Cette fois, nous créons un attribut booléen « provides_material_support ».
+
+Nous avons maintenant terminé la configuration de cette étape « Sociogramme ».
+
+<AppOnly app="current">
+
+<TipBox>
+
+Les interfaces qui ne créent pas de nœuds, comme « Sociogramme », « Classement ordinal » et « Classement par catégories », ont besoin d’un réseau existant pour afficher quoi que ce soit. Dans Architect, vous n’avez pas à en construire un à la main : l’aperçu démarre avec l’option **Lancer l’aperçu avec des données d’exemple** activée, si bien qu’un réseau d’exemple, avec des nœuds et des liens, est généré automatiquement et que l’étape que vous prévisualisez dispose déjà de données. Les données d’exemple laissent volontairement la tâche de l’étape prévisualisée en partie inachevée, pour que vous puissiez quand même tester son interaction (positionner des nœuds, les répartir dans des cases — chacune des zones où l’on dépose les nœuds pour les classer —, créer des liens, basculer des attributs). Consultez [Prévisualiser votre protocole](/fr/design-protocols/preview-mode) pour en savoir plus sur les paramètres de l’aperçu.
+
+</TipBox>
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+<TipBox danger>
+
+Lorsque vous prévisualisez une étape qui utilise un type d’interface qui ne crée pas de nœuds, vous remarquerez peut-être qu’aucun nœud n’est disponible pour tester le fonctionnement de l’étape.
+
+Pour y remédier, le mode aperçu vous permet de créer des nœuds dans n’importe quelle étape antérieure de votre entretien qui le permet (principalement les générateurs de noms ou les interfaces de liste).
+
+Il suffit, dans le mode aperçu, d’aller à une étape qui crée des nœuds, d’y créer quelques nœuds adaptés à votre étape « Sociogramme », puis d’aller à l’étape « Sociogramme » : vos nœuds y apparaîtront, et vous pourrez tester la création de liens, le basculement d’attribut et le positionnement.
+
+</TipBox>
+
+</AppOnly>
+
+## Créer une étape « Classement ordinal » {#creating-an-ordinal-bin}
+
+Vous voulez maintenant créer une interface « Classement ordinal » pour interroger rapidement et efficacement la personne participante sur la fréquence de ses contacts avec chaque alter. Dans la vue d’ensemble de la chronologie, ajoutez une nouvelle étape avec l’interface « Classement ordinal ».
+
+<KeyConcept title="Concept clé : les « cases » et la « réserve »">
+
+Par convention, le logiciel Network Canvas utilise deux termes pour les zones entre lesquelles on fait glisser les nœuds dans les interfaces « Classement ordinal », « Classement par catégories » et « Sociogramme ».
+
+La réserve est l’endroit où se trouvent d’abord les nœuds, avant d’avoir été placés ou déplacés. Les cases sont les zones _vers_ lesquelles on place ou fait glisser les nœuds. C’est là que les nœuds se retrouvent au final.
+
+Dans les cases comme dans la réserve, on peut définir l’ordre de tri des nœuds qu’elles contiennent. Vous pouvez vous en servir (par exemple) pour que la réserve affiche d’abord les nœuds qui ont un certain attribut, comme la proximité. Cela peut faciliter une tâche comme le positionnement des nœuds sur un sociogramme.
+
+</KeyConcept>
+
+Comme pour les interfaces précédentes, commencez par nommer l’étape (« Contact Frequency », fréquence des contacts) et par sélectionner notre type de nœud (« Person »).
+
+L’essentiel de la configuration de cette interface se fait dans la consigne. Créez une consigne et saisissez le texte « When was the last time that you communicated with each of the people you named? » (quand avez-vous communiqué pour la dernière fois avec chacune des personnes que vous avez citées ?).
+
+Nous devons ensuite créer un attribut ordinal. La procédure est au fond la même que celle que nous avons suivie pour configurer l’attribut des langues dans notre formulaire ego. Chaque fois que nous créons un attribut ordinal ou catégoriel dans Architect, nous saisissons un libellé et une valeur. La valeur est ce qui sera enregistré dans notre jeu de données. Les valeurs textuelles comme numériques sont acceptées. Renseignez les libellés et les valeurs comme dans la capture d’écran ci-dessous.
+
+Créez un attribut nommé « communication_freq » avec les options possibles suivantes :
+
+<table>
+  <tr>
+    <td>
+      <strong>Libellé</strong>
+    </td>
+    <td>
+      <strong>Valeur</strong>
+    </td>
+  </tr>
+  <tr>
+    <td>Last 24 hours (au cours des dernières 24 heures)</td>
+    <td>5</td>
+  </tr>
+  <tr>
+    <td>Last week (au cours des 7 derniers jours)</td>
+    <td>4</td>
+  </tr>
+  <tr>
+    <td>Last six months (au cours des six derniers mois)</td>
+    <td>3</td>
+  </tr>
+  <tr>
+    <td>Last two years (au cours des deux dernières années)</td>
+    <td>2</td>
+  </tr>
+  <tr>
+    <td>Over two years ago (il y a plus de deux ans)</td>
+    <td>-1</td>
+  </tr>
+</table>
+
+Pour notre consigne, nous utilisons les options de tri par défaut des nœuds dans les cases et dans la réserve. Cliquez sur <AppOnly app="current">**Ajouter**</AppOnly><AppOnly app="classic">« Save and Close » (enregistrer et fermer)</AppOnly> pour terminer la modification de cette consigne, puis sur <AppOnly app="current">**Modification terminée**</AppOnly><AppOnly app="classic">« Save and Return » (enregistrer et revenir)</AppOnly> pour revenir à la vue de la chronologie.
+
+## Créer une étape « Classement par catégories » {#creating-a-categorical-bin}
+
+Vous devriez maintenant pouvoir créer une interface « Classement par catégories » avec tout ce que vous avez appris jusqu’ici. Ajoutez une nouvelle étape avec l’interface « Classement par catégories », avec les caractéristiques suivantes :
+
+- Nommée « Categorical Group Membership » (appartenance à un groupe), et portant sur le type de nœud « Person ».
+- Utilisant un attribut catégoriel appelé « group », avec les options suivantes :
+  - Family Member (membre de la famille)
+  - Friends (amis)
+  - Work Colleague (collègue de travail)
+  - School (école)
+- Avec le texte de consigne « Which of these options best describes how you know this person? » (laquelle de ces options décrit le mieux la façon dont vous connaissez cette personne ?)
+- Activez « Option “autre” avec question de suivi », avec le libellé de case « other », la question « Which context best describes how you know this person? » (quel contexte décrit le mieux la façon dont vous connaissez cette personne ?) et l’attribut « group_other »
+
+<Screenshot axis="architect" name="catbin-variables"></Screenshot>
+Comme précédemment, nous cliquons sur <AppOnly app="current">**Ajouter**</AppOnly><AppOnly app="classic">« Save and Close » (enregistrer et fermer)</AppOnly> et sur <AppOnly app="current">**Modification terminée**</AppOnly><AppOnly app="classic">« Save and Return » (enregistrer et revenir)</AppOnly> pour terminer et enregistrer
+nos modifications de l’étape.
+
+## Logique de saut et filtrage du réseau dans l’étape « Classement par catégories » {#skip-logic--network-filtering-on-the-categorical-bin}
+
+Nous allons ensuite mettre en place une autre interface « Classement par catégories ». Cette fois, nous créons l’étape comme précédemment, la nommons « Relationship Type » (type de relation) et sélectionnons le type de nœud « Person ».
+
+Nous allons maintenant configurer à la fois le filtrage du réseau de l’étape et sa logique de saut. Activez d’abord « Filtre de l’étape » et appuyez sur le bouton « Ajouter une règle de filtrage ». Nous configurons ensuite la règle comme suit : type de nœud « Person », type de règle « Attribut », attribut « discuss_network_research », opérateur « est exactement » et valeur de l’attribut « True ».
+
+<Screenshot axis="architect" name="filter-skip"></Screenshot>
+
+Pour activer la logique de saut, nous activons l’interrupteur « Logique de saut ». Nous sélectionnons ensuite « Afficher cette étape » et cliquons sur le bouton « Ajouter une règle de logique de saut ». Nous configurons d’abord la règle de logique de saut comme suit : type de nœud « Person », type de règle « Présence » et opérateur « existe ». Nous configurons ensuite une deuxième règle de logique de saut comme suit : type de nœud « Person », type de règle « Attribut », attribut « discuss_network_research », opérateur « est exactement » et valeur de l’attribut « True ».
+
+<Screenshot axis="architect" name="skip"></Screenshot>
+
+Une fois la configuration faite, vérifiez que le paramètre « Correspondance des règles » est réglé sur « Toutes les règles doivent être satisfaites », comme ci-dessus.
+
+Pour terminer la configuration de cette étape, nous créons une consigne avec le texte « You indicated that you’ve discussed social networks research with these people. Which category best describes your relationship with each person? » (vous avez indiqué avoir parlé de recherche sur les réseaux sociaux avec ces personnes. Quelle catégorie décrit le mieux votre relation avec chacune d’elles ?). Nous affectons à la consigne un attribut catégoriel « social_networks_research_relationship » avec les libellés suivants : Work Colleague, Classmate, Co-author, Supervisor (collègue de travail, camarade de promotion, personne coautrice, direction de recherche). Saisissez les valeurs correspondantes : « Work_Colleague », « Classmate », « Co-author » et « Supervisor ».
+
+<Screenshot axis="architect" name="catbin-prompt"></Screenshot>
+
+Nous ajoutons aussi à cette consigne une « Option “autre” avec question de suivi ». Activez l’interrupteur de la section, saisissez « Other » comme libellé de la case, saisissez « What is your relationship with this person? » (quelle est votre relation avec cette personne ?) comme question de la boîte de dialogue, et créez un nouvel attribut pour recueillir cette réponse : « social_network_research_relationship_other ».
+
+<Screenshot axis="architect" name="followup"></Screenshot>
+
+Nous avons maintenant terminé la configuration de cette étape. <AppOnly app="current">Appuyez sur **Ajouter** dans l’éditeur de consigne, puis sur **Modification terminée** dans l’éditeur de l’interface « Classement par catégories ».</AppOnly><AppOnly app="classic">Appuyez sur « Save and Close » (enregistrer et fermer), en bas à droite de l’éditeur de consigne, puis sur « Save and Return » (enregistrer et revenir) dans l’éditeur de l’interface « Classement par catégories ».</AppOnly>
+
+## Créer l’interface « Narration » {#creating-the-narrative-interface}
+
+La dernière étape configurée dans ce protocole d’exemple est l’interface « Narration ». Comme vous l’avez déjà appris, nous créons une nouvelle étape (interface « Narration »), lui donnons un nom (« Narrative Interface ») et sélectionnons un type de nœud (« Person »). Nous choisissons ensuite l’arrière-plan à cercles concentriques, mais en optant cette fois pour un seul cercle.
+
+<Screenshot axis="architect" name="narrative"></Screenshot>
+
+### Configurer les préréglages {#configuring-presets}
+
+Les préréglages (des configurations d’affichage du réseau définies dans une étape « Narration ») vous permettent de faire ressortir visuellement certains éléments du réseau d’une personne participante, comme les nœuds regroupés selon une caractéristique d’attribut ou les relations entre alters (les liens). Une fois configurés sur cet écran, les préréglages s’affichent sous forme de menu, où chaque option peut être activée ou désactivée.
+
+Configurons maintenant les préréglages de notre protocole d’entretien d’exemple. Allez dans la section de l’éditeur de l’étape « Narration » intitulée « Préréglages de visualisation » et appuyez sur le bouton « Créer un préréglage ». Nous donnons au préréglage le libellé « Sample Preset » (préréglage d’exemple). Ce libellé apparaîtra en haut du menu que voit la personne participante dans cette étape.
+
+Nous sélectionnons ensuite, dans la section « Disposition des nœuds », un attribut qui servira à positionner les nœuds pour ce préréglage. Nous pouvons soit créer un nouvel attribut de disposition pour cet écran, soit en utiliser un existant. Ici, nous utilisons l’attribut « sociogram_layout » que nous avons créé plus tôt.
+
+Si nous avons recueilli des données sur un attribut catégoriel et que la personne participante a attribué une de ses valeurs à au moins deux nœuds, nous pouvons visualiser ce regroupement dans l’interface « Narration ». La section « Regroupement des nœuds » affiche tous les attributs catégoriels disponibles dans notre protocole. Dans cet exemple, nous choisissons l’attribut « group ».
+
+<Screenshot axis="architect" name="edit-preset"></Screenshot>
+<Screenshot axis="architect" name="edit-preset2"></Screenshot>
+
+Sous « Liens affichés », nous voyons tous les types de liens définis dans notre protocole. Nous cochons les types de liens que nous voulons afficher (« know » et « conflict »).
+
+Le dernier réglage de l’éditeur de préréglage consiste à sélectionner les attributs booléens que nous voulons mettre en évidence dans le réseau de la personne participante. Tous les attributs booléens disponibles apparaissent dans la section « Mise en évidence des nœuds », et nous pouvons choisir ceux à inclure dans le préréglage. Nous cochons « provides_advice » et « provides_material_support ». Pour enregistrer notre travail, nous cliquons sur <AppOnly app="current">**Ajouter**.</AppOnly><AppOnly app="classic">« Save and Close » (enregistrer et fermer).</AppOnly>
+
+De retour sur l’écran de modification de notre interface « Narration », nous voyons le préréglage d’exemple que nous venons de créer. Nous descendons jusqu’à la section « Comportements de la narration » et activons à la fois « Dessin libre » et « Autoriser le repositionnement » (ce dernier devrait déjà être activé par défaut).
+
+<Screenshot axis="architect" name="narrative-behaviors"></Screenshot>
+
+Le dessin libre est une fonction de cette interface qui permet à une personne participante d’annoter l’écran avec sa souris. Elle peut tracer des lignes, des symboles ou des mots qui l’aident à décrire certains aspects de son réseau.
+
+Le repositionnement dans l’interface « Narration » permet à une personne participante de faire glisser ses alters vers de nouvelles positions, en conservant les liens affichés.
+
+<AppOnly app="current">Cliquez sur **Modification terminée**</AppOnly><AppOnly app="classic">Cliquez sur « Save and Return » (enregistrer et revenir)</AppOnly>, et l’étape « Narration » configurée est désormais visible dans notre chronologie.
+
+## Proposer le protocole dans plusieurs langues {#offering-the-protocol-in-more-than-one-language}
+
+<AppOnly app="current">
+
+Le protocole d’exemple est rédigé en anglais américain. Dans cette section, vous allez le rendre disponible en espagnol, traduire l’étape « Welcome » et ajouter une étape dans laquelle les personnes participantes choisissent leur langue. La même procédure s’applique à n’importe quelle langue. [Traduire votre protocole](/fr/design-protocols/translating-your-protocol) décrit chaque outil en détail et aborde les considérations méthodologiques qui doivent guider la traduction d’un protocole pour une véritable étude.
+
+### Ajouter une langue {#adding-a-language}
+
+Ouvrez la page **Langues** depuis la barre de navigation en haut de l’éditeur. Elle indique l’anglais américain comme seule langue du protocole, marquée **Par défaut**. Cliquez sur **Ajouter des langues**, saisissez « espagnol » dans la liste **Langues**, choisissez **espagnol (es)** et cliquez sur **Ajouter des langues** pour confirmer.
+
+L’espagnol apparaît maintenant à côté de l’anglais américain, avec un badge **Traductions manquantes** et le nombre de textes déjà traduits dans cette langue. Ce nombre n’est pas nul, car Network Canvas fournit déjà en espagnol les textes intégrés à l’application, comme les boutons Retour et Continuer et le texte de l’étape « Écran de fin ». Le texte que vous avez rédigé doit encore être traduit. Tant qu’il ne l’est pas, les personnes participantes qui utilisent l’espagnol voient à la place le texte en anglais américain.
+
+![La page Langues après l’ajout de l’espagnol. L’espagnol porte un badge Traductions manquantes.](/assets/img/architect/localization/languages-page.png)
+
+### Traduire l’étape « Welcome » {#translating-the-welcome-stage}
+
+Revenez à la liste des étapes, où une note indique désormais qu’une partie du contenu n’est pas encore traduite en espagnol, et ouvrez l’étape **Welcome**. Comme le protocole a deux langues, chaque champ de texte de l’éditeur d’étape possède un menu de langue. Choisissez **espagnol** dans le menu à côté de **Titre de la page**. Tous les champs de l’éditeur passent ensemble à l’espagnol. Le champ du titre est vide, et une note en dessous explique que les personnes participantes qui utilisent l’espagnol verront le texte en anglais américain.
+
+![Le champ « Titre de la page » de l’étape « Welcome », avec l’espagnol choisi pour la modification, avant sa traduction.](/assets/img/architect/localization/editor-missing-translation.png)
+
+Saisissez « Bienvenida » comme nom de l’étape et « Te damos la bienvenida al protocolo de ejemplo » comme titre de la page, puis cliquez sur **Modification terminée**.
+
+Traduire étape par étape convient aux protocoles courts. Pour un protocole plus long, ou lorsque la traduction est faite par une autre personne que celle qui a rédigé le protocole, le tableau des traductions est plus efficace. Revenez à la page **Langues** et cliquez sur **Ouvrir le tableau des traductions**. Le tableau liste chaque texte du protocole à côté de sa traduction dans chaque langue, et les textes que vous venez de traduire apparaissent dans la colonne de l’espagnol. Les textes non traduits affichent, en caractères plus clairs, le texte en anglais américain que les personnes participantes verront à la place.
+
+![Le tableau des traductions, avec le nom et le titre de l’étape « Welcome » traduits en espagnol.](/assets/img/architect/localization/translation-table.png)
+
+Un protocole auquel il manque des traductions peut tout de même être enregistré, prévisualisé et utilisé sur le terrain, mais chaque texte devrait être traduit, et la traduction relue, avant le début de la collecte des données.
+
+### Laisser les personnes participantes choisir leur langue {#letting-participants-choose-their-language}
+
+Par défaut, un entretien s’ouvre dans la langue qui correspond le mieux aux paramètres du navigateur ou de l’appareil de la personne participante. La liste des étapes le signale par le message **Les personnes participantes ne peuvent pas choisir de langue**. Pour permettre aux personnes participantes de choisir elles-mêmes, sélectionnez **Ajouter une étape ici** au-dessus de la première étape, puis choisissez l’interface **Choix de la langue** dans la section **Utilitaires**.
+
+Le titre de l’étape « Choix de la langue », « Choose a language » (choisissez une langue), fait partie des textes que fournit Network Canvas, et il est déjà traduit en espagnol. Son éditeur liste aussi les langues du protocole, que l’on peut y gérer comme sur la page **Langues**. Cliquez sur **Modification terminée** : l’étape « Choix de la langue » devient la première étape du protocole.
+
+### Vérifier la traduction {#checking-the-translation}
+
+L’étape « Choix de la langue » étant ouverte, cliquez sur **Aperçu**. L’aperçu s’ouvre dans un nouvel onglet, avec un menu **Langue de l’aperçu** au-dessus. Choisissez **español** dans le menu, ou choisissez **español** dans l’étape elle-même : le titre devient « Elige un idioma ». Passez à l’étape « Welcome » pour voir le titre que vous avez traduit.
+
+![L’étape « Choix de la langue » en aperçu, affichée en espagnol.](/assets/img/architect/localization/preview-language.png)
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Les protocoles créés dans Architect Classic sont rédigés dans une seule langue. Pour proposer un protocole dans plusieurs langues, mettez-le à niveau dans Architect, qui prend en charge les protocoles multilingues du schéma 9. Consultez [Traduire votre protocole](/fr/design-protocols/translating-your-protocol).
+
+</AppOnly>
+
+## Finaliser votre protocole {#finishing-off-your-protocol}
+
+<AppOnly app="current">
+
+Architect enregistre automatiquement votre protocole. Lorsque vous souhaitez l’utiliser, cliquez sur **Télécharger** dans l’écran de vue d’ensemble du protocole pour l’exporter sous forme de fichier `.netcanvas`. Le nom du fichier identifie le protocole de manière unique dans les applications qui l’exécutent.
+
+Les protocoles créés dans Architect utilisent la version la plus récente du schéma de protocole (actuellement le schéma 9) : ils s’exécutent donc dans **Fresco** et dans la nouvelle application **Interviewer**, mais pas dans Interviewer Classic.
+
+#### Fresco {#fresco}
+
+- Pour déployer le protocole dans Fresco, téléversez (envoyez vers le serveur) le fichier `.netcanvas` téléchargé ; consultez notre tutoriel [Utiliser Fresco](/fr/collect-data/fresco/using-fresco#uploading-protocols).
+
+#### Interviewer {#interviewer}
+
+- Importez le fichier `.netcanvas` téléchargé directement depuis votre ordinateur, ou hébergez-le sur un serveur web et importez-le depuis une URL.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Veillez à enregistrer votre fichier. Le nom du fichier du protocole l’identifiera de manière unique dans l’application Network Canvas Interviewer et dans [Fresco](/fr/collect-data/fresco/using-fresco#uploading-protocols).
+
+Les protocoles créés dans Architect Classic utilisent le schéma 7 : ils s’exécutent donc dans **Interviewer Classic**. **Fresco** et **Interviewer** les exécutent aussi : ils migrent automatiquement un protocole en schéma 7 vers le schéma 8 lorsque vous le téléversez (envoyez vers le serveur) ou l’importez. Pour utiliser les fonctionnalités du schéma 9, mettez d’abord le protocole à niveau dans Architect.
+
+Il existe de nombreuses façons de passer de la construction du protocole dans Architect à son déploiement.
+
+#### Interviewer {#interviewer-1}
+
+- Dans l’application Interviewer, importez le fichier du protocole directement depuis un emplacement de votre ordinateur.
+- Hébergez le fichier du protocole sur un serveur web, puis, dans l’application Interviewer, importez le fichier du protocole depuis une URL.
+
+#### Fresco {#fresco-1}
+
+- Pour déployer le protocole dans Fresco, consultez notre tutoriel [Utiliser Fresco](/fr/collect-data/fresco/using-fresco#uploading-protocols).
+
+</AppOnly>
+
+Pour voir comment d’autres études combinent ces interfaces dans des protocoles complets, parcourez la [Galerie de protocoles](/fr/design-protocols/protocol-gallery).
+
+Dans le tutoriel suivant, [Flux de travail des protocoles et des données](/fr/collect-data/protocol-and-data-workflows), nous vous montrerons comment mener une recherche avec les applications d’entretien Network Canvas.

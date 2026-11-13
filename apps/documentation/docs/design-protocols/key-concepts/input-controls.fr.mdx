@@ -1,0 +1,203 @@
+---
+title: Commandes de saisie
+navOrder: 7
+translatedFrom: 6fd5fafb979ef1f0a0d24f70c6b8a73c134ed762
+---
+
+<Definition>
+  Les commandes de saisie (le type de champ avec lequel un attribut est
+  recueilli : zone de texte, curseur, cases à cocher…) déterminent la façon dont
+  les personnes participantes saisissent les valeurs des attributs dans les
+  entretiens Network Canvas. Chaque commande de saisie propose un élément
+  d’écran différent, optimisé pour un type précis de collecte de données.
+</Definition>
+
+## Vue d’ensemble {#overview}
+
+Lorsque vous créez des [formulaires](/fr/design-protocols/key-concepts/forms) dans Architect, vous devez sélectionner une commande de saisie pour chaque champ. La commande de saisie que vous choisissez détermine à la fois ce que les personnes participantes verront à l’écran et le type de données qui seront recueillies.
+
+Les commandes de saisie sont conçues pour rendre la saisie des données intuitive et alléger la charge des personnes participantes, tout en garantissant la qualité des données. Choisir la commande de saisie adaptée à votre attribut (ce que cette documentation appelle souvent variable) est une partie importante de la conception du protocole.
+
+## Fonctionnement des commandes de saisie {#how-input-controls-work}
+
+Chaque commande de saisie est associée à un type d’attribut précis. Lorsque vous créez un nouvel attribut et sélectionnez une commande de saisie pour lui, le type de l’attribut est défini automatiquement en fonction de la commande choisie.
+
+<TipBox danger>
+
+Une fois le type d’un attribut défini par le choix de sa commande de saisie, ce type ne peut plus être modifié. Vous pouvez toutefois utiliser une autre commande de saisie pour cet attribut dans d’autres formulaires, à condition que la nouvelle commande de saisie soit compatible avec le type de l’attribut.
+
+</TipBox>
+
+Par exemple, si vous créez un attribut avec une commande « Saisie de texte » (ce qui crée un attribut de texte, ou de type chaîne), vous pourrez ensuite utiliser une commande « Zone de texte » pour le même attribut, car toutes deux fonctionnent avec des données textuelles. En revanche, vous ne pouvez pas la remplacer par une commande « Saisie numérique », qui exigerait un autre type d’attribut.
+
+## Commandes de saisie disponibles {#available-input-controls}
+
+### Commandes de texte {#text-based-controls}
+
+Les commandes de texte recueillent des données de type chaîne (du texte) auprès des personnes participantes.
+
+#### Saisie de texte {#text-input}
+
+La commande « Saisie de texte » crée des attributs de texte (chaîne) et convient le mieux pour recueillir des réponses textuelles courtes, sur une seule ligne, comme des noms, des libellés ou des réponses brèves. Vous pouvez configurer une limite de caractères (longueur maximale), un texte indicatif et la règle de validation « Obligatoire ». Utilisez cette commande pour recueillir le nom des alters (chaque personne que la personne participante cite pendant l’entretien), des identifiants ou codes courts et des réponses d’un seul mot. Elle se présente comme un champ de saisie de texte sur une ligne, avec un texte indicatif facultatif.
+
+#### Zone de texte {#text-area}
+
+La commande « Zone de texte » crée des attributs de texte (chaîne) et convient le mieux pour recueillir des réponses textuelles plus longues, sur plusieurs lignes, comme des descriptions, des récits ou des réponses détaillées. Vous pouvez configurer une limite de caractères (longueur maximale), le nombre de lignes visibles, un texte indicatif et la règle de validation « Obligatoire ». Utilisez cette commande pour des questions comme « Décrivez votre relation avec cette personne » ou « Quel était le motif de votre visite ? » et pour recueillir des récits ou des explications détaillés. Elle se présente comme une zone de texte sur plusieurs lignes, qui s’agrandit pour accueillir les réponses plus longues.
+
+### Commandes numériques {#numerical-controls}
+
+#### Saisie numérique {#number-input}
+
+La commande « Saisie numérique » crée des attributs de type nombre et convient le mieux pour recueillir des données numériques que les personnes participantes saisiront au clavier, comme des âges, des quantités ou des scores. Vous pouvez configurer une valeur minimale, une valeur maximale et la règle de validation « Obligatoire ». Utilisez cette commande pour l’âge des alters, le nombre d’interactions, des fréquences et des évaluations numériques. Elle se présente comme un champ de saisie numérique avec des boutons pour augmenter et diminuer la valeur.
+
+### Commandes catégorielles {#categorical-controls}
+
+Les commandes catégorielles permettent aux personnes participantes de choisir parmi des options de réponse prédéfinies.
+
+#### Groupe de boutons radio {#radio-button-group}
+
+La commande « Groupe de boutons radio » crée des attributs catégoriels (ordinaux ou nominaux) et convient le mieux pour sélectionner une seule option dans une liste de choix mutuellement exclusifs, généralement de 2 à 7 options. Vous pouvez configurer une liste d’options de réponse (libellés et valeurs), la règle de validation « Obligatoire » et l’ordre des options. Utilisez cette commande pour le choix du genre, les questions par oui ou non, les évaluations de satisfaction (Très satisfaisant, Plutôt satisfaisant, Ni satisfaisant ni insatisfaisant, Plutôt insatisfaisant, Très insatisfaisant) et le type de relation. Elle se présente comme une liste verticale de boutons radio avec des libellés, dont un seul peut être sélectionné à la fois.
+
+Cette commande convient le mieux pour 2 à 7 options ; pour des listes plus longues, envisagez d’autres commandes. Les options sont toujours visibles, ce qui facilite les comparaisons et rend la commande claire pour des choix mutuellement exclusifs.
+
+#### Groupe de cases à cocher {#checkbox-group}
+
+La commande « Groupe de cases à cocher » crée des attributs booléens ou catégoriels et convient le mieux pour sélectionner plusieurs options dans une liste, où les personnes participantes peuvent n’en choisir aucune, une ou plusieurs. Vous pouvez configurer une liste d’options de réponse, un nombre minimal de sélections (validation) et un nombre maximal de sélections (validation). Utilisez cette commande pour des questions comme « Quelles langues parlez-vous ? » (plusieurs sélections possibles), « Sélectionnez tous les comportements à risque qui s’appliquent » ou « Lesquels de ces services avez-vous utilisés ? ». Elle se présente comme une liste verticale de cases à cocher avec des libellés, dont plusieurs peuvent être sélectionnées en même temps.
+
+Utilisez cette commande lorsque plusieurs sélections sont valables. Des libellés clairs aident les personnes participantes à comprendre qu’elles peuvent sélectionner plusieurs éléments. Si nécessaire, envisagez une validation pour garantir qu’au moins une option est sélectionnée.
+
+#### Interrupteur {#toggle}
+
+La commande « Interrupteur » crée des attributs booléens (vrai/faux) et convient le mieux pour les choix binaires par oui ou non, ou pour activer ou désactiver une seule fonctionnalité. Vous pouvez configurer le texte du libellé, l’état par défaut (activé ou désactivé) et la règle de validation « Obligatoire ». Utilisez cette commande pour des questions comme « Avez-vous vu cette personne au cours du dernier mois ? » (Oui/Non), pour des cases à cocher de consentement et pour indiquer la présence ou l’absence de caractéristiques. Elle se présente comme un interrupteur, qui peut être activé ou désactivé.
+
+Cette commande est très claire pour les choix binaires, fournit un retour visuel qui rend l’état évident et fonctionne bien sur les écrans tactiles.
+
+#### Groupe de boutons bascules {#toggle-button-group}
+
+La commande « Groupe de boutons bascules » crée des attributs catégoriels (ordinaux ou nominaux) et convient le mieux pour sélectionner une seule option dans un petit ensemble de choix, généralement de 2 à 5 options, avec une mise en valeur visuelle. Vous pouvez configurer une liste d’options de réponse (libellés et valeurs), la règle de validation « Obligatoire » ainsi que le style et la disposition des boutons. Utilisez cette commande pour la force de la relation (Proche / Assez proche / Pas proche), des catégories de fréquence (Tous les jours / Toutes les semaines / Tous les mois / Rarement) et des échelles d’accord. Elle se présente comme une rangée ou une grille de boutons, où en sélectionner un désélectionne les autres, l’option sélectionnée étant mise en évidence visuellement.
+
+Cette commande est visuellement plus marquée que les boutons radio et fonctionne bien sur les écrans tactiles. Utilisez-la pour 2 à 5 options afin de ne pas encombrer l’écran, et tirez parti de son retour visuel clair lors de la sélection.
+
+### Commandes de date et d’heure {#date-and-time-controls}
+
+#### Sélecteur de date {#date-picker}
+
+La commande « Sélecteur de date » crée des attributs de type date et convient le mieux pour recueillir des dates précises, comme des dates de naissance, des dates d’événements ou des périodes. Vous pouvez configurer le début de la plage de dates (la date la plus ancienne qui peut être sélectionnée), la fin de la plage de dates (la date la plus récente qui peut être sélectionnée), une date par défaut et la règle de validation « Obligatoire ». Utilisez cette commande pour la date de naissance, pour des questions comme « Quand avez-vous vu cette personne pour la dernière fois ? » ou « Quand cet événement a-t-il eu lieu ? » et pour des dates de visite. Elle se présente comme un calendrier interactif qui permet aux personnes participantes de sélectionner une date précise.
+
+Fixez des plages de dates appropriées pour éviter des saisies irréalistes. Demandez-vous s’il vous faut de la précision (date exacte) ou une approximation (mois et année). Le calendrier est intuitif pour la plupart des personnes.
+
+### Commandes d’échelle {#scale-controls}
+
+Les commandes d’échelle sont des éléments d’écran spécialisés pour recueillir des évaluations ou des mesures.
+
+#### Échelle de Likert {#likert-scale}
+
+La commande « Échelle de Likert » crée des attributs ordinaux et convient le mieux pour recueillir des évaluations d’accord, de satisfaction ou de fréquence à l’aide d’une échelle standard de type Likert. Vous pouvez configurer le nombre de points (généralement 3, 5 ou 7), le libellé de chaque point et la règle de validation « Obligatoire ». Utilisez cette commande pour des questions comme « Dans quelle mesure ce service vous paraît-il satisfaisant ? » (Très satisfaisant → Très insatisfaisant), « À quelle fréquence voyez-vous cette personne ? » (Toujours → Jamais) et des échelles d’accord (Tout à fait d’accord → Pas du tout d’accord). Elle se présente comme une échelle horizontale dont les points, munis de libellés, peuvent être sélectionnés par les personnes participantes.
+
+C’est un format standard que la plupart des personnes participantes connaissent. Les échelles en cinq points sont les plus courantes. Des libellés clairs pour les extrémités et le point central améliorent la qualité des données. Demandez-vous s’il faut inclure un point central neutre.
+
+#### Échelle visuelle analogique (EVA) {#visual-analog-scale-vas}
+
+La commande « Échelle visuelle analogique » crée des attributs de type nombre et convient le mieux pour recueillir des évaluations subjectives ou des mesures sur une échelle continue, souvent pour une intensité ou une ampleur. Vous pouvez configurer une valeur minimale, une valeur maximale, un libellé minimal (extrémité gauche), un libellé maximal (extrémité droite) et la règle de validation « Obligatoire ». Utilisez cette commande pour l’intensité de la douleur (« Aucune douleur » → « Douleur insupportable »), la proximité affective (« Pas du tout proche » → « Extrêmement proche ») et la force d’un sentiment ou d’une préférence. Elle se présente comme un curseur continu, avec des extrémités munies de libellés, que les personnes participantes peuvent faire glisser à n’importe quelle position.
+
+Cette commande fournit des données plus fines que les échelles de Likert et convient bien à la mesure d’expériences subjectives. Veillez à ce que les libellés des extrémités soient nettement opposés. Notez que le caractère continu de l’échelle peut demander un effort cognitif plus important à certaines personnes participantes.
+
+## Choisir la bonne commande de saisie {#choosing-the-right-input-control}
+
+Le choix de la commande de saisie adaptée est essentiel pour la qualité des données et l’expérience des personnes participantes.
+
+Réfléchissez au type de données que vous devez recueillir. Utilisez « Saisie de texte » ou « Zone de texte » pour du texte, « Saisie numérique » pour des nombres, « Sélecteur de date » pour des dates, « Groupe de boutons radio », « Interrupteur », « Groupe de cases à cocher » ou « Groupe de boutons bascules » pour des catégories, et « Échelle de Likert » ou « Échelle visuelle analogique » pour des échelles.
+
+Réfléchissez au nombre d’options que les personnes participantes peuvent sélectionner. Utilisez « Groupe de boutons radio », « Interrupteur » ou « Groupe de boutons bascules » pour une sélection unique. Utilisez « Groupe de cases à cocher » pour des sélections multiples. Utilisez « Saisie de texte », « Zone de texte » ou « Saisie numérique » pour une saisie libre. Utilisez « Échelle visuelle analogique » pour des échelles continues et « Échelle de Likert » pour des échelles discrètes.
+
+Réfléchissez au nombre de choix que vous proposez. Pour 2 options, utilisez « Interrupteur », « Groupe de boutons bascules » ou « Groupe de boutons radio ». Pour 3 à 7 options, utilisez « Groupe de boutons radio » ou « Groupe de boutons bascules ». À partir de 8 options, demandez-vous s’il ne faudrait pas plutôt plusieurs questions. Si vous avez beaucoup d’options, vous devrez peut-être revoir votre approche.
+
+Réfléchissez à ce que les personnes participantes comprendront et utiliseront le plus facilement. Utilisez « Interrupteur » pour les questions simples par oui ou non, « Échelle de Likert » pour des échelles d’évaluation familières, « Échelle visuelle analogique » pour une intensité subjective, « Groupe de boutons radio » ou « Groupe de boutons bascules » pour des catégories bien distinctes, et « Groupe de cases à cocher » lorsque plusieurs sélections sont nécessaires.
+
+Réfléchissez aux appareils qu’utiliseront les personnes participantes. « Groupe de boutons bascules » et « Échelle visuelle analogique » fonctionnent bien sur les appareils tactiles. Toutes les commandes fonctionnent bien sur ordinateur. Sur les petits écrans, évitez les commandes qui prennent beaucoup de place.
+
+## Compatibilité des commandes de saisie {#input-control-compatibility}
+
+Certaines commandes de saisie peuvent être utilisées indifféremment pour le même attribut, d’autres non :
+
+### Commandes compatibles (même type d’attribut) {#compatible-controls-same-variable-type}
+
+**Attributs de texte :**
+
+- Saisie de texte ↔ Zone de texte
+
+**Attributs catégoriels :**
+
+- Groupe de boutons radio ↔ Groupe de boutons bascules
+
+**Attributs booléens :**
+
+- Interrupteur ↔ Case à cocher (unique)
+
+### Commandes incompatibles (types d’attributs différents) {#incompatible-controls-different-variable-types}
+
+- Saisie de texte ✗ Saisie numérique
+- Groupe de boutons radio ✗ Saisie numérique
+- Échelle de Likert ✗ Échelle visuelle analogique (structures de données différentes)
+
+## Bonnes pratiques {#best-practices}
+
+Restez simple : utilisez la commande la plus simple qui répond à vos besoins. N’utilisez pas une « Échelle visuelle analogique » quand un simple « Interrupteur » suffirait, et veillez à ce que les personnes participantes comprennent immédiatement comment utiliser chaque commande.
+
+Visez la cohérence : utilisez des commandes similaires pour des types de questions similaires dans tout votre protocole. Si vous utilisez des échelles de Likert pour la satisfaction, continuez à les utiliser plutôt que de passer à des échelles visuelles analogiques. La cohérence réduit la charge cognitive.
+
+Rédigez des libellés clairs : donnez toujours aux options des libellés clairs et sans ambiguïté. Pour les échelles, donnez un libellé aux deux extrémités et envisagez d’en donner un au point central. Employez un langage adapté à la population de personnes participantes.
+
+Tenez compte de la charge de réponse. Les formulaires longs comportant de nombreuses commandes complexes alourdissent la charge. Trouvez l’équilibre entre le niveau de détail dont vous avez besoin et la fatigue des personnes participantes, et envisagez des commandes plus simples dans les dernières étapes, lorsque les personnes participantes peuvent être fatiguées.
+
+Pensez à l’analyse des données. Réfléchissez à la façon dont vous analyserez les données lorsque vous choisissez les commandes. Les données continues (« Échelle visuelle analogique ») et les données catégorielles (« Échelle de Likert ») demandent des analyses différentes, et les cases à cocher à sélection multiple produisent des structures de données complexes.
+
+Validez de façon appropriée : utilisez la validation pour garantir la qualité des données, mais sans excès, car trop de champs obligatoires peuvent agacer les personnes participantes. Consultez [Validation des champs](/fr/design-protocols/key-concepts/field-validation) pour plus de détails.
+
+Testez vos choix : utilisez le [mode aperçu](/fr/design-protocols/preview-mode) d’Architect pour vérifier l’apparence et le fonctionnement des commandes. Recueillez l’avis de collègues ou des personnes participantes de l’étude pilote, et ajustez vos choix en fonction des retours sur l’utilisation.
+
+## Modèles et exemples courants {#common-patterns-and-examples}
+
+### Informations sociodémographiques de base {#basic-demographics}
+
+```
+Name: Text Input (required)
+Age: Number Input (required, range: 18-120)
+Gender: Radio Button Group or Toggle Button Group
+```
+
+### Qualité de la relation {#relationship-quality}
+
+```
+Closeness: Likert Scale (5-point: Not Close → Very Close)
+or
+Closeness: Visual Analog Scale (0-100: Not Close → Very Close)
+```
+
+### Fréquence des comportements {#behavioral-frequency}
+
+```
+Contact Frequency: Radio Button Group
+Options: Daily, Weekly, Monthly, Rarely, Never
+```
+
+### Caractéristiques multiples {#multiple-characteristics}
+
+```
+Languages Spoken: Checkbox Group
+Options: English, Spanish, Mandarin, French, [others]
+```
+
+## Concepts associés {#related-concepts}
+
+- [Formulaires](/fr/design-protocols/key-concepts/forms) : apprendre à construire des formulaires avec des commandes de saisie
+- [Validation des champs](/fr/design-protocols/key-concepts/field-validation) : ajouter des règles de validation pour garantir la qualité des données
+- [Variables](/fr/design-protocols/key-concepts/variables) : comprendre les types de variables et leur lien avec les commandes de saisie
+
+## Pour aller plus loin {#next-steps}
+
+Maintenant que vous comprenez les commandes de saisie, vous pouvez :
+
+1. Vous exercer à créer des formulaires avec différentes commandes de saisie dans Architect
+2. Découvrir la [validation des champs](/fr/design-protocols/key-concepts/field-validation) pour garantir la qualité des données
+3. Parcourir le [tutoriel « Construire un protocole »](/fr/design-protocols/tutorials/building-a-protocol) pour voir les commandes de saisie en situation

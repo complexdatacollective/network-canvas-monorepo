@@ -1,0 +1,207 @@
+---
+title: Arbre généalogique narratif
+navOrder: 11
+translatedFrom: 1722cdd3bff1f5624a66c62303e2533dee2d6f98
+---
+
+<InterfaceSummary type="NarrativePedigree">
+
+<InterfaceMeta type="Visualisation de données" creates="Rien. Elle dessine la famille construite dans une étape « Arbre généalogique » précédente" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+L’interface « Arbre généalogique narratif » accompagne l’interface [« Arbre généalogique »](/fr/design-protocols/interface-documentation/family-pedigree). Elle dessine la famille qu’une personne participante a construite dans une étape « Arbre généalogique » précédente et montre comment une ou plusieurs affections enregistrées dans cette famille peuvent se transmettre. La personne participante choisit une affection, et le symbole de chaque personne indique son statut pour cette affection selon la notation normalisée des arbres généalogiques (Bennett et al., 2008, 2022). La personne participante peut ensuite sélectionner n’importe quelle personne pour voir par quels proches l’affection a pu lui parvenir.
+
+L’interface est en lecture seule. Elle n’ajoute, ne modifie et ne retire jamais de personnes, de relations ni d’attributs, et elle n’enregistre rien dans les données d’entretien. Chaque statut qu’elle affiche est recalculé à partir de la famille telle que l’étape source l’a enregistrée.
+
+L’interface est surtout utile pour les études génétiques fondées sur des arbres généalogiques formels et pour le conseil génétique, où le mode de transmission d’une affection est connu et où la famille enregistre la parenté biologique. Dans la recherche sur les familles telles que les personnes participantes les définissent, où les liens biologiques peuvent être incomplets ou délibérément omis, ses déductions reposent sur la structure biologique que la personne participante a choisi d’enregistrer, quelle qu’elle soit, et doivent être lues en conséquence.
+
+## Configurer l’étape {#configuring-the-stage}
+
+L’éditeur d’étape d’Architect comporte quatre sections propres à cette interface, suivies des sections **Logique de saut** et **Guide d’entretien** que possède chaque étape.
+
+### Source de l’arbre généalogique {#pedigree-source}
+
+Dans **Étape source**, choisissez l’étape « Arbre généalogique » dont cette étape dessine la famille. Seules les étapes « Arbre généalogique » placées avant celle-ci sont proposées, et Architect l’explique lorsqu’il n’y en a aucune. Si l’étape choisie est ensuite supprimée, déplacée après celle-ci ou changée en une autre interface, Architect le signale, et l’étape ne peut pas être enregistrée tant qu’une autre source n’a pas été choisie.
+
+Chaque affection est associée à un attribut du type de personne de l’étape source : choisir une autre source supprime donc toutes les affections, après confirmation. Tant qu’une étape « Arbre généalogique narratif » lit une étape « Arbre généalogique », le type de personne de cette étape « Arbre généalogique » ne peut pas être modifié. Faites d’abord pointer l’étape « Arbre généalogique narratif » vers une autre source, ou supprimez-la.
+
+L’étape dessine la personne participante et toutes les personnes qui lui sont reliées par les relations de l’étape source : partenaires (actuels ou non), parents de toute nature, enfants, et, à leur tour, leurs propres proches. Une personne du même type qui n’est pas reliée à la personne participante par ces relations est laissée de côté, même si une autre étape l’a ajoutée ou l’a reliée à la personne participante par un autre type de lien.
+
+### Association des maladies {#disease-mappings}
+
+Chaque affection que la personne participante peut choisir est une ligne de la section **Association des maladies**. **Créer une maladie** ouvre une boîte de dialogue comportant quatre champs, tous obligatoires :
+
+- **Libellé de la maladie** : le nom de l’affection, affiché dans le menu des affections de la personne participante. Chaque affection doit avoir un nom différent, dans chaque langue du protocole.
+- **Couleur** : l’une des huit couleurs de nœud. Les statuts de l’affection, et ses symboles dans la légende, sont dessinés dans cette couleur.
+- **Attribut de nœud** : l’attribut **booléen** qui indique les personnes atteintes. Seuls les attributs enregistrés par l’une des [consignes de désignation](/fr/design-protocols/interface-documentation/family-pedigree#nomination-prompts-1) de l’étape source sont proposés, et chacun ne peut être associé qu’à une seule affection. Si aucun n’est proposé, ajoutez à l’étape « Arbre généalogique » une consigne de désignation qui demande qui présente l’affection.
+- **Mode de transmission** : la façon dont l’affection se transmet du parent à l’enfant. Toutes les déductions de l’interface en dépendent (voir [Comment les statuts sont déduits](#how-statuses-are-inferred)).
+
+Les huit modes de transmission sont autosomique dominant, autosomique récessif, dominant lié à l’X, récessif lié à l’X, lié à l’Y, mitochondrial, multifactoriel et inconnu. Avec **Multifactoriel** et **Inconnu**, l’interface montre seulement les personnes enregistrées comme atteintes et ne déduit aucun autre statut.
+
+L’étape doit comporter au moins une affection. L’ordre des lignes est celui du menu des affections de la personne participante.
+
+### Statuts à risque {#at-risk-statuses}
+
+**Afficher les statuts possibles (à risque)** est désactivé par défaut. Tant que cette option est désactivée, l’arbre généalogique ne montre que les statuts enregistrés ou ceux qui découlent avec certitude de la structure de la famille. Lorsqu’elle est activée, l’arbre généalogique montre aussi les deux statuts qui ne sont que possibles, _pourrait développer_ et _pourrait être porteur ou porteuse_, et la légende les mentionne. Lisez [Statuts possibles](#possible-statuses) avant de l’activer.
+
+### Personnaliser la formulation intégrée {#customize-built-in-wording}
+
+La section **Personnaliser la formulation intégrée** contient les textes que les personnes participantes lisent dans l’étape. Chacun commence par la formulation de Network Canvas, dans chaque langue pour laquelle Network Canvas en fournit une, et vous pouvez le modifier et le traduire comme n’importe quel autre texte. Votre protocole ne conserve que les formulations que vous modifiez (voir [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+Sous **Propre à cette étape** se trouvent :
+
+- le texte du menu des affections tant qu’aucune affection n’est choisie, qui est aussi l’option de ce menu permettant de n’en afficher aucune (« Sélectionnez une affection ») ;
+- le libellé du bouton **Enregistrer un instantané** ;
+- les titres des instantanés enregistrés, l’un pour l’instantané d’une affection et l’autre pour un instantané où une personne est sélectionnée. Ils affichent le libellé de l’étape et le nom de l’affection, et le second affiche aussi le nom de la personne, à l’emplacement de leurs espaces réservés.
+
+Sous **Commun à toutes les étapes de ce type** se trouve la formulation que toutes les étapes « Arbre généalogique narratif » affichent à l’identique : le titre de la légende, la signification de chacun de ses symboles (« Présente cette affection », « Développera cette affection », « Est porteur ou porteuse de cette affection », « Pourrait développer cette affection », « Pourrait être porteur ou porteuse de cette affection » et « Inconnu »), et l’info-bulle du bouton **Annuler le centrage**. Chaque signification peut aussi nommer, à la place de « cette affection », l’affection affichée, insérée sous forme de pastille avec le bouton d’insertion de texte dynamique du champ (le texte dynamique, ou piped text, désigne des réponses ou des informations de l’entretien insérées automatiquement dans un texte). Les deux statuts possibles n’y figurent que tant qu’une étape « Arbre généalogique narratif » a activé **Afficher les statuts possibles (à risque)**. À côté se trouvent les descriptions des boutons de zoom, ainsi que le nom et la description du bouton **Afficher toute la famille**, que toutes les étapes « Arbre généalogique narratif » et « Arbre généalogique » affichent à l’identique. Une modification de l’un de ces textes s’applique à toutes ces étapes, et elle est enregistrée dès que vous quittez le champ.
+
+## Ce que voit la personne participante {#what-the-participant-sees}
+
+L’étape s’ouvre sur la famille entière, dessinée comme la dessine l’étape « Arbre généalogique » et ajustée à l’écran. Chaque personne porte le libellé qu’elle avait dans l’étape « Arbre généalogique ». La personne participante a pour libellé « Vous », et toutes les autres personnes ont pour libellé leur nom. Un proche que la personne participante n’a pas nommé a pour libellé son lien de parenté avec la personne participante, dans les termes qu’utilisait l’étape « Arbre généalogique » (« Mère » ou « Parent de l’ovule », par exemple). Si votre étude chiffre l’attribut du nom, la personne participante doit saisir sa phrase secrète, et les proches ont pour libellé leur lien de parenté tant qu’elle ne l’a pas saisie. Une personne enregistrée comme adoptée est dessinée entre crochets.
+
+Chaque symbole prend la forme que lui donne le [choix **Symboles**](/fr/design-protocols/interface-documentation/family-pedigree#how-each-persons-symbol-is-drawn) de l’étape « Arbre généalogique ». Lorsque les symboles suivent le sexe assigné à la naissance, une personne enregistrée comme de sexe féminin est dessinée sous forme de cercle, une personne enregistrée comme de sexe masculin sous forme de carré, et toutes les autres personnes sous forme de losange.
+
+Une barre d’outils placée sous la famille contient, dans l’ordre de lecture (de droite à gauche dans un entretien affiché dans une langue qui s’écrit de droite à gauche) :
+
+- le **menu des affections**, qui liste chaque affection à côté de sa couleur, après un premier choix qui n’en affiche aucune ;
+- **Annuler le centrage**, tant qu’une personne est sélectionnée ;
+- **Zoom arrière**, **Zoom avant**, et un bouton qui affiche toute la famille ;
+- **Enregistrer un instantané**.
+
+La personne participante peut aussi faire glisser le canevas pour le déplacer, et zoomer avec la molette de la souris, en pinçant l’écran ou avec les touches + et −.
+
+Tant qu’aucune affection n’est choisie, chaque personne est dessinée par un simple symbole de la couleur du type de personne, avec son libellé à l’intérieur. Choisir une affection redessine chaque symbole selon la notation normalisée, dans la couleur de l’affection, avec le libellé en dessous, et ouvre à côté de la famille une légende qui explique chaque symbole. La personne participante peut élargir ou rétrécir la légende en faisant glisser son bord. Une seule affection est affichée à la fois. Choisir **Sélectionnez une affection** dans le menu rétablit le dessin simple et ferme la légende.
+
+![L’étape « Arbre généalogique narratif » affichant la mucoviscidose, une affection autosomique récessive. Sam, le frère de la personne participante, est atteint, les deux parents sont porteurs de l’affection, la personne participante pourrait la développer, et les grands-parents ainsi que les oncles et tantes (frères et sœurs des parents) pourraient en être porteurs. La légende, à côté de la famille, explique chaque symbole.](/assets/img/interface-documentation/narrative-pedigree/condition.png 'Une affection choisie, avec la légende à côté de la famille')
+
+### Les symboles {#the-symbols}
+
+| Statut                                                 | Symbole                                                  | Quand il est affiché                                                                                |
+| ------------------------------------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Présente cette affection                               | Remplissage plein                                        | La personne a été enregistrée comme atteinte.                                                       |
+| Développera cette affection                            | Un trait vertical qui traverse le symbole                | La personne a forcément hérité de l’affection et la développera, compte tenu de la structure de la famille et du mode de transmission. |
+| Est porteur ou porteuse de cette affection             | Des traits horizontaux qui remplissent le symbole        | La personne est forcément porteuse de l’affection sans la développer.                               |
+| Pourrait développer cette affection                    | Le trait vertical, interrompu par un point d’interrogation | La personne a pu hériter de l’affection (seulement si les statuts possibles sont affichés).       |
+| Pourrait être porteur ou porteuse de cette affection   | Les traits horizontaux, avec un point d’interrogation    | La personne pourrait être porteuse de l’affection (seulement si les statuts possibles sont affichés). |
+| Inconnu                                                | Un symbole vide                                          | Rien dans la famille enregistrée ne permet d’établir un statut.                                     |
+
+La légende dessine chacun de ses symboles sous forme de cercle ; dans l’arbre généalogique, chaque personne garde sa propre forme. Lorsque plusieurs règles attribuent un statut à une personne, c’est le statut le plus certain qui est affiché : un statut enregistré avant un statut déduit, et un statut déduit certain avant un statut possible. Entre les deux statuts possibles, _pourrait développer_ passe avant _pourrait être porteur ou porteuse_.
+
+<KeyConcept title="Un symbole plein signifie toujours que la personne est atteinte">
+
+Seule une personne enregistrée comme atteinte est dessinée avec un remplissage plein. Le remplissage n’est jamais utilisé pour une personne dont on déduit seulement qu’elle présente, ou pourrait présenter, l’affection, aussi solide que soit la déduction. Cela suit la nomenclature normalisée des arbres généalogiques, qui réserve l’ombrage aux personnes cliniquement atteintes et ne code aucune probabilité dans un symbole (Bennett et al., 2008). Par exemple, l’enfant de deux parents tous deux porteurs d’une affection récessive est dessiné comme _pourrait développer_ (une chance sur quatre), et non avec un remplissage.
+
+</KeyConcept>
+
+### Centrer l’affichage sur une personne {#focusing-on-one-person}
+
+Une fois une affection choisie, sélectionner une personne centre l’affichage sur elle : une flèche au-dessus de son symbole la signale, et l’arbre généalogique met en évidence les proches par lesquels l’affection a pu lui parvenir, ainsi que les lignes de descendance par lesquelles elle est passée. Toutes les personnes et toutes les lignes qui ne se trouvent pas sur ce chemin sont estompées. **Annuler le centrage**, la touche Échap ou un clic sur une partie vide du canevas annule ce centrage. Passer à une autre affection conserve le centrage, et revenir à **Sélectionnez une affection** l’annule.
+
+Le chemin suit le mode de transmission de l’affection :
+
+- **Autosomique** (dominant ou récessif), **multifactoriel** et **inconnu** : par l’un ou l’autre parent.
+- **Lié à l’X** : le chromosome X d’une personne de sexe masculin vient de sa mère, donc son chemin ne passe que par elle. Pour une affection récessive liée à l’X, une personne de sexe féminin qui en est porteuse et dont le père est atteint l’a reçue de lui, donc son chemin ne passe que par son père, sauf si elle-même est atteinte ou si sa mère est atteinte.
+- **Lié à l’Y** : du père au fils.
+- **Mitochondrial** : par le parent qui a donné l’ovule.
+
+Le chemin ne passe que par des proches qui ont un statut pour l’affection, et la personne sélectionnée est mise en évidence seule lorsqu’aucun de ses parents n’en a. Il est tracé à partir de tous les statuts que l’interface déduit, y compris les statuts possibles lorsqu’ils sont masqués : avec **Afficher les statuts possibles (à risque)** désactivé, un proche affiché comme _Inconnu_ peut donc tout de même se trouver sur le chemin.
+
+![La même famille, avec la personne participante sélectionnée et signalée par une flèche. Les parents et les grands-parents par lesquels l’affection a pu parvenir à la personne participante, ainsi que les lignes qui les relient, sont mis en évidence, et le reste de la famille est estompé.](/assets/img/interface-documentation/narrative-pedigree/focus.png 'Personne participante sélectionnée')
+
+### Clavier et lecteurs d’écran {#keyboard-and-screen-readers}
+
+La famille constitue un seul arrêt dans l’ordre de tabulation. Les touches fléchées permettent de passer d’une personne à l’autre selon leur place dans l’arbre, et Entrée ou Espace sélectionne la personne qui a le focus clavier. Aucune personne ne peut être sélectionnée tant qu’aucune affection n’est choisie, mais les personnes restent accessibles avec les touches fléchées.
+
+Les lecteurs d’écran lisent le nom de chaque personne avec son statut pour l’affection choisie, et annoncent chaque changement d’affection ou de personne sélectionnée. Les symboles eux-mêmes ne sont pas lus : le statut d’une personne n’est donc jamais annoncé s’il n’est pas dessiné.
+
+### Enregistrer un instantané {#saving-a-snapshot}
+
+**Enregistrer un instantané** enregistre une image PNG de toute la famille sur fond blanc, à sa taille naturelle, quelle que soit la partie affichée à l’écran. L’image est dessinée comme l’arbre généalogique l’est pour l’affection choisie et la personne sélectionnée, avec la légende dès qu’une affection est choisie. Elle a pour titre le libellé de l’étape et, dès qu’une affection est choisie, l’affection et la personne sélectionnée, selon les titres d’instantané de [Personnaliser la formulation intégrée](#customize-built-in-wording). Le fichier est enregistré sur l’appareil de la personne participante et ne fait pas partie des données d’entretien.
+
+## Comment les statuts sont déduits {#how-statuses-are-inferred}
+
+L’interface détermine le statut de chaque personne à partir de trois éléments : les personnes enregistrées comme atteintes, la structure biologique de la famille et le sexe assigné à la naissance de chaque personne. La déduction est prudente. Un statut n’est affiché que là où la famille enregistrée le justifie, et une personne est affichée comme _Inconnu_ chaque fois que la famille n’en dit pas davantage.
+
+<KeyConcept title="Inconnu ne signifie pas sans risque">
+
+_Inconnu_ signifie souvent que la famille enregistrée contient trop peu d’informations pour en dire plus, par exemple parce qu’un parent n’a jamais été enregistré ou que les parents d’un frère ou d’une sœur sont incertains. Ce n’est pas une affirmation que la personne est exempte de l’affection.
+
+</KeyConcept>
+
+Le modèle ne donne aucune probabilité, et il ne représente pas la pénétrance variable (au-delà des cas décrits ci-dessous), les phénocopies, le mosaïcisme ni les variants de signification incertaine. Ses statuts indiquent où regarder dans la famille, et ne remplacent pas une évaluation clinique.
+
+### Quelles relations transmettent une affection {#which-relationships-pass-a-condition-on}
+
+Seuls les parents biologiques et les personnes qui ont donné un gamète (ovule ou sperme) transmettent une affection. Les parents adoptifs et sociaux, les beaux-parents, les personnes qui ont porté l’enfant pour autrui et les partenaires ne la transmettent jamais : aucun statut n’est donc jamais déduit à travers eux.
+
+### Sexe assigné à la naissance {#sex-assigned-at-birth}
+
+Les transmissions liées à l’X et à l’Y dépendent du sexe assigné à la naissance, et l’identité de genre n’y joue aucun rôle. Une personne enregistrée comme de sexe féminin ou masculin est traitée comme elle a été enregistrée. Une personne enregistrée comme intersexe est toujours traitée comme de sexe incertain, car on ne peut supposer ni un seul chromosome X ni deux. Une personne dont le sexe est inconnu, qui a préféré ne pas répondre ou à qui la question n’a pas été posée est classée d’après le gamète qu’elle a donné pour un enfant, l’ovule ou le sperme, lorsque la [règle des gamètes](/fr/design-protocols/interface-documentation/family-pedigree#which-parent-gave-the-egg-or-the-sperm) de l’étape « Arbre généalogique » le déduit de l’autre parent de l’enfant ; sinon, elle est traitée comme de sexe incertain. Une transmission liée à l’X ou à l’Y qui passe par une personne de sexe incertain est laissée non résolue plutôt que devinée. La transmission mitochondriale suit l’ovule plutôt que le sexe : elle passe donc par toute personne dont la règle des gamètes montre qu’elle a donné un ovule, y compris une personne enregistrée comme intersexe.
+
+### Déductions selon chaque mode {#inferences-under-each-pattern}
+
+Dans la liste suivante, « de sexe féminin » et « de sexe masculin » renvoient au sexe assigné à la naissance, comme décrit ci-dessus.
+
+- **Autosomique dominant.** Les descendants d’une personne atteinte _pourraient développer_ l’affection. Une personne non atteinte située entre un ascendant atteint et un descendant atteint en _est porteuse_, lorsque l’affection du descendant ne peut être venue que par elle ; il s’agit d’une personne porteuse non pénétrante d’une affection dominante. Les parents d’une personne atteinte qui n’a aucun ascendant atteint ne sont jamais marqués comme porteurs, car l’affection a pu apparaître de novo.
+- **Autosomique récessif.** Les deux parents génétiques d’une personne atteinte, ainsi que chaque enfant d’une personne atteinte, _sont porteurs_ de l’affection. Une personne dont les deux parents génétiques sont atteints la _développera_. Une personne dont les deux parents génétiques en sont porteurs _pourrait la développer_ ; une personne dont un seul parent porteur est enregistré _pourrait en être porteuse_. Les grands-parents d’une personne atteinte du côté de ses parents porteurs, ainsi que les frères et sœurs de ces parents porteurs, _pourraient en être porteurs_.
+- **Récessif lié à l’X.** Chaque fille d’une personne de sexe masculin atteinte _est porteuse_ de l’affection, tandis que les fils de cette personne n’héritent rien d’elle. Une personne de sexe féminin qui a deux fils atteints, ou un fils atteint et un frère atteint né de la même mère qu’elle, _en est porteuse_. Dans les autres cas, la mère d’une seule personne de sexe masculin atteinte _pourrait en être porteuse_, de même que la grand-mère maternelle et les tantes maternelles de cette personne atteinte ; ses oncles maternels, eux, _pourraient la développer_. À partir de chaque personne de sexe féminin qui est ou pourrait être porteuse de l’affection, les filles _pourraient en être porteuses_ et les fils _pourraient la développer_. Les proches reliés uniquement par une personne de sexe masculin non atteinte, comme un demi-frère ou une demi-sœur de la mère qui ne partage avec elle que son père, ne sont pas marqués.
+- **Dominant lié à l’X.** Chaque fille d’une personne de sexe masculin atteinte _développera_ l’affection, tandis que les fils de cette personne n’héritent rien d’elle. Chaque enfant d’une personne de sexe féminin atteinte _pourrait la développer_, et la déduction se poursuit vers le bas à travers chacun de ces enfants selon les mêmes règles.
+- **Lié à l’Y.** Chaque personne de sexe masculin de la lignée masculine ininterrompue d’une personne de sexe masculin atteinte, y compris son père, ses fils, ses frères, ses oncles paternels et leurs fils, _développera_ l’affection. Rien ne passe à une personne de sexe féminin ni par elle.
+- **Mitochondrial.** L’affection suit l’ovule. Chaque enfant d’une personne de sexe féminin atteinte _pourrait la développer_, et l’affection ne se transmet ensuite que par les filles. La lignée maternelle de la personne atteinte (sa mère, la mère de celle-ci, et ainsi de suite) et les autres enfants de cette lignée _pourraient_ eux aussi _la développer_. Lorsqu’un enfant a été conçu avec un ovule de donneuse, la lignée suit la donneuse, et non la personne qui a porté la grossesse. Comme l’expression des affections mitochondriales varie, les proches dont le statut est déduit ne sont jamais marqués comme développant certainement l’affection.
+- **Multifactoriel** et **inconnu.** Seules les personnes enregistrées comme atteintes sont marquées.
+
+L’étape « Arbre généalogique » n’accepte, pour chaque enfant, qu’un seul parent génétique enregistré comme de sexe féminin à la naissance : le don de mitochondries, dans lequel un ovule fournit le noyau et un autre les mitochondries, ne peut donc pas être représenté.
+
+### Statuts possibles {#possible-statuses}
+
+Les deux statuts possibles, _pourrait développer_ et _pourrait être porteur ou porteuse_, sont déduits et non observés. Ils constituent un signal visuel fort, qui peut être lu comme un fait établi. La nomenclature normalisée des arbres généalogiques ne code délibérément aucune probabilité dans un symbole, et l’interface dessine ces statuts sous la forme du symbole certain correspondant, auquel s’ajoute un point d’interrogation, et jamais avec un remplissage. Ils sont destinés à un **usage sous supervision clinique**, où une personne qualifiée les interprète en contexte.
+
+<TipBox danger>
+
+Tout ce que l’étape « Arbre généalogique narratif » marque comme possible est déduit du récit que la personne participante fait elle-même de sa famille, et ne constitue pas un diagnostic. N’activez les statuts possibles que lorsque du personnel clinique interprète les résultats, et ne les présentez jamais à une personne participante comme un diagnostic.
+
+</TipBox>
+
+## Bonnes pratiques {#best-practices}
+
+<GoodPractice>
+
+Placez l’étape « Arbre généalogique narratif » après l’étape « Arbre généalogique » qui l’alimente, et enregistrez les personnes atteintes avec une consigne de désignation par affection dans l’étape « Arbre généalogique ». Définissez soigneusement le mode de transmission de chaque affection, car toutes les déductions en dépendent.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Utilisez le réglage de [complétude](/fr/design-protocols/interface-documentation/family-pedigree#completeness) de l’étape « Arbre généalogique » pour exiger les proches dont vos affections ont besoin. Lorsque des parents ou des frères et sœurs manquent, des personnes restent au statut _Inconnu_ alors qu’une famille plus complète permettrait d’établir leur statut.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Nommez les affections avec des mots que les personnes participantes reconnaissent. Le nom est tout ce que la personne participante voit de la définition de l’affection.
+
+</GoodPractice>
+
+## À éviter {#try-to-avoid}
+
+<BadPractice>
+
+N’activez pas les statuts possibles pour un usage présenté aux personnes participantes sans supervision clinique. Les symboles déduits « pourrait développer » et « pourrait être porteur ou porteuse » peuvent être pris pour un diagnostic.
+
+</BadPractice>
+
+<BadPractice>
+
+Ne choisissez pas de mode de transmission pour une affection dont la transmission n’est pas établie. Choisissez plutôt **Inconnu** ou **Multifactoriel**, afin que seuls les statuts enregistrés soient affichés.
+
+</BadPractice>
+
+## Références {#references}
+
+Bennett, R. L., French, K. S., Resta, R. G., & Doyle, D. L. (2008). Standardized human pedigree nomenclature: Update and assessment of the recommendations of the National Society of Genetic Counselors. _Journal of Genetic Counseling, 17_(5), 424–433. https://doi.org/10.1007/s10897-008-9169-9
+
+Bennett, R. L., French, K. S., Resta, R. G., & Austin, J. (2022). Practice resource-focused revision: Standardized pedigree nomenclature update centered on sex and gender inclusivity. _Journal of Genetic Counseling, 31_(6), 1238–1248. https://doi.org/10.1002/jgc4.1621

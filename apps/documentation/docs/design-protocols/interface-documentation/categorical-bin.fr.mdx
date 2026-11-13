@@ -1,0 +1,80 @@
+---
+title: Classement par catégories
+navOrder: 13
+translatedFrom: 2ce51611041fb1a0d4d406775ac67b16c213420e
+---
+
+<InterfaceSummary type="CategoricalBin">
+
+<InterfaceMeta type="Interpréteur de noms" creates="Attributs catégoriels" usesprompts="true">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+L’interface « Classement par catégories » est une interface de type interpréteur de noms (une question posée sur chaque alter déjà cité) qui recueille des données nominales sur les alters de la personne participante (chaque personne qu’elle cite pendant l’entretien). Dans une étape « Classement par catégories », les personnes participantes font glisser les alters un par un dans des cercles colorés, appelés cases (les zones où l’on dépose les nœuds pour les classer) ; chaque case représente une catégorie de l’attribut catégoriel. Une fois les alters placés, les personnes participantes peuvent toucher n’importe quelle catégorie et déplacer les alters de cette catégorie vers n’importe quelle autre.
+
+## Configurer une étape « Classement par catégories » {#configuring-categorical-bin}
+
+Une étape « Classement par catégories » peut comporter plusieurs [consignes](/fr/design-protocols/key-concepts/prompts), chacune portant sur un seul attribut catégoriel.
+
+<AppOnly app="current">
+
+Dans Architect, les catégories sont les options de réponse de l’attribut catégoriel de la consigne, et vous les modifiez directement sous l’attribut que vous avez choisi, dans la boîte de dialogue de la consigne. Elles sont enregistrées lorsque vous enregistrez la consigne. Les libellés des options acceptent du texte en **gras** et en _italique_, que les personnes participantes voient mis en valeur.
+
+</AppOnly>
+
+De plus, vous pouvez indiquer un attribut « autre » (un attribut texte qui enregistre les réponses libres) pour les réponses qui n’entrent dans aucune des catégories préconfigurées.
+
+![Configuration de l’attribut « autre » d’une consigne « Classement par catégories »](/assets/img/interface-documentation/categorical-bin/architect-other.png)
+
+<AppOnly app="current">
+
+### Personnaliser la formulation intégrée {#customize-built-in-wording}
+
+Lorsque **Exiger le placement de chaque nœud** est activé dans la section **Placement des nœuds** de l’étape, les personnes participantes ne peuvent pas continuer tant que chaque nœud n’est pas dans une case. L’avis qu’elles voient lorsqu’elles essaient se trouve sous **Nœuds non placés**, dans la section **Personnaliser la formulation intégrée** de l’éditeur d’étape. Network Canvas fournit une formulation de départ, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez la modifier et la traduire comme n’importe quel autre texte (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)). L’avis peut afficher le nom du type de nœud de l’étape, inséré sous forme de pastille à l’aide du bouton de texte dynamique du champ (le texte dynamique, piped text en anglais, insère automatiquement dans un texte des réponses ou des informations de l’entretien).
+
+Lorsque l’étape utilise le mode « Toucher pour placer » plutôt que le glisser-déposer, chaque case que la personne participante ouvre comporte un bouton « Placer ici ». Son libellé est le même dans toutes les étapes « Classement par catégories ». Il se trouve sous **Commun à toutes les étapes de ce type**, dans la même section, et toute modification s’applique à toutes les étapes de ce type. Le protocole ne le contient que tant qu’une étape « Classement par catégories » utilise le mode « Toucher pour placer ».
+
+</AppOnly>
+
+### Bonnes pratiques {#best-practices}
+
+<GoodPractice>
+
+Utilisez cette interface pour recueillir des données nominales sur les alters. Même si un « Groupe de boutons bascules » peut être ajouté comme [commande de saisie](/fr/design-protocols/key-concepts/input-controls) (le type de champ avec lequel un attribut est recueilli : zone de texte, curseur, cases à cocher…) dans
+d’autres interfaces, le glisser-déposer de l’interface « Classement par catégories »
+offre une manière tactile de recueillir ces données, qui retient l’attention
+des personnes participantes.
+
+</GoodPractice>
+
+### À éviter {#try-to-avoid}
+
+<BadPractice>
+
+Évitez d’utiliser plus de huit catégories dans cette interface. Au-delà, les libellés
+des catégories deviennent difficiles à lire et les autres éléments visuels
+de l’interface en pâtissent.
+
+Les libellés des catégories peuvent être bien plus longs qu’un ou deux mots : une
+phrase courte convient. Chaque libellé rétrécit, par paliers, pour tenir dans l’espace
+dont dispose sa case, plutôt que d’être coupé au milieu d’un mot, et un lecteur d’écran
+lit toujours le libellé en entier. Le texte ne rétrécit toutefois pas en dessous d’une taille minimale : un libellé
+qui déborde de sa case même à cette taille est tronqué, ce qui est plus probable
+avec de nombreuses cases ou sur un petit écran. Vérifiez votre libellé le plus long dans
+l’[aperçu](/fr/design-protocols/preview-mode) à la taille qu’utiliseront les personnes
+participantes. Les libellés courts restent plus grands et se lisent plus facilement d’un coup d’œil.
+
+</BadPractice>
+
+<BadPractice>
+
+Évitez d’utiliser l’interface « Classement par catégories » pour recueillir des attributs dichotomiques. Les attributs
+dichotomiques se recueillent mieux avec la [commande de
+saisie](/fr/design-protocols/key-concepts/input-controls) « Interrupteur » (dans une étape [« Générateur
+de noms »](/fr/design-protocols/interface-documentation/name-generator-using-forms) ou dans une étape [« Formulaire par
+alter »](/fr/design-protocols/interface-documentation/per-alter-form), qui présente un formulaire pour chaque alter) ou avec l’option « Basculement
+d’attribut » de l’étape [« Sociogramme »](/fr/design-protocols/interface-documentation/sociogram).
+
+</BadPractice>

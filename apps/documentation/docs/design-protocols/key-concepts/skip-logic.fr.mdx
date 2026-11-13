@@ -1,0 +1,132 @@
+---
+title: Logique de saut
+navOrder: 10
+translatedFrom: 83ec6d783466689c459929d1e9c00f19a8f1b8cb
+---
+
+<Definition>
+  La logique de saut vous permet de sauter ou d’afficher des étapes de
+  l’entretien selon des conditions, en fonction des informations que contient
+  le réseau de l’entretien à ce moment-là.
+</Definition>
+
+## Détails {#details}
+
+La logique de saut est une fonctionnalité d’Interviewer qui vous permet de sauter ou d’afficher des étapes de l’entretien selon des conditions, en fonction des informations que contient le réseau de l’entretien à ce moment-là. En sautant ou en affichant certaines étapes, vous pouvez orienter le parcours d’une personne participante dans votre protocole.
+
+Par exemple, si une personne participante indique dans une étape « Formulaire ego » qu’elle n’a jamais consommé de drogues, vous pouvez configurer votre protocole avec une logique de saut pour sauter les étapes suivantes de type interpréteur de noms (des questions posées sur chaque alter, c’est-à-dire chaque personne que la personne participante cite pendant l’entretien) qui portent sur la consommation de drogues en compagnie des alters.
+
+<TipBox>
+
+La logique de saut n’est pas la même chose que le [filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering) ! La logique de saut détermine si une étape entière doit être affichée, tandis que le filtrage du réseau détermine quels nœuds ou quels liens apparaissent dans une étape. Utilisez la logique de saut pour créer des parcours d’entretien adaptatifs, et le filtrage du réseau pour alléger la charge des personnes participantes en n’affichant que les membres du réseau pertinents.
+
+</TipBox>
+
+Voici un aperçu général du fonctionnement de la logique de saut :
+
+- Créez une ou plusieurs **règles** fondées sur les attributs de l’ego (la personne participante, au centre de son réseau), des alters ou des liens.
+- Ces règles donnent pour résultat **vrai** ou **faux** au moment où l’étape est sur le point d’être affichée.
+- La valeur de chaque règle est ensuite **agrégée** en une valeur globale, vraie ou fausse, à l’aide d’une logique `AND` ou `OR`.
+- Le résultat agrégé est ensuite évalué selon que l’intention est de décrire quand **afficher** l’étape ou quand la **sauter**.
+- En fonction de ce résultat, l’étape est soit affichée, soit sautée.
+
+## Ajouter une logique de saut à une étape {#adding-skip-logic-to-a-stage}
+
+Pour ajouter une logique de saut à une étape, ouvrez-la depuis la vue de la chronologie, puis activez l’interrupteur situé à côté du titre de la section **Logique de saut** pour déplier la section.
+
+![](/assets/img/key-concepts/skip-logic/skip-logic-section.png)
+
+Pour retirer la logique de saut d’une étape, désactivez l’interrupteur. Architect vous demande d’abord de confirmer, car cette action supprime les règles de l’étape.
+
+Le badge affiché à côté de chaque étape dans la chronologie vous indique quelles
+étapes ont une logique de saut activée. Le badge montre aussi où l’entretien
+reprend lorsque cette étape est sautée.
+
+## Règles de logique de saut {#skip-logic-rules}
+
+La construction des règles est la partie la plus fondamentale de la création d’une logique de saut. Il existe plusieurs types de règles, selon l’entité du réseau ciblée :
+
+- **Règles de « présence »** : ces règles vous permettent de vérifier si une entité d’un type donné existe dans le réseau, à l’aide de l’opérateur _existe_ ou _n’existe pas_. Ce type de règle est disponible pour les règles portant sur les alters et sur les liens.
+- **Règles d’« attribut »** : ces règles vous permettent d’interroger la valeur d’un attribut sur un type d’entité donné. Par exemple, vous pouvez interroger la valeur d’un attribut appelé `age` sur un type d’alter appelé « Person » (personne). Vous pouvez évaluer le résultat à l’aide de l’un des opérateurs logiques proposés, qui varient selon le type d’attribut. Par exemple, les attributs numériques vous permettent d’utiliser des opérateurs comme _est supérieur à_ et _est inférieur à_. Ce type de règle ne s’applique qu’aux règles portant sur les alters et sur l’ego.
+
+Les opérateurs disponibles pour une règle d’attribut dépendent du type de l’attribut, exactement comme pour le [filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering). Les attributs de texte peuvent être comparés avec _est exactement_, _n’est pas_ et, à partir du schéma 8, _contient_ et _ne contient pas_. Pour les attributs ordinaux et catégoriels, les opérateurs _inclut_ et _exclut_ acceptent **plusieurs** valeurs sélectionnées, de sorte qu’une seule règle peut correspondre à n’importe laquelle de plusieurs options de réponse.
+
+## L’opérateur de jonction {#the-join-operator}
+
+Les règles sont enchaînées (ou « jointes ») à l’aide d’une logique `AND` ou `OR`, que vous choisissez dans la section de configuration de la logique de saut, sous **Correspondance des règles** : **Toutes les règles doivent être satisfaites** pour `AND`, **Au moins une règle doit être satisfaite** pour `OR`. Les opérateurs de jonction déterminent comment plusieurs règles sont évaluées ensemble pour obtenir la valeur booléenne globale que renvoie la requête.
+
+Si les règles sont jointes par `AND` et que chaque règle prise individuellement donne `true`, la contrainte de niveau supérieur donne elle aussi vrai (par exemple : `true && true === true`). À l’inverse, si au moins une règle donne faux, la contrainte de niveau supérieur donne elle aussi faux (`true && false === false`). Si les règles sont jointes par `OR`, il suffit qu’une seule règle donne vrai pour que la contrainte de niveau supérieur donne elle aussi vrai (`true || false || false === true`).
+
+![](/assets/img/key-concepts/skip-logic/must-match.png)
+
+Le choix de l’opérateur de jonction peut donc avoir un effet considérable sur la façon dont vos règles sont évaluées ensemble. Pour bien saisir la différence, retenez ceci : utilisez l’option « Toutes les règles doivent être satisfaites » lorsqu’il n’existe qu’_un seul_ scénario dans lequel l’étape doit être affichée. Vous pouvez alors ajouter autant de règles que nécessaire pour que ce scénario soit aussi précis que possible.
+
+À l’inverse, utilisez l’option « Au moins une règle doit être satisfaite » lorsqu’il existe de nombreuses raisons d’afficher une étape. Par exemple, vous pouvez afficher une étape « Information » contenant une vidéo d’intervention intégrée si une personne participante a déclaré au moins un comportement à risque parmi plusieurs.
+
+## Sauter ou afficher {#skip-or-show}
+
+Avant de connaître le résultat final de la règle de logique de saut, il faut tenir compte d’une dernière propriété configurable : le paramètre **Action**, qui vaut soit **Afficher cette étape**, soit **Sauter cette étape**. Cette option vous permet de décider si un résultat « vrai » de l’évaluation de vos règles doit faire sauter l’étape ou la faire afficher. Vous pouvez ainsi écrire vos règles en termes _négatifs_, c’est-à-dire écrire des règles qui définissent quand une étape doit être **affichée** plutôt que quand elle doit être sautée. Cela peut être plus pratique si vous avez de nombreuses valeurs à inclure ou à exclure.
+
+Par exemple, si vous souhaitiez sauter une étape selon qu’un attribut catégoriel comportant de nombreuses options de réponse a pour valeur n’importe laquelle de ses valeurs possibles sauf une, vous devriez normalement écrire une règle pour chaque valeur et utiliser l’opérateur `OR`. En revanche, si vous réglez l’action sur **Afficher cette étape**, il vous suffit de définir une seule règle qui inclut la valeur précisément autorisée.
+
+<TipBox>
+
+Réfléchissez bien aux implications logiques de votre opérateur de jonction lorsque vous modifiez cette propriété, car le résultat peut être contre-intuitif. Avec l’opérateur `AND`, il est très facile de rendre votre règle trop restrictive !
+
+</TipBox>
+
+## Choisir où reprendre {#choosing-where-to-continue}
+
+Par défaut, lorsqu’une étape est masquée, l’entretien reprend à l’étape suivante
+dont la propre logique de saut permet l’affichage. Vous pouvez à la place choisir,
+dans le champ **Lorsque cette étape est sautée**, une étape ultérieure précise
+ou l’[étape « Écran de fin »](/fr/design-protocols/interface-documentation/finish-screen) qui termine l’entretien.
+
+La destination appartient à l’étape susceptible d’être masquée. Par exemple, supposons
+qu’une étape « Formulaire ego » recueille le consentement et que le reste de l’entretien doive être
+contourné lorsque le consentement n’est pas donné. Ajoutez la règle de consentement à la première étape qui suit le
+formulaire de consentement, puis choisissez **Terminer l’entretien** comme destination de cette étape.
+L’entretien est alors dirigé vers l’étape « Écran de fin », où il se termine de la manière dont
+cette étape « Écran de fin » est configurée : soit la personne participante confirme, soit l’entretien
+se termine automatiquement. Chaque protocole se termine par une étape « Écran de fin », et la
+destination mène à la première qui suit l’étape à laquelle appartient la règle. Si votre
+protocole se termine par plusieurs étapes « Écran de fin », par exemple une fin distincte pour
+les personnes participantes qui ne remplissent pas les critères d’inclusion, choisissez-en une plus loin par son nom pour terminer
+l’entretien à cet endroit. Une étape « Écran de fin » ne peut pas avoir elle-même de logique de saut, car
+tous les parcours de l’entretien se terminent par l’une d’elles.
+
+Seules les destinations situées plus loin sont proposées. Lorsqu’une destination est utilisée, toutes les
+étapes situées entre l’étape masquée et la destination sont contournées. La destination
+évalue tout de même sa propre logique de saut : l’entretien peut donc aller plus loin si
+cette étape est elle aussi masquée.
+
+La logique de saut est recalculée à partir des données actuelles de l’entretien. Revenir à une
+étape précédente et modifier une réponse peut donc rouvrir des étapes qui avaient été
+contournées. Lorsque la navigation entre les étapes est activée, une étape sautée ou contournée
+peut aussi être affichée après confirmation. Cet affichage forcé n’ouvre que
+l’étape sélectionnée ; en avançant ou en reculant, on revient au parcours actif de l’entretien.
+
+## Exemple détaillé {#extended-example}
+
+Comme la logique de saut peut dérouter au début, voici un exemple détaillé pour illustrer cette fonctionnalité.
+
+Imaginons un entretien dans lequel vous utilisez une interface [« Classement par catégories »](/fr/design-protocols/interface-documentation/categorical-bin) pour classer la relation de la personne participante avec ses alters. Vous définissez des options de réponse comme « friend » (ami ou amie), « spouse/partner » (conjoint ou partenaire), « coworker » (collègue), « parent », « sibling » (frère ou sœur), « child » (enfant), « uncle/aunt » (oncle ou tante) ou « grandparent » (grand-parent), avec les valeurs correspondantes 1, 2, 3, 4, 5, 6, 7 et 8.
+
+![](/assets/img/key-concepts/skip-logic/categorical-variable.png)
+
+À l’étape suivante, vous souhaitez utiliser une autre étape « Classement par catégories », cette fois pour recueillir le type de lien de parenté entre les alters et l’ego (par exemple « biological » (biologique), « step » (famille recomposée : beau-parent, beau-enfant…), « adoptive » (adoptif), « through marriage » (par alliance), etc.). Imaginons maintenant qu’une personne participante n’ait cité aucun alter avec qui elle a un lien de parenté (c’est-à-dire qu’elle n’a cité que des relations amicales, conjugales et/ou professionnelles). Dans ce cas, l’étape sur le type de lien de parenté n’aurait aucune pertinence. Mettre en place une logique de saut pour sauter entièrement cette étape pour cette personne participante permettrait à la fois de gagner en efficacité et de réduire au minimum sa charge.
+
+Vous pouvez pour cela mettre en place une règle de logique de saut simple, comme suit :
+
+![](/assets/img/key-concepts/skip-logic/example.png)
+
+Vous ne pouvez pas obtenir le même résultat en l’inversant, c’est-à-dire avec **Sauter cette étape** et une règle selon laquelle Relationship (relation) _exclut_ 4, 5, 6, 7 et 8. Une règle portant sur les alters est satisfaite dès qu’un seul alter y correspond : cette règle sauterait donc l’étape dès que la personne participante a cité au moins un alter « friend », « spouse/partner » ou « coworker », même si elle a aussi cité des membres de sa famille.
+
+Dès que vous créez plus d’une règle dans la logique de saut d’une étape, vous devez déterminer si vous voulez que toutes les règles soient satisfaites ou qu’il suffise que l’une d’elles le soit. Pour reprendre les exemples ci-dessus, imaginons que vous vouliez créer une étape ultérieure pour recueillir des données sur la famille nucléaire biologique de la personne participante. Vous voulez que cette étape soit affichée si la personne participante a précédemment cité des alters dont la valeur de Relationship est « parent », « sibling » ou « child », et si ces alters ont la valeur « biological » pour Relatedness (lien de parenté). Vous utiliseriez ici l’opérateur `AND` (**Toutes les règles doivent être satisfaites**), puisque vous ne voudriez pas que l’étape soit affichée si la personne participante a dans son réseau des alters dont la valeur de Relationship est « parent », « sibling » ou « child » mais dont aucun n’a la valeur « biological » pour Relatedness. Avec `AND`, toutes les règles portant sur les alters doivent être satisfaites par le même alter : l’étape n’est donc affichée que si au moins un alter a à la fois l’une de ces valeurs de Relationship et la valeur « biological » pour Relatedness.
+
+## Concepts associés {#related-concepts}
+
+- [Filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering) : contrôler quels nœuds ou quels liens apparaissent dans une étape
+- [Interfaces](/fr/design-protocols/key-concepts/interfaces) : comprendre les différents types d’étapes et quand les utiliser
+- [Consignes](/fr/design-protocols/key-concepts/prompts) : configurer les questions présentées aux personnes participantes dans les étapes
+- [Variables](/fr/design-protocols/key-concepts/variables) : créer des variables à utiliser dans les règles de logique de saut

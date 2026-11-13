@@ -1,6 +1,6 @@
 // The documentation's languages. The locale edge function loads this file
 // through Deno, so it must import nothing.
-export const locales = ['en', 'es'] as const;
+export const locales = ['en', 'es', 'fr'] as const;
 
 export type Locale = (typeof locales)[number];
 
