@@ -113,7 +113,9 @@ describe('the fields lay out what is typed', () => {
   });
 
   it('reads each of an editor’s paragraphs in its own direction', () => {
-    render(<RichTextEditorField name="prompt" aria-label="Prompt" />);
+    render(
+      <RichTextEditorField id="prompt" name="prompt" aria-label="Prompt" />,
+    );
     const editor = screen.getByRole('textbox', { name: 'Prompt' });
     expect(editor).toHaveClass(
       '[&_:is(p,h1,h2,h3,h4,h5,h6)]:text-own-direction',
@@ -122,7 +124,14 @@ describe('the fields lay out what is typed', () => {
   });
 
   it('gives an editor the direction the caller knows', () => {
-    render(<RichTextEditorField name="prompt" aria-label="Prompt" dir="rtl" />);
+    render(
+      <RichTextEditorField
+        id="prompt"
+        name="prompt"
+        aria-label="Prompt"
+        dir="rtl"
+      />,
+    );
     const editor = screen.getByRole('textbox', { name: 'Prompt' });
     expect(editor).toHaveAttribute('dir', 'rtl');
     expect(editor).not.toHaveClass(

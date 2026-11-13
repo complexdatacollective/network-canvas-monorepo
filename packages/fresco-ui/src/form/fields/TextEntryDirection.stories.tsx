@@ -55,6 +55,7 @@ function Fields({ typed }: { typed: string }) {
         onChange={(value) => setNotes(value ?? '')}
       />
       <RichTextEditorField
+        id="prompt"
         name="prompt"
         aria-label="Prompt"
         value={paragraphs('مرحبا بكم!', 'Hello, world!')}

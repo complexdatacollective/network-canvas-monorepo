@@ -15,9 +15,15 @@ const LEFT_TO_RIGHT_TYPES: ReadonlySet<HTMLInputTypeAttribute> = new Set([
   'url',
 ]);
 
-const LEFT_TO_RIGHT_MODES: ReadonlySet<
-  NonNullable<HTMLAttributes<HTMLElement>['inputMode']>
-> = new Set(['decimal', 'email', 'numeric', 'tel', 'url']);
+type InputMode = NonNullable<HTMLAttributes<HTMLElement>['inputMode']>;
+
+const LEFT_TO_RIGHT_MODES: ReadonlySet<InputMode> = new Set<InputMode>([
+  'decimal',
+  'email',
+  'numeric',
+  'tel',
+  'url',
+]);
 
 /** Inputs a person types free text into. Every other type the browser draws. */
 const TEXT_TYPES: ReadonlySet<HTMLInputTypeAttribute> = new Set([
