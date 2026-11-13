@@ -267,6 +267,7 @@ describe('the workspaces offered right to left', () => {
   // config; dropping it from one would switch every rule off there silently.
   it.each([
     'apps/architect',
+    'apps/documentation',
     'apps/fresco',
     'apps/interviewer',
     'apps/networkcanvas.com',
