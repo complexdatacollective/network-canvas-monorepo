@@ -158,6 +158,7 @@ type EncryptionStoreOptions = {
   edges?: NcEdge[];
   edgeTypes?: Codebook['edge'];
   stageMetadata?: StageMetadata;
+  nodeLabelWorker?: string;
   /** Receives every session the interview hands the host to persist. */
   onSync?: SyncHandler;
 };
@@ -174,6 +175,7 @@ export function createEncryptionStore(
     edges = [],
     edgeTypes,
     stageMetadata,
+    nodeLabelWorker,
     onSync = () => Promise.resolve(),
   }: EncryptionStoreOptions = {},
 ) {
@@ -207,6 +209,7 @@ export function createEncryptionStore(
         ...(edgeTypes ? { edge: edgeTypes } : {}),
       },
       stages,
+      ...(nodeLabelWorker ? { nodeLabelWorker } : {}),
     },
   };
 

@@ -6,6 +6,7 @@ import { CodebookSchema } from './codebook/index.ts';
 import { ExperimentsSchema } from './common/index.ts';
 import { InterfaceTextSchema } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
+import { NodeLabelWorkerSchema } from './node-label-worker.ts';
 import { stageSchema } from './stages/index.ts';
 import { findTimelineStructureProblems } from './timeline-structure.ts';
 
@@ -28,6 +29,9 @@ export const ProtocolStructureSchema = z.strictObject({
   // interview shows Network Canvas's own wording for what it omits.
   interfaceText: InterfaceTextSchema.optional(),
   assetManifest: z.record(z.string(), assetSchema).optional(),
+  // The script that labels nodes in place of the standard labels (see
+  // `node-label-worker.ts`). Absent in a protocol that has none.
+  nodeLabelWorker: NodeLabelWorkerSchema.optional(),
   stages: z.array(stageSchema).superRefine((stages, ctx) => {
     // Check for duplicate stage IDs
     const duplicateStageId = findDuplicateId(stages);

@@ -83,6 +83,16 @@ const activeProtocolSlice = createSlice({
       if (!state) return state;
       return { ...state, name: action.payload.name };
     },
+    setNodeLabelWorker: (
+      state,
+      action: PayloadAction<{ source: string | undefined }>,
+    ) => {
+      if (!state) return state;
+      const { nodeLabelWorker: _removed, ...rest } = state;
+      return action.payload.source === undefined
+        ? rest
+        : { ...rest, nodeLabelWorker: action.payload.source };
+    },
     updateLastModified: (state, action: PayloadAction<string>) => {
       if (!state) return state;
       return { ...state, lastModified: action.payload };
@@ -215,6 +225,8 @@ export const updateProtocolDescription =
   activeProtocolSlice.actions.updateProtocolDescription;
 export const updateProtocolName =
   activeProtocolSlice.actions.updateProtocolName;
+export const setNodeLabelWorker =
+  activeProtocolSlice.actions.setNodeLabelWorker;
 export const updateLastModified =
   activeProtocolSlice.actions.updateLastModified;
 export const clearActiveProtocol =

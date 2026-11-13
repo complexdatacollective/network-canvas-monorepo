@@ -95,6 +95,9 @@ export const getCodebook = (state: RootState) => {
   return protocol?.codebook || null;
 };
 
+export const getNodeLabelWorker = (state: RootState) =>
+  getProtocol(state)?.nodeLabelWorker;
+
 export const getStageList = createSelector([getProtocol], (protocol) => {
   const stages = protocol ? protocol.stages : [];
 

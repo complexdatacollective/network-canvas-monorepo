@@ -15,6 +15,7 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Section from '@codaco/fresco-ui/Section';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import NodeLabelWorkerSection from '~/components/NodeLabelWorker/NodeLabelWorkerSection';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { getCodebook } from '~/selectors/protocol';
 
@@ -239,6 +240,8 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           </div>
         )}
       </div>
+
+      <NodeLabelWorkerSection />
 
       <div className="mb-14">
         <div className="mb-5 flex items-center gap-5">

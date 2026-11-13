@@ -98,6 +98,20 @@ describe('hashProtocol', () => {
     );
   });
 
+  it('changes when the node label worker is added or changes', () => {
+    const labelled = (suffix: string) => ({
+      ...localizedProtocol(),
+      nodeLabelWorker: `function nodeLabelWorker({ node }) { return node.name + '${suffix}'; }`,
+    });
+    expect(hashProtocol(labelled('!'))).not.toBe(hashProtocol(labelled('?')));
+    expect(hashProtocol(labelled('!'))).not.toBe(
+      hashProtocol(localizedProtocol()),
+    );
+    expect(
+      hashProtocol({ ...localizedProtocol(), nodeLabelWorker: undefined }),
+    ).toBe(hashProtocol(localizedProtocol()));
+  });
+
   it('keeps the hash of a protocol that holds no shared wording', () => {
     // The hash a schema-9 protocol had before shared wording was hashed.
     const { localization, codebook, stages } = localizedProtocol();
