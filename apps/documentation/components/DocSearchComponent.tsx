@@ -61,7 +61,7 @@ const SearchResultHit = ({ hit, children }: HitComponentProps) => {
         <Badge
           size="sm"
           uppercase
-          className={cx('mr-2 shrink-0 self-center text-white', colorClass)}
+          className={cx('me-2 shrink-0 self-center text-white', colorClass)}
         >
           {sectionLabel(slug)}
         </Badge>
@@ -214,7 +214,7 @@ const DocSearchComponent = ({
         <Search aria-hidden />
         <span
           className={cx(
-            'text-input-contrast/50 min-w-0 grow basis-0 text-left italic',
+            'text-input-contrast/50 min-w-0 grow basis-0 truncate text-start italic',
             'phone-landscape:inline tablet-portrait:hidden tablet-landscape:inline hidden',
           )}
         >
@@ -222,7 +222,7 @@ const DocSearchComponent = ({
         </span>
         <span
           className={cx(
-            'text-input-contrast/50 min-w-0 grow basis-0 text-left italic',
+            'text-input-contrast/50 min-w-0 grow basis-0 truncate text-start italic',
             'phone-landscape:hidden',
           )}
         >
@@ -231,7 +231,7 @@ const DocSearchComponent = ({
 
         <kbd
           className={cx(
-            'pointer-events-none ml-auto hidden h-5 shrink-0 items-center gap-1 rounded border bg-current/5 px-1.5 text-xs font-medium text-current/70 not-italic opacity-100 select-none',
+            'pointer-events-none ms-auto hidden h-5 shrink-0 items-center gap-1 rounded border bg-current/5 px-1.5 text-xs font-medium text-current/70 not-italic opacity-100 select-none',
             'phone-landscape:inline-flex',
             large && 'h-6',
           )}

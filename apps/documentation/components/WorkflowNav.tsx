@@ -89,13 +89,13 @@ function CollapsedNav({ className }: { className?: string }) {
               {index > 0 && (
                 <ChevronRight
                   aria-hidden
-                  className="h-5 w-5 shrink-0 text-current/30"
+                  className="h-5 w-5 shrink-0 text-current/30 rtl:-scale-x-100"
                 />
               )}
               <Tabs.Tab
                 value={section.key}
                 className={cx(
-                  'focusable relative flex shrink-0 cursor-pointer items-center gap-2 rounded py-2 pr-5 pl-3 text-base font-semibold transition-colors duration-200',
+                  'focusable relative flex shrink-0 cursor-pointer items-center gap-2 rounded py-2 ps-3 pe-5 text-base font-semibold transition-colors duration-200',
                   isActive ? 'text-white' : 'hover:text-text text-current/70',
                 )}
               >
@@ -194,7 +194,7 @@ function FullCards({ className }: { className?: string }) {
             <ChevronRight
               aria-hidden
               strokeWidth={3}
-              className="text-text laptop:block hidden h-8 w-8 shrink-0 self-center"
+              className="text-text laptop:block hidden h-8 w-8 shrink-0 self-center rtl:-scale-x-100"
             />
           )}
           <WorkflowCard section={section} />
