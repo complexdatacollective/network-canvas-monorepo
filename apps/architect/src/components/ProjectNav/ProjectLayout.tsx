@@ -48,7 +48,7 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       : location === '/protocol/summary'
         ? 'report'
         : 'authoring';
-  // Offered on the Stages screen only, and only to a tab that may edit.
+  // Offered to a tab that may edit, on the screens the review is used from.
   const reviewAction = useReviewProtocolToolbarAction(location, mode);
 
   return (

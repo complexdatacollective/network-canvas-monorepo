@@ -10,7 +10,7 @@ import type {
   FindingCategory,
   FindingSeverity,
 } from '@codaco/protocol-review-worker/contract';
-import type { FindingLocation } from '~/protocolReview/describeFix';
+import type { FindingLocation, FixPlace } from '~/protocolReview/describeFix';
 import { cx } from '~/utils/cva';
 
 /**
@@ -127,6 +127,12 @@ const locationMessages = defineMessages({
     description:
       'Link from a problem found by the automated protocol review to the stage it is about, which the researcher will fix themselves. {position} is the stage’s number on the Stages screen.',
   },
+  openStages: {
+    id: 'architect.protocolReview.location.openStages',
+    defaultMessage: 'Open stages',
+    description:
+      'Link from a problem found by the automated protocol review to the Stages screen, where the researcher will add, remove or reorder stages to fix it themselves. "Stages" is the name of that screen in Architect.',
+  },
   openCodebook: {
     id: 'architect.protocolReview.location.openCodebook',
     defaultMessage: 'Open codebook',
@@ -161,11 +167,20 @@ export const formatLocation = (
   return intl.formatMessage(locationMessages.protocol);
 };
 
-/** The words of a link to where a problem is; null when it has nowhere to go. */
+/**
+ * The words of a link to a place in the protocol, such as where a problem
+ * would be fixed; null when it has nowhere to go.
+ */
 export const formatLocationLink = (
   intl: IntlShape,
-  location: FindingLocation,
+  location: FixPlace,
 ): { href: string; label: string } | null => {
+  if (location.kind === 'stages') {
+    return {
+      href: location.href,
+      label: intl.formatMessage(locationMessages.openStages),
+    };
+  }
   if (location.kind === 'stage') {
     return {
       href: location.href,

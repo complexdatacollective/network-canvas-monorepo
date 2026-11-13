@@ -28,6 +28,7 @@ import {
   refreshReviewProviders,
   startReview,
 } from '~/ducks/modules/protocolReview';
+import { type ReviewPlace, reviewPlaceAt } from '~/protocolReview/reviewPlace';
 import { getIsProtocolReviewEnabled } from '~/selectors/protocol';
 
 import ReviewPopoverContent from './ReviewPopoverContent';
@@ -80,6 +81,8 @@ const messages = defineMessages({
 
 type ReviewProtocolActionProps = {
   ref?: ToolbarButtonProps['ref'];
+  /** The screen it is on, other than the Stages screen. */
+  place?: ReviewPlace | null;
 };
 
 /**
@@ -93,6 +96,7 @@ type ReviewProtocolActionProps = {
  */
 const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
   ref,
+  place = null,
 }: ReviewProtocolActionProps) {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
@@ -239,6 +243,7 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
           onRequestReview={() => void requestReview()}
           onRetryReview={() => void start()}
           announce={announce}
+          place={place}
         />
       </ToolbarPopover>
     </>
@@ -246,17 +251,25 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
 });
 
 /**
- * The Review protocol control for the toolbar, where it belongs: on the
- * Stages screen, while the protocol has the experiment on and this tab may
- * edit it. Undefined everywhere else.
+ * The Review protocol control for a toolbar at `location`, while the protocol
+ * has the experiment on and this tab may edit it: on the Stages screen, where
+ * reviews are asked for, and, once there is a review, in a stage's editor and
+ * on the Codebook page, where its problems are fixed. Undefined everywhere
+ * else.
  */
 export const useReviewProtocolToolbarAction = (
   location: string,
   mode: ProjectActionsMode,
 ): ReactNode | undefined => {
   const enabled = useAppSelector(getIsProtocolReviewEnabled);
-  if (!enabled || mode !== 'authoring' || location !== '/protocol') {
-    return undefined;
+  const reviewed = useAppSelector(
+    (state) => getProtocolReviewSummary(state) !== null,
+  );
+  if (!enabled || mode !== 'authoring') return undefined;
+  if (location === '/protocol') {
+    return <ReviewProtocolAction key="protocol-review" />;
   }
-  return <ReviewProtocolAction key="protocol-review" />;
+  const place = reviewPlaceAt(location);
+  if (place === null || !reviewed) return undefined;
+  return <ReviewProtocolAction key="protocol-review" place={place} />;
 };

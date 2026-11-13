@@ -39,6 +39,17 @@ import {
   type TestStore,
 } from './reviewTestHarness';
 
+/** A problem whose fix is made in the codebook's Person type. */
+const PERSON_FINDING = makeFinding(
+  'person',
+  [op('set', '/codebook/node/person/name', 'Friend')],
+  {
+    codebookEntity: 'node',
+    codebookTypeId: 'person',
+    title: 'The person type is too broad',
+  },
+);
+
 vi.unmock('@codaco/fresco-ui/dialogs/useDialog');
 vi.mock('~/analytics', () => ({ posthog: { capture: vi.fn() } }));
 
@@ -475,8 +486,9 @@ describe('the results', () => {
     renderToolbar(store);
 
     const panel = await openPanel();
-    expect(within(panel).getByText('For you to fix')).toBeVisible();
-    const dismissedRow = within(panel).getByText('Dismissed').closest('li');
+    const list = within(panel).getByRole('list', { name: 'Problems found' });
+    expect(within(list).getByText('For you to fix')).toBeVisible();
+    const dismissedRow = within(list).getByText('Dismissed').closest('li');
     if (!dismissedRow) throw new Error('No row');
     await userEvent.click(
       within(dismissedRow).getByRole('button', { name: 'Undo dismiss' }),
@@ -851,7 +863,7 @@ describe('one problem at a time, in the panel', () => {
     expect(findingOf(store, 'prompt').status).toBe('undecided');
   });
 
-  it('offers no link to a stage the fix removed', async () => {
+  it('offers no link to a stage the fix removed, only to the Stages screen', async () => {
     const remove = makeFinding('remove', [op('remove', '/stages/welcome')], {
       stageId: 'welcome',
       title: 'The welcome stage repeats the consent form',
@@ -872,19 +884,27 @@ describe('one problem at a time, in the panel', () => {
     expect(
       await within(dialog).findByText(/This was fixed for you\./),
     ).toBeVisible();
-    expect(within(dialog).queryByRole('link', { name: /stage/i })).toBeNull();
+    expect(
+      within(dialog).queryByRole('link', { name: /^Stage 1|^Open stage 1/ }),
+    ).toBeNull();
+    expect(
+      within(dialog).getByRole('link', { name: 'Open stages' }),
+    ).toHaveAttribute('href', '/protocol');
   });
 
   it('makes the fix with the text the researcher changed it to', async () => {
+    const scrollTo = vi
+      .spyOn(HTMLElement.prototype, 'scrollTo')
+      .mockImplementation(() => undefined);
     await reviewed(store);
     renderToolbar(store);
     const dialog = await openProblemFromList('The prompt is vague');
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Edit' }));
     const field = within(dialog).getByRole('textbox', {
-      name: 'After the fix',
+      name: 'Prompt collection › Prompt 1 › Prompt text After the fix',
     });
-    expect(field).toHaveValue('Name everyone you know');
+    expect(field).toHaveTextContent('Name everyone you know');
     await userEvent.clear(field);
     await userEvent.type(field, 'Name the people you see most');
     await userEvent.click(
@@ -898,6 +918,8 @@ describe('one problem at a time, in the panel', () => {
       }),
     );
     expect(findingOf(store, 'prompt').status).toBe('fixed');
+    // Back at the top, where the notice says it was fixed and offers Undo.
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
   });
 
   it('puts the suggestion back when asked, and makes the fix as suggested', async () => {
@@ -907,7 +929,9 @@ describe('one problem at a time, in the panel', () => {
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Edit' }));
     await userEvent.type(
-      within(dialog).getByRole('textbox', { name: 'After the fix' }),
+      within(dialog).getByRole('textbox', {
+        name: 'Prompt collection › Prompt 1 › Prompt text After the fix',
+      }),
       ' today',
     );
     await userEvent.click(
@@ -943,27 +967,30 @@ describe('one problem at a time, in the panel', () => {
     );
     dialog = await problemView('The welcome title is unclear');
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'I will fix this' }),
+      within(dialog).getByRole('button', { name: 'Dismiss' }),
     );
     dialog = await problemView('The person type is misused');
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Dismiss' }),
     );
+    // About the whole protocol, so there is nowhere to take the researcher:
+    // the review moves on, here back to the list.
     dialog = await problemView('Nothing answers the research question');
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'I will fix this' }),
+      within(dialog).getByRole('button', { name: 'Fix it myself' }),
     );
 
     const results = await screen.findByRole('dialog', {
       name: 'Protocol review',
     });
     expect(results).toBe(panel);
-    expect(findingOf(store, 'title').status).toBe('mine');
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/protocol$/);
+    expect(findingOf(store, 'title').status).toBe('dismissed');
     expect(findingOf(store, 'broken').status).toBe('dismissed');
     expect(findingOf(store, 'advice').status).toBe('mine');
     const list = within(results).getByRole('list', { name: 'Problems found' });
-    expect(within(list).getAllByText('For you to fix')).toHaveLength(2);
-    expect(within(list).getByText('Dismissed')).toBeVisible();
+    expect(within(list).getAllByText('For you to fix')).toHaveLength(1);
+    expect(within(list).getAllByText('Dismissed')).toHaveLength(2);
     expect(within(list).getByText('Fixed for you')).toBeVisible();
     expect(
       screen.getByText(
@@ -1030,7 +1057,135 @@ describe('one problem at a time, in the panel', () => {
     ).toBeNull();
   });
 
-  it('a fix that cannot be made offers I will fix this instead', async () => {
+  it('Fix it myself goes to the stage, where the review opens on what is left to fix there', async () => {
+    await reviewed(store);
+    const home = renderToolbar(store);
+    const dialog = await openProblemFromList('The welcome title is unclear');
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Fix it myself' }),
+    );
+    expect(findingOf(store, 'title').status).toBe('mine');
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/protocol/stage/welcome',
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Protocol review' }),
+      ).toBeNull(),
+    );
+    home.unmount();
+
+    renderToolbar(store, { path: '/protocol/stage/welcome' });
+    await userEvent.click(reviewButton());
+    const panel = await screen.findByRole('dialog', {
+      name: 'Protocol review',
+    });
+    expect(
+      within(panel).getByRole('button', { name: 'For you to fix here' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    const list = within(panel).getByRole('list', { name: 'Problems found' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(1);
+    expect(
+      within(list).getByRole('button', {
+        name: /The welcome title is unclear/,
+      }),
+    ).toBeVisible();
+
+    await userEvent.click(
+      within(panel).getByRole('button', { name: 'All problems' }),
+    );
+    expect(
+      within(
+        within(panel).getByRole('list', { name: 'Problems found' }),
+      ).getAllByRole('listitem'),
+    ).toHaveLength(4);
+  });
+
+  it('opens on every problem from a stage with nothing left to fix there', async () => {
+    await reviewed(store);
+    await store.dispatch(decideFinding('title', 'mine'));
+    renderToolbar(store, { path: '/protocol/stage/names' });
+    await userEvent.click(reviewButton());
+    const panel = await screen.findByRole('dialog', {
+      name: 'Protocol review',
+    });
+    expect(
+      within(panel).getByRole('button', { name: 'All problems' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(
+      within(panel).getByRole('button', { name: 'For you to fix here' }),
+    );
+    expect(
+      within(panel).getByText('Nothing here is waiting for you to fix.'),
+    ).toBeVisible();
+  });
+
+  it('offers the review outside the Stages screen only once there is one', async () => {
+    await openProtocol(store);
+    renderToolbar(store, { path: '/protocol/stage/welcome' });
+    expect(
+      screen.queryByRole('button', { name: /Review protocol/ }),
+    ).toBeNull();
+  });
+
+  it('opens on the codebook’s problems from the Codebook page', async () => {
+    await reviewed(store, {
+      ...RESULT,
+      findings: [...RESULT.findings, PERSON_FINDING],
+    });
+    await store.dispatch(decideFinding('person', 'mine'));
+    await store.dispatch(decideFinding('title', 'mine'));
+    renderToolbar(store, { path: '/protocol/codebook' });
+    await userEvent.click(reviewButton());
+    const panel = await screen.findByRole('dialog', {
+      name: 'Protocol review',
+    });
+    const list = within(panel).getByRole('list', { name: 'Problems found' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(1);
+    expect(
+      within(list).getByRole('button', {
+        name: /The person type is too broad/,
+      }),
+    ).toBeVisible();
+  });
+
+  it('marks a problem Done from the review, and takes it back with Not done yet', async () => {
+    await reviewed(store);
+    await store.dispatch(decideFinding('title', 'mine'));
+    renderToolbar(store);
+
+    let dialog = await openProblemFromList('The welcome title is unclear');
+    expect(
+      within(dialog).getByText(/You chose to fix this yourself\./),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole('link', { name: 'Open stage 1' }),
+    ).toBeVisible();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
+    expect(findingOf(store, 'title').status).toBe('done');
+
+    dialog = await problemView('The person type is misused');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Back' }));
+    const results = await screen.findByRole('dialog', {
+      name: 'Protocol review',
+    });
+    expect(within(results).getByText('Fixed by you')).toBeVisible();
+
+    dialog = await openProblemFromListAlreadyOpen(
+      'The welcome title is unclear',
+    );
+    expect(within(dialog).getByText(/You fixed this yourself\./)).toBeVisible();
+    expect(
+      within(dialog).queryByRole('button', { name: 'Fix for me' }),
+    ).toBeNull();
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Not done yet' }),
+    );
+    expect(findingOf(store, 'title').status).toBe('mine');
+    expect(within(dialog).getByRole('button', { name: 'Done' })).toBeVisible();
+  });
+
+  it('a fix that cannot be made offers Fix it myself instead', async () => {
     await reviewed(store);
     renderToolbar(store);
 
@@ -1048,7 +1203,7 @@ describe('one problem at a time, in the panel', () => {
     expect(findingOf(store, 'broken').status).toBe('undecided');
   });
 
-  it('a fix whose target changed after the review is withdrawn, with I will fix this offered', async () => {
+  it('a fix whose target changed after the review is withdrawn, with Fix it myself offered', async () => {
     await reviewed(store);
     store.dispatch(
       setProtocolTranslation({
@@ -1069,7 +1224,7 @@ describe('one problem at a time, in the panel', () => {
       within(dialog).getByRole('button', { name: 'Fix for me' }),
     ).toHaveAttribute('aria-disabled', 'true');
     expect(
-      within(dialog).getByRole('button', { name: 'I will fix this' }),
+      within(dialog).getByRole('button', { name: 'Fix it myself' }),
     ).not.toHaveAttribute('aria-disabled');
   });
 
@@ -1195,7 +1350,11 @@ describe('one problem at a time, in the panel', () => {
     expect(
       within(dialog).getByText('Bienvenue dans notre étude'),
     ).toBeVisible();
-    expect(within(dialog).getByText('English')).toBeVisible();
-    expect(within(dialog).getByText('French')).toBeVisible();
+    expect(
+      within(dialog).getByText('Page content › Page heading · English'),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByText('Page content › Page heading · French'),
+    ).toBeVisible();
   });
 });

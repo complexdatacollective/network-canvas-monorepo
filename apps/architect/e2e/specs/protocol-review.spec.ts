@@ -929,9 +929,9 @@ test.describe('results', () => {
     ).toBeVisible();
     const fix = fixForMe(view);
     await expect(fix).toBeDisabled();
-    // I will fix this is still on offer.
+    // Fix it myself is still on offer.
     await expect(
-      view.getByRole('button', { name: 'I will fix this' }),
+      view.getByRole('button', { name: 'Fix it myself' }),
     ).toBeEnabled();
     // Forcing the click through the disabled state changes nothing: the
     // problem stays on screen, undecided.
@@ -963,11 +963,12 @@ test.describe('results', () => {
       .click();
     await decide(
       'The second prompt has no limit on how many to name',
-      'I will fix this',
+      'Dismiss',
       2,
     );
     await decide('The closing stage repeats the welcome', 'Dismiss', 3);
-    await decide('Nothing answers the research question', 'I will fix this', 4);
+    // About the whole protocol, so there is nowhere to go: the review stays.
+    await decide('Nothing answers the research question', 'Fix it myself', 4);
 
     // Back at the list, with no summary in between.
     await expect(problemList(popover)).toBeVisible();
@@ -981,18 +982,14 @@ test.describe('results', () => {
       popover.getByRole('button', { name: /^Go through/ }),
     ).toHaveCount(0);
     await expect(popover.getByText('Fixed for you')).toHaveCount(1);
-    await expect(popover.getByText('For you to fix')).toHaveCount(2);
-    await expect(
-      problemRow(
-        popover,
-        'The second prompt has no limit on how many to name',
-      ).getByRole('link', { name: 'Open stage 2' }),
-    ).toBeVisible();
+    await expect(problemList(popover).getByText('For you to fix')).toHaveCount(
+      1,
+    );
+    await expect(popover.getByText('Dismissed')).toHaveCount(2);
     const dismissed = problemRow(
       popover,
       'The closing stage repeats the welcome',
     );
-    await expect(dismissed.getByText('Dismissed')).toBeVisible();
 
     await dismissed.getByRole('button', { name: 'Undo dismiss' }).click();
     await expect(dismissed.getByText('Dismissed')).toHaveCount(0);
@@ -1001,7 +998,7 @@ test.describe('results', () => {
       popover.getByRole('button', { name: 'Go through 1 problem' }),
     ).toBeVisible();
 
-    // A problem taken on is restored from its own view.
+    // A problem taken on is marked done from its own view, and taken back.
     const mine = await openProblem(
       page,
       popover,
@@ -1010,11 +1007,25 @@ test.describe('results', () => {
     await expect(
       mine.getByText('You chose to fix this yourself.'),
     ).toBeVisible();
-    await mine.getByRole('button', { name: 'Decide later' }).click();
-    await expect(reviewButton(page)).toHaveAccessibleName(countName(2));
-    await expect(mine.getByText('You chose to fix this yourself.')).toHaveCount(
-      0,
+    await mine.getByRole('button', { name: 'Done' }).click();
+    await problemView(page, 'The closing stage repeats the welcome')
+      .getByRole('button', { name: 'Back' })
+      .click();
+    await expect(
+      problemRow(popover, 'Nothing answers the research question').getByText(
+        'Fixed by you',
+      ),
+    ).toBeVisible();
+    const done = await openProblem(
+      page,
+      popover,
+      'Nothing answers the research question',
     );
+    await expect(done.getByText('You fixed this yourself.')).toBeVisible();
+    await done.getByRole('button', { name: 'Not done yet' }).click();
+    await expect(
+      done.getByText('You chose to fix this yourself.'),
+    ).toBeVisible();
   });
 
   test('the app’s own Undo after Fix for me returns the problem to undecided', async ({

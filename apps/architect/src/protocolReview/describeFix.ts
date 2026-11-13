@@ -39,6 +39,13 @@ type FixEditCommon = {
    */
   otherTranslations: string[];
   markdown: boolean;
+  /** The text is one paragraph, as its field declares. */
+  singleLine: boolean;
+  /**
+   * The localized text's path with array members by position, as
+   * `nameLocalizedText` reads it; null for anything but a translation.
+   */
+  textPath: (string | number)[] | null;
   editable: boolean;
 };
 
@@ -107,13 +114,46 @@ const probeAt = (value: unknown, segments: readonly string[]): unknown => {
   };
 };
 
-const isMarkdownAt = (
+type TextShape = Pick<FixEditCommon, 'markdown' | 'singleLine' | 'textPath'>;
+
+const positionPath = (
   protocol: CurrentProtocol,
   segments: readonly string[],
-): boolean =>
-  collectLocalizedStrings(probeAt(protocol, segments)).some(
-    (hit) => hit.format === 'markdown',
-  );
+): (string | number)[] | null => {
+  const path: (string | number)[] = [];
+  let node: unknown = protocol;
+  for (const segment of segments) {
+    if (Array.isArray(node)) {
+      const index = findArrayMember(node, segment);
+      if (index === -1) return null;
+      path.push(index);
+      node = node[index];
+    } else {
+      path.push(segment);
+      node = isJsonObject(node) ? node[segment] : undefined;
+    }
+  }
+  return path;
+};
+
+/** The shape and place of the localized text at `segments`. */
+const textShapeAt = (
+  protocol: CurrentProtocol,
+  segments: readonly string[],
+): TextShape => {
+  const [hit] = collectLocalizedStrings(probeAt(protocol, segments));
+  return {
+    markdown: hit?.format === 'markdown',
+    singleLine: hit?.lines === 'single',
+    textPath: positionPath(protocol, segments),
+  };
+};
+
+const PLAIN_TEXT: TextShape = {
+  markdown: false,
+  singleLine: false,
+  textPath: null,
+};
 
 const parsed = (value: string | null): unknown => {
   if (value === null) return undefined;
@@ -148,7 +188,7 @@ const describeSet = (
     const kept = Object.keys(before)
       .filter((locale) => !changed.includes(locale))
       .toSorted();
-    const markdown = isMarkdownAt(protocol, segments);
+    const shape = textShapeAt(protocol, segments);
     return changed.map((locale) => {
       const now = before[locale];
       return {
@@ -157,7 +197,7 @@ const describeSet = (
         after: plainText(after[locale] ?? '', true),
         locale,
         otherTranslations: kept,
-        markdown,
+        ...shape,
         kind: 'text',
         editable: isLiteralMessage(after[locale] ?? ''),
       };
@@ -180,7 +220,7 @@ const describeSet = (
         after: String(after),
         locale: null,
         otherTranslations: [],
-        markdown: false,
+        ...PLAIN_TEXT,
         kind: 'number',
         setting,
         owner: numberSettingOwner(protocol, segments),
@@ -216,7 +256,9 @@ const describeSet = (
       after: plainText(after, isTranslation),
       locale: isTranslation ? last : null,
       otherTranslations,
-      markdown: isTranslation && isMarkdownAt(protocol, segments.slice(0, -1)),
+      ...(isTranslation
+        ? textShapeAt(protocol, segments.slice(0, -1))
+        : PLAIN_TEXT),
       kind: 'text',
       editable: isTranslation && isLiteralMessage(after),
     },
@@ -369,4 +411,86 @@ export const resolveFindingLocation = (
         };
   }
   return { kind: 'protocol' };
+};
+
+/**
+ * Where the researcher makes a fix themselves: a finding's location, or the
+ * Stages screen, where stages are added, removed and reordered.
+ */
+export type FixPlace = FindingLocation | { kind: 'stages'; href: string };
+
+const STAGES_HREF = '/protocol';
+
+const isCodebookEntity = (value: unknown): value is 'node' | 'edge' | 'ego' =>
+  value === 'node' || value === 'edge' || value === 'ego';
+
+/**
+ * Where a fix's edits land, which is where the researcher would make them:
+ * the Stages screen for one that adds or removes stages (or edits several),
+ * the stage for one that edits one stage, the codebook (or one type in it)
+ * for one that edits only the codebook. Anything else, advice with no edits
+ * included, is made where the finding is.
+ */
+export const resolveFixPlace = (
+  protocol: CurrentProtocol,
+  operations: readonly StoredOperation[],
+  location: FindingLocation,
+): FixPlace => {
+  const paths = operations.flatMap((operation) => {
+    const segments = parsePath(operation.path);
+    return segments === null ? [] : [{ op: operation.op, segments }];
+  });
+  if (paths.length === 0) return location;
+
+  const changesStageList = paths.some(
+    ({ op, segments }) =>
+      segments[0] === 'stages' &&
+      (segments.length === 1 ||
+        (segments.length === 2 && (op === 'insert' || op === 'remove'))),
+  );
+  if (changesStageList) return { kind: 'stages', href: STAGES_HREF };
+
+  const stageIds = new Set(
+    paths.flatMap(({ segments }) =>
+      segments[0] === 'stages' && segments[1] !== undefined
+        ? [segments[1]]
+        : [],
+    ),
+  );
+  if (stageIds.size > 1) return { kind: 'stages', href: STAGES_HREF };
+  const [stageId] = stageIds;
+  if (stageId !== undefined) {
+    const stage = resolveFindingLocation(protocol, {
+      stageId,
+      codebookEntity: null,
+      codebookTypeId: null,
+    });
+    return stage.kind === 'stage' ? stage : location;
+  }
+
+  if (!paths.every(({ segments }) => segments[0] === 'codebook')) {
+    return location;
+  }
+  const entities = new Set(paths.map(({ segments }) => segments[1]));
+  const [entity] = entities;
+  // Edits to more than one part of the codebook are made on the page.
+  if (entities.size !== 1 || !isCodebookEntity(entity)) {
+    return {
+      kind: 'codebook',
+      entity: 'node',
+      typeId: null,
+      typeName: null,
+      href: codebookHref(),
+    };
+  }
+  const types = new Set(paths.map(({ segments }) => segments[2]));
+  const [typeId] = types;
+  return resolveFindingLocation(protocol, {
+    stageId: null,
+    codebookEntity: entity,
+    codebookTypeId:
+      entity !== 'ego' && types.size === 1 && typeId !== undefined
+        ? typeId
+        : null,
+  });
 };

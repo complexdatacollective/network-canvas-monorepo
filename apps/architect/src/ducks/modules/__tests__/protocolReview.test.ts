@@ -22,6 +22,7 @@ import {
   setProtocolTranslation,
 } from '~/ducks/modules/activeProtocol';
 import { setActiveProtocolId, setProtocolLockState } from '~/ducks/modules/app';
+import { test as stagesTest } from '~/ducks/modules/protocol/stages';
 import {
   cancelReview,
   checkFixAvailability,
@@ -418,6 +419,7 @@ describe('a review run', () => {
       undecided: 4,
       fixed: 0,
       mine: 0,
+      done: 0,
       dismissed: 0,
     });
     expect(
@@ -874,14 +876,14 @@ describe('decisions', () => {
     });
   });
 
-  it('keeps I will fix this and Dismiss, and restores either to undecided', async () => {
+  it('keeps Fix it myself and Dismiss, and restores only a dismissal to undecided', async () => {
     const id = await reviewed(store);
     await store.dispatch(decideFinding('prompt', 'mine'));
     await store.dispatch(decideFinding('title', 'dismissed'));
     expect(findingOf(store, 'prompt')).toMatchObject({
       status: 'mine',
       canFix: true,
-      canRestore: true,
+      canRestore: false,
     });
     expect(findingOf(store, 'title')).toMatchObject({
       status: 'dismissed',
@@ -1004,6 +1006,93 @@ describe('decisions', () => {
     expect(await store.dispatch(decideFinding('title', 'dismissed'))).toEqual({
       ok: false,
       reason: 'fixed',
+    });
+  });
+});
+
+describe('stage numbers in the review’s text', () => {
+  const NUMBERED = makeFinding(
+    'numbered',
+    [op('set', '/stages/names/prompts/p1/text/en', 'Name everyone you know')],
+    {
+      stageId: 'names',
+      title: 'Stage 2 · Names asks too little',
+      explanation: 'Stage 2 · Names comes after Stage 1 · Welcome.',
+      fix: {
+        summary: 'Reword Stage 2 · Names.',
+        changes: ['Stage 2 · Names: reword the first prompt'],
+        operations: [
+          op('set', '/stages/names/prompts/p1/text/en', 'Name everyone'),
+        ],
+      },
+    },
+  );
+  const REMOVES_WELCOME = makeFinding(
+    'remove-welcome',
+    [op('remove', '/stages/welcome')],
+    { stageId: 'welcome', category: 'structure' },
+  );
+
+  const texts = () => {
+    const finding = findingOf(store, 'numbered');
+    return {
+      title: finding.title,
+      explanation: finding.explanation,
+      summary: finding.fixSummary,
+      changes: finding.fixChanges,
+      position:
+        finding.location.kind === 'stage' ? finding.location.position : null,
+    };
+  };
+
+  const reviewedWith = async (findings: Finding[]) => {
+    await open(store);
+    vi.stubGlobal('fetch', answering({ ...RESULT, findings }).fetchImpl);
+    await store.dispatch(startReview());
+    await store.dispatch(checkFixAvailability());
+  };
+
+  it('follow a stage the researcher deleted', async () => {
+    await reviewedWith([NUMBERED]);
+    store.dispatch(stagesTest.deleteStage('welcome'));
+
+    expect(texts()).toEqual({
+      title: 'Stage 1 · Names asks too little',
+      explanation: 'Stage 1 · Names comes after Welcome.',
+      summary: 'Reword Stage 1 · Names.',
+      changes: ['Stage 1 · Names: reword the first prompt'],
+      position: 1,
+    });
+  });
+
+  it('follow stages the researcher reordered', async () => {
+    await reviewedWith([NUMBERED]);
+    store.dispatch(stagesTest.moveStage(1, 0));
+
+    expect(texts()).toMatchObject({
+      title: 'Stage 1 · Names asks too little',
+      explanation: 'Stage 1 · Names comes after Stage 2 · Welcome.',
+      position: 1,
+    });
+  });
+
+  it('follow a stage another fix removed, and its Undo', async () => {
+    await reviewedWith([NUMBERED, REMOVES_WELCOME]);
+    expect(
+      await store.dispatch(decideFinding('remove-welcome', 'fix')),
+    ).toEqual({ ok: true });
+
+    expect(texts()).toMatchObject({
+      title: 'Stage 1 · Names asks too little',
+      changes: ['Stage 1 · Names: reword the first prompt'],
+      position: 1,
+    });
+
+    store.dispatch(timelineActions.undo());
+    expect(texts()).toMatchObject({
+      title: 'Stage 2 · Names asks too little',
+      changes: ['Stage 2 · Names: reword the first prompt'],
+      position: 2,
     });
   });
 });

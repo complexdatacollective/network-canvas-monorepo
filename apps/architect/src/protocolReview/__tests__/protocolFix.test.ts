@@ -9,6 +9,7 @@ import {
   applyFixEdits,
   describeFixTextEdits,
   resolveFindingLocation,
+  resolveFixPlace,
 } from '../describeFix';
 import { applyOperations } from '../fixEngine';
 import {
@@ -207,6 +208,8 @@ describe('describeFixTextEdits', () => {
         locale: 'en',
         otherTranslations: ['fr'],
         markdown: true,
+        singleLine: true,
+        textPath: ['stages', 1, 'prompts', 0, 'text'],
         kind: 'text',
         editable: true,
       },
@@ -217,6 +220,8 @@ describe('describeFixTextEdits', () => {
         locale: null,
         otherTranslations: [],
         markdown: false,
+        singleLine: false,
+        textPath: null,
         kind: 'text',
         editable: false,
       },
@@ -227,6 +232,8 @@ describe('describeFixTextEdits', () => {
         locale: null,
         otherTranslations: [],
         markdown: false,
+        singleLine: false,
+        textPath: null,
         kind: 'text',
         editable: false,
       },
@@ -253,6 +260,60 @@ describe('describeFixTextEdits', () => {
       ['/stages/welcome/title/en', false],
       ['/stages/welcome/items/intro/content/en', true],
     ]);
+  });
+});
+
+describe('resolveFixPlace', () => {
+  const protocol = makeProtocol();
+  const problemAt = resolveFindingLocation(protocol, {
+    stageId: null,
+    codebookEntity: 'node',
+    codebookTypeId: 'person',
+  });
+  const placeOf = (...operations: ReturnType<typeof op>[]) =>
+    resolveFixPlace(protocol, operations, problemAt);
+
+  it('sends a fix that adds or removes a stage to the Stages screen', () => {
+    expect(placeOf(op('remove', '/stages/welcome'))).toEqual({
+      kind: 'stages',
+      href: '/protocol',
+    });
+    expect(
+      placeOf(
+        op('insert', '/stages/finish', { id: 'new', type: 'Information' }),
+      ),
+    ).toMatchObject({ kind: 'stages' });
+  });
+
+  it('sends a fix that edits one stage, even with the codebook, to that stage', () => {
+    expect(
+      placeOf(
+        op('set', '/codebook/node/person/variables/extra', { name: 'extra' }),
+        op('set', '/stages/names/prompts/p1/text/en', 'Name everyone'),
+      ),
+    ).toMatchObject({ kind: 'stage', stageId: 'names', position: 2 });
+  });
+
+  it('sends a fix that edits several stages to the Stages screen', () => {
+    expect(
+      placeOf(
+        op('set', '/stages/welcome/title/en', 'Hi'),
+        op('set', '/stages/names/prompts/p1/text/en', 'Name everyone'),
+      ),
+    ).toMatchObject({ kind: 'stages' });
+  });
+
+  it('sends a fix to one type, or to the ego, to that part of the codebook', () => {
+    expect(
+      placeOf(op('set', '/codebook/node/person/name', 'Friend')),
+    ).toMatchObject({ kind: 'codebook', entity: 'node', typeId: 'person' });
+    expect(
+      placeOf(op('set', '/codebook/ego/variables/age', { name: 'age' })),
+    ).toMatchObject({ kind: 'codebook', entity: 'ego', typeId: null });
+  });
+
+  it('leaves advice with no edits where the problem is', () => {
+    expect(placeOf()).toBe(problemAt);
   });
 });
 

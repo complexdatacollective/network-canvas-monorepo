@@ -411,6 +411,8 @@ describe('F: the preview shows every text change a fix makes', () => {
         locale: 'en',
         otherTranslations: ['fr'],
         markdown: true,
+        singleLine: true,
+        textPath: ['stages', 1, 'prompts', 0, 'text'],
         kind: 'text',
         editable: true,
       },

@@ -25,6 +25,7 @@ export const FINDING_DECISIONS = [
   'undecided',
   'fix',
   'mine',
+  'done',
   'dismissed',
 ] as const;
 

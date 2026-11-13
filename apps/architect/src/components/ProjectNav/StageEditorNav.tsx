@@ -1,6 +1,7 @@
 import { Check, Eye, Loader2, Settings, X } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { useLocation } from 'wouter';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -18,6 +19,7 @@ import {
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
 import type { StageProblemsStore } from '@codaco/protocol-builder/stage-editor-contract';
 import { useIssuesToolbarControl } from '~/components/Issues';
+import { useReviewProtocolToolbarAction } from '~/components/ProtocolReview/ReviewProtocolAction';
 import { useStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { getProtocolName } from '~/selectors/protocol';
@@ -183,6 +185,7 @@ export const StageEditorToolbar = ({
   const intl = useAppIntl();
   const { control: issuesControl, openIssues } =
     useIssuesToolbarControl(problems);
+  const [location] = useLocation();
   const [previewOptionsOpen, setPreviewOptionsOpen] = useState(false);
   const isSubmitting = useFormStore((state) => state.isSubmitting);
   const hasUnsavedChanges = useStageDraft((beacon) => beacon.dirty);
@@ -198,11 +201,18 @@ export const StageEditorToolbar = ({
   // ProtocolLockBanner sits directly above and names the ways forward.
   const accessMode = useProtocolAccessMode();
   const canCommit = !readOnly && accessMode === 'editable';
+  // The review, once there is one, opened on what is left to fix here.
+  const reviewControl = useReviewProtocolToolbarAction(
+    location,
+    accessMode === 'editable' ? 'authoring' : 'locked',
+  );
 
   const toolbarProps = useMemo(
     () => ({
       'aria-label': intl.formatMessage(messages.stageEditorActions),
       'children': [
+        reviewControl,
+        reviewControl ? <ToolbarSeparator key="review-separator" /> : null,
         issuesControl,
         issuesControl ? <ToolbarSeparator key="issues-separator" /> : null,
         <ToolbarGroup
@@ -271,6 +281,7 @@ export const StageEditorToolbar = ({
       onPreview,
       openIssues,
       previewLabel,
+      reviewControl,
       previewOptionsContent,
       previewOptionsOpen,
       intl,

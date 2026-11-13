@@ -7,11 +7,13 @@ import {
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import { Badge, type BadgeTone } from '@codaco/fresco-ui/Badge';
 import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import { PopoverTitle } from '@codaco/fresco-ui/Popover';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -25,6 +27,7 @@ import {
   decideFinding,
   dismissReview,
   dismissReviewFailure,
+  type FindingDisplayStatus,
   getProtocolReviewCounts,
   getProtocolReviewFindings,
   getProtocolReviewPhase,
@@ -36,6 +39,7 @@ import {
   type ReviewRun,
   undoFix,
 } from '~/ducks/modules/protocolReview';
+import { isFixedAt, type ReviewPlace } from '~/protocolReview/reviewPlace';
 import { getProtocol } from '~/selectors/protocol';
 
 import { GuardedButton, ProtocolPlaceLink } from './reviewControls';
@@ -162,6 +166,12 @@ const messages = defineMessages({
     description:
       'Status of a problem the researcher chose to fix themselves ("I will fix this").',
   },
+  done: {
+    id: 'architect.protocolReview.popover.done',
+    defaultMessage: 'Fixed by you',
+    description:
+      'Status of a problem the researcher chose to fix themselves and then marked Done.',
+  },
   dismissed: {
     id: 'architect.protocolReview.popover.dismissed',
     defaultMessage: 'Dismissed',
@@ -184,6 +194,36 @@ const messages = defineMessages({
     defaultMessage: 'Undo dismiss',
     description:
       'Button beside a dismissed problem in the review list that returns it to the problems still to decide.',
+  },
+  filter: {
+    id: 'architect.protocolReview.popover.filter',
+    defaultMessage: 'Show',
+    description:
+      'Accessible name, read by screen readers, of the switch above the list of problems that chooses between all of them and those the researcher chose to fix themselves.',
+  },
+  filterAll: {
+    id: 'architect.protocolReview.popover.filterAll',
+    defaultMessage: 'All problems',
+    description:
+      'Option of the switch above the list of problems: show every problem the review found.',
+  },
+  filterMine: {
+    id: 'architect.protocolReview.popover.filterMine',
+    defaultMessage: 'For you to fix',
+    description:
+      'Option of the switch above the list of problems: show only those the researcher chose to fix themselves.',
+  },
+  filterMineHere: {
+    id: 'architect.protocolReview.popover.filterMineHere',
+    defaultMessage: 'For you to fix here',
+    description:
+      'Option of the switch above the list of problems, when the review is opened from a stage or the Codebook page: show only the problems the researcher chose to fix themselves on that screen.',
+  },
+  nothingMineHere: {
+    id: 'architect.protocolReview.popover.nothingMineHere',
+    defaultMessage: 'Nothing here is waiting for you to fix.',
+    description:
+      'Shown in place of the list of problems when it shows only those the researcher chose to fix themselves on this screen, and there are none.',
   },
   goThrough: {
     id: 'architect.protocolReview.popover.goThrough',
@@ -349,12 +389,31 @@ const noticeOf = (
 };
 
 const statusMessages: Record<
-  'fixed' | 'mine' | 'dismissed',
-  { message: MessageDescriptor; icon: ReactNode }
+  Exclude<FindingDisplayStatus, 'undecided'>,
+  { message: MessageDescriptor; icon: ReactNode; tone: BadgeTone }
 > = {
-  fixed: { message: messages.fixed, icon: <CircleCheck aria-hidden /> },
-  mine: { message: messages.mine, icon: <PenLine aria-hidden /> },
-  dismissed: { message: messages.dismissed, icon: <X aria-hidden /> },
+  fixed: {
+    message: messages.fixed,
+    icon: <CircleCheck aria-hidden />,
+    tone: 'success',
+  },
+  // Still waiting on the researcher.
+  mine: {
+    message: messages.mine,
+    icon: <PenLine aria-hidden />,
+    tone: 'warning',
+  },
+  // Resolved too, in another colour from "Fixed for you": who fixed it.
+  done: {
+    message: messages.done,
+    icon: <CircleCheck aria-hidden />,
+    tone: 'info',
+  },
+  dismissed: {
+    message: messages.dismissed,
+    icon: <X aria-hidden />,
+    tone: 'neutral',
+  },
 };
 
 type ReviewPopoverContentProps = {
@@ -364,7 +423,17 @@ type ReviewPopoverContentProps = {
   /** Sends the review that failed again, as it was asked for. */
   onRetryReview: () => void;
   announce: (message: string) => void;
+  /**
+   * The screen the review was opened from, other than the Stages screen.
+   * The list starts on the problems for the researcher to fix there.
+   */
+  place?: ReviewPlace | null;
 };
+
+type ListFilter = 'all' | 'mine';
+
+const isMineAt = (finding: ReviewFindingView, place: ReviewPlace | null) =>
+  finding.status === 'mine' && (!place || isFixedAt(place, finding.fixPlace));
 
 /** What the panel shows of a review: all its problems, or one of them. */
 type PanelView = { kind: 'list' } | { kind: 'problem'; findingId: string };
@@ -380,6 +449,7 @@ const ReviewPopoverContent = ({
   onRequestReview,
   onRetryReview,
   announce,
+  place = null,
 }: ReviewPopoverContentProps) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
@@ -387,6 +457,17 @@ const ReviewPopoverContent = ({
   const summary = useAppSelector(getProtocolReviewSummary);
   const findings = useAppSelector(getProtocolReviewFindings);
   const counts = useAppSelector(getProtocolReviewCounts);
+  // Opened where the researcher is fixing problems themselves, the list
+  // starts on those; anywhere else, or with none there, on all of them.
+  const [filter, setFilter] = useState<ListFilter>(() =>
+    place && findings.some((finding) => isMineAt(finding, place))
+      ? 'mine'
+      : 'all',
+  );
+  const listed =
+    filter === 'all'
+      ? findings
+      : findings.filter((finding) => isMineAt(finding, place));
   const progress = useAppSelector(getProtocolReviewProgress);
   const phase = useAppSelector(getProtocolReviewPhase);
   const protocol = useAppSelector(getProtocol);
@@ -526,8 +607,8 @@ const ReviewPopoverContent = ({
   const renderRow = (finding: ReviewFindingView) => {
     const status = finding.status === 'undecided' ? null : finding.status;
     const link =
-      finding.status === 'mine'
-        ? formatLocationLink(intl, finding.location)
+      finding.status === 'mine' || finding.status === 'done'
+        ? formatLocationLink(intl, finding.fixPlace)
         : null;
     return (
       <li
@@ -563,10 +644,15 @@ const ReviewPopoverContent = ({
         </button>
         {status !== null && (
           <div className="flex flex-wrap items-center gap-3 ps-17 pe-6 pb-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-current px-2.5 py-0.5 text-xs font-bold [&_svg]:size-3.5">
-              {statusMessages[status].icon}
+            <Badge
+              render={<span />}
+              appearance="outline"
+              tone={statusMessages[status].tone}
+              icon={statusMessages[status].icon}
+              className="[&_svg]:size-3.5"
+            >
               {intl.formatMessage(statusMessages[status].message)}
-            </span>
+            </Badge>
             {finding.canUndo && (
               <Button
                 size="sm"
@@ -668,14 +754,43 @@ const ReviewPopoverContent = ({
       </Paragraph>
     </div>
   ) : (
-    <ScrollArea className="min-h-0 flex-1" fade>
-      <ol
-        aria-label={intl.formatMessage(messages.problemsFound)}
-        className="m-0 list-none p-0"
-      >
-        {findings.map(renderRow)}
-      </ol>
-    </ScrollArea>
+    <>
+      {(counts.mine > 0 || filter === 'mine') && (
+        <div className="px-6 pb-4">
+          <SegmentedSwitcher
+            size="sm"
+            aria-label={intl.formatMessage(messages.filter)}
+            value={filter}
+            onValueChange={setFilter}
+            options={[
+              { value: 'all', label: intl.formatMessage(messages.filterAll) },
+              {
+                value: 'mine',
+                label: intl.formatMessage(
+                  place ? messages.filterMineHere : messages.filterMine,
+                ),
+              },
+            ]}
+          />
+        </div>
+      )}
+      {listed.length === 0 ? (
+        <div className="px-6 pb-4">
+          <Paragraph margin="none">
+            {intl.formatMessage(messages.nothingMineHere)}
+          </Paragraph>
+        </div>
+      ) : (
+        <ScrollArea className="min-h-0 flex-1" fade>
+          <ol
+            aria-label={intl.formatMessage(messages.problemsFound)}
+            className="m-0 list-none p-0"
+          >
+            {listed.map(renderRow)}
+          </ol>
+        </ScrollArea>
+      )}
+    </>
   );
 
   const caption = running

@@ -2803,6 +2803,10 @@
     "defaultMessage": "Open stage {position, number}",
     "description": "Link from a problem found by the automated protocol review to the stage it is about, which the researcher will fix themselves. {position} is the stage’s number on the Stages screen."
   },
+  "architect.protocolReview.location.openStages": {
+    "defaultMessage": "Open stages",
+    "description": "Link from a problem found by the automated protocol review to the Stages screen, where the researcher will add, remove or reorder stages to fix it themselves. \"Stages\" is the name of that screen in Architect."
+  },
   "architect.protocolReview.location.protocol": {
     "defaultMessage": "Whole protocol",
     "description": "Where in the protocol a problem found by the automated protocol review is: no one stage or type, but the protocol as a whole."
@@ -2879,6 +2883,26 @@
     "defaultMessage": "Dismissed",
     "description": "Status of a problem the researcher dismissed."
   },
+  "architect.protocolReview.popover.done": {
+    "defaultMessage": "Fixed by you",
+    "description": "Status of a problem the researcher chose to fix themselves and then marked Done."
+  },
+  "architect.protocolReview.popover.filter": {
+    "defaultMessage": "Show",
+    "description": "Accessible name, read by screen readers, of the switch above the list of problems that chooses between all of them and those the researcher chose to fix themselves."
+  },
+  "architect.protocolReview.popover.filterAll": {
+    "defaultMessage": "All problems",
+    "description": "Option of the switch above the list of problems: show every problem the review found."
+  },
+  "architect.protocolReview.popover.filterMine": {
+    "defaultMessage": "For you to fix",
+    "description": "Option of the switch above the list of problems: show only those the researcher chose to fix themselves."
+  },
+  "architect.protocolReview.popover.filterMineHere": {
+    "defaultMessage": "For you to fix here",
+    "description": "Option of the switch above the list of problems, when the review is opened from a stage or the Codebook page: show only the problems the researcher chose to fix themselves on that screen."
+  },
   "architect.protocolReview.popover.fixUndone": {
     "defaultMessage": "Fix undone: {title}",
     "description": "Read by screen readers after Undo in the review list took a fix back out of the protocol. {title} is the problem’s title, written by the review service."
@@ -2906,6 +2930,10 @@
   "architect.protocolReview.popover.notReviewed": {
     "defaultMessage": "Not reviewed yet",
     "description": "Line under the Protocol review heading before the protocol has ever been reviewed."
+  },
+  "architect.protocolReview.popover.nothingMineHere": {
+    "defaultMessage": "Nothing here is waiting for you to fix.",
+    "description": "Shown in place of the list of problems when it shows only those the researcher chose to fix themselves on this screen, and there are none."
   },
   "architect.protocolReview.popover.phaseThinking": {
     "defaultMessage": "The reviewer is reading your protocol and thinking it through.",
@@ -3003,10 +3031,6 @@
     "defaultMessage": "Number of concentric circles",
     "description": "Names the number setting for how many circles a sociogram background shows, above a fix that changes it."
   },
-  "architect.protocolReview.problem.decideLater": {
-    "defaultMessage": "Decide later",
-    "description": "Button on a problem the researcher said they will fix themselves that returns it to the problems still to decide."
-  },
   "architect.protocolReview.problem.dismiss": {
     "defaultMessage": "Dismiss",
     "description": "Button that puts a problem found by the automated protocol review away without changing anything, and moves to the next problem."
@@ -3014,6 +3038,14 @@
   "architect.protocolReview.problem.dismissedState": {
     "defaultMessage": "You dismissed this problem.",
     "description": "Notice on a problem the researcher already dismissed."
+  },
+  "architect.protocolReview.problem.done": {
+    "defaultMessage": "Done",
+    "description": "Button on a problem the researcher chose to fix themselves, pressed once they have made the change. The problem then shows as fixed by them."
+  },
+  "architect.protocolReview.problem.doneState": {
+    "defaultMessage": "You fixed this yourself.",
+    "description": "Notice on a problem the researcher chose to fix themselves and then marked Done. A link to where the problem is may follow it."
   },
   "architect.protocolReview.problem.editValue": {
     "defaultMessage": "Edit",
@@ -3052,12 +3084,12 @@
     "description": "Names the number setting for the fewest nodes a participant must add on a stage, above a fix that changes it."
   },
   "architect.protocolReview.problem.mine": {
-    "defaultMessage": "I will fix this",
-    "description": "Button that keeps a problem on the researcher’s list, for them to fix themselves, and moves to the next problem."
+    "defaultMessage": "Fix it myself",
+    "description": "Button that keeps a problem on the researcher’s list, for them to fix themselves, and takes them to the stage or codebook entry it is about, where the suggested change stays in view. On a problem about the whole protocol, it moves to the next problem instead."
   },
   "architect.protocolReview.problem.mineState": {
     "defaultMessage": "You chose to fix this yourself.",
-    "description": "Notice on a problem the researcher already chose \"I will fix this\" for."
+    "description": "Notice on a problem the researcher already chose \"Fix it myself\" for. A link to where the problem is may follow it."
   },
   "architect.protocolReview.problem.nextProblem": {
     "defaultMessage": "Next problem",
@@ -3066,6 +3098,10 @@
   "architect.protocolReview.problem.notANumber": {
     "defaultMessage": "Enter a number.",
     "description": "Shown under a number the researcher is changing before the fix is made, when the field does not hold a number."
+  },
+  "architect.protocolReview.problem.notDone": {
+    "defaultMessage": "Not done yet",
+    "description": "Button on a problem the researcher marked Done that returns it to the problems for them to fix."
   },
   "architect.protocolReview.problem.notOwned": {
     "defaultMessage": "This protocol is open for editing in another tab, so it cannot be changed here. Make the change in that tab.",
@@ -3098,6 +3134,10 @@
   "architect.protocolReview.problem.suggestedFix": {
     "defaultMessage": "Suggested fix",
     "description": "Heading of the part of a problem that describes how the automated protocol review suggests fixing it."
+  },
+  "architect.protocolReview.problem.textInLanguage": {
+    "defaultMessage": "{name} · {language}",
+    "description": "Names a text a fix changes, above its Now and After the fix boxes, when the fix changes it in several languages. {name} is where the stage or codebook editor shows the text, such as \"Page content › Page heading\"; {language} is the language’s name. The dot is a separator."
   },
   "architect.protocolReview.problem.undo": {
     "defaultMessage": "Undo",

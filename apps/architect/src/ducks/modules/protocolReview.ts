@@ -31,9 +31,11 @@ import {
   applyFixEdits,
   describeFixTextEdits,
   type FindingLocation,
+  type FixPlace,
   type FixEdits,
   type FixTextEdit,
   resolveFindingLocation,
+  resolveFixPlace,
 } from '~/protocolReview/describeFix';
 import {
   applyOperations,
@@ -470,7 +472,16 @@ export const getProtocolReviewStartBlock = (
   return null;
 };
 
-export type FindingDisplayStatus = 'undecided' | 'fixed' | 'mine' | 'dismissed';
+/**
+ * `mine` is a problem the researcher chose to fix themselves, and `done` one
+ * they have since said they fixed. `fixed` is a fix Architect made.
+ */
+export type FindingDisplayStatus =
+  | 'undecided'
+  | 'fixed'
+  | 'mine'
+  | 'done'
+  | 'dismissed';
 
 /**
  * Whether "Fix for me" can be offered:
@@ -509,9 +520,11 @@ export type ReviewFindingView = {
   canFix: boolean;
   /** Whether the per-finding Undo is offered (fixed, and the inverse applies cleanly to a valid protocol). */
   canUndo: boolean;
-  /** Whether it can go back to undecided: mine or dismissed. */
+  /** Whether Undo dismiss is offered: it was dismissed. */
   canRestore: boolean;
   location: FindingLocation;
+  /** Where the researcher would make the fix themselves (`resolveFixPlace`). */
+  fixPlace: FixPlace;
 };
 
 const fixHolds = (stored: StoredFinding, protocol: CurrentProtocol) =>
@@ -526,7 +539,9 @@ const statusOf = (
   // A fix shows as fixed while everything it wrote is as it left it, or
   // while the protocol already holds what it would write; the app's own Undo
   // — or the researcher editing what the fix wrote — returns it to undecided.
-  if (stored.decision === 'dismissed') return 'dismissed';
+  if (stored.decision === 'dismissed' || stored.decision === 'done') {
+    return stored.decision;
+  }
   if (fixHolds(stored, protocol)) return 'fixed';
   if (
     stored.targets !== null &&
@@ -584,8 +599,10 @@ export const getProtocolReviewFindings = createSelector(
     const { stageIds } = record.review;
     const current = (text: string) =>
       currentStageReferences(text, stageIds, protocol);
+    const reviewed = protocolAsReviewed(protocol);
     return record.review.findings.map((stored) => {
       const { finding } = stored;
+      const location = resolveFindingLocation(reviewed, finding);
       const status = statusOf(stored, protocol);
       const availability =
         status === 'fixed' ? 'none' : availabilityOf(stored, protocol, checks);
@@ -611,8 +628,9 @@ export const getProtocolReviewFindings = createSelector(
           status === 'fixed' &&
           undoApplies(stored, protocol) &&
           checkResult(checks, finding.id, protocol, 'undo') === true,
-        canRestore: status === 'mine' || status === 'dismissed',
-        location: resolveFindingLocation(protocolAsReviewed(protocol), finding),
+        canRestore: status === 'dismissed',
+        location,
+        fixPlace: resolveFixPlace(reviewed, stored.operations, location),
       };
     });
   },
@@ -630,6 +648,7 @@ export const getProtocolReviewCounts = createSelector(
       undecided: 0,
       fixed: 0,
       mine: 0,
+      done: 0,
       dismissed: 0,
     };
     for (const finding of findings) counts[finding.status] += 1;

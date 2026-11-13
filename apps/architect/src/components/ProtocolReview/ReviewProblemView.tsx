@@ -1,25 +1,25 @@
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
+import { useLocation } from 'wouter';
 
 import {
-  type IntlShape,
   defineMessages,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
-import { Button } from '@codaco/fresco-ui/Button';
+import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import Pips from '@codaco/fresco-ui/Pips';
 import { PopoverTitle } from '@codaco/fresco-ui/Popover';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { getValidationLabel } from '@codaco/protocol-builder/codebook/variableValidation';
+import RichTextField from '@codaco/protocol-builder/fields/RichTextField';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
-import Markdown from '~/components/Markdown';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import {
   type DecisionRefusal,
@@ -31,6 +31,12 @@ import {
 import type { FixTextEdit } from '~/protocolReview/describeFix';
 import type { FindingDecision } from '~/protocolReview/reviewStore';
 
+import {
+  fixEditMessages,
+  FixText,
+  NowBox,
+  useFixEditContexts,
+} from './fixEditText';
 import { GuardedButton, ProtocolPlaceLink } from './reviewControls';
 import {
   categoryMessage,
@@ -52,48 +58,6 @@ const messages = defineMessages({
     defaultMessage: 'Suggested fix',
     description:
       'Heading of the part of a problem that describes how the automated protocol review suggests fixing it.',
-  },
-  notSet: {
-    id: 'architect.protocolReview.problem.notSet',
-    defaultMessage: 'Not set',
-    description:
-      'Shown in the Now box for a number setting, such as a limit on answers, that the protocol does not have yet.',
-  },
-  numberSetting: {
-    id: 'architect.protocolReview.problem.numberSetting',
-    defaultMessage: '{setting} · {name}',
-    description:
-      'Names a number a fix changes, above its Now and After the fix boxes. {setting} is the setting, such as "Maximum selected"; {name} is the attribute or stage it belongs to. The dot is a separator.',
-  },
-  minNodes: {
-    id: 'architect.protocolReview.problem.minNodes',
-    defaultMessage: 'Minimum nodes on stage',
-    description:
-      'Names the number setting for the fewest nodes a participant must add on a stage, above a fix that changes it.',
-  },
-  maxNodes: {
-    id: 'architect.protocolReview.problem.maxNodes',
-    defaultMessage: 'Maximum nodes on stage',
-    description:
-      'Names the number setting for the most nodes a participant may add on a stage, above a fix that changes it.',
-  },
-  concentricCircles: {
-    id: 'architect.protocolReview.problem.concentricCircles',
-    defaultMessage: 'Number of concentric circles',
-    description:
-      'Names the number setting for how many circles a sociogram background shows, above a fix that changes it.',
-  },
-  now: {
-    id: 'architect.protocolReview.problem.now',
-    defaultMessage: 'Now',
-    description:
-      'Label over a piece of text as it is in the protocol now, shown beside the same text as the suggested fix would change it.',
-  },
-  afterFix: {
-    id: 'architect.protocolReview.problem.afterFix',
-    defaultMessage: 'After the fix',
-    description:
-      'Label over a piece of text as the suggested fix would change it.',
   },
   otherTranslations: {
     id: 'architect.protocolReview.problem.otherTranslations',
@@ -148,7 +112,13 @@ const messages = defineMessages({
     id: 'architect.protocolReview.problem.mineState',
     defaultMessage: 'You chose to fix this yourself.',
     description:
-      'Notice on a problem the researcher already chose "I will fix this" for.',
+      'Notice on a problem the researcher already chose "Fix it myself" for. A link to where the problem is may follow it.',
+  },
+  doneState: {
+    id: 'architect.protocolReview.problem.doneState',
+    defaultMessage: 'You fixed this yourself.',
+    description:
+      'Notice on a problem the researcher chose to fix themselves and then marked Done. A link to where the problem is may follow it.',
   },
   dismissedState: {
     id: 'architect.protocolReview.problem.dismissedState',
@@ -169,9 +139,21 @@ const messages = defineMessages({
   },
   mine: {
     id: 'architect.protocolReview.problem.mine',
-    defaultMessage: 'I will fix this',
+    defaultMessage: 'Fix it myself',
     description:
-      'Button that keeps a problem on the researcher’s list, for them to fix themselves, and moves to the next problem.',
+      'Button that keeps a problem on the researcher’s list, for them to fix themselves, and takes them to the stage or codebook entry it is about, where the suggested change stays in view. On a problem about the whole protocol, it moves to the next problem instead.',
+  },
+  done: {
+    id: 'architect.protocolReview.problem.done',
+    defaultMessage: 'Done',
+    description:
+      'Button on a problem the researcher chose to fix themselves, pressed once they have made the change. The problem then shows as fixed by them.',
+  },
+  notDone: {
+    id: 'architect.protocolReview.problem.notDone',
+    defaultMessage: 'Not done yet',
+    description:
+      'Button on a problem the researcher marked Done that returns it to the problems for them to fix.',
   },
   editValue: {
     id: 'architect.protocolReview.problem.editValue',
@@ -222,12 +204,6 @@ const messages = defineMessages({
     description:
       'Button on a problem the researcher dismissed that returns it to the problems still to decide.',
   },
-  decideLater: {
-    id: 'architect.protocolReview.problem.decideLater',
-    defaultMessage: 'Decide later',
-    description:
-      'Button on a problem the researcher said they will fix themselves that returns it to the problems still to decide.',
-  },
   nextProblem: {
     id: 'architect.protocolReview.problem.nextProblem',
     defaultMessage: 'Next problem',
@@ -270,16 +246,55 @@ const nextUndecided = (
   return null;
 };
 
-const FixText = ({ text, markdown }: { text: string; markdown: boolean }) =>
-  markdown ? (
-    <Markdown label={text} className="wrap-break-word" />
+const TextEditor = ({
+  edit,
+  labelledBy,
+  describedBy,
+  value,
+  onChange,
+}: {
+  edit: FixTextEdit;
+  labelledBy: string;
+  describedBy: string;
+  value: string;
+  onChange: (value: string | undefined) => void;
+}) => {
+  const id = useId();
+  if (edit.markdown) {
+    return (
+      <RichTextField
+        id={id}
+        name={id}
+        aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
+        value={value}
+        onChange={(next) => onChange(next ?? '')}
+        singleLine={edit.singleLine}
+      />
+    );
+  }
+  return edit.singleLine ? (
+    <InputField
+      aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
+      value={value}
+      onChange={(next) => onChange(next ?? '')}
+    />
   ) : (
-    <span className="wrap-break-word whitespace-pre-wrap">{text}</span>
+    <TextAreaField
+      aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
+      className="[&>textarea]:field-sizing-content [&>textarea]:min-h-24"
+      value={value}
+      onChange={(next) => onChange(next ?? '')}
+    />
   );
+};
 
 const AfterFixBox = ({
   edit,
-  languageId,
+  contextId,
+  describedBy,
   label,
   editLabel,
   resetLabel,
@@ -289,7 +304,9 @@ const AfterFixBox = ({
   onChange,
 }: {
   edit: FixTextEdit;
-  languageId?: string;
+  contextId?: string;
+  /** What the text is now, or else what the fix does. */
+  describedBy: string;
   label: string;
   editLabel: string;
   resetLabel: string;
@@ -302,7 +319,7 @@ const AfterFixBox = ({
   const errorId = useId();
   const editing = editable && value !== undefined;
   const invalid = editing && !editIsValid(edit, value);
-  const labelledBy = languageId ? `${languageId} ${labelId}` : labelId;
+  const labelledBy = contextId ? `${contextId} ${labelId}` : labelId;
   return (
     <div className="bg-surface border-primary flex flex-col gap-1 rounded border-2 p-3">
       <div className="flex items-center justify-between gap-2">
@@ -330,11 +347,12 @@ const AfterFixBox = ({
             onChange={(next) => onChange(next ?? '')}
           />
         ) : (
-          <TextAreaField
-            aria-labelledby={labelledBy}
-            className="[&>textarea]:field-sizing-content [&>textarea]:min-h-24"
+          <TextEditor
+            edit={edit}
+            labelledBy={labelledBy}
+            describedBy={describedBy}
             value={value}
-            onChange={(next) => onChange(next ?? '')}
+            onChange={onChange}
           />
         )
       ) : (
@@ -347,35 +365,6 @@ const AfterFixBox = ({
       )}
     </div>
   );
-};
-
-const settingName = (intl: IntlShape, setting: string): string => {
-  if (setting === 'minNodes') return intl.formatMessage(messages.minNodes);
-  if (setting === 'maxNodes') return intl.formatMessage(messages.maxNodes);
-  if (setting === 'concentricCircles') {
-    return intl.formatMessage(messages.concentricCircles);
-  }
-  return getValidationLabel(setting, intl);
-};
-
-const editContext = (
-  intl: IntlShape,
-  edit: FixTextEdit,
-  languageName: (locale: string) => string,
-  severalLanguages: boolean,
-): string | null => {
-  if (edit.kind === 'number') {
-    const setting = settingName(intl, edit.setting);
-    return edit.owner === null
-      ? setting
-      : intl.formatMessage(messages.numberSetting, {
-          setting,
-          name: edit.owner,
-        });
-  }
-  return edit.locale !== null && severalLanguages
-    ? languageName(edit.locale)
-    : null;
 };
 
 const editIsValid = (edit: FixTextEdit, value: string) =>
@@ -430,13 +419,16 @@ const ReviewProblemView = ({
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const store = useAppStore();
+  const [, navigate] = useLocation();
   const languageName = useLanguageName();
+  const editContexts = useFixEditContexts(current.textEdits);
   const anotherUndecided = useAppSelector(
     (state) =>
       nextUndecided(getProtocolReviewFindings(state), index, current.id) !==
       null,
   );
   const checkingId = useId();
+  const summaryId = useId();
 
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
@@ -451,6 +443,8 @@ const ReviewProblemView = ({
   // reading the new problem from its top, wherever the button they pressed
   // was.
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const scrollRef = useRef<HTMLElement>(null);
+  const reducedMotion = usePrefersReducedMotion();
   useEffect(() => {
     titleRef.current?.focus({ preventScroll: true });
   }, []);
@@ -466,7 +460,15 @@ const ReviewProblemView = ({
     onBack();
   };
 
-  const decide = async (decision: FindingDecision) => {
+  /**
+   * After a choice other than Fix for me: `next` moves on to the next
+   * problem, `stay` keeps this one open, and `place` takes the researcher to
+   * where it is (or moves on, when it is about the whole protocol).
+   */
+  const decide = async (
+    decision: FindingDecision,
+    after: 'next' | 'stay' | 'place' = 'next',
+  ) => {
     if (busy) return;
     setBusy(true);
     setRefusal(null);
@@ -485,9 +487,20 @@ const ReviewProblemView = ({
         intl.formatMessage(messages.fixApplied, { title: current.title }),
       );
       titleRef.current?.focus({ preventScroll: true });
+      // Back to the top, where the notice says it was fixed and how to undo it.
+      scrollRef.current?.scrollTo({
+        top: 0,
+        behavior: reducedMotion ? 'auto' : 'smooth',
+      });
       return;
     }
-    if (decision === 'undecided') return;
+    if (after === 'stay') return;
+    const place = formatLocationLink(intl, current.fixPlace);
+    if (after === 'place' && place) {
+      onClose();
+      navigate(place.href);
+      return;
+    }
     moveOn();
   };
 
@@ -541,20 +554,21 @@ const ReviewProblemView = ({
           : null
       : status === 'mine'
         ? messages.mineState
-        : status === 'dismissed'
-          ? messages.dismissedState
-          : null;
+        : status === 'done'
+          ? messages.doneState
+          : status === 'dismissed'
+            ? messages.dismissedState
+            : null;
+  const stateNoticeLinks =
+    status === 'fixed' || status === 'mine' || status === 'done';
   const location = formatLocation(intl, current.location);
   const link = formatLocationLink(intl, current.location);
-  const fixPrimary = current.canFix || availability === 'checking';
-  const severalLanguages =
-    new Set(current.textEdits.map((edit) => edit.locale)).size > 1;
-  const editContexts: Record<string, string | null> = Object.fromEntries(
-    current.textEdits.map((edit) => [
-      edit.path,
-      editContext(intl, edit, languageName, severalLanguages),
-    ]),
-  );
+  // Where the researcher would make the fix, which the notices link to.
+  const fixLink = formatLocationLink(intl, current.fixPlace);
+  // Once the researcher chose to fix it themselves, saying they did is the
+  // thing to do next, not having it fixed for them.
+  const fixPrimary =
+    status !== 'mine' && (current.canFix || availability === 'checking');
   const canChooseFix = undecidedOrMine || status === 'dismissed';
   const canEditFix = canChooseFix && availability === 'available';
 
@@ -600,6 +614,8 @@ const ReviewProblemView = ({
           <span className="font-bold">
             {intl.formatMessage(categoryMessage(current.category))}
           </span>
+        </div>
+        <div className="text-sm">
           {link ? (
             <ProtocolPlaceLink href={link.href} onFollow={onClose}>
               {location}
@@ -609,7 +625,7 @@ const ReviewProblemView = ({
           )}
         </div>
       </div>
-      <ScrollArea className="min-h-0 flex-1" fade>
+      <ScrollArea ref={scrollRef} className="min-h-0 flex-1" fade>
         <div className="@container px-6 pb-4">
           <div className="flex flex-col gap-4">
             <Paragraph margin="none">{current.explanation}</Paragraph>
@@ -617,11 +633,11 @@ const ReviewProblemView = ({
               <Alert variant="info" density="compact" className="my-0">
                 <AlertDescription>
                   {intl.formatMessage(stateNotice)}
-                  {status === 'fixed' && link && (
+                  {stateNoticeLinks && fixLink && (
                     <>
                       {' '}
-                      <ProtocolPlaceLink href={link.href} onFollow={onClose}>
-                        {link.label}
+                      <ProtocolPlaceLink href={fixLink.href} onFollow={onClose}>
+                        {fixLink.label}
                       </ProtocolPlaceLink>
                     </>
                   )}
@@ -649,7 +665,9 @@ const ReviewProblemView = ({
               >
                 {intl.formatMessage(messages.explanation)}
               </Heading>
-              <Paragraph margin="none">{current.fixSummary}</Paragraph>
+              <Paragraph id={summaryId} margin="none">
+                {current.fixSummary}
+              </Paragraph>
               {current.fixChanges.length > 0 && (
                 <ul className="m-0 flex list-disc flex-col gap-1 ps-6">
                   {current.fixChanges.map((change, position) => (
@@ -661,8 +679,6 @@ const ReviewProblemView = ({
               )}
               {current.textEdits.map((edit) => (
                 <div key={edit.path} className="flex flex-col gap-2">
-                  {/* A fix that rewrites one text in several languages shows
-                      each, so each pair says which language it is. */}
                   {editContexts[edit.path] && (
                     <span
                       id={`${current.id}${edit.path}-context`}
@@ -672,26 +688,20 @@ const ReviewProblemView = ({
                     </span>
                   )}
                   <div className="grid gap-3 @min-[36rem]:grid-cols-2">
-                    {(edit.now !== null || edit.kind === 'number') && (
-                      <div className="bg-surface border-outline flex flex-col gap-1 rounded border p-3">
-                        <span className="text-sm font-bold">
-                          {intl.formatMessage(messages.now)}
-                        </span>
-                        {edit.now === null ? (
-                          <span>{intl.formatMessage(messages.notSet)}</span>
-                        ) : (
-                          <FixText text={edit.now} markdown={edit.markdown} />
-                        )}
-                      </div>
-                    )}
+                    <NowBox id={`${current.id}${edit.path}-now`} edit={edit} />
                     <AfterFixBox
                       edit={edit}
-                      languageId={
+                      contextId={
                         editContexts[edit.path]
                           ? `${current.id}${edit.path}-context`
                           : undefined
                       }
-                      label={intl.formatMessage(messages.afterFix)}
+                      describedBy={
+                        edit.now === null
+                          ? summaryId
+                          : `${current.id}${edit.path}-now`
+                      }
+                      label={intl.formatMessage(fixEditMessages.afterFix)}
                       editLabel={intl.formatMessage(messages.editValue)}
                       resetLabel={intl.formatMessage(messages.useSuggestion)}
                       notANumber={intl.formatMessage(messages.notANumber)}
@@ -733,77 +743,101 @@ const ReviewProblemView = ({
         </div>
       </ScrollArea>
       <div className="border-outline flex flex-col gap-3 border-t px-6 py-4">
-        {/* Back and where this problem is among them all, then the choices
-            about it on a row of their own, so they stay together. */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Button
-            size="sm"
-            icon={<ArrowLeft className="rtl:rotate-180" aria-hidden />}
+        <div className="flex items-center gap-4">
+          <IconButton
+            variant="text"
+            icon={<ArrowLeft className="rtl:rotate-180" />}
+            aria-label={intl.formatMessage(messages.back)}
             onClick={onBack}
-          >
-            {intl.formatMessage(messages.back)}
-          </Button>
-          <span className="flex-1" />
-          <span className="text-xs font-bold tracking-widest uppercase">
+          />
+          <span aria-hidden className="min-w-0 flex-1">
+            <Pips small count={total} currentIndex={index} />
+          </span>
+          <span className="shrink-0 text-xs font-bold tracking-widest uppercase">
             {intl.formatMessage(messages.problemOf, {
               position: index + 1,
               total,
             })}
           </span>
-          <span aria-hidden className="w-auto">
-            <Pips small count={total} currentIndex={index} />
-          </span>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {status === 'fixed' ? (
-            <>
-              {current.canUndo && (
-                <GuardedButton unavailable={busy} onClick={() => void undo()}>
-                  {intl.formatMessage(messages.undo)}
-                </GuardedButton>
-              )}
-              {anotherUndecided && (
+        {/* The quiet choices on the reading edge, the main ones on the other,
+            which stay there when there are too many for one row. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="me-auto flex flex-wrap items-center gap-2">
+            {status === 'done' ? (
+              <GuardedButton
+                variant="text"
+                unavailable={busy}
+                onClick={() => void decide('mine', 'stay')}
+              >
+                {intl.formatMessage(messages.notDone)}
+              </GuardedButton>
+            ) : status === 'fixed' ? null : (
+              <>
+                {status === 'dismissed' && (
+                  <GuardedButton
+                    variant="text"
+                    unavailable={busy}
+                    onClick={() => void decide('undecided', 'stay')}
+                  >
+                    {intl.formatMessage(messages.undoDismiss)}
+                  </GuardedButton>
+                )}
+                {status !== 'dismissed' && (
+                  <GuardedButton
+                    variant="text"
+                    unavailable={busy}
+                    onClick={() => void decide('dismissed')}
+                  >
+                    {intl.formatMessage(messages.dismiss)}
+                  </GuardedButton>
+                )}
+              </>
+            )}
+          </div>
+          <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
+            {status === 'fixed' ? (
+              <>
+                {current.canUndo && (
+                  <GuardedButton unavailable={busy} onClick={() => void undo()}>
+                    {intl.formatMessage(messages.undo)}
+                  </GuardedButton>
+                )}
+                {anotherUndecided && (
+                  <Button color="primary" onClick={moveOn}>
+                    {intl.formatMessage(messages.nextProblem)}
+                  </Button>
+                )}
+              </>
+            ) : status === 'done' ? (
+              anotherUndecided && (
                 <Button color="primary" onClick={moveOn}>
                   {intl.formatMessage(messages.nextProblem)}
                 </Button>
-              )}
-            </>
-          ) : (
-            <>
-              {current.canRestore && (
-                <GuardedButton
-                  variant="text"
-                  unavailable={busy}
-                  onClick={() => void decide('undecided')}
-                >
-                  {intl.formatMessage(
-                    status === 'dismissed'
-                      ? messages.undoDismiss
-                      : messages.decideLater,
-                  )}
-                </GuardedButton>
-              )}
-              {status !== 'dismissed' && (
-                <GuardedButton
-                  variant="text"
-                  unavailable={busy}
-                  onClick={() => void decide('dismissed')}
-                >
-                  {intl.formatMessage(messages.dismiss)}
-                </GuardedButton>
-              )}
-              {status !== 'mine' && (
-                <GuardedButton
-                  color={fixPrimary ? 'default' : 'primary'}
-                  unavailable={busy}
-                  onClick={() => void decide('mine')}
-                >
-                  {intl.formatMessage(messages.mine)}
-                </GuardedButton>
-              )}
-              {fixButton}
-            </>
-          )}
+              )
+            ) : (
+              <>
+                {status === 'mine' ? (
+                  <GuardedButton
+                    color="primary"
+                    unavailable={busy}
+                    onClick={() => void decide('done')}
+                  >
+                    {intl.formatMessage(messages.done)}
+                  </GuardedButton>
+                ) : (
+                  <GuardedButton
+                    color={fixPrimary ? 'default' : 'primary'}
+                    unavailable={busy}
+                    onClick={() => void decide('mine', 'place')}
+                  >
+                    {intl.formatMessage(messages.mine)}
+                  </GuardedButton>
+                )}
+                {fixButton}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </>
