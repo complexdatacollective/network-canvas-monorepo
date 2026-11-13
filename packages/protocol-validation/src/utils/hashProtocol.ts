@@ -18,6 +18,7 @@ type LocalizedProtocol = {
   schemaVersion: Exclude<SchemaVersion, UnlocalizedSchemaVersion>;
   localization: LocalizationDeclaration;
   interfaceText?: unknown;
+  nodeLabelWorker?: string;
   codebook: unknown;
   stages: unknown;
 };
@@ -31,7 +32,7 @@ const isLocalized = (
 /**
  * Computes the dedup hash for a protocol from its structural definition only:
  * codebook and stages, plus, from schema 9, the localization declaration and
- * the interview's shared wording (`interfaceText`), so that changing the
+ * the interview's shared wording (`interfaceText`) and node label worker, so that changing the
  * default language, the set of languages, or the words participants read
  * changes the protocol's identity. The languages are hashed sorted, because they have no
  * order: two protocols that declare the same languages in different orders
@@ -60,6 +61,11 @@ export function hashProtocol(
       // absent one, and a protocol without shared wording keeps its hash.
       ...(protocol.interfaceText !== undefined && {
         interfaceText: protocol.interfaceText,
+      }),
+      // The labels participants read are part of the interview, so a changed
+      // worker is a changed protocol. Present only when held, as above.
+      ...(protocol.nodeLabelWorker !== undefined && {
+        nodeLabelWorker: protocol.nodeLabelWorker,
       }),
       codebook: protocol.codebook,
       stages: protocol.stages,

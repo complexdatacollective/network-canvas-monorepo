@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import type { NcNode } from '@codaco/shared-consts';
+import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages } from '../../i18n/runtimeMessages';
+import { useNodeLabelStore } from '../../nodeLabelWorker/nodeLabelStoreContext';
 import { makeGetCodebookForNodeType } from '../../selectors/protocol';
 import {
   decryptInScope,
@@ -18,17 +19,31 @@ import { useDecryptionScope } from './useDecryptionScope';
 import { usePassphrase } from './usePassphrase';
 import { useReportUnreadable } from './useReportUnreadable';
 
+const subscribeToNothing = () => () => undefined;
+const noWorkerLabels = () => undefined;
+
 /**
  * A function giving the label a node shows, reading its encrypted answers'
  * outcomes with `outcomeOf`. Everything that shows or matches a node by its
  * label reads it here, so they never disagree. `source` saves reading the
  * node's label source again when the caller already has it.
+ *
+ * A protocol's node label worker, when it has one, decides the label of every
+ * node whose standard label is not an encrypted answer. Its answer arrives
+ * after the node does, so the standard label is given until then, and the
+ * function is replaced when an answer arrives, for callers to label again.
  */
 export function useNodeLabeller(outcomeOf: OutcomeOf) {
   const intl = useAppIntl();
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const unnamed = intl.formatMessage(runtimeMessages.unnamed);
   const unavailable = intl.formatMessage(runtimeMessages.answerUnavailable);
+  const workerLabels = useNodeLabelStore();
+  const labelled = useSyncExternalStore(
+    workerLabels?.subscribe ?? subscribeToNothing,
+    workerLabels?.getLabels ?? noWorkerLabels,
+    noWorkerLabels,
+  );
 
   return useCallback(
     (
@@ -38,9 +53,24 @@ export function useNodeLabeller(outcomeOf: OutcomeOf) {
         getCodebookForNodeType(node.type)?.variables ?? {},
       ),
     ) => {
-      return nodeLabelText(source, { unnamed, unavailable, outcomeOf });
+      if (source.status === 'plain') workerLabels?.request(node);
+      const workerLabel =
+        source.status === 'plain'
+          ? labelled?.get(node[entityPrimaryKeyProperty])
+          : undefined;
+      return (
+        workerLabel ??
+        nodeLabelText(source, { unnamed, unavailable, outcomeOf })
+      );
     },
-    [getCodebookForNodeType, unnamed, unavailable, outcomeOf],
+    [
+      getCodebookForNodeType,
+      unnamed,
+      unavailable,
+      outcomeOf,
+      workerLabels,
+      labelled,
+    ],
   );
 }
 
@@ -63,6 +93,16 @@ export function useNodeLabel(node: NcNode | undefined) {
     [node, codebook],
   );
   const encrypted = source?.status === 'encrypted' ? source.value : undefined;
+
+  const workerLabels = useNodeLabelStore();
+  const workerLabelled = source?.status === 'plain' ? node : undefined;
+  useEffect(
+    () =>
+      workerLabels && workerLabelled
+        ? workerLabels.watch(workerLabelled)
+        : undefined,
+    [workerLabels, workerLabelled],
+  );
 
   // Runs again when the outcome is recorded, since that replaces the scope.
   useEffect(() => {

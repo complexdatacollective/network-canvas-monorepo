@@ -297,6 +297,12 @@ export {
   sharedStageInterfaceTextUsed,
   STAGE_TYPE_INTERFACE_TEXT,
 } from './schemas/9/interface-text.ts';
+// A protocol's node label worker: the script that labels nodes in place of
+// the standard labels.
+export {
+  NODE_LABEL_WORKER_FUNCTION_NAME,
+  NODE_LABEL_WORKER_MAX_LENGTH,
+} from './schemas/9/node-label-worker.ts';
 // What is read of a protocol against Network Canvas's wording, given the
 // interview's catalogues; and what can be removed without them.
 export {

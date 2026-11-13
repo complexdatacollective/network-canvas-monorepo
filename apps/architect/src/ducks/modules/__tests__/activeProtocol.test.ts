@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-import activeProtocolReducer, { actionCreators } from '../activeProtocol';
+import activeProtocolReducer, {
+  actionCreators,
+  setNodeLabelWorker,
+} from '../activeProtocol';
 import { test as stagesTest } from '../protocol/stages';
 
 const mockProtocol: CurrentProtocol = {
@@ -360,6 +363,39 @@ describe('activeProtocol', () => {
 
       // Should remain null since no protocol is set
       expect(state).toBeNull();
+    });
+  });
+
+  describe('node label worker', () => {
+    const source = 'function nodeLabelWorker({ node }) { return node.name; }';
+
+    it('stores the script on the protocol', () => {
+      const state = activeProtocolReducer(
+        mockProtocol,
+        setNodeLabelWorker({ source }),
+      );
+
+      expect(state?.nodeLabelWorker).toBe(source);
+    });
+
+    it('removes the key, rather than leaving it empty, when the script is removed', () => {
+      const withWorker = activeProtocolReducer(
+        mockProtocol,
+        setNodeLabelWorker({ source }),
+      );
+      const state = activeProtocolReducer(
+        withWorker,
+        setNodeLabelWorker({ source: undefined }),
+      );
+
+      expect(state).not.toBeNull();
+      expect(Object.keys(state ?? {})).not.toContain('nodeLabelWorker');
+    });
+
+    it('does nothing when no protocol is open', () => {
+      expect(
+        activeProtocolReducer(null, setNodeLabelWorker({ source })),
+      ).toBeNull();
     });
   });
 });

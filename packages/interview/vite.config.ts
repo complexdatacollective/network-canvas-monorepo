@@ -39,8 +39,17 @@ const inlineWorkerPlugin = (): Plugin => ({
   apply: 'build',
   enforce: 'pre',
   resolveId(source, importer) {
-    if (!importer || !source.endsWith('createAutoLayoutWorker.ts')) return null;
-    return resolve(__dirname, 'src/canvas/createAutoLayoutWorker.inline.ts');
+    if (!importer) return null;
+    if (source.endsWith('createAutoLayoutWorker.ts')) {
+      return resolve(__dirname, 'src/canvas/createAutoLayoutWorker.inline.ts');
+    }
+    if (source.endsWith('createNodeLabelWorker.ts')) {
+      return resolve(
+        __dirname,
+        'src/nodeLabelWorker/createNodeLabelWorker.inline.ts',
+      );
+    }
+    return null;
   },
 });
 
@@ -257,6 +266,10 @@ export default defineConfig({
         'supplied-wording': resolve(
           __dirname,
           'src/wording/suppliedWording.ts',
+        ),
+        'node-label-worker': resolve(
+          __dirname,
+          'src/nodeLabelWorker/nodeLabelEvaluator.ts',
         ),
       },
       formats: ['es'],

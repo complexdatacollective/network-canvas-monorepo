@@ -68,6 +68,7 @@ import {
   ProtocolLocalizationProvider,
   useProtocolLocale,
 } from './localization/ProtocolLocalizationProvider';
+import { NodeLabelWorkerProvider } from './nodeLabelWorker/NodeLabelWorkerProvider';
 import { getInterviewId } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 import { getInterviewProgress } from './selectors/utils';
@@ -952,24 +953,26 @@ const Shell = ({
                     currentStep={reviewEntry.currentStep}
                     onStepChange={onStepChange}
                   >
-                    <Interview
-                      onExit={onExit}
-                      hideNavigation={hideNavigation}
-                      navigationOrientation={navigationOrientation}
-                      navigationClassnames={navigationClassnames}
-                      allowStageNavigation={
-                        allowStageNavigation &&
-                        (currentStep === undefined ||
-                          onStepChange !== undefined)
-                      }
-                      allowUserScaling={allowUserScaling}
-                      initialTextScale={initialTextScale}
-                      onTextScaleChange={onTextScaleChange}
-                      initialStageOverrideIndex={
-                        reviewEntry.initialStageOverrideIndex
-                      }
-                      reviewMode={reviewMode}
-                    />
+                    <NodeLabelWorkerProvider>
+                      <Interview
+                        onExit={onExit}
+                        hideNavigation={hideNavigation}
+                        navigationOrientation={navigationOrientation}
+                        navigationClassnames={navigationClassnames}
+                        allowStageNavigation={
+                          allowStageNavigation &&
+                          (currentStep === undefined ||
+                            onStepChange !== undefined)
+                        }
+                        allowUserScaling={allowUserScaling}
+                        initialTextScale={initialTextScale}
+                        onTextScaleChange={onTextScaleChange}
+                        initialStageOverrideIndex={
+                          reviewEntry.initialStageOverrideIndex
+                        }
+                        reviewMode={reviewMode}
+                      />
+                    </NodeLabelWorkerProvider>
                   </CurrentStepProvider>
                 </InterviewCompletionProvider>
               </ContractProvider>

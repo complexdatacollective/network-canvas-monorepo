@@ -15,6 +15,7 @@ const protocolSlice = createSlice({
     getCodebook: (state) => state.codebook,
     getProtocolLocalization: (state) => state.localization,
     getInterfaceText: (state) => state.interfaceText,
+    getNodeLabelWorker: (state) => state.nodeLabelWorker,
     // The protocol's stages, finish stages included: the interview adds no
     // stage of its own.
     getStages: createSelector(
@@ -34,6 +35,7 @@ export const {
   getCodebook,
   getProtocolLocalization,
   getInterfaceText,
+  getNodeLabelWorker,
   getStages,
   getAssetManifest,
 } = protocolSlice.selectors;
