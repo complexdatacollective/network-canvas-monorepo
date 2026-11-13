@@ -2,7 +2,7 @@
 title: FAQ pour les services informatiques
 date: 12th October 2026
 navOrder: 9
-translatedFrom: 68cd75b89cb0a27924f3aec8bd8264d529de1b02
+translatedFrom: 23c92c2028f398ed26932f6958d3c21cc46c0c4c
 ---
 
 Cet article répond aux questions que posent souvent les services informatiques, les équipes d’administration système et de sécurité de l’information lorsqu’ils aident une équipe de recherche à déployer Fresco. Il explique qui développe Fresco et à quelles conditions, de quelle infrastructure il a besoin, comment il traite les données des personnes participantes, ce que l’équipe du projet héberge elle-même et quelle est la posture de sécurité de l’application.
@@ -60,10 +60,10 @@ Sites exploités par le projet :
 - **[fresco-sandbox.networkcanvas.com](https://fresco-sandbox.networkcanvas.com)** — le [bac à sable Fresco](./sandbox) partagé, une instance de démonstration exploitée par l’équipe du projet. Il stocke tout ce que les personnes qui l’utilisent y téléversent (des protocoles de démonstration et les entretiens réalisés avec ces protocoles) jusqu’à la réinitialisation suivante. C’est pourquoi il n’est explicitement pas destiné à de vrais entretiens : ses identifiants de connexion sont publiés dans la documentation, tout ce qui y est téléversé est visible par toutes les personnes qui utilisent le bac à sable, et sa base de données est effacée périodiquement. Il ne faut jamais y téléverser de vraies données d’étude ou de personnes participantes.
 - **[community.networkcanvas.com](https://community.networkcanvas.com)** — le forum de la communauté, une instance Discourse auto-hébergée. Il conserve les comptes et les messages que créent les personnes qui utilisent le forum ; les messages sont publics.
 - **assets.networkcanvas.com** — hébergement de fichiers statiques pour les téléchargements, les vidéos et les documents juridiques mentionnés ci-dessus.
-- **ph-relay.networkcanvas.com** — un point de terminaison de relais (un Cloudflare Worker) qui transmet à PostHog les statistiques d’utilisation et d’erreurs facultatives des applications. Consultez [Fresco envoie-t-il des données à des tiers ?](#does-fresco-send-data-to-third-parties) pour savoir ce que contiennent ces statistiques.
+- **ph-relay.networkcanvas.com** — un point de terminaison de relais (un Cloudflare Worker) qui transmet à PostHog les statistiques d’utilisation et d’erreurs des applications. Consultez [Fresco envoie-t-il des données à des tiers ?](#does-fresco-send-data-to-third-parties) pour savoir ce que contiennent ces statistiques.
 - **[github.com/complexdatacollective](https://github.com/complexdatacollective)** — le code source, les versions publiées et le registre des images de conteneur.
 
-En dehors de ce que les personnes choisissent d’envoyer au bac à sable et au forum, les seules données qui parviennent à une infrastructure exploitée par le projet sont les statistiques d’utilisation facultatives des applications. Elles ne contiennent jamais de données d’entretien, à une exception près, dont il faut tenir compte : un terme recherché dans le tableau de bord de Fresco (souvent le libellé ou l’identifiant d’une personne participante) peut s’y retrouver, dans l’adresse d’une page (consultez [Fresco envoie-t-il des données à des tiers ?](#does-fresco-send-data-to-third-parties)). Elles peuvent être désactivées dans Interviewer et dans Fresco, ou bloquées au niveau du réseau.
+En dehors de ce que les personnes choisissent d’envoyer au bac à sable et au forum, les seules données qui parviennent à une infrastructure exploitée par le projet sont les statistiques d’utilisation et d’erreurs des applications. Elles ne contiennent jamais de données d’entretien, à une exception près, dont il faut tenir compte : un terme recherché dans le tableau de bord de Fresco (souvent le libellé ou l’identifiant d’une personne participante) peut se retrouver dans ces statistiques par l’intermédiaire de l’adresse d’une page (consultez [Fresco envoie-t-il des données à des tiers ?](#does-fresco-send-data-to-third-parties)). Elles peuvent être désactivées dans Interviewer et dans Fresco, ou bloquées au niveau du réseau.
 
 ## De quelle infrastructure Fresco a-t-il besoin ? {#what-infrastructure-does-fresco-require}
 

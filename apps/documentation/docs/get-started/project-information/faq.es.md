@@ -4,7 +4,7 @@ wip: false
 toc: true
 navOrder: 5
 date: 5th October 2026
-translatedFrom: 418b540dae5e877ebdeed82eded50ee12b2fc251
+translatedFrom: ba415bac086f3e8be31ed0b8dec26798d865ad81
 ---
 
 ## ¿Qué es Network Canvas? {#what-is-network-canvas}
@@ -87,6 +87,6 @@ Si tienes requisitos de seguridad concretos, ponte en contacto con nosotros para
 
 ## ¿Interviewer cumple el RGPD? {#is-interviewer-gdpr-compliant}
 
-Interviewer y Fresco se pueden usar de forma conforme al Reglamento General de Protección de Datos (RGPD), pero el cumplimiento depende de cómo los implementes y configures. El equipo de desarrollo de Network Canvas nunca recibe ni aloja datos de participantes, y no actúa como responsable ni como encargado del tratamiento según el RGPD: el responsable del tratamiento siempre eres tú o tu institución. La única información que el software nos envía son los datos analíticos opcionales y anónimos sobre el uso y los errores de Interviewer y Fresco, que nunca incluyen datos de participantes y se pueden desactivar (Interviewer Classic no envía ninguno).
+Interviewer y Fresco se pueden usar de forma conforme al Reglamento General de Protección de Datos (RGPD), pero el cumplimiento depende de cómo los implementes y configures. El equipo de desarrollo de Network Canvas nunca recibe ni aloja datos de participantes, y no actúa como responsable ni como encargado del tratamiento según el RGPD: el responsable del tratamiento siempre eres tú o tu institución. La única información que Interviewer y Fresco nos envían son los datos analíticos opcionales y anónimos sobre el uso y los errores, que nunca incluyen datos de participantes y se pueden desactivar (Interviewer Classic no envía ninguno).
 
 Para obtener una orientación detallada (que incluye cómo almacena los datos cada aplicación, los datos analíticos y los servicios de terceros, y tus obligaciones como responsable del tratamiento), consulta nuestra [Guía de cumplimiento del RGPD](/es/get-started/planning-a-study/gdpr-compliance).
