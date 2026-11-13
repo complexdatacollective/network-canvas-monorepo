@@ -43,6 +43,16 @@ describe('the protocol reference', () => {
 });
 
 describe('the review message', () => {
+  it('asks for marked placeholders in place of contact details it cannot know', () => {
+    expect(REVIEW_SYSTEM_PROMPT).toContain(
+      'Never invent a fact you cannot know',
+    );
+    expect(REVIEW_SYSTEM_PROMPT).toContain('[PHONE NUMBER]');
+    expect(REVIEW_SYSTEM_PROMPT).toContain(
+      'say in fix.summary that the researcher must replace the placeholders',
+    );
+  });
+
   it('names the findings language and the protocol default language', () => {
     const request = validRequest({ locale: 'pt-BR' });
     const message = buildReviewMessage({
