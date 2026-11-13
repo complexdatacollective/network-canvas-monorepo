@@ -20,7 +20,7 @@ export const Details = forwardRef<
         'border-outline my-5 rounded border-2 px-5',
         // The summary's chevron is mirrored right to left (`scale`), which
         // `rotate` composes after, so it turns the other way to point down.
-        '[&_svg]:open:rotate-90 rtl:[&_svg]:open:-rotate-90',
+        'open:[&_svg]:rotate-90 rtl:open:[&_svg]:-rotate-90',
         className,
       )}
       {...props}

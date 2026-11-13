@@ -214,7 +214,7 @@ const DocSearchComponent = ({
         <Search aria-hidden />
         <span
           className={cx(
-            'text-input-contrast/50 min-w-0 grow basis-0 text-start italic',
+            'text-input-contrast/50 min-w-0 grow basis-0 truncate text-start italic',
             'phone-landscape:inline tablet-portrait:hidden tablet-landscape:inline hidden',
           )}
         >
@@ -222,7 +222,7 @@ const DocSearchComponent = ({
         </span>
         <span
           className={cx(
-            'text-input-contrast/50 min-w-0 grow basis-0 text-start italic',
+            'text-input-contrast/50 min-w-0 grow basis-0 truncate text-start italic',
             'phone-landscape:hidden',
           )}
         >
