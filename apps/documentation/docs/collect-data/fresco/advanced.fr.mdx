@@ -50,10 +50,10 @@ Pour déployer Fresco, il vous faut :
 
 Fresco fournit trois fichiers Docker Compose prêts à l’emploi, un par option de stockage. Chacun réunit Traefik (TLS), PostgreSQL 17 et l’application Fresco :
 
-| Fichier Compose                                                                                                              | Stockage                                                                                                        | À utiliser si                                                                                               |
-| ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml)               | **Garage** intégré, auto-hébergé sur cet hôte                                                                   | Vous voulez tout garder dans votre propre infrastructure, sans dépendre d’un stockage externe.              |
-| [`docker-compose.external-s3.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.external-s3.yml) | Un **service externe compatible S3** (AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, un MinIO géré…) | Vous disposez déjà d’un bucket S3 géré, ou souhaitez en utiliser un.                                        |
+| Fichier Compose                                                                                                              | Stockage                                                                                                        | À utiliser si                                                                                              |
+| ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml)               | **Garage** intégré, auto-hébergé sur cet hôte                                                                   | Vous voulez tout garder dans votre propre infrastructure, sans dépendre d’un stockage externe.             |
+| [`docker-compose.external-s3.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.external-s3.yml) | Un **service externe compatible S3** (AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, un MinIO géré…) | Vous disposez déjà d’un bucket S3 géré, ou souhaitez en utiliser un.                                       |
 | [`docker-compose.uploadthing.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.uploadthing.yml) | **UploadThing** (dans le cloud)                                                                                 | Vous voulez le stockage géré le plus simple et acceptez que les ressources soient stockées hors de l’hôte. |
 
 Téléchargez celui qui correspond à votre choix ; la section [Exécuter Fresco](#running-fresco) ci-dessous explique comment faire.
@@ -62,12 +62,12 @@ Téléchargez celui qui correspond à votre choix ; la section [Exécuter Fresc
 
 Chaque configuration lit ses paramètres dans un fichier `.env` placé à côté du fichier Compose. Les variables communes aux trois sont les suivantes :
 
-| **Variable**              | **Détails**                                                                                                                                                                                                                   |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **DATABASE_URL**          | Une URL de connexion avec mise en commun des connexions (pooling) pour Prisma. Avec le service `postgres` intégré, faites-la pointer vers `postgres:5432`.                                                                   |
+| **Variable**              | **Détails**                                                                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **DATABASE_URL**          | Une URL de connexion avec mise en commun des connexions (pooling) pour Prisma. Avec le service `postgres` intégré, faites-la pointer vers `postgres:5432`.                                                                            |
 | **DATABASE_URL_UNPOOLED** | Une URL de connexion sans mise en commun pour Prisma, utilisée pour les migrations de la base de données lors des mises à jour. Si vous n’avez pas de gestionnaire de pool de connexions, utilisez la même valeur que `DATABASE_URL`. |
-| **FRESCO_DOMAIN**         | Le domaine public de ce déploiement (par exemple `study.example.com`). C’est la seule source de référence pour le domaine du déploiement.                                                                                     |
-| **ACME_EMAIL**            | L’adresse e-mail de contact pour les notifications de Let’s Encrypt concernant les certificats.                                                                                                                               |
+| **FRESCO_DOMAIN**         | Le domaine public de ce déploiement (par exemple `study.example.com`). C’est la seule source de référence pour le domaine du déploiement.                                                                                             |
+| **ACME_EMAIL**            | L’adresse e-mail de contact pour les notifications de Let’s Encrypt concernant les certificats.                                                                                                                                       |
 
 <TipBox>
 
@@ -147,14 +147,14 @@ Traitez ces deux valeurs comme des mots de passe : ensemble, elles donnent un a
 
 Lorsque l’[assistant de configuration](#access-fresco) arrive à l’étape du stockage, **S3 / compatible S3** est déjà sélectionné, et ses paramètres sont remplis et verrouillés :
 
-| **Champ**                    | **Valeur**                                                                                      |
-| ---------------------------- | ----------------------------------------------------------------------------------------------- |
-| **URL du point de terminaison** | `http://garage:3900` — l’adresse Docker interne, utilisée uniquement par les conteneurs     |
-| **URL publique**             | `https://<your Fresco domain>` — le même domaine que `FRESCO_DOMAIN`                            |
-| **Nom du bucket**            | `assets`                                                                                        |
-| **Région**                   | `us-east-1`                                                                                     |
-| **ID de clé d’accès**        | Votre valeur de `GARAGE_ACCESS_KEY_ID`                                                          |
-| **Clé d’accès secrète**      | Votre valeur de `GARAGE_SECRET_ACCESS_KEY`, masquée                                             |
+| **Champ**                       | **Valeur**                                                                              |
+| ------------------------------- | --------------------------------------------------------------------------------------- |
+| **URL du point de terminaison** | `http://garage:3900` — l’adresse Docker interne, utilisée uniquement par les conteneurs |
+| **URL publique**                | `https://<your Fresco domain>` — le même domaine que `FRESCO_DOMAIN`                    |
+| **Nom du bucket**               | `assets`                                                                                |
+| **Région**                      | `us-east-1`                                                                             |
+| **ID de clé d’accès**           | Votre valeur de `GARAGE_ACCESS_KEY_ID`                                                  |
+| **Clé d’accès secrète**         | Votre valeur de `GARAGE_SECRET_ACCESS_KEY`, masquée                                     |
 
 Sélectionnez **Continuer**. Ces paramètres proviennent du service `fresco` de `docker-compose.prod.yml`, qui a la priorité sur `.env` : définir `STORAGE_PROVIDER` ou les variables `S3_*` dans `.env` n’a donc aucun effet avec cette configuration.
 
@@ -195,14 +195,14 @@ S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
 ```
 
-| **Variable**                                    | **Détails**                                                                                                                                                                                                         |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **STORAGE_PROVIDER**                            | Définissez-la sur `s3` pour un bucket compatible S3. Lorsqu’elle est définie, le fournisseur est fixé et les paramètres de stockage de l’application sont verrouillés.                                              |
-| **S3_ENDPOINT**                                 | Le point de terminaison (endpoint) de l’API S3 de votre service.                                                                                                                                                   |
+| **Variable**                                    | **Détails**                                                                                                                                                                                                                       |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **STORAGE_PROVIDER**                            | Définissez-la sur `s3` pour un bucket compatible S3. Lorsqu’elle est définie, le fournisseur est fixé et les paramètres de stockage de l’application sont verrouillés.                                                            |
+| **S3_ENDPOINT**                                 | Le point de terminaison (endpoint) de l’API S3 de votre service.                                                                                                                                                                  |
 | **S3_PUBLIC_URL**                               | L’URL que les navigateurs utilisent pour accéder au stockage. Pour un service externe, elle est généralement identique à `S3_ENDPOINT`. (La configuration Garage intégrée décrite ci-dessus la définit sur votre domaine Fresco.) |
-| **S3_BUCKET**                                   | Le nom d’un bucket existant.                                                                                                                                                                                       |
-| **S3_REGION**                                   | La région du bucket (par exemple `us-east-1` ; utilisez `auto` pour Cloudflare R2).                                                                                                                                 |
-| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Des identifiants de connexion disposant d’un accès en lecture et en écriture au bucket.                                                                                                                            |
+| **S3_BUCKET**                                   | Le nom d’un bucket existant.                                                                                                                                                                                                      |
+| **S3_REGION**                                   | La région du bucket (par exemple `us-east-1` ; utilisez `auto` pour Cloudflare R2).                                                                                                                                               |
+| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Des identifiants de connexion disposant d’un accès en lecture et en écriture au bucket.                                                                                                                                           |
 
 Exigences concernant le bucket sur votre service S3 :
 

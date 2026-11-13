@@ -39,17 +39,17 @@ la manière dont chaque valeur est encodée.
 
 ## Les types de variable en un coup d’œil {#variable-types-at-a-glance}
 
-| Type de variable | Colonne(s) CSV                             | Valeur CSV                                        | `attr.type` GraphML                    | Exemple de valeur          |
-| ---------------- | ------------------------------------------ | ------------------------------------------------- | -------------------------------------- | -------------------------- |
-| Texte            | `variable_name`                            | Le texte, entre guillemets seulement si nécessaire | `string`                               | `Jane`                     |
-| Nombre           | `variable_name`                            | Le nombre                                         | `int` ou `double` (détecté)            | `34`                       |
-| Booléen          | `variable_name`                            | `true` / `false`                                  | `boolean`                              | `true`                     |
-| Ordinal          | `variable_name`                            | La valeur de l’option sélectionnée                | `int`, `double` ou `string` (détecté)  | `3`                        |
-| Catégoriel       | `variable_name_option` (une par option)    | `true` / `false` pour chaque option               | `boolean` (une clé par option)         | `true`                     |
-| Scalaire         | `variable_name`                            | Nombre compris entre 0 et 1                       | `float`                                | `0.735`                    |
-| Date             | `variable_name`                            | Chaîne de date ISO                                | `string`                               | `1989-07-21`               |
-| Disposition      | `variable_name_x`, `variable_name_y`       | Coordonnées normalisées (0–1)                     | `double` (clés `_X` et `_Y`)           | `0.62`, `0.24`             |
-| Lieu             | `variable_name`                            | Identifiant de la zone de la carte sélectionnée   | `string`                               | `outside-selectable-areas` |
+| Type de variable | Colonne(s) CSV                          | Valeur CSV                                         | `attr.type` GraphML                   | Exemple de valeur          |
+| ---------------- | --------------------------------------- | -------------------------------------------------- | ------------------------------------- | -------------------------- |
+| Texte            | `variable_name`                         | Le texte, entre guillemets seulement si nécessaire | `string`                              | `Jane`                     |
+| Nombre           | `variable_name`                         | Le nombre                                          | `int` ou `double` (détecté)           | `34`                       |
+| Booléen          | `variable_name`                         | `true` / `false`                                   | `boolean`                             | `true`                     |
+| Ordinal          | `variable_name`                         | La valeur de l’option sélectionnée                 | `int`, `double` ou `string` (détecté) | `3`                        |
+| Catégoriel       | `variable_name_option` (une par option) | `true` / `false` pour chaque option                | `boolean` (une clé par option)        | `true`                     |
+| Scalaire         | `variable_name`                         | Nombre compris entre 0 et 1                        | `float`                               | `0.735`                    |
+| Date             | `variable_name`                         | Chaîne de date ISO                                 | `string`                              | `1989-07-21`               |
+| Disposition      | `variable_name_x`, `variable_name_y`    | Coordonnées normalisées (0–1)                      | `double` (clés `_X` et `_Y`)          | `0.62`, `0.24`             |
+| Lieu             | `variable_name`                         | Identifiant de la zone de la carte sélectionnée    | `string`                              | `outside-selectable-areas` |
 
 Les sections suivantes détaillent chaque type, y compris la façon dont les
 valeurs manquantes apparaissent.
@@ -209,11 +209,11 @@ choisi dans l’étape « Écran de fin » à laquelle l’entretien s’est t
 fichiers GraphML enregistrent la même valeur dans l’attribut `nc:finishOutcome`
 de l’élément `<graph>`.
 
-| Valeur       | Signification                                                                                                                                                                                              |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `completed`  | La personne participante a atteint la fin normale de l’entretien.                                                                                                                                        |
-| `ineligible` | La personne participante ne remplissait pas les critères de l’étude.                                                                                                                                       |
-| `terminated` | L’entretien a pris fin prématurément pour une autre raison, par exemple un arrêt en cas de détresse ou pour des raisons de sécurité.                                                                      |
+| Valeur       | Signification                                                                                                                                                                                                                                |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `completed`  | La personne participante a atteint la fin normale de l’entretien.                                                                                                                                                                            |
+| `ineligible` | La personne participante ne remplissait pas les critères de l’étude.                                                                                                                                                                         |
+| `terminated` | L’entretien a pris fin prématurément pour une autre raison, par exemple un arrêt en cas de détresse ou pour des raisons de sécurité.                                                                                                         |
 | Vide (CSV)   | Aucun résultat n’a été enregistré, par exemple pour un entretien terminé avec une version antérieure de l’application, qui n’enregistrait pas encore le résultat, ou pour un entretien qui n’est pas terminé. GraphML omet alors l’attribut. |
 
 La colonne figure dans chaque fichier d’ego, même lorsque toutes ses cellules

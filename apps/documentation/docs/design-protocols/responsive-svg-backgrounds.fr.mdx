@@ -92,12 +92,12 @@ Les arrière-plans adaptatifs conviennent le mieux lorsque les positions
 horizontale et verticale représentent des dimensions distinctes, ou lorsque les
 régions doivent toujours s’étendre jusqu’aux bords du canevas.
 
-| Plan de recherche                                                                         | Approche recommandée                                                                |
-| ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Deux axes indépendants, des quadrants, des catégories ou des contextes sociaux            | Utiliser un SVG adaptatif                                                           |
-| Les positions horizontales et verticales relatives seront analysées indépendamment        | Utiliser un SVG adaptatif                                                           |
-| La distance euclidienne, l’angle ou la forme d’un cercle ont un sens pour la mesure       | Utiliser une image non adaptative (affichée entière dans le canevas, sans déformation, avec des bandes vides si nécessaire) ou garder les appareils dans une seule orientation |
-| Une photographie, une carte, un schéma anatomique ou une autre image ne doit pas être déformée | Utiliser une image non adaptative |
+| Plan de recherche                                                                              | Approche recommandée                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Deux axes indépendants, des quadrants, des catégories ou des contextes sociaux                 | Utiliser un SVG adaptatif                                                                                                                                                      |
+| Les positions horizontales et verticales relatives seront analysées indépendamment             | Utiliser un SVG adaptatif                                                                                                                                                      |
+| La distance euclidienne, l’angle ou la forme d’un cercle ont un sens pour la mesure            | Utiliser une image non adaptative (affichée entière dans le canevas, sans déformation, avec des bandes vides si nécessaire) ou garder les appareils dans une seule orientation |
+| Une photographie, une carte, un schéma anatomique ou une autre image ne doit pas être déformée | Utiliser une image non adaptative                                                                                                                                              |
 
 Cette distinction compte pour l’analyse. Un arrière-plan adaptatif conserve
 chaque position en proportion de l’espace horizontal et vertical, mais il ne
@@ -185,13 +185,13 @@ Ouvrez le SVG copié. Son contenu vous paraîtra inhabituel, car vous voyez les
 instructions qui servent à dessiner l’image. Il vous suffit d’utiliser
 **Rechercher et remplacer** pour modifier ces termes visibles :
 
-| Rechercher  | Remplacer par                               |
-| ----------- | ------------------------------------------- |
-| `Family`    | Votre premier contexte                      |
-| `Friends`   | Votre deuxième contexte                     |
+| Rechercher  | Remplacer par                                 |
+| ----------- | --------------------------------------------- |
+| `Family`    | Votre premier contexte                        |
+| `Friends`   | Votre deuxième contexte                       |
 | `Work or`   | La première ligne de votre troisième contexte |
 | `study`     | La deuxième ligne de votre troisième contexte |
-| `Community` | Votre quatrième contexte                    |
+| `Community` | Votre quatrième contexte                      |
 
 Ne modifiez pas la ponctuation ni les symboles comme `<`, `>`, `"`, `/`, `=` ou
 `%`. Enregistrez le fichier en texte brut avec l’encodage UTF-8, et vérifiez
@@ -255,12 +255,12 @@ contiennent les valeurs `_X` et `_Y` équivalentes.
 Le modèle divise le canevas à 50 % dans les deux directions. Cela revient à
 fixer à `0.5` le seuil des coordonnées normalisées.
 
-| Quadrant          | Libellé du modèle | Règle de coordonnées     |
-| ----------------- | ----------------- | ------------------------ |
-| Supérieur gauche  | Family            | `x < 0.5` et `y < 0.5`   |
-| Supérieur droit   | Friends           | `x > 0.5` et `y < 0.5`   |
-| Inférieur gauche  | Work or study     | `x < 0.5` et `y > 0.5`   |
-| Inférieur droit   | Community         | `x > 0.5` et `y > 0.5`   |
+| Quadrant         | Libellé du modèle | Règle de coordonnées   |
+| ---------------- | ----------------- | ---------------------- |
+| Supérieur gauche | Family            | `x < 0.5` et `y < 0.5` |
+| Supérieur droit  | Friends           | `x > 0.5` et `y < 0.5` |
+| Inférieur gauche | Work or study     | `x < 0.5` et `y > 0.5` |
+| Inférieur droit  | Community         | `x > 0.5` et `y > 0.5` |
 
 Par exemple, un nœud situé en `(0.25, 0.33)` se trouve dans le quadrant
 supérieur gauche. Un nœud situé en `(0.75, 0.67)` se trouve dans le quadrant
@@ -478,14 +478,14 @@ Un arrière-plan adaptatif pour Network Canvas doit :
 
 ## Dépannage {#troubleshooting}
 
-| Problème                                                      | Cause probable et étape suivante                                                                                                   |
-| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Le fichier est refusé ou s’affiche sous forme de texte        | Vérifiez que le nom du fichier se termine par `.svg` et non par `.svg.txt`, et qu’il a été enregistré en texte brut                |
-| Des bandes vides apparaissent en mode portrait ou paysage     | Le SVG a probablement des proportions de page fixes ; comparez-le à la liste de contrôle pour la transmission technique            |
-| Les libellés s’étirent ou changent de forme                   | Les libellés ont peut-être été vectorisés ou convertis en chemins ; revenez à l’original modifiable et gardez-les sous forme de texte |
-| Les lignes deviennent très épaisses ou très fines             | Demandez que `vector-effect: non-scaling-stroke` soit ajouté à ces lignes                                                          |
-| L’arrière-plan de l’interface ne transparaît pas              | Le SVG contient probablement un rectangle d’arrière-plan de la taille de la page ; supprimez-le de l’exportation adaptative               |
-| Les libellés sont masqués par les nœuds ou les commandes de l’interface | Raccourcissez ou déplacez les libellés, puis refaites les tests sur les appareils de terrain                             |
+| Problème                                                                | Cause probable et étape suivante                                                                                                      |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Le fichier est refusé ou s’affiche sous forme de texte                  | Vérifiez que le nom du fichier se termine par `.svg` et non par `.svg.txt`, et qu’il a été enregistré en texte brut                   |
+| Des bandes vides apparaissent en mode portrait ou paysage               | Le SVG a probablement des proportions de page fixes ; comparez-le à la liste de contrôle pour la transmission technique               |
+| Les libellés s’étirent ou changent de forme                             | Les libellés ont peut-être été vectorisés ou convertis en chemins ; revenez à l’original modifiable et gardez-les sous forme de texte |
+| Les lignes deviennent très épaisses ou très fines                       | Demandez que `vector-effect: non-scaling-stroke` soit ajouté à ces lignes                                                             |
+| L’arrière-plan de l’interface ne transparaît pas                        | Le SVG contient probablement un rectangle d’arrière-plan de la taille de la page ; supprimez-le de l’exportation adaptative           |
+| Les libellés sont masqués par les nœuds ou les commandes de l’interface | Raccourcissez ou déplacez les libellés, puis refaites les tests sur les appareils de terrain                                          |
 
 ## Concepts associés {#related-concepts}
 

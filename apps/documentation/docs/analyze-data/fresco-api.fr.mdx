@@ -77,13 +77,13 @@ Renvoie une liste paginée d’entretiens, en commençant par les plus récemmen
 
 **Paramètres de requête** (tous facultatifs, transmis dans la chaîne de requête de l’URL) :
 
-| Paramètre       | Type                | Par défaut | Description                                           |
-| --------------- | ------------------- | ---------- | ----------------------------------------------------- |
-| `page`          | entier              | `1`        | Numéro de la page à renvoyer.                         |
-| `perPage`       | entier              | `10`       | Éléments par page (`100` au maximum).                 |
-| `protocolId`    | chaîne de caractères | aucune     | Uniquement les entretiens de ce protocole.            |
+| Paramètre       | Type                 | Par défaut | Description                                               |
+| --------------- | -------------------- | ---------- | --------------------------------------------------------- |
+| `page`          | entier               | `1`        | Numéro de la page à renvoyer.                             |
+| `perPage`       | entier               | `10`       | Éléments par page (`100` au maximum).                     |
+| `protocolId`    | chaîne de caractères | aucune     | Uniquement les entretiens de ce protocole.                |
 | `participantId` | chaîne de caractères | aucune     | Uniquement les entretiens de cette personne participante. |
-| `status`        | chaîne de caractères | aucune     | `completed` ou `in-progress`.                         |
+| `status`        | chaîne de caractères | aucune     | `completed` ou `in-progress`.                             |
 
 **Exemple de requête**
 
@@ -123,27 +123,27 @@ curl -H "Authorization: Bearer $FRESCO_API_TOKEN" \
 
 Chaque objet de `data` est un résumé d’entretien :
 
-| Champ           | Description                                                                                                                                                                                         |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`            | Identifiant unique de l’entretien.                                                                                                                                                                  |
-| `startTime`     | Date et heure de début de l’entretien.                                                                                                                                                              |
-| `finishTime`    | Date et heure de fin de l’entretien, ou `null` tant qu’il est en cours.                                                                                                                             |
-| `lastUpdated`   | Date et heure de la dernière modification des données de l’entretien.                                                                                                                               |
-| `currentStep`   | L’étape que la personne participante a atteinte.                                                                                                                                                    |
+| Champ           | Description                                                                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`            | Identifiant unique de l’entretien.                                                                                                                                                                                       |
+| `startTime`     | Date et heure de début de l’entretien.                                                                                                                                                                                   |
+| `finishTime`    | Date et heure de fin de l’entretien, ou `null` tant qu’il est en cours.                                                                                                                                                  |
+| `lastUpdated`   | Date et heure de la dernière modification des données de l’entretien.                                                                                                                                                    |
+| `currentStep`   | L’étape que la personne participante a atteinte.                                                                                                                                                                         |
 | `finishStageId` | L’identifiant de l’étape « Écran de fin » du protocole qui a terminé l’entretien, ou `null` pour les entretiens qui ne sont pas terminés, ou qui l’ont été avant que Fresco ne commence à enregistrer cette information. |
-| `finishOutcome` | La manière dont l’entretien s’est terminé : `completed`, `ineligible` ou `terminated`. `null` pour les entretiens qui ne sont pas terminés, ou qui l’ont été avant que Fresco ne commence à enregistrer ce résultat.    |
-| `protocolId`    | Identifiant (`id`) du protocole utilisé.                                                                                                                                                            |
-| `participantId` | `id` interne de la personne participante (la même valeur que `participant.id`, et non l’identifiant de la personne participante, `identifier`).                                                                                                                                                     |
-| `participant`   | Résumé de la personne participante : `id`, `identifier`, `label`.                                                                                                                                   |
-| `protocol`      | Résumé du protocole : `id`, `name`.                                                                                                                                                                 |
+| `finishOutcome` | La manière dont l’entretien s’est terminé : `completed`, `ineligible` ou `terminated`. `null` pour les entretiens qui ne sont pas terminés, ou qui l’ont été avant que Fresco ne commence à enregistrer ce résultat.     |
+| `protocolId`    | Identifiant (`id`) du protocole utilisé.                                                                                                                                                                                 |
+| `participantId` | `id` interne de la personne participante (la même valeur que `participant.id`, et non l’identifiant de la personne participante, `identifier`).                                                                          |
+| `participant`   | Résumé de la personne participante : `id`, `identifier`, `label`.                                                                                                                                                        |
+| `protocol`      | Résumé du protocole : `id`, `name`.                                                                                                                                                                                      |
 
 L’objet `meta` décrit la page en cours :
 
-| Champ       | Description                                         |
-| ----------- | --------------------------------------------------- |
-| `page`      | Le numéro de la page en cours.                      |
-| `perPage`   | Nombre d’éléments par page.                         |
-| `pageCount` | Nombre total de pages.                              |
+| Champ       | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| `page`      | Le numéro de la page en cours.                        |
+| `perPage`   | Nombre d’éléments par page.                           |
+| `pageCount` | Nombre total de pages.                                |
 | `total`     | Nombre total d’entretiens correspondant à la requête. |
 
 ### Récupérer un entretien {#get-a-single-interview}
@@ -220,23 +220,23 @@ curl -H "Authorization: Bearer $FRESCO_API_TOKEN" \
 
 L’objet `data` contient l’enregistrement complet de l’entretien :
 
-| Champ           | Description                                                                                                                                                                                         |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`            | Identifiant unique de l’entretien.                                                                                                                                                                  |
-| `startTime`     | Date et heure de début de l’entretien.                                                                                                                                                              |
-| `finishTime`    | Date et heure de fin de l’entretien, ou `null` tant qu’il est en cours.                                                                                                                             |
-| `exportTime`    | Date et heure de la dernière exportation de l’entretien depuis le tableau de bord, ou `null` s’il n’a jamais été exporté.                                                                            |
-| `lastUpdated`   | Date et heure de la dernière modification des données de l’entretien.                                                                                                                               |
-| `currentStep`   | L’étape que la personne participante a atteinte.                                                                                                                                                    |
+| Champ           | Description                                                                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`            | Identifiant unique de l’entretien.                                                                                                                                                                                       |
+| `startTime`     | Date et heure de début de l’entretien.                                                                                                                                                                                   |
+| `finishTime`    | Date et heure de fin de l’entretien, ou `null` tant qu’il est en cours.                                                                                                                                                  |
+| `exportTime`    | Date et heure de la dernière exportation de l’entretien depuis le tableau de bord, ou `null` s’il n’a jamais été exporté.                                                                                                |
+| `lastUpdated`   | Date et heure de la dernière modification des données de l’entretien.                                                                                                                                                    |
+| `currentStep`   | L’étape que la personne participante a atteinte.                                                                                                                                                                         |
 | `finishStageId` | L’identifiant de l’étape « Écran de fin » du protocole qui a terminé l’entretien, ou `null` pour les entretiens qui ne sont pas terminés, ou qui l’ont été avant que Fresco ne commence à enregistrer cette information. |
-| `finishOutcome` | La manière dont l’entretien s’est terminé : `completed`, `ineligible` ou `terminated`. `null` dans les mêmes cas que `finishStageId`.                                                                |
-| `isSynthetic`   | `true` pour des données de test générées, `false` pour un entretien réel.                                                                                                                           |
-| `network`       | Les données de réseau recueillies (les nœuds, les liens et l’ego, c’est-à-dire la personne participante au centre de son réseau).                                                                              |
-| `stageMetadata` | Métadonnées internes de certaines étapes, comme les réponses négatives des étapes « Recensement des dyades » et « Recensement de la force des liens ». Généralement `null`.                          |
-| `protocolId`    | Identifiant (`id`) du protocole utilisé.                                                                                                                                                            |
-| `participantId` | `id` interne de la personne participante (la même valeur que `participant.id`, et non l’identifiant de la personne participante, `identifier`).                                                                                                                                                     |
-| `participant`   | Résumé de la personne participante : `id`, `identifier`, `label`.                                                                                                                                   |
-| `protocol`      | Détail du protocole : `id`, `name`, `schemaVersion`, `description`, `codebook`.                                                                                                                     |
+| `finishOutcome` | La manière dont l’entretien s’est terminé : `completed`, `ineligible` ou `terminated`. `null` dans les mêmes cas que `finishStageId`.                                                                                    |
+| `isSynthetic`   | `true` pour des données de test générées, `false` pour un entretien réel.                                                                                                                                                |
+| `network`       | Les données de réseau recueillies (les nœuds, les liens et l’ego, c’est-à-dire la personne participante au centre de son réseau).                                                                                        |
+| `stageMetadata` | Métadonnées internes de certaines étapes, comme les réponses négatives des étapes « Recensement des dyades » et « Recensement de la force des liens ». Généralement `null`.                                              |
+| `protocolId`    | Identifiant (`id`) du protocole utilisé.                                                                                                                                                                                 |
+| `participantId` | `id` interne de la personne participante (la même valeur que `participant.id`, et non l’identifiant de la personne participante, `identifier`).                                                                          |
+| `participant`   | Résumé de la personne participante : `id`, `identifier`, `label`.                                                                                                                                                        |
+| `protocol`      | Détail du protocole : `id`, `name`, `schemaVersion`, `description`, `codebook`.                                                                                                                                          |
 
 ### Lister les protocoles {#list-protocols}
 
@@ -272,12 +272,12 @@ curl -H "Authorization: Bearer $FRESCO_API_TOKEN" \
 
 Chaque objet du tableau décrit un protocole :
 
-| Champ          | Description                                                                                                          |
-| -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Champ          | Description                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `id`           | Identifiant unique du protocole. Utilisez-le comme filtre `protocolId` sur le point de terminaison des entretiens. |
-| `name`         | Le nom du protocole.                                                                                                 |
-| `importedAt`   | Date et heure de l’importation du protocole dans l’instance.                                                          |
-| `lastModified` | Date et heure de la dernière modification du fichier de protocole.                                                   |
+| `name`         | Le nom du protocole.                                                                                               |
+| `importedAt`   | Date et heure de l’importation du protocole dans l’instance.                                                       |
+| `lastModified` | Date et heure de la dernière modification du fichier de protocole.                                                 |
 
 ## Pagination {#pagination}
 
@@ -503,12 +503,12 @@ if __name__ == "__main__":
 
 En cas d’erreur, l’API renvoie un code d’état HTTP standard accompagné d’un corps JSON `{ "error": ... }`.
 
-| Code d’état                 | Signification                                                   |
-| --------------------------- | --------------------------------------------------------------- |
-| `401 Unauthorized`          | Jeton absent, non valide ou désactivé.                          |
-| `403 Forbidden`             | L’API Interview Data est désactivée dans **Paramètres**.        |
+| Code d’état                 | Signification                                                             |
+| --------------------------- | ------------------------------------------------------------------------- |
+| `401 Unauthorized`          | Jeton absent, non valide ou désactivé.                                    |
+| `403 Forbidden`             | L’API Interview Data est désactivée dans **Paramètres**.                  |
 | `404 Not Found`             | Identifiant d’entretien inconnu, ou version de l’API non prise en charge. |
-| `500 Internal Server Error` | Erreur inattendue du serveur.                                   |
+| `500 Internal Server Error` | Erreur inattendue du serveur.                                             |
 
 ## Gestion des versions {#versioning}
 

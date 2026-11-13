@@ -229,14 +229,14 @@ Les fichiers CSV conservent chaque réponse exactement telle qu’elle a été s
 
 ### Choisir entre CSV et GraphML {#choosing-between-csv-and-graphml}
 
-| Critère                       | CSV                                                     | GraphML                                                      |
-| ----------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
-| **Type d’analyse**            | Analyse statistique, indicateurs des réseaux personnels | Visualisation de réseaux, analyse de graphes                 |
-| **Nombre de fichiers**        | Plusieurs fichiers (un par type d’entité)               | Un seul fichier par session                                  |
-| **Lisibilité**                | Lisible par une personne, s’ouvre dans Excel            | Format XML, nécessite un logiciel spécialisé                 |
-| **Compatibilité avec R**      | Prise en charge native, fonctionne avec egor            | Nécessite des packages de graphes (igraph, network)          |
-| **Structure des données**     | Relationnelle (tables séparées)                         | Graphe (nœuds et liens)                                      |
-| **Idéal pour débuter**        | ✓ Format plus familier                                  | Peut demander un temps d’apprentissage                       |
+| Critère                   | CSV                                                     | GraphML                                             |
+| ------------------------- | ------------------------------------------------------- | --------------------------------------------------- |
+| **Type d’analyse**        | Analyse statistique, indicateurs des réseaux personnels | Visualisation de réseaux, analyse de graphes        |
+| **Nombre de fichiers**    | Plusieurs fichiers (un par type d’entité)               | Un seul fichier par session                         |
+| **Lisibilité**            | Lisible par une personne, s’ouvre dans Excel            | Format XML, nécessite un logiciel spécialisé        |
+| **Compatibilité avec R**  | Prise en charge native, fonctionne avec egor            | Nécessite des packages de graphes (igraph, network) |
+| **Structure des données** | Relationnelle (tables séparées)                         | Graphe (nœuds et liens)                             |
+| **Idéal pour débuter**    | ✓ Format plus familier                                  | Peut demander un temps d’apprentissage              |
 
 **Notre recommandation :** exportez les données dans **les deux formats** lorsque vous commencez à travailler avec des données Network Canvas. Vous pourrez ainsi faire des essais et déterminer quel format convient le mieux à votre procédure d’analyse.
 
@@ -249,10 +249,10 @@ Chaque exportation enregistre la façon dont chaque entretien s’est terminé 
 
 La valeur est l’une des suivantes :
 
-| Valeur       | Signification                                                                                                                                                                       |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `completed`  | La personne participante a atteint la fin normale de l’entretien.                                                                                                                 |
-| `ineligible` | La personne participante ne remplissait pas les critères de l’étude.                                                                                                                |
+| Valeur       | Signification                                                                                                                                                                                |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `completed`  | La personne participante a atteint la fin normale de l’entretien.                                                                                                                            |
+| `ineligible` | La personne participante ne remplissait pas les critères de l’étude.                                                                                                                         |
 | `terminated` | L’entretien a pris fin prématurément pour une autre raison, par exemple un arrêt en cas de détresse ou pour des raisons de sécurité. C’est le choix **Arrêté prématurément** dans Architect. |
 
 La cellule CSV est vide, et l’attribut GraphML est omis, lorsqu’aucun résultat n’a été enregistré. C’est le cas des entretiens terminés avec une version antérieure de l’application, qui n’enregistrait pas encore le résultat, et des entretiens qui ne sont pas terminés. La colonne CSV est toujours présente, même lorsque toutes ses cellules sont vides.
@@ -263,12 +263,12 @@ Comme l’exportation écrit elle-même cette colonne, Architect ne permet pas d
 
 Chaque nom de fichier commence par l’identifiant de cas et l’identifiant de session de l’entretien. Les noms des fichiers CSV indiquent aussi ce que contient le fichier :
 
-| Fichier                                                    | Nom                                             |
-| ---------------------------------------------------------- | ----------------------------------------------- |
-| GraphML                                                    | `caseID_sessionUUID.graphml`                    |
-| Liste des attributs d’ego (CSV)                            | `caseID_sessionUUID_ego.csv`                    |
-| Liste des attributs des alters, par type de nœud (CSV)     | `caseID_sessionUUID_attributeList_nodeType.csv` |
-| Liste des attributs des liens, par type de lien (CSV)      | `caseID_sessionUUID_edgeList_edgeType.csv`      |
+| Fichier                                                | Nom                                             |
+| ------------------------------------------------------ | ----------------------------------------------- |
+| GraphML                                                | `caseID_sessionUUID.graphml`                    |
+| Liste des attributs d’ego (CSV)                        | `caseID_sessionUUID_ego.csv`                    |
+| Liste des attributs des alters, par type de nœud (CSV) | `caseID_sessionUUID_attributeList_nodeType.csv` |
+| Liste des attributs des liens, par type de lien (CSV)  | `caseID_sessionUUID_edgeList_edgeType.csv`      |
 
 Les noms des types de nœuds et de liens sont utilisés tels qu’ils sont écrits dans votre livre de codes, dans n’importe quelle langue : un type de nœud nommé `友人` donne ainsi un fichier se terminant par `_attributeList_友人.csv`. Quelques modifications garantissent que les noms fonctionnent sur tous les ordinateurs :
 
@@ -293,11 +293,11 @@ Les noms qui ne diffèrent que par la casse, comme `Age` et `age`, ne sont pas r
 
 Une exportation peut se terminer par des avertissements sur des modifications qu’elle a apportées à vos données. L’exportation réussit malgré tout. Il existe trois types d’avertissements, chacun avec son propre titre :
 
-| Avertissement                                                                         | Ce qui s’est passé                                                                                                                                                          |
-| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| « Des caractères ont été supprimés des fichiers GraphML »                             | Certaines réponses contenaient des caractères que GraphML ne peut pas stocker. Voir [Caractères supprimés des fichiers GraphML](#characters-removed-from-graphml-files). |
-| « Des caractères ont été supprimés du texte du protocole dans les fichiers GraphML »  | Le texte du protocole lui-même, comme son nom ou le nom d’un type de nœud, contenait de tels caractères.                                                                   |
-| « Certaines colonnes ont été renommées »                                              | Deux colonnes d’un même fichier auraient porté le même nom. Voir [Noms de colonnes en conflit](#column-names-that-clash).                                                   |
+| Avertissement                                                                        | Ce qui s’est passé                                                                                                                                                       |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| « Des caractères ont été supprimés des fichiers GraphML »                            | Certaines réponses contenaient des caractères que GraphML ne peut pas stocker. Voir [Caractères supprimés des fichiers GraphML](#characters-removed-from-graphml-files). |
+| « Des caractères ont été supprimés du texte du protocole dans les fichiers GraphML » | Le texte du protocole lui-même, comme son nom ou le nom d’un type de nœud, contenait de tels caractères.                                                                 |
+| « Certaines colonnes ont été renommées »                                             | Deux colonnes d’un même fichier auraient porté le même nom. Voir [Noms de colonnes en conflit](#column-names-that-clash).                                                |
 
 Chaque avertissement indique précisément ce qui a été touché. L’endroit où les avertissements apparaissent dépend de l’application :
 
